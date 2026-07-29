@@ -61,7 +61,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       { id:'2-1-2', no:3, title:'演奏小星星', subtitle:'陣列應用與清單播放', icon:'🎵', color:'purple',
         desc:'把音樂簡譜存進清單，用計次迴圈依序取出音階播放。',
         details:['把音階數值匯入清單，建立連續資料。','用單一清單集中管理整首歌的音階。','依清單長度執行迴圈，逐項取出並播放。','用變數當索引，控制目前演奏到第幾項。'],
-        ref:{ href:'11501_music.html', title:'簡譜與 Scratch 音階', note:'不會看簡譜、不知道音階怎麼變積木？先看這份。' },
+        ref:{ href:'music.html', title:'簡譜與 Scratch 音階', note:'不會看簡譜、不知道音階怎麼變積木？先看這份。' },
         steps:['開始','把音階匯入清單','編號設為 1','重複（清單長度）次','　演奏清單第（編號）項的音','　編號 = 編號 ＋ 1','結束'] },
       { id:'2-1-3', no:4, title:'計算成績', subtitle:'陣列應用與資料運算', icon:'🧮', color:'green',
         desc:'把成績存進清單，用迴圈把每一筆加總，再算平均、判斷及格。',
@@ -288,7 +288,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         paintHint();
       }, 1000);
     }
-    const LEAD = { href:'11501_whatislist.html', title:'Scratch 清單學習機', note:'寫程式前先搞懂「清單（陣列）」怎麼存放一整排資料。' };
+    const LEAD = { href:'whatislist.html', title:'Scratch 清單學習機', note:'寫程式前先搞懂「清單（陣列）」怎麼存放一整排資料。' };
 
     // 內嵌參考教材面板（用 iframe 直接把教材放進本關頁面）
     function refPanel(u){
@@ -731,7 +731,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                   <div class="text-sm font-black text-orange-800">🤖 程式評分（AI 助教）</div>
                   <div class="text-[11px] text-orange-700 leading-snug mt-0.5 lg:whitespace-nowrap">寫好存成 <b>.sb3</b> 上傳即可評分：<b>90 分↑ 3⭐、75 分↑ 2⭐</b>；未滿 75 分不給星，要修改後再傳。</div>
                 </div>
-                <iframe id="grader-frame" src="11501_scratch_ScratchGrader_student.html?unit=${u.id}" class="w-full block bg-white" style="height:560px;border:0;overflow:hidden" scrolling="no" title="Scratch 作品評分"></iframe>
+                <iframe id="grader-frame" src="scratch_ScratchGrader_student.html?unit=${u.id}" class="w-full block bg-white" style="height:560px;border:0;overflow:hidden" scrolling="no" title="Scratch 作品評分"></iframe>
                 <div class="p-3 border-t border-slate-100 text-center">
                   <p class="text-[11px] text-slate-500">上傳後看到「⭐ 已記錄 N 星」就代表這一關完成了，不必再按任何按鈕。<br>要看更新後的星數，點左上角的「← 關卡列表」即可。</p>
                 </div>

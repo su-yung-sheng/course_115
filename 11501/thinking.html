@@ -885,7 +885,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             const handleLogin = async (e) => {
                 e.preventDefault();
                 if (window.SSO) SSO.toHub('thinking 不自行登入');
-                else location.href = (window.CONFIG && CONFIG.HUB_PAGE) || 'index.html';
+                else location.href = (window.CONFIG && CONFIG.HUB_PAGE) || 'hub.html';
             };
 
             // SSO：掛載時若 hub 已存學號則自動登入（信任 localStorage）

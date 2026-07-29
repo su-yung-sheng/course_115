@@ -116,11 +116,21 @@ def check_html():
             continue
 
         # 相對路徑以「這個 HTML 自己的位置」為基準解析
+        #
+        # ★ 不只看 href=/src= 屬性，也看「引號裡的檔名」——
+        #   hub.html 的 MODULES 是 JS 物件（href:'social.html'），
+        #   只檢查 HTML 屬性會整批漏掉，實際上就發生過：
+        #   頁面檔名改了但 MODULES 沒跟，登入後每個課程連結都是 404。
         here = os.path.dirname(path)
-        refs = (re.findall(r'href=[\'"]([^\'"#?:]+\.html)[\'"]', s)
-                + re.findall(r'src=[\'"]([^\'"#?:]+\.js)[\'"]', s)
-                + re.findall(r'href=[\'"]([^\'"#?:]+\.css)[\'"]', s))
-        for ref in set(refs):
+        refs = set(re.findall(r'href=[\'"]([^\'"#?:]+\.html)[\'"]', s))
+        refs |= set(re.findall(r'src=[\'"]([^\'"#?:]+\.js)[\'"]', s))
+        refs |= set(re.findall(r'href=[\'"]([^\'"#?:]+\.css)[\'"]', s))
+        refs |= set(re.findall(r'[\'"]([A-Za-z0-9_\-./]+\.html)(?:\?[^\'"]*)?[\'"]', s))
+
+        for ref in refs:
+            # 略過：外部網址、絕對路徑、以及 JS 字串拼接的片段（例如 term + '/hub.html'）
+            if ref.startswith(('http', '//', 'mailto:', '/')):
+                continue
             if not os.path.exists(os.path.normpath(os.path.join(here, ref))):
                 errors.append(f'{name}：參照到不存在的檔案 {ref}')
 

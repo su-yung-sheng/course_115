@@ -357,7 +357,10 @@ if (!window.CONFIG) {
 <script>
 /* 頁面檔名還帶學期前綴，返回鈕的目標一律從 config 取，不寫死 */
 (function(){
-  var h = (window.CONFIG && CONFIG.HUB_PAGE) || 'hub.html';
+  // 本頁在 shared/ 底下，HUB_PAGE 是學期資料夾內的相對檔名，要補上學期資料夾；
+  // 取不到設定時退回總入口，不要指向不存在的 hub.html
+  var t = (window.CONFIG && CONFIG.TERM) || '';
+  var h = (t && window.CONFIG.HUB_PAGE) ? ('../' + t + '/' + CONFIG.HUB_PAGE) : '../index.html';
   document.querySelectorAll('[data-hub]').forEach(function(a){ a.setAttribute('href', h); });
 })();
 </script>
