@@ -1,0 +1,274 @@
+rules_version = '2';
+
+// =====================================================================
+//  Firestore 安全規則 — 專案 suyungsheng-5f948
+//  涵蓋：115 學年【上學期 11501】＋【下學期 11502】
+//  貼上位置：Firebase Console → Firestore Database → 規則 → 發佈
+//  最後更新：2026-07-29
+// ---------------------------------------------------------------------
+//  ⚠️ 一個 Firebase 專案只有「一份」規則，發佈時整份覆蓋。
+//     這份是 _shared/ 的產物，改請改 _shared/firestore.rules 再執行 sync_shared.py。
+//
+//  ⚠️ 這裡是全系統唯一「刻意保留重複」的地方：
+//     兩學期的規則明明長得一樣，仍然分開寫。理由是安全規則寫錯的代價太高，
+//     用正規式把 11501/11502 合成一條雖然短，但出事時很難一眼看出哪裡開太大。
+//     其他檔案追求「一份程式」，這一份追求「一眼看得懂」。
+// ---------------------------------------------------------------------
+//  ★ 2026-07-29 改版重點
+//    ① 名冊改為跨學期共用一份 /roster（同一批八年級學生）。
+//       舊的 {學期}-roster 保留到資料遷移完成，之後可整段刪除。
+//    ② 刪掉 {學期}-grades：規則裡有，但全站沒有任何一行程式讀寫它。
+//    ③ 闖關紀錄（quiz_records）改存進 {學期}-progress 的 history。
+//       舊集合的規則移到「待淘汰」區，舊版頁面下線後刪除。
+// ---------------------------------------------------------------------
+//  身分判斷方式：
+//    老師 = 以 email/密碼登入（教師端 signInWithEmailAndPassword）
+//    學生 = 匿名登入（各學生頁 signInAnonymously）
+//
+//  ⚠️ 已知限制：學生為匿名登入，規則無法驗證「這個人是不是本人」。
+//     因此仍無法百分之百防止學生寫入他人的成績文件。
+//     要完全防篡改，需改為「由可信伺服器獨佔寫入成績」。
+//     本規則的目標是擋掉最容易發生、傷害最大的幾種情形：
+//       1. 整批撈走全班姓名與驗證碼（名冊）
+//       2. 整批撈走或刪除全班成績
+//       3. 竄改已存在的答題紀錄
+//       4. 學生覆蓋他人已設定的驗證碼
+// =====================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ================= 共用判斷 =================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    // 老師：以 email/密碼登入（非匿名）
+    function isTeacher() {
+      return request.auth != null
+          && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+    // 名冊上的「是否已設定驗證碼」旗標（驗證碼本體不在名冊裡，見下方 A2）
+    function codeNotSet() {
+      return !('hasCode' in resource.data) || resource.data.hasCode != true;
+    }
+
+    // 登入試探文件的形狀：只能有 code 與 at 兩個欄位
+    function loginShapeOk() {
+      return request.resource.data.keys().hasOnly(['code', 'at'])
+          && request.resource.data.code is string;
+    }
+
+    // ===== 進度文件的防呆（學生匿名登入，規則認不出本人，只能限制「動作幅度」）=====
+    //   擋不住有心人，但擋得住兩件最容易發生也最難救的事：
+    //     ① 把別人的星星清成 0（惡意破壞）
+    //     ② 一次把自己改成滿星（灌水）
+    //   單次通關最多 3 顆星，這裡放寬到 6，正常上課不會踩到。
+    function starsIn(d) {
+      return ('totalStars' in d) ? d.totalStars : 0;
+    }
+    function starsNotReduced() {
+      return starsIn(request.resource.data) >= starsIn(resource.data);
+    }
+    function gainIsSmall() {
+      return starsIn(request.resource.data) <= starsIn(resource.data) + 6;
+    }
+    function firstWriteIsSmall() {
+      return starsIn(request.resource.data) <= 6;
+    }
+
+
+    // ###################################################################
+    // ##  A. 跨學期共用
+    // ###################################################################
+
+    // ---------- A1. 學生名冊（姓名／班級／座號，★不含驗證碼）----------
+    //   上下學期是同一批八年級學生，名冊只需要一份。
+    //   這裡存的是「人」；成績與進度仍然分學期。
+    //   ⚠️ 驗證碼**不放在這裡**，只留一個 hasCode 旗標讓登入頁判斷是否首次登入。
+    match /roster/{sid} {
+      // 單筆查詢：登入流程需要（讀姓名讓學生確認身分）
+      allow get: if isSignedIn();
+      // ❌ 禁止整批下載：避免一次撈走全班姓名
+      allow list: if isTeacher();
+
+      allow create, delete: if isTeacher();
+
+      // 更新：老師可任意改；
+      //      學生只能在「尚未設定驗證碼」時把 hasCode 立起來，其他欄位一律不准動
+      allow update: if isTeacher()
+                    || (isSignedIn()
+                        && codeNotSet()
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['hasCode', 'updatedAt']));
+    }
+
+
+    // ---------- A2. 驗證碼本體（★ 學生完全讀不到）----------
+    //   跟名冊一樣跨學期共用一份：同一批學生，不需要設兩次。
+    //
+    //   為什麼要獨立一個集合：
+    //     驗證碼原本和姓名放在同一份名冊文件裡，而學生讀得到那份文件，
+    //     等於把鎖和鑰匙放在同一個抽屜。搬出來之後，學生連讀都讀不到。
+    //
+    //   學生怎麼驗證？看 A3：規則跑在伺服器端，可以讀學生讀不到的文件。
+    match /secret/{sid} {
+      allow read: if isTeacher();        // ❌ 學生一律不可讀
+      allow list: if isTeacher();
+
+      // 首次設定：create 只在文件不存在時成立，天然只能成功一次
+      allow create: if isSignedIn()
+                    && request.resource.data.keys().hasOnly(['code', 'at'])
+                    && request.resource.data.code is string;
+
+      // 改碼與清除只有老師能做（學生忘記了要找老師）
+      allow update, delete: if isTeacher();
+    }
+
+    // ---------- A3. 登入試探 ----------
+    //   學生登入時往這裡寫一筆 { code, at }。
+    //   規則用 get() 去比對 /secret/{sid} 的驗證碼 —— 規則讀得到，學生讀不到。
+    //   寫得進去＝驗證通過；寫不進去（permission-denied）＝驗證碼錯誤。
+    //
+    //   ⚠️ 寫入的內容含驗證碼，所以這個集合同樣**只有老師可讀**。
+    match /session/{sid} {
+      allow read: if isTeacher();        // ❌ 學生不可讀，否則等於換個地方外洩
+      allow list: if isTeacher();
+      allow delete: if isTeacher();
+
+      allow create, update: if isSignedIn()
+                            && loginShapeOk()
+                            && request.resource.data.code ==
+                               get(/databases/$(database)/documents/secret/$(sid)).data.code;
+    }
+
+
+    // ###################################################################
+    // ##  B. 115-1 上學期（11501）
+    // ###################################################################
+
+    // 課程設定（成績簿／換算／快照／上課日）
+    match /11501-config/{docId} {
+      allow read, write: if isTeacher();
+    }
+
+    // 統一進度／星星（hub 儀表板；闖關紀錄也在這裡的 history）
+    match /11501-progress/{sid} {
+      allow get: if isSignedIn();
+      allow list: if isTeacher();          // ❌ 學生不可整批下載全班成績
+      allow create: if isSignedIn() && firstWriteIsSmall();
+      allow update: if isTeacher()
+                    || (isSignedIn() && starsNotReduced() && gainIsSmall());
+      allow delete: if isTeacher();        // ❌ 避免有人清掉別人的成績
+    }
+
+    // Scratch AI 批改：評分標準
+    //   ★ 2026-07-29：Colab 後端改為匿名登入後帶 idToken，
+    //     所以這裡從 `if true`（全世界可讀）收成 `if isSignedIn()`。
+    match /11501-grader/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isTeacher();
+    }
+
+    // Scratch AI 批改：批改紀錄（Colab 後端新增）
+    //   ★ 同上：原本 `create: if true` 等於全世界都能往這裡無限寫入，帳單算老師的。
+    match /11501-scratch-submissions/{recId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isTeacher();
+    }
+
+
+    // ###################################################################
+    // ##  C. 115-2 下學期（11502）— 與上學期規則相同，僅集合名不同
+    // ###################################################################
+
+    match /11502-config/{docId} {
+      allow read, write: if isTeacher();
+    }
+
+    match /11502-progress/{sid} {
+      allow get: if isSignedIn();
+      allow list: if isTeacher();
+      allow create: if isSignedIn() && firstWriteIsSmall();
+      allow update: if isTeacher()
+                    || (isSignedIn() && starsNotReduced() && gainIsSmall());
+      allow delete: if isTeacher();
+    }
+
+    match /11502-grader/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isTeacher();
+    }
+
+    match /11502-scratch-submissions/{recId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isTeacher();
+    }
+
+
+    // ###################################################################
+    // ##  D. 待淘汰 —— 舊版頁面還在用，切換完成後整區刪除
+    // ###################################################################
+
+    // ---------- D1. 舊名冊：資料搬進 /roster 後刪除 ----------
+    match /11501-roster/{sid} {
+      allow get: if isSignedIn();
+      allow list: if isTeacher();
+      allow create, delete: if isTeacher();
+      allow update: if isTeacher()
+                    || (isSignedIn() && codeNotSet()
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['code', 'updatedAt']));
+    }
+    match /11502-roster/{sid} {
+      allow get: if isSignedIn();
+      allow list: if isTeacher();
+      allow create, delete: if isTeacher();
+      allow update: if isTeacher()
+                    || (isSignedIn() && codeNotSet()
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['code', 'updatedAt']));
+    }
+
+    // ---------- D2. 舊闖關紀錄：新版引擎已改寫進 progress.history ----------
+    //   舊版 cyberethics.html / social.html 與教師端還在讀，先留著。
+    match /artifacts/{appId}/public/data/quiz_records/{recId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isTeacher();        // ❌ 既有紀錄不可被改寫（防止改分數）
+      allow delete: if isSignedIn();       // 學生會刪掉同章節較差的舊紀錄
+    }
+    match /artifacts/{appId}/public/data/quiz_records_115_2/{recId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isTeacher();
+      allow delete: if isSignedIn();
+    }
+
+    // ---------- D3. 運算思維與任務表的自有集合 ----------
+    //   這幾支也還沒收進 {學期}-progress，之後比照 quiz_records 辦理。
+    match /artifacts/{appId}/public/data/progress/{docId} {            // 11501 運算思維
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isTeacher();
+    }
+    match /artifacts/{appId}/public/data/progress_sem2/{docId} {       // 11502 運算思維
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isTeacher();
+    }
+    match /artifacts/{appId}/public/data/studentProgress_115_2/{docId} {  // 11502 任務確認表
+      allow get: if isSignedIn();
+      allow list: if isTeacher();
+      allow create, update: if isSignedIn();
+      allow delete: if isTeacher();
+    }
+
+
+    // ###################################################################
+    // ##  E. 其他一律拒絕
+    // ###################################################################
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

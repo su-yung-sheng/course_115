@@ -1,0 +1,60 @@
+#!/bin/sh
+# =====================================================================
+#  提交前自動檢查（GitHub Desktop 按 Commit 也會觸發）
+# ---------------------------------------------------------------------
+#  這支不是放在 repo 裡就會生效的檔案。
+#  git hooks 住在 .git/hooks/，而 .git/ 不會被版控，
+#  所以重新 clone 之後要再跑一次「安裝檢查掛鉤.bat」。
+#
+#  它擋下三件事：
+#    1. shared/check.py 的所有檢查（空檔、HTML 壞掉、JS 語法、死連結、
+#       名冊設定沒切換、.bat 換行錯誤…）
+#    2. 共用檔沒同步（_shared/ 改了卻忘記跑 sync_shared.py）
+#
+#  想跳過（很少需要，例如只改 README）：
+#    git commit --no-verify
+#  但 GitHub Desktop 沒有這個選項，真的要跳過就用命令列。
+# =====================================================================
+
+echo ""
+echo "── 提交前檢查 ─────────────────────────────"
+
+# 找 Python：Git Bash 底下 py 不一定有，優先試 python
+PY=""
+command -v python  >/dev/null 2>&1 && PY=python
+[ -z "$PY" ] && command -v python3 >/dev/null 2>&1 && PY=python3
+[ -z "$PY" ] && command -v py      >/dev/null 2>&1 && PY=py
+
+if [ -z "$PY" ]; then
+  echo "⚠️  找不到 Python，略過檢查（建議安裝後再提交）"
+  exit 0
+fi
+
+# ── 1. 檔案完整性 ────────────────────────────────────
+if [ -f "shared/check.py" ]; then
+  "$PY" shared/check.py || {
+    echo ""
+    echo "❌ 檢查沒過，這次提交已取消。"
+    echo "   修好上面列出的問題再按一次 Commit。"
+    exit 1
+  }
+else
+  echo "⚠️  找不到 shared/check.py，略過完整性檢查"
+fi
+
+# ── 2. 共用檔是否與 _shared/ 同步 ────────────────────
+if [ -f "../sync_shared.py" ]; then
+  "$PY" ../sync_shared.py --check || {
+    echo ""
+    echo "❌ 共用檔沒同步，這次提交已取消。"
+    echo "   請在 course_115 資料夾執行： $PY sync_shared.py"
+    echo "   （記得：只改 _shared/，不要直接改 shared/）"
+    exit 1
+  }
+else
+  echo "⚠️  找不到 ../sync_shared.py，略過同步檢查"
+fi
+
+echo "── 檢查通過，繼續提交 ─────────────────────"
+echo ""
+exit 0

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- ╔══════════════════════════════════════════════════════════════╗
+     ║  【空白單元範本】依 設計規範.md 製作                    ║
+     ║  用法：整份複製 → 改檔名 → 只改標記 ★ 的地方                  ║
+     ╚══════════════════════════════════════════════════════════════╝ -->
+
+<title>★單元名稱｜資訊科技 115-2</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+  /* ── 基礎（全站一致，勿改） ───────────────────────────── */
+  html, body, button, input, select, textarea {
+    font-family:'Noto Sans TC', system-ui, sans-serif;
+  }
+  /* 方格紙底：全站識別 */
+  body{
+    background-color:#e7e5e4 !important;
+    background-image:
+      linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),
+      linear-gradient(90deg, rgba(120,113,108,.06) 1px,transparent 1px) !important;
+    background-size:26px 26px !important;
+  }
+  /* 紙膠帶：貼在卡片上緣（卡片需 position:relative） */
+  .tape{position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(-3deg);
+        width:76px;height:26px;border-radius:2px;background:rgba(250,204,21,.3);
+        box-shadow:0 1px 2px rgba(0,0,0,.08);z-index:5}
+  /* 標題塗鴉底線 */
+  .underline-doodle{background:linear-gradient(transparent 62%, rgba(250,204,21,.55) 62%)}
+  /* 螢光筆：黃＝關鍵動作、藍＝數量 */
+  .hl  {background:linear-gradient(transparent 52%, rgba(250,204,21,.65) 52%);font-weight:800}
+  .hl-b{background:linear-gradient(transparent 52%, rgba(147,197,253,.7) 52%);font-weight:800}
+  /* 進場動畫 */
+  @keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .pop{animation:pop .35s ease-out both}
+
+  /* ── Scratch 積木模擬（不用可刪） ─────────────────────── */
+  .blk       {display:inline-flex;align-items:center;gap:.4rem;color:#fff;font-weight:700;
+              padding:.35rem .8rem;border-radius:.5rem;box-shadow:0 2px 0 rgba(0,0,0,.18)}
+  .blk-ctrl  {background:#ffab19}  /* 控制：重複執行、如果…那麼 */
+  .blk-oper  {background:#9966ff}  /* 運算 */
+  .blk-list  {background:#ff661a}  /* 清單 */
+</style>
+
+<!-- 學生頁必加：未從闖關基地登入者導回入口 -->
+<script src="config.js"></script>
+<script src="shared/guard.js"></script>
+<!-- 需要知道學生是誰（班級／座號／姓名）時才要掛；本頁不得自己做登入表單 -->
+<script src="shared/sso.js"></script>
+<!-- 若本頁要給星星：一律呼叫 window.GRADING 的函式，不要自己寫死門檻 -->
+<script src="shared/grading.js"></script>
+  <!-- 全站主題樣式（單一來源，見 theme.css）-->
+  <link rel="stylesheet" href="shared/theme.css">
+</head>
+
+<body class="text-slate-800 min-h-screen pb-20">
+
+<!-- ── 返回基地：固定左上，每頁只放一顆 ──────────────────── -->
+<a id="back-to-hub" href="#" data-hub title="返回闖關基地"
+   class="fixed top-4 left-4 z-50 inline-flex items-center gap-1.5 bg-slate-800 text-white
+          font-bold text-sm px-3.5 py-2 rounded-full shadow-lg hover:bg-slate-700 transition">← 返回基地</a>
+<script>/* 被嵌入 iframe 時自動隱藏 */
+if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b.style.display='none';}</script>
+
+
+<!-- 內容寬度：閱讀頁 max-w-4xl／雙欄工作頁 max-w-7xl -->
+<main class="max-w-4xl mx-auto px-4 pt-20">
+
+  <!-- ── 單元標題 ─────────────────────────────────────── -->
+  <header class="text-center mb-8 pop">
+    <span class="inline-block text-xs font-bold px-2.5 py-1 rounded-full border
+                 border-emerald-300 bg-emerald-50 text-emerald-700 mb-3">
+      🧠 ★模組名稱
+    </span>
+    <h1 class="text-3xl sm:text-4xl font-black">
+      <span class="underline-doodle">★單元大標題</span>
+    </h1>
+    <p class="mt-3 text-slate-500 text-sm sm:text-base">★一句話說明這節課要闖什麼關</p>
+  </header>
+
+  <!-- ── 學習目標卡 ───────────────────────────────────── -->
+  <section class="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8 pop">
+    <div class="tape"></div>
+    <h2 class="font-black text-lg mb-3">🎯 這節課你會學到</h2>
+    <ul class="space-y-2 text-slate-700">
+      <li>• ★目標一（用生活化比喻寫，例如「像排隊買飲料一樣理解佇列」）</li>
+      <li>• ★目標二</li>
+      <li>• ★目標三</li>
+    </ul>
+  </section>
+
+  <!-- ── 關卡列表：遊戲化主體 ─────────────────────────── -->
+  <section class="mb-8">
+    <h2 class="font-black text-xl mb-4">🗺️ 闖關地圖</h2>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+
+      <!-- 關卡卡片（★複製這一整塊來新增關卡） -->
+      <article class="stage relative bg-white rounded-2xl border border-slate-200 shadow-sm p-5 pop"
+               data-stage="1" data-star="2">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full border
+                         border-slate-200 bg-slate-50 text-slate-500">關卡 1</span>
+            <h3 class="font-black text-lg mt-2">★關卡名稱</h3>
+          </div>
+          <span class="star-badge text-slate-300 font-black text-lg whitespace-nowrap">☆☆</span>
+        </div>
+
+        <p class="mt-3 text-slate-600 text-sm leading-relaxed">
+          ★任務說明。做到 <span class="hl">★關鍵動作</span>，
+          成功 <span class="hl-b">★3</span> 次就過關。
+        </p>
+
+        <!-- Scratch 積木提示（不用可刪） -->
+        <div class="mt-4 flex flex-wrap gap-2">
+          <span class="blk blk-ctrl">重複執行 10 次</span>
+          <span class="blk blk-ctrl">如果…那麼</span>
+        </div>
+
+        <button class="btn-clear mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white
+                       font-bold rounded-xl py-2.5 transition">我完成了！</button>
+      </article>
+
+      <!-- 關卡 2 -->
+      <article class="stage relative bg-white rounded-2xl border border-slate-200 shadow-sm p-5 pop"
+               data-stage="2" data-star="3">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full border
+                         border-slate-200 bg-slate-50 text-slate-500">關卡 2</span>
+            <h3 class="font-black text-lg mt-2">★關卡名稱</h3>
+          </div>
+          <span class="star-badge text-slate-300 font-black text-lg whitespace-nowrap">☆☆☆</span>
+        </div>
+        <p class="mt-3 text-slate-600 text-sm leading-relaxed">★任務說明。</p>
+        <button class="btn-clear mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white
+                       font-bold rounded-xl py-2.5 transition">我完成了！</button>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ── 動手做／工作區（雙欄，不用可刪） ────────────────── -->
+  <section class="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
+    <h2 class="font-black text-lg mb-4">🛠️ 動手做</h2>
+    <div class="grid lg:grid-cols-2 gap-5">
+      <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 min-h-[160px]">
+        <p class="text-sm font-bold text-slate-500 mb-2">操作區</p>
+        <p class="text-slate-400 text-sm">★放輸入框、拖拉積木、模擬器…</p>
+      </div>
+      <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 min-h-[160px]">
+        <p class="text-sm font-bold text-slate-500 mb-2">結果區</p>
+        <p class="text-slate-400 text-sm">★放執行結果、回饋訊息…</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 星星結算 ─────────────────────────────────────── -->
+  <section class="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-6 text-center">
+    <div class="tape"></div>
+    <p class="text-sm font-bold text-slate-500">本單元累積</p>
+    <p id="total-star" class="text-4xl font-black text-amber-500 mt-1">⭐ 0</p>
+    <p class="text-xs text-slate-400 mt-2">★滿星 5 顆</p>
+  </section>
+
+</main>
+
+
+<script>
+/* ── 關卡邏輯（最小可用版，★依單元需求改寫） ────────────── */
+const cleared = new Set();
+
+document.querySelectorAll('.stage').forEach(card => {
+  card.querySelector('.btn-clear').addEventListener('click', () => {
+    const id = card.dataset.stage;
+    if (cleared.has(id)) return;
+    cleared.add(id);
+
+    const n = Number(card.dataset.star) || 1;
+    card.querySelector('.star-badge').textContent = '★'.repeat(n);
+    card.querySelector('.star-badge').className =
+      'star-badge text-amber-500 font-black text-lg whitespace-nowrap';
+    card.classList.add('ring-2','ring-emerald-400');
+    card.querySelector('.btn-clear').outerHTML =
+      '<p class="mt-4 text-center font-bold text-emerald-600">✅ 已通關</p>';
+
+    updateTotal();
+  });
+});
+
+function updateTotal(){
+  let total = 0;
+  document.querySelectorAll('.stage').forEach(c => {
+    if (cleared.has(c.dataset.stage)) total += Number(c.dataset.star) || 1;
+  });
+  document.getElementById('total-star').textContent = '⭐ ' + total;
+}
+
+/* ★ 若之後接上共用計分：改成呼叫 window.GRADING 的函式，不要在這裡寫死門檻 */
+</script>
+
+<!-- ╔══════════════════════════════════════════════════════════════╗
+     ║  新增頁面檢查清單                                             ║
+     ║  □ Noto Sans TC 字型          □ 方格紙底 + 紙膠帶／塗鴉底線    ║
+     ║  □ 中性色用 slate             □ 模組色照設計規範表            ║
+     ║  □ 左上返回基地（只一顆）      □ 學生頁加 guard.js             ║
+     ║  □ 星數一律走 grading.js       □ 手機檢視過一次                ║
+     ║                                                              ║
+     ║  模組代表色：資訊倫理 pink／運算思維 green／Scratch orange     ║
+     ║             Arduino indigo／流程圖 emerald／前導 teal          ║
+     ║             參考教材 rose                                     ║
+     ║  語意色：正確 emerald・錯誤 red・提示 amber・星星 amber-500    ║
+     ╚══════════════════════════════════════════════════════════════╝ -->
+<script>
+/* 頁面檔名還帶學期前綴，返回鈕的目標一律從 config 取，不寫死 */
+(function(){
+  var h = (window.CONFIG && CONFIG.HUB_PAGE) || 'hub.html';
+  document.querySelectorAll('[data-hub]').forEach(function(a){ a.setAttribute('href', h); });
+})();
+</script>
+</body>
+</html>

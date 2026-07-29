@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>系統狀態檢查 · 資訊科技課程</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- 本頁放在 shared/ 底下執行，設定檔在 repo 根目錄，要往上一層 -->
+<script src="../config.js"></script>
+<style>
+  html, body, button, input, select, textarea { font-family:'Noto Sans TC', system-ui, sans-serif; }
+  body{
+    background-color:#e7e5e4 !important;
+    background-image:
+      linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),
+      linear-gradient(90deg, rgba(120,113,108,.06) 1px,transparent 1px) !important;
+    background-size:26px 26px !important;
+  }
+  .tape{position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(-3deg);
+        width:76px;height:26px;border-radius:2px;background:rgba(250,204,21,.3);
+        box-shadow:0 1px 2px rgba(0,0,0,.08);z-index:5}
+  .underline-doodle{background:linear-gradient(transparent 62%, rgba(250,204,21,.55) 62%)}
+  .pop{animation:pop .35s ease both}
+  @keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .spin{animation:sp 1s linear infinite;display:inline-block}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+<script>
+/* CONFIG_GUARD：這一頁住在 shared/ 底下，設定檔在上一層的 repo 根目錄。
+   若有人直接開 _shared/status.html（原始檔），上一層沒有 config.js，
+   整頁會靜默失效。與其沒反應，不如講清楚。 */
+if (!window.CONFIG) {
+  document.addEventListener('DOMContentLoaded', function () {
+    document.body.innerHTML =
+      '<div style="max-width:640px;margin:60px auto;padding:32px;background:#fff;'
+    + 'border:4px solid #ef4444;border-radius:16px;font-family:system-ui,sans-serif">'
+    + '<h1 style="color:#dc2626;font-weight:900;font-size:22px;margin:0 0 12px">⚠️ 讀不到 config.js</h1>'
+    + '<p style="font-weight:700;color:#334155;line-height:1.7">'
+    + '你開的可能是 <code>_shared/status.html</code>（原始檔）。<br>'
+    + '請改開 <code>course_11501/shared/status.html</code> 或 <code>course_11502/shared/status.html</code>，'
+    + '或直接從教師端工具列的「🩺 狀態檢查」進入。</p></div>';
+  });
+}
+</script>
+</head>
+<body class="min-h-screen text-slate-800">
+
+<a id="back-to-hub" href="#" data-hub title="返回闖關基地"
+   class="fixed top-4 left-4 z-50 inline-flex items-center gap-1.5 bg-slate-800 text-white
+          font-bold text-sm px-3.5 py-2 rounded-full shadow-lg hover:bg-slate-700 transition">← 返回基地</a>
+
+<main class="max-w-4xl mx-auto px-4 pt-20 pb-16">
+
+  <header class="text-center mb-8">
+    <h1 class="text-3xl sm:text-4xl font-black tracking-tight">
+      <span class="underline-doodle">🩺 系統狀態檢查</span>
+    </h1>
+    <p class="mt-3 text-slate-500 text-sm">上課前按一下，確認 Colab 後端是最新版、兩個學期的資料沒有互相干擾。</p>
+  </header>
+
+  <div class="text-center mb-8">
+    <button id="runBtn"
+      class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-base px-8 py-3 rounded-xl shadow-lg transition">
+      開始檢查
+    </button>
+    <p id="runHint" class="mt-2 text-xs text-slate-400">約需 5 秒</p>
+  </div>
+
+  <section id="cards" class="space-y-4"></section>
+
+  <section class="mt-10 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 relative">
+    <div class="tape"></div>
+    <h2 class="font-black text-lg mb-3 mt-1">📋 檢查不過時怎麼辦</h2>
+    <dl class="text-sm space-y-3 text-slate-600">
+      <div>
+        <dt class="font-bold text-slate-800">後端離線</dt>
+        <dd>Colab 沒開，或閒置太久被回收。開啟 <span class="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded">backend.ipynb</span>，執行階段 → 全部執行。</dd>
+      </div>
+      <div>
+        <dt class="font-bold text-slate-800">後端是舊版</dt>
+        <dd>Colab 跑的不是最新 notebook。先「中斷連線並刪除執行階段」，重新上傳最新檔案再全部執行。</dd>
+      </div>
+      <div>
+        <dt class="font-bold text-slate-800">沒有 Gemini 金鑰</dt>
+        <dd>Colab 左側 🔑 Secrets 新增 <span class="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded">GEMINI_API_KEY_1</span>，並打開本 notebook 的存取開關。</dd>
+      </div>
+      <div>
+        <dt class="font-bold text-slate-800">批改標準未設定</dt>
+        <dd>到教師端「Scratch AI 批改標準」設定各關卡的主題與規則並存檔。</dd>
+      </div>
+    </dl>
+  </section>
+
+  <p class="mt-8 text-center text-xs text-slate-400">
+    這一頁只檢查「雲端」狀態。本機檔案有沒有推上 GitHub，請看 GitHub Desktop。
+  </p>
+
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var C = window.CONFIG || {};
+  var SERVER = C.SERVER_URL || '';
+  var FB = C.FIREBASE || {};
+  var TERMS = ['11501', '11502'];
+
+  var cards = document.getElementById('cards');
+  var btn = document.getElementById('runBtn');
+
+  // ── 畫面元件 ─────────────────────────────────────────
+  var TONE = {
+    ok:   { dot:'bg-emerald-500', box:'border-emerald-200', txt:'text-emerald-700', icon:'✅' },
+    warn: { dot:'bg-amber-500',   box:'border-amber-200',   txt:'text-amber-700',   icon:'⚠️' },
+    bad:  { dot:'bg-red-500',     box:'border-red-200',     txt:'text-red-700',     icon:'❌' },
+    wait: { dot:'bg-slate-300',   box:'border-slate-200',   txt:'text-slate-400',   icon:'⏳' }
+  };
+
+  function card(id, title) {
+    var el = document.createElement('div');
+    el.id = 'card-' + id;
+    el.className = 'pop bg-white rounded-2xl border border-slate-200 shadow-sm p-5';
+    el.innerHTML =
+      '<div class="flex items-start gap-3">' +
+        '<span class="dot mt-1.5 w-2.5 h-2.5 rounded-full bg-slate-300 shrink-0"></span>' +
+        '<div class="flex-1 min-w-0">' +
+          '<div class="flex items-center justify-between gap-3">' +
+            '<h3 class="font-black text-slate-800">' + title + '</h3>' +
+            '<span class="state text-sm font-bold text-slate-400"><span class="spin">◌</span> 檢查中…</span>' +
+          '</div>' +
+          '<div class="detail mt-2 text-sm text-slate-600 space-y-1"></div>' +
+        '</div>' +
+      '</div>';
+    cards.appendChild(el);
+    return el;
+  }
+
+  function set(el, tone, state, detailHtml) {
+    var t = TONE[tone] || TONE.wait;
+    el.querySelector('.dot').className = 'dot mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ' + t.dot;
+    el.querySelector('.state').className = 'state text-sm font-bold ' + t.txt;
+    el.querySelector('.state').textContent = t.icon + ' ' + state;
+    el.classList.remove('border-slate-200');
+    el.classList.add(t.box);
+    if (detailHtml != null) el.querySelector('.detail').innerHTML = detailHtml;
+  }
+
+  function row(k, v) {
+    return '<div class="flex gap-2"><span class="text-slate-400 shrink-0">' + k + '</span>' +
+           '<span class="font-medium break-all">' + v + '</span></div>';
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c];
+    });
+  }
+
+  // ── 通用取值 ─────────────────────────────────────────
+  function getJSON(url, ms) {
+    var ctl = new AbortController();
+    var timer = setTimeout(function () { ctl.abort(); }, ms || 12000);
+    return fetch(url, {
+      headers: { 'ngrok-skip-browser-warning': '1' },
+      cache: 'no-store',
+      signal: ctl.signal
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).finally(function () { clearTimeout(timer); });
+  }
+
+  // Firestore REST：不需登入也能讀的部分用來數筆數；被規則擋下時會回 403，
+  // 那代表「安全規則有生效」，也是一種好消息，所以分開判讀。
+  function fsBase() {
+    return 'https://firestore.googleapis.com/v1/projects/' + FB.projectId +
+           '/databases/(default)/documents';
+  }
+
+  function fsDoc(path) {
+    return getJSON(fsBase() + '/' + path + '?key=' + FB.apiKey, 10000);
+  }
+
+  // ── 檢查 1：後端連線與版本 ───────────────────────────
+  function checkBackend(el) {
+    if (!SERVER) { set(el, 'bad', '沒有設定網址', row('問題', 'config.js 沒有 SERVER_URL')); return Promise.resolve(null); }
+
+    return getJSON(SERVER + '/api/health').then(function (j) {
+      var need = C.BACKEND_FEATURES || [];
+      var have = j.features || [];
+      var missing = need.filter(function (f) { return have.indexOf(f) < 0; });
+
+      var d = row('版本', '<span class="font-mono">' + esc(j.version || '不明') + '</span>') +
+              row('網址', '<span class="font-mono text-xs">' + esc(SERVER) + '</span>');
+
+      if (j.has_api_key === undefined || missing.length) {
+        d += row('缺少功能', missing.length ? '<span class="text-amber-700 font-mono">' + esc(missing.join('、')) + '</span>' : '（無 features 欄位）');
+        d += '<div class="mt-2 text-amber-700">Colab 跑的不是最新 notebook，請重新上傳 backend.ipynb 並全部執行。</div>';
+        set(el, 'warn', '版本過舊', d);
+      } else {
+        d += row('功能', '<span class="font-mono text-xs">' + esc(have.join('、')) + '</span>');
+        set(el, 'ok', '最新版', d);
+      }
+      return j;
+    }).catch(function (e) {
+      set(el, 'bad', '連不上', row('網址', '<span class="font-mono text-xs">' + esc(SERVER) + '</span>') +
+                     row('原因', esc(e.message)) +
+                     '<div class="mt-2 text-red-700">Colab 沒開，或閒置太久被回收。請重新執行 notebook。</div>');
+      return null;
+    });
+  }
+
+  // ── 檢查 2：Gemini 金鑰 ──────────────────────────────
+  function checkKeys(el, health) {
+    if (!health) { set(el, 'bad', '無法檢查', '<span class="text-slate-500">後端連不上，跳過。</span>'); return; }
+    var k = health.keys || {};
+    var n = (k.GEMINI_API_KEY_1 ? 1 : 0) + (k.GEMINI_API_KEY_2 ? 1 : 0);
+    var d = row('金鑰 1', k.GEMINI_API_KEY_1 ? '已設定' : '<span class="text-slate-400">未設定</span>') +
+            row('金鑰 2', k.GEMINI_API_KEY_2 ? '已設定' : '<span class="text-slate-400">未設定</span>');
+    if (n === 0) {
+      set(el, 'bad', '沒有金鑰', d + '<div class="mt-2 text-red-700">AI 批改無法使用。請到 Colab Secrets 新增 GEMINI_API_KEY_1。</div>');
+    } else if (n === 1) {
+      set(el, 'warn', '只有 1 組', d + '<div class="mt-2 text-amber-700">免費額度每天 250 次。全班同時上傳可能不夠，建議再加第二組（不同 Google 專案才有獨立額度）。</div>');
+    } else {
+      set(el, 'ok', '2 組可輪替', d);
+    }
+  }
+
+  // ── 檢查 3：兩個學期的批改標準是否分開 ───────────────
+  function checkCriteria(el) {
+    return Promise.all(TERMS.map(function (t) {
+      return fsDoc(t + '-grader/criteria')
+        .then(function (doc) { return { term: t, ok: true, doc: doc }; })
+        .catch(function (e) { return { term: t, ok: false, err: e.message }; });
+    })).then(function (res) {
+      var d = '', anySet = false, sameContent = false, texts = {};
+
+      res.forEach(function (r) {
+        if (!r.ok) {
+          d += row(r.term, '<span class="text-slate-400">讀不到（' + esc(r.err) + '）</span>');
+          return;
+        }
+        var f = (r.doc && r.doc.fields) || {};
+        var theme = (f.theme && f.theme.stringValue) || '';
+        var units = (f.units_json && f.units_json.stringValue) || '';
+        var upd = r.doc.updateTime ? r.doc.updateTime.slice(0, 10) : '—';
+        texts[r.term] = theme + '|' + units;
+        if (theme || units) anySet = true;
+        var nUnit = 0;
+        try { nUnit = Object.keys(JSON.parse(units || '{}')).length; } catch (e) { nUnit = 0; }
+        d += row(r.term, '已設定 ' + nUnit + ' 個關卡標準　<span class="text-slate-400">更新 ' + upd + '</span>');
+      });
+
+      if (texts['11501'] && texts['11502'] && texts['11501'] === texts['11502'] && texts['11501'] !== '|') {
+        sameContent = true;
+      }
+
+      if (!anySet) {
+        set(el, 'warn', '尚未設定', d + '<div class="mt-2 text-amber-700">還沒有任何批改標準。到教師端設定後才能讓學生自評。</div>');
+      } else if (sameContent) {
+        set(el, 'warn', '兩學期一模一樣', d + '<div class="mt-2 text-amber-700">內容完全相同，可能是其中一邊誤寫到另一邊的集合。請確認前端有送出正確的 term。</div>');
+      } else {
+        set(el, 'ok', '各自獨立', d);
+      }
+    });
+  }
+
+  // ── 檢查 4：安全規則是否擋住整批下載 ─────────────────
+  function checkRules(el) {
+    // 未登入直接列出名冊：正確設定下應該被拒絕
+    var url = fsBase() + '/' + C.TERM + '-roster?key=' + FB.apiKey + '&pageSize=1';
+    return fetch(url, { cache: 'no-store' }).then(function (r) {
+      if (r.status === 403 || r.status === 401) {
+        set(el, 'ok', '已生效', row('測試', '未登入嘗試下載名冊 → 被拒絕（' + r.status + '）') +
+                                '<div class="mt-2 text-slate-500">學生的姓名與驗證碼無法被整批撈走。</div>');
+      } else if (r.ok) {
+        set(el, 'bad', '沒有生效', row('測試', '未登入竟然可以讀取名冊') +
+            '<div class="mt-2 text-red-700">全班姓名與驗證碼可被任何人下載。請到 Firebase Console → Firestore → 規則，貼上 firestore.rules 並發佈。</div>');
+      } else {
+        set(el, 'warn', '無法判斷', row('回應', 'HTTP ' + r.status));
+      }
+    }).catch(function (e) {
+      set(el, 'warn', '無法判斷', row('原因', esc(e.message)));
+    });
+  }
+
+  // ── 檢查 5：排隊機制 ────────────────────────────────
+  function checkQueue(el, health) {
+    if (!health) { set(el, 'bad', '無法檢查', '<span class="text-slate-500">後端連不上，跳過。</span>'); return; }
+    return Promise.all([
+      getJSON(SERVER + '/api/student/queue', 8000).catch(function () { return null; }),
+      getJSON(SERVER + '/queue', 8000).catch(function () { return null; })
+    ]).then(function (r) {
+      var g = r[0], o = r[1];
+      var d = row('AI 批改', g ? (g.pending || 0) + ' 人排隊中' : '<span class="text-red-600">端點沒有回應</span>') +
+              row('截圖辨識', o ? (o.pending || 0) + ' 人排隊中' : '<span class="text-red-600">端點沒有回應</span>');
+      if (g && o) set(el, 'ok', '兩條佇列正常', d);
+      else set(el, 'warn', '有端點缺漏', d + '<div class="mt-2 text-amber-700">後端版本可能過舊。</div>');
+    });
+  }
+
+  // ── 主流程 ──────────────────────────────────────────
+  function run() {
+    btn.disabled = true;
+    btn.className = 'bg-slate-300 text-white font-bold text-base px-8 py-3 rounded-xl cursor-not-allowed';
+    btn.textContent = '檢查中…';
+    cards.innerHTML = '';
+
+    var c1 = card('backend', '① Colab 後端版本');
+    var c2 = card('keys',    '② Gemini API 金鑰');
+    var c3 = card('queue',   '③ 排隊機制');
+    var c4 = card('criteria','④ 兩學期批改標準是否分開');
+    var c5 = card('rules',   '⑤ Firestore 安全規則');
+
+    checkBackend(c1).then(function (health) {
+      checkKeys(c2, health);
+      return Promise.all([
+        checkQueue(c3, health),
+        checkCriteria(c4),
+        checkRules(c5)
+      ]);
+    }).catch(function (e) {
+      console.error(e);
+    }).then(function () {
+      btn.disabled = false;
+      btn.className = 'bg-slate-800 hover:bg-slate-700 text-white font-bold text-base px-8 py-3 rounded-xl shadow-lg transition';
+      btn.textContent = '重新檢查';
+      document.getElementById('runHint').textContent =
+        '完成於 ' + new Date().toLocaleTimeString('zh-TW', { hour12: false });
+    });
+  }
+
+  btn.addEventListener('click', run);
+  run();   // 開頁就自動跑一次
+
+  // 嵌入 iframe 時隱藏返回鍵
+  if (window.self !== window.top) {
+    var b = document.getElementById('back-to-hub');
+    if (b) b.style.display = 'none';
+  }
+})();
+</script>
+<script>
+/* 頁面檔名還帶學期前綴，返回鈕的目標一律從 config 取，不寫死 */
+(function(){
+  var h = (window.CONFIG && CONFIG.HUB_PAGE) || 'hub.html';
+  document.querySelectorAll('[data-hub]').forEach(function(a){ a.setAttribute('href', h); });
+})();
+</script>
+</body>
+</html>

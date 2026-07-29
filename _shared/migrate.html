@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一次性轉換工具 · 名冊合併與驗證碼搬家</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- 本頁放在 shared/ 底下執行，設定檔在 repo 根目錄，要往上一層 -->
+<script src="../config.js"></script>
+<style>
+  html,body{font-family:'Noto Sans TC',system-ui,sans-serif}
+  body{background-color:#e7e5e4;
+       background-image:linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),
+                        linear-gradient(90deg,rgba(120,113,108,.06) 1px,transparent 1px);
+       background-size:26px 26px}
+</style>
+</head>
+<body class="p-4 md:p-8 text-slate-800">
+<div class="max-w-5xl mx-auto space-y-5">
+
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+    <h1 class="text-2xl font-black">一次性轉換工具</h1>
+    <p class="text-slate-500 font-bold mt-1 text-sm">名冊合併成一份 · 驗證碼搬到學生讀不到的地方</p>
+
+    <div class="mt-5 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm leading-relaxed">
+      <p class="font-black text-amber-800 mb-2">⚠️ 執行前請先看這裡</p>
+      <ul class="list-disc pl-5 space-y-1 text-slate-700">
+        <li>這支工具會做兩件事：把 <b>11501-roster</b> 與 <b>11502-roster</b> 合併成一份 <b>roster</b>，
+            並把兩邊的驗證碼搬進 <b>secret</b> 集合。</li>
+        <li><b>舊集合不會被刪除</b>，只會多出新的。確認沒問題之後再自行刪除舊的。</li>
+        <li>驗證碼一旦搬錯，學生會登不進去。請務必先按「①掃描並預覽」，把
+            <span class="text-red-600 font-bold">紅色的衝突列</span>逐筆看過再執行。</li>
+        <li>轉換完成後，記得把兩支 <code class="bg-slate-100 px-1 rounded">config.js</code> 的
+            <code class="bg-slate-100 px-1 rounded">COLLECTIONS.ROSTER</code> 改成
+            <code class="bg-slate-100 px-1 rounded">'roster'</code>。</li>
+        <li>用完就把這個檔案刪掉，避免日後誤按。</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 登入 -->
+  <div id="login-box" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+    <h2 class="font-black text-lg mb-3">教師登入</h2>
+    <div class="flex flex-wrap gap-2">
+      <input id="email" type="email" placeholder="教師 Email"
+             class="flex-1 min-w-[220px] px-3 py-2 border border-slate-300 rounded-xl">
+      <input id="pass" type="password" placeholder="密碼"
+             class="flex-1 min-w-[180px] px-3 py-2 border border-slate-300 rounded-xl">
+      <button id="btn-login" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl">登入</button>
+    </div>
+    <p id="login-msg" class="text-sm font-bold text-red-600 mt-2"></p>
+  </div>
+
+  <!-- 操作 -->
+  <div id="work-box" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+    <div class="flex flex-wrap gap-2 items-center">
+      <button id="btn-scan" class="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl">① 掃描並預覽</button>
+      <button id="btn-run"  class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl disabled:opacity-40" disabled>② 執行轉換</button>
+      <button id="btn-verify" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl disabled:opacity-40" disabled>③ 驗證結果</button>
+      <button id="btn-diag" class="px-5 py-2 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl">🔎 診斷</button>
+      <span id="status" class="text-sm font-bold text-slate-500"></span>
+    </div>
+    <div id="summary" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+    <div id="table" class="mt-4 overflow-auto max-h-[55vh] border border-slate-200 rounded-xl"></div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ⚠️ 這一頁必須從「repo 裡的 shared/」執行，不能直接開 _shared/ 的原始檔。
+        _shared/ 的上一層是 course_115/，那裡沒有 config.js，
+        少了設定這頁什麼都做不了。以前這種情況是靜默失敗（按鈕沒反應），
+        現在直接把原因寫在畫面上。 */
+  if (!window.CONFIG || !window.CONFIG.SHARED) {
+    document.body.innerHTML =
+      '<div class="max-w-2xl mx-auto mt-10 bg-white rounded-2xl border-4 border-red-500 shadow-lg p-8">'
+    + '<h1 class="text-2xl font-black text-red-600 mb-4">⚠️ 讀不到 config.js</h1>'
+    + '<p class="font-bold text-slate-700 leading-relaxed mb-4">'
+    +   '你開的可能是 <code class="bg-slate-100 px-1 rounded">_shared/migrate.html</code>（原始檔）。'
+    +   '這一頁需要學期設定才能運作，而設定檔在各 repo 的根目錄。</p>'
+    + '<p class="font-bold text-slate-700 mb-2">請改開這一個：</p>'
+    + '<pre class="bg-slate-900 text-emerald-300 rounded-xl p-4 text-sm overflow-auto">'
+    +   'course_115 / course_11502 / shared / migrate.html</pre>'
+    + '<p class="text-sm text-slate-500 mt-4 leading-relaxed">'
+    +   '最簡單的做法是回到 <code class="bg-slate-100 px-1 rounded">course_115</code> 資料夾，'
+    +   '雙擊 <b>開啟轉換工具.bat</b> —— 它會自動開到正確的位置。<br><br>'
+    +   '<b>為什麼 _shared 不能直接跑？</b>它是「唯一可以編輯的原始碼」，'
+    +   '真正執行的是 <code class="bg-slate-100 px-1 rounded">sync_shared.py</code> 同步出去的副本。</p>'
+    + '</div>';
+    return;
+  }
+
+  var CFG      = window.CONFIG;
+  var ROSTER_A = '11501-roster';
+  var ROSTER_B = '11502-roster';
+  var ROSTER   = CFG.SHARED.ROSTER;    // 'roster'
+  var SECRET   = CFG.SHARED.SECRET;    // 'secret'
+
+  firebase.initializeApp(CFG.FIREBASE);
+  var auth = firebase.auth();
+  var db   = firebase.firestore();
+
+  var $ = function(id){ return document.getElementById(id); };
+  var rows = [];      // 預覽結果
+
+  function setStatus(t){ $('status').textContent = t || ''; }
+
+  /* ── 登入 ─────────────────────────────────────────── */
+  $('btn-login').onclick = function(){
+    $('login-msg').textContent = '';
+    auth.signInWithEmailAndPassword($('email').value.trim(), $('pass').value)
+      .then(function(){
+        $('login-box').classList.add('hidden');
+        $('work-box').classList.remove('hidden');
+      })
+      .catch(function(e){ $('login-msg').textContent = '登入失敗：' + (e.code || e.message); });
+  };
+
+  /* ── ① 掃描並預覽 ────────────────────────────────── */
+  $('btn-scan').onclick = function(){
+    setStatus('讀取中…');
+    Promise.all([db.collection(ROSTER_A).get(), db.collection(ROSTER_B).get()])
+      .then(function(snaps){
+        var a = {}, b = {};
+        snaps[0].forEach(function(d){ a[d.id] = d.data() || {}; });
+        snaps[1].forEach(function(d){ b[d.id] = d.data() || {}; });
+
+        var ids = Object.keys(a).concat(Object.keys(b)).filter(function(v,i,arr){ return arr.indexOf(v)===i; }).sort();
+        rows = ids.map(function(id){
+          var x = a[id], y = b[id];
+          var ca = x && x.code ? String(x.code) : '';
+          var cb = y && y.code ? String(y.code) : '';
+
+          // 取哪一份驗證碼：
+          //   兩邊都有且相同 → 直接用
+          //   只有一邊有       → 用那一邊
+          //   兩邊都有但不同   → 取 updatedAt 較新的，並標為衝突讓老師確認
+          // 有沒有需要你決定的地方？
+          var codeDiff = !!(ca && cb && ca !== cb);
+          var nameDiff = !!(x && y && x.name && y.name && x.name !== y.name);
+          var conflict = codeDiff || nameDiff;
+
+          // 預設採用哪一學期：較新的那份（updatedAt 大的）
+          var ta = Number((x || {}).updatedAt || 0), tb = Number((y || {}).updatedAt || 0);
+          var auto = (!y) ? 'A' : (!x) ? 'B' : (tb >= ta ? 'B' : 'A');
+
+          var note = '';
+          if (!ca && !cb)      note = '尚未設定，學生首次登入時自訂';
+          else if (ca && !cb)  note = '只有上學期有';
+          else if (!ca && cb)  note = '只有下學期有';
+          else if (!codeDiff)  note = '兩邊相同';
+          if (codeDiff) note = '⚠️ 兩學期驗證碼不同';
+          if (nameDiff) note += (note ? '；' : '') + '⚠️ 兩學期姓名不同';
+
+          return {
+            id: id, a: x || null, b: y || null,
+            ca: ca, cb: cb,
+            pick: auto,            // 'A' = 用上學期、'B' = 用下學期
+            auto: auto,            // 系統預設值（用來判斷你有沒有動過）
+            resolved: !conflict,   // 沒有衝突就不需要確認
+            conflict: conflict, note: note
+          };
+        });
+
+        paint();
+        $('btn-run').disabled = false;
+        setStatus('掃描完成');
+      })
+      .catch(function(e){ setStatus('讀取失敗：' + (e.code || e.message)); });
+  };
+
+  function esc(s){ return String(s==null?'':s).replace(/[<>&'"]/g,function(c){
+    return {'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[c]; }); }
+
+  /* 依「採用哪一學期」算出最後要寫進去的名冊與驗證碼 */
+  function resolve(r){
+    var main = r.pick === 'A' ? (r.a || r.b || {}) : (r.b || r.a || {});
+    var alt  = r.pick === 'A' ? (r.b || {})        : (r.a || {});
+    var prof = {
+      studentId: r.id,
+      cls:  String(main.cls  || alt.cls  || ''),
+      no:   String(main.no   || alt.no   || ''),
+      name: String(main.name || alt.name || '')
+    };
+    prof.key = String(main.key || alt.key || (prof.cls + '_' + prof.no + '_' + prof.name));
+    // 驗證碼：採用該學期的；那學期沒有就用另一邊的（不要無故清掉學生已設好的碼）
+    var code = (r.pick === 'A' ? r.ca : r.cb) || r.ca || r.cb || '';
+    return { prof: prof, code: code };
+  }
+
+  /* 老師點「用上學期／用下學期」時 */
+  window.pickTerm = function(idx, which){
+    rows[idx].pick = which;
+    rows[idx].resolved = true;
+    paint();
+  };
+
+  function unresolved(){ return rows.filter(function(r){ return !r.resolved; }); }
+
+  function paint(){
+    var withCode = rows.filter(function(r){ return resolve(r).code; }).length;
+    var todo = unresolved().length;
+    var both = rows.filter(function(r){ return r.a && r.b; }).length;
+
+    $('summary').innerHTML = [
+      ['總人數', rows.length, 'slate'],
+      ['兩學期都有', both, 'slate'],
+      ['已設驗證碼', withCode, 'emerald'],
+      ['待你確認', todo, todo ? 'red' : 'emerald']
+    ].map(function(c){
+      return '<div class="bg-' + c[2] + '-50 border border-' + c[2] + '-200 rounded-xl p-3 text-center">'
+           +   '<div class="text-xs font-bold text-' + c[2] + '-600">' + c[0] + '</div>'
+           +   '<div class="text-2xl font-black text-' + c[2] + '-800">' + c[1] + '</div>'
+           + '</div>';
+    }).join('');
+
+    // 有待確認的就排在最上面，不必自己捲去找
+    var order = rows.map(function(r,i){ return { r:r, i:i }; })
+                    .sort(function(p,q){ return (p.r.resolved?1:0) - (q.r.resolved?1:0); });
+
+    $('table').innerHTML =
+      '<table class="w-full text-sm"><thead class="bg-slate-50 text-slate-500 text-xs sticky top-0">'
+      + '<tr><th class="p-2 text-left">學號</th><th class="p-2 text-left">姓名</th>'
+      + '<th class="p-2 text-left">上學期</th><th class="p-2 text-left">下學期</th>'
+      + '<th class="p-2 text-left w-40">採用哪一份</th>'
+      + '<th class="p-2 text-left">最後寫入</th><th class="p-2 text-left">說明</th></tr></thead><tbody>'
+      + order.map(function(o){
+          var r = o.r, i = o.i, out = resolve(r);
+          var na = (r.a && r.a.name) || '—', nb = (r.b && r.b.name) || '—';
+
+          // 需要你決定的列：給兩顆按鈕，按下去就算確認過
+          var picker;
+          if (r.conflict) {
+            var btn = function(which, label){
+              var on = r.pick === which;
+              return '<button onclick="pickTerm(' + i + ',\'' + which + '\')" class="px-2 py-1 rounded-lg text-xs font-bold border '
+                   + (on ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100')
+                   + '">' + label + '</button>';
+            };
+            picker = '<div class="flex gap-1">' + btn('A','用上學期') + btn('B','用下學期') + '</div>'
+                   + (r.resolved ? '<div class="text-[10px] text-emerald-600 font-bold mt-1">✅ 已確認</div>'
+                                 : '<div class="text-[10px] text-red-600 font-bold mt-1">← 請選一個</div>');
+          } else {
+            picker = '<span class="text-xs text-slate-400">' + (r.pick === 'A' ? '上學期' : '下學期') + '（無衝突）</span>';
+          }
+
+          return '<tr class="border-t border-slate-100 ' + (!r.resolved ? 'bg-red-50' : '') + '">'
+               + '<td class="p-2 font-mono">' + esc(r.id) + '</td>'
+               + '<td class="p-2">' + esc(out.prof.name) + '</td>'
+               + '<td class="p-2 text-xs"><div>' + esc(na) + '</div><div class="font-mono text-slate-400">' + esc(r.ca || '—') + '</div></td>'
+               + '<td class="p-2 text-xs"><div>' + esc(nb) + '</div><div class="font-mono text-slate-400">' + esc(r.cb || '—') + '</div></td>'
+               + '<td class="p-2">' + picker + '</td>'
+               + '<td class="p-2 font-mono font-bold ' + (out.code ? 'text-blue-700' : 'text-slate-300') + '">' + esc(out.code || '未設定') + '</td>'
+               + '<td class="p-2 text-xs ' + (r.conflict ? 'text-red-700 font-bold' : 'text-slate-500') + '">' + esc(r.note) + '</td>'
+               + '</tr>';
+        }).join('')
+      + '</tbody></table>';
+  }
+
+  /* ── ② 執行轉換 ──────────────────────────────────── */
+  $('btn-run').onclick = function(){
+    var todo = unresolved();
+    if (todo.length) {
+      alert('還有 ' + todo.length + ' 筆需要你決定要採用哪一學期（紅色列，已排在最上面）。\n'
+          + '請逐筆按「用上學期」或「用下學期」，全部確認後才能執行。');
+      return;
+    }
+
+    var msg = '即將寫入 ' + rows.length + ' 筆名冊與 '
+            + rows.filter(function(r){ return resolve(r).code; }).length + ' 組驗證碼。\n'
+            + '舊集合不會被刪除。確定執行嗎？';
+    if (!confirm(msg)) return;
+
+    setStatus('檢查權限中…');
+
+    // ── 先試寫一筆再動真的：規則沒發佈對的話，這裡就會擋下來並說清楚原因 ──
+    preflight().then(function(){
+      setStatus('寫入中…');
+      var CHUNK = 200, i = 0;
+
+      function next(){
+        if (i >= rows.length) {
+          setStatus('轉換完成，請按「③ 驗證結果」確認');
+          $('btn-verify').disabled = false;
+          return;
+        }
+        var batch = db.batch();
+        rows.slice(i, i + CHUNK).forEach(function(r){
+          var out = resolve(r);
+          batch.set(db.collection(ROSTER).doc(r.id),
+                    Object.assign({}, out.prof, { hasCode: !!out.code, updatedAt: Date.now() }));
+          if (out.code) batch.set(db.collection(SECRET).doc(r.id), { code: out.code, at: Date.now() });
+        });
+        i += CHUNK;
+        batch.commit()
+          .then(function(){ setStatus('寫入中… ' + Math.min(i, rows.length) + ' / ' + rows.length); next(); })
+          .catch(function(e){ setStatus('寫入失敗：' + (e.code || e.message)); });
+      }
+      next();
+    }).catch(function(msg){
+      setStatus('❌ ' + msg);
+      $('table').innerHTML = '<div class="p-5 text-sm leading-relaxed text-red-700 font-bold">' + msg + '</div>';
+    });
+  };
+
+  /**
+   * 事前權限檢查：往 roster 與 secret 各寫一筆測試文件再刪掉。
+   * 目的是把「規則沒發佈對」和「資料有問題」分開 ——
+   * 否則寫到一半失敗，你只會看到一句 permission-denied，不知道該修哪裡。
+   */
+  function preflight(){
+    // ⚠️ Firestore 禁止文件 ID 符合 __.*__（保留給系統），
+    //    以前用 __preflight__ 會固定回 invalid-argument，跟權限無關。
+    var probe = 'zz-preflight-check';
+    return db.collection(ROSTER).doc(probe).set({ studentId: probe, at: Date.now() })
+      .catch(function(){
+        return Promise.reject(
+          '寫入 <code>roster</code> 被拒絕。<br><br>' +
+          '請按上方的 <b>🔎 診斷</b>，它會告訴你是「身分不是老師」還是「規則沒發佈對」。<br><br>' +
+          '若是規則問題：正本是 <code>course_115/_shared/firestore.rules</code>，' +
+          '整份貼進 Firebase Console → Firestore → 規則 → 發佈，' +
+          '貼完搜尋 <code>match /roster</code>，找得到才是新版。');
+      })
+      .then(function(){
+        return db.collection(SECRET).doc(probe).set({ code: '000000', at: Date.now() })
+          .catch(function(){
+            return Promise.reject(
+              '寫入 <code>secret</code> 被拒絕（<code>roster</code> 是可以的）。<br><br>' +
+              '代表規則有 <code>roster</code> 但沒有 <code>secret</code>，是更早之前的版本。<br>' +
+              '請重新發佈 <code>course_115/_shared/firestore.rules</code>，' +
+              '並確認裡面找得到 <code>match /secret</code>。');
+          });
+      })
+      .then(function(){
+        // 測試文件清掉，不要留在正式資料裡
+        return Promise.all([
+          db.collection(ROSTER).doc(probe).delete().catch(function(){}),
+          db.collection(SECRET).doc(probe).delete().catch(function(){})
+        ]);
+      });
+  }
+
+  /* ── 🔎 診斷：不要用猜的 ─────────────────────────── */
+  // Firestore 文件 ID 不可符合 __.*__，測試用的 ID 必須避開
+  var DIAG_ID = 'zz-diag-check';
+
+  $('btn-diag').onclick = function(){
+    setStatus('診斷中…');
+    var out = [];
+    var u = auth.currentUser;
+
+    function row(label, ok, detail){
+      var color = ok === null ? 'slate' : (ok ? 'emerald' : 'red');
+      var mark  = ok === null ? '•' : (ok ? '✅' : '❌');
+      out.push('<tr class="border-t border-slate-100">'
+        + '<td class="p-2 font-bold whitespace-nowrap">' + mark + ' ' + esc(label) + '</td>'
+        + '<td class="p-2 text-' + color + '-700 text-xs">' + detail + '</td></tr>');
+    }
+
+    function probeWrite(col, data){
+      return db.collection(col).doc(DIAG_ID).set(data)
+        .then(function(){
+          db.collection(col).doc(DIAG_ID).delete().catch(function(){});
+          return { ok: true, msg: '可以寫入' };
+        })
+        .catch(function(e){
+          var code = e.code || e.message;
+          var why = code === 'permission-denied' ? '權限不足（安全規則擋下）'
+                  : code === 'invalid-argument'  ? '資料或文件 ID 不合法（不是權限問題）'
+                  : code === 'unavailable'       ? '連不上 Firestore（網路）'
+                  : '';
+          return { ok: false, code: code, msg: '失敗：' + code + (why ? '　→ ' + why : '') };
+        });
+    }
+
+    if (!u) {
+      row('登入狀態', false, '尚未登入');
+      render();
+      return;
+    }
+
+    u.getIdTokenResult().then(function(t){
+      var provider = t.signInProvider;
+      row('登入帳號', null, esc(u.email || '(無 email)'));
+      row('登入方式', provider === 'password', 'signInProvider = <code>' + esc(provider) + '</code>'
+          + (provider === 'password'
+             ? '　→ 規則的 isTeacher() 會通過'
+             : '　→ <b>規則的 isTeacher() 不會通過</b>，安全規則只認 password 登入'));
+
+      return Promise.all([
+        probeWrite(ROSTER, { studentId: '__diag__', at: Date.now() }),
+        probeWrite(SECRET, { code: '000000', at: Date.now() }),
+        db.collection(ROSTER_B).limit(1).get()
+          .then(function(){ return { ok: true, msg: '可以讀取' }; })
+          .catch(function(e){ return { ok: false, msg: '被拒絕：' + (e.code || e.message) }; })
+      ]).then(function(res){
+        row('寫入 ' + ROSTER, res[0].ok, res[0].msg);
+        row('寫入 ' + SECRET, res[1].ok, res[1].msg);
+        row('讀取 ' + ROSTER_B + '（舊名冊）', res[2].ok, res[2].msg);
+
+        var denied = (res[0].code === 'permission-denied') || (res[1].code === 'permission-denied');
+        var hint = '';
+        if (provider !== 'password') {
+          hint = '這個帳號不是用 email／密碼登入的，安全規則不會把它當成老師。'
+               + '請改用教師端那組 email＋密碼登入。';
+        } else if (res[0].ok && res[1].ok) {
+          hint = '✅ 權限都正常，可以直接按「② 執行轉換」。';
+        } else if (denied) {
+          hint = '出現 <code>permission-denied</code> → <b>Firebase 上的規則還是舊版</b>。<br>'
+               + '把 <code>course_115/_shared/firestore.rules</code> 整份貼進 '
+               + 'Firebase Console → Firestore Database → 規則，按「發佈」。<br>'
+               + '發佈後編輯器裡應該搜尋得到 <code>match /roster</code> 與 <code>match /secret</code>。';
+        } else {
+          hint = '錯誤碼不是 permission-denied，<b>就不是規則的問題</b>。'
+               + '把上面那幾行原封不動貼給我，我來看是哪裡出錯。';
+        }
+        render(hint);
+      });
+    }).catch(function(e){
+      row('取得權杖', false, esc(e.code || e.message));
+      render();
+    });
+
+    function render(hint){
+      setStatus('診斷完成');
+      $('table').innerHTML =
+        '<table class="w-full text-sm"><tbody>' + out.join('') + '</tbody></table>'
+        + (hint ? '<div class="p-4 bg-amber-50 border-t border-amber-200 text-sm leading-relaxed">'
+                  + '<b>判讀：</b>' + hint + '</div>' : '');
+    }
+  };
+
+  /* ── ③ 驗證結果 ──────────────────────────────────── */
+  $('btn-verify').onclick = function(){
+    setStatus('驗證中…');
+    Promise.all([db.collection(ROSTER).get(), db.collection(SECRET).get()])
+      .then(function(snaps){
+        var r = {}, s = {};
+        snaps[0].forEach(function(d){ r[d.id] = d.data() || {}; });
+        snaps[1].forEach(function(d){ s[d.id] = d.data() || {}; });
+
+        var bad = [];
+        rows.forEach(function(row){
+          var out = resolve(row);
+          if (!r[row.id]) { bad.push(row.id + '：名冊沒寫進去'); return; }
+          if (r[row.id].name !== out.prof.name) bad.push(row.id + '：姓名不符');
+          if (out.code) {
+            if (!s[row.id]) bad.push(row.id + '：驗證碼沒寫進去');
+            else if (String(s[row.id].code) !== out.code) bad.push(row.id + '：驗證碼不符');
+            if (r[row.id].hasCode !== true) bad.push(row.id + '：hasCode 旗標沒立起來');
+          }
+          // 名冊裡不應該再有 code 欄位
+          if ('code' in r[row.id]) bad.push(row.id + '：新名冊仍含 code 欄位');
+        });
+        // 事前檢查用的測試文件不該留下來
+        if (r['zz-preflight-check'] || s['zz-preflight-check']) bad.push('測試文件 zz-preflight-check 沒清掉');
+
+        if (bad.length) {
+          setStatus('❌ 有 ' + bad.length + ' 個問題');
+          $('table').innerHTML = '<div class="p-4 text-sm text-red-700 font-bold space-y-1">'
+            + bad.slice(0, 100).map(function(b){ return '<div>• ' + esc(b) + '</div>'; }).join('')
+            + (bad.length > 100 ? '<div>…（僅顯示前 100 筆）</div>' : '') + '</div>';
+        } else {
+          setStatus('✅ 全部正確：名冊 ' + Object.keys(r).length + ' 筆、驗證碼 ' + Object.keys(s).length + ' 組');
+          $('table').innerHTML = '<div class="p-6 text-center">'
+            + '<div class="text-4xl mb-2">✅</div>'
+            + '<p class="font-black text-emerald-700">轉換完成且驗證通過</p>'
+            + '<p class="text-sm text-slate-500 mt-3 leading-relaxed">接下來：<br>'
+            + '① 兩支 config.js 的 <b>COLLECTIONS.ROSTER</b> 改成 <b>\'roster\'</b><br>'
+            + '② 發佈新的 firestore.rules<br>'
+            + '③ 用一個學生帳號實際登入測試<br>'
+            + '④ 確認無誤後刪除舊的 11501-roster / 11502-roster 與這支工具</p></div>';
+        }
+      })
+      .catch(function(e){ setStatus('驗證失敗：' + (e.code || e.message)); });
+  };
+
+})();
+</script>
+</body>
+</html>
