@@ -56,6 +56,27 @@ def rel(path):
     return os.path.relpath(path, ROOT).replace('\\', '/')
 
 
+def case_exact(target):
+    """
+    大小寫是否與實際檔名完全一致。
+
+    ★ 為什麼需要這個：Windows 的檔案系統不分大小寫，`os.path.exists('Hub.html')`
+      在本機是 True；但 GitHub Pages 分大小寫，推上去就是 404。
+      這種錯在本機測不出來，只能靠逐層核對目錄列表。
+    """
+    cur = ROOT
+    for part in os.path.relpath(target, ROOT).replace('\\', '/').split('/'):
+        if part in ('', '.'):
+            continue
+        try:
+            if part not in os.listdir(cur):
+                return False
+        except (FileNotFoundError, NotADirectoryError):
+            return False
+        cur = os.path.join(cur, part)
+    return True
+
+
 def all_pages():
     """repo 裡所有要檢查的 HTML：根目錄、shared/、各學期資料夾"""
     pats = [os.path.join(ROOT, '*.html'),
@@ -131,8 +152,12 @@ def check_html():
             # 略過：外部網址、絕對路徑、以及 JS 字串拼接的片段（例如 term + '/hub.html'）
             if ref.startswith(('http', '//', 'mailto:', '/')):
                 continue
-            if not os.path.exists(os.path.normpath(os.path.join(here, ref))):
+            target = os.path.normpath(os.path.join(here, ref))
+            if not os.path.exists(target):
                 errors.append(f'{name}：參照到不存在的檔案 {ref}')
+            elif not case_exact(target):
+                errors.append(f'{name}：{ref} 的大小寫與實際檔名不符 '
+                              '（本機可以開，GitHub Pages 會 404）')
 
 
 # ── 3. JS 語法檢查（需要 node；沒有就跳過並提醒）────────
