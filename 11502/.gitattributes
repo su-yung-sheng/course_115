@@ -1,7 +1,0 @@
-# 文字檔自動偵測並在庫內正規化為 LF
-* text=auto
-
-# ★ Windows 批次檔一定要 CRLF：
-#   取出成 LF 會讓 cmd 解析 goto／標籤／括號區塊出錯，
-#   症狀是莫名其妙的「系統找不到指定的路徑」。
-*.bat text eol=crlf

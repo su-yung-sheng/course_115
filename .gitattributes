@@ -5,3 +5,6 @@
 #   取出成 LF 會讓 cmd 解析 goto／標籤／括號區塊出錯，
 #   症狀是莫名其妙的「系統找不到指定的路徑」。
 *.bat text eol=crlf
+
+# git hook 在 Git Bash 執行，必須是 LF
+shared/hooks/* text eol=lf
