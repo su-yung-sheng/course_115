@@ -171,7 +171,7 @@ let UNIT = UNIT_PARAM;
 })();
 // 沿用 hub 登入過的學號，學生不必重打
 (function initSid(){
-  const saved=localStorage.getItem('sid11501');
+  const saved=sessionStorage.getItem('sid11501');
   const inp=$('studentId');
   if(saved && /^14\d{5}$/.test(saved)){
     // 已從闖關基地登入 → 直接帶入且不可修改（避免交到別人的學號）
@@ -271,7 +271,7 @@ async function grade(){
   if(!chosen) return;
   const sid=$('studentId').value.trim();
   if(!/^14\d{5}$/.test(sid)){ setStatus('請輸入 7 位數字、以 14 開頭的學號！','err'); $('studentId').focus(); return; }
-  localStorage.setItem('sid11501', sid);   // 記住學號，其他關卡也能沿用
+  sessionStorage.setItem('sid11501', sid);   // 記住學號，其他關卡也能沿用
   $('gradeBtn').disabled=true;
 
   // 先問一下目前排隊人數，讓學生知道自己排第幾個

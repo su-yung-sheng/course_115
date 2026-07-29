@@ -307,7 +307,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     signInAnonymously(auth).catch(e=>console.error(e));
     onAuthStateChanged(auth, user=>{
       if(user && state.status==='loading'){
-        const saved = localStorage.getItem(SAVED_KEY);
+        const saved = sessionStorage.getItem(SAVED_KEY);
         if(saved && /^14\d{5}$/.test(saved)) autoLogin(saved);
         else { state.status='login'; render(); }
       }
@@ -344,7 +344,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         if(String(info.code)!==c){ state.loginError='驗證碼錯誤'; render(); return; }
         state.studentName = info.name||'';
       }catch(e){ state.loginError='驗證失敗，請稍後再試'; render(); return; }
-      state.studentId=t; localStorage.setItem(SAVED_KEY, t);
+      state.studentId=t; sessionStorage.setItem(SAVED_KEY, t);
       await loadProgress(t);
       state.loginError=''; state.status='menu'; render();
     }
@@ -373,7 +373,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       render();
     }
     // finishProgram 已移除：完成由 AI 批改星數自動認定
-    function logout(){ localStorage.removeItem(SAVED_KEY); state.status='login'; state.studentId=''; state.studentName=''; state.tempId=''; state.tempCode=''; state.done={}; state.progDone={}; render(); }
+    function logout(){ sessionStorage.removeItem(SAVED_KEY); state.status='login'; state.studentId=''; state.studentName=''; state.tempId=''; state.tempCode=''; state.done={}; state.progDone={}; render(); }
 
     // ===== 遊戲邏輯 =====
     function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }

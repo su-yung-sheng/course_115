@@ -654,7 +654,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             // 若 hub 已存學號，第一次渲染就直接進「登入中…」，避免閃出登入表單
             const [loading, setLoading] = useState(() => {
                 try {
-                    const s = localStorage.getItem('sid11501');
+                    const s = sessionStorage.getItem('sid11501');
                     return !!(s && /^14\d{5}$/.test(s));
                 } catch (e) { return false; }
             });
@@ -872,7 +872,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     }, { merge: true }).catch(e => console.error('同步統一進度失敗', e));
                 }
 
-                localStorage.setItem('sid11501', sid);
+                sessionStorage.setItem('sid11501', sid);
                 setUser({ classRoom, seatNo, name, docId, sid });
                 setCompletedChallenges(loadedProgress);
                 setCompletedDates(loadedDates);
@@ -890,7 +890,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
             // SSO：掛載時若 hub 已存學號則自動登入（信任 localStorage）
             useEffect(() => {
-                const saved = localStorage.getItem('sid11501');
+                const saved = sessionStorage.getItem('sid11501');
                 if (saved && /^14\d{5}$/.test(saved)) {
                     setLoading(true);
                     doSidLogin(saved, '', '', true).then(err => { if (err) setLoading(false); });

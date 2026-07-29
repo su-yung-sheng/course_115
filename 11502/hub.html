@@ -41,7 +41,7 @@
     // 安全規則跑在伺服器端，讀得到 secret 去比對；學生自己讀不到。
     const SECRET  = window.CONFIG.SHARED.SECRET;
     const SESSION = window.CONFIG.SHARED.SESSION;
-    // 記住登入學號的鍵（讓按上一頁回來時不必重打）
+    // 記住登入學號的鍵（同一個分頁內免得重打；關閉瀏覽器就失效）
     const SAVED_KEY = 'sid11502';
 
     const app = initializeApp(firebaseConfig);
@@ -97,13 +97,22 @@
       music:{status:'todo'}, scratch:{status:'pending',link:'#'}, arduino:{status:'todo'}
     }};
 
+    /* 舊版把身分存在 localStorage，會一直殘留，造成「沒登入卻自動進去」。
+       這裡在載入時清掉，之後一律只用 sessionStorage（關瀏覽器即失效）。 */
+    try {
+      for (var _i = localStorage.length - 1; _i >= 0; _i--) {
+        var _k = localStorage.key(_i);
+        if (_k && /^(sid|me)115\d{2}$/.test(_k)) localStorage.removeItem(_k);
+      }
+    } catch (e) {}
+
     // ===== 認證 =====
     signInAnonymously(auth).catch(e=>console.error('登入失敗',e));
     onAuthStateChanged(auth, user=>{
       if(user){
         state.authReady = true;
         if(state.status==='loading'){
-          const saved = localStorage.getItem(SAVED_KEY);
+          const saved = sessionStorage.getItem(SAVED_KEY);
           if(saved && /^14\d{5}$/.test(saved)){ startSession(saved); }  // SSO：已驗證過，直接登入
           else { state.status='login'; render(); }
         }
@@ -164,7 +173,7 @@
     // 開始一段登入 session（驗證通過或 SSO 自動登入後呼叫）
     async function startSession(t){
       state.loginError=''; state.studentId=t; state.demo=false; state.status='main'; state.data=null;
-      localStorage.setItem(SAVED_KEY, t);  // 記住學號，回來自動登入（SSO）
+      sessionStorage.setItem(SAVED_KEY, t);  // 記住學號，回來自動登入（SSO）
 
       // ★ 把完整身分一起存起來，各關卡頁就不必再讀一次名冊，
       //   也就不會出現「正在確認身分…」的停格畫面（見 shared/sso.js）
@@ -180,7 +189,7 @@
             key: String(r.key || `${r.cls||''}_${r.no||''}_${r.name||''}`),
             at:  Date.now()
           };
-          localStorage.setItem('me11502', JSON.stringify(me));
+          sessionStorage.setItem('me11502', JSON.stringify(me));
           state.studentName = me.name;
         }
       }catch(e){ console.warn('取名冊失敗，關卡頁會自行補讀', e); }
@@ -203,7 +212,7 @@
         render();
       }, err=>console.error('讀取失敗',err));
     }
-    function logout(){ if(unsub)unsub(); localStorage.removeItem(SAVED_KEY); state.status='login'; state.studentId=''; state.tempId=''; state.tempCode=''; state.confirmName=''; state.justSetup=false; state.data=null; state.demo=false; render(); }
+    function logout(){ if(unsub)unsub(); sessionStorage.removeItem(SAVED_KEY); state.status='login'; state.studentId=''; state.tempId=''; state.tempCode=''; state.confirmName=''; state.justSetup=false; state.data=null; state.demo=false; render(); }
 
     // ===== 計算 =====
     function starStr(n){ n=Math.max(0,Math.min(3,n||0)); return '★'.repeat(n)+'☆'.repeat(3-n); }

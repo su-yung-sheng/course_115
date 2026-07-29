@@ -5,7 +5,7 @@
         各關卡頁不再有自己的登入表單與登出鈕。
 
    運作方式：
-     1. 學生在 hub 用「學號＋驗證碼」登入 → hub 寫入 localStorage['sid' + 學期]
+     1. 學生在 hub 用「學號＋驗證碼」登入 → hub 寫入 sessionStorage['sid' + 學期]
      2. 各關卡頁載入時呼叫 SSO.resolve()，從 {學期}-roster 帶出
         班級／座號／姓名，直接進入內容，不再詢問任何身分資訊
      3. 查不到名冊 → 導回 hub 重新確認身分（不讓學生自己亂填）
@@ -27,6 +27,19 @@
 (function (global) {
   'use strict';
 
+  /* ★ 身分存在 sessionStorage，不是 localStorage：
+        關閉瀏覽器（或該分頁）就失效，下一個使用者不會沿用前一個人的身分。
+        電腦教室是共用的，這一點比「免得重打」重要。
+
+     舊版存在 localStorage，會一直殘留。這裡順手清掉，
+     否則舊的殘留值會讓人以為「沒輸入帳號卻自動登入了」。 */
+  try {
+    for (var i = localStorage.length - 1; i >= 0; i--) {
+      var k = localStorage.key(i);
+      if (k && /^(sid|me)115\d{2}$/.test(k)) localStorage.removeItem(k);
+    }
+  } catch (e) {}
+
   // 學期一律由 config.js 決定，這支不寫死任何學期編號
   var CFG       = global.CONFIG || {};
   var TERM      = CFG.TERM || (location.pathname.match(/115\d{2}/) || ['11501'])[0];
@@ -43,7 +56,7 @@
   /** 取得已登入的學號；沒有或格式不對回傳 null */
   function sid() {
     try {
-      var v = localStorage.getItem(SID_KEY);
+      var v = sessionStorage.getItem(SID_KEY);
       return (v && SID_RE.test(v)) ? v : null;
     } catch (e) { return null; }
   }
@@ -60,7 +73,7 @@
      不必等 Firestore，也就不會出現「正在確認身分…」的停格畫面。 */
   function readCache(id) {
     try {
-      var c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      var c = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
       if (!c || c.sid !== id) return null;
       c.stale = !c.at || (Date.now() - c.at > MAX_AGE);   // 過期仍可先用，背景再更新
       return c;
@@ -69,7 +82,7 @@
 
   function writeCache(me) {
     me.at = Date.now();
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify(me)); } catch (e) {}
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(me)); } catch (e) {}
   }
 
   /** 同步取得身分（有快取才有值）。要立刻畫面就緒的頁面用這支。 */
@@ -134,8 +147,8 @@
 
   /** 登出一律回 hub 處理，各頁不要自己實作 */
   function logout() {
-    try { localStorage.removeItem(SID_KEY); } catch (e) {}
-    try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+    try { sessionStorage.removeItem(SID_KEY); } catch (e) {}
+    try { sessionStorage.removeItem(CACHE_KEY); } catch (e) {}
     location.href = HUB;
   }
 

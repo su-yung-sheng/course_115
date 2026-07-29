@@ -346,7 +346,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         var loginEl = document.getElementById('login-screen');
         var ssoEl = document.getElementById('sso-loading');
         var sid = null;
-        try { sid = localStorage.getItem('sid11501'); } catch (e) {}
+        try { sid = sessionStorage.getItem('sid11501'); } catch (e) {}
         if (sid && /^14\d{5}$/.test(sid)) {
           ssoEl.classList.remove('hidden');
           // 保險：若 7 秒內還沒自動登入完成（例如連線異常），仍讓學生能手動登入
@@ -724,7 +724,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
         // 若 hub 已存學號，先隱藏登入表單、顯示「登入中」，避免閃爍
         (function () {
-            const saved = localStorage.getItem('sid11501');
+            const saved = sessionStorage.getItem('sid11501');
             if (saved && /^14\d{5}$/.test(saved)) {
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('sso-loading').classList.remove('hidden');
@@ -865,7 +865,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 if(String(info.code) !== code) { showModal('驗證碼錯誤', '驗證碼不正確，請再確認。'); return; }
             }
             user.cls = info.cls; user.no = String(info.no); user.name = info.name; user.sid = sid;
-            localStorage.setItem('sid11501', sid);
+            sessionStorage.setItem('sid11501', sid);
             enterChapters();
         };
         // 回報到統一進度（11501-progress）：每章節依最佳正確率給 1–3 星，累加
@@ -899,7 +899,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
         // SSO 自動登入（hub 已驗證過，這裡信任 localStorage）
         async function autoLoginSSO() {
-            const saved = localStorage.getItem('sid11501');
+            const saved = sessionStorage.getItem('sid11501');
             if(!(saved && /^14\d{5}$/.test(saved))) return;
             const info = await resolveStudent(saved);
             if(info) {

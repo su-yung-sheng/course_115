@@ -22,7 +22,7 @@
             || '11501';                              // 都判斷不出來就用上學期
 
     var sid = null;
-    try { sid = localStorage.getItem('sid' + term); } catch (e) { sid = null; }
+    try { sid = sessionStorage.getItem('sid' + term); } catch (e) { sid = null; }
     if (sid && /^14\d{5}$/.test(sid)) return;        // 已從闖關基地登入過
 
     location.replace(term + '_hub.html?next=' + encodeURIComponent(page + location.search));
