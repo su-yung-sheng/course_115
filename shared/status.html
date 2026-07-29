@@ -6,8 +6,20 @@
 <title>系統狀態檢查 · 資訊科技課程</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
-<!-- 本頁放在 shared/ 底下執行，設定檔在 repo 根目錄，要往上一層 -->
-<script src="../config.js"></script>
+<!-- 本頁住在 shared/，設定檔在各學期資料夾裡（11501/config.js、11502/config.js）。
+     用網址參數決定要載入哪一份，例如：status.html?term=11502
+     沒帶參數就依今天的日期判斷。 -->
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('term');
+  if (!t || !/^115\d{2}$/.test(t)) {
+    var m = new Date().getMonth() + 1;          // 2～7 月視為下學期
+    t = (m >= 2 && m <= 7) ? '11502' : '11501';
+  }
+  document.write('<scr' + 'ipt src="../' + t + '/config.js"></scr' + 'ipt>');
+})();
+</script>
+
 <style>
   html, body, button, input, select, textarea { font-family:'Noto Sans TC', system-ui, sans-serif; }
   body{

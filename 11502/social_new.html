@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>資訊科技學習系統</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- 全站共用設定（載入順序固定：config → guard）
+       ⚠️ 階段 2 檔名去前綴後，這三行兩學期就會完全一樣 -->
+  <script src="config.js"></script>
+  <script src="../shared/guard.js"></script>
+</head>
+<body>
+
+  <!-- ① 內容：教什麼（章節、教材、題庫）——只有這一行兩學期不同 -->
+  <script src="content/social.js"></script>
+
+  <!-- ② 共用模組：單一登入、計分規則、進度回報 -->
+  <script src="../shared/sso.js"></script>
+  <script src="../shared/grading.js"></script>
+  <script src="../shared/report.js"></script>
+
+  <!-- ③ 版型與流程引擎：畫面完全由這支產生，兩學期共用同一份 -->
+  <script src="../shared/quiz-engine.js"></script>
+  <script type="module" src="../shared/quiz-firebase.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino 智慧家居控制 微課程與互動模擬器</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Noto Sans TC"','system-ui','sans-serif'] },
+                    colors: {
+                        primary: '#10b981', // Emerald 500
+                        secondary: '#0ea5e9', // Sky 500
+                        accent: '#f59e0b', // Amber 500
+                        darkbg: '#0f172a', // Slate 900
+                        cardbg: '#1e293b'  // Slate 800
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            scroll-behavior: smooth;
+        }
+        .unit-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        /* Custom scrollbar styles */
+        pre::-webkit-scrollbar, textarea::-webkit-scrollbar, body::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        pre::-webkit-scrollbar-track, textarea::-webkit-scrollbar-track, body::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        pre::-webkit-scrollbar-thumb, textarea::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        pre::-webkit-scrollbar-thumb:hover, textarea::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Animations */
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Motor Propeller Style */
+        .motor-prop {
+            transition: transform 0.1s linear;
+        }
+    </style>
+<style>
+/* === 全站紙膠帶手作風套件（以 hub 為準，勿重複注入） === */
+body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(120,113,108,.06) 1px,transparent 1px) !important; background-size:26px 26px !important; }
+.tape{position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(-3deg);width:76px;height:26px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.08);background:rgba(250,204,21,.3);z-index:5}
+.underline-doodle{background:linear-gradient(transparent 62%, rgba(250,204,21,.55) 62%)}
+</style>
+  <!-- 身分守門：未從闖關基地登入者導回入口 -->
+  <script src="../shared/guard.js"></script>
+</head>
+<body class="text-slate-800">
+
+    <nav class="bg-white/90 backdrop-blur-md shadow-sm fixed w-full z-50 top-0 border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-primary p-2 rounded-lg">
+                        <i data-lucide="home" class="text-white w-6 h-6"></i>
+                    </div>
+                    <span class="font-bold text-xl text-slate-800 tracking-wider">智慧家居機電專題</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <section id="about" class="pt-24 pb-12 md:pt-32 md:pb-24 text-slate-800 relative overflow-hidden">
+        <!-- Background Decorations -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute -top-24 -right-24 w-96 h-96 bg-indigo-200/40 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-white/60 to-transparent"></div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center gap-10 relative z-10">
+            <div class="md:w-1/2 space-y-6">
+                <div class="inline-block bg-primary/20 text-emerald-400 border border-primary/30 px-3 py-1 rounded-full text-sm font-bold mb-2">
+                    Arduino 系統整合專題
+                </div>
+                <h1 class="text-4xl md:text-5xl font-black leading-tight">
+                    <span class="underline-doodle">打造自動化智慧家居</span> <br>
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">五節課微型課程</span>
+                </h1>
+                <p class="text-lg text-slate-500 leading-relaxed">
+                    本課程將帶領學生運用超音波感測器與可變電阻，結合直流減速馬達與 RGB 燈條，學習自動感應與手動微調的機電邏輯，打造專屬的「智慧家庭控制系統」。
+                </p>
+                <div class="flex gap-4 pt-4">
+                    <button onclick="scrollToCurriculum()" class="bg-primary text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:bg-emerald-600 hover:shadow-xl transition flex items-center gap-2">
+                        <i data-lucide="arrow-down-circle" class="w-5 h-5"></i> 展開五節課綱與實作
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Hero Right Side visualization -->
+            <div class="md:w-1/2 flex justify-center w-full">
+                <div class="relative w-full max-w-sm bg-white p-8 rounded-2xl shadow-2xl border border-slate-200">
+                    <div class="flex justify-between items-center mb-6 border-b border-slate-300 pb-4">
+                        <span class="text-slate-600 font-mono">SmartHome_Hub_v1</span>
+                        <div class="flex gap-2">
+                            <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-teal-500"></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-center gap-6 mb-6">
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                                <i data-lucide="waves" class="w-8 h-8"></i>
+                            </div>
+                            <span class="text-xs text-slate-500">環境感測</span>
+                        </div>
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                                <i data-lucide="settings" class="w-8 h-8"></i>
+                            </div>
+                            <span class="text-xs text-slate-500">實體驅動</span>
+                        </div>
+                    </div>
+                    <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden flex">
+                        <div class="w-1/2 h-full bg-emerald-500"></div>
+                        <div class="w-1/2 h-full bg-teal-500"></div>
+                    </div>
+                    <p class="text-center text-sm text-slate-500 mt-4 font-mono">System Online...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="curriculum" class="py-20 bg-slate-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-4">微課程單元規劃</h2>
+                <p class="text-slate-500 max-w-2xl mx-auto text-lg">化繁為簡，從自動感應到手動調節，逐步建構智慧家居。點擊任一單元開啟【互動學習包】！</p>
+            </div>
+
+            <!-- Time Grid / Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                
+                <!-- Unit 1 -->
+                <div class="unit-card bg-white rounded-2xl p-8 border border-slate-200 shadow-sm transition-all duration-300 group cursor-pointer hover:shadow-xl hover:border-emerald-300" onclick="openCourseDetail(1)">
+                    <div class="w-14 h-14 bg-emerald-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-emerald-500 transition-colors">
+                        <i data-lucide="door-open" class="w-7 h-7 text-emerald-500 group-hover:text-white transition-colors"></i>
+                    </div>
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-sm font-bold text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full">第一節課</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3">感應大門：超音波與馬達</h3>
+                    <p class="text-slate-600 mb-4 h-16">利用 HC-SR04 超音波量測距離，當有人靠近時，自動觸發直流減速馬達開啟車庫門或窗簾。</p>
+                    <div class="border-t border-slate-100 pt-4 mt-auto flex justify-between items-center">
+                        <span class="text-xs text-emerald-600 font-bold flex items-center gap-1"><i data-lucide="play-circle" class="w-4 h-4"></i> 含距離感測模擬器</span>
+                        <i data-lucide="arrow-right" class="w-5 h-5 text-slate-500 group-hover:text-emerald-500 transition-colors"></i>
+                    </div>
+                </div>
+
+                <!-- Unit 2 -->
+                <div class="unit-card bg-white rounded-2xl p-8 border border-slate-200 shadow-sm transition-all duration-300 group cursor-pointer hover:shadow-xl hover:border-sky-300" onclick="openCourseDetail(2)">
+                    <div class="w-14 h-14 bg-sky-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-sky-500 transition-colors">
+                        <i data-lucide="lightbulb" class="w-7 h-7 text-sky-500 group-hover:text-white transition-colors"></i>
+                    </div>
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-sm font-bold text-sky-600 bg-sky-100 px-3 py-1 rounded-full">第二節課</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3">迎賓走廊：超音波與燈條</h3>
+                    <p class="text-slate-600 mb-4 h-16">學習判斷邏輯，當物體靠近時，依據距離的遠近動態點亮 WS2812B 燈條，打造科技感迎賓燈。</p>
+                    <div class="border-t border-slate-100 pt-4 mt-auto flex justify-between items-center">
+                        <span class="text-xs text-sky-600 font-bold flex items-center gap-1"><i data-lucide="play-circle" class="w-4 h-4"></i> 含動態燈光模擬器</span>
+                        <i data-lucide="arrow-right" class="w-5 h-5 text-slate-500 group-hover:text-sky-500 transition-colors"></i>
+                    </div>
+                </div>
+
+                <!-- Unit 3 -->
+                <div class="unit-card bg-white rounded-2xl p-8 border border-slate-200 shadow-sm transition-all duration-300 group cursor-pointer hover:shadow-xl hover:border-amber-300" onclick="openCourseDetail(3)">
+                    <div class="w-14 h-14 bg-amber-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-amber-500 transition-colors">
+                        <i data-lucide="fan" class="w-7 h-7 text-amber-500 group-hover:text-white transition-colors"></i>
+                    </div>
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-sm font-bold text-amber-600 bg-amber-100 px-3 py-1 rounded-full">第三節課</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3">無段風扇：可變電阻與馬達</h3>
+                    <p class="text-slate-600 mb-4 h-16">讀取可變電阻的類比值 (Analog)，透過映射 (Map) 轉換為 PWM 訊號，精準控制直流馬達的轉速。</p>
+                    <div class="border-t border-slate-100 pt-4 mt-auto flex justify-between items-center">
+                        <span class="text-xs text-amber-600 font-bold flex items-center gap-1"><i data-lucide="play-circle" class="w-4 h-4"></i> 含PWM轉速模擬器</span>
+                        <i data-lucide="arrow-right" class="w-5 h-5 text-slate-500 group-hover:text-amber-500 transition-colors"></i>
+                    </div>
+                </div>
+
+                <!-- Unit 4 -->
+                <div class="unit-card bg-white rounded-2xl p-8 border border-slate-200 shadow-sm transition-all duration-300 group cursor-pointer hover:shadow-xl hover:border-purple-300" onclick="openCourseDetail(4)">
+                    <div class="w-14 h-14 bg-purple-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-purple-500 transition-colors">
+                        <i data-lucide="sliders-horizontal" class="w-7 h-7 text-purple-500 group-hover:text-white transition-colors"></i>
+                    </div>
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-sm font-bold text-purple-600 bg-purple-100 px-3 py-1 rounded-full">第四節課</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3">情境照明：可變電阻與燈條</h3>
+                    <p class="text-slate-600 mb-4 h-16">取代傳統開關，使用旋鈕（可變電阻）手動無段調節室內 RGB 燈條的亮度與色彩氛圍。</p>
+                    <div class="border-t border-slate-100 pt-4 mt-auto flex justify-between items-center">
+                        <span class="text-xs text-purple-600 font-bold flex items-center gap-1"><i data-lucide="play-circle" class="w-4 h-4"></i> 含類比調光模擬器</span>
+                        <i data-lucide="arrow-right" class="w-5 h-5 text-slate-500 group-hover:text-purple-500 transition-colors"></i>
+                    </div>
+                </div>
+
+                <!-- Unit 5 -->
+                <div class="unit-card bg-white rounded-2xl p-8 border border-slate-200 shadow-sm transition-all duration-300 group lg:col-span-2 cursor-pointer hover:shadow-xl hover:border-primary" onclick="openCourseDetail(5)">
+                    <div class="flex flex-col md:flex-row gap-6 items-start md:items-center h-full">
+                        <div class="w-14 h-14 bg-emerald-50 rounded-xl flex shrink-0 items-center justify-center group-hover:bg-primary transition-colors">
+                            <i data-lucide="laptop" class="w-7 h-7 text-primary group-hover:text-white transition-colors"></i>
+                        </div>
+                        <div class="flex-1 flex flex-col h-full">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-bold text-primary bg-emerald-100 px-3 py-1 rounded-full">第五節課 (總結)</span>
+                            </div>
+                            <h3 class="text-xl md:text-2xl font-bold text-slate-800 mb-2">智慧中樞：綜合家居面板</h3>
+                            <p class="text-slate-600 mb-4">整合前四堂課！建立一個包含「自動感應模式」與「手動控制模式」的智慧切換系統，完美連動所有感測與驅動元件。</p>
+                            <div class="border-t border-slate-100 pt-4 mt-auto flex justify-between items-center">
+                                <span class="text-xs text-primary font-bold flex items-center gap-1"><i data-lucide="play-circle" class="w-4 h-4"></i> 帶有雙模式切換的整合模擬器</span>
+                                <i data-lucide="arrow-right" class="w-5 h-5 text-slate-500 group-hover:text-primary transition-colors"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Detailed Unit View (Initially Hidden) -->
+    <section id="detail-view" class="hidden pt-24 pb-20 min-h-screen text-slate-800 animate-fade-in">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <button onclick="closeCourseDetail()" class="flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition mb-8 font-medium">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i> 返回課程總覽
+            </button>
+            
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+                <!-- Header Block -->
+                <div id="detail-header-bg" class="bg-gradient-to-r from-indigo-50 to-white p-8 border-b border-slate-200 relative overflow-hidden">
+                    <!-- Decorating Icon -->
+                    <i id="detail-bg-icon" class="absolute -right-10 -top-10 w-48 h-48 text-indigo-200/50"></i>
+                    
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-3 mb-4">
+                            <span id="detail-badge" class="text-sm font-bold bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full border border-indigo-200">單元 X</span>
+                        </div>
+                        <h2 id="detail-title" class="text-3xl md:text-4xl font-black text-slate-800 mb-4">單元標題</h2>
+                        <p id="detail-desc" class="text-lg text-slate-600 leading-relaxed max-w-3xl">單元描述內容...</p>
+                    </div>
+                </div>
+                
+                <!-- Goals and Materials -->
+                <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-slate-200">
+                    <div class="bg-slate-50/50 p-6 rounded-xl border border-slate-200/50">
+                        <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="target" class="w-6 h-6 text-primary"></i> 學習目標
+                        </h3>
+                        <ul id="detail-objectives" class="space-y-3 text-slate-600">
+                            <!-- JS Dyn Load -->
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-slate-50/50 p-6 rounded-xl border border-slate-200/50">
+                        <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="package" class="w-6 h-6 text-accent"></i> 使用硬體模組
+                        </h3>
+                        <ul id="detail-materials" class="space-y-3 text-slate-600">
+                            <!-- JS Dyn Load -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Side-by-Side: Interactive Simulator & Code Logic -->
+                <div class="p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 bg-slate-100">
+                    
+                    <!-- Left: Interactive Simulator -->
+                    <div class="lg:col-span-6 flex flex-col justify-between space-y-6">
+                        <div>
+                            <span class="text-xs font-bold tracking-widest text-primary uppercase bg-primary/10 px-3 py-1 rounded-full">動態實作體驗區</span>
+                            <h3 class="text-2xl font-bold text-slate-800 mt-3 mb-2">硬體行為模擬</h3>
+                            <p class="text-slate-500 text-sm">操作下方模擬元件，觀察數值變化，這與實體電路行為完全一致！</p>
+                        </div>
+                        
+                        <div id="interactive-playground" class="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-center items-center min-h-[300px] relative">
+                            <!-- Dynamic Simulation Loaded Here -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Logic & Code block representation -->
+                    <div class="lg:col-span-6 flex flex-col">
+                        <div id="detail-demo-container" class="h-full">
+                            <!-- Code Displayed Here -->
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-100 text-slate-500 py-12 text-center border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-center items-center gap-2 mb-4">
+                <i data-lucide="home" class="w-6 h-6 text-primary"></i>
+                <span class="text-xl font-bold text-slate-500 tracking-wider">智慧家居機電專題課程</span>
+            </div>
+            <p class="mb-2">Arduino 機電整合微課程暨軟硬體線上模擬器</p>
+            <p class="text-sm">© 2026 科技領域教學研究小組版權所有</p>
+        </div>
+    </footer>
+
+    <script>
+        // Global variables for animations
+        let animationRequests = [];
+        
+        function clearAnimations() {
+            animationRequests.forEach(req => cancelAnimationFrame(req));
+            animationRequests = [];
+        }
+
+        function scrollToCurriculum() {
+            const curriculumSection = document.getElementById('curriculum');
+            window.scrollTo({
+                top: curriculumSection.offsetTop - 64,
+                behavior: 'smooth'
+            });
+        }
+
+        // --- Core curriculum database ---
+        const courseData = {
+            1: {
+                title: "感應大門：超音波與馬達",
+                badge: "第一節課",
+                colorText: "text-emerald-400",
+                colorBg: "bg-emerald-500",
+                icon: "door-open",
+                desc: "藉由 HC-SR04 超音波感測器發射聲波並計算回波時間來測量距離。當距離低於安全閾值（例如有人靠近車庫或門口），程式便會發送訊號驅動直流減速馬達將門打開。",
+                objectives: [
+                    "認識超音波感測器 (Trig 發射 / Echo 接收) 的測距原理",
+                    "學習使用 L298N 或繼電器模組驅動大電流的直流減速馬達",
+                    "撰寫 IF 條件判斷式：依據距離臨界值控制馬達啟停與正反轉"
+                ],
+                materials: [
+                    "Arduino 核心開發板",
+                    "HC-SR04 超音波感測器模組",
+                    "直流減速馬達與馬達驅動板 (如 L298N)"
+                ],
+                initPlayground: function(container) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center gap-6 w-full">
+                            <!-- Display Values -->
+                            <div class="flex justify-center gap-4 w-full">
+                                <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-center w-32">
+                                    <div class="text-[10px] text-slate-500 mb-1">測量距離 (cm)</div>
+                                    <div id="ultra-dist-val" class="text-emerald-400 font-bold text-xl font-mono">150</div>
+                                </div>
+                                <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-center w-32">
+                                    <div class="text-[10px] text-slate-500 mb-1">馬達狀態</div>
+                                    <div id="motor-status-val" class="text-slate-500 font-bold text-xl font-mono">停止</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Visuals -->
+                            <div class="flex flex-col sm:flex-row items-center justify-around w-full mt-4 gap-8">
+                                <div class="flex flex-col items-center">
+                                    <i data-lucide="waves" class="w-10 h-10 text-emerald-500 mb-2"></i>
+                                    <input type="range" id="ultra-slider" min="5" max="300" value="150" class="w-32 accent-emerald-500 h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer">
+                                    <span class="text-xs text-slate-500 mt-2">模擬物體距離</span>
+                                </div>
+                                
+                                <div class="flex flex-col items-center">
+                                    <div class="w-20 h-20 bg-white rounded-full border-4 border-slate-300 flex items-center justify-center shadow-lg relative">
+                                        <div id="motor-blade" class="w-2 h-16 bg-amber-500 rounded-full motor-prop absolute"></div>
+                                        <div class="w-4 h-4 bg-slate-300 rounded-full z-10"></div>
+                                    </div>
+                                    <span class="text-xs text-slate-500 mt-3">直流馬達</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    const slider = document.getElementById('ultra-slider');
+                    const distVal = document.getElementById('ultra-dist-val');
+                    const statusVal = document.getElementById('motor-status-val');
+                    const blade = document.getElementById('motor-blade');
+
+                    let rotation = 0;
+                    let isRunning = false;
+
+                    function animateMotor() {
+                        if (isRunning) {
+                            rotation += 10;
+                            blade.style.transform = `rotate(${rotation}deg)`;
+                        }
+                        animationRequests.push(requestAnimationFrame(animateMotor));
+                    }
+
+                    slider.addEventListener('input', (e) => {
+                        const dist = parseInt(e.target.value);
+                        distVal.textContent = dist;
+                        
+                        // Logic: distance < 50cm opens door (spins motor)
+                        if (dist < 50) {
+                            isRunning = true;
+                            statusVal.textContent = "運轉中";
+                            statusVal.className = "text-amber-400 font-bold text-xl font-mono";
+                        } else {
+                            isRunning = false;
+                            statusVal.textContent = "停止";
+                            statusVal.className = "text-slate-500 font-bold text-xl font-mono";
+                        }
+                    });
+
+                    animateMotor();
+                    lucide.createIcons();
+                },
+                demoHTML: `
+                    <div class="flex items-center gap-3 mb-6">
+                        <i data-lucide="code-2" class="w-8 h-8 text-emerald-400"></i>
+                        <h3 class="text-xl font-bold text-slate-800 tracking-wide">邏輯解析：超音波觸發馬達</h3>
+                    </div>
+                    <div class="bg-[#1e1e1e] rounded-xl border border-slate-200 overflow-hidden shadow-2xl">
+                        <div class="bg-[#2d2d2d] px-4 py-3 flex items-center gap-2 border-b border-slate-200">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span class="ml-4 text-xs text-slate-500 font-mono">auto_door.block</span>
+                        </div>
+                        <div class="p-4 sm:p-6 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-600">
+<pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
+<span class="col-span-2"><span class="text-rose-600">無限重複執行</span></span>
+<span class="col-span-2">  <span class="text-sky-600">變數</span> 距離 <span class="text-rose-600">設為</span> <span class="text-amber-600">讀取超音波感測器 (公分)</span></span>
+<span class="col-span-2">  </span>
+<span class="col-span-2 text-emerald-600">  // 當距離小於 50 公分時啟動馬達開門</span>
+<span class="col-span-2">  <span class="text-rose-600">如果</span> <span class="text-sky-600">距離</span> &lt; <span class="text-indigo-600">50</span> <span class="text-rose-600">則</span></span>
+<span>    <span class="text-amber-600">設定 馬達腳位</span> <span class="text-indigo-600">HIGH</span></span><span class="text-emerald-600">// 馬達全速運轉</span>
+<span class="col-span-2">  <span class="text-rose-600">否則</span></span>
+<span>    <span class="text-amber-600">設定 馬達腳位</span> <span class="text-indigo-600">LOW</span></span><span class="text-emerald-600">// 馬達停止</span>
+</code></pre>
+                        </div>
+                    </div>
+                `
+            },
+            2: {
+                title: "迎賓走廊：超音波與燈條",
+                badge: "第二節課",
+                colorText: "text-sky-400",
+                colorBg: "bg-sky-500",
+                icon: "lightbulb",
+                desc: "結合超音波感測器與 WS2812B 全彩燈條，創造出具科技感的迎賓走廊。我們不只做簡單的開關，還能依據「距離的遠近」來決定點亮幾顆燈珠，越靠近燈就亮越多！",
+                objectives: [
+                    "認識 WS2812B 數位訊號定址特性與 FastLED/Adafruit 函式庫",
+                    "應用數學映射 (Map) 概念：將距離數值 (例如 10~100cm) 轉換為燈珠數量 (1~8顆)",
+                    "撰寫迴圈 (For-Loop) 來動態更新燈條的點亮與熄滅狀態"
+                ],
+                materials: [
+                    "Arduino 核心開發板",
+                    "HC-SR04 超音波感測器模組",
+                    "WS2812B RGB 全彩燈條 (8顆燈珠版本)"
+                ],
+                initPlayground: function(container) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center gap-6 w-full">
+                            <div class="text-center w-full max-w-sm">
+                                <div class="flex justify-between text-xs text-slate-500 font-mono mb-2">
+                                    <span>超音波偵測距離: <span id="u-led-dist-text" class="text-sky-400 font-bold text-lg">100</span> cm</span>
+                                    <span>亮燈數: <span id="u-led-count-text" class="text-sky-400 font-bold text-lg">0</span> 顆</span>
+                                </div>
+                                <input type="range" id="u-led-slider" min="10" max="150" value="150" class="w-full accent-sky-500 bg-slate-100 h-2 rounded-lg cursor-pointer">
+                            </div>
+                            
+                            <!-- LED Strip Display -->
+                            <div class="bg-[#0f172a] p-6 rounded-2xl border-2 border-slate-200 w-full flex justify-center shadow-inner mt-4">
+                                <div class="flex gap-3 justify-center items-center" id="u-led-strip">
+                                    <!-- LEDs generated via JS -->
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    const slider = document.getElementById('u-led-slider');
+                    const distText = document.getElementById('u-led-dist-text');
+                    const countText = document.getElementById('u-led-count-text');
+                    const strip = document.getElementById('u-led-strip');
+
+                    // Spawn 8 LEDs
+                    for(let i=0; i<8; i++) {
+                        const led = document.createElement('div');
+                        led.className = 'w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white shadow-inner border border-slate-200/50 transition-all duration-300';
+                        led.id = `u-pixel-${i}`;
+                        strip.appendChild(led);
+                    }
+
+                    slider.addEventListener('input', (e) => {
+                        const dist = parseInt(e.target.value);
+                        distText.textContent = dist;
+                        
+                        // Map distance (10 to 100 cm) to LEDs (8 to 0)
+                        let activeLeds = 0;
+                        if (dist <= 100) {
+                            activeLeds = Math.floor(((100 - dist) / 90) * 8) + 1; 
+                            if (activeLeds > 8) activeLeds = 8;
+                        }
+
+                        countText.textContent = activeLeds;
+
+                        for(let i=0; i<8; i++) {
+                            const led = document.getElementById(`u-pixel-${i}`);
+                            if (i < activeLeds) {
+                                led.style.backgroundColor = '#0ea5e9'; // Sky blue
+                                led.style.boxShadow = '0 0 15px #0ea5e9';
+                            } else {
+                                led.style.backgroundColor = '#1e293b';
+                                led.style.boxShadow = 'none';
+                            }
+                        }
+                    });
+                },
+                demoHTML: `
+                    <div class="flex items-center gap-3 mb-6">
+                        <i data-lucide="code-2" class="w-8 h-8 text-sky-400"></i>
+                        <h3 class="text-xl font-bold text-slate-800 tracking-wide">邏輯解析：數值映射點燈</h3>
+                    </div>
+                    <div class="bg-[#1e1e1e] rounded-xl border border-slate-200 overflow-hidden shadow-2xl">
+                        <div class="bg-[#2d2d2d] px-4 py-3 flex items-center gap-2 border-b border-slate-200">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span class="ml-4 text-xs text-slate-500 font-mono">sensor_lights.block</span>
+                        </div>
+                        <div class="p-4 sm:p-6 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-600">
+<pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
+<span class="col-span-2"><span class="text-rose-600">無限重複執行</span></span>
+<span class="col-span-2">  <span class="text-sky-600">變數</span> 距離 <span class="text-rose-600">設為</span> <span class="text-amber-600">讀取超音波感測器</span></span>
+<span class="col-span-2">  </span>
+<span class="col-span-2 text-emerald-600">  // 將 100cm~10cm 的距離，反向對應為 0~8 顆燈珠</span>
+<span class="col-span-2">  <span class="text-sky-600">變數</span> 亮燈數 <span class="text-rose-600">設為</span> <span class="text-amber-600">數值對應</span> (<span class="text-sky-600">距離</span>, <span class="text-indigo-600">100</span>, <span class="text-indigo-600">10</span>, <span class="text-indigo-600">0</span>, <span class="text-indigo-600">8</span>)</span>
+<span class="col-span-2">  </span>
+<span class="col-span-2">  <span class="text-amber-600">清除所有燈珠顏色</span></span>
+<span class="col-span-2">  <span class="text-rose-600">計數迴圈</span> <span class="text-sky-600">i</span> <span class="text-rose-600">從</span> <span class="text-indigo-600">0</span> <span class="text-rose-600">到</span> <span class="text-sky-600">亮燈數</span></span>
+<span>    <span class="text-amber-600">設定 第</span> <span class="text-sky-600">i</span> <span class="text-amber-600">顆燈珠為 天藍色</span></span>
+<span class="col-span-2">  <span class="text-amber-600">更新燈條顯示</span></span>
+</code></pre>
+                        </div>
+                    </div>
+                `
+            },
+            3: {
+                title: "無段風扇：可變電阻與馬達",
+                badge: "第三節課",
+                colorText: "text-amber-400",
+                colorBg: "bg-amber-500",
+                icon: "fan",
+                desc: "自動控制很方便，但我們也需要手動微調的能力！本單元引入「可變電阻 (旋鈕)」，讀取其類比電壓值，並透過 PWM 脈衝寬度調變技術，精準控制直流馬達的轉速（如同家中的無段風扇）。",
+                objectives: [
+                    "了解可變電阻的分壓原理與 Arduino 類比輸入腳位 (A0~A5) 的 0~1023 解析度",
+                    "認識 PWM (Pulse Width Modulation) 數位模擬類比輸出的技術 (0~255)",
+                    "實作將 0~1023 的類比輸入值映射至 0~255 的 PWM 輸出，控制馬達轉速"
+                ],
+                materials: [
+                    "Arduino 核心開發板",
+                    "旋鈕式可變電阻 (Potentiometer, 10KΩ)",
+                    "直流減速馬達與馬達驅動板"
+                ],
+                initPlayground: function(container) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center gap-6 w-full">
+                            <div class="flex justify-center gap-6 w-full">
+                                <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-center w-36">
+                                    <div class="text-[10px] text-slate-500 mb-1">類比讀取 (A0)</div>
+                                    <div id="pot-val" class="text-amber-400 font-bold text-xl font-mono">0</div>
+                                </div>
+                                <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-center w-36">
+                                    <div class="text-[10px] text-slate-500 mb-1">PWM 輸出 (~腳位)</div>
+                                    <div id="pwm-val" class="text-red-400 font-bold text-xl font-mono">0</div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col sm:flex-row items-center justify-around w-full mt-6 gap-12">
+                                <!-- Potentiometer Input -->
+                                <div class="flex flex-col items-center gap-3">
+                                    <div class="w-16 h-16 rounded-full bg-slate-100 border-4 border-slate-500 flex items-center justify-center relative">
+                                        <div id="pot-knob-indicator" class="w-1 h-6 bg-amber-400 absolute top-2 rounded-full transform origin-bottom transition-transform duration-75"></div>
+                                        <div class="w-6 h-6 bg-slate-50 rounded-full z-10"></div>
+                                    </div>
+                                    <input type="range" id="pot-slider" min="0" max="1023" value="0" class="w-32 accent-amber-500 bg-slate-100 h-2 rounded-lg cursor-pointer">
+                                    <span class="text-xs text-slate-500 font-bold">轉動可變電阻</span>
+                                </div>
+
+                                <!-- Motor Visual -->
+                                <div class="flex flex-col items-center gap-3">
+                                    <div class="w-24 h-24 bg-white rounded-full border-4 border-slate-300 flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.5)] relative">
+                                        <div id="pwm-motor-blade" class="w-2 h-20 bg-emerald-400 rounded-full motor-prop absolute"></div>
+                                        <div id="pwm-motor-blade2" class="w-20 h-2 bg-emerald-400 rounded-full motor-prop absolute"></div>
+                                        <div class="w-6 h-6 bg-slate-300 rounded-full z-10"></div>
+                                    </div>
+                                    <span class="text-xs text-slate-500 font-bold">風扇轉速</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    const slider = document.getElementById('pot-slider');
+                    const potText = document.getElementById('pot-val');
+                    const pwmText = document.getElementById('pwm-val');
+                    const knob = document.getElementById('pot-knob-indicator');
+                    const blade1 = document.getElementById('pwm-motor-blade');
+                    const blade2 = document.getElementById('pwm-motor-blade2');
+
+                    let currentSpeed = 0;
+                    let mRotation = 0;
+
+                    function rotateMotor() {
+                        if (currentSpeed > 0) {
+                            mRotation += currentSpeed;
+                            blade1.style.transform = `rotate(${mRotation}deg)`;
+                            blade2.style.transform = `rotate(${mRotation}deg)`;
+                        }
+                        animationRequests.push(requestAnimationFrame(rotateMotor));
+                    }
+
+                    slider.addEventListener('input', (e) => {
+                        const val = parseInt(e.target.value);
+                        potText.textContent = val;
+                        
+                        // Map 0-1023 to 0-255
+                        const pwm = Math.floor((val / 1023) * 255);
+                        pwmText.textContent = pwm;
+                        
+                        // Map PWM to rotation speed for visual
+                        currentSpeed = (pwm / 255) * 20; 
+                        
+                        // Rotate knob visually (-135deg to 135deg roughly)
+                        const knobAngle = -135 + (val / 1023) * 270;
+                        knob.style.transform = `rotate(${knobAngle}deg)`;
+                    });
+
+                    rotateMotor();
+                    lucide.createIcons();
+                },
+                demoHTML: `
+                    <div class="flex items-center gap-3 mb-6">
+                        <i data-lucide="code-2" class="w-8 h-8 text-amber-400"></i>
+                        <h3 class="text-xl font-bold text-slate-800 tracking-wide">邏輯解析：類比訊號映射 PWM</h3>
+                    </div>
+                    <div class="bg-[#1e1e1e] rounded-xl border border-slate-200 overflow-hidden shadow-2xl">
+                        <div class="bg-[#2d2d2d] px-4 py-3 flex items-center gap-2 border-b border-slate-200">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span class="ml-4 text-xs text-slate-500 font-mono">manual_fan.block</span>
+                        </div>
+                        <div class="p-4 sm:p-6 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-600">
+<pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
+<span class="col-span-2"><span class="text-rose-600">無限重複執行</span></span>
+<span class="col-span-2">  <span class="text-sky-600">變數</span> 旋鈕值 <span class="text-rose-600">設為</span> <span class="text-amber-600">讀取類比腳位 A0</span></span><span class="text-emerald-600">// 範圍 0~1023</span>
+<span class="col-span-2">  </span>
+<span class="col-span-2 text-emerald-600">  // 將 0~1023 對應到 0~255 的馬達轉速範圍</span>
+<span class="col-span-2">  <span class="text-sky-600">變數</span> 轉速 <span class="text-rose-600">設為</span> <span class="text-amber-600">數值對應</span> (<span class="text-sky-600">旋鈕值</span>, <span class="text-indigo-600">0</span>, <span class="text-indigo-600">1023</span>, <span class="text-indigo-600">0</span>, <span class="text-indigo-600">255</span>)</span>
+<span class="col-span-2">  </span>
+<span>  <span class="text-amber-600">設定 PWM 輸出腳位(9)</span> 為 <span class="text-sky-600">轉速</span></span>
+</code></pre>
+                        </div>
+                    </div>
+                `
+            },
+            4: {
+                title: "情境照明：可變電阻與燈條",
+                badge: "第四節課",
+                colorText: "text-indigo-600",
+                colorBg: "bg-purple-500",
+                icon: "sliders-horizontal",
+                desc: "旋鈕不只能控制馬達速度，還能用來當作室內氣氛燈的「調光器 (Dimmer)」或「選色器」。本課我們將可變電阻的數值映射到 RGB 燈條的亮度與顏色相角 (Hue) 上。",
+                objectives: [
+                    "複習可變電阻的數值讀取與映射技術",
+                    "了解色彩學中的 HSL (Hue, Saturation, Lightness) 顏色模型，取代複雜的 RGB 調整",
+                    "實現無段滑順變色的數位燈帶效果"
+                ],
+                materials: [
+                    "Arduino 核心開發板",
+                    "旋鈕式可變電阻 (Potentiometer)",
+                    "WS2812B RGB 全彩燈條"
+                ],
+                initPlayground: function(container) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center gap-6 w-full">
+                            <div class="w-full max-w-sm">
+                                <div class="flex justify-between text-xs text-slate-500 font-mono mb-2">
+                                    <span>旋鈕輸入 (Hue): <span id="color-pot-val" class="text-indigo-600 font-bold">0</span></span>
+                                    <span>色相角: <span id="hue-val" class="text-indigo-600 font-bold">0°</span></span>
+                                </div>
+                                <input type="range" id="color-slider" min="0" max="1023" value="0" class="w-full bg-slate-100 h-3 rounded-lg cursor-pointer appearance-none" style="background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);">
+                            </div>
+                            
+                            <!-- Large LED Display -->
+                            <div class="flex gap-4 justify-center items-center bg-slate-50 p-8 rounded-2xl border border-slate-200 w-full">
+                                <div id="hue-led-1" class="w-12 h-12 rounded-full bg-red-500 shadow-[0_0_20px_#ef4444] transition-colors"></div>
+                                <div id="hue-led-2" class="w-12 h-12 rounded-full bg-red-500 shadow-[0_0_20px_#ef4444] transition-colors"></div>
+                                <div id="hue-led-3" class="w-12 h-12 rounded-full bg-red-500 shadow-[0_0_20px_#ef4444] transition-colors"></div>
+                                <div id="hue-led-4" class="w-12 h-12 rounded-full bg-red-500 shadow-[0_0_20px_#ef4444] transition-colors"></div>
+                            </div>
+                        </div>
+                    `;
+
+                    const slider = document.getElementById('color-slider');
+                    const potText = document.getElementById('color-pot-val');
+                    const hueText = document.getElementById('hue-val');
+                    
+                    const leds = [
+                        document.getElementById('hue-led-1'),
+                        document.getElementById('hue-led-2'),
+                        document.getElementById('hue-led-3'),
+                        document.getElementById('hue-led-4')
+                    ];
+
+                    slider.addEventListener('input', (e) => {
+                        const val = parseInt(e.target.value);
+                        potText.textContent = val;
+                        
+                        // Map 0-1023 to Hue 0-360
+                        const hue = Math.floor((val / 1023) * 360);
+                        hueText.textContent = hue + "°";
+                        
+                        const colorString = `hsl(${hue}, 100%, 50%)`;
+                        
+                        leds.forEach(led => {
+                            led.style.backgroundColor = colorString;
+                            led.style.boxShadow = `0 0 20px ${colorString}`;
+                        });
+                    });
+                },
+                demoHTML: `
+                    <div class="flex items-center gap-3 mb-6">
+                        <i data-lucide="code-2" class="w-8 h-8 text-indigo-600"></i>
+                        <h3 class="text-xl font-bold text-slate-800 tracking-wide">邏輯解析：手動調色邏輯</h3>
+                    </div>
+                    <div class="bg-[#1e1e1e] rounded-xl border border-slate-200 overflow-hidden shadow-2xl">
+                        <div class="bg-[#2d2d2d] px-4 py-3 flex items-center gap-2 border-b border-slate-200">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span class="ml-4 text-xs text-slate-500 font-mono">mood_lighting.block</span>
+                        </div>
+                        <div class="p-4 sm:p-6 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-600">
+<pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
+<span class="col-span-2"><span class="text-rose-600">無限重複執行</span></span>
+<span class="col-span-2">  <span class="text-sky-600">變數</span> 旋鈕值 <span class="text-rose-600">設為</span> <span class="text-amber-600">讀取類比腳位 A1</span></span>
+<span class="col-span-2">  </span>
+<span class="col-span-2 text-emerald-600">  // 將 0~1023 轉換為色彩環角度 0~255 (FastLED格式)</span>
+<span class="col-span-2">  <span class="text-sky-600">變數</span> 顏色值 <span class="text-rose-600">設為</span> <span class="text-amber-600">數值對應</span> (<span class="text-sky-600">旋鈕值</span>, <span class="text-indigo-600">0</span>, <span class="text-indigo-600">1023</span>, <span class="text-indigo-600">0</span>, <span class="text-indigo-600">255</span>)</span>
+<span class="col-span-2">  </span>
+<span class="col-span-2">  <span class="text-amber-600">將 燈條填滿 色相為</span> <span class="text-sky-600">顏色值</span> <span class="text-amber-600">的顏色</span></span>
+<span class="col-span-2">  <span class="text-amber-600">更新燈條顯示</span></span>
+</code></pre>
+                        </div>
+                    </div>
+                `
+            },
+            5: {
+                title: "智慧中樞：綜合家居面板",
+                badge: "第五節課",
+                colorText: "text-primary",
+                colorBg: "bg-primary",
+                icon: "laptop",
+                desc: "這是一套完整的系統！我們利用「按鈕」切換智慧家庭的模式。在【自動模式】下，感測器全權接管，距離一靠近就開燈開風扇；在【手動模式】下，我們透過旋鈕自由掌控風量與氣氛燈色。",
+                objectives: [
+                    "實作狀態機 (State Machine) 概念：透過按鈕切換 Auto / Manual 變數狀態",
+                    "將感測器(超音波)、輸入元件(可變電阻)、輸出元件(馬達與燈條) 完美整合於一個程式",
+                    "規劃實際應用的電路接線與外殼設計，完成最終成果"
+                ],
+                materials: [
+                    "前四堂課使用的所有電子元件",
+                    "模式切換按鈕 (Push Button)",
+                    "專題雷射切割外殼或環保紙板模型"
+                ],
+                initPlayground: function(container) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center bg-slate-100 p-6 rounded-3xl border-4 border-slate-800 w-full shadow-2xl relative">
+                            <!-- Dashboard Header -->
+                            <div class="w-full flex justify-between items-center pb-4 border-b border-slate-800 mb-6">
+                                <span class="text-sm text-slate-500 font-bold tracking-wider"><i data-lucide="home" class="inline w-4 h-4 mr-1"></i> SMART HUB</span>
+                                
+                                <!-- Mode Toggle -->
+                                <button id="hub-mode-btn" class="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-full text-xs transition flex items-center gap-2">
+                                    <i data-lucide="refresh-cw" class="w-3 h-3"></i> 模式：自動 (AUTO)
+                                </button>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+                                <!-- Inputs Panel -->
+                                <div class="space-y-6 bg-slate-50 p-4 rounded-xl border border-slate-800">
+                                    <h4 class="text-xs font-bold text-slate-500 border-b border-slate-800 pb-2">環境感測 / 輸入</h4>
+                                    
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between text-xs text-slate-500">
+                                            <span><i data-lucide="waves" class="inline w-3 h-3 text-emerald-400"></i> 超音波距離:</span>
+                                            <span id="hub-dist-val">150 cm</span>
+                                        </div>
+                                        <input type="range" id="hub-dist-slider" min="10" max="200" value="150" class="w-full accent-emerald-500 bg-slate-100 h-2 rounded-lg cursor-pointer">
+                                    </div>
+                                    
+                                    <div class="space-y-2 opacity-50 transition-opacity" id="hub-manual-controls">
+                                        <div class="flex justify-between text-xs text-slate-500">
+                                            <span><i data-lucide="settings" class="inline w-3 h-3 text-amber-400"></i> 控制旋鈕:</span>
+                                            <span id="hub-pot-val">0</span>
+                                        </div>
+                                        <input type="range" id="hub-pot-slider" min="0" max="1023" value="0" class="w-full accent-amber-500 bg-slate-100 h-2 rounded-lg cursor-pointer" disabled>
+                                    </div>
+                                </div>
+                                
+                                <!-- Outputs Panel -->
+                                <div class="space-y-6 bg-slate-50 p-4 rounded-xl border border-slate-800 flex flex-col justify-center items-center">
+                                    <h4 class="text-xs font-bold text-slate-500 border-b border-slate-800 w-full text-left pb-2">實體驅動 / 輸出</h4>
+                                    
+                                    <div class="flex gap-8 items-center w-full justify-around pt-2">
+                                        <!-- Motor -->
+                                        <div class="flex flex-col items-center gap-2">
+                                            <div class="w-16 h-16 bg-white rounded-full border-2 border-slate-300 flex items-center justify-center relative">
+                                                <div id="hub-motor-blade" class="w-1.5 h-12 bg-slate-400 rounded-full motor-prop absolute"></div>
+                                                <div id="hub-motor-blade2" class="w-12 h-1.5 bg-slate-400 rounded-full motor-prop absolute"></div>
+                                                <div class="w-3 h-3 bg-slate-300 rounded-full z-10"></div>
+                                            </div>
+                                            <span class="text-[10px] text-slate-500 font-bold" id="hub-motor-label">馬達停止</span>
+                                        </div>
+                                        
+                                        <!-- Light -->
+                                        <div class="flex flex-col items-center gap-2">
+                                            <div id="hub-light-bulb" class="w-12 h-12 rounded-full bg-white border-2 border-slate-200 transition-all duration-300 flex items-center justify-center">
+                                                <i data-lucide="lightbulb" class="w-6 h-6 text-slate-600" id="hub-light-icon"></i>
+                                            </div>
+                                            <span class="text-[10px] text-slate-500 font-bold" id="hub-light-label">燈光關閉</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    // Elements
+                    const modeBtn = document.getElementById('hub-mode-btn');
+                    const distSlider = document.getElementById('hub-dist-slider');
+                    const potSlider = document.getElementById('hub-pot-slider');
+                    const distVal = document.getElementById('hub-dist-val');
+                    const potVal = document.getElementById('hub-pot-val');
+                    const manualControls = document.getElementById('hub-manual-controls');
+                    
+                    const motorBlade1 = document.getElementById('hub-motor-blade');
+                    const motorBlade2 = document.getElementById('hub-motor-blade2');
+                    const motorLabel = document.getElementById('hub-motor-label');
+                    
+                    const lightBulb = document.getElementById('hub-light-bulb');
+                    const lightIcon = document.getElementById('hub-light-icon');
+                    const lightLabel = document.getElementById('hub-light-label');
+
+                    // State
+                    let isAuto = true;
+                    let mRot = 0;
+                    let mSpeed = 0;
+
+                    function updateSystem() {
+                        const dist = parseInt(distSlider.value);
+                        const pot = parseInt(potSlider.value);
+
+                        if (isAuto) {
+                            // AUTO MODE LOGIC
+                            if (dist < 80) { // Person detected
+                                mSpeed = 15; // Fast speed
+                                motorLabel.textContent = "自動：送風中";
+                                motorLabel.className = "text-[10px] font-bold text-emerald-400";
+                                motorBlade1.style.backgroundColor = motorBlade2.style.backgroundColor = '#10b981';
+                                
+                                lightBulb.style.backgroundColor = '#fffbeb'; // Amber 50
+                                lightBulb.style.boxShadow = '0 0 25px #fcd34d';
+                                lightIcon.style.color = '#f59e0b';
+                                lightLabel.textContent = "自動：照明開";
+                                lightLabel.className = "text-[10px] font-bold text-amber-400";
+                            } else {
+                                mSpeed = 0;
+                                motorLabel.textContent = "馬達停止";
+                                motorLabel.className = "text-[10px] font-bold text-slate-500";
+                                motorBlade1.style.backgroundColor = motorBlade2.style.backgroundColor = '#94a3b8';
+                                
+                                lightBulb.style.backgroundColor = '#1e293b';
+                                lightBulb.style.boxShadow = 'none';
+                                lightIcon.style.color = '#475569';
+                                lightLabel.textContent = "燈光關閉";
+                                lightLabel.className = "text-[10px] font-bold text-slate-500";
+                            }
+                        } else {
+                            // MANUAL MODE LOGIC
+                            mSpeed = (pot / 1023) * 20; // Scale speed
+                            if (mSpeed > 0) {
+                                motorLabel.textContent = "手動：調速中";
+                                motorLabel.className = "text-[10px] font-bold text-amber-400";
+                                motorBlade1.style.backgroundColor = motorBlade2.style.backgroundColor = '#f59e0b';
+                            } else {
+                                motorLabel.textContent = "馬達停止";
+                                motorLabel.className = "text-[10px] font-bold text-slate-500";
+                                motorBlade1.style.backgroundColor = motorBlade2.style.backgroundColor = '#94a3b8';
+                            }
+
+                            // Color map for light
+                            if (pot > 0) {
+                                const hue = Math.floor((pot / 1023) * 360);
+                                const colorStr = `hsl(${hue}, 100%, 50%)`;
+                                lightBulb.style.backgroundColor = colorStr;
+                                lightBulb.style.boxShadow = `0 0 25px ${colorStr}`;
+                                lightIcon.style.color = '#000';
+                                lightLabel.textContent = "手動：調光中";
+                                lightLabel.className = "text-[10px] font-bold text-indigo-600";
+                            } else {
+                                lightBulb.style.backgroundColor = '#1e293b';
+                                lightBulb.style.boxShadow = 'none';
+                                lightIcon.style.color = '#475569';
+                                lightLabel.textContent = "燈光關閉";
+                                lightLabel.className = "text-[10px] font-bold text-slate-500";
+                            }
+                        }
+                    }
+
+                    function spinHubMotor() {
+                        if (mSpeed > 0) {
+                            mRot += mSpeed;
+                            motorBlade1.style.transform = `rotate(${mRot}deg)`;
+                            motorBlade2.style.transform = `rotate(${mRot}deg)`;
+                        }
+                        animationRequests.push(requestAnimationFrame(spinHubMotor));
+                    }
+
+                    // Event Listeners
+                    modeBtn.addEventListener('click', () => {
+                        isAuto = !isAuto;
+                        if (isAuto) {
+                            modeBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-3 h-3"></i> 模式：自動 (AUTO)';
+                            modeBtn.className = 'px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-full text-xs transition flex items-center gap-2';
+                            manualControls.classList.add('opacity-50');
+                            potSlider.disabled = true;
+                        } else {
+                            modeBtn.innerHTML = '<i data-lucide="hand" class="w-3 h-3"></i> 模式：手動 (MANUAL)';
+                            modeBtn.className = 'px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-full text-xs transition flex items-center gap-2';
+                            manualControls.classList.remove('opacity-50');
+                            potSlider.disabled = false;
+                        }
+                        lucide.createIcons();
+                        updateSystem();
+                    });
+
+                    distSlider.addEventListener('input', (e) => {
+                        distVal.textContent = e.target.value + " cm";
+                        updateSystem();
+                    });
+
+                    potSlider.addEventListener('input', (e) => {
+                        potVal.textContent = e.target.value;
+                        updateSystem();
+                    });
+
+                    // Init
+                    updateSystem();
+                    spinHubMotor();
+                    lucide.createIcons();
+                },
+                demoHTML: `
+                    <div class="flex items-center gap-3 mb-6">
+                        <i data-lucide="code-2" class="w-8 h-8 text-primary"></i>
+                        <h3 class="text-xl font-bold text-slate-800 tracking-wide">系統整合：狀態機架構</h3>
+                    </div>
+                    <div class="bg-[#1e1e1e] rounded-xl border border-slate-200 overflow-hidden shadow-2xl">
+                        <div class="bg-[#2d2d2d] px-4 py-3 flex items-center gap-2 border-b border-slate-200">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span class="ml-4 text-xs text-slate-500 font-mono">smart_home_hub.block</span>
+                        </div>
+                        <div class="p-4 sm:p-6 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-600">
+<pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
+<span class="col-span-2"><span class="text-rose-600">如果</span> <span class="text-sky-600">目前模式</span> == <span class="text-indigo-600">"AUTO"</span> <span class="text-rose-600">則</span></span>
+<span class="col-span-2 text-emerald-600">  // 自動控制邏輯 (依賴超音波)</span>
+<span class="col-span-2">  <span class="text-rose-600">如果</span> <span class="text-sky-600">超音波距離</span> &lt; <span class="text-indigo-600">80</span> <span class="text-rose-600">則</span></span>
+<span>    <span class="text-amber-600">啟動馬達開門()</span></span>
+<span>    <span class="text-amber-600">點亮迎賓燈()</span></span>
+<span class="col-span-2">  <span class="text-rose-600">否則</span></span>
+<span>    <span class="text-amber-600">關閉馬達()</span></span>
+<span>    <span class="text-amber-600">關閉燈光()</span></span>
+<span class="col-span-2">    </span>
+<span class="col-span-2"><span class="text-rose-600">否則</span> <span class="text-emerald-600">// MANUAL 手動模式</span></span>
+<span class="col-span-2 text-emerald-600">  // 手動控制邏輯 (依賴可變電阻)</span>
+<span class="col-span-2">  <span class="text-sky-600">風扇轉速</span> <span class="text-rose-600">設為</span> <span class="text-amber-600">數值對應</span> (<span class="text-sky-600">旋鈕值</span>, 0, 1023, 0, 255)</span>
+<span class="col-span-2">  <span class="text-sky-600">燈條色相</span> <span class="text-rose-600">設為</span> <span class="text-amber-600">數值對應</span> (<span class="text-sky-600">旋鈕值</span>, 0, 1023, 0, 255)</span>
+<span>  <span class="text-amber-600">寫入 PWM 馬達控制(轉速)</span></span>
+<span>  <span class="text-amber-600">更新 RGB 燈帶顏色(色相)</span></span>
+</code></pre>
+                        </div>
+                    </div>
+                `
+            }
+        };
+
+        function openCourseDetail(unitId) {
+            const data = courseData[unitId];
+            if (!data) return;
+
+            // Clear any lingering animations from previous unit
+            clearAnimations();
+
+            // Hide Main Landing sections
+            document.getElementById('about').classList.add('hidden');
+            document.getElementById('curriculum').classList.add('hidden');
+            
+            // Show detail panel
+            const detailView = document.getElementById('detail-view');
+            detailView.classList.remove('hidden');
+            
+            // Setup meta text and theme indicators
+            document.getElementById('detail-badge').textContent = data.badge;
+            document.getElementById('detail-title').textContent = data.title;
+            document.getElementById('detail-desc').textContent = data.desc;
+            
+            const bgIcon = document.getElementById('detail-bg-icon');
+            bgIcon.setAttribute('data-lucide', data.icon);
+            
+            // Update goals mapping
+            const objList = document.getElementById('detail-objectives');
+            objList.innerHTML = data.objectives.map(obj => 
+                `<li class="flex items-start gap-2"><i data-lucide="check-circle" class="w-5 h-5 ${data.colorText} shrink-0 mt-0.5"></i><span>${obj}</span></li>`
+            ).join('');
+            
+            // Update materials mapping
+            const matList = document.getElementById('detail-materials');
+            matList.innerHTML = data.materials.map(mat => 
+                `<li class="flex items-start gap-2"><i data-lucide="cpu" class="w-5 h-5 text-slate-500 shrink-0 mt-0.5"></i><span>${mat}</span></li>`
+            ).join('');
+            
+            // Render specific block logic codes
+            const demoContainer = document.getElementById('detail-demo-container');
+            demoContainer.innerHTML = typeof data.demoHTML === 'function' ? data.demoHTML() : data.demoHTML;
+            
+            // Load interactive workspace playground
+            const playground = document.getElementById('interactive-playground');
+            data.initPlayground(playground);
+            
+            // Re-render Lucide Icons for dynamic HTML
+            lucide.createIcons();
+            
+            // Scroll view back to top
+            window.scrollTo(0, 0);
+        }
+
+        function closeCourseDetail() {
+            clearAnimations();
+            
+            document.getElementById('detail-view').classList.add('hidden');
+            document.getElementById('about').classList.remove('hidden');
+            document.getElementById('curriculum').classList.remove('hidden');
+            
+            document.getElementById('interactive-playground').innerHTML = '';
+            document.getElementById('detail-demo-container').innerHTML = '';
+            
+            scrollToCurriculum();
+        }
+        
+        // Initial icon load
+        lucide.createIcons();
+    </script>
+
+<!-- 返回基地按鈕（自動加入） -->
+<a id="back-to-hub" href="hub.html" title="返回闖關基地"
+   style="position:fixed;top:14px;left:14px;z-index:99999;display:inline-flex;align-items:center;gap:6px;background:#1e293b;color:#fff;font-family:'Noto Sans TC',system-ui,sans-serif;font-weight:700;font-size:14px;padding:8px 14px;border-radius:9999px;text-decoration:none;box-shadow:0 4px 12px rgba(0,0,0,.25);transition:transform .15s;" onmouseover="this.style.transform='translateX(-2px)'" onmouseout="this.style.transform=''">← 返回基地</a>
+</body>
+</html>

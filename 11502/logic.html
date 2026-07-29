@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>邏輯挑戰</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        /* 版面配色統一由 shared/theme.css 提供（方格紙底、Noto Sans TC、slate 中性色）
+           本檔只保留「積木邏輯挑戰」需要的元件樣式，配色改用模組色 violet。 */
+
+        .text-shadow-mc, .text-shadow-light{ text-shadow:none; }
+
+        /* 主面板：白卡 */
+        .mc-gui{
+            background:#fff;
+            border:1px solid #e2e8f0;
+            border-radius:1rem;
+            box-shadow:0 1px 2px rgba(0,0,0,.05);
+            color:#1e293b;
+        }
+        /* 內凹區（工作區、物品欄）：淺灰底 */
+        .mc-gui-inset{
+            background:#f8fafc;
+            border:1px solid #e2e8f0;
+            border-radius:.75rem;
+            color:#334155;
+        }
+
+        /* 按鈕 */
+        .mc-btn{
+            background:#f1f5f9;
+            border:1px solid #cbd5e1;
+            border-radius:.75rem;
+            color:#334155;
+            font-weight:700;
+            cursor:pointer;
+            transition:background .15s, transform .1s;
+        }
+        .mc-btn:hover{ background:#e2e8f0; }
+        .mc-btn:active{ transform:translateY(1px); }
+        .mc-btn.active-diff{
+            background:#7c3aed;                 /* violet-600 */
+            border-color:#6d28d9;
+            color:#fff;
+        }
+
+        /* 題目告示牌 → 提示卡 */
+        .mc-sign{
+            background:#faf5ff;                 /* violet-50 */
+            border:1px solid #ddd6fe;           /* violet-200 */
+            border-radius:1rem;
+            color:#5b21b6;                      /* violet-800 */
+        }
+
+        /* 積木：沿用 Scratch 官方分類配色（規範語意色） */
+        .mc-block{
+            border:none;
+            border-radius:.5rem;
+            color:#fff;
+            font-weight:700;
+            box-shadow:0 2px 0 rgba(0,0,0,.18);
+        }
+        .mc-block-control  { background:#ffab19; }  /* 控制 */
+        .mc-block-operator { background:#59c059; }  /* 運算 */
+        .mc-block-variable { background:#ff8c1a; }  /* 變數 */
+        .mc-block-motion   { background:#4c97ff; }  /* 動作 */
+
+        /* 文字語意色（正確 emerald／錯誤 red／標題 violet） */
+        .mc-text-title{ color:#6d28d9; }
+        .mc-text-green{ color:#059669; }
+        .mc-text-red  { color:#dc2626; }
+        .mc-text-aqua { color:#0284c7; }
+
+        /* 動畫 */
+        .shake{ animation:shake .4s both; }
+        @keyframes shake{
+            0%,100%{ transform:translateX(0) } 25%{ transform:translateX(-8px) } 75%{ transform:translateX(8px) }
+        }
+        .correct-pop{ animation:correctPop .4s both; }
+        @keyframes correctPop{ 0%{transform:scale(1)} 50%{transform:scale(1.05)} 100%{transform:scale(1)} }
+
+        /* 寶典提示選中狀態 */
+        .active-hint{
+            border-color:#a78bfa !important;
+            background:#f5f3ff;
+            transform:scale(1.03);
+            box-shadow:0 0 0 3px rgba(167,139,250,.25);
+            z-index:10;
+        }
+        .inactive-hint{ opacity:.45; filter:grayscale(70%); transform:scale(.97); }
+
+        .fade-in-step{ animation:fadeInStep .5s ease-out forwards; }
+        @keyframes fadeInStep{ from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+    </style>
+
+<!-- 身分守門：未從闖關基地登入者導回入口 -->
+<script src="../shared/guard.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <!-- 全站主題樣式（單一來源，見 shared/theme.css）-->
+  <link rel="stylesheet" href="../shared/theme.css">
+</head>
+<body class="min-h-screen p-4 md:p-6 lg:p-8 selection:bg-black selection:text-slate-800">
+<!-- 返回基地：固定左上，每頁只放一顆（嵌入 iframe 時自動隱藏） -->
+<a id="back-to-hub" href="hub.html" title="返回闖關基地"
+   style="position:fixed;top:1rem;left:1rem;z-index:9999;display:inline-flex;align-items:center;gap:.35rem;
+          background:#1e293b;color:#fff;font-weight:700;font-size:.875rem;padding:.5rem .875rem;
+          border-radius:9999px;box-shadow:0 10px 15px -3px rgba(0,0,0,.2);text-decoration:none;">&#8592; 返回基地</a>
+<script>
+if (window.self !== window.top) { var b = document.getElementById('back-to-hub'); if (b) b.style.display='none'; }
+</script>
+
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- 標題與經驗值區 -->
+        <header class="flex flex-col sm:flex-row justify-between items-center mc-gui p-4 gap-4">
+            <div class="text-center sm:text-left pl-2">
+                <h1 class="text-4xl mc-text-title text-shadow-mc mb-1">
+                    邏輯挑戰
+                </h1>
+                <p class="text-[#333] text-lg font-bold">閱讀指令方塊，預測生存動作！</p>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row items-center gap-4">
+                <!-- 生命值區 -->
+                <div class="mc-gui-inset px-4 py-2 flex flex-col items-center min-w-[140px]">
+                    <span class="text-[#FFF] text-sm text-shadow-mc mb-1">生命值</span>
+                    <div id="hp-display" class="text-2xl text-shadow-mc tracking-widest">
+                        🖤🖤🖤🖤🖤
+                    </div>
+                </div>
+                <!-- 飽食度區 -->
+                <div class="mc-gui-inset px-4 py-2 flex flex-col items-center min-w-[140px]">
+                    <span class="text-[#FFF] text-sm text-shadow-mc mb-1">飽食度</span>
+                    <div id="hunger-display" class="text-2xl text-shadow-mc tracking-widest">
+                        🍖🍖🍖🖤🖤
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 難度切換按鈕區 -->
+        <div class="flex flex-wrap justify-center gap-3 p-3 mc-gui w-fit mx-auto">
+            <button onclick="setDifficulty('random')" id="btn-diff-random" class="mc-btn px-6 py-2 text-xl">
+                🎲 綜合隨機
+            </button>
+            <button onclick="setDifficulty('basic')" id="btn-diff-basic" class="mc-btn px-6 py-2 text-xl">
+                🟢 基礎版
+            </button>
+            <button onclick="setDifficulty('advanced')" id="btn-diff-advanced" class="mc-btn px-6 py-2 text-xl">
+                🔴 進階版
+            </button>
+        </div>
+
+        <!-- 核心三欄式版面 -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- 左欄：邏輯運算子小教室 -->
+            <div class="order-3 lg:order-1 lg:col-span-3 space-y-4 sticky top-6">
+                <div class="mc-gui p-4">
+                    <h2 class="text-2xl text-[#333] mb-4 flex items-center border-b-4 border-[#8B8B8B] pb-2">
+                        <span class="mr-2">📖</span> 邏輯寶典
+                    </h2>
+                    <div class="flex flex-col gap-4">
+                        <!-- AND 且 -->
+                        <div id="hint-AND" class="mc-gui-inset p-3 text-shadow-mc transition-all duration-300">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="mc-block mc-block-operator text-sm px-2 py-1">且 (AND)</span>
+                            </div>
+                            <h4 class="mc-text-green text-xl mb-1">鐵魔像守衛 🛡️</h4>
+                            <p class="text-slate-800 text-base leading-relaxed">
+                                必須 <span class="text-violet-700">左邊與右邊</span> 都成立，結果才是「對」。
+                            </p>
+                        </div>
+                        <!-- OR 或 -->
+                        <div id="hint-OR" class="mc-gui-inset p-3 text-shadow-mc transition-all duration-300">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="mc-block mc-block-operator text-sm px-2 py-1">或 (OR)</span>
+                            </div>
+                            <h4 class="mc-text-aqua text-xl mb-1">村民交易 🤝</h4>
+                            <p class="text-slate-800 text-base leading-relaxed">
+                                只要 <span class="text-violet-700">其中一邊</span> 成立，結果就是「對」。
+                            </p>
+                        </div>
+                        <!-- NOT 不成立 -->
+                        <div id="hint-NOT" class="mc-gui-inset p-3 text-shadow-mc transition-all duration-300">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="mc-block mc-block-operator text-sm px-2 py-1">不成立 (NOT)</span>
+                            </div>
+                            <h4 class="mc-text-red text-xl mb-1">終界反轉 🌌</h4>
+                            <p class="text-slate-800 text-base leading-relaxed">
+                                會把結果 <span class="text-violet-700">完全反轉</span>！對變錯，錯變對。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中欄：主要遊戲區 -->
+            <div class="order-1 lg:order-2 lg:col-span-5 space-y-6">
+                <!-- 題目區 -->
+                <div class="mc-gui p-5 relative overflow-hidden" id="gameBoard">
+                    
+                    <!-- 變數物品欄 -->
+                    <div class="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 mb-6 border-b-4 border-[#8B8B8B] pb-4">
+                        <div class="flex items-center gap-4 w-full sm:w-auto">
+                            <!-- Slot X -->
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl text-[#333]">變數 X:</span>
+                                <div class="mc-gui-inset w-12 h-12 flex items-center justify-center text-2xl text-shadow-mc mc-text-title">
+                                    <span id="valX">0</span>
+                                </div>
+                            </div>
+                            <!-- Slot Y -->
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl text-[#333]">變數 Y:</span>
+                                <div class="mc-gui-inset w-12 h-12 flex items-center justify-center text-2xl text-shadow-mc mc-text-title">
+                                    <span id="valY">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sm:ml-auto mc-gui-inset text-slate-800 px-3 py-1 text-lg text-shadow-mc" id="archBadge">
+                            進階版
+                        </div>
+                    </div>
+
+                    <!-- 麥塊風積木區 -->
+                    <div class="space-y-0 select-none overflow-x-auto pb-4 sm:pb-0" id="blockArea">
+                        <div class="flex items-stretch">
+                            <div class="mc-block mc-block-control px-4 py-3 flex items-center w-fit min-w-[280px] text-xl">
+                                如果 <span class="mx-3 mc-block mc-block-operator px-2 py-1 text-lg" id="questLogic">x > 5 且 y < 6</span> 那麼
+                            </div>
+                        </div>
+                        
+                        <div class="flex">
+                            <div class="w-5 mc-block mc-block-control border-t-0 border-b-0 border-r-0"></div>
+                            <div class="ml-3 my-1">
+                                <div class="mc-block mc-block-motion text-xl py-2 px-4" id="actionTrue">挖礦</div>
+                            </div>
+                        </div>
+
+                        <div id="elseHeader" class="mc-block mc-block-control px-4 py-2 w-fit text-xl">
+                            否則
+                        </div>
+                        <div class="flex transition-all duration-300" id="elseBody">
+                            <div class="w-5 mc-block mc-block-control border-t-0 border-b-0 border-r-0"></div>
+                            <div class="ml-3 my-1">
+                                <div class="mc-block mc-block-motion text-xl py-2 px-4" id="actionFalse">砍樹</div>
+                            </div>
+                        </div>
+
+                        <!-- 封底積木 -->
+                        <div class="mc-block mc-block-control h-5 w-32 border-t-0"></div>
+                    </div>
+                </div>
+
+                <!-- 答題按鈕區 -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button id="btnChoiceTrue" onclick="handleChoice(true)" class="mc-btn p-4 flex flex-col items-center transition-opacity">
+                        <span class="text-[#555] text-sm font-bold block mb-1">選項 A</span>
+                        <span id="btnLabelTrue" class="text-2xl text-[#111]">挖礦</span>
+                    </button>
+                    
+                    <button id="btnChoiceFalse" onclick="handleChoice(false)" class="mc-btn p-4 flex flex-col items-center transition-opacity">
+                        <span class="text-[#555] text-sm font-bold block mb-1">選項 B</span>
+                        <span id="btnLabelFalse" class="text-2xl text-[#111]">砍樹</span>
+                    </button>
+                </div>
+
+                <!-- 求救按鈕 -->
+                <button id="btnHelp" onclick="showHelp()" class="mc-btn w-full p-3 mt-4 flex justify-center items-center gap-2 transition-opacity">
+                    <span class="text-2xl">🆘</span> 
+                    <span class="text-xl text-[#333] font-bold">請求村民支援 (逐步推理)</span>
+                </button>
+                
+                <!-- 結果回饋 -->
+                <div id="feedback" class="text-center text-3xl h-10 mt-2 text-shadow-mc"></div>
+            </div>
+
+            <!-- 右欄：告示牌解說區 -->
+            <div class="order-2 lg:order-3 lg:col-span-4 space-y-6 flex flex-col sticky top-6">
+                <!-- 動態解說面板 -->
+                <div id="explanationArea" class="hidden mc-sign p-6 flex-1 min-h-[350px]">
+                    <h3 class="text-violet-700 text-2xl flex items-center mb-4 pb-3 border-b-4 border-[#704D2C]">
+                        <span class="mr-2">📜</span> 系統訊息
+                    </h3>
+                    <div id="explanationText" class="leading-relaxed space-y-3 text-lg xl:text-xl">
+                        <!-- 解說內容 -->
+                    </div>
+                </div>
+
+                <!-- 靜態提示 (答題前顯示) -->
+                <div id="waitingTip" class="mc-sign p-6 flex-1 flex flex-col items-center justify-center text-center min-h-[350px]">
+                    <span class="text-6xl block mb-4">🤔</span>
+                    <p class="text-violet-700 text-2xl mb-2">確認你的變數槽</p>
+                    <p class="text-slate-800 text-lg">按下按鈕預測結果，<br>這裡會顯示系統判定！</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 成就達成畫面 (Modal) -->
+    <div id="achievementModal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div class="mc-gui p-8 flex flex-col items-center max-w-lg w-full transform scale-110">
+            <h2 class="text-5xl text-violet-700 text-shadow-mc mb-4 text-center">成就達成！</h2>
+            <p class="text-2xl text-slate-800 text-shadow-mc mb-8 text-center">🎉 邏輯生存大師 🎉<br><span class="text-lg text-slate-500 mt-2 block">飽食度滿點，且成功恢復了所有生命值！</span></p>
+            <button onclick="resetGame()" class="mc-btn px-8 py-3 text-2xl">再來一局</button>
+        </div>
+    </div>
+
+    <!-- 死亡畫面 (Modal) -->
+    <div id="gameOverModal" class="hidden fixed inset-0 bg-red-900/90 z-50 flex items-center justify-center p-4">
+        <div class="flex flex-col items-center max-w-lg w-full transform scale-110">
+            <h2 class="text-6xl text-red-500 text-shadow-mc mb-4 text-center">你已經死了</h2>
+            <p class="text-xl text-slate-800 text-shadow-mc mb-8 text-center">邏輯判斷錯誤太多次，飽食度耗盡而餓死了...</p>
+            <button onclick="resetGame()" class="mc-btn px-8 py-3 text-2xl">重生</button>
+        </div>
+    </div>
+
+    <script>
+        let correctResult = false;
+        let currentX = 0;
+        let currentY = 0;
+        let currentType = '';
+        let currentArch = 'advanced'; 
+        let targetNotValue = 5; 
+        let targetNotVar = 'x'; // 新增：紀錄不成立(NOT)題目使用的是 x 還是 y
+        let questionTimer = null; 
+        let currentDifficultySetting = 'random'; 
+        let isAnswered = false; 
+        
+        // 互動推理系統狀態
+        let currentHelpStep = 1; 
+
+        // HP 與 飽食度 系統 (規則交換)
+        let hp = 0;
+        const maxHp = 5;
+        let hunger = 3;
+        const maxHunger = 5;
+
+        // 麥塊專屬動作
+        const actionPairs = [
+            { true: "⛏️ 挖礦", false: "🪓 砍樹" },
+            { true: "🗡️ 攻擊殭屍", false: "🛡️ 舉起盾牌" },
+            { true: "🍖 吃烤豬排", false: "🍎 吃金蘋果" },
+            { true: "🛏️ 睡覺", false: "🚪 開門" },
+            { true: "💎 挖鑽石", false: "🔥 點燃打火石" },
+            { true: "🧪 喝藥水", false: "🏹 射箭" },
+            { true: "🧨 點燃 TNT", false: "🪣 倒水" }
+        ];
+
+        function setDifficulty(level) {
+            currentDifficultySetting = level;
+            
+            ['random', 'basic', 'advanced'].forEach(id => {
+                document.getElementById(`btn-diff-${id}`).classList.remove('active-diff');
+            });
+            document.getElementById(`btn-diff-${level}`).classList.add('active-diff');
+
+            clearTimeout(questionTimer);
+            generateQuestion();
+        }
+
+        function generateQuestion() {
+            isAnswered = false; 
+            currentHelpStep = 1; // 重置求救步驟
+            
+            const btnHelp = document.getElementById('btnHelp');
+            if(btnHelp) {
+                btnHelp.classList.remove('opacity-50', 'pointer-events-none');
+            }
+            
+            // 恢復答題按鈕狀態
+            const btnChoiceTrue = document.getElementById('btnChoiceTrue');
+            const btnChoiceFalse = document.getElementById('btnChoiceFalse');
+            if(btnChoiceTrue) btnChoiceTrue.classList.remove('opacity-50', 'pointer-events-none');
+            if(btnChoiceFalse) btnChoiceFalse.classList.remove('opacity-50', 'pointer-events-none');
+
+            document.getElementById('explanationArea').classList.add('hidden');
+            document.getElementById('waitingTip').classList.remove('hidden');
+            document.getElementById('feedback').innerHTML = "";
+            document.getElementById('feedback').className = "text-center text-3xl h-10 mt-2 text-shadow-mc";
+            
+            currentX = Math.floor(Math.random() * 11);
+            currentY = Math.floor(Math.random() * 11);
+            document.getElementById('valX').textContent = currentX;
+            document.getElementById('valY').textContent = currentY;
+
+            currentType = ['AND', 'OR', 'NOT'][Math.floor(Math.random() * 3)];
+            const logicEl = document.getElementById('questLogic');
+            
+            let isConditionMet = false; 
+
+            if (currentType === 'AND') {
+                logicEl.innerHTML = `x > 5 且 y < 6`;
+                isConditionMet = (currentX > 5 && currentY < 6);
+            } else if (currentType === 'OR') {
+                logicEl.innerHTML = `x < 3 或 y > 7`;
+                isConditionMet = (currentX < 3 || currentY > 7);
+            } else {
+                targetNotVar = Math.random() < 0.5 ? 'x' : 'y';
+                targetNotValue = Math.floor(Math.random() * 6) + 2; 
+                logicEl.innerHTML = `${targetNotVar} = ${targetNotValue} 不成立`;
+                const varValue = targetNotVar === 'x' ? currentX : currentY;
+                isConditionMet = !(varValue === targetNotValue);
+            }
+
+            // 動態凸顯對應的邏輯寶典提示
+            ['AND', 'OR', 'NOT'].forEach(type => {
+                const hintEl = document.getElementById(`hint-${type}`);
+                if (type === currentType) {
+                    hintEl.classList.add('active-hint');
+                    hintEl.classList.remove('inactive-hint');
+                } else {
+                    hintEl.classList.remove('active-hint');
+                    hintEl.classList.add('inactive-hint');
+                }
+            });
+
+            if (currentDifficultySetting === 'random') {
+                currentArch = Math.random() < 0.5 ? 'basic' : 'advanced';
+            } else {
+                currentArch = currentDifficultySetting;
+            }
+            
+            const badge = document.getElementById('archBadge');
+            if(currentArch === 'basic') {
+                badge.innerHTML = '🟢 基礎版 (如果...那麼)';
+            } else {
+                badge.innerHTML = '🔴 進階版 (包含否則)';
+            }
+
+            const actions = actionPairs[Math.floor(Math.random() * actionPairs.length)];
+            document.getElementById('actionTrue').textContent = actions.true;
+            document.getElementById('btnLabelTrue').textContent = actions.true;
+
+            const elseHeader = document.getElementById('elseHeader');
+            const elseBody = document.getElementById('elseBody');
+
+            if (currentArch === 'basic') {
+                elseHeader.classList.add('hidden');
+                elseBody.classList.add('hidden');
+                document.getElementById('btnLabelFalse').textContent = "🚫 什麼都不做";
+                correctResult = isConditionMet ? true : false;
+            } else {
+                elseHeader.classList.remove('hidden');
+                elseBody.classList.remove('hidden');
+                document.getElementById('actionFalse').textContent = actions.false;
+                document.getElementById('btnLabelFalse').textContent = actions.false;
+                correctResult = isConditionMet ? true : false;
+            }
+        }
+
+        /* ---------------- 互動式求救系統邏輯 ---------------- */
+        
+        // 取得當前步驟的題目、正確答案與解析
+        function getHelpStepData(step) {
+            const x = currentX;
+            const y = currentY;
+            let questionText = "";
+            let expectedAnswer = false;
+            let explanationCorrect = "";
+
+            if (currentType === 'AND') {
+                if (step === 1) {
+                    questionText = `檢查左邊條件：x 是 ${x}，請問「x > 5」是 <span class="mc-text-title">對(⭕)</span> 還是 <span class="mc-text-title">錯(❌)</span>？`;
+                    expectedAnswer = (x > 5);
+                    explanationCorrect = `左邊條件「x > 5」是 <span class="text-violet-700">${expectedAnswer ? '對 ✔' : '錯 ✖'}</span>`;
+                } else if (step === 2) {
+                    questionText = `檢查右邊條件：y 是 ${y}，請問「y < 6」是 <span class="mc-text-title">對(⭕)</span> 還是 <span class="mc-text-title">錯(❌)</span>？`;
+                    expectedAnswer = (y < 6);
+                    explanationCorrect = `右邊條件「y < 6」是 <span class="text-violet-700">${expectedAnswer ? '對 ✔' : '錯 ✖'}</span>`;
+                } else if (step === 3) {
+                    questionText = `「且 (AND)」必須兩邊都對。請問整個條件 <span class="mc-text-title">成立(⭕)</span> 還是 <span class="mc-text-title">不成立(❌)</span>？`;
+                    expectedAnswer = (x > 5 && y < 6);
+                    explanationCorrect = `整個條件判斷為： <b class="${expectedAnswer ? 'mc-text-green' : 'mc-text-red'}">${expectedAnswer ? '成立' : '不成立'}</b>`;
+                }
+            } else if (currentType === 'OR') {
+                if (step === 1) {
+                    questionText = `檢查左邊條件：x 是 ${x}，請問「x < 3」是 <span class="mc-text-title">對(⭕)</span> 還是 <span class="mc-text-title">錯(❌)</span>？`;
+                    expectedAnswer = (x < 3);
+                    explanationCorrect = `左邊條件「x < 3」是 <span class="text-violet-700">${expectedAnswer ? '對 ✔' : '錯 ✖'}</span>`;
+                } else if (step === 2) {
+                    questionText = `檢查右邊條件：y 是 ${y}，請問「y > 7」是 <span class="mc-text-title">對(⭕)</span> 還是 <span class="mc-text-title">錯(❌)</span>？`;
+                    expectedAnswer = (y > 7);
+                    explanationCorrect = `右邊條件「y > 7」是 <span class="text-violet-700">${expectedAnswer ? '對 ✔' : '錯 ✖'}</span>`;
+                } else if (step === 3) {
+                    questionText = `「或 (OR)」只要一邊對就好。請問整個條件 <span class="mc-text-title">成立(⭕)</span> 還是 <span class="mc-text-title">不成立(❌)</span>？`;
+                    expectedAnswer = (x < 3 || y > 7);
+                    explanationCorrect = `整個條件判斷為： <b class="${expectedAnswer ? 'mc-text-green' : 'mc-text-red'}">${expectedAnswer ? '成立' : '不成立'}</b>`;
+                }
+            } else {
+                const varValue = targetNotVar === 'x' ? x : y;
+                if (step === 1) {
+                    const isTarget = (varValue === targetNotValue);
+                    questionText = `檢查基礎條件：${targetNotVar} 是 ${varValue}，請問「${targetNotVar} = ${targetNotValue}」是 <span class="mc-text-title">對(⭕)</span> 還是 <span class="mc-text-title">錯(❌)</span>？`;
+                    expectedAnswer = isTarget;
+                    explanationCorrect = `基礎條件「${targetNotVar} = ${targetNotValue}」是 <span class="text-violet-700">${expectedAnswer ? '對 ✔' : '錯 ✖'}</span>`;
+                } else if (step === 2) {
+                    const isTarget = (varValue === targetNotValue);
+                    questionText = `加上「不成立 (NOT)」要把結果反轉！請問整個條件 <span class="mc-text-title">成立(⭕)</span> 還是 <span class="mc-text-title">不成立(❌)</span>？`;
+                    expectedAnswer = !isTarget;
+                    explanationCorrect = `整個條件判斷為： <b class="${expectedAnswer ? 'mc-text-green' : 'mc-text-red'}">${expectedAnswer ? '成立' : '不成立'}</b>`;
+                }
+            }
+            return { questionText, expectedAnswer, explanationCorrect };
+        }
+
+        // 渲染下一個互動步驟
+        function renderNextHelpStep() {
+            const container = document.getElementById('helpStepsContainer');
+            const maxSteps = (currentType === 'NOT') ? 2 : 3;
+
+            if (currentHelpStep <= maxSteps) {
+                const data = getHelpStepData(currentHelpStep);
+                const stepDiv = document.createElement('div');
+                stepDiv.id = `help-step-${currentHelpStep}`;
+                stepDiv.className = "mb-4 border-l-4 border-[#A47644] pl-3 fade-in-step";
+                stepDiv.innerHTML = `
+                    <div class="mb-2 text-slate-800"><b class="text-violet-700">步驟 ${currentHelpStep}：</b> ${data.questionText}</div>
+                    <div class="flex gap-3" id="help-buttons-${currentHelpStep}">
+                        <button onclick="checkHelpAnswer(true, ${data.expectedAnswer})" class="mc-btn px-4 py-1 text-lg flex items-center gap-1">⭕ <span class="text-sm">對/成立</span></button>
+                        <button onclick="checkHelpAnswer(false, ${data.expectedAnswer})" class="mc-btn px-4 py-1 text-lg flex items-center gap-1">❌ <span class="text-sm">錯/不成立</span></button>
+                    </div>
+                    <div id="help-feedback-${currentHelpStep}" class="hidden text-lg mt-2 mc-text-red font-bold"></div>
+                `;
+                container.appendChild(stepDiv);
+                
+                // 滾動到底部確保玩家看得到
+                document.getElementById('explanationArea').scrollTop = document.getElementById('explanationArea').scrollHeight;
+            } else {
+                // 所有推理步驟完成，顯示最終提示
+                const finalStepDiv = document.createElement('div');
+                finalStepDiv.className = "mt-4 pt-3 border-t-2 border-[#5a3d22] fade-in-step";
+                let finalArchText = "";
+                if (currentArch === 'basic') {
+                    finalArchText = `<div class="text-slate-800"><b class="text-violet-700">最後一步：</b> 這是「🟢 基礎版」。若成立就執行，不成立就什麼都不做！</div>`;
+                } else {
+                    finalArchText = `<div class="text-slate-800"><b class="text-violet-700">最後一步：</b> 這是「🔴 進階版」。若成立執行【選項 A】，不成立執行【選項 B】！</div>`;
+                }
+                finalArchText += `<p class="mc-text-title text-2xl animate-pulse text-center mt-4">👉 筆記完成！趕快點擊左側的按鈕作答吧！</p>`;
+                finalStepDiv.innerHTML = finalArchText;
+                container.appendChild(finalStepDiv);
+                
+                document.getElementById('explanationArea').scrollTop = document.getElementById('explanationArea').scrollHeight;
+            }
+        }
+
+        // 檢查玩家點擊的 O/X 是否正確
+        function checkHelpAnswer(userAns, expectedAns) {
+            const btnContainer = document.getElementById(`help-buttons-${currentHelpStep}`);
+            const feedback = document.getElementById(`help-feedback-${currentHelpStep}`);
+
+            if (userAns === expectedAns) {
+                // 答對了
+                const data = getHelpStepData(currentHelpStep);
+                btnContainer.innerHTML = `<span class="mc-text-green text-xl font-bold bg-black/30 px-3 py-1 rounded">✔ ${data.explanationCorrect}</span>`;
+                feedback.classList.add('hidden');
+                
+                currentHelpStep++;
+                // 稍微延遲一小下再出下一步，體驗比較順暢
+                setTimeout(renderNextHelpStep, 400); 
+            } else {
+                // 答錯了
+                feedback.innerHTML = "❌ 哎呀，不對喔！再對照一下變數槽。";
+                feedback.classList.remove('hidden');
+                
+                // 震動特效
+                btnContainer.classList.remove('shake');
+                void btnContainer.offsetWidth; 
+                btnContainer.classList.add('shake');
+            }
+        }
+
+        // 點擊求救按鈕時的初始化
+        function showHelp() {
+            if (isAnswered) return;
+            
+            const btnHelp = document.getElementById('btnHelp');
+            btnHelp.classList.add('opacity-50', 'pointer-events-none');
+            
+            document.getElementById('waitingTip').classList.add('hidden');
+            const explanationArea = document.getElementById('explanationArea');
+            explanationArea.classList.remove('hidden');
+            
+            const explanationText = document.getElementById('explanationText');
+            
+            let hintHtml = `<div class="mb-4 bg-[#704D2C] p-4 border-2 border-[#422A14] shadow-inner">`;
+            hintHtml += `<h4 class="text-violet-700 text-2xl mb-3 border-b-2 border-[#5a3d22] pb-1">🧑‍🌾 村民的推理筆記：</h4>`;
+            hintHtml += `<div id="helpStepsContainer" class="flex flex-col text-lg"></div>`; // 容器
+            hintHtml += `</div>`;
+            
+            explanationText.innerHTML = hintHtml;
+
+            // 開始渲染第一步
+            currentHelpStep = 1;
+            renderNextHelpStep();
+        }
+
+        /* ------------------------------------------------ */
+
+        // 答題後的總結解說 (如果在沒有求救的情況下答題，或者答題後想看完整解說)
+        function getExplanation() {
+            const x = currentX;
+            const y = currentY;
+            let isConditionMet = false;
+
+            let explanation = `<div class="mb-4 bg-[#704D2C] p-3 border-2 border-[#422A14]">`;
+            
+            if (currentType === 'AND') {
+                const xCond = x > 5;
+                const yCond = y < 6;
+                isConditionMet = xCond && yCond;
+                explanation += `<div class="mb-2 text-slate-800">變數槽 x = ${x} <span class="text-xs">(${xCond ? '大於5 ✔' : '未大於5 ✖'})</span><br>變數槽 y = ${y} <span class="text-xs">(${yCond ? '小於6 ✔' : '未小於6 ✖'})</span></div>`;
+                explanation += `<span class="mc-text-title text-base">「且 (AND)」必須<b>兩邊都達標</b>才算成立。</span>`;
+            } else if (currentType === 'OR') {
+                const xCond = x < 3;
+                const yCond = y > 7;
+                isConditionMet = xCond || yCond;
+                explanation += `<div class="mb-2 text-slate-800">變數槽 x = ${x} <span class="text-xs">(${xCond ? '小於3 ✔' : '未小於3 ✖'})</span><br>變數槽 y = ${y} <span class="text-xs">(${yCond ? '大於7 ✔' : '未大於7 ✖'})</span></div>`;
+                explanation += `<span class="mc-text-title text-base">「或 (OR)」只要<b>其中一邊達標</b>就算成立。</span>`;
+            } else {
+                const varValue = targetNotVar === 'x' ? x : y;
+                const isTarget = varValue === targetNotValue;
+                isConditionMet = !isTarget;
+                explanation += `<div class="mb-2 text-slate-800">變數槽 ${targetNotVar} = ${varValue}。<br>「${targetNotVar} = ${targetNotValue}」為 <b class="mc-text-title">${isTarget ? '真 ✔' : '假 ✖'}</b>。</div>`;
+                explanation += `<span class="mc-text-title text-base">加上「不成立 (NOT)」後，結果完全反轉。</span>`;
+            }
+            explanation += `</div>`;
+
+            explanation += `<div class="text-xl mb-3 flex items-center gap-2">👉 判定結果：<span class="${isConditionMet ? 'mc-text-green' : 'mc-text-red'}">${isConditionMet ? '條件成立' : '條件不成立'}</span></div>`;
+            
+            if (currentArch === 'basic') {
+                explanation += isConditionMet 
+                    ? `<span class="text-slate-800 block">成立時，執行「如果」內的動作。</span>` 
+                    : `<span class="text-slate-800 block">不成立，且無「否則」，因此<b>什麼都不做</b>！</span>`;
+            } else {
+                explanation += isConditionMet 
+                    ? `<span class="text-slate-800 block">成立時，執行「如果」內的動作。</span>` 
+                    : `<span class="text-slate-800 block">不成立，轉而執行「否則」內的動作。</span>`;
+            }
+
+            return explanation;
+        }
+
+        // 玩家回答最終答案
+        function handleChoice(userChoice) {
+            if (isAnswered) return; 
+            isAnswered = true; 
+            
+            const btnHelp = document.getElementById('btnHelp');
+            if(btnHelp) {
+                btnHelp.classList.add('opacity-50', 'pointer-events-none');
+            }
+
+            // 答題後鎖定選項按鈕，避免誤按
+            const btnChoiceTrue = document.getElementById('btnChoiceTrue');
+            const btnChoiceFalse = document.getElementById('btnChoiceFalse');
+            if(btnChoiceTrue) btnChoiceTrue.classList.add('opacity-50', 'pointer-events-none');
+            if(btnChoiceFalse) btnChoiceFalse.classList.add('opacity-50', 'pointer-events-none');
+
+            const feedback = document.getElementById('feedback');
+            const explanationArea = document.getElementById('explanationArea');
+            const explanationText = document.getElementById('explanationText');
+            const waitingTip = document.getElementById('waitingTip');
+            
+            waitingTip.classList.add('hidden');
+            explanationArea.classList.remove('hidden');
+            
+            // 答題後顯示完整解析 (覆蓋掉推理過程，以免太長)
+            explanationText.innerHTML = getExplanation();
+
+            if (userChoice === correctResult) {
+                let rewardText = "";
+                if (hunger < maxHunger) {
+                    hunger++;
+                    rewardText = "<span class='text-xl mc-text-title'>+1 飽食度 🍖</span>";
+                } else if (hp < maxHp) {
+                    hp++;
+                    rewardText = "<span class='text-xl mc-text-green'>+1 生命值 ❤️</span>";
+                }
+
+                feedback.innerHTML = `🎯 挑戰成功！ ${rewardText}`;
+                feedback.className = "text-center text-3xl h-10 mt-2 text-shadow-mc mc-text-green correct-pop";
+            } else {
+                if (hp > 0) {
+                    hp--;
+                    feedback.innerHTML = "💥 挑戰失敗... <span class='text-xl mc-text-red'>-1 生命值 💔</span>";
+                } else {
+                    hunger--;
+                    feedback.innerHTML = "💥 挑戰失敗... <span class='text-xl mc-text-red'>-1 飽食度 💨</span>";
+                }
+                feedback.className = "text-center text-3xl h-10 mt-2 text-shadow-mc mc-text-red shake";
+            }
+
+            updateStatusUI();
+            
+            // 判斷遊戲結束或成就達成 (延遲一下讓玩家看回饋)
+            if (hp >= maxHp) {
+                clearTimeout(questionTimer);
+                setTimeout(() => {
+                    document.getElementById('achievementModal').classList.remove('hidden');
+                }, 1500);
+                return;
+            } else if (hunger <= 0) {
+                clearTimeout(questionTimer);
+                setTimeout(() => {
+                    document.getElementById('gameOverModal').classList.remove('hidden');
+                }, 1500);
+                return;
+            }
+            
+            clearTimeout(questionTimer);
+            questionTimer = setTimeout(generateQuestion, 5000); 
+        }
+
+        // 更新 HP 與飽食度 UI
+        function updateStatusUI() {
+            let hpHtml = "";
+            for (let i = 0; i < maxHp; i++) {
+                hpHtml += (i < hp) ? "❤️" : "🖤";
+            }
+            document.getElementById('hp-display').innerHTML = hpHtml;
+
+            let hungerHtml = "";
+            for (let i = 0; i < maxHunger; i++) {
+                hungerHtml += (i < hunger) ? "🍖" : "🖤";
+            }
+            document.getElementById('hunger-display').innerHTML = hungerHtml;
+        }
+
+        // 重置遊戲
+        function resetGame() {
+            hp = 0;
+            hunger = 3;
+            document.getElementById('achievementModal').classList.add('hidden');
+            document.getElementById('gameOverModal').classList.add('hidden');
+            updateStatusUI();
+            generateQuestion();
+        }
+
+        window.onload = () => {
+            updateStatusUI();
+            setDifficulty('random'); 
+        };
+    </script>
+</body>
+</html>

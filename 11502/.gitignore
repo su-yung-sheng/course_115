@@ -1,0 +1,16 @@
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 推送檢查產生的暫存報告
+_check_report.txt
+
+# Node（僅檢查腳本臨時用，不應進版控）
+node_modules/
+package.json
+package-lock.json
+
+# OCR 測資截圖（本機測試用，不進版控、不發佈；之後會移除）
+*_成功.png
+*_失敗.png
+think_demo/

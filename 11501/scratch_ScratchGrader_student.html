@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scratch 作業 自評闖關站</title>
+<style>
+  :root{
+    --bg1:#6a8dff; --bg2:#9b6bff; --card:#fff; --ink:#2c3e50; --muted:#7f8c8d;
+    --ok:#2ecc71; --warn:#f39c12; --err:#e74c3c; --gold:#ffcb2d; --line:#eceff4;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:20px;min-height:100vh;color:var(--ink);
+       font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.6;
+       background:linear-gradient(135deg,var(--bg1),var(--bg2)) fixed}
+  .wrap{max-width:640px;margin:0 auto}
+  .hero{text-align:center;color:#fff;margin-bottom:18px}
+  .hero h1{font-size:1.6rem;margin:0 0 4px}
+  .hero p{margin:0;opacity:.9;font-size:.9rem}
+  .card{background:var(--card);border-radius:18px;padding:22px;margin-bottom:16px;
+        box-shadow:0 8px 24px rgba(0,0,0,.14)}
+  .quest{background:#f0f4ff;border:2px dashed #b9c8ff;border-radius:14px;padding:14px 16px;font-size:.88rem}
+  .quest h3{margin:0 0 6px;font-size:.95rem;color:var(--bg2)}
+  /* 老師在教師端逐行輸入的評分重點，要保留換行才好讀 */
+  #themeText,#rulesText{white-space:pre-line;line-height:1.7}
+  label{display:block;font-size:.82rem;font-weight:700;margin:12px 0 5px}
+  input[type=text]{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;font-size:.9rem}
+  .drop{border:3px dashed #c3ccff;border-radius:16px;padding:26px 16px;text-align:center;
+        cursor:pointer;transition:.15s;background:#fafbff}
+  .drop:hover,.drop.drag{border-color:var(--bg1);background:#eef2ff}
+  .drop .big{font-size:2.4rem}
+  .drop .fn{font-weight:700;color:var(--bg2);margin-top:6px;word-break:break-all}
+  button{cursor:pointer;border:none;border-radius:12px;padding:13px 18px;font-size:1rem;
+         font-weight:800;font-family:inherit;width:100%;color:#fff;
+         background:linear-gradient(135deg,var(--bg1),var(--bg2));transition:.15s}
+  button:hover{filter:brightness(1.06)} button:disabled{opacity:.5;cursor:not-allowed}
+  .status{text-align:center;font-size:.85rem;margin-top:10px;min-height:1.2em}
+  .status.err{color:var(--err)} .status.busy{color:var(--warn)}
+  .light{display:inline-flex;align-items:center;gap:8px;font-size:.85rem;font-weight:700;
+         justify-content:center;width:100%;margin-bottom:12px;color:var(--muted)}
+  .dot{width:13px;height:13px;border-radius:50%;background:#c9cfda;transition:.2s}
+  .dot.on{background:var(--ok);box-shadow:0 0 9px var(--ok)}
+  .dot.off{background:var(--err);box-shadow:0 0 9px var(--err)}
+  .dot.wait{background:var(--warn);box-shadow:0 0 9px var(--warn)}
+  /* 結果 */
+  .result{display:none}
+  .scorebox{text-align:center;margin-bottom:14px}
+  .scorenum{font-size:3.2rem;font-weight:900;line-height:1}
+  .stars{font-size:1.5rem;letter-spacing:4px;margin-top:6px}
+  .bar{height:14px;border-radius:10px;background:#eef0f4;overflow:hidden;margin:12px 0}
+  .bar>span{display:block;height:100%;width:0;border-radius:10px;transition:width 1s ease}
+  .sec{border-left:4px solid var(--bg1);background:#f7f9ff;border-radius:0 10px 10px 0;
+       padding:10px 14px;margin:10px 0;font-size:.9rem;white-space:pre-wrap}
+  .sec h4{margin:0 0 4px;font-size:.85rem;color:var(--bg2)}
+  .sec.good{border-color:var(--ok);background:#f0fbf4}
+  .sec.bad{border-color:var(--warn);background:#fff8ec}
+  .again{margin-top:10px;background:#eef1f6;color:var(--ink)}
+  .setup{font-size:.8rem;color:var(--muted);text-align:center;margin-top:8px}
+  @media(max-width:480px){body{padding:12px}.card{padding:16px}}
+</style>
+<!-- 全站統一字型 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<!-- 全站共用計分規則（單一來源） -->
+<script src="config.js"></script>
+  <script src="../shared/grading.js"></script>
+<style>
+/* === 全站紙膠帶手作風套件（以 hub 為準） === */
+html, body, button, input, select { font-family:'Noto Sans TC', system-ui, sans-serif; }
+body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(120,113,108,.06) 1px,transparent 1px) !important; background-size:26px 26px !important; }
+.underline-doodle{background:linear-gradient(transparent 62%, rgba(250,204,21,.55) 62%)}
+#back-to-hub{position:fixed;top:14px;left:14px;z-index:99999;display:inline-flex;align-items:center;gap:6px;background:#1e293b;color:#fff;font-weight:700;font-size:14px;padding:8px 14px;border-radius:9999px;text-decoration:none;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+</style>
+  <!-- 身分守門：未從闖關基地登入者導回入口 -->
+  <script src="../shared/guard.js"></script>
+</head>
+<body>
+<a id="back-to-hub" href="hub.html" title="返回闖關基地">← 返回基地</a>
+<script>
+/* 被嵌入 iframe（程式設計頁）時：隱藏返回基地按鈕，並取消 min-height，
+   讓外層可以把 iframe 調成內容高度 → 只用外層頁面的捲軸，不會有內部捲軸 */
+if(window.self!==window.top){
+  var _b=document.getElementById('back-to-hub'); if(_b) _b.style.display='none';
+  document.documentElement.style.minHeight='0';
+  document.body.style.minHeight='0';
+  document.body.style.padding='12px';
+  document.body.style.background='transparent';
+  document.body.style.backgroundImage='none';
+  /* 嵌入時放寬版面寬度，說明文字才不會擠成好幾行 */
+  var _w=document.querySelector('.wrap'); if(_w) _w.style.maxWidth='100%';
+}
+</script>
+<div class="wrap">
+  <div class="hero">
+    <h1>🎮 <span class="underline-doodle">Scratch 作業自評闖關站</span></h1>
+    <p>上傳你的 <b>.sb3</b> 作品，AI 助教立刻幫你檢查任務完成度，並自動記錄星星！</p>
+  </div>
+
+  <div class="card">
+    <div class="light"><span class="dot wait" id="dot"></span><span id="connText">偵測連線中…</span></div>
+    <div class="quest">
+      <h3>🏁 本次任務</h3>
+      <div id="themeText">載入中...</div>
+      <div id="rulesText" style="margin-top:8px;color:var(--muted);font-size:.82rem"></div>
+    </div>
+
+    <label>這是第幾關的作品？</label>
+    <div id="unitFixed" style="display:none;font-weight:700;padding:10px 12px;background:#eef1f6;border-radius:10px"></div>
+    <select id="unitSelect"></select>
+
+    <label>你的學號</label>
+    <input type="text" id="studentId" placeholder="14XXXXX" inputmode="numeric" maxlength="7" autocomplete="off">
+    <div id="nameHint" style="font-size:.82rem;color:var(--muted);margin-top:4px"></div>
+
+    <label>上傳你的作品</label>
+    <div class="drop" id="drop">
+      <div class="big">📦</div>
+      <div>點這裡選擇，或把 .sb3 檔拖進來</div>
+      <div class="fn" id="fileName"></div>
+    </div>
+    <input type="file" id="fileInput" accept=".sb3" style="display:none">
+
+    <button id="gradeBtn" style="margin-top:16px" onclick="grade()" disabled>🚀 開始自評闖關</button>
+    <div class="status" id="status"></div>
+    <div class="setup" id="setupHint"></div>
+  </div>
+
+  <!-- 結果卡 -->
+  <div class="card result" id="resultCard">
+    <div class="scorebox">
+      <div class="scorenum" id="scoreNum">–</div>
+      <div class="stars" id="stars"></div>
+      <div class="bar"><span id="scoreBar"></span></div>
+      <div id="scoreMsg" style="font-weight:700"></div>
+    </div>
+    <div class="sec good" id="secCreative"><h4>💡 創意亮點</h4><div id="creativeText"></div></div>
+    <div class="sec" id="secComment"><h4>📝 助教講評</h4><div id="commentText"></div></div>
+    <div class="sec bad" id="secDeduct"><h4>📉 可以再加強的地方</h4><div id="deductText"></div></div>
+    <button class="again" onclick="reset()">🔄 修改後再測一次</button>
+  </div>
+</div>
+
+<script>
+// 內建伺服器網址（自動偵測，學生不需填寫）
+const SERVER_URL = window.CONFIG.SERVER_URL;                 // 設定集中在 config.js
+// 作品備份（Google Apps Script）：2⭐ 以上自動把 .sb3 存到雲端硬碟
+const GAS_UPLOAD_URL = window.CONFIG.GAS_UPLOAD_URL;
+const TERM = window.CONFIG.TERM;   // 學期資料夾
+const MAX_UPLOAD_MB = 8;           // 超過就不備份（避免 GAS 失敗）
+const $ = id => document.getElementById(id);
+const base = () => SERVER_URL;
+const H = {'ngrok-skip-browser-warning':'true'};
+let chosen=null, showScore=true;
+function setLight(state,text){ $('dot').className='dot '+state; $('connText').textContent=text; }
+
+// 10 個程式設計單元（與「流程圖與程式設計」頁一致）
+const UNITS = window.CONFIG.unitOptions();   // 單元清單集中在 config.js
+// 由網址 ?unit=2-1-2 指定關卡（從「程式設計」頁點進來會自動帶入）；沒帶就讓學生自己選
+const UNIT_PARAM = new URLSearchParams(location.search).get('unit') || '';
+let UNIT = UNIT_PARAM;
+(function initUnit(){
+  const sel=$('unitSelect'), fixed=$('unitFixed');
+  const found=UNITS.find(u=>u[0]===UNIT_PARAM);
+  if(found){
+    UNIT=found[0]; fixed.style.display='block'; fixed.textContent='🎯 '+found[1]; sel.style.display='none';
+  }else{
+    sel.innerHTML=UNITS.map(u=>'<option value="'+u[0]+'">'+u[1]+'</option>').join('');
+    UNIT=sel.value; sel.onchange=()=>{ UNIT=sel.value; loadTask(); };   // 換關卡→重新載入該關的任務與標準
+  }
+})();
+// 沿用 hub 登入過的學號，學生不必重打
+(function initSid(){
+  const saved=localStorage.getItem('sid11501');
+  const inp=$('studentId');
+  if(saved && /^14\d{5}$/.test(saved)){
+    // 已從闖關基地登入 → 直接帶入且不可修改（避免交到別人的學號）
+    inp.value=saved;
+    inp.readOnly=true;
+    inp.style.background='#eef1f6';
+    inp.style.color='#5b667a';
+    inp.style.cursor='not-allowed';
+    inp.title='學號由闖關基地帶入，不可修改';
+    setTimeout(()=>showName(saved),1200);
+  }
+})();
+async function showName(sid){
+  if(!/^14\d{5}$/.test(sid)){ $('nameHint').textContent=''; return; }
+  const n = window.lookupName ? await window.lookupName(sid) : null;
+  $('nameHint').textContent = n ? ('✅ '+n) : '⚠️ 名冊查無此學號，請確認或找老師';
+}
+$('studentId').addEventListener('blur', e=>showName(e.target.value.trim()));
+
+// 拖放與選檔
+const drop=$('drop'), fi=$('fileInput');
+drop.onclick=()=>fi.click();
+fi.onchange=()=>pick(fi.files[0]);
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag');}));
+drop.addEventListener('drop',e=>{ if(e.dataTransfer.files[0]) pick(e.dataTransfer.files[0]); });
+function pick(f){
+  if(!f) return;
+  if(!f.name.toLowerCase().endsWith('.sb3')){ setStatus('請選擇 .sb3 檔案喔！','err'); return; }
+  chosen=f; $('fileName').textContent='✅ '+f.name; $('gradeBtn').disabled=false; setStatus('');
+}
+function setStatus(m,c){ const e=$('status'); e.textContent=m; e.className='status '+(c||''); }
+
+// 讀成 base64（去掉 data:...;base64, 前綴）
+function fileToBase64(f){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(String(r.result).split(',')[1]);
+    r.onerror=rej;
+    r.readAsDataURL(f);
+  });
+}
+// 2⭐ 以上才備份作品到雲端硬碟：學期/班級/座號/關卡_分數.sb3
+async function backupWork(file, sid, unit, score){
+  if(!file || !GAS_UPLOAD_URL) return null;
+  if(file.size > MAX_UPLOAD_MB*1024*1024){
+    console.warn('檔案過大，略過備份'); return null;
+  }
+  const info = window.lookupStudent ? await window.lookupStudent(sid) : null;
+  if(!info || !info.cls || !info.no){ console.warn('名冊查無班級座號，略過備份'); return null; }
+  try{
+    const idx = UNITS.findIndex(x => x[0] === unit);       // 關卡編號 01～10
+    const payload = {
+      kind:'sb3', term:TERM, key: window.CONFIG.GAS_UPLOAD_KEY,
+      classRoom:info.cls, seatNo:info.no, name:info.name,
+      unit, unitNo: idx >= 0 ? String(idx + 1) : '', score,
+      base64: await fileToBase64(file)
+    };
+    const r = await fetch(GAS_UPLOAD_URL,{ method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload) });
+    const j = await r.json();
+    if(j.success && j.url){
+      if(window.saveWorkLink) await window.saveWorkLink(sid, unit, j.url);
+      return j.url;
+    }
+  }catch(e){ console.error('作品備份失敗', e); }
+  return null;
+}
+
+// 載入任務資訊 + 自動偵測連線（紅/綠燈）
+async function loadTask(){
+  setLight('wait','偵測連線中…');
+  try{
+    const r=await fetch(base()+'/api/student/config?unit='+encodeURIComponent(UNIT||'')
+                        +'&term='+encodeURIComponent(window.CONFIG.TERM),{headers:H});
+    const j=await r.json();
+    if(j.ok){
+      const c=j.config; showScore=c.student_show_score!==false;
+      $('themeText').textContent=c.theme||'（老師尚未設定作業主題）';
+      $('rulesText').textContent=c.rules?('評分重點：\n'+c.rules):'';
+      if(!c.has_api_key){
+        $('setupHint').textContent='⚠️ 老師尚未完成設定，暫時無法自評。';
+        setLight('on','🟢 已連線（老師尚未完成設定）');
+      }else{
+        setLight('on','🟢 已連線，可以開始自評');
+      }
+    } else { $('themeText').textContent='無法載入任務資訊'; setLight('off','🔴 伺服器回應異常'); }
+  }catch(e){
+    $('themeText').textContent='⚠️ 連不上伺服器，請稍候再試或問老師。';
+    setLight('off','🔴 未連線（老師的伺服器可能還沒開）');
+  }
+}
+loadTask();
+setInterval(loadTask, 20000);  // 每 20 秒自動重新偵測
+
+async function grade(){
+  if(!chosen) return;
+  const sid=$('studentId').value.trim();
+  if(!/^14\d{5}$/.test(sid)){ setStatus('請輸入 7 位數字、以 14 開頭的學號！','err'); $('studentId').focus(); return; }
+  localStorage.setItem('sid11501', sid);   // 記住學號，其他關卡也能沿用
+  $('gradeBtn').disabled=true;
+
+  // 先問一下目前排隊人數，讓學生知道自己排第幾個
+  let myPos = 1;
+  try{
+    const q = await (await fetch(base()+'/api/student/queue',{headers:H,cache:'no-store'})).json();
+    myPos = (Number(q.pending)||0) + 1;
+  }catch(e){}
+  setStatus(myPos>1
+    ? `🧠 已送出！你排第 ${myPos} 位，前面還有 ${myPos-1} 位同學（約 ${Math.round((myPos-1)*25/60*10)/10} 分鐘）`
+    : '🧠 AI 助教正在仔細檢查你的積木…（約 20～40 秒）','busy');
+
+  // 等待期間持續更新前面還有幾位
+  const qTimer = setInterval(async ()=>{
+    try{
+      const q = await (await fetch(base()+'/api/student/queue',{headers:H,cache:'no-store'})).json();
+      const ahead = Math.max(0, (Number(q.pending)||1) - 1);
+      setStatus(ahead>0
+        ? `🧠 批改中…前面還有 ${ahead} 位同學，請稍候不要重複按`
+        : '🧠 AI 助教正在檢查你的積木…快好了！','busy');
+    }catch(e){}
+  }, 4000);
+  const fd=new FormData(); fd.append('file',chosen); fd.append('student_id',sid); fd.append('unit',UNIT||'');
+  fd.append('term', window.CONFIG.TERM);        // 共用後端：批改結果寫回本學期的集合
+  try{
+    const r=await fetch(base()+'/api/student/grade',{method:'POST',headers:H,body:fd});
+    const j=await r.json();
+    clearInterval(qTimer);
+    if(!j.ok){ setStatus('❌ '+(j.error||'自評失敗'),'err'); $('gradeBtn').disabled=false; return; }
+    render(j.result); setStatus('');
+    // ⭐ 自動把星星記錄到統一進度（星等規則來自 shared/grading.js）
+    try{
+      const rep = await window.reportScratch(sid, UNIT, j.result.score);
+      if(rep){
+        if(rep.star === 0 && rep.prev === 0){
+          setStatus('⚠️ 未達 75 分，這一關還沒通關（至少要 2 星）。看看下面的建議修改後，再上傳一次！','err');
+        }else if(rep.improved){
+          setStatus('⭐ 已記錄 ' + rep.star + ' 星！程式設計目前共 ' + rep.total + ' 星（通關 ' + rep.done + ' 關）');
+        }else{
+          setStatus('已記錄。這一關之前的成績更好，維持原星數；目前共 ' + rep.total + ' 星');
+        }
+        // 2⭐ 以上、且「分數比上次高」才備份（每人每關只留一份最佳作品）
+        if(rep.star >= 2 && rep.scoreImproved){
+          const prevMsg = $('status').textContent;
+          setStatus(prevMsg + '　📤 作品備份中…');
+          const url = await backupWork(chosen, sid, UNIT, j.result.score);
+          setStatus(prevMsg + (url ? '　📦 作品已備份到雲端硬碟' : '　⚠️ 作品備份失敗（成績已記錄，請告訴老師）'), url?'':'err');
+        }
+      }
+    }catch(err){ setStatus('⚠️ 星星記錄失敗（分數仍有效，請告訴老師）','err'); }
+  }catch(e){ clearInterval(qTimer); setStatus('❌ '+e.message,'err'); $('gradeBtn').disabled=false; }
+}
+
+function render(d){
+  $('resultCard').style.display='block';
+  const sc = (d.score===null||d.score===undefined)?null:d.score;
+  if(sc===null || !showScore){
+    $('scoreNum').textContent='✓';
+    $('stars').textContent=''; $('scoreBar').style.width='100%';
+    $('scoreBar').style.background='var(--bg1)';
+    $('scoreMsg').textContent='已完成檢查！看看下方助教的回饋吧。';
+  }else{
+    const pct=Math.max(0,Math.min(100,sc));
+    let color=sc>=90?'var(--ok)':sc>=70?'var(--warn)':'var(--err)';
+    $('scoreNum').textContent=sc+' 分'; $('scoreNum').style.color=color;
+    const full=Math.round(pct/20);
+    $('stars').textContent='★'.repeat(full)+'☆'.repeat(5-full);
+    setTimeout(()=>{ $('scoreBar').style.width=pct+'%'; $('scoreBar').style.background=color; },80);
+    $('scoreMsg').textContent = sc>=90?'太厲害了，幾乎完美！🎉':sc>=70?'不錯喔，再補強一下就更棒了！💪':sc>=60?'及格了！還有進步空間，加油！':'再挑戰一次，你可以的！🔥';
+  }
+  fill('secCreative','creativeText',d.creative_highlights);
+  $('commentText').textContent=d.comments||'—';
+  fill('secDeduct','deductText',d.deducted_items);
+  $('resultCard').scrollIntoView({behavior:'smooth'});
+}
+function fill(sec,txt,val){
+  const empty=!val||val==='無';
+  $(sec).style.display=empty?'none':'block';
+  if(!empty) $(txt).textContent=val;
+}
+function reset(){
+  $('resultCard').style.display='none'; $('scoreBar').style.width='0';
+  chosen=null; fi.value=''; $('fileName').textContent=''; $('gradeBtn').disabled=true;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+
+<!-- ⭐ 成績回報：把 AI 批改分數換算成星星，寫入統一進度 11501-progress -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+  const firebaseConfig = window.CONFIG.FIREBASE;
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  signInAnonymously(auth).catch(e => console.error('匿名登入失敗', e));
+
+  // 查名冊（姓名讓學生確認沒打錯學號；班級座號給作品備份用）
+  window.lookupStudent = async function (sid) {
+    try {
+      const s = await getDoc(doc(db, window.CONFIG.COLLECTIONS.ROSTER, sid));
+      if (!s.exists()) return null;
+      const d = s.data();
+      return { name: d.name || '', cls: String(d.cls || ''), no: String(d.no || '') };
+    } catch (e) { return null; }
+  };
+  window.lookupName = async function (sid) {
+    const info = await window.lookupStudent(sid);
+    return info ? info.name : null;
+  };
+
+  // 寫入該單元的「最佳星數」，並累加成 modules.scratch（10 關滿 30 星）
+  window.reportScratch = async function (sid, unit, score) {
+    if (!sid || !unit || !window.GRADING) return null;
+    const star = window.GRADING.scratchStar(score);
+    const ref = doc(db, '11501-progress', sid);
+    let unitStars = {}, unitScores = {};
+    try {
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const m = (snap.data().modules || {}).scratch || {};
+        unitStars = Object.assign({}, m.unitStars || {});
+        unitScores = Object.assign({}, m.unitScores || {});
+      }
+    } catch (e) { /* 讀不到就當第一次 */ }
+
+    const prev = Number(unitStars[unit] || 0);
+    const prevScore = Number(unitScores[unit] || 0);
+    const nowScore = Number(score) || 0;
+    unitScores[unit] = Math.max(prevScore, nowScore);   // 保留最佳分數
+    unitStars[unit] = Math.max(prev, star);          // 取最佳，不會因重測變低
+    const t = window.GRADING.scratchTotal(unitStars);
+    const now = Date.now();
+    await setDoc(ref, {
+      studentId: sid,
+      modules: {
+        scratch: {
+          status: t.done >= 10 ? 'pass' : 'in-progress',
+          level: t.done, stars: t.stars, unitStars, unitScores,
+          source: 'auto', updatedAt: now
+        }
+      },
+      // 供每週評分統計：只記錄「本次新增的星數」（重測沒進步就是 0）
+      history: arrayUnion({ module: 'scratch', unit, score: nowScore, at: now,
+                            stars: Math.max(0, star - prev) }),
+      updatedAt: now
+    }, { merge: true });
+    return { star, prev, prevScore, score: nowScore, total: t.stars, done: t.done,
+             improved: star > prev, scoreImproved: nowScore > prevScore };
+  };
+
+  // 把作品備份連結記到進度裡（教師端可查閱）
+  window.saveWorkLink = async function (sid, unit, url) {
+    if (!sid || !unit || !url) return;
+    try {
+      await setDoc(doc(db, '11501-progress', sid), {
+        modules: { scratch: { unitFiles: { [unit]: url }, updatedAt: Date.now() } },
+        updatedAt: Date.now()
+      }, { merge: true });
+    } catch (e) { console.error('作品連結儲存失敗', e); }
+  };
+</script>
+</body>
+</html>

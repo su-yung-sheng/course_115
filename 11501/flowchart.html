@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>流程圖與程式設計｜115學年上學期</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+    body{ font-family:'Noto Sans TC',sans-serif; background:#f1f5f9; color:#1e293b; }
+    @keyframes pop{0%{opacity:0;transform:translateY(10px) scale(.97)}100%{opacity:1;transform:none}}
+    .pop{animation:pop .35s ease-out both}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+    .shake{animation:shake .3s}
+  </style>
+<style>
+/* === 全站紙膠帶手作風套件（以 hub 為準，勿重複注入） === */
+body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(120,113,108,.06) 1px,transparent 1px) !important; background-size:26px 26px !important; }
+.tape{position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(-3deg);width:76px;height:26px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.08);background:rgba(250,204,21,.3);z-index:5}
+.underline-doodle{background:linear-gradient(transparent 62%, rgba(250,204,21,.55) 62%)}
+/* 螢光筆畫重點：閱讀頁自動標示「」內的關鍵詞 */
+.hl{background:linear-gradient(transparent 52%, rgba(250,204,21,.65) 52%);font-weight:800;padding:0 1px;border-radius:2px}
+.hl-b{background:linear-gradient(transparent 52%, rgba(147,197,253,.7) 52%);font-weight:800;padding:0 1px;border-radius:2px}
+</style>
+  <!-- 全站共用設定（要在 guard 之前載入）-->
+  <script src="config.js"></script>
+  <!-- 身分守門：未從闖關基地登入者導回入口 -->
+  <script src="../shared/guard.js"></script>
+</head>
+<body class="min-h-screen">
+  <a href="hub.html" title="返回闖關基地" class="fixed top-4 left-4 z-50 inline-flex items-center gap-1.5 bg-slate-800 text-white font-bold text-sm px-3.5 py-2 rounded-full shadow-lg hover:bg-slate-700 transition">← 返回基地</a>
+  <div id="app"></div>
+
+  <!-- 全站共用計分規則（單一來源） -->
+  <script src="../shared/grading.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = window.CONFIG.FIREBASE;   // 設定集中在 config.js
+    const COLLECTION = window.CONFIG.COLLECTIONS.PROGRESS;
+    const ROSTER = window.CONFIG.COLLECTIONS.ROSTER;
+    const SAVED_KEY = 'sid11501';
+    const STARS_PER_UNIT = (window.GRADING && window.GRADING.FLOWCHART_PER_UNIT) || 2;   // 規則定義在 shared/grading.js
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // 10 個單元：圖卡資訊 + 閱讀資料 + 正確流程圖步驟（依序）
+    const UNITS = [
+      { id:'2-1-1A', no:1, title:'班級置物櫃', subtitle:'陣列概念與基礎操作', icon:'🗄️', color:'blue',
+        desc:'用「清單（陣列）」當成班級置物櫃，練習清單專屬積木：新增、刪除、插入與取代，模擬置物櫃的資料管理。',
+        details:['清單是整個置物櫃，索引值是格子編號，項目是存放的物品。','「添加」把物品放到最後空位；「插入」放到指定編號會把後面往後推。','「取代」定位指定格子，把舊物換成新物。','「刪除」清空某格；「全部刪除」把清單重置。'],
+        steps:['開始','建立清單（置物櫃）','用「添加」把物品放到最後一格','用「插入」把物品放到指定編號','用「取代」更新指定格子的物品','用「刪除」清空指定格子','用「全部刪除」重置清單','結束'] },
+      { id:'2-1-1B', no:2, title:'集合點名', subtitle:'清單查詢與邏輯判斷', icon:'👥', color:'cyan',
+        desc:'練習清單的讀取與判斷：檢查名單裡有沒有某人、班級總共幾人，回報出席狀況。',
+        details:['用「第幾項」取得內容，或反查「資料在第幾項」。','用「長度」得到班級總人數。','用「包含某人嗎」判斷學生是否在名單內。','整合結果，說出總人數與點名資訊。'],
+        steps:['開始','用「長度」取得班級總人數','輸入要查詢的姓名','判斷：清單包含這個人嗎？','是→說出「在名單內、第幾號」','否→說出「不在名單內」','結束'] },
+      { id:'2-1-2', no:3, title:'演奏小星星', subtitle:'陣列應用與清單播放', icon:'🎵', color:'purple',
+        desc:'把音樂簡譜存進清單，用計次迴圈依序取出音階播放。',
+        details:['把音階數值匯入清單，建立連續資料。','用單一清單集中管理整首歌的音階。','依清單長度執行迴圈，逐項取出並播放。','用變數當索引，控制目前演奏到第幾項。'],
+        ref:{ href:'11501_music.html', title:'簡譜與 Scratch 音階', note:'不會看簡譜、不知道音階怎麼變積木？先看這份。' },
+        steps:['開始','把音階匯入清單','編號設為 1','重複（清單長度）次','　演奏清單第（編號）項的音','　編號 = 編號 ＋ 1','結束'] },
+      { id:'2-1-3', no:4, title:'計算成績', subtitle:'陣列應用與資料運算', icon:'🧮', color:'green',
+        desc:'把成績存進清單，用迴圈把每一筆加總，再算平均、判斷及格。',
+        details:['把成績匯入清單。','用「第幾項」變數當索引讀取成績。','依清單長度跑迴圈，逐一把成績累加到總分。','總分 ÷ 清單長度算平均，並判斷是否及格。'],
+        steps:['開始','清空清單、總分設為 0','把成績匯入清單','重複（清單長度）次：總分 = 總分 ＋ 清單第 i 項','平均 = 總分 ÷ 清單長度','判斷：平均 ≥ 60？','是→顯示「及格」；否→顯示「不及格」','結束'] },
+      { id:'2-1-4', no:5, title:'抽號碼', subtitle:'陣列應用與隨機抽籤', icon:'🔢', color:'orange',
+        desc:'建立全班座號清單，隨機抽人，而且抽過的不再抽到。',
+        details:['用迴圈把 1～座號依序加入清單。','用隨機取數從 1～清單長度抽一個索引。','抽到後把該號從清單「刪除」，確保不重複。','用重複次數決定要抽幾個人。'],
+        steps:['開始','用迴圈把 1～座號 加入清單','重複（要抽的人數）次','　從 1～清單長度 隨機抽一個編號','　說出抽中的號碼','　從清單刪除該號碼（防重複）','結束'] },
+      { id:'2-1-5', no:6, title:'撲克發牌', subtitle:'陣列洗牌與依序發牌', icon:'🃏', color:'red',
+        desc:'建立 52 張牌、洗牌，再一張一張依序發出。',
+        details:['用雙重迴圈（花色×數字）建立 52 張牌。','從原牌堆隨機抽牌移到新清單，直到清空＝洗牌。','發牌時依清單第 1 項換造型。','發完一張就刪除第 1 項，牌堆空了就隱藏角色。'],
+        steps:['開始','用雙重迴圈建立 52 張牌','洗牌：隨機抽牌移到新清單，直到原牌堆清空','點擊發牌','　依清單第 1 項換造型','　刪除清單第 1 項','清單為空→隱藏角色','結束'] },
+      { id:'2-2-1', no:7, title:'動物點點名', subtitle:'變數範圍與應用', icon:'🐾', color:'indigo',
+        desc:'比較「全域變數（大家共用）」和「角色變數（各自獨立）」的差別。',
+        details:['全域變數：所有角色共用讀寫；角色變數：單一角色專屬。','用全域變數：點不同動物數字會接續累加。','用角色變數：多隻小貓各自計數、互不干擾。','全域適合「總分」，角色適合「個別生命值」。'],
+        steps:['開始','建立「全域變數」總數並歸零','點擊動物→全域變數 ＋ 1（大家共用、接續累加）','建立「角色變數」各自計數','點擊某隻小貓→該角色變數 ＋ 1（各自獨立）','結束'] },
+      { id:'2-2-2', no:8, title:'戰車王', subtitle:'獨立變數與碰撞偵測', icon:'🎯', color:'slate',
+        desc:'控制戰車移動、發射子彈，子彈打中敵機就用獨立血量扣血。',
+        details:['每輛敵機用「角色變數」記自己的血量。','偵測方向鍵控制戰車移動與轉向。','按空白鍵發射子彈分身，往前方飛。','偵測子彈碰到敵機→爆炸、刪子彈、該敵機血量 −1。'],
+        steps:['開始','設定每輛敵機的血量（角色變數）','偵測方向鍵→移動戰車','按空白鍵→發射子彈分身','判斷：子彈碰到敵機？','是→爆炸造型、刪除子彈、該敵機血量 －1','血量 = 0→敵機消失','結束'] },
+      { id:'2-3-1', no:9, title:'分身小貓', subtitle:'分身機制與私有變數', icon:'🐈', color:'yellow',
+        desc:'用「分身」產生很多小貓，每隻都有自己的專屬編號。',
+        details:['用迴圈快速建立多個分身，並先把本尊隱藏。','用「當分身產生」定義每個分身的動作。','建立分身前先累加變數，讓分身繼承成專屬 ID。','讓分身邊走邊說出自己的編號。'],
+        steps:['開始','隱藏本尊','重複 N 次：編號 ＋1、建立分身','當分身產生','　繼承編號當作專屬 ID','　一邊走一邊說出自己的編號','結束'] },
+      { id:'2-3-2', no:10, title:'螞蟻搬乳酪', subtitle:'分身應用與同步偵測', icon:'🐜', color:'amber',
+        desc:'很多螞蟻找乳酪、搬回蟻穴得分。',
+        details:['用分身產生大量螞蟻群。','用「面朝乳酪」加隨機轉向，模擬覓食。','碰到乳酪後改變狀態，讓乳酪跟隨螞蟻移動。','搬回蟻穴就加分，並把乳酪重置回起點。'],
+        steps:['開始','用分身產生大量螞蟻','每隻螞蟻面朝乳酪前進','判斷：碰到乳酪？','是→狀態設為「搬運中」、乳酪跟隨螞蟻','判斷：回到蟻穴？','是→分數 ＋1、乳酪重置回起點','結束'] }
+    ];
+    const COLORS = {
+      blue:'bg-blue-100 text-blue-600 border-blue-400', cyan:'bg-cyan-100 text-cyan-600 border-cyan-400',
+      purple:'bg-purple-100 text-purple-600 border-purple-400', green:'bg-green-100 text-green-600 border-green-400',
+      orange:'bg-orange-100 text-orange-600 border-orange-400', red:'bg-red-100 text-red-600 border-red-400',
+      indigo:'bg-indigo-100 text-indigo-600 border-indigo-400', slate:'bg-slate-100 text-slate-600 border-slate-400',
+      yellow:'bg-yellow-100 text-yellow-600 border-yellow-400', amber:'bg-amber-100 text-amber-600 border-amber-400'
+    };
+
+    // 各單元的程式設計素材（影片、專案連結、截圖、測驗題庫）— 來源：Scratch 進階程式設計
+    const G='https://raw.githubusercontent.com/su-yung-sheng/classroom/refs/heads/main/';
+    const PROG = {
+      '2-1-1A':{ video:'84cCkGKsPsI', project:'1312098402', imgs:[G+'11501-2-1-1(1)-1.png',G+'11501-2-1-1(1)-2.png'], quiz:[
+        {q:'在 Scratch 清單中，第一個項目的編號（索引）是多少？',o:['0','1','-1','A'],a:1},
+        {q:'若要刪除清單中所有的東西，該使用哪個積木？',o:['刪除第 1 項','替換第 1 項內容','刪除清單的所有項目','隱藏清單'],a:2},
+        {q:'若要將新物品加到置物櫃的「最後一個空位」，應使用哪個積木？',o:['插入...到清單','添加...到清單','替換第 1 項','刪除項目'],a:1},
+        {q:'「插入物品到第 3 項」後，原本在第 3 項的物品會如何？',o:['永遠消失','被新物品取代','往後移變成第 4 項','往前移變成第 2 項'],a:2},
+        {q:'如果想把第 2 項的物品「直接換成」別的東西，最適合用哪個積木？',o:['替換第 2 項內容','插入到第 2 項','添加到最後','隱藏清單'],a:0} ] },
+      '2-1-1B':{ video:'bu5sIhT_8ys', project:'1312098637', imgs:[G+'11501-2-1-1(2)-1.png',G+'11501-2-1-1(2)-2.png'], quiz:[
+        {q:'要判斷「小明」是否在名單內，最快速的積木是？',o:['如果 1=1','清單包含 小明 嗎？','重複執行直到...','詢問並等待'],a:1},
+        {q:'如何取得目前班級總共有多少人？',o:['清單的長度','變數設為 0','隨機取數','移動 10 步'],a:0},
+        {q:'想要知道「小華」是幾號（在清單的第幾個位置），該使用哪個功能？',o:['項目 小華 的位置','包含 小華 嗎？','刪除 小華','添加 小華'],a:0},
+        {q:'在迴圈中依序點名時，通常會建立一個變數當作什麼？',o:['角色顏色','背景音量','索引值（如：座號）','畫面座標'],a:2},
+        {q:'若清單長度顯示是 30，代表什麼意思？',o:['第一個名字叫30','名單裡總共有30筆資料','學生的最高分是30','點名需要花30秒'],a:1} ] },
+      '2-1-2':{ video:'mSTXHTgzFNk', project:'1312098678', imgs:[G+'11501-2-1-2-1.png',G+'11501-2-1-2-2.png'], quiz:[
+        {q:'在演奏過程中，用來控制目前讀到第幾個音符的工具通常是？',o:['背景顏色','造型編號','變數（如：編號）','滑鼠座標'],a:2},
+        {q:'若要讓整首音樂的節奏變快，應該調整什麼？',o:['改變外觀顏色','改變聲音音量','減少清單長度','演奏音符 ... 拍'],a:3},
+        {q:'為了依序從清單拿出每一個音階，通常會搭配哪一種迴圈？',o:['重複無限次','如果...那麼','重複執行 (清單長度) 次','等待直到'],a:2},
+        {q:'要讀取清單中「目前的音階」，積木應該怎麼組合？',o:['清單的第 (編號) 項','刪除第 1 項','添加音階','包含音階嗎？'],a:0},
+        {q:'為什麼要把音樂存進清單，而不是放一堆演奏積木？',o:['因為顏色比較好看','防止電腦壞掉','為了程式碼精簡且容易管理','可以順便進行點名'],a:2} ] },
+      '2-1-3':{ video:'gNS_IuKD6K8', project:'1312098703', imgs:[G+'11501-2-1-3-1.png'], quiz:[
+        {q:'計算平均分數時，總分的除數應該設為多少？',o:['固定除以 10','目前的秒數','清單的長度','隨機數字'],a:2},
+        {q:'若要清除之前的舊資料重新計算，程式開頭應先做什麼？',o:['隱藏所有變數','移動角色到原點','刪除清單的所有項目','換成下一個造型'],a:2},
+        {q:'在迴圈累加總分時，應該將「總分」變數加上什麼？',o:['數字 10','清單的第 (編號) 項','清單的總長度','隨機取數'],a:1},
+        {q:'如何用積木判斷算出來的平均是否及格？',o:['如果 (平均 < 60)','如果 (長度 = 60)','包含 60 嗎？','刪除第 60 項'],a:0},
+        {q:'若忘記在程式開始時將「總分」變數設為0，會發生什麼事？',o:['程式直接當機','無法輸入新成績','總分會連前一次的結果一起加進去','清單資料會不見'],a:2} ] },
+      '2-1-4':{ video:'NWy1XDujWVc', project:'1312098720', imgs:[G+'11501-2-1-4-1.png',G+'11501-2-1-4-2.png'], quiz:[
+        {q:'為了確保已經抽中的人不會再被抽到，抽出號碼後必須執行什麼動作？',o:['停止全部腳本','從清單中刪除該項','將編號變數設為 0','說出你好'],a:1},
+        {q:'抽籤時，隨機取數的範圍應該設為 1 到多少？',o:['固定 99','固定 10','清單的長度','今天的日期'],a:2},
+        {q:'想要將 1 到 26 號自動加進清單，最適合用什麼方法？',o:['自己手打添加積木 26 次','使用計次迴圈配合變數累加','隨機取數 1~26','廣播訊息給 26 個人'],a:1},
+        {q:'抽籤時，為什麼隨機取數的最大值必須是「清單的長度」而不是固定數字？',o:['這樣才不會抽到因為刪除而變成空白的格子','因為規定只能填長度','為了讓遊戲畫面好看','這樣比較好背'],a:0},
+        {q:'若要連續抽出 5 個號碼，應該把抽籤的積木邏輯放在哪裡？',o:['如果...那麼','重複執行 5 次','當背景換成','廣播訊息'],a:1} ] },
+      '2-1-5':{ video:'BgS2CIveXpY', project:'1312098747', imgs:[G+'11501-2-1-5-1.png',G+'11501-2-1-5-2.png'], quiz:[
+        {q:'如何將「紅心」與「A」兩個資料組合成「紅心A」？',o:['相加 (+)','字串組合','如果...那麼','計時器'],a:1},
+        {q:'一副標準的撲克牌（不含鬼牌）總共有幾張？',o:['13 張','26 張','48 張','52 張'],a:3},
+        {q:'發牌動畫中，為什麼發完一張牌後要「刪除清單第 1 項」？',o:['開容量滿了','為了確保發過的牌不會再出現，並讓下一張遞補','為了切換角色的造型','可以讓電腦跑得變快'],a:1},
+        {q:'建立 52 張牌庫時，利用「雙重迴圈」（迴圈包迴圈），外層與內層分別控制什麼？',o:['音量與顏色','花色與數字','大小與位置','廣播與接收'],a:1},
+        {q:'從原始牌堆隨機抽取一張，放到新的洗牌清單，這被稱為什麼演算法的基礎？',o:['洗牌演算法','排序演算法','尋路演算法','碰撞偵測演算'],a:0} ] },
+      '2-2-1':{ video:'iJCyqohNtoA', project:'1312098793', imgs:[G+'11501-2-2-1-1.png'], quiz:[
+        {q:'若要替每隻怪物記錄各自專屬的「生命值」，適合建立哪種變數？',o:['全域變數','角色變數（僅適用當前角色）','清單','廣播訊息'],a:1},
+        {q:'關於「全域變數」的特性，下列何者正確？',o:['只有建立它的角色才能修改','無法被顯示在舞台上','所有角色都可以共同讀寫','每次點擊綠旗一定會自動歸零'],a:2},
+        {q:'當一隻小貓廣播了「點名」，為什麼其他動物會跟著做動作？',o:['因為動物們很聰明','原因為有使用「當收到訊息」積木','因為大家設定了一樣的顏色','因為有設定相同的計時器'],a:1},
+        {q:'如果計數器變數是「全域」的，點擊不同角色時數字會如何變化？',o:['各自獨立從頭計算','互相覆蓋最後都變成 0','接續著上一個數字一起累加','會變成無法辨識的亂碼'],a:2},
+        {q:'「僅適用當前角色」的變數，在畫面上產生分身時會有什麼效果？',o:['所有分身共用同一個變數數值','每個分身都會有自己獨立的一份變數','分身會因為讀取不到變數而消失','會讓遊戲發生錯誤當機'],a:1} ] },
+      '2-2-2':{ video:'R4X1hVSrF88', project:'1312098819', imgs:[G+'11501-2-2-2-1.png',G+'11501-2-2-2-2.png',G+'11501-2-2-2-3.png'], quiz:[
+        {q:'若要讓戰車前進，應該使用哪個指令？',o:['移動 10 點','旋轉 15 度','改變大小','定位到隨機'],a:0},
+        {q:'判斷子彈是否打中對手，應使用哪個積木？',o:['碰到顏色','距離鼠標','碰到 [對手角色名稱]','響度 > 10'],a:2},
+        {q:'若要讓發射出的子彈往戰車的「前方」飛，子彈產生時的第一步是？',o:['改變外觀顏色','面朝戰車的方向並定位到戰車','放大尺寸','刪除分身'],a:1},
+        {q:'敵軍被子彈打中後要獨立扣血，這個「血量」變數應該設定為？',o:['全域變數','角色變數（僅適用當前角色）','清單結構','廣播事件'],a:1},
+        {q:'按下空白鍵發射子彈，為了不要讓原本的子彈角色飛出去，我們通常會怎麼做？',o:['建立子彈的分身去發射','把子彈隱藏就好','換一個背景','發出爆炸的聲音'],a:0} ] },
+      '2-3-1':{ video:'rDJ2tZ-h9MM', project:'1312098844', imgs:[G+'11501-2-3-1-1.png'], quiz:[
+        {q:'針對分身專屬的行為，積木開頭應該接哪個事件？',o:['當背景換成...','當收到訊息...','當分身產生...','當綠旗被點擊...'],a:2},
+        {q:'為了防止電腦跑不動（LAG），不需要的分身應該怎麼處理？',o:['隱藏起來','刪除此分身','改變顏色特效','換下一個造型'],a:1},
+        {q:'為了讓每隻分身有專屬的編號(ID)，必須在建立分身前改變什麼變數？',o:['全域變數','角色變數（僅適用當前角色）','滑鼠的 X 座標','系統計時器'],a:1},
+        {q:'為什麼在開始產生分身前，通常會將「本尊」隱藏起來？',o:['因為本尊的造型比較醜','確保畫面上只有受程式完整控制的分身群組','會比較節省電腦電力','這是 Scratch 官方的嚴格規定'],a:1},
+        {q:'如果要一次產生 10 隻小貓，最聰明（精簡程式）的做法是？',o:['把角色直接複製 10 次','使用「重複 10 次」包住「建立分身」','在螢幕上狂點滑鼠','建立 10 個不同的變數'],a:1} ] },
+      '2-3-2':{ video:'zRXISRqhhG0', project:'1312098868', imgs:[G+'11501-2-3-2-1.png',G+'11501-2-3-2-2.png'], quiz:[
+        {q:'要讓乳酪看起來像被螞蟻搬著走，應讓乳酪不停執行哪個積木？',o:['定位到 [螞蟻]','一直旋轉','持續改變顏色','把自己隱藏起來'],a:0},
+        {q:'如何讓螞蟻知道乳酪在哪個方向並前進？',o:['移動 10 點','定位到 隨機位置','面朝 [乳酪]','碰到邊緣就反彈'],a:2},
+        {q:'螞蟻碰到乳酪後，要知道自己正在「搬運中」，可以設定什麼來記錄狀態？',o:['全域廣播','播放音效','狀態變數 (例如：已拿到食物=1)','更換背景圖片'],a:2},
+        {q:'螞蟻把乳酪搬回蟻穴得分後，乳酪應該怎麼辦？',o:['直接刪除乳酪角色','定位回起點，重新產生（重置）','體積變得更大','一直跟著螞蟻永遠不放'],a:1},
+        {q:'大量螞蟻一起去找乳酪，為了精簡程式碼，我們會大量使用什麼功能？',o:['分身機制','迴圈積木','畫筆功能','翻譯擴充功能'],a:0} ] }
+    };
+
+    // 每個單元的一句情境（機器人開場用）
+    const INTRO = {
+      '2-1-1A':'我們要用「清單」當成班級置物櫃，練習把物品 新增、插入、取代、刪除。',
+      '2-1-1B':'要做集合點名：查某人在不在名單裡、全班總共幾人。',
+      '2-1-2':'把音階存進清單，再用迴圈一個一個依序演奏出來。',
+      '2-1-3':'把全班成績存進清單，加總算出平均，再判斷及不及格。',
+      '2-1-4':'從全班座號中隨機抽人，而且抽過的人不能再被抽到。',
+      '2-1-5':'先建立 52 張撲克牌、洗牌，再一張一張發出去。',
+      '2-2-1':'比較「全域變數（大家共用）」和「角色變數（各自獨立）」的差別。',
+      '2-2-2':'控制戰車移動、發射子彈，子彈打中敵機就扣血。',
+      '2-3-1':'用「分身」產生很多小貓，而且每隻小貓都有自己的編號。',
+      '2-3-2':'很多螞蟻去找乳酪、搬回蟻穴得分。'
+    };
+
+    // 依當前單元組出候選元件（正確步驟＋來自其他單元的陷阱）
+    // 產生候選元件：正確步驟 + 陷阱；並補到「偶數」讓兩欄排版對齊
+    function buildCandidates(u){
+      const pool = [];
+      UNITS.forEach(x=>{ if(x.id!==u.id) x.steps.forEach(s=>{ if(s!=='開始'&&s!=='結束'&&!u.steps.includes(s)) pool.push(s); }); });
+      const bank = shuffle([...new Set(pool)]);
+      let need = 3;                                   // 基本陷阱數
+      if((u.steps.length + need) % 2 !== 0) need++;   // 總數湊成偶數（版面兩欄才不會落單）
+      const distractors = bank.slice(0, Math.min(need, bank.length));
+      return shuffle([...u.steps, ...distractors]);
+    }
+
+    let state = { status:'loading', studentId:'', studentName:'', tempId:'', tempCode:'', loginError:'', done:{}, progDone:{},
+                  progStars:{}, unit:null, candidates:[], selected:{}, selMsg:'', placed:[], pool:[], mistakes:0,
+                  qIdx:0, qPicked:null, qScore:0, refOpen:false, leadOpen:false, graderOpen:false,
+                  readLeft:0, hintUsed:false, hintLeft:0, selTries:0,
+                  quizSet:[], quizPassed:false };
+
+    // 自動畫重點：把「」內的關鍵詞塗上螢光筆；數字＋單位（例如 52 張、1 到 26）用藍色
+    function mark(t){
+      return String(t||'')
+        .replace(/「([^」]+)」/g, '<span class="hl">「$1」</span>')
+        .replace(/(\d+(?:\s*[～~-]\s*\d+)?\s*(?:張|次|項|個|人|拍|秒|分))/g, '<span class="hl-b">$1</span>');
+    }
+
+    const READ_SECONDS = 30;   // 閱讀頁強制停留秒數（切走畫面會暫停）
+    const HINT_SECONDS = 10;   // 選件頁提示顯示秒數（只有一次機會）
+    const SELECT_TRIES = 3;    // 選元件可確認的次數，用完退回重讀
+    let readTimer = null, hintTimer = null;
+    function clearTimers(){
+      if(readTimer){ clearInterval(readTimer); readTimer=null; }
+      if(hintTimer){ clearInterval(hintTimer); hintTimer=null; }
+    }
+    // 閱讀倒數：直接改按鈕文字，不整頁重繪（避免內嵌教材 iframe 被重載）
+    // ⏸ 只有「這個分頁在前景」時才會倒數；切到別的分頁／視窗會暫停，要保持關注才算秒數
+    function isWatching(){ return !document.hidden && document.hasFocus(); }
+    function startReadCountdown(){
+      const paint = () => {
+        const btn = document.getElementById('begin-sel');
+        if(!btn) return;
+        if(state.readLeft > 0){
+          btn.disabled = true;
+          btn.textContent = isWatching()
+            ? `請先仔細閱讀…（還要 ${state.readLeft} 秒）`
+            : `⏸ 已暫停：請回到這個畫面才會繼續倒數（還要 ${state.readLeft} 秒）`;
+          btn.className = 'mt-5 w-full bg-slate-300 text-white font-bold text-lg py-3 rounded-xl cursor-not-allowed transition';
+        }else{
+          btn.disabled = false;
+          btn.textContent = '我讀完了，開始闖關 →';
+          btn.className = 'mt-5 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg py-3 rounded-xl active:scale-95 transition';
+        }
+      };
+      paint();
+      if(readTimer) clearInterval(readTimer);
+      readTimer = setInterval(() => {
+        if(!isWatching()){ paint(); return; }        // 沒在看 → 不扣秒數
+        state.readLeft--;
+        if(state.readLeft <= 0){ state.readLeft = 0; clearInterval(readTimer); readTimer = null; }
+        paint();
+      }, 1000);
+    }
+    // 切回畫面時立刻更新提示文字
+    ['visibilitychange','focus','blur'].forEach(ev=>{
+      window.addEventListener(ev, ()=>{ if(state.status==='read' && readTimer){ const b=document.getElementById('begin-sel'); if(b) b.textContent = isWatching()?`請先仔細閱讀…（還要 ${state.readLeft} 秒）`:`⏸ 已暫停：請回到這個畫面才會繼續倒數（還要 ${state.readLeft} 秒）`; } });
+    });
+    // 讓右側「程式評分」iframe 自動長成內容高度：不出現內部捲軸，整頁只用外層捲軸
+    function autoSizeGraderFrame(){
+      const f = document.getElementById('grader-frame');
+      if(!f) return;
+      const fit = () => {
+        try{
+          const d = f.contentDocument;
+          if(!d || !d.body) return;
+          const h = Math.max(d.body.scrollHeight, d.documentElement.scrollHeight);
+          if(h > 0) f.style.height = (h + 12) + 'px';
+        }catch(e){ /* 跨網域時忽略 */ }
+      };
+      f.addEventListener('load', () => {
+        fit();
+        try{ new ResizeObserver(fit).observe(f.contentDocument.body); }catch(e){}
+        [300, 800, 1500, 3000].forEach(t => setTimeout(fit, t));   // 圖片／字型載入後再校正
+      });
+    }
+
+    // 選件頁提示：顯示 10 秒後自動收起（每關只有一次機會）
+    // 用 state.hintLeft 記錄剩餘秒數，即使中途重繪（例如點選元件）也不會中斷
+    function paintHint(){
+      const box = document.getElementById('hint-box');
+      const btn = document.getElementById('hint-btn');
+      if(!box || !btn) return;
+      if(state.hintLeft > 0){
+        box.classList.remove('hidden');
+        btn.textContent = `💡 提示顯示中…${state.hintLeft} 秒`;
+      }else{
+        box.classList.add('hidden');
+        btn.textContent = state.hintUsed ? '📖 回上一步重新閱讀' : '💡 提示（只有 1 次，顯示 10 秒）';
+      }
+    }
+    function showHint(){
+      state.hintUsed = true;
+      state.hintLeft = HINT_SECONDS;
+      paintHint();
+      if(hintTimer) clearInterval(hintTimer);
+      hintTimer = setInterval(() => {
+        state.hintLeft--;
+        if(state.hintLeft <= 0){ state.hintLeft = 0; clearInterval(hintTimer); hintTimer = null; }
+        paintHint();
+      }, 1000);
+    }
+    const LEAD = { href:'11501_whatislist.html', title:'Scratch 清單學習機', note:'寫程式前先搞懂「清單（陣列）」怎麼存放一整排資料。' };
+
+    // 內嵌參考教材面板（用 iframe 直接把教材放進本關頁面）
+    function refPanel(u){
+      if(!u.ref) return '';
+      return `
+        <div class="border border-rose-200 rounded-xl overflow-hidden mt-4">
+          <button id="toggle-ref" class="w-full flex items-center justify-between gap-2 bg-rose-50 hover:bg-rose-100 px-3 py-2.5 text-left transition">
+            <span class="flex items-center gap-2"><span class="text-lg">🎵</span><span><span class="text-sm font-bold text-rose-700">參考教材：${u.ref.title}</span><span class="block text-xs text-rose-500 leading-snug">${u.ref.note||''}</span></span></span>
+            <span class="text-rose-500 font-black flex-shrink-0">${state.refOpen?'▾ 收合':'▸ 展開'}</span>
+          </button>
+          ${state.refOpen?`<iframe src="${u.ref.href}" class="w-full block bg-white" style="height:72vh;border:0" title="${u.ref.title}" loading="lazy"></iframe><div class="text-[11px] text-slate-400 px-3 py-1.5 text-center bg-rose-50">教材已嵌在此，看完往上滑繼續</div>`:''}
+        </div>`;
+    }
+
+    // ===== 認證與登入 =====
+    signInAnonymously(auth).catch(e=>console.error(e));
+    onAuthStateChanged(auth, user=>{
+      if(user && state.status==='loading'){
+        const saved = localStorage.getItem(SAVED_KEY);
+        if(saved && /^14\d{5}$/.test(saved)) autoLogin(saved);
+        else { state.status='login'; render(); }
+      }
+    });
+    setTimeout(()=>{ if(state.status==='loading'){ state.status='login'; render(); } }, 2500);
+
+    async function loadProgress(sid){
+      try{
+        const snap = await getDoc(doc(db, COLLECTION, sid));
+        const mods = (snap.exists() && snap.data().modules) || {};
+        const units = (mods.flowchart && mods.flowchart.units) || [];
+        state.done = {}; units.forEach(u=>state.done[u]=true);
+        const sunits = (mods.scratch && mods.scratch.units) || [];
+        state.progDone = {}; sunits.forEach(u=>state.progDone[u]=true);
+        // 各單元的程式星數（由 AI 批改寫入）→ 有星數就代表這關的程式完成了
+        state.progStars = (mods.scratch && mods.scratch.unitStars) || {};
+      }catch(e){ console.error('讀進度失敗',e); }
+    }
+    async function autoLogin(sid){
+      state.studentId = sid;
+      try{ const r = await getDoc(doc(db, ROSTER, sid)); if(r.exists()) state.studentName = r.data().name||''; }catch(e){}
+      await loadProgress(sid);
+      state.status='menu'; render();
+    }
+    async function handleLogin(){
+      const t=(state.tempId||'').trim(), c=(state.tempCode||'').trim();
+      if(!/^14\d{5}$/.test(t)){ state.loginError='學號格式錯誤：需 7 位數字、以 14 開頭'; render(); return; }
+      if(!/^\d{6}$/.test(c)){ state.loginError='請輸入 6 位數字驗證碼'; render(); return; }
+      try{
+        const r = await getDoc(doc(db, ROSTER, t));
+        if(!r.exists()){ state.loginError=`找不到學號 ${t}，請找老師確認名冊`; render(); return; }
+        const info = r.data();
+        if(!info.code){ state.loginError='此學號尚未設定驗證碼，請先到「闖關基地」首次登入設定'; render(); return; }
+        if(String(info.code)!==c){ state.loginError='驗證碼錯誤'; render(); return; }
+        state.studentName = info.name||'';
+      }catch(e){ state.loginError='驗證失敗，請稍後再試'; render(); return; }
+      state.studentId=t; localStorage.setItem(SAVED_KEY, t);
+      await loadProgress(t);
+      state.loginError=''; state.status='menu'; render();
+    }
+    // 程式設計階段：測驗從題庫「5 選 3」，全對才算通過（通過才解鎖程式截圖）
+    const QUIZ_PICK = 3;
+    function newQuizSet(u){ return shuffle([...(PROG[u.id].quiz||[])]).slice(0, QUIZ_PICK); }
+    function startProgram(){
+      state.quizSet = newQuizSet(state.unit);
+      state.qIdx=0; state.qPicked=null; state.qScore=0; state.quizPassed=false;
+      state.status='program'; render();
+    }
+    function retryQuiz(){                      // 沒全對 → 重新抽 3 題再來
+      state.quizSet = newQuizSet(state.unit);
+      state.qIdx=0; state.qPicked=null; state.qScore=0; render();
+    }
+    function pickAns(i){
+      if(state.qPicked!=null) return;
+      state.qPicked=i;
+      const q=state.quizSet[state.qIdx];
+      if(i===q.a) state.qScore++;
+      render();
+    }
+    function nextQ(){
+      state.qIdx++; state.qPicked=null;
+      if(state.qIdx>=state.quizSet.length && state.qScore===state.quizSet.length) state.quizPassed=true;
+      render();
+    }
+    // finishProgram 已移除：完成由 AI 批改星數自動認定
+    function logout(){ localStorage.removeItem(SAVED_KEY); state.status='login'; state.studentId=''; state.studentName=''; state.tempId=''; state.tempCode=''; state.done={}; state.progDone={}; render(); }
+
+    // ===== 遊戲邏輯 =====
+    function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+    function startUnit(u){
+      clearTimers();
+      state.unit=u; state.status='read'; state.refOpen=false; state.graderOpen=false;
+      state.readLeft=READ_SECONDS; state.hintUsed=false;   // 每關重新計時、提示機會重置
+      render();
+    }
+    function beginSelect(){ if(readTimer){clearInterval(readTimer);readTimer=null;} const u=state.unit; state.candidates=buildCandidates(u); state.selected={}; state.selMsg=''; state.status='select'; render(); }
+    function toggleSelect(step){ state.selected[step]=!state.selected[step]; state.selMsg=''; render(); }
+    function confirmSelect(){
+      const chosen = Object.keys(state.selected).filter(s=>state.selected[s]);
+      const need = state.unit.steps;
+      const missing = need.filter(s=>!state.selected[s]).length;
+      const extra = chosen.filter(s=>!need.includes(s)).length;
+      if(missing===0 && extra===0){ state.placed=[]; state.pool=shuffle(need); state.mistakes=0; state.status='play'; render(); return; }
+
+      // 選錯：用掉一次機會，三次用完就退回重新閱讀
+      state.selTries++;
+      const left = SELECT_TRIES - state.selTries;
+      if(left <= 0){
+        clearTimers();
+        state.status='read'; state.readLeft=READ_SECONDS; state.hintUsed=false; state.hintLeft=0; state.selTries=0;
+        state.selMsg='';
+        render();
+        setTimeout(()=>alert('三次都沒挑對，先回去把步驟再讀一次，我們再來一次！'), 50);
+        return;
+      }
+      state.selMsg = `再想想～${missing?`還少了 ${missing} 個需要的步驟`:''}${missing&&extra?'、':''}${extra?`多選了 ${extra} 個用不到的`:''}。還有 ${left} 次機會，用完要回去重讀喔！`;
+      render();
+    }
+    function pickStep(idx){
+      const step = state.pool[idx];
+      const nextCorrect = state.unit.steps[state.placed.length];
+      if(step === nextCorrect){
+        state.placed.push(step);
+        state.pool.splice(idx,1);
+        if(state.placed.length === state.unit.steps.length) finishUnit();
+        else render();
+      } else {
+        state.mistakes++;
+        // 錯誤次數超過待排積木總數 → 退回重新閱讀
+        if(state.mistakes > state.unit.steps.length){
+          clearTimers();
+          state.status='read'; state.readLeft=READ_SECONDS; state.hintUsed=false; state.hintLeft=0;
+          state.selTries=0; state.selMsg=''; state.mistakes=0;
+          render();
+          setTimeout(()=>alert('排錯太多次了，先回去把流程再讀一次，等一下就會順很多！'), 50);
+          return;
+        }
+        render();
+        setTimeout(()=>{ const el=document.getElementById('pool'); if(el){ el.classList.add('shake'); setTimeout(()=>el.classList.remove('shake'),300);} }, 0);
+      }
+    }
+    async function finishUnit(){
+      const already = !!state.done[state.unit.id];
+      state.done[state.unit.id]=true;
+      state.status='clear'; render();
+      if(!already){
+        const count = Object.keys(state.done).length;
+        const now = Date.now();
+        try{
+          await setDoc(doc(db, COLLECTION, state.studentId), {
+            studentId: state.studentId,
+            modules: { flowchart: { status: count>=UNITS.length?'pass':'in-progress', level: count, stars: window.GRADING.flowchartStars(count), source:'auto', units: arrayUnion(state.unit.id), updatedAt: now } },
+            history: arrayUnion({ module:'flowchart', unit: state.unit.id, at: now, stars: STARS_PER_UNIT }),
+            updatedAt: now
+          }, { merge:true });
+        }catch(e){ console.error('回報失敗',e); }
+      }
+    }
+
+    // ===== 畫面 =====
+    function render(){
+      const el=document.getElementById('app');
+      if(state.status==='loading'){ el.innerHTML=`<div class="min-h-screen flex items-center justify-center text-slate-500 font-bold text-lg">系統連線中…</div>`; return; }
+
+      if(state.status==='login'){
+        el.innerHTML = `
+          <div class="min-h-screen flex items-center justify-center p-4">
+            <div class="w-full max-w-md pop">
+              <div class="text-center mb-6">
+                <div class="text-5xl mb-2">🧩</div>
+                <h1 class="text-3xl font-black"><span class="underline-doodle px-1">流程圖與程式設計</span></h1>
+                <p class="text-slate-500 text-sm mt-2">先排流程圖(+${STARS_PER_UNIT}⭐)，再寫程式</p>
+              </div>
+              <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 relative"><span class="tape"></span>
+                <label class="block text-sm font-bold text-slate-500 mb-2">學號</label>
+                <input id="sid" type="text" inputmode="numeric" value="${state.tempId}" placeholder="14XXXXX" class="w-full bg-transparent border-0 border-b-2 border-slate-300 focus:border-purple-500 text-2xl font-mono tracking-widest py-2 outline-none">
+                <label class="block text-sm font-bold text-slate-500 mb-2 mt-4">驗證碼</label>
+                <div class="relative">
+                  <input id="code" type="password" inputmode="numeric" maxlength="6" value="${state.tempCode}" placeholder="6 位數字" class="w-full bg-transparent border-0 border-b-2 border-slate-300 focus:border-purple-500 text-2xl font-mono tracking-widest py-2 pr-10 outline-none">
+                  <button type="button" tabindex="-1" onclick="var i=document.getElementById('code');var s=i.type==='password';i.type=s?'text':'password';this.textContent=s?'🙈':'👁';" class="absolute right-0 bottom-2 text-xl text-slate-400 hover:text-slate-600" aria-label="顯示或隱藏驗證碼">👁</button>
+                </div>
+                ${state.loginError?`<p class="text-red-500 text-sm mt-3">${state.loginError}</p>`:''}
+                <button id="go" class="mt-6 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg py-3 rounded-lg active:scale-95 transition">開始闖關</button>
+                <p class="text-xs text-slate-400 text-center mt-3">首次登入請先到「闖關基地」設定驗證碼</p>
+              </div>
+            </div>
+          </div>`;
+        setTimeout(()=>document.getElementById('sid')?.focus(),0);
+        return;
+      }
+
+      if(state.status==='menu'){
+        const doneCount = Object.keys(state.done).length;
+        // 程式設計：由 AI 批改星數認定（0 星不算通關）
+        const progStarTotal = Object.values(state.progStars||{}).reduce((a,b)=>a+(Number(b)||0),0);
+        const progDoneCount = Object.values(state.progStars||{}).filter(v=>Number(v)>0).length;
+        const cards = UNITS.map(u=>{
+          const done = !!state.done[u.id];
+          const c = COLORS[u.color] || COLORS.purple;
+          return `
+            <button data-unit="${u.no}" class="unit-btn text-left bg-white rounded-2xl border-2 ${done?'border-emerald-300':'border-slate-200'} shadow-sm hover:shadow-lg hover:-translate-y-1 transition p-4 flex items-center gap-4 relative overflow-hidden">
+              <div class="w-14 h-14 rounded-2xl ${c.split(' ').slice(0,2).join(' ')} flex items-center justify-center text-2xl flex-shrink-0 border ${c.split(' ')[2]}">${u.icon}</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px] text-slate-400 font-mono">第 ${u.no} 關 · ${u.id}</div>
+                <div class="font-black leading-tight">${u.title}</div>
+                <div class="text-xs text-slate-500 truncate">${u.subtitle}</div>
+                <div class="text-xs mt-0.5 font-bold flex flex-wrap gap-x-2">
+                  <span class="${done?'text-emerald-600':'text-slate-300'}">${done?`✓ 流程圖 +${STARS_PER_UNIT}⭐`:'○ 流程圖'}</span>
+                  ${(() => { const st = Number((state.progStars||{})[u.id]||0);
+                     if(st>0) return `<span class="text-orange-500">🐱 程式 ${'★'.repeat(st)} +${st}⭐</span>`;
+                     return `<span class="${state.progDone[u.id]?'text-amber-500':'text-slate-300'}">${state.progDone[u.id]?'🐱 程式未達 2⭐':'○ 程式'}</span>`; })()}
+                </div>
+                ${done?`<span data-prog="${u.no}" class="go-prog inline-block mt-1.5 text-[11px] font-black bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1 rounded-full transition">🐱 直接去程式設計 →</span>`:''}
+              </div>
+            </button>`;
+        }).join('');
+        el.innerHTML = `
+          <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+            <header class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6 relative pop">
+              <span class="tape"></span>
+              <!-- 登出由「闖關基地」統一處理，這裡不再提供 -->
+              <div class="text-sm text-purple-600 font-bold mb-1">🧩 流程圖與程式設計${state.studentName?`　${state.studentName}`:''}</div>
+              <h1 class="text-xl sm:text-2xl font-black leading-relaxed">
+                <span class="block sm:inline text-emerald-600">🧩 流程圖完成 ${doneCount} / ${UNITS.length} 關　<span class="text-amber-500 text-lg">共 ${doneCount*STARS_PER_UNIT}⭐</span></span>
+                <span class="text-slate-300 mx-1 hidden sm:inline">|</span>
+                <span class="block sm:inline text-orange-600">🐱 程式設計完成 ${progDoneCount} / ${UNITS.length} 關　<span class="text-amber-500 text-lg">共 ${progStarTotal}⭐</span></span>
+              </h1>
+              <p class="text-slate-500 text-sm mt-1">每一關：先讀情境 → 排流程圖(+${STARS_PER_UNIT}⭐) → 寫程式並上傳評分(2～3⭐)。看不懂先讀 <a href="reference.html" class="text-purple-600 underline font-bold">參考說明</a>。</p>
+            </header>
+            <div class="border border-teal-200 rounded-2xl overflow-hidden mb-6 shadow-sm">
+              <button id="toggle-lead" class="w-full flex items-center justify-between gap-2 bg-teal-50 hover:bg-teal-100 px-4 py-3 text-left transition">
+                <span class="flex items-center gap-3"><span class="text-2xl">🔰</span><span><span class="text-sm font-black text-teal-700">前導教材：${LEAD.title}</span><span class="block text-xs text-teal-600 leading-snug">${LEAD.note}</span></span></span>
+                <span class="text-teal-600 font-black flex-shrink-0 whitespace-nowrap">${state.leadOpen?'▾ 收合':'▸ 展開'}</span>
+              </button>
+              ${state.leadOpen?`<iframe src="${LEAD.href}" class="w-full block bg-white" style="height:72vh;border:0" title="${LEAD.title}" loading="lazy"></iframe><div class="text-[11px] text-slate-400 px-3 py-1.5 text-center bg-teal-50">前導教材已嵌在此，看完往下開始闖關</div>`:''}
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${cards}</div>
+          </div>`;
+        return;
+      }
+
+      if(state.status==='read'){
+        const u=state.unit; const c=COLORS[u.color]||COLORS.purple;
+        el.innerHTML = `
+          <div class="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+            <div class="flex items-center justify-between mb-4">
+              <button id="back-menu" class="text-slate-400 hover:text-slate-700 text-sm font-bold">← 關卡列表</button>
+              <div class="text-xs text-slate-400">第 ${u.no} 關 · 先閱讀資料</div>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden pop">
+              <div class="p-5 flex items-center gap-4 border-b border-slate-100">
+                <div class="w-16 h-16 rounded-2xl ${c.split(' ').slice(0,2).join(' ')} flex items-center justify-center text-3xl flex-shrink-0 border ${c.split(' ')[2]}">${u.icon}</div>
+                <div>
+                  <div class="text-xs text-slate-400 font-mono">${u.id}</div>
+                  <h2 class="text-2xl font-black leading-tight">${u.title}</h2>
+                  <div class="text-sm text-slate-500">${u.subtitle}</div>
+                </div>
+              </div>
+              <div class="p-6 sm:p-8">
+                <div class="text-sm font-black text-indigo-500 mb-2">📖 情境說明</div>
+                <p class="text-lg sm:text-xl text-slate-800 leading-loose mb-6 bg-indigo-50/60 border-l-4 border-indigo-300 rounded-r-xl px-4 py-3">${mark(u.desc)}</p>
+
+                <div class="text-sm font-black text-purple-500 mb-3">🧩 完成步驟（先讀懂，等一下要自己挑出來）</div>
+                <ol class="space-y-3">
+                  ${u.details.map((d,i)=>`<li class="flex gap-3 items-start text-lg sm:text-xl text-slate-800 bg-white border border-slate-100 rounded-xl px-3 py-2.5 shadow-sm"><span class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 text-purple-700 text-base font-black flex items-center justify-center mt-0.5">${i+1}</span><span class="leading-loose">${mark(d)}</span></li>`).join('')}
+                </ol>
+                <p class="text-xs text-slate-400 mt-4">💡 <span class="hl">黃色</span>是關鍵動作、<span class="hl-b">藍色</span>是數量，等一下挑元件時就靠它們判斷。</p>
+                ${refPanel(u)}
+              </div>
+            </div>
+            <button id="begin-sel" disabled class="mt-5 w-full bg-slate-300 text-white font-bold text-lg py-3 rounded-xl cursor-not-allowed transition">請先仔細閱讀…（還要 ${state.readLeft} 秒）</button>
+            <p class="text-xs text-slate-400 mt-3 text-center">先把上面的步驟讀懂，等一下要自己挑出正確的元件　·　也可對照 <a href="reference.html" class="text-purple-600 underline">完整參考說明</a></p>
+          </div>`;
+        startReadCountdown();
+        return;
+      }
+
+      if(state.status==='select'){
+        const u=state.unit;
+        const chips = state.candidates.map((s,i)=>{
+          const on = !!state.selected[s];
+          return `<button data-sel="${i}" class="sel-chip text-left rounded-lg px-3 py-2.5 text-sm font-medium border-2 transition active:scale-95 ${on?'bg-purple-600 text-white border-purple-600':'bg-white border-slate-200 hover:border-purple-300'}">${on?'✓ ':''}${s}</button>`;
+        }).join('');
+        const chosenCount = Object.keys(state.selected).filter(s=>state.selected[s]).length;
+        el.innerHTML = `
+          <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+            <div class="flex items-center justify-between mb-4">
+              <button id="back-menu" class="text-slate-400 hover:text-slate-700 text-sm font-bold">← 關卡列表</button>
+              <div class="text-xs text-slate-400">第 ${u.no} 關 · 步驟 1／2：選元件</div>
+            </div>
+            <div class="flex items-start gap-3 mb-5 pop">
+              <div class="text-3xl flex-shrink-0">🤖</div>
+              <div class="bg-white border border-slate-200 rounded-2xl rounded-tl-none shadow-sm p-4">
+                <p class="text-sm text-slate-700 leading-relaxed"><b>${u.title}</b>：${INTRO[u.id]||''}</p>
+                <p class="text-sm text-purple-700 font-bold mt-2">先想想：這個流程圖<u>需要哪些步驟</u>？把需要的選起來——裡面藏了幾個用不到的陷阱喔！</p>
+              </div>
+            </div>
+            <div class="flex items-center justify-end mb-2">
+              <button id="hint-btn" class="text-xs font-bold ${state.hintUsed?'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300':'bg-amber-400 hover:bg-amber-500 text-white border-amber-500'} border px-3 py-1.5 rounded-full transition">${state.hintLeft>0?`💡 提示顯示中…${state.hintLeft} 秒`:(state.hintUsed?'📖 回上一步重新閱讀':'💡 提示（只有 1 次，顯示 10 秒）')}</button>
+            </div>
+            <div id="hint-box" class="${state.hintLeft>0?'':'hidden'} bg-amber-50 border-2 border-amber-300 rounded-xl p-4 mb-3">
+              <div class="text-xs font-black text-amber-700 mb-2">💡 這一關的完成步驟（10 秒後自動收起）</div>
+              <ol class="space-y-1.5">
+                ${u.details.map((d,i)=>`<li class="flex gap-2.5 items-start text-base sm:text-lg text-amber-900"><span class="flex-shrink-0 w-7 h-7 rounded-full bg-amber-200 text-amber-800 text-sm font-black flex items-center justify-center">${i+1}</span><span class="leading-relaxed">${mark(d)}</span></li>`).join('')}
+              </ol>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">${chips}</div>
+            ${state.selMsg?`<div class="bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-lg px-3 py-2 mb-3">🤖 ${state.selMsg}</div>`:''}
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">已選 ${chosenCount} 個　·　可確認 <b class="text-purple-600">${SELECT_TRIES - state.selTries}</b> / ${SELECT_TRIES} 次</span>
+              <button id="confirm-sel" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-2.5 rounded-lg active:scale-95 transition">確認選擇，開始拼圖 →</button>
+            </div>
+            <p class="text-xs text-slate-400 mt-3 text-center">看不懂？先讀 <a href="reference.html" class="text-purple-600 underline">參考說明</a></p>
+          </div>`;
+        return;
+      }
+
+      if(state.status==='play'){
+        const u=state.unit;
+        const placedHtml = state.placed.map((s,i)=>`
+          <div class="pop">
+            <div class="flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 w-full">
+              <span class="w-5 h-5 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${i+1}</span>
+              <span class="text-sm font-medium">${s}</span>
+            </div>
+            ${i<u.steps.length-1?'<div class="text-purple-300 text-center leading-none text-lg">↓</div>':''}
+          </div>`).join('');
+        const poolHtml = state.pool.map((s,i)=>`
+          <button data-pick="${i}" class="pick-btn text-left bg-white border-2 border-slate-200 hover:border-purple-400 rounded-lg px-3 py-2.5 text-sm font-medium shadow-sm active:scale-95 transition">${s}</button>`).join('');
+        el.innerHTML = `
+          <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+            <div class="flex items-center justify-between mb-4">
+              <button id="back-menu" class="text-slate-400 hover:text-slate-700 text-sm font-bold">← 關卡列表</button>
+              <div class="text-xs ${state.mistakes >= state.unit.steps.length ? 'text-red-500 font-bold' : 'text-slate-400'}">錯誤 ${state.mistakes} / ${state.unit.steps.length} 次（超過就要回去重讀）</div>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-5 pop">
+              <div class="text-xs text-purple-600 font-bold mb-1">第 ${u.no} 關</div>
+              <h2 class="text-xl font-black">${u.title} — 排出正確流程圖</h2>
+              <p class="text-slate-500 text-sm mt-1">從下方點選「下一步」，把流程圖從「開始」排到「結束」。順序對才會加進去。</p>
+            </div>
+            <div class="mb-2 text-xs font-black text-purple-500">🧩 流程圖（${state.placed.length}/${u.steps.length}）</div>
+            <div class="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-4 mb-6 min-h-[80px]">
+              ${state.placed.length?placedHtml:'<div class="text-slate-400 text-sm text-center py-4">點下方步驟開始排列…</div>'}
+            </div>
+            <div class="text-xs font-black text-slate-500 mb-2">👇 選出下一步</div>
+            <div id="pool" class="grid grid-cols-1 sm:grid-cols-2 gap-2">${poolHtml||'<div class="text-emerald-600 font-bold">全部排完了！</div>'}</div>
+          </div>`;
+        return;
+      }
+
+      if(state.status==='clear'){
+        const u=state.unit;
+        const fc = u.steps.map((s,i)=>`<div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${i+1}</span><span class="text-sm">${s}</span></div>${i<u.steps.length-1?'<div class="text-purple-300 text-center leading-none">↓</div>':''}`).join('');
+        const doneCount = Object.keys(state.done).length;
+        el.innerHTML = `
+          <div class="max-w-xl mx-auto px-4 sm:px-6 py-10">
+            <div class="bg-white rounded-2xl border border-emerald-200 shadow-lg p-6 text-center pop">
+              <div class="text-5xl mb-2">🎉</div>
+              <h2 class="text-2xl font-black text-emerald-700 mb-1">流程圖完成！</h2>
+              <p class="text-slate-500 text-sm mb-4">${u.title}　獲得 <b class="text-amber-500">+${STARS_PER_UNIT}⭐</b>（累積 ${doneCount*STARS_PER_UNIT}⭐）</p>
+              <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 text-left space-y-1 mb-5">${fc}</div>
+              <div class="flex flex-wrap gap-2 justify-center">
+                <button id="to-program" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2.5 rounded-lg transition">🐱 接著做程式設計 →</button>
+                <button id="back-menu2" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-5 py-2.5 rounded-lg transition">回關卡列表</button>
+              </div>
+            </div>
+          </div>`;
+        return;
+      }
+
+      if(state.status==='program'){
+        const u=state.unit; const p=PROG[u.id]; const c=COLORS[u.color]||COLORS.purple;
+        const total=(state.quizSet||[]).length; const q=(state.quizSet||[])[state.qIdx];
+        const quizArea = state.qIdx>=total
+          ? (state.qScore===total
+            ? `<div class="text-center py-4">
+                 <div class="text-4xl mb-2">🎉</div>
+                 <p class="font-black text-emerald-700 text-lg">全對！${total} / ${total} 通過檢核</p>
+                 <p class="text-sm text-slate-500 mt-1">已解鎖上方的<b>程式截圖／範例</b>，可以對照著實作了。</p>
+                 <p class="text-sm font-bold text-emerald-700 mt-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">👉 寫好程式後，到<b>右邊的「程式評分」</b>上傳 .sb3 就能拿星星</p>
+               </div>`
+            : `<div class="text-center py-4">
+                 <div class="text-4xl mb-2">🤔</div>
+                 <p class="font-black text-amber-700 text-lg">答對 ${state.qScore} / ${total}，還要再加油！</p>
+                 <p class="text-sm text-slate-500 mt-1">要<b>全部答對</b>才能解鎖程式截圖。回去看看影片，再挑戰一次吧！</p>
+                 <button id="retry-quiz" class="mt-4 bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl transition">🔄 換 ${total} 題再挑戰</button>
+               </div>`)
+          : `<div class="text-xs text-slate-400 mb-2">第 ${state.qIdx+1} / ${total} 題</div>
+             <p class="font-bold text-slate-800 mb-3">${q.q}</p>
+             <div class="space-y-2">
+               ${q.o.map((opt,i)=>{
+                 let cls='bg-white border-slate-200 hover:border-orange-300';
+                 if(state.qPicked!=null){ if(i===q.a) cls='bg-emerald-50 border-emerald-400 text-emerald-700'; else if(i===state.qPicked) cls='bg-red-50 border-red-400 text-red-700'; else cls='bg-white border-slate-200 opacity-60'; }
+                 return `<button data-ans="${i}" class="ans-btn w-full text-left border-2 rounded-lg px-3 py-2.5 text-sm font-medium transition ${cls}">${opt}</button>`;
+               }).join('')}
+             </div>
+             ${state.qPicked!=null?`<div class="mt-3 text-right"><button id="next-q" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2 rounded-lg transition">${state.qIdx<total-1?'下一題 →':'看結果 →'}</button></div>`:''}`;
+        el.innerHTML = `
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+            <div class="flex items-center justify-between mb-4">
+              <!-- 這一頁的返回鍵同時會重讀進度，星數才會即時更新（不另設第二顆按鈕） -->
+              <button id="back-refresh" class="text-slate-400 hover:text-slate-700 text-sm font-bold">← 關卡列表</button>
+              <div class="text-xs text-slate-400">第 ${u.no} 關 · 程式設計</div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+            <!-- 左：教材與檢核 -->
+            <div class="space-y-5">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden pop">
+              <div class="p-4 flex items-center gap-3 border-b border-slate-100">
+                <div class="w-12 h-12 rounded-xl ${c.split(' ').slice(0,2).join(' ')} flex items-center justify-center text-2xl flex-shrink-0 border ${c.split(' ')[2]}">${u.icon}</div>
+                <div><div class="text-[11px] text-emerald-600 font-bold">✓ 流程圖完成</div><h2 class="text-xl font-black leading-tight">${u.title} · 寫程式</h2></div>
+              </div>
+              <div class="p-4 space-y-4">
+                <div>
+                  <div class="text-xs font-black text-orange-500 mb-2">🎬 教學影片</div>
+                  <div class="relative rounded-xl overflow-hidden bg-black" style="padding-top:56.25%">
+                    <iframe class="absolute inset-0 w-full h-full" src="https://www.youtube.com/embed/${p.video}" title="教學影片" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                  </div>
+                </div>
+                ${p.imgs&&p.imgs.length?(state.quizPassed
+                  ? `<div><div class="text-xs font-black text-orange-500 mb-2">🖼️ 程式截圖／範例　<span class="text-emerald-600">（已解鎖）</span></div><div class="grid gap-2 ${p.imgs.length>1?'sm:grid-cols-2':''}">${p.imgs.map(src=>`<img src="${src}" class="rounded-lg border border-slate-200 w-full" loading="lazy" alt="程式截圖">`).join('')}</div></div>`
+                  : `<div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-5 text-center">
+                       <div class="text-3xl mb-1">🔒</div>
+                       <div class="text-sm font-black text-slate-600">程式截圖／範例尚未解鎖</div>
+                       <div class="text-xs text-slate-500 mt-1">先看完影片，完成下方的<b>自我檢核測驗（${QUIZ_PICK} 題全對）</b>就會顯示。</div>
+                     </div>`):''}
+                ${refPanel(u)}
+                <a href="https://scratch.mit.edu/projects/${p.project}" target="_blank" rel="noopener" class="block text-center bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition">🐱 打開 Scratch 專案，動手實作 →</a>
+              </div>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 pop">
+              <div class="text-xs font-black text-orange-500 mb-3">✅ 自我檢核測驗（從題庫抽 ${QUIZ_PICK} 題，<b class="text-emerald-600">全對</b>才解鎖程式截圖）</div>
+              ${quizArea}
+            </div>
+            </div>
+
+            <!-- 右：程式評分（常駐，隨時可上傳；高度隨內容自動調整，不用內部捲軸） -->
+            <div>
+              <div class="bg-white rounded-2xl border-2 border-orange-300 shadow-sm overflow-hidden pop">
+                <div class="bg-orange-50 px-4 py-3 border-b border-orange-200">
+                  <div class="text-sm font-black text-orange-800">🤖 程式評分（AI 助教）</div>
+                  <div class="text-[11px] text-orange-700 leading-snug mt-0.5 lg:whitespace-nowrap">寫好存成 <b>.sb3</b> 上傳即可評分：<b>90 分↑ 3⭐、75 分↑ 2⭐</b>；未滿 75 分不給星，要修改後再傳。</div>
+                </div>
+                <iframe id="grader-frame" src="11501_scratch_ScratchGrader_student.html?unit=${u.id}" class="w-full block bg-white" style="height:560px;border:0;overflow:hidden" scrolling="no" title="Scratch 作品評分"></iframe>
+                <div class="p-3 border-t border-slate-100 text-center">
+                  <p class="text-[11px] text-slate-500">上傳後看到「⭐ 已記錄 N 星」就代表這一關完成了，不必再按任何按鈕。<br>要看更新後的星數，點左上角的「← 關卡列表」即可。</p>
+                </div>
+              </div>
+            </div>
+            </div>
+          </div>`;
+        autoSizeGraderFrame();
+        return;
+      }
+
+      // （舊的獨立『評分』步驟已移除：評分改為程式設計頁右欄常駐）
+
+      // （程式階段完成畫面已移除：完成與否改由 AI 批改星數認定）
+    }
+
+    // ===== 事件 =====
+    document.addEventListener('click', e=>{
+      if(e.target.closest('#go')){ state.tempId=document.getElementById('sid').value; state.tempCode=document.getElementById('code').value; handleLogin(); return; }
+      if(e.target.closest('#logout')){ logout(); return; }
+      if(e.target.closest('#toggle-lead')){ state.leadOpen=!state.leadOpen; render(); return; }
+      if(e.target.closest('#toggle-ref')){ state.refOpen=!state.refOpen; render(); return; }
+      if(e.target.closest('#to-grade')){ state.status='grade'; render(); return; }
+      if(e.target.closest('#hint-btn')){
+        if(state.hintUsed){                    // 已用掉提示 → 退回上一步重新閱讀（重新計時 30 秒）
+          clearTimers();
+          state.status='read'; state.readLeft=READ_SECONDS; render();
+        }else{
+          showHint();                          // 第一次：顯示 10 秒
+        }
+        return;
+      }
+      // 流程圖已通關的關卡：點「直接去程式設計」跳過重排（必須放在 unit-btn 之前攔截）
+      const gp=e.target.closest('.go-prog');
+      if(gp){ clearTimers(); state.unit=UNITS[+gp.dataset.prog-1]; state.refOpen=false; startProgram(); return; }
+      const ub=e.target.closest('.unit-btn'); if(ub){ startUnit(UNITS[+ub.dataset.unit-1]); return; }
+      if(e.target.closest('#begin-sel')){ beginSelect(); return; }
+      const sc=e.target.closest('.sel-chip'); if(sc){ toggleSelect(state.candidates[+sc.dataset.sel]); return; }
+      if(e.target.closest('#confirm-sel')){ confirmSelect(); return; }
+      const pk=e.target.closest('.pick-btn'); if(pk){ pickStep(+pk.dataset.pick); return; }
+      if(e.target.closest('#to-program')){ startProgram(); return; }
+      const ans=e.target.closest('.ans-btn'); if(ans){ pickAns(+ans.dataset.ans); return; }
+      if(e.target.closest('#next-q')){ nextQ(); return; }
+      if(e.target.closest('#retry-quiz')){ retryQuiz(); return; }
+      if(e.target.closest('#back-refresh')){          // 從評分區回列表：先重讀進度，星數才會即時更新
+        clearTimers();
+        const btn=e.target.closest('#back-refresh'); if(btn){ btn.disabled=true; btn.textContent='更新中…'; }
+        loadProgress(state.studentId).finally(()=>{ state.status='menu'; render(); });
+        return;
+      }
+      if(e.target.closest('#back-menu')||e.target.closest('#back-menu2')){ clearTimers(); state.status='menu'; render(); return; }
+    });
+    document.addEventListener('input', e=>{
+      if(e.target.id==='sid') state.tempId=e.target.value;
+      if(e.target.id==='code') state.tempCode=e.target.value;
+    });
+    document.addEventListener('keypress', e=>{ if(e.key==='Enter'&&state.status==='login'){ state.tempId=document.getElementById('sid').value; state.tempCode=document.getElementById('code').value; handleLogin(); } });
+
+    render();
+  </script>
+</body>
+</html>

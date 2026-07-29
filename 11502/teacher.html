@@ -1,0 +1,3010 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>教師成績登錄系統(11502)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入 Confetti 彩帶特效庫 -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <!-- 🌟 引入 Chart.js 圖表庫 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- 🌟 引入 Firebase SDK (外部資料庫相容版) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+  <!-- 全站共用計分規則（單一來源；與學生端共用，改這支即同步「重算星星」） -->
+  <script src="config.js"></script>
+  <script src="../shared/grading.js"></script>
+
+  <style>
+    @keyframes fade-in-down {
+      0% { opacity: 0; transform: translateY(-10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pop {
+      0% { transform: scale(0.9); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    .animate-fade-in-down {
+      animation: fade-in-down 0.3s ease-out forwards;
+    }
+    .star-pop {
+      animation: pop 0.3s ease-out;
+    }
+    /* 自訂捲軸讓畫面更乾淨 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1; 
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1; 
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8; 
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <!-- 全站主題樣式（單一來源，見 shared/theme.css）-->
+  <link rel="stylesheet" href="../shared/theme.css">
+</head>
+<body class="bg-slate-50 font-sans min-h-screen flex flex-col">
+
+  <!-- 🌟 登入畫面 -->
+  <div id="login-view" class="flex-1 flex items-center justify-center py-12 animate-fade-in-down min-h-screen relative z-50">
+    <div class="bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 w-full max-w-md text-center">
+      <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+      </div>
+      <h2 class="text-2xl font-bold mb-2 text-slate-800">教師成績系統(11502)</h2>
+      <p class="text-slate-500 mb-8 text-sm">請以教師帳號登入系統。</p>
+
+      <form onsubmit="handleLogin(event)" class="flex flex-col gap-4">
+        <input
+          type="email"
+          id="email-input"
+          placeholder="教師 Email"
+          autocomplete="username"
+          class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-lg text-center"
+          required
+        >
+        <input
+          type="password"
+          id="password-input"
+          placeholder="請輸入密碼"
+          autocomplete="current-password"
+          class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-lg tracking-widest text-center"
+          required
+        >
+        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all shadow-md shadow-blue-200 text-lg flex items-center justify-center gap-2">
+          <span>登入系統</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+        </button>
+      </form>
+      <p id="login-error" class="text-red-500 text-sm mt-4 hidden font-medium flex items-center justify-center gap-1.5">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        密碼錯誤，請重試！
+      </p>
+    </div>
+  </div>
+
+  <!-- 🌟 原本的主程式 -->
+  <div id="main-app" class="hidden flex-col flex-1 w-full">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 z-50 bg-white border-l-4 border-emerald-500 shadow-lg rounded px-4 py-3 items-center gap-3 hidden animate-fade-in-down">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      <span id="toast-message" class="text-slate-800 font-medium">訊息</span>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white border-b shadow-sm px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-40 relative">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-800">教師成績登錄系統</h1>
+        <p id="status-text" class="text-sm text-slate-500 mt-1">正準備載入資料...</p>
+      </div>
+      <button onclick="teacherLogout()" class="self-start sm:self-auto text-slate-400 hover:text-slate-700 flex items-center gap-1 text-xs bg-slate-50 px-3 py-1.5 rounded-md border border-slate-200 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        登出
+      </button>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6 relative">
+      
+      <!-- Top Controls -->
+      <div class="sticky top-0 z-30 bg-slate-50 pt-2 pb-4 -mt-2">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <div class="bg-white rounded-lg shadow-sm border p-2 flex-1 flex flex-wrap items-center justify-between gap-4">
+            <div id="tabs-container" class="flex flex-wrap gap-2">
+              <!-- Tabs will be rendered here -->
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3 px-2">
+              <div class="flex items-center gap-2 text-sm text-slate-600 font-medium bg-blue-50 px-3 py-1.5 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span id="student-count">載入中...</span>
+              </div>
+              
+              <input
+                type="text"
+                id="search-input"
+                placeholder="搜尋學號或姓名..."
+                oninput="handleSearch(this.value)"
+                class="px-4 py-2 border border-slate-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-36 sm:w-48 bg-slate-50"
+              />
+
+              <!-- 「進度分析」與「重算星星」已移除：
+                   星數改由各模組依 shared/grading.js 即時計算，成績統計改用「每週評分」 -->
+
+              <!-- 🌟 學生名冊管理 -->
+              <button onclick="openRosterModal()" class="px-4 py-2 bg-amber-50 text-amber-700 rounded-full text-sm font-bold hover:bg-amber-100 border border-amber-200 shadow-sm flex items-center gap-1.5 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                名冊管理
+              </button>
+
+              <!-- 🤖 Scratch AI 批改標準（每關作業主題與評分重點） -->
+              <button onclick="openGraderModal()" class="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full text-sm font-bold hover:bg-emerald-100 border border-emerald-200 shadow-sm flex items-center gap-1.5 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
+                批改標準
+              </button>
+
+              <!-- 📦 學生程式作品下載 -->
+              <button onclick="openWorksModal()" class="px-4 py-2 bg-teal-50 text-teal-700 rounded-full text-sm font-bold hover:bg-teal-100 border border-teal-200 shadow-sm flex items-center gap-1.5 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                作品下載
+              </button>
+
+              <!-- 📡 本節課即時看板 -->
+              <button onclick="openLiveModal()" class="px-4 py-2 bg-sky-50 text-sky-700 rounded-full text-sm font-bold hover:bg-sky-100 border border-sky-200 shadow-sm flex items-center gap-1.5 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+                即時看板
+              </button>
+
+              <!-- 🗓️ 上課日設定 -->
+              <button onclick="openSchedModal()" class="px-4 py-2 bg-violet-50 text-violet-700 rounded-full text-sm font-bold hover:bg-violet-100 border border-violet-200 shadow-sm flex items-center gap-1.5 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01"/></svg>
+                上課日設定
+              </button>
+
+              <!-- 📅 每週評分（依 history 時間戳統計每週取得星數 → 折算百分） -->
+              <button onclick="openWeeklyModal()" class="px-4 py-2 bg-rose-50 text-rose-700 rounded-full text-sm font-bold hover:bg-rose-100 border border-rose-200 shadow-sm flex items-center gap-1.5 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                每週評分
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Student Cards Grid Area -->
+      <div class="relative min-h-[400px]">
+        <div id="loading-spinner" class="absolute inset-0 bg-slate-50/80 z-20 flex flex-col items-center justify-center hidden rounded-xl backdrop-blur-sm transition-all duration-300">
+           <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mb-3"></div>
+           <p class="text-slate-700 font-bold tracking-wide animate-pulse">處理中...</p>
+        </div>
+        <div id="students-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6"></div>
+        <div id="no-data-msg" class="hidden py-20 text-center text-slate-500 bg-white border border-dashed border-slate-300 rounded-xl">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-3 text-slate-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <p>沒有找到符合條件的學生資料。</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- 星星任務輸入與折線圖 彈出視窗 (Modal) -->
+    <div id="task-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+      <div class="bg-white w-11/12 max-w-lg rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="task-modal-content">
+        
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="bg-white/20 p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </div>
+            <div>
+              <h2 id="modal-student-name" class="text-xl font-bold">學生姓名</h2>
+              <p id="modal-student-id" class="text-blue-100 text-sm font-mono">學號</p>
+            </div>
+          </div>
+          <button onclick="saveAndCloseModal()" class="text-white hover:bg-white/20 p-1.5 rounded-full transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <div class="bg-indigo-50 flex items-center px-6 pt-3 gap-6 border-b border-indigo-100 shrink-0">
+          <button onclick="switchStudentTab('tasks')" id="tab-tasks" class="font-bold text-blue-700 border-b-4 border-blue-600 pb-2 text-sm flex items-center gap-1.5 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            任務評分
+          </button>
+          <button onclick="switchStudentTab('chart')" id="tab-chart" class="font-bold text-indigo-400 border-b-4 border-transparent pb-2 hover:text-indigo-600 text-sm flex items-center gap-1.5 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            進度圖表
+          </button>
+        </div>
+
+        <!-- Modal Body (任務列表) -->
+        <div class="p-6 overflow-y-auto bg-slate-50 flex-1 relative">
+          <!-- 區塊A：任務評分 -->
+          <div id="modal-tasks-container"></div>
+          
+          <!-- 區塊B：折線圖容器 -->
+          <div id="modal-chart-container" class="hidden h-full flex flex-col items-center justify-center">
+            <div class="w-full h-64 relative bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <canvas id="student-progress-chart"></canvas>
+            </div>
+            <p class="text-sm text-slate-500 mt-4 text-center">此圖表顯示該學生歷次紀錄的總星數成長軌跡。<br>（需使用「進度分析」功能紀錄歷史資料才會顯示折線）</p>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="bg-white px-6 py-4 border-t flex justify-between items-center shrink-0">
+          <div class="flex flex-col gap-1">
+            <div class="flex gap-2">
+              <button onclick="navigateStudent('prev')" class="px-3 py-2 bg-slate-100 text-slate-600 font-medium rounded-lg hover:bg-slate-200 hover:text-blue-600 transition-colors shadow-sm focus:ring-2 focus:ring-slate-300 flex items-center gap-1 text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                上一位
+              </button>
+              <button onclick="navigateStudent('next')" class="px-3 py-2 bg-slate-100 text-slate-600 font-medium rounded-lg hover:bg-slate-200 hover:text-blue-600 transition-colors shadow-sm focus:ring-2 focus:ring-slate-300 flex items-center gap-1 text-sm">
+                下一位
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+            </div>
+            <span class="text-xs text-slate-400 hidden sm:block">💡 可使用鍵盤 ⬅️ ➡️ 鍵快速切換</span>
+          </div>
+          <button onclick="saveAndCloseModal()" class="px-8 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 text-lg">
+            完成
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🌟 全班進度分析與紀錄管理 Modal -->
+    <div id="history-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+      <div class="bg-white w-11/12 max-w-4xl rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="history-modal-content">
+        
+        <!-- Header -->
+        <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
+          <h2 class="text-xl font-bold flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            進度分析與紀錄管理
+          </h2>
+          <button onclick="closeHistoryModal()" class="text-indigo-200 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto bg-slate-50 flex-1 space-y-6">
+          
+          <!-- 管理功能區 -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="md:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-indigo-100">
+              <h3 class="font-bold text-slate-800 text-lg mb-2">📸 新增進度快照</h3>
+              <p class="text-sm text-slate-500 mb-4">選擇日期並拍下目前的成績作為基準點，系統會自動繪製成長折線圖。</p>
+              <div class="flex flex-col sm:flex-row gap-3">
+                <input type="date" id="snapshot-date-input" class="border border-slate-300 px-3 py-2 rounded-xl flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700">
+                <button onclick="confirmSaveSnapshot()" class="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200 shrink-0 flex items-center justify-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+                  儲存目前進度
+                </button>
+              </div>
+            </div>
+            
+            <div class="bg-red-50 p-5 rounded-xl border border-red-100 flex flex-col justify-center items-center text-center">
+              <h3 class="font-bold text-red-800 mb-2">危險操作</h3>
+              <button onclick="clearSnapshot()" id="btn-clear-snapshot" class="w-full py-2 bg-white text-red-600 text-sm font-bold rounded-xl hover:bg-red-100 transition-colors border border-red-200 shadow-sm hidden">
+                🗑️ 清除所有紀錄
+              </button>
+            </div>
+          </div>
+
+          <!-- 班級折線圖 -->
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">本班平均進步折線圖</h3>
+            <div class="w-full h-64 relative">
+              <canvas id="class-progress-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- 歷史紀錄清單 -->
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+              📂 已儲存的紀錄清單 <span id="snapshot-count" class="text-sm font-normal bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">0</span>
+            </h3>
+            <div id="history-list-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <!-- 紀錄項目會動態生成在此 -->
+            </div>
+          </div>
+
+        </div>
+
+        <div class="bg-white px-6 py-4 border-t flex justify-end items-center shrink-0">
+          <button onclick="closeHistoryModal()" class="px-6 py-2 bg-slate-200 text-slate-800 font-bold rounded-xl hover:bg-slate-300 transition-colors">關閉</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分類設定 Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+       <div class="bg-white w-11/12 max-w-2xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="settings-modal-content">
+        <div class="bg-slate-800 px-6 py-4 flex justify-between items-center text-white shrink-0">
+          <h2 class="text-xl font-bold flex items-center gap-2">⚙️ 自訂任務分類與歸屬</h2>
+          <button onclick="closeSettingsModal()" class="text-slate-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        </div>
+        <div class="p-6 overflow-y-auto bg-slate-50 flex-1 space-y-6">
+          
+          <!-- 🌟 一鍵自動分類魔法 -->
+          <div class="bg-indigo-50 p-4 rounded-xl shadow-sm border border-indigo-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <h3 class="text-sm font-bold text-indigo-800 mb-1">✨ 懶人魔法：一鍵自動分類</h3>
+              <p class="text-xs text-indigo-600">若試算表標題包含符號或空格 (例如:「第一課-語文」、「期中考 口試」)，系統可自動辨識並幫您分好類！</p>
+            </div>
+            <button onclick="autoCategorize()" class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200 shrink-0 text-sm">
+              開始自動分類
+            </button>
+          </div>
+
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">1. 管理分類名稱</h3>
+            <div class="flex gap-2 mb-4">
+              <input type="text" id="new-category-input" placeholder="輸入新分類名稱" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm" onkeypress="if(event.key === 'Enter') addCategoryFromInput()">
+              <button onclick="addCategoryFromInput()" class="px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded-lg text-sm">新增</button>
+            </div>
+            <div id="settings-categories-list" class="flex flex-wrap gap-2"></div>
+          </div>
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">2. 任務指派</h3>
+            <div id="settings-tasks-list" class="space-y-2"></div>
+          </div>
+        </div>
+        <div class="bg-white px-6 py-4 border-t flex justify-end gap-3 shrink-0">
+          <button onclick="closeSettingsModal()" class="px-5 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg">取消</button>
+          <button onclick="saveSettings()" class="px-5 py-2 bg-slate-800 text-white rounded-lg">儲存設定</button>
+        </div>
+      </div>
+    </div>
+
+  </div> <!-- 🌟 結束 main-app 區塊 -->
+
+  <!-- 🌟 共用確認/警告視窗 (Custom Dialog) -->
+  <div id="custom-dialog-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[70] hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+    <div class="bg-white w-11/12 max-w-sm rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 p-6 text-center" id="custom-dialog-content">
+      <div id="custom-dialog-icon" class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      </div>
+      <h3 id="custom-dialog-title" class="text-xl font-bold text-slate-800 mb-2">提示</h3>
+      <p id="custom-dialog-msg" class="text-sm text-slate-500 mb-6 leading-relaxed whitespace-pre-wrap">訊息內容</p>
+      <div class="flex gap-3 justify-center" id="custom-dialog-buttons">
+        <!-- 按鈕將動態產生 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 🌟 學生名冊管理 Modal -->
+  <div id="roster-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[65] hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+    <div class="bg-white w-11/12 max-w-3xl rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="roster-modal-content">
+      <div class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-5 flex items-center justify-between flex-shrink-0">
+        <h2 class="text-xl font-bold flex items-center gap-2">👥 學生名冊管理</h2>
+        <button onclick="closeRosterModal()" class="text-white/80 hover:text-white text-3xl leading-none">&times;</button>
+      </div>
+      <div class="p-5 overflow-y-auto">
+        <!-- 班級選擇 -->
+        <div class="flex items-center gap-3 flex-wrap mb-4">
+          <span class="text-sm font-bold text-slate-600">班級：</span>
+          <select id="roster-class" onchange="renderRoster()" class="px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold bg-white cursor-pointer"></select>
+          <span id="roster-count" class="text-xs text-slate-400"></span>
+        </div>
+        <!-- 新增單筆 -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+            <div><label class="text-xs text-slate-500 font-bold">座號</label><input id="add-no" type="number" min="1" placeholder="1" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm"></div>
+            <div><label class="text-xs text-slate-500 font-bold">學號</label><input id="add-id" type="text" placeholder="14XXXXX" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono"></div>
+            <div><label class="text-xs text-slate-500 font-bold">姓名</label><input id="add-name" type="text" placeholder="姓名" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm"></div>
+            <button onclick="addRosterStudent()" class="py-2 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 text-sm transition-colors">＋ 新增</button>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">座號預設 1–30，也可輸入更大的號碼。</p>
+        </div>
+        <!-- 名冊表格 -->
+        <div id="roster-list" class="border border-slate-200 rounded-xl overflow-hidden"></div>
+        <!-- 批次匯入 -->
+        <details class="mt-4">
+          <summary class="cursor-pointer text-sm font-bold text-slate-600 select-none">📋 批次匯入對照表（點開）</summary>
+          <p class="text-xs text-slate-400 mt-2">每行一位，格式：<code class="bg-slate-100 px-1 rounded">學號,姓名</code>（例：1410112,王小明）。逗號或 Tab 分隔皆可。<br><b>班級與座號會自動由學號推算</b>（後四碼＝班級序＋座號，例：1410112→801／12 號）。驗證碼由學生首次登入自設，重複匯入會保留原有驗證碼。</p>
+          <textarea id="roster-bulk" rows="5" class="w-full mt-2 p-2 border border-slate-300 rounded-lg text-sm font-mono" placeholder="1410112,王小明&#10;1410204,李小華"></textarea>
+          <button onclick="bulkImportRoster()" class="mt-2 px-4 py-2 bg-slate-800 text-white text-sm font-bold rounded-lg hover:bg-slate-700 transition-colors">匯入</button>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 🌟 外部 Firebase 雲端資料庫設定（集中在 config.js）
+    const extFirebaseConfig = window.CONFIG.FIREBASE;
+    
+    // 初始化自有的 Firebase
+    if (!firebase.apps.length) {
+        firebase.initializeApp(extFirebaseConfig);
+    }
+    const extDb = firebase.firestore();
+    const extAuth = firebase.auth();
+
+    // 🌟 倫理與法律的外部 Firebase 資料庫設定（同一專案，集中在 config.js）
+    const ethicsFirebaseConfig = window.CONFIG.FIREBASE;
+    
+    // 初始化第二個 Firebase 應用程式 (特別命名為 EthicsApp，避免與運算思維打架)
+    let ethicsApp;
+    try {
+        ethicsApp = firebase.app("EthicsApp");
+    } catch(e) {
+        ethicsApp = firebase.initializeApp(ethicsFirebaseConfig, "EthicsApp");
+    }
+    const ethicsDb = ethicsApp.firestore();
+    const ethicsAuth = ethicsApp.auth();
+
+    // --- 應用程式狀態 ---
+    let spreadsheetData = {};
+    let activeSheet = '';
+    let searchTerm = '';
+    let subjects = []; 
+    let currentEditingStudentId = null; 
+    let activeCategory = 'all'; 
+    let availableCategories = []; 
+    let customMapping = { categories: ['未分類'], taskMap: {} };
+    let tempCategories = [];
+    let tempTaskMap = {};
+    
+    // 🌟 圖表與歷史紀錄狀態
+    let progressHistory = []; 
+    let studentChartInstance = null;
+    let classChartInstance = null;
+
+    // （已移除 Apps Script；教師端資料全面改讀寫 Firebase）
+
+    // --- 🌟 自訂對話框邏輯 ---
+    window.showCustomDialog = function(options) {
+      const modal = document.getElementById('custom-dialog-modal');
+      const content = document.getElementById('custom-dialog-content');
+      document.getElementById('custom-dialog-title').innerText = options.title || '提示';
+      document.getElementById('custom-dialog-msg').innerText = options.message || '';
+      
+      const iconDiv = document.getElementById('custom-dialog-icon');
+      if (options.type === 'warning' || options.type === 'danger') {
+        iconDiv.className = "w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100";
+        iconDiv.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+      } else {
+        iconDiv.className = "w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100";
+        iconDiv.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+      }
+
+      const btnContainer = document.getElementById('custom-dialog-buttons');
+      btnContainer.innerHTML = '';
+
+      if (options.showCancel) {
+        const cancelBtn = document.createElement('button');
+        cancelBtn.innerText = options.cancelText || '取消';
+        cancelBtn.className = "flex-1 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors";
+        cancelBtn.onclick = () => { closeCustomDialog(); if(options.onCancel) options.onCancel(); };
+        btnContainer.appendChild(cancelBtn);
+      }
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.innerText = options.confirmText || '確定';
+      confirmBtn.className = options.type === 'danger' 
+        ? "flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-md shadow-red-200"
+        : "flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-200";
+      confirmBtn.onclick = () => { closeCustomDialog(); if(options.onConfirm) options.onConfirm(); };
+      btnContainer.appendChild(confirmBtn);
+
+      modal.classList.remove('hidden');
+      setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
+    };
+
+    window.closeCustomDialog = function() {
+      const modal = document.getElementById('custom-dialog-modal');
+      const content = document.getElementById('custom-dialog-content');
+      modal.classList.add('opacity-0'); content.classList.add('scale-95');
+      setTimeout(() => { modal.classList.add('hidden'); }, 300);
+    };
+
+    window.addEventListener('keydown', function(e) {
+      const modal = document.getElementById('task-modal');
+      if (modal && !modal.classList.contains('hidden')) {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); window.navigateStudent('prev'); } 
+        else if (e.key === 'ArrowRight') { e.preventDefault(); window.navigateStudent('next'); }
+      }
+    });
+
+    // 設為分頁層級持久性：關閉瀏覽器即登出（與原本行為一致，較適合共用電腦）
+    extAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e => console.warn('設定持久性失敗', e));
+
+    // 以 Firebase Auth 判斷登入狀態
+    let mainShown = false;
+    extAuth.onAuthStateChanged((user) => {
+      if (user && !mainShown) { mainShown = true; showMainApp(); }
+    });
+
+    // 教師登出
+    window.teacherLogout = function() {
+      extAuth.signOut().then(() => location.reload()).catch(e => console.error('登出失敗', e));
+    };
+
+    window.handleLogin = async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('email-input').value.trim();
+      const pwdInput = document.getElementById('password-input').value;
+      const errorEl = document.getElementById('login-error');
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalBtnText = btn.innerHTML;
+
+      errorEl.classList.add('hidden');
+      btn.innerHTML = `<svg class="animate-spin h-5 w-5 mr-3 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span>驗證中...</span>`;
+      btn.disabled = true;
+
+      try {
+        // Firebase Authentication 登入（密碼由 Firebase 安全保管）
+        await extAuth.signInWithEmailAndPassword(email, pwdInput);
+        // 成功後 onAuthStateChanged 會自動呼叫 showMainApp()
+      } catch (error) {
+        console.error('登入失敗', error);
+        // 依 Firebase 回傳的錯誤碼給出真正的原因，不要一律說「密碼錯誤」
+        const HINT = {
+          'auth/invalid-credential':   '帳號或密碼錯誤，請重試！',
+          'auth/wrong-password':       '密碼錯誤，請重試！',
+          'auth/user-not-found':       '找不到這個帳號，請確認 Email 是否正確。',
+          'auth/invalid-email':        'Email 格式不正確。',
+          'auth/too-many-requests':    '嘗試次數過多，Firebase 暫時鎖住了。請等幾分鐘再試。',
+          'auth/user-disabled':        '這個帳號已被停用。',
+          'auth/network-request-failed':'連不上 Firebase。請檢查網路，或確認沒有被學校防火牆擋掉。',
+          'auth/unauthorized-domain':  '這個網域沒有被授權。若你是「直接雙擊開啟檔案」(file://)，請改用網址開啟；或到 Firebase Console → Authentication → Settings → 授權網域 把網域加進去。',
+          'auth/operation-not-allowed':'專案尚未啟用「電子郵件/密碼」登入方式，請到 Firebase Console → Authentication → Sign-in method 開啟。',
+          'auth/api-key-not-valid':    'Firebase 設定的 apiKey 不正確，請檢查 extFirebaseConfig。'
+        };
+        const code = (error && error.code) ? error.code : 'unknown';
+        const msg  = HINT[code] || ('登入失敗：' + code);
+        errorEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span>${msg}<br><span class="text-slate-400 text-xs font-mono">${code}</span></span>`;
+        errorEl.classList.remove('hidden');
+      } finally {
+        btn.innerHTML = originalBtnText;
+        btn.disabled = false;
+        document.getElementById('password-input').value = '';
+      }
+    };
+
+    async function showMainApp() {
+      document.getElementById('login-view').classList.add('hidden');
+      document.getElementById('main-app').classList.remove('hidden');
+      document.getElementById('main-app').classList.add('flex');
+
+      document.getElementById('loading-spinner').classList.remove('hidden');
+      document.getElementById('status-text').innerText = "正在從雲端 (Firebase) 載入資料...";
+      try {
+        await fetchGoogleSheetData();
+        showToast('已從雲端 (Firebase) 載入名冊與成績！', false);
+        document.getElementById('status-text').innerText = "資料已同步（Firebase 雲端）";
+      } catch (error) {
+        console.error('載入雲端資料失敗', error);
+        loadFallbackData();
+
+        // 區分三種完全不同的原因，不要都說成「雲端尚無資料或連線失敗」
+        const code = (error && error.code) ? String(error.code) : '';
+        const text = (error && error.message) ? String(error.message) : '';
+        let toast, status;
+
+        if (code === 'permission-denied' || /Missing or insufficient permissions/i.test(text)) {
+          toast  = '❌ Firestore 安全規則尚未發佈。請到 Firebase Console → Firestore Database → 規則，貼上 firestore.rules 的內容並「發佈」。';
+          status = '規則未發佈：11502-* 集合被拒絕存取';
+        } else if (/名冊尚無學生/.test(text)) {
+          toast  = '📋 雲端連線正常，但名冊還是空的。請點右上角「名冊管理」→「批次匯入對照表」建立學生。';
+          status = '名冊尚未建立（雲端連線正常）';
+        } else if (code === 'unavailable' || /network|offline|Failed to get document/i.test(text)) {
+          toast  = '🌐 連不上 Firestore。請檢查網路，或確認學校防火牆沒有擋掉 firestore.googleapis.com。';
+          status = '無法連線 Firebase';
+        } else {
+          toast  = '載入失敗：' + (code || text || '未知錯誤') + '（詳見 F12 主控台）';
+          status = '載入失敗，已改用離線範例資料';
+        }
+
+        showToast(toast, true);
+        document.getElementById('status-text').innerText = status;
+      }
+      document.getElementById('loading-spinner').classList.add('hidden');
+      renderAll();
+    }
+
+    function applyCustomMappingToSubjects(rawSubjects) {
+      return rawSubjects.map(sub => {
+        let group = customMapping.taskMap[sub.key];
+        if (!group || !customMapping.categories.includes(group)) {
+           group = customMapping.categories[0] || '未分類';
+           customMapping.taskMap[sub.key] = group; 
+        }
+        
+        let displayLabel = sub.label;
+        const match = sub.label.match(/^([^\s\-_：:]+)[\s\-_：:]+(.+)$/);
+        if (match && match[1].trim() === group) {
+           displayLabel = match[2].trim();
+        }
+
+        return { ...sub, group: group, displayLabel: displayLabel };
+      });
+    }
+
+    // 預設成績簿：首次沒有設定時，用 7 個課程模組當科目
+    function defaultGradebook() {
+      return {
+        subjects: [
+          { key: 'ethics',    label: '媒體與社會議題', index: 0 },
+          { key: 'thinking',  label: '運算思維',       index: 1 },
+          { key: 'flowchart', label: '流程圖',         index: 2 },
+          { key: 'scratch',   label: 'Scratch 程式',   index: 3 },
+          { key: 'logic',     label: '邏輯挑戰',       index: 4 },
+          { key: 'search',    label: '線性搜尋',       index: 5 },
+          { key: 'sort',      label: '排序演算法',     index: 6 },
+          { key: 'arduino',   label: 'Arduino',        index: 7 }
+        ],
+        customMapping: {
+          categories: ['法律倫理', '運算思維', '流程圖', '程式設計', '演算法'],
+          taskMap: { ethics: '法律倫理', thinking: '運算思維', flowchart: '流程圖', scratch: '程式設計', logic: '演算法', search: '演算法', sort: '演算法', arduino: '程式設計' }
+        }
+      };
+    }
+
+    // 從 Firebase 讀取（取代原本的 Google 試算表；函式名保留以免動到呼叫處）
+    async function fetchGoogleSheetData() {
+      // 1. 成績簿設定（科目 + 分類）
+      let rawSubjects = [];
+      const gbSnap = await extDb.collection('11502-config').doc('gradebook').get();
+      if (gbSnap.exists && gbSnap.data().subjects && gbSnap.data().subjects.length) {
+        const gb = gbSnap.data();
+        rawSubjects = gb.subjects;
+        if (gb.customMapping) customMapping = gb.customMapping;
+      } else {
+        const def = defaultGradebook();
+        rawSubjects = def.subjects; customMapping = def.customMapping;
+        await extDb.collection('11502-config').doc('gradebook').set(def, { merge: true });
+      }
+      localStorage.setItem('gradeSystemCustomMap', JSON.stringify(customMapping));
+
+      // 2. 名冊（學生）＋ 學生闖關進度（11502-progress，與 hub 同一套星星）
+      const [rosterSnap, progressSnap] = await Promise.all([
+        extDb.collection(window.CONFIG.COLLECTIONS.ROSTER).get(),
+        extDb.collection('11502-progress').get()
+      ]);
+      const progMap = {}, histMap = {};
+      progressSnap.forEach(d => { const pd = d.data(); progMap[d.id] = pd.modules || {}; histMap[d.id] = pd.history || []; });
+
+      const sheets = {};
+      rosterSnap.forEach(d => {
+        const r = d.data();
+        const cls = String(r.cls || '未分班');
+        if (!sheets[cls]) sheets[cls] = [];
+        const student = { id: r.studentId || d.id, name: r.name || '', no: r.no };
+        const mods = progMap[student.id] || {};
+        rawSubjects.forEach(sub => { student[sub.key] = (mods[sub.key] && mods[sub.key].stars) || 0; });
+        student.__modules = mods;               // 各模組 meta（level/score…）供明細用
+        student.history = histMap[student.id] || [];  // 過關歷程供明細分析
+        sheets[cls].push(student);
+      });
+      Object.keys(sheets).forEach(cls => sheets[cls].sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0)));
+
+      if (Object.keys(sheets).length === 0) throw new Error('名冊尚無學生，請先到「名冊管理」建立');
+
+      // 3. 快照歷程
+      const snapSnap = await extDb.collection('11502-config').doc('snapshots').get();
+      progressHistory = (snapSnap.exists && snapSnap.data().history) ? snapSnap.data().history : [];
+      localStorage.setItem('gradeSystemHistory', JSON.stringify(progressHistory));
+
+      spreadsheetData = sheets;
+      subjects = applyCustomMappingToSubjects(rawSubjects);
+      updateAvailableCategories();
+      activeSheet = Object.keys(spreadsheetData)[0];
+    }
+
+    function loadFallbackData() {
+      // 不提供假資料，避免混淆：讀不到雲端時顯示空名冊狀態
+      const def = defaultGradebook();
+      const savedMapping = localStorage.getItem('gradeSystemCustomMap');
+      customMapping = savedMapping ? JSON.parse(savedMapping) : def.customMapping;
+      subjects = applyCustomMappingToSubjects(def.subjects);
+      progressHistory = [];
+      spreadsheetData = {};
+      updateAvailableCategories();
+      activeSheet = null;
+    }
+
+    function updateAvailableCategories() {
+      availableCategories = customMapping.categories;
+      const select = document.getElementById('category-filter');
+      if (!select) return;
+      let options = `<option value="all">📁 所有任務</option>`;
+      availableCategories.forEach(cat => { options += `<option value="${cat}" ${activeCategory === cat ? 'selected' : ''}>📁 ${cat}</option>`; });
+      select.innerHTML = options;
+    }
+
+    // 各模組星數上限（與 hub 一致）：運算思維 20、資訊倫理 30、其餘 3
+    const MODULE_MAX = { thinking: 20, ethics: 30 };
+    function subjMax(key){ return MODULE_MAX[key] || 3; }
+    function sumSubjMax(subjectList){ return subjectList.reduce((a, s) => a + subjMax(s.key), 0); }
+
+    function calculateTotalStarsForData(studentData, subjectList = subjects) {
+      let totalStars = 0;
+      let displaySubjects = activeCategory === 'all' ? subjectList : subjectList.filter(sub => sub.group === activeCategory);
+      displaySubjects.forEach(sub => {
+        let val = parseInt(studentData[sub.key]);
+        if (!isNaN(val) && val > 0) totalStars += val;  // 不再封頂 3，反映實際星數
+      });
+      return totalStars;
+    }
+
+    function calculateTotalStars(student) {
+      return calculateTotalStarsForData(student, subjects);
+    }
+
+    function getProgressBarColor(percentage, isMax) {
+      if (isMax) return "bg-yellow-400";
+      if (percentage < 33) return "bg-red-400";
+      if (percentage < 66) return "bg-amber-400";
+      return "bg-emerald-400";
+    }
+
+    function renderAll() { renderTabs(); renderCards(); }
+
+    function renderTabs() {
+      const container = document.getElementById('tabs-container');
+      container.innerHTML = '';
+      Object.keys(spreadsheetData).forEach(sheetName => {
+        const btn = document.createElement('button');
+        btn.innerText = sheetName;
+        if (sheetName === activeSheet) {
+          btn.className = 'px-6 py-2 rounded-full font-bold text-sm transition-all duration-200 bg-blue-600 text-white shadow-md transform hover:scale-105';
+        } else {
+          btn.className = 'px-6 py-2 rounded-full font-medium text-sm transition-all duration-200 bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 hover:shadow-sm';
+        }
+        btn.onclick = () => {
+          activeSheet = sheetName; document.getElementById('search-input').value = ''; searchTerm = '';
+          activeCategory = 'all'; renderAll();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function renderCards() {
+      const grid = document.getElementById('students-grid');
+      const noDataMsg = document.getElementById('no-data-msg');
+      let currentData = spreadsheetData[activeSheet] || [];
+      let filteredData = currentData;
+      if (searchTerm.trim() !== '') {
+        const lowerSearch = searchTerm.toLowerCase();
+        filteredData = currentData.filter(s => s.name.toLowerCase().includes(lowerSearch) || String(s.id).toLowerCase().includes(lowerSearch));
+      }
+
+      document.getElementById('student-count').innerText = `共 ${filteredData.length} 名學生`;
+
+      if (filteredData.length === 0) {
+        grid.innerHTML = '';
+        const msgP = noDataMsg.querySelector('p');
+        if (msgP) msgP.innerText = (Object.keys(spreadsheetData).length === 0)
+          ? '目前雲端尚無名冊，請先到「名冊管理」建立學生。'
+          : '沒有找到符合條件的學生資料。';
+        noDataMsg.classList.remove('hidden');
+        return;
+      } else noDataMsg.classList.add('hidden');
+
+      let cardsHTML = '';
+      let displaySubjects = activeCategory === 'all' ? subjects : subjects.filter(sub => sub.group === activeCategory);
+      const maxPossibleStars = sumSubjMax(displaySubjects);
+
+      filteredData.forEach(student => {
+        let totalStars = calculateTotalStars(student);
+        let progressPercentage = maxPossibleStars > 0 ? (totalStars / maxPossibleStars) * 100 : 0;
+        let isMaxStars = (totalStars === maxPossibleStars && maxPossibleStars > 0);
+
+        const coolColors = ['bg-blue-100 text-blue-600', 'bg-cyan-100 text-cyan-600', 'bg-teal-100 text-teal-600', 'bg-indigo-100 text-indigo-600'];
+        const warmColors = ['bg-pink-100 text-pink-600', 'bg-rose-100 text-rose-600', 'bg-red-100 text-red-600', 'bg-orange-100 text-orange-600', 'bg-amber-100 text-amber-600'];
+        const neutralColors = ['bg-purple-100 text-purple-600', 'bg-emerald-100 text-emerald-600', 'bg-slate-100 text-slate-600'];
+
+        let genderCode = student.id.length >= 3 ? student.id.charAt(2) : '';
+        let hash = student.id.charCodeAt(student.id.length - 1) || 0;
+        let colorClass = (genderCode === '1') ? coolColors[hash % coolColors.length] : (genderCode === '2') ? warmColors[hash % warmColors.length] : neutralColors[hash % neutralColors.length];
+        let cardBaseStyle = isMaxStars ? "bg-gradient-to-b from-yellow-50 to-white border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.4)]" : "bg-white border-slate-200 hover:border-blue-300";
+        let progressBarColor = getProgressBarColor(progressPercentage, isMaxStars);
+
+        let snapshotData = null;
+        if (progressHistory.length > 0) {
+            const latestRecord = progressHistory[progressHistory.length - 1];
+            if (latestRecord.data[activeSheet]) snapshotData = latestRecord.data[activeSheet].find(s => s.id === student.id);
+        }
+        let snapshotTotal = snapshotData ? calculateTotalStarsForData(snapshotData) : 0;
+        let starDiff = snapshotData ? (totalStars - snapshotTotal) : 0;
+        let diffHTML = '';
+        if (starDiff > 0) diffHTML = `<span class="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-md ml-1 border border-emerald-200 animate-[pop_0.3s_ease-out]">↑ ${starDiff}</span>`;
+        else if (starDiff < 0) diffHTML = `<span class="text-[10px] font-bold text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded-md ml-1 border border-rose-200">↓ ${Math.abs(starDiff)}</span>`;
+
+        cardsHTML += `
+          <div onclick="openModal('${student.id}')" class="${cardBaseStyle} border rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden">
+            ${isMaxStars ? '<div class="absolute -top-6 -right-6 w-16 h-16 bg-yellow-400 opacity-20 rounded-full blur-xl"></div>' : ''}
+            <div class="w-16 h-16 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform relative z-10 ${colorClass}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              ${isMaxStars ? '<div class="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-1 shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg></div>' : ''}
+            </div>
+            <div class="text-center w-full relative z-10">
+              <h3 class="font-bold text-slate-800 text-lg truncate" title="${student.name}">${student.name}</h3>
+              <p class="text-xs text-slate-500 font-mono mt-0.5">${student.id}</p>
+            </div>
+            <div class="mt-4 w-full relative z-10 px-1">
+              <div class="flex items-center justify-between mb-1.5">
+                <div class="flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="text-yellow-400"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                  <span class="text-sm font-bold ${isMaxStars ? 'text-yellow-600' : 'text-slate-700'}">${totalStars} <span class="text-xs text-slate-400 font-normal">/ ${maxPossibleStars}</span></span>
+                  ${diffHTML}
+                </div>
+                <span class="text-xs font-bold ${isMaxStars ? 'text-yellow-600' : 'text-slate-400'}">${Math.round(progressPercentage)}%</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner">
+                <div class="${progressBarColor} h-full rounded-full transition-all duration-700 ease-out" style="width: ${progressPercentage}%"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      grid.innerHTML = cardsHTML;
+    }
+
+    // --- 🌟 整合《運算思維》外部 Firebase 資料庫同步功能 ---
+    window.syncCTGradesFirebase = async function() {
+      const ctSubjects = subjects.filter(sub => sub.group === '運算思維' || sub.label.includes('運算思維'));
+
+      if (ctSubjects.length === 0) {
+        showCustomDialog({
+          title: '無法同步',
+          message: '找不到任何屬於「運算思維」的任務！請先在「⚙️ 任務設定」中將相關欄位（例如：01 跳格子）歸類到「運算思維」資料夾。',
+          type: 'warning'
+        });
+        return;
+      }
+
+      showCustomDialog({
+        title: '雲端同步《運算思維》成績',
+        message: `系統將連線至您的 Firebase 雲端資料庫，自動比對全班過關紀錄並填入成績。確定要執行嗎？`,
+        showCancel: true,
+        confirmText: '開始同步',
+        onConfirm: async () => {
+          
+          // 🌟 顯示讀取遮罩與狀態
+          const spinner = document.getElementById('loading-spinner');
+          const spinnerText = spinner.querySelector('p');
+          spinnerText.innerText = "🔄 正在連線 Firebase 獲取全班進度...";
+          spinner.classList.remove('hidden');
+
+          try {
+            // 🌟 1. 嚴格循序等待驗證完成 (使用您專屬的 extAuth)
+            let user = extAuth.currentUser;
+            if (!user) {
+                const cred = await extAuth.signInAnonymously();
+                user = cred.user;
+            }
+
+            if (!user) {
+                throw new Error("無法取得外部資料庫讀取權限");
+            }
+
+            // 🌟 2. 讀取外部資料庫 (精準鎖定您所指定的長路徑)
+            let dbRecords = {};
+            const collectionPath = 'artifacts/comp-think-app/public/data/progress_sem2';
+            console.log(`[除錯追蹤] 準備讀取路徑: ${collectionPath}`);
+            
+            const progressRef = extDb.collection(collectionPath);
+            const snapshot = await progressRef.get();
+            
+            console.log(`[除錯追蹤] 讀取完成，共找到 ${snapshot.size} 份文件`);
+            
+            snapshot.forEach(doc => { 
+                dbRecords[doc.id] = doc.data(); 
+            });
+
+            if (Object.keys(dbRecords).length === 0) {
+              spinner.classList.add('hidden');
+              console.log("[除錯追蹤] 資料庫是空的，請確認是否查看錯了專案或是存到了 Realtime Database。");
+              showCustomDialog({ 
+                  title: '找不到資料 (0 筆紀錄)', 
+                  message: `連線成功，但在路徑 \n「${collectionPath}」\n 下沒有任何紀錄。\n\n⚠️ 可能是學生存到了另一個專案，或是存到了 Realtime Database 中。請確認！` 
+              });
+              return;
+            }
+
+            let syncCount = 0;
+            const classData = spreadsheetData[activeSheet];
+            
+            classData.forEach(student => {
+              // 確保學號存在且至少有 2 碼 (才切得出座號)
+              if (student.id && student.id.length >= 2) {
+                // 班級直接使用試算表名稱最精準 (例如 820)
+                let classStr = activeSheet; 
+                
+                // 永遠取學號的「最後兩碼」作為座號 (完美解決 1402026 這種格式)
+                let seatStr = student.id.slice(-2);   
+                let seatCode = parseInt(seatStr, 10); 
+
+                // 備用班級推算法 (如果學號是 1420916，取 3,5 碼)
+                let fallbackClassCode = student.id.length >= 7 ? student.id.substring(3, 5) : '';
+                let fallbackClassStr = fallbackClassCode ? "8" + fallbackClassCode : classStr;
+
+                // 🌟 使用更嚴謹的比對方式，確保尋找到的是 809_05_ 開頭 (包含底線，避免配對到 809_051)
+                let prefixes = [
+                    `${classStr}_${seatStr}_`,
+                    `${classStr}_${seatCode}_`,
+                    `${fallbackClassStr}_${seatStr}_`,
+                    `${fallbackClassStr}_${seatCode}_`
+                ];
+
+                let matchingDocData = null;
+                for (let docId in dbRecords) {
+                    for (let prefix of prefixes) {
+                        // 處理若文件名稱剛好就是 "809_05" 的邊界情況
+                        if (docId === prefix.slice(0, -1) || docId.startsWith(prefix)) {
+                            matchingDocData = dbRecords[docId];
+                            break;
+                        }
+                    }
+                    if (matchingDocData) break;
+                }
+
+                if (matchingDocData) {
+                    ctSubjects.forEach(sub => {
+                       const match = sub.label.match(/\d+/); 
+                       if (match) {
+                         const levelId = parseInt(match[0], 10);
+                         let isPassed = false;
+                         
+                         // 🌟 智慧解析資料：找看看有沒有該關卡的數字，或是 level
+                         for (const key in matchingDocData) {
+                            const val = matchingDocData[key];
+                            // 情況 A：剛好存的就是這個數字
+                            if (val === levelId || val === String(levelId)) {
+                                isPassed = true; break;
+                            }
+                            // 情況 B：存的是目前最高關卡 (例如 { level: 2 }，那 1 也算過關)
+                            if (typeof val === 'number' && (key.toLowerCase().includes('level') || key.toLowerCase().includes('progress'))) {
+                                if (val >= levelId) {
+                                    isPassed = true; break;
+                                }
+                            }
+                         }
+                         
+                         // 情況 C：陣列格式 (例如 completed: [1])
+                         if (!isPassed && Array.isArray(matchingDocData.completed) && matchingDocData.completed.includes(levelId)) {
+                             isPassed = true;
+                         }
+
+                         // 情況 D：如果是整個文檔就是 true
+                         if (!isPassed && (matchingDocData.passed === true || matchingDocData.completed === true)) {
+                             isPassed = true;
+                         }
+
+                         // 若過關且目前成績不是 3 顆星，才更新成績
+                         if (isPassed && student[sub.key] !== 3) {
+                            student[sub.key] = 3; 
+                            syncCount++;
+                         }
+                       }
+                    });
+                }
+              }
+            });
+
+            if (syncCount > 0) {
+              renderCards();
+              triggerConfetti();
+              // 🌟 改變狀態文字，提示正在上傳至 Google 試算表
+              spinnerText.innerText = "⭐ 同步成功！正在將成績寫入雲端...";
+              await syncDataToGoogleSheet();
+              showToast(`✅ 運算思維同步完成！共為全班更新了 ${syncCount} 筆滿星成績。`, false);
+            } else {
+              showCustomDialog({ 
+                  title: '同步完成 (無新進度)', 
+                  message: '已成功連線並完成全班比對，但目前沒有學生的新通關紀錄需要更新。' 
+              });
+            }
+
+          } catch (error) {
+            console.error("[除錯追蹤] Firebase 同步發生錯誤:", error);
+            showCustomDialog({ title: '連線失敗', message: '讀取外部系統資料庫發生錯誤，請確認網路與權限。', type: 'danger' });
+          } finally {
+            spinner.classList.add('hidden');
+          }
+        }
+      });
+    };
+
+    // --- 🌟 新增：《倫理與法律》外部 Firebase 資料庫同步功能 ---
+    window.syncEthicsGradesFirebase = async function() {
+      // 確保試算表中任務的分類名稱包含「倫理與法律」
+      const ethicsSubjects = subjects.filter(sub => sub.group === '倫理與法律' || sub.label.includes('倫理與法律'));
+
+      if (ethicsSubjects.length === 0) {
+        showCustomDialog({
+          title: '無法同步',
+          message: '找不到任何屬於「倫理與法律」的任務！請先在「⚙️ 任務設定」中將相關欄位歸類到「倫理與法律」資料夾。',
+          type: 'warning'
+        });
+        return;
+      }
+
+      showCustomDialog({
+        title: '雲端同步《倫理與法律》成績',
+        message: `系統將連線至您的「第二個」 Firebase 雲端資料庫，自動比對全班過關紀錄並填入成績。確定要執行嗎？`,
+        showCancel: true,
+        confirmText: '開始同步',
+        onConfirm: async () => {
+          
+          const spinner = document.getElementById('loading-spinner');
+          const spinnerText = spinner.querySelector('p');
+          spinnerText.innerText = "🔄 正在連線 倫理與法律 資料庫獲取全班進度...";
+          spinner.classList.remove('hidden');
+
+          try {
+            // 1. 嚴格循序等待驗證完成 (使用倫理與法律專屬的 ethicsAuth)
+            let user = ethicsAuth.currentUser;
+            if (!user) {
+                const cred = await ethicsAuth.signInAnonymously();
+                user = cred.user;
+            }
+
+            if (!user) {
+                throw new Error("無法取得倫理與法律資料庫讀取權限");
+            }
+
+            // 2. 讀取資料庫 (🌟 更新為您提供的 school-quiz-app 紀錄路徑)
+            let dbRecords = [];
+            const collectionPath = 'artifacts/school-quiz-app/public/data/quiz_records_115_2';
+            console.log(`[除錯追蹤] 準備讀取倫理與法律路徑: ${collectionPath}`);
+            
+            const progressRef = ethicsDb.collection(collectionPath);
+            const snapshot = await progressRef.get();
+            
+            console.log(`[除錯追蹤] 讀取完成，共找到 ${snapshot.size} 份文件`);
+            
+            // 將所有隨機 ID 的文件內容推進陣列，方便後續用內容進行比對
+            snapshot.forEach(doc => { 
+                dbRecords.push(doc.data()); 
+            });
+
+            if (dbRecords.length === 0) {
+              spinner.classList.add('hidden');
+              showCustomDialog({ 
+                  title: '找不到資料 (0 筆紀錄)', 
+                  message: `連線成功，但在路徑 \n「${collectionPath}」\n 下沒有任何紀錄。\n\n⚠️ 請確認設定檔與資料庫路徑是否正確！` 
+              });
+              return;
+            }
+
+            let syncCount = 0;
+            const classData = spreadsheetData[activeSheet];
+            
+            classData.forEach(student => {
+              if (student.id && student.id.length >= 2) {
+                let classStr = activeSheet; 
+                let seatStr = student.id.slice(-2);   
+                let seatCode = parseInt(seatStr, 10); 
+                let fallbackClassCode = student.id.length >= 7 ? student.id.substring(3, 5) : '';
+                let fallbackClassStr = fallbackClassCode ? "8" + fallbackClassCode : classStr;
+
+                // 🌟 改為比對文件內容的 cls 與 no
+                let studentRecords = dbRecords.filter(record => {
+                    const rCls = String(record.cls || "").trim();
+                    const rNo = String(record.no || "").trim();
+                    
+                    const matchClass = (rCls === classStr || rCls === fallbackClassStr);
+                    const matchSeat = (rNo === seatStr || rNo === String(seatCode) || parseInt(rNo, 10) === seatCode);
+                    
+                    return matchClass && matchSeat;
+                });
+
+                if (studentRecords.length > 0) {
+                    ethicsSubjects.forEach(sub => {
+                       // 尋找像是 "1-1", "1-2" 或單純數字 "2"
+                       const match = sub.label.match(/\d+(?:-\d+)?/); 
+                       if (match) {
+                         const targetChapterId = match[0];
+                         let bestStars = 0; // 紀錄最高星數
+                         
+                         // 🌟 全新計分邏輯：找尋同一個關卡中表現最好的一次
+                         for (let record of studentRecords) {
+                             if (String(record.chapterId) === targetChapterId) {
+                                 let stars = 0;
+                                 if (record.rate !== undefined) {
+                                     let rate = Number(record.rate);
+                                     if (rate >= 70) stars = 3;
+                                     else if (rate >= 50) stars = 2;
+                                     else stars = 1;
+                                 } else {
+                                     // 防呆：如果沒有 rate 欄位，預設給 3 星 (代表完成)
+                                     stars = 3; 
+                                 }
+                                 
+                                 // 更新為最高星數
+                                 if (stars > bestStars) {
+                                     bestStars = stars;
+                                 }
+                             }
+                         }
+
+                         let currentStars = parseInt(student[sub.key]) || 0;
+                         // 若資料庫中的最高星數大於目前試算表上的星數，才進行更新
+                         if (bestStars > currentStars) {
+                            student[sub.key] = bestStars; 
+                            syncCount++;
+                         }
+                       }
+                    });
+                }
+              }
+            });
+
+            if (syncCount > 0) {
+              renderCards();
+              triggerConfetti();
+              spinnerText.innerText = "⭐ 同步成功！正在將成績寫入雲端...";
+              await syncDataToGoogleSheet();
+              showToast(`✅ 倫理與法律同步完成！共為全班更新了 ${syncCount} 筆滿星成績。`, false);
+            } else {
+              showCustomDialog({ 
+                  title: '同步完成 (無新進度)', 
+                  message: '已成功連線並完成全班比對，但目前沒有學生的新通關紀錄需要更新。' 
+              });
+            }
+
+          } catch (error) {
+            console.error("[除錯追蹤] Firebase 同步發生錯誤:", error);
+            showCustomDialog({ title: '連線失敗', message: '讀取倫理與法律資料庫發生錯誤，請確認網路與權限。', type: 'danger' });
+          } finally {
+            spinner.classList.add('hidden');
+          }
+        }
+      });
+    };
+
+    window.switchStudentTab = function(tabName) {
+      const containerTasks = document.getElementById('modal-tasks-container');
+      const containerChart = document.getElementById('modal-chart-container');
+      const tabTasks = document.getElementById('tab-tasks');
+      const tabChart = document.getElementById('tab-chart');
+
+      if (tabName === 'tasks') {
+        containerTasks.classList.remove('hidden'); containerChart.classList.add('hidden');
+        tabTasks.className = "font-bold text-blue-700 border-b-4 border-blue-600 pb-2 text-sm flex items-center gap-1.5 transition-colors";
+        tabChart.className = "font-bold text-indigo-400 border-b-4 border-transparent pb-2 hover:text-indigo-600 text-sm flex items-center gap-1.5 transition-colors";
+      } else {
+        containerTasks.classList.add('hidden'); containerChart.classList.remove('hidden');
+        tabChart.className = "font-bold text-blue-700 border-b-4 border-blue-600 pb-2 text-sm flex items-center gap-1.5 transition-colors";
+        tabTasks.className = "font-bold text-indigo-400 border-b-4 border-transparent pb-2 hover:text-indigo-600 text-sm flex items-center gap-1.5 transition-colors";
+        renderStudentChart(); 
+      }
+    };
+
+    function openModal(studentId) {
+      currentEditingStudentId = studentId;
+      const classData = spreadsheetData[activeSheet];
+      const student = classData.find(s => s.id === studentId);
+      if (!student) return;
+
+      document.getElementById('modal-student-name').innerText = student.name;
+      document.getElementById('modal-student-id').innerText = student.id;
+      
+      switchStudentTab('tasks'); 
+      renderModalTasks();
+
+      const modal = document.getElementById('task-modal');
+      const content = document.getElementById('task-modal-content');
+      modal.classList.remove('hidden');
+      setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
+    }
+
+    window.navigateStudent = function(direction) {
+      let filteredData = spreadsheetData[activeSheet] || [];
+      if (searchTerm.trim() !== '') filteredData = filteredData.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || String(s.id).toLowerCase().includes(searchTerm.toLowerCase()));
+      if (filteredData.length === 0) return;
+      const currentIndex = filteredData.findIndex(s => s.id === currentEditingStudentId);
+      if (currentIndex === -1) return;
+
+      let nextIndex = (direction === 'prev') ? (currentIndex > 0 ? currentIndex - 1 : filteredData.length - 1) : (currentIndex < filteredData.length - 1 ? currentIndex + 1 : 0);
+      currentEditingStudentId = filteredData[nextIndex].id;
+      document.getElementById('modal-student-name').innerText = filteredData[nextIndex].name;
+      document.getElementById('modal-student-id').innerText = filteredData[nextIndex].id;
+      
+      const containerTasks = document.getElementById('modal-tasks-container');
+      const containerChart = document.getElementById('modal-chart-container');
+      containerTasks.classList.add('opacity-50', 'scale-95'); containerChart.classList.add('opacity-50', 'scale-95');
+      
+      setTimeout(() => {
+        renderModalTasks();
+        if (!containerChart.classList.contains('hidden')) renderStudentChart();
+        containerTasks.classList.remove('opacity-50', 'scale-95'); containerChart.classList.remove('opacity-50', 'scale-95');
+      }, 150);
+    };
+
+    function closeModal() {
+      const modal = document.getElementById('task-modal');
+      const content = document.getElementById('task-modal-content');
+      modal.classList.add('opacity-0'); content.classList.add('scale-95');
+      setTimeout(() => { modal.classList.add('hidden'); currentEditingStudentId = null; renderCards(); }, 300);
+    }
+
+    async function saveAndCloseModal() { closeModal(); await syncDataToGoogleSheet(); }
+
+    async function syncDataToGoogleSheet() {
+      const classData = spreadsheetData[activeSheet];
+      if (!classData || classData.length === 0) return;
+      showToast(`正在將星星儲存至雲端...`, false);
+      try {
+        const batch = extDb.batch();
+        classData.forEach(student => {
+          const modules = {};
+          subjects.forEach(sub => { modules[sub.key] = { stars: (student[sub.key] != null ? student[sub.key] : 0) }; });
+          batch.set(extDb.collection('11502-progress').doc(student.id), {
+            studentId: student.id, modules, updatedAt: Date.now()
+          }, { merge: true });
+        });
+        await batch.commit();
+        showToast(`⭐ 星星已儲存成功！`, false);
+      } catch (error) { showToast('儲存失敗：' + error.message, true); }
+    }
+
+    window.fillGroupStars = function(groupName) {
+      if (!currentEditingStudentId) return;
+      const studentIndex = spreadsheetData[activeSheet].findIndex(s => s.id === currentEditingStudentId);
+      if (studentIndex > -1) {
+        const student = spreadsheetData[activeSheet][studentIndex];
+        const previousTotal = calculateTotalStars(student);
+        let displaySubjects = activeCategory === 'all' ? subjects : subjects.filter(sub => sub.group === activeCategory);
+        
+        subjects.filter(sub => sub.group === groupName).forEach(sub => { student[sub.key] = subjMax(sub.key); });
+        const newTotal = calculateTotalStars(student);
+        const fullTotal = sumSubjMax(displaySubjects);
+        if (newTotal === fullTotal && previousTotal < fullTotal) triggerConfetti();
+        renderModalTasks(); 
+      }
+    };
+
+    // 某模組的星星明細（過關歷程）
+    function moduleHistoryHtml(moduleKey, student) {
+      const items = (student.history || []).filter(h => h.module === moduleKey).slice().sort((a, b) => (a.at || 0) - (b.at || 0));
+      if (!items.length) return '<div class="text-xs text-slate-400 px-3 py-2">尚無逐筆明細（可能是舊資料或以「重算星星」產生，僅有總星數）。</div>';
+      return items.map((h, i) => {
+        const dt = h.at ? new Date(h.at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+        const what = h.chapter ? `章節 ${h.chapter}` : (h.challenge != null ? `第 ${h.challenge} 關` : '完成一項');
+        const sc = (h.score != null) ? `　正確率 ${h.score}%` : '';
+        return `<div class="text-xs text-slate-600 px-3 py-1.5 border-b border-slate-50 flex justify-between gap-2"><span class="font-medium">${i + 1}. ${what}${sc}</span><span class="text-slate-400 flex-shrink-0">${dt}</span></div>`;
+      }).join('');
+    }
+
+    function renderModalTasks() {
+      const container = document.getElementById('modal-tasks-container');
+      const student = spreadsheetData[activeSheet].find(s => s.id === currentEditingStudentId);
+      const groupedSubjects = {};
+      subjects.forEach(sub => { if (!groupedSubjects[sub.group]) groupedSubjects[sub.group] = []; groupedSubjects[sub.group].push(sub); });
+
+      let html = '';
+      Object.keys(groupedSubjects).forEach((groupName) => {
+        if (activeCategory !== 'all' && activeCategory !== groupName) return;
+        const groupTasks = groupedSubjects[groupName];
+        let groupTotalStars = 0; let groupMaxStars = groupTasks.reduce((a, s) => a + subjMax(s.key), 0);
+        groupTasks.forEach(sub => { let val = parseInt(student[sub.key]); if (!isNaN(val) && val > 0) groupTotalStars += val; });
+        const isGroupComplete = (groupTotalStars === groupMaxStars && groupMaxStars > 0);
+
+        html += `
+          <div class="mb-6 bg-white rounded-2xl shadow-sm border ${isGroupComplete ? 'border-yellow-300' : 'border-slate-200'} overflow-hidden transition-colors">
+            <div class="${isGroupComplete ? 'bg-yellow-50' : 'bg-blue-50'} px-5 py-3 border-b ${isGroupComplete ? 'border-yellow-200' : 'border-blue-100'} flex justify-between items-center transition-colors">
+              <h4 class="font-bold ${isGroupComplete ? 'text-yellow-700' : 'text-blue-800'} text-lg flex items-center gap-2">
+                ${isGroupComplete ? '🏆' : '📁'} ${groupName}
+              </h4>
+              <div class="flex items-center gap-2">
+                ${!isGroupComplete ? `<button onclick="fillGroupStars('${groupName}')" title="一鍵滿星" class="text-blue-400 hover:text-blue-600 bg-white hover:bg-blue-100 p-1.5 rounded-full transition-colors shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>` : ''}
+                <div class="text-sm font-bold ${isGroupComplete ? 'text-yellow-600' : 'text-blue-600'} bg-white px-3 py-1 rounded-full shadow-sm">${groupTotalStars} / ${groupMaxStars}</div>
+              </div>
+            </div><div class="p-4 space-y-3">
+        `;
+
+        groupTasks.forEach((sub, taskIndex) => {
+          const max = subjMax(sub.key);
+          let currentStars = parseInt(student[sub.key]); if (isNaN(currentStars) || currentStars < 0) currentStars = 0;
+          let controlHTML;
+          const meta = (student.__modules && student.__modules[sub.key]) || {};
+          let lvlNote = '', detailHTML = '';
+          if (max > 3) {
+            // 自動累加型（運算思維／資訊倫理）：唯讀顯示星數 + 可展開明細
+            controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStars} <span class="text-xs text-slate-400 font-normal">/ ${max}</span></span><span class="text-[11px] text-slate-400 ml-2">自動</span>`;
+            if (meta.level != null) lvlNote = `<div class="text-[11px] text-slate-400 mt-0.5">已完成 ${meta.level} ${sub.key === 'ethics' ? '章節' : '關'}</div>`;
+            detailHTML = `
+              <details class="mt-2">
+                <summary class="text-xs text-blue-500 cursor-pointer select-none">📋 查看星星明細與獲取歷程</summary>
+                <div class="mt-1 bg-white rounded-lg border border-slate-100 max-h-48 overflow-y-auto">${moduleHistoryHtml(sub.key, student)}</div>
+              </details>`;
+          } else {
+            if (currentStars > 3) currentStars = 3;
+            let starsHTML = '';
+            for (let i = 1; i <= 3; i++) {
+              const isFilled = i <= currentStars;
+              const starClasses = isFilled ? 'text-yellow-400 fill-yellow-400 drop-shadow-sm' : 'text-slate-300 fill-transparent hover:text-yellow-200 hover:fill-yellow-200 transition-colors duration-200';
+              starsHTML += `<svg onclick="handleStarClick('${sub.key}', ${currentStars === i ? 0 : i}, this)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10 cursor-pointer transition-all active:scale-90 ${starClasses}"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+            }
+            controlHTML = starsHTML;
+          }
+          html += `
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 hover:bg-blue-50/50 hover:border-blue-200 transition-colors">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-white shadow-sm text-slate-500 flex items-center justify-center font-bold text-xs border border-slate-200">${taskIndex + 1}</div><div><span class="font-bold text-slate-700 text-md">${sub.displayLabel}</span>${lvlNote}</div></div>
+                <div class="flex items-center gap-1">${controlHTML}</div>
+              </div>
+              ${detailHTML}
+            </div>
+          `;
+        });
+        html += `</div></div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    function renderStudentChart() {
+      const canvas = document.getElementById('student-progress-chart');
+      const ctx = canvas.getContext('2d');
+      if (studentChartInstance) studentChartInstance.destroy();
+
+      const labels = progressHistory.map(h => h.date).concat(['目前進度']);
+      const dataPoints = progressHistory.map(h => {
+          const sheetData = h.data[activeSheet] || [];
+          const sData = sheetData.find(s => s.id === currentEditingStudentId);
+          return sData ? calculateTotalStarsForData(sData) : 0;
+      });
+
+      const currentStudentData = spreadsheetData[activeSheet].find(s => s.id === currentEditingStudentId);
+      dataPoints.push(calculateTotalStars(currentStudentData));
+
+      studentChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+              labels: labels,
+              datasets: [{
+                  label: '任務總星數',
+                  data: dataPoints,
+                  borderColor: '#3B82F6',
+                  backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                  borderWidth: 3,
+                  pointBackgroundColor: '#FBBF24',
+                  pointBorderColor: '#fff',
+                  pointBorderWidth: 2,
+                  pointRadius: 6,
+                  pointHoverRadius: 8,
+                  fill: true,
+                  tension: 0.4
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: { y: { beginAtZero: true, suggestedMax: subjects.length * 3, ticks: { stepSize: 3 } } },
+              plugins: { legend: { display: false } }
+          }
+      });
+    }
+
+    window.handleSearch = function(value) { searchTerm = value; renderCards(); };
+    window.handleCategoryChange = function(value) { activeCategory = value; renderCards(); };
+
+    window.handleStarClick = function(subjectKey, newValue, element) {
+      if (!currentEditingStudentId) return;
+      const studentIndex = spreadsheetData[activeSheet].findIndex(s => s.id === currentEditingStudentId);
+      if (studentIndex > -1) {
+        const student = spreadsheetData[activeSheet][studentIndex];
+        const previousTotal = calculateTotalStars(student);
+        let displaySubjects = activeCategory === 'all' ? subjects : subjects.filter(sub => sub.group === activeCategory);
+        student[subjectKey] = newValue;
+        const newTotal = calculateTotalStars(student);
+        element.classList.add('star-pop'); setTimeout(() => element.classList.remove('star-pop'), 300);
+        if (newTotal === displaySubjects.length * 3 && previousTotal < displaySubjects.length * 3) triggerConfetti();
+        renderModalTasks(); 
+      }
+    };
+
+    // --- 🌟 歷史紀錄與班級折線圖 ---
+    window.openHistoryModal = function() {
+      const btnClear = document.getElementById('btn-clear-snapshot');
+      if (progressHistory.length > 0) btnClear.classList.remove('hidden'); else btnClear.classList.add('hidden');
+      
+      const modal = document.getElementById('history-modal');
+      const content = document.getElementById('history-modal-content');
+      modal.classList.remove('hidden');
+      setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
+      
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById('snapshot-date-input').value = `${yyyy}-${mm}-${dd}`;
+
+      renderClassChart();
+      renderHistoryList();
+    };
+
+    window.closeHistoryModal = function() {
+      const modal = document.getElementById('history-modal');
+      const content = document.getElementById('history-modal-content');
+      modal.classList.add('opacity-0'); content.classList.add('scale-95');
+      setTimeout(() => { modal.classList.add('hidden'); }, 300);
+    };
+
+    function renderHistoryList() {
+      const container = document.getElementById('history-list-container');
+      const countEl = document.getElementById('snapshot-count');
+      container.innerHTML = '';
+      countEl.innerText = progressHistory.length;
+
+      if (progressHistory.length === 0) {
+        container.innerHTML = `<p class="col-span-full text-center text-slate-400 py-4">暫無紀錄</p>`;
+        return;
+      }
+
+      const sortedHistory = [...progressHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      sortedHistory.forEach((item) => {
+        const originalIndex = progressHistory.indexOf(item);
+        const div = document.createElement('div');
+        div.className = "flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-indigo-300 transition-colors";
+        
+        div.innerHTML = `
+          <div>
+            <div class="font-mono text-slate-700 font-bold">${item.date}</div>
+            <div class="text-xs text-slate-500 mt-1">已備份全班成績</div>
+          </div>
+          <button onclick="deleteSingleSnapshot(${originalIndex})" class="px-3 py-1.5 bg-white text-red-500 hover:text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors shadow-sm flex items-center gap-1 text-sm font-bold" title="刪除此週紀錄">
+            🗑️ 刪除
+          </button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    window.confirmSaveSnapshot = function() {
+      const dateInput = document.getElementById('snapshot-date-input').value;
+      if (!dateInput) {
+        showCustomDialog({ title: '操作錯誤', message: '請先選擇日期！', type: 'warning' });
+        return;
+      }
+      
+      const dateStr = dateInput.replace(/-/g, '/');
+      const existingIdx = progressHistory.findIndex(h => h.date === dateStr);
+      
+      if (existingIdx !== -1) {
+        showCustomDialog({
+          title: '紀錄已存在',
+          message: `📅 ${dateStr} 已經有紀錄了，確定要「覆蓋」它嗎？`,
+          type: 'warning',
+          showCancel: true,
+          confirmText: '確定覆蓋',
+          onConfirm: async () => {
+            progressHistory.splice(existingIdx, 1);
+            await executeSaveSnapshot(dateStr);
+          }
+        });
+      } else {
+        executeSaveSnapshot(dateStr);
+      }
+    };
+
+    async function executeSaveSnapshot(dateStr) {
+      progressHistory.push({
+          date: dateStr,
+          data: JSON.parse(JSON.stringify(spreadsheetData))
+      });
+      progressHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+      localStorage.setItem('gradeSystemHistory', JSON.stringify(progressHistory));
+      renderClassChart();
+      renderHistoryList();
+      renderCards();
+      showToast(`📸 ${dateStr} 的紀錄已處理！同步至雲端中...`, false);
+      await syncHistoryToCloud();
+    }
+
+    window.deleteSingleSnapshot = function(index) {
+      const targetDate = progressHistory[index].date;
+      showCustomDialog({
+        title: '刪除單筆紀錄',
+        message: `確定要刪除 ${targetDate} 的這筆紀錄嗎？此動作無法復原。`,
+        type: 'danger',
+        showCancel: true,
+        confirmText: '確定刪除',
+        onConfirm: async () => {
+          progressHistory.splice(index, 1);
+          localStorage.setItem('gradeSystemHistory', JSON.stringify(progressHistory));
+          renderClassChart();
+          renderHistoryList();
+          renderCards();
+          showToast(`🗑️ 已刪除 ${targetDate} 的紀錄，同步至雲端中...`, false);
+          const btnClear = document.getElementById('btn-clear-snapshot');
+          if (progressHistory.length > 0) btnClear.classList.remove('hidden'); else btnClear.classList.add('hidden');
+          await syncHistoryToCloud();
+        }
+      });
+    };
+
+    window.clearSnapshot = function() {
+      showCustomDialog({
+        title: '清除所有紀錄',
+        message: '確定要清除所有的歷史紀錄嗎？圖表將會被重置且此動作無法復原喔！',
+        type: 'danger',
+        showCancel: true,
+        confirmText: '確定清除',
+        onConfirm: async () => {
+          progressHistory = [];
+          localStorage.removeItem('gradeSystemHistory');
+          renderClassChart();
+          renderHistoryList();
+          renderCards();
+          document.getElementById('btn-clear-snapshot').classList.add('hidden');
+          showToast('🗑️ 已清除所有歷史紀錄。正在同步至雲端...', false);
+          await syncHistoryToCloud();
+        }
+      });
+    };
+
+    async function syncHistoryToCloud() {
+      try {
+        await extDb.collection('11502-config').doc('snapshots').set({ history: progressHistory, updatedAt: Date.now() });
+        showToast('☁️ 歷史圖表紀錄已儲存至雲端！', false);
+      } catch (err) {
+        showToast('雲端同步失敗，但已暫存於本機。', true);
+      }
+    }
+
+    function renderClassChart() {
+      const canvas = document.getElementById('class-progress-chart');
+      const ctx = canvas.getContext('2d');
+      if (classChartInstance) classChartInstance.destroy();
+
+      const labels = progressHistory.map(h => h.date).concat(['現在 (本週)']);
+      const dataPoints = progressHistory.map(h => {
+          const sheetData = h.data[activeSheet] || [];
+          if(sheetData.length === 0) return 0;
+          let total = 0;
+          sheetData.forEach(s => total += calculateTotalStarsForData(s));
+          return (total / sheetData.length).toFixed(1);
+      });
+
+      const currentSheetData = spreadsheetData[activeSheet] || [];
+      let currentTotal = 0;
+      currentSheetData.forEach(s => currentTotal += calculateTotalStars(s));
+      dataPoints.push(currentSheetData.length ? (currentTotal / currentSheetData.length).toFixed(1) : 0);
+
+      classChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+              labels: labels,
+              datasets: [{
+                  label: '班級平均總星數',
+                  data: dataPoints,
+                  borderColor: '#8B5CF6',
+                  backgroundColor: 'rgba(139, 92, 246, 0.15)',
+                  borderWidth: 3,
+                  pointBackgroundColor: '#FBBF24',
+                  pointRadius: 6,
+                  pointHoverRadius: 8,
+                  fill: true,
+                  tension: 0.4
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: { y: { beginAtZero: true, suggestedMax: subjects.length * 3 } },
+              plugins: { legend: { display: false } }
+          }
+      });
+    }
+
+    // --- 設定面板相關 ---
+    window.openSettingsModal = function() {
+      tempCategories = [...customMapping.categories]; tempTaskMap = { ...customMapping.taskMap };
+      renderSettingsCategories(); renderSettingsTasks();
+      const modal = document.getElementById('settings-modal'); const content = document.getElementById('settings-modal-content');
+      modal.classList.remove('hidden'); setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
+    };
+    window.closeSettingsModal = function() {
+      const modal = document.getElementById('settings-modal'); const content = document.getElementById('settings-modal-content');
+      modal.classList.add('opacity-0'); content.classList.add('scale-95'); setTimeout(() => { modal.classList.add('hidden'); }, 300);
+    };
+    window.addCategoryFromInput = function() {
+      const input = document.getElementById('new-category-input'); const val = input.value.trim();
+      if (val && !tempCategories.includes(val)) { tempCategories.push(val); input.value = ''; renderSettingsCategories(); renderSettingsTasks(); }
+    };
+    window.removeCategory = function(catToRemove) {
+      if (tempCategories.length <= 1) { 
+        showCustomDialog({ title: '無法刪除', message: '至少需要保留一個分類！', type: 'warning' });
+        return; 
+      }
+      tempCategories = tempCategories.filter(c => c !== catToRemove);
+      Object.keys(tempTaskMap).forEach(key => { if (tempTaskMap[key] === catToRemove) tempTaskMap[key] = tempCategories[0]; });
+      renderSettingsCategories(); renderSettingsTasks();
+    };
+    window.updateTaskCategoryMap = function(subjectKey, newCategory) { tempTaskMap[subjectKey] = newCategory; };
+    
+    // 🌟 一鍵自動分類邏輯
+    window.autoCategorize = function() {
+      let newCategories = new Set();
+      let newMap = {};
+      
+      subjects.forEach(sub => {
+        const match = sub.label.match(/^([^\s\-_：:]+)[\s\-_：:]+(.+)$/);
+        if (match) {
+          const groupName = match[1].trim();
+          newCategories.add(groupName);
+          newMap[sub.key] = groupName;
+        } else {
+          newCategories.add('其他任務');
+          newMap[sub.key] = '其他任務';
+        }
+      });
+      
+      tempCategories = Array.from(newCategories);
+      tempTaskMap = newMap;
+      
+      renderSettingsCategories();
+      renderSettingsTasks();
+      
+      showCustomDialog({
+        title: '✨ 自動分類完成',
+        message: '系統已根據試算表標題為您自動建立分類與歸屬。請在下方確認無誤後，點擊右下角「儲存設定」！'
+      });
+    };
+
+    function renderSettingsCategories() {
+      const container = document.getElementById('settings-categories-list'); let html = '';
+      tempCategories.forEach(cat => { html += `<div class="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-100 text-sm font-medium">📁 ${cat} <button onclick="removeCategory('${cat}')" class="ml-1 hover:bg-blue-200 text-blue-500 rounded-full p-0.5 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div>`; });
+      container.innerHTML = html;
+    }
+    function renderSettingsTasks() {
+      const container = document.getElementById('settings-tasks-list'); let optionsHTML = '';
+      tempCategories.forEach(cat => { optionsHTML += `<option value="${cat}">${cat}</option>`; });
+      let html = '';
+      subjects.forEach(sub => {
+        const currentSelected = tempTaskMap[sub.key] || tempCategories[0];
+        const selectHTML = optionsHTML.replace(`value="${currentSelected}"`, `value="${currentSelected}" selected`);
+        html += `<div class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-lg hover:border-blue-200 transition-colors"><span class="font-medium text-slate-700">${sub.label}</span><select onchange="updateTaskCategoryMap('${sub.key}', this.value)" class="ml-4 px-3 py-1.5 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 cursor-pointer min-w-[120px]">${selectHTML}</select></div>`;
+      });
+      container.innerHTML = html;
+    }
+    window.saveSettings = async function() {
+      customMapping.categories = [...tempCategories]; customMapping.taskMap = { ...tempTaskMap };
+      localStorage.setItem('gradeSystemCustomMap', JSON.stringify(customMapping));
+      subjects = applyCustomMappingToSubjects(subjects); activeCategory = 'all'; updateAvailableCategories(); renderAll(); closeSettingsModal();
+      showToast('正在儲存分類設定至雲端...', false);
+      try {
+        const rawSubjects = subjects.map(s => ({ key: s.key, label: s.label, index: s.index }));
+        await extDb.collection('11502-config').doc('gradebook').set({ subjects: rawSubjects, customMapping }, { merge: true });
+        showToast('雲端儲存成功！換電腦設定也不會不見囉！', false);
+      } catch (err) { showToast('雲端儲存失敗，但已暫存於本機。', true); }
+    };
+
+    function triggerConfetti() { confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#FBBF24', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6'], zIndex: 9999 }); }
+
+    let toastTimeout;
+    function showToast(message, isWarning) {
+      const toast = document.getElementById('toast'); document.getElementById('toast-message').innerText = message;
+      toast.classList.remove('hidden'); toast.style.display = 'flex';
+      if(isWarning) {
+        toast.classList.remove('border-emerald-500'); toast.classList.add('border-amber-500');
+        toast.querySelector('svg').outerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+      } else {
+        toast.classList.remove('border-amber-500'); toast.classList.add('border-emerald-500');
+        toast.querySelector('svg').outerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+      }
+      clearTimeout(toastTimeout); toastTimeout = setTimeout(() => { toast.style.display = 'none'; toast.classList.add('hidden'); }, 4000);
+    }
+  </script>
+
+  <!-- 🌟 學生名冊管理邏輯（11502-roster） -->
+  <script>
+    (function(){
+      const rdb = firebase.firestore();      // 與 extDb 同一個資料庫
+      const COL = window.CONFIG.COLLECTIONS.ROSTER;
+      const SECRET_COL  = window.CONFIG.SHARED.SECRET;    // 驗證碼本體（只有老師讀得到）
+      const SESSION_COL = window.CONFIG.SHARED.SESSION;   // 登入試探紀錄
+      const CLASSES = [];
+      for (let c = 801; c <= 812; c++) CLASSES.push(String(c));
+      let rosterUnsub = null;
+      let rosterCache = [];
+      let editingCodeId = null;   // 目前正在手動改碼的學號
+      const revealedCodes = new Set();   // 驗證碼預設隱藏，只有按下「顯示」的學生才短暫顯示
+
+      function openRosterModal(){
+        const sel = document.getElementById('roster-class');
+        if (!sel.options.length) sel.innerHTML = CLASSES.map(c => `<option value="${c}">${c} 班</option>`).join('');
+        const modal = document.getElementById('roster-modal');
+        const content = document.getElementById('roster-modal-content');
+        modal.classList.remove('hidden');
+        setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
+        renderRoster();
+      }
+      function closeRosterModal(){
+        const modal = document.getElementById('roster-modal');
+        const content = document.getElementById('roster-modal-content');
+        modal.classList.add('opacity-0'); content.classList.add('scale-95');
+        if (rosterUnsub) { rosterUnsub(); rosterUnsub = null; }
+        setTimeout(() => { modal.classList.add('hidden'); }, 300);
+      }
+      /* 驗證碼不在名冊文件裡（學生讀得到名冊），改放 secret 集合，只有老師讀得到。
+         名冊列表要顯示驗證碼，所以先把 secret 全部讀進來再和名冊合併。 */
+      let secretCache = {};
+      async function loadSecrets(){
+        try {
+          const snap = await rdb.collection(SECRET_COL).get();
+          secretCache = {};
+          snap.forEach(d => { secretCache[d.id] = String((d.data() || {}).code || ''); });
+        } catch(e){ console.warn('讀取驗證碼失敗（不影響名冊）', e); secretCache = {}; }
+      }
+      async function renderRoster(){
+        revealedCodes.clear();   // 換班級／重新開啟名冊時，一律回到隱藏狀態
+        const cls = document.getElementById('roster-class').value;
+        if (rosterUnsub) { rosterUnsub(); rosterUnsub = null; }
+        await loadSecrets();
+        rosterUnsub = rdb.collection(COL).where('cls', '==', cls).onSnapshot(snap => {
+          rosterCache = snap.docs
+            .map(d => Object.assign({}, d.data(), { code: secretCache[d.id] || '' }))
+            .sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
+          paintRosterList();
+        }, err => { console.error(err); showToast('讀取名冊失敗：' + err.message, true); });
+      }
+      function esc(s){ return String(s == null ? '' : s).replace(/[<>&'"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&#39;','"':'&quot;'}[c])); }
+      function paintRosterList(){
+        const box = document.getElementById('roster-list');
+        document.getElementById('roster-count').innerText = `共 ${rosterCache.length} 人`;
+        if (!rosterCache.length) { box.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">此班尚無資料，請用上方新增或批次匯入。</div>`; return; }
+        box.innerHTML = `
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-xs"><tr><th class="p-2 text-left w-14">座號</th><th class="p-2 text-left w-28">學號</th><th class="p-2 text-left">姓名</th><th class="p-2 text-left w-24">驗證碼</th><th class="p-2 w-44"></th></tr></thead>
+            <tbody>${rosterCache.map(s => `
+              <tr class="border-t border-slate-100">
+                <td class="p-2">${esc(s.no)}</td>
+                <td class="p-2 font-mono">${esc(s.studentId)}</td>
+                <td class="p-2">${esc(s.name)}</td>
+                <td class="p-2">
+                  ${editingCodeId === s.studentId
+                    ? `<input id="code-edit-${esc(s.studentId)}" value="${esc(s.code || '')}" maxlength="6" inputmode="numeric" placeholder="6 位數字" class="w-24 px-2 py-1 border border-blue-300 rounded text-sm font-mono tracking-widest">`
+                    : (!s.code
+                        ? `<span class="font-mono tracking-widest text-slate-300">未設定</span>`
+                        : `<span class="inline-flex items-center gap-1.5">
+                             <span class="font-mono tracking-widest text-blue-700 font-bold">${revealedCodes.has(s.studentId) ? esc(s.code) : '••••••'}</span>
+                             <button onclick="toggleRosterCode('${esc(s.studentId)}')" title="${revealedCodes.has(s.studentId) ? '隱藏驗證碼' : '顯示驗證碼'}" class="text-slate-400 hover:text-slate-700 text-sm leading-none">${revealedCodes.has(s.studentId) ? '🙈' : '👁'}</button>
+                           </span>`)}
+                </td>
+                <td class="p-2 text-right whitespace-nowrap">
+                  ${editingCodeId === s.studentId
+                    ? `<button onclick="saveRosterCode('${esc(s.studentId)}','${esc(s.name)}')" class="text-emerald-600 hover:text-emerald-800 text-xs font-bold mr-2">儲存</button>
+                       <button onclick="clearRosterCode('${esc(s.studentId)}','${esc(s.name)}')" class="text-amber-600 hover:text-amber-800 text-xs font-bold mr-2">清除</button>
+                       <button onclick="cancelEditCode()" class="text-slate-400 hover:text-slate-600 text-xs font-bold">取消</button>`
+                    : `<button onclick="editRosterCode('${esc(s.studentId)}')" class="text-blue-500 hover:text-blue-700 text-xs font-bold mr-2">改碼</button>
+                       <button onclick="clearStudentProgress('${esc(s.studentId)}','${esc(s.name)}')" class="text-amber-600 hover:text-amber-800 text-xs font-bold mr-2" title="清除闖關進度與星星（不影響名冊）">清進度</button>
+                       <button onclick="delRosterStudent('${esc(s.studentId)}','${esc(s.name)}')" class="text-red-500 hover:text-red-700 text-xs font-bold">刪除</button>`}
+                </td>
+              </tr>`).join('')}</tbody>
+          </table>`;
+      }
+      async function addRosterStudent(){
+        const cls = document.getElementById('roster-class').value;
+        const no = document.getElementById('add-no').value.trim();
+        const id = document.getElementById('add-id').value.trim();
+        const name = document.getElementById('add-name').value.trim();
+        if (!no || !id || !name) { showToast('請填座號、學號、姓名', true); return; }
+        try {
+          await rdb.collection(COL).doc(id).set({ studentId: id, cls, no: String(no), name, hasCode: false, key: `${cls}_${no}_${name}`, updatedAt: Date.now() });
+          document.getElementById('add-no').value = ''; document.getElementById('add-id').value = ''; document.getElementById('add-name').value = '';
+          showToast(`✅ 已新增 ${name}（驗證碼由學生首次登入自設）`, false);
+        } catch(e){ showToast('新增失敗：' + e.message, true); }
+      }
+      function delRosterStudent(id, name){
+        showCustomDialog({ title: '刪除學生', message: `確定要從名冊刪除「${name}」(${id}) 嗎？`, type: 'danger', showCancel: true, confirmText: '刪除', onConfirm: async () => {
+          try { await rdb.collection(COL).doc(id).delete(); showToast(`🗑️ 已刪除 ${name}`, false); } catch(e){ showToast('刪除失敗：' + e.message, true); }
+        }});
+      }
+      function editRosterCode(id){ editingCodeId = id; paintRosterList(); }
+      function cancelEditCode(){ editingCodeId = null; paintRosterList(); }
+      // 單一學生的驗證碼顯示／隱藏（預設隱藏，避免投影或旁人看到全班驗證碼）
+      function toggleRosterCode(id){
+        if (revealedCodes.has(id)) revealedCodes.delete(id); else revealedCodes.add(id);
+        paintRosterList();
+      }
+      async function saveRosterCode(id, name){
+        const inp = document.getElementById('code-edit-' + id);
+        const v = (inp ? inp.value : '').trim();
+        if (!/^\d{6}$/.test(v)) { showToast('驗證碼需為 6 位數字', true); return; }
+        try {
+          // 驗證碼寫進 secret（學生讀不到），名冊只留 hasCode 旗標
+          await rdb.collection(SECRET_COL).doc(id).set({ code: v, at: Date.now() });
+          await rdb.collection(COL).doc(id).set({ hasCode: true, updatedAt: Date.now() }, { merge: true });
+          secretCache[id] = v;
+          editingCodeId = null;
+          showToast(`🔑 已設定 ${name} 的驗證碼：${v}`, false);
+        } catch(e){ showToast('設定失敗：' + e.message, true); }
+      }
+      function clearRosterCode(id, name){
+        showCustomDialog({ title: '清除密碼', message: `要清除「${name}」(${id}) 的驗證碼嗎？清除後，該生下次登入需重新自設一組。`, type: 'warning', showCancel: true, confirmText: '清除', onConfirm: async () => {
+          try {
+            // 刪掉 secret 文件，學生下次登入就會回到「首次設定」流程
+            await rdb.collection(SECRET_COL).doc(id).delete();
+            await rdb.collection(SESSION_COL).doc(id).delete().catch(() => {});
+            await rdb.collection(COL).doc(id).set({ hasCode: false, updatedAt: Date.now() }, { merge: true });
+            delete secretCache[id];
+            editingCodeId = null;
+            showToast(`🔑 已清除 ${name} 的驗證碼，待其重新設定`, false);
+          } catch(e){ showToast('清除失敗：' + e.message, true); }
+        }});
+      }
+      // 由學號推算班級與座號：後四碼＝班級序(2碼)＋座號(2碼)，班級 = 8+班級序
+      // 例：1410112 → 801 / 12；1410504 → 805 / 4；1420922 → 809 / 22
+      function deriveFromId(id){
+        if (!/^\d{7}$/.test(id)) return null;
+        const last4 = id.slice(-4);
+        const cc = last4.slice(0, 2);
+        const ss = last4.slice(2, 4);
+        const cls = '8' + cc;
+        const no = String(parseInt(ss, 10));
+        return { cls, no };
+      }
+
+      async function bulkImportRoster(){
+        const raw = document.getElementById('roster-bulk').value.trim();
+        if (!raw) { showToast('請先貼上資料', true); return; }
+        const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+        const rows = []; let fail = 0;
+        for (const line of lines) {
+          const p = line.split(/[,\t]/).map(x => x.trim());
+          const id = p[0], name = p[1];
+          const d = deriveFromId(id);
+          if (!d || !name) { fail++; continue; }
+          rows.push({ id, name, cls: d.cls, no: d.no });
+        }
+        const CHUNK = 400; let ok = 0;
+        try {
+          // 驗證碼存在 secret 集合，匯入名冊不會動到它；
+          // 這裡只要把「已設定過」這件事保留下來，學生就不必重設。
+          const hasCode = {};
+          const secSnap = await rdb.collection(SECRET_COL).get();
+          secSnap.forEach(d => { if ((d.data() || {}).code) hasCode[d.id] = true; });
+          for (let i = 0; i < rows.length; i += CHUNK) {
+            const batch = rdb.batch();
+            rows.slice(i, i + CHUNK).forEach(r => {
+              batch.set(rdb.collection(COL).doc(r.id), { studentId: r.id, cls: r.cls, no: r.no, name: r.name, hasCode: !!hasCode[r.id], key: `${r.cls}_${r.no}_${r.name}`, updatedAt: Date.now() });
+            });
+            await batch.commit(); ok += Math.min(CHUNK, rows.length - i);
+          }
+          document.getElementById('roster-bulk').value = '';
+          showToast(`✅ 匯入完成：成功 ${ok} 筆${fail ? `，略過 ${fail} 筆(格式錯誤或學號非 7 碼)` : ''}`, false);
+        } catch(e){ showToast('匯入失敗：' + e.message, true); }
+      }
+
+      /* =================================================================
+         🧹 清除某位學生的闖關進度
+         ---------------------------------------------------------------
+         學生的進度散在兩個地方，只刪一邊 hub 不會更新，所以要一起處理：
+           ① 11502-progress/{學號}        ← hub 讀的統一進度與星星
+           ② 各模組自己的紀錄集合          ← 運算思維的通關證書、資訊倫理的答題紀錄
+         名冊（11502-roster）不會動，學生仍可正常登入重做。
+         ================================================================= */
+      async function clearStudentProgress(sid, name){
+        showCustomDialog({
+          title: '清除闖關進度',
+          message: `確定要清除「${name}」(${sid}) 的<b>所有闖關進度與星星</b>嗎？<br><br>`
+                 + `會一併刪除運算思維的通關紀錄與資訊倫理的答題紀錄，<br>`
+                 + `學生需要重新挑戰。<b>名冊與驗證碼不受影響。</b><br><br>`
+                 + `<span class="text-red-600 font-bold">此動作無法復原。</span>`,
+          type: 'danger', showCancel: true, confirmText: '清除進度',
+          onConfirm: async () => {
+            const spinner = document.getElementById('loading-spinner');
+            const spinnerText = spinner ? spinner.querySelector('p') : null;
+            if (spinner) spinner.classList.remove('hidden');
+            if (spinnerText) spinnerText.innerText = '🧹 清除進度中…';
+
+            const done = [];
+            try {
+              // ① 統一進度（hub 的星星來源）
+              await rdb.collection('11502-progress').doc(sid).delete();
+              done.push('統一進度');
+
+              // ② 運算思維：以名冊的 班級_座號_姓名 當文件 ID
+              try {
+                const r = await rdb.collection(window.CONFIG.COLLECTIONS.ROSTER).doc(sid).get();
+                const info = r.exists ? r.data() : null;
+                const key = info && (info.key || `${info.cls}_${info.no}_${info.name}`);
+                if (key) {
+                  await rdb.collection('artifacts/comp-think-app/public/data/progress_sem2')
+                           .doc(key).delete();
+                  done.push('運算思維');
+                }
+              } catch(e){ console.warn('清運算思維紀錄失敗（可能本來就沒有）', e); }
+
+              // ③ 資訊倫理：答題紀錄是多筆，逐筆刪掉這位學生的
+              try {
+                const r = await rdb.collection(window.CONFIG.COLLECTIONS.ROSTER).doc(sid).get();
+                const info = r.exists ? r.data() : null;
+                if (info) {
+                  const snap = await rdb
+                    .collection('artifacts/school-quiz-app/public/data/quiz_records_115_2')
+                    .where('cls', '==', String(info.cls))
+                    .where('no',  '==', String(info.no))
+                    .get();
+                  let n = 0;
+                  const batch = rdb.batch();
+                  snap.forEach(d => {
+                    if ((d.data().name || '') === info.name) { batch.delete(d.ref); n++; }
+                  });
+                  if (n) { await batch.commit(); done.push(`資訊倫理 ${n} 筆`); }
+                }
+              } catch(e){ console.warn('清資訊倫理紀錄失敗（可能本來就沒有）', e); }
+
+              showToast(`✅ 已清除「${name}」的進度：${done.join('、') || '無資料可清'}`, false);
+            } catch(e){
+              showToast('清除失敗：' + e.message, true);
+            } finally {
+              if (spinner) spinner.classList.add('hidden');
+            }
+          }
+        });
+      }
+
+      // 🌟 一鍵重算全班闖關星星（依最新星等規則，掃來源紀錄重寫 11502-progress）
+      async function recomputeAllStars(){
+        showCustomDialog({
+          title: '重算全班闖關星星',
+          message: '系統將掃描全班「運算思維」與「資訊倫理」的雲端紀錄，依最新星等規則重算並寫入儀表板。確定執行嗎？',
+          showCancel: true, confirmText: '開始重算',
+          onConfirm: async () => {
+            const spinner = document.getElementById('loading-spinner');
+            const spinnerText = spinner ? spinner.querySelector('p') : null;
+            if (spinner) spinner.classList.remove('hidden');
+            if (spinnerText) spinnerText.innerText = '🔄 重算全班星星中…';
+            try {
+              // 名冊 key(班級_座號_姓名) → 學號
+              const rosterSnap = await rdb.collection(window.CONFIG.COLLECTIONS.ROSTER).get();
+              const keyToId = {};
+              rosterSnap.forEach(d => { const r = d.data(); if (r.key) keyToId[r.key] = r.studentId || d.id; });
+
+              const perStudent = {};
+              // 運算思維：completed 筆數 × 2
+              try {
+                const ctSnap = await rdb.collection('artifacts/comp-think-app/public/data/progress_sem2').get();
+                ctSnap.forEach(d => { const sid = keyToId[d.id]; if (!sid) return; (perStudent[sid] = perStudent[sid] || {}).thinking = (d.data().completed || []).length; });
+              } catch(e){ console.warn('讀運算思維紀錄失敗', e); }
+              // 資訊倫理：每章節最佳正確率 → 1–3 星累加
+              try {
+                const qSnap = await rdb.collection('artifacts/school-quiz-app/public/data/quiz_records_115_2').get();
+                const best = {};
+                qSnap.forEach(d => { const r = d.data(); const k = `${r.cls}_${r.no}_${r.name}`; (best[k] = best[k] || {})[r.chapterId] = Math.max(best[k][r.chapterId] || 0, r.rate || 0); });
+                Object.keys(best).forEach(k => { const sid = keyToId[k]; if (!sid) return; let stars = 0, done = 0; Object.values(best[k]).forEach(rt => { stars += window.GRADING.ethicsStar(rt); done++; }); (perStudent[sid] = perStudent[sid] || {}).ethics = { stars, done }; });
+              } catch(e){ console.warn('讀資訊倫理紀錄失敗', e); }
+
+              const ids = Object.keys(perStudent); const now = Date.now(); let ok = 0;
+              for (let i = 0; i < ids.length; i += 400) {
+                const batch = rdb.batch();
+                ids.slice(i, i + 400).forEach(sid => {
+                  const p = perStudent[sid]; const modules = {};
+                  if (p.thinking != null) { const c = p.thinking; modules.thinking = { status: c >= 10 ? 'pass' : 'in-progress', level: c, stars: window.GRADING.thinkingStars(c), source: 'auto', updatedAt: now }; }
+                  if (p.ethics) { const e = p.ethics; modules.ethics = { status: e.done >= 10 ? 'pass' : 'in-progress', level: e.done, stars: e.stars, source: 'auto', updatedAt: now }; }
+                  batch.set(rdb.collection('11502-progress').doc(sid), { studentId: sid, modules, updatedAt: now }, { merge: true });
+                });
+                await batch.commit(); ok += Math.min(400, ids.length - i);
+              }
+              if (spinner) spinner.classList.add('hidden');
+              showToast(`✅ 已重算 ${ok} 位學生的闖關星星`, false);
+            } catch(e){ if (spinner) spinner.classList.add('hidden'); showToast('重算失敗：' + e.message, true); }
+          }
+        });
+      }
+      window.recomputeAllStars = recomputeAllStars;
+
+      window.openRosterModal = openRosterModal;
+      window.closeRosterModal = closeRosterModal;
+      window.renderRoster = renderRoster;
+      window.addRosterStudent = addRosterStudent;
+      window.delRosterStudent = delRosterStudent;
+      window.editRosterCode = editRosterCode;
+      window.toggleRosterCode = toggleRosterCode;
+      window.cancelEditCode = cancelEditCode;
+      window.saveRosterCode = saveRosterCode;
+      window.clearRosterCode = clearRosterCode;
+      window.bulkImportRoster = bulkImportRoster;
+      window.clearStudentProgress = clearStudentProgress;
+    })();
+  </script>
+
+  <!-- ==================================================================
+       🤖 Scratch AI 批改標準（每關一份）
+       儲存位置：Firestore 11502-grader/criteria（受安全規則保護：老師可寫、後端唯讀）
+       Gemini API Key 不存這裡，改放 Colab Secrets（GEMINI_API_KEY_1）
+       ================================================================== -->
+  <div id="graderModal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl">
+        <div class="flex items-center gap-3">
+          <h3 class="text-lg font-black text-slate-800">🤖 Scratch AI 批改標準</h3>
+          <!-- Colab 後端連線燈號 -->
+          <span id="gdConn" class="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+            <span id="gdDot" class="w-2 h-2 rounded-full bg-slate-300"></span><span id="gdConnText">偵測連線中…</span>
+          </span>
+        </div>
+        <button onclick="closeGraderModal()" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <p class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3 leading-relaxed">
+          每一關可以有自己的<b>作業主題</b>與<b>評分重點</b>；學生上傳 .sb3 時，AI 助教會依「他選的那一關」的標準批改。<br>
+          分數會自動換算星星（90 分↑ 3⭐、75 分↑ 2⭐，其餘 1⭐），寫入闖關進度。
+        </p>
+
+        <!-- AI 模型：依你的 API Key 自動列出可用模型 -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+          <label class="block text-sm font-bold text-slate-700 mb-1">🤖 批改使用的 AI 模型</label>
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="gdModel" class="flex-1 min-w-[220px] p-2 border border-slate-300 rounded-lg text-sm">
+              <option value="">（點右邊按鈕載入可用模型）</option>
+            </select>
+            <button onclick="gdLoadModels()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition">🔍 偵測可用模型</button>
+            <button onclick="gdSaveModel()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition">儲存模型</button>
+          </div>
+          <div id="gdModelStatus" class="text-xs mt-2 font-bold text-slate-500"></div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-1">選擇關卡</label>
+          <select id="gdUnit" class="w-full p-2.5 border border-slate-300 rounded-lg text-sm"></select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-1">作業主題（學生會看到）</label>
+          <input id="gdTheme" type="text" placeholder="例：用清單做出「演奏小星星」，能依序播放整首曲子"
+                 class="w-full p-2.5 border border-slate-300 rounded-lg text-sm">
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-1">評分重點（AI 依此評分，一行一項）</label>
+          <textarea id="gdRules" rows="7" placeholder="例：&#10;1. 有建立清單並把音階資料匯入（30 分）&#10;2. 使用「重複（清單長度）次」逐項播放（30 分）&#10;3. 用變數當索引，每次 +1（20 分）&#10;4. 程式能完整播完並停止（20 分）"
+                    class="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-mono leading-relaxed"></textarea>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <button onclick="saveGraderCriteria()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-sm transition">💾 儲存這一關的標準</button>
+          <span id="gdStatus" class="text-sm font-bold"></span>
+        </div>
+
+        <!-- 參考解答：自動生成主題與規則 -->
+        <div class="border-t border-slate-200 pt-4">
+          <h4 class="text-sm font-black text-slate-700 mb-1">📗 參考解答（自動生成主題與評分重點）</h4>
+          <p class="text-xs text-slate-500 mb-2 leading-relaxed">上傳你做好的<b>完整解答 .sb3</b>，AI 會讀懂它的積木邏輯，自動草擬這一關的作業主題與逐條配分（總分 100），填好後你可以再手改。</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <input type="file" id="gdExampleFile" accept=".sb3" class="text-xs border border-slate-300 rounded-lg p-2">
+            <button onclick="gdUploadExample(true)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition">🪄 上傳並自動生成</button>
+            <button onclick="gdUploadExample(false)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition">只存解答，不生成</button>
+          </div>
+          <div id="gdExampleStatus" class="text-xs mt-2 font-bold text-slate-500"></div>
+        </div>
+
+        <!-- 初始空白範本：防止交空白檔 -->
+        <div class="border-t border-slate-200 pt-4">
+          <h4 class="text-sm font-black text-slate-700 mb-1">📄 初始空白範本（防止學生交空白檔）</h4>
+          <p class="text-xs text-slate-500 mb-2 leading-relaxed">上傳你發給學生的<b>未完成範本 .sb3</b>。批改時 AI 會比對範本，學生若幾乎沒改就上傳，會被判定為未完成而不會拿到高分。</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <input type="file" id="gdTemplateFile" accept=".sb3" class="text-xs border border-slate-300 rounded-lg p-2">
+            <button onclick="gdUploadTemplate()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-xs transition">📤 上傳並儲存範本</button>
+          </div>
+          <div id="gdTemplateStatus" class="text-xs mt-2 font-bold text-slate-500"></div>
+        </div>
+
+        <!-- 單檔試評 -->
+        <div class="border-t border-slate-200 pt-4">
+          <h4 class="text-sm font-black text-slate-700 mb-1">🧪 單檔試評（測試評分標準）</h4>
+          <p class="text-xs text-slate-500 mb-2 leading-relaxed">用目前<b>畫面上的標準</b>（不必先儲存）試評一個 .sb3，確認配分合理再存檔。試評不會記錄成績、不會給學生星星。</p>
+          <div class="flex flex-wrap items-center gap-2">
+            <input type="file" id="gdTestFile" accept=".sb3" class="text-xs border border-slate-300 rounded-lg p-2">
+            <button onclick="gdTestGrade()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition">▶ 開始試評</button>
+          </div>
+          <div id="gdTestStatus" class="text-xs mt-2 font-bold text-slate-500"></div>
+          <div id="gdTestResult" class="hidden mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================
+       📡 本節課即時看板：即時顯示全班集星實況（適合投影）
+       ================================================================== -->
+  <div id="liveModal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-slate-900/80 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[94vh] overflow-y-auto">
+      <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl z-10">
+        <div class="flex items-center gap-3">
+          <h3 class="text-xl font-black text-slate-800">📡 本節課即時看板</h3>
+          <select id="lvClass" onchange="startLive()" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5"></select>
+          <span class="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>即時同步中
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs font-bold text-slate-600">起算時間</label>
+          <input id="lvSince" type="time" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5">
+          <button onclick="lvSetNow()" class="text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg transition">從現在開始</button>
+          <button onclick="closeLiveModal()" class="text-slate-400 hover:text-slate-700 text-2xl leading-none ml-2">&times;</button>
+        </div>
+      </div>
+
+      <div class="p-6">
+        <div id="lvStats" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5"></div>
+        <div id="lvBoard" class="text-sm text-slate-500">請選擇班級。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================
+       🗓️ 上課日設定：每班上課星期 + 停課／補課（供每週評分判斷）
+       ================================================================== -->
+  <div id="schedModal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/50 p-3">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[94vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-3 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl">
+        <div class="flex items-center gap-3 flex-wrap">
+          <h3 class="text-lg font-black text-slate-800">🗓️ 課表與停課設定</h3>
+          <div class="flex items-center gap-1">
+            <button onclick="scWeek(-1)" class="px-2 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg font-bold">◀</button>
+            <span id="scWeekLabel" class="text-sm font-bold text-slate-700 min-w-[150px] text-center"></span>
+            <button onclick="scWeek(1)" class="px-2 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg font-bold">▶</button>
+            <button onclick="scWeek(0)" class="ml-1 px-2 py-1 text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg font-bold">回本週</button>
+          </div>
+          <label class="flex items-center gap-1.5 text-sm font-bold text-slate-600 cursor-pointer">
+            <input type="checkbox" id="scEdit" onchange="scRender()" class="w-4 h-4"> 編輯課表
+          </label>
+        </div>
+        <button onclick="closeSchedModal()" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
+      </div>
+      <div class="p-5">
+        <p id="scHint" class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3 leading-relaxed"></p>
+        <div id="scGrid" class="overflow-x-auto"></div>
+        <div class="flex items-center gap-3 mt-4">
+          <button onclick="saveSchedule()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition">💾 儲存</button>
+          <span id="scStatus" class="text-sm font-bold"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================
+       📅 每週評分：依 history 的時間戳統計「每週取得星數」→ 折算百分
+       ================================================================== -->
+  <div id="weeklyModal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl">
+        <h3 class="text-lg font-black text-slate-800">📅 每週評分</h3>
+        <button onclick="closeWeeklyModal()" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
+      </div>
+      <div class="p-6">
+        <div class="flex flex-wrap items-end gap-3 mb-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">班級</label>
+            <select id="wkyClass" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">學期開始日（第 1 週的星期一）</label>
+            <input id="wkyStart" type="date" value="2026-08-31" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">基本分</label>
+            <input id="wkyBase" type="number" min="0" max="100" value="60" class="w-20 text-sm border border-slate-300 rounded-lg px-2 py-1.5">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">每顆星加分</label>
+            <input id="wkyPer" type="number" min="1" max="40" value="4" class="w-20 text-sm border border-slate-300 rounded-lg px-2 py-1.5">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">顯示週數</label>
+            <input id="wkyWeeks" type="number" min="1" max="25" value="10" class="w-20 text-sm border border-slate-300 rounded-lg px-2 py-1.5">
+          </div>
+          <button onclick="loadWeekly()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-sm transition">計算</button>
+          <button onclick="exportWeeklyCsv()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-sm transition">匯出 CSV</button>
+        </div>
+        <p class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 leading-relaxed">
+分數 ＝ <b>基本分 ＋ 該週星數 × 每顆星加分</b>（預設 60 ＋ 星數×4，最高 100 分）；<b>0 星＝基本分</b>。
+          ⚠️ 學生端的「本週成績卡」在 0 星時<b>刻意顯示 0 分</b>（避免以為沒做也有分），這裡才是實際登記用的分數。
+          星數只計「<b>當週新增</b>」的部分：
+          重做同一關沒有進步不會重複計分；資訊倫理重考只算進步的星數。
+        </p>
+        <div id="wkyTable" class="overflow-x-auto text-sm text-slate-500">設定後按「計算」。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================
+       📦 學生程式作品下載（讀 11502-progress 的 modules.scratch.unitFiles）
+       ================================================================== -->
+  <div id="worksModal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl">
+        <div class="flex items-center gap-3">
+          <h3 class="text-lg font-black text-slate-800">📦 學生程式作品</h3>
+          <select id="wkClass" class="text-sm border border-slate-300 rounded-lg px-2 py-1"></select>
+          <button onclick="loadWorks()" class="text-xs text-indigo-600 hover:underline font-bold">重新載入</button>
+        </div>
+        <button onclick="closeWorksModal()" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
+      </div>
+      <div class="p-6">
+        <p class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 leading-relaxed">
+          只有 AI 批改 <b>2⭐ 以上</b>的作品才會備份；每人每關只保留<b>分數最高</b>的那一份。點格子即可開啟／下載該學生的 .sb3。
+        </p>
+        <div id="wkTable" class="overflow-x-auto text-sm text-slate-500">請選擇班級後按「重新載入」。</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 10 個程式設計單元（與流程圖／程式設計頁、自評站一致）
+    const GD_UNITS = [
+      ['2-1-1A','第 1 關 班級置物櫃'],['2-1-1B','第 2 關 集合點名'],['2-1-2','第 3 關 演奏小星星'],
+      ['2-1-3','第 4 關 計算成績'],['2-1-4','第 5 關 抽號碼'],['2-1-5','第 6 關 撲克發牌'],
+      ['2-2-1','第 7 關 動物點點名'],['2-2-2','第 8 關 戰車王'],['2-3-1','第 9 關 分身小貓'],
+      ['2-3-2','第 10 關 螞蟻搬乳酪']
+    ];
+    const GD_COL = '11502-grader', GD_DOC = 'criteria';
+    let _gdCache = null;        // { theme, rules, units:{unitId:{theme,rules}} }
+
+    function _gdDb() { return firebase.firestore(); }
+    // 連線燈號：偵測 Colab 後端是否啟動、Gemini 金鑰是否已在 Secrets 設定
+    let _gdConnTimer = null;
+    function _gdLight(state, text) {
+      const dot = document.getElementById('gdDot');
+      const box = document.getElementById('gdConn');
+      const txt = document.getElementById('gdConnText');
+      if (!dot || !box || !txt) return;
+      const styles = {
+        on:   ['bg-emerald-500', 'bg-emerald-50 text-emerald-700 border-emerald-200'],
+        warn: ['bg-amber-500',   'bg-amber-50 text-amber-700 border-amber-200'],
+        off:  ['bg-red-500',     'bg-red-50 text-red-700 border-red-200'],
+        wait: ['bg-slate-300',   'bg-slate-100 text-slate-500 border-slate-200']
+      };
+      const [d, b] = styles[state] || styles.wait;
+      dot.className = 'w-2 h-2 rounded-full ' + d + (state === 'on' ? ' animate-pulse' : '');
+      box.className = 'inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ' + b;
+      txt.textContent = text;
+    }
+    async function checkGraderServer() {
+      try {
+        const r = await fetch(GD_SERVER + '/api/health', { headers: GD_H, cache: 'no-store' });
+        const j = await r.json();
+        if (!j.ok) { _gdLight('off', '🔴 伺服器回應異常'); return; }
+        if (j.has_api_key === undefined) {
+          // 舊版後端沒有這個欄位 → 代表 Colab 跑的不是最新 notebook
+          _gdLight('warn', '🟡 後端為舊版（' + (j.version || '?') + '）→ 請在 Colab 重新開啟最新的 shared/backend.ipynb 並全部執行');
+        } else if (j.has_api_key === false) {
+          _gdLight('warn', '🟡 已連線，但 Secrets 未設定 GEMINI_API_KEY_1');
+        } else {
+          _gdLight('on', '🟢 後端已連線' + (j.version ? '（' + j.version + '）' : ''));
+        }
+      } catch (e) {
+        _gdLight('off', '🔴 未連線（請先在 Colab 執行 shared/backend.ipynb）');
+      }
+    }
+    function _gdSetStatus(msg, ok) {
+      const el = document.getElementById('gdStatus');
+      el.textContent = msg || '';
+      el.className = 'text-sm font-bold ' + (ok === false ? 'text-red-600' : 'text-emerald-600');
+    }
+
+    async function openGraderModal() {
+      const m = document.getElementById('graderModal');
+      m.classList.remove('hidden'); m.classList.add('flex');
+      _gdLight('wait', '偵測連線中…');
+      checkGraderServer();
+      if (_gdConnTimer) clearInterval(_gdConnTimer);
+      _gdConnTimer = setInterval(checkGraderServer, 15000);   // 每 15 秒重新偵測
+      const sel = document.getElementById('gdUnit');
+      if (!sel.options.length) {
+        sel.innerHTML = GD_UNITS.map(u => `<option value="${u[0]}">${u[1]}</option>`).join('');
+        sel.onchange = _gdFillForm;
+      }
+      _gdSetStatus('載入中…');
+      try {
+        const snap = await _gdDb().collection(GD_COL).doc(GD_DOC).get();
+        const d = snap.exists ? (snap.data() || {}) : {};
+        let units = {};
+        try { units = JSON.parse(d.units_json || '{}'); } catch (e) { units = {}; }
+        _gdCache = {
+          theme: d.theme || '', rules: d.rules || '', units,
+          example_code: d.example_code || '', template_code: d.template_code || ''
+        };
+        _gdFillForm();
+        _gdSetStatus('');
+      } catch (e) {
+        _gdSetStatus('讀取失敗：' + e.message, false);
+      }
+    }
+    function closeGraderModal() {
+      const m = document.getElementById('graderModal');
+      m.classList.add('hidden'); m.classList.remove('flex');
+      if (_gdConnTimer) { clearInterval(_gdConnTimer); _gdConnTimer = null; }
+    }
+    function _gdUnit() { return document.getElementById('gdUnit').value; }
+    function _gdEntry() {   // 取得（必要時建立）這一關的設定物件
+      if (!_gdCache.units[_gdUnit()]) _gdCache.units[_gdUnit()] = {};
+      return _gdCache.units[_gdUnit()];
+    }
+    function _gdFillForm() {
+      if (!_gdCache) return;
+      const u = _gdCache.units[_gdUnit()] || {};
+      document.getElementById('gdTheme').value = u.theme || '';
+      document.getElementById('gdRules').value = u.rules || '';
+      _gdSetStatus(u.theme || u.rules ? '這一關已設定過' : '這一關尚未設定');
+      // 參考解答／空白範本狀態（每關各自一份）
+      _gdSay('gdExampleStatus',
+        u.example_code ? '✅ 這一關已有參考解答（重新上傳可覆蓋）' : '這一關尚未上傳參考解答',
+        u.example_code ? 'text-emerald-600' : 'text-slate-500');
+      _gdSay('gdTemplateStatus',
+        u.template_code ? '✅ 這一關已有空白範本（批改時會比對）' : '這一關尚未上傳空白範本',
+        u.template_code ? 'text-emerald-600' : 'text-slate-500');
+      document.getElementById('gdTestResult').classList.add('hidden');
+      _gdSay('gdTestStatus', '');
+    }
+    // 把 _gdCache.units 整包寫回 Firestore（參考解答／範本也在裡面，逐關保存）
+    async function _gdPersistUnits(okMsg) {
+      await _gdDb().collection(GD_COL).doc(GD_DOC).set({
+        units_json: JSON.stringify(_gdCache.units),
+        updated_at: new Date().toISOString()
+      }, { merge: true });
+      if (okMsg) _gdSetStatus(okMsg);
+    }
+    // ── 依 API Key 偵測可用的 Gemini 模型（金鑰在 Colab Secrets，前端不持有）──
+    async function gdLoadModels() {
+      _gdSay('gdModelStatus', '偵測中…（需 Colab 後端已啟動）');
+      try {
+        const r = await fetch(GD_SERVER + '/api/teacher/models', {
+          method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, GD_H), body: '{}'
+        });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '偵測失敗');
+        const list = j.models || [];
+        if (!list.length) throw new Error('這把金鑰沒有可用的模型');
+        const cur = (_gdCache && _gdCache.model_name) || j.current || 'gemini-2.5-flash';
+        const sel = document.getElementById('gdModel');
+        sel.innerHTML = list.map(m => {
+          const name = (typeof m === 'string') ? m : (m.name || m.id || '');
+          return `<option value="${name}" ${name === cur ? 'selected' : ''}>${name}</option>`;
+        }).join('');
+        _gdSay('gdModelStatus', `✅ 找到 ${list.length} 個可用模型，目前使用：${cur}`, 'text-emerald-600');
+      } catch (e) {
+        _gdSay('gdModelStatus', '❌ ' + e.message, 'text-red-600');
+      }
+    }
+
+    // 選好的模型存進 Firestore，後端每次批改都會讀最新值
+    async function gdSaveModel() {
+      const m = document.getElementById('gdModel').value;
+      if (!m) { _gdSay('gdModelStatus', '請先偵測並選擇模型', 'text-red-600'); return; }
+      try {
+        await _gdDb().collection(GD_COL).doc(GD_DOC).set(
+          { model_name: m, updated_at: new Date().toISOString() }, { merge: true });
+        if (_gdCache) _gdCache.model_name = m;
+        _gdSay('gdModelStatus', `✅ 已儲存，之後批改都用 ${m}`, 'text-emerald-600');
+      } catch (e) {
+        _gdSay('gdModelStatus', '儲存失敗（需教師帳號登入）：' + e.message, 'text-red-600');
+      }
+    }
+    window.gdLoadModels = gdLoadModels;
+    window.gdSaveModel = gdSaveModel;
+
+    async function saveGraderCriteria() {
+      if (!_gdCache) return;
+      const e = _gdEntry();
+      e.theme = document.getElementById('gdTheme').value.trim();
+      e.rules = document.getElementById('gdRules').value.trim();
+      _gdSetStatus('儲存中…');
+      try {
+        await _gdPersistUnits('✅ 已儲存，學生下次上傳就會套用這一關的新標準');
+      } catch (err) {
+        _gdSetStatus('儲存失敗（請確認已用教師帳號登入）：' + err.message, false);
+      }
+    }
+    // ===== 與 Colab 後端溝通（需先在 Colab 執行 shared/backend.ipynb）=====
+    const GD_SERVER = window.CONFIG.SERVER_URL;                 // 設定集中在 config.js
+    const GD_H = { 'ngrok-skip-browser-warning': 'true' };
+
+    function _gdSay(id, msg, cls) {
+      const el = document.getElementById(id);
+      el.textContent = msg || '';
+      el.className = 'text-xs mt-2 font-bold ' + (cls || 'text-slate-500');
+    }
+    // 把 .sb3 轉成 AI 看得懂的虛擬碼
+    async function _gdConvert(file) {
+      const fd = new FormData(); fd.append('file', file);
+      const r = await fetch(GD_SERVER + '/api/teacher/convert_sb3', { method: 'POST', headers: GD_H, body: fd });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || '解析 .sb3 失敗');
+      return j.clean_code;
+    }
+    // ① 參考解答：上傳 → 存這一關的虛擬碼 →（可選）AI 自動生成主題與規則
+    async function gdUploadExample(autoGen) {
+      const f = document.getElementById('gdExampleFile').files[0];
+      if (!f) { _gdSay('gdExampleStatus', '請先選擇參考解答 .sb3', 'text-red-600'); return; }
+      try {
+        _gdSay('gdExampleStatus', '解析中…（需 Colab 後端已啟動）');
+        const code = await _gdConvert(f);
+        _gdEntry().example_code = code;
+        await _gdPersistUnits();
+        if (!autoGen) { _gdSay('gdExampleStatus', '✅ 這一關的參考解答已儲存', 'text-emerald-600'); return; }
+
+        _gdSay('gdExampleStatus', '🪄 AI 正在草擬主題與評分重點…（約 10–30 秒）');
+        const r = await fetch(GD_SERVER + '/api/teacher/suggest_rules', {
+          method: 'POST',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, GD_H),
+          body: JSON.stringify({ clean_code: code })
+        });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '生成失敗');
+        document.getElementById('gdTheme').value = j.theme || '';
+        document.getElementById('gdRules').value = j.rules || '';
+        _gdSay('gdExampleStatus', '✅ 已生成，請檢查內容後按「儲存這一關的標準」', 'text-emerald-600');
+      } catch (e) {
+        _gdSay('gdExampleStatus', '❌ ' + e.message + '（請確認 Colab 後端已啟動）', 'text-red-600');
+      }
+    }
+
+    // ② 初始空白範本：上傳 → 存虛擬碼（批改時比對，防交空白檔）
+    async function gdUploadTemplate() {
+      const f = document.getElementById('gdTemplateFile').files[0];
+      if (!f) { _gdSay('gdTemplateStatus', '請先選擇範本 .sb3', 'text-red-600'); return; }
+      try {
+        _gdSay('gdTemplateStatus', '解析中…（需 Colab 後端已啟動）');
+        const code = await _gdConvert(f);
+        _gdEntry().template_code = code;
+        await _gdPersistUnits();
+        _gdSay('gdTemplateStatus', '✅ 這一關的空白範本已儲存，之後批改會自動比對', 'text-emerald-600');
+      } catch (e) {
+        _gdSay('gdTemplateStatus', '❌ ' + e.message + '（請確認 Colab 後端已啟動）', 'text-red-600');
+      }
+    }
+
+    // ③ 單檔試評：用畫面上的標準試評（不記錄成績）
+    async function gdTestGrade() {
+      const f = document.getElementById('gdTestFile').files[0];
+      if (!f) { _gdSay('gdTestStatus', '請先選擇要試評的 .sb3', 'text-red-600'); return; }
+      const box = document.getElementById('gdTestResult');
+      box.classList.add('hidden');
+      try {
+        _gdSay('gdTestStatus', '🧠 AI 評分中…（約 20–60 秒）');
+        const u = (_gdCache && _gdCache.units[_gdUnit()]) || {};
+        const overrides = {
+          theme: document.getElementById('gdTheme').value.trim(),
+          rules: document.getElementById('gdRules').value.trim()
+        };
+        if (u.example_code) overrides.example_code = u.example_code;
+        if (u.template_code) overrides.template_code = u.template_code;
+
+        const fd = new FormData();
+        fd.append('file', f);
+        fd.append('overrides', JSON.stringify(overrides));
+        fd.append('term', '11502');   // 共用後端：不指定會用上學期(11501)的批改標準
+        const r = await fetch(GD_SERVER + '/api/teacher/test', { method: 'POST', headers: GD_H, body: fd });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '試評失敗');
+        const d = j.result || {};
+        const star = (window.GRADING && d.score != null) ? window.GRADING.scratchStar(d.score) : null;
+        box.innerHTML =
+          '<div class="flex items-center gap-3"><span class="text-2xl font-black text-slate-800">' +
+            (d.score != null ? d.score + ' 分' : '—') + '</span>' +
+            (star ? '<span class="text-amber-500 font-black">' + '★'.repeat(star) + '☆'.repeat(3 - star) + '（會給 ' + star + ' 星）</span>' : '') +
+          '</div>' +
+          '<div><b>助教講評：</b>' + (d.comments || '—') + '</div>' +
+          '<div><b>創意亮點：</b>' + (d.creative_highlights || '無') + '</div>' +
+          '<div><b>扣分項目：</b>' + (d.deducted_items || '無') + '</div>';
+        box.classList.remove('hidden');
+        _gdSay('gdTestStatus', '✅ 試評完成（未記錄成績）', 'text-emerald-600');
+      } catch (e) {
+        _gdSay('gdTestStatus', '❌ ' + e.message + '（請確認 Colab 後端已啟動、Secrets 已設 GEMINI_API_KEY_1）', 'text-red-600');
+      }
+    }
+
+    // ===== 📡 本節課即時看板 =====
+    let _lvUnsubs = [], _lvRoster = [], _lvSince = null, _lvData = {};
+    const LV_MOD = { flowchart:['🧩','emerald'], scratch:['🐱','orange'], ethics:['⚖️','pink'], thinking:['🧠','green'] };
+
+    async function openLiveModal(){
+      const m = document.getElementById('liveModal');
+      m.classList.remove('hidden'); m.classList.add('flex');
+      const sel = document.getElementById('lvClass');
+      if(!sel.options.length){
+        try{
+          const snap = await _gdDb().collection(window.CONFIG.COLLECTIONS.ROSTER).get();
+          const set = new Set(); snap.forEach(d=>{ const c=d.data().cls; if(c) set.add(String(c)); });
+          sel.innerHTML = [...set].sort().map(c=>`<option value="${c}">${c} 班</option>`).join('');
+        }catch(e){ sel.innerHTML='<option value="">（讀取班級失敗）</option>'; }
+      }
+      if(!document.getElementById('lvSince').value) lvSetNow(false);
+      startLive();
+    }
+    function closeLiveModal(){
+      _lvUnsubs.forEach(u=>{ try{u();}catch(e){} }); _lvUnsubs=[];
+      const m=document.getElementById('liveModal'); m.classList.add('hidden'); m.classList.remove('flex');
+    }
+    function lvSetNow(repaint){
+      const d=new Date();
+      document.getElementById('lvSince').value =
+        String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      if(repaint!==false) paintLive();
+    }
+    function lvSinceTs(){
+      const v=document.getElementById('lvSince').value;
+      const d=new Date();
+      if(v){ const [h,mi]=v.split(':').map(Number); d.setHours(h,mi,0,0); }
+      else d.setHours(0,0,0,0);
+      return d.getTime();
+    }
+    async function startLive(){
+      _lvUnsubs.forEach(u=>{ try{u();}catch(e){} }); _lvUnsubs=[]; _lvData={};
+      const cls=document.getElementById('lvClass').value;
+      const board=document.getElementById('lvBoard');
+      if(!cls){ board.textContent='請選擇班級。'; return; }
+      board.textContent='連線中…';
+      try{
+        const rs=await _gdDb().collection(window.CONFIG.COLLECTIONS.ROSTER).where('cls','==',cls).get();
+        _lvRoster=rs.docs.map(d=>d.data()).sort((a,b)=>(Number(a.no)||0)-(Number(b.no)||0));
+        if(!_lvRoster.length){ board.textContent='此班尚無名冊資料。'; return; }
+        // 每位學生一個即時監聽（人數不多，直接訂閱最即時）
+        _lvRoster.forEach(s=>{
+          const un=_gdDb().collection('11502-progress').doc(s.studentId)
+            .onSnapshot(d=>{ _lvData[s.studentId]= d.exists ? d.data() : null; paintLive(); },
+                        e=>console.warn('即時監聽失敗', s.studentId, e.message));
+          _lvUnsubs.push(un);
+        });
+      }catch(e){ board.textContent='讀取失敗（需教師帳號登入）：'+e.message; }
+    }
+    function paintLive(){
+      const since=lvSinceTs();
+      const rows=_lvRoster.map(s=>{
+        const d=_lvData[s.studentId];
+        const mods=(d&&d.modules)||{};
+        const total=['ethics','thinking','flowchart','scratch']
+          .reduce((a,k)=>a+(Number((mods[k]||{}).stars)||0),0);
+        const hist=(d&&d.history)||[];
+        const recent=hist.filter(h=>Number(h.at)>=since);
+        const gained=recent.reduce((a,h)=>a+(Number(h.stars)||0),0);
+        const last=recent.length?recent.reduce((a,b)=>(Number(a.at)>Number(b.at)?a:b)):null;
+        // 今天的登入時間（出席）
+        const t=new Date();
+        const dayKey=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+        const signIn=(d&&d.attendance&&d.attendance[dayKey])||0;
+        return { s, total, gained, last, count:recent.length, signIn };
+      });
+      // 統計列
+      const active=rows.filter(r=>r.gained>0).length;
+      const sumGained=rows.reduce((a,r)=>a+r.gained,0);
+      const sumTotal=rows.reduce((a,r)=>a+r.total,0);
+      const stat=(label,val,color)=>`<div class="bg-${color}-50 border border-${color}-200 rounded-xl p-3 text-center">
+          <div class="text-xs font-bold text-${color}-700">${label}</div>
+          <div class="text-2xl font-black text-${color}-600">${val}</div></div>`;
+      const signedIn=rows.filter(r=>r.signIn).length;
+      document.getElementById('lvStats').innerHTML =
+        stat('今日出席', signedIn+' / '+rows.length+' 人','sky') +
+        stat('本節有進度', active+' / '+rows.length+' 人','violet') +
+        stat('本節新增星數', sumGained+' ⭐','amber') +
+        stat('全班累積星數', sumTotal+' ⭐','emerald');
+
+      // 依本節新增星數排序（多的在前），同分依座號
+      const sorted=[...rows].sort((a,b)=> b.gained-a.gained || (Number(a.s.no)||0)-(Number(b.s.no)||0));
+      const fmt=t=>{ const d=new Date(Number(t)); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+      const now=Date.now();
+      const maxGain=Math.max(0,...rows.map(r=>r.gained));
+
+      // 名次：只有本節有進度的人才排名（同分同名次）
+      let rank=0, prev=null;
+      sorted.forEach((r,i)=>{ if(r.gained>0){ if(r.gained!==prev){ rank=i+1; prev=r.gained; } r.rank=rank; } else r.rank=null; });
+
+      document.getElementById('lvBoard').innerHTML=`
+        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
+          ${sorted.map(r=>{
+            const hot   = r.gained>0;
+            const fresh = r.last && (now-Number(r.last.at) < 120000);   // 2 分鐘內剛拿到
+            const medal = r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':r.rank&&r.rank<=5?'🏅':'';
+            const isTop = r.gained>0 && r.gained===maxGain;
+            const src   = r.last ? (LV_MOD[r.last.module]||['',''])[0] : '';
+
+            // 狀態標註
+            let badge='', badgeCls='';
+            if(fresh){ badge='🔥 剛完成'; badgeCls='bg-rose-500 text-white'; }
+            else if(r.count>=3){ badge='⚡ 連闖'+r.count+'關'; badgeCls='bg-violet-500 text-white'; }
+            else if(hot){ badge='✓ 有進度'; badgeCls='bg-emerald-500 text-white'; }
+            else { badge='待開始'; badgeCls='bg-slate-200 text-slate-500'; }
+
+            const cardCls = fresh ? 'bg-gradient-to-b from-amber-50 to-white border-amber-400 shadow-lg scale-[1.03]'
+                          : isTop ? 'bg-gradient-to-b from-yellow-50 to-white border-yellow-400 shadow-md'
+                          : hot   ? 'bg-white border-emerald-300'
+                          :         'bg-slate-50 border-slate-200';
+
+            return `<div class="relative rounded-xl border-2 p-2 text-center transition-all duration-500 ${cardCls}">
+              ${medal?`<div class="absolute -top-2 -right-1 text-xl drop-shadow">${medal}</div>`:''}
+              <div class="text-[10px] font-mono ${hot?'text-slate-500':'text-slate-300'}">${r.s.no||''}</div>
+              <div class="text-sm font-black text-slate-800 truncate leading-tight">${r.s.name||''}</div>
+              <div class="my-1 leading-none">
+                <span class="text-2xl font-black ${hot?'text-amber-500':'text-slate-300'}">${hot?'+'+r.gained:'0'}</span>
+                <span class="text-[10px] ${hot?'text-amber-400':'text-slate-300'}">⭐</span>
+              </div>
+              <div class="text-[10px] font-bold px-1.5 py-0.5 rounded-full ${badgeCls} truncate">${badge}</div>
+              <div class="text-[10px] text-slate-400 mt-1 truncate">累積 ${r.total}★ ${src}${r.last?' '+fmt(r.last.at):''}</div>
+              <div class="text-[10px] mt-0.5 truncate ${r.signIn?'text-sky-600 font-bold':'text-slate-300'}">${r.signIn?'🚪 '+fmt(r.signIn):'未登入'}</div>
+            </div>`;
+          }).join('')}
+        </div>`;
+    }
+    window.openLiveModal=openLiveModal; window.closeLiveModal=closeLiveModal;
+    window.startLive=startLive; window.lvSetNow=lvSetNow;
+
+    // ===== 🗓️ 課表與停課（存 11502-config/schedule）=====
+    //  base : { "星期-節次": "班級" }        例如 { "3-2": "801" } = 週三第2節上801
+    //  off  : { "YYYY-MM-DD": ["3-2", ...] } 該日期哪幾節停課
+    //  move : { "YYYY-MM-DD": { "3-2": "5-4" } } 該週把某節課調到別的時段
+    const SC_COL='11502-config', SC_DOC='schedule';
+    const SC_DAYS=['一','二','三','四','五'], SC_PERIODS=7;
+    let _sched={ base:{}, off:{}, move:{} };
+    let _scMonday=null, _scClasses=[];
+
+    function scMondayOf(d){ const x=new Date(d); const wd=(x.getDay()+6)%7; x.setHours(0,0,0,0); return new Date(x.getTime()-wd*86400000); }
+    function scKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+    function scDateOf(wd){ return new Date(_scMonday.getTime()+(wd-1)*86400000); }   // wd:1~5
+
+    async function loadSchedule(){
+      try{
+        const s=await _gdDb().collection(SC_COL).doc(SC_DOC).get();
+        const d=(s.exists && s.data())||{};
+        _sched={ base:d.base||{}, off:d.off||{}, move:d.move||{} };
+      }catch(e){ _sched={ base:{}, off:{}, move:{} }; }
+      return _sched;
+    }
+    async function openSchedModal(){
+      const m=document.getElementById('schedModal');
+      m.classList.remove('hidden'); m.classList.add('flex');
+      if(!_scClasses.length){
+        try{
+          const snap=await _gdDb().collection(window.CONFIG.COLLECTIONS.ROSTER).get();
+          const set=new Set(); snap.forEach(x=>{ const c=x.data().cls; if(c) set.add(String(c)); });
+          _scClasses=[...set].sort();
+        }catch(e){ _scClasses=[]; }
+      }
+      _scMonday=scMondayOf(new Date());
+      await loadSchedule();
+      scRender();
+    }
+    function closeSchedModal(){
+      const m=document.getElementById('schedModal');
+      m.classList.add('hidden'); m.classList.remove('flex');
+    }
+    function scWeek(n){
+      if(n===0) _scMonday=scMondayOf(new Date());
+      else _scMonday=new Date(_scMonday.getTime()+n*7*86400000);
+      scRender();
+    }
+    // 這一週、這個時段實際要上的班級（考慮調課）；停課回傳 null
+    function scCellInfo(wd,period){
+      const slot=`${wd}-${period}`, dateKey=scKey(scDateOf(wd));
+      // 被調走
+      const movedAway=Object.entries(_sched.move[dateKey]||{}).some(([from])=>from===slot);
+      // 從別處調來
+      let movedIn=null;
+      Object.entries(_sched.move).forEach(([dk,mp])=>{
+        Object.entries(mp||{}).forEach(([from,to])=>{
+          if(to===slot){ const wdFrom=Number(from.split('-')[0]);
+            if(scKey(scDateOf(wdFrom))===dk) movedIn=_sched.base[from]||null; }
+        });
+      });
+      const cls = movedIn || (movedAway?null:(_sched.base[slot]||null));
+      const off = (_sched.off[dateKey]||[]).includes(slot);
+      return { cls, off, slot, dateKey, movedIn:!!movedIn, movedAway };
+    }
+    function scRender(){
+      const edit=document.getElementById('scEdit').checked;
+      const sun=new Date(_scMonday.getTime()+4*86400000);
+      document.getElementById('scWeekLabel').textContent =
+        `${_scMonday.getMonth()+1}/${_scMonday.getDate()} ～ ${sun.getMonth()+1}/${sun.getDate()}`;
+      document.getElementById('scHint').innerHTML = edit
+        ? '<b>編輯課表模式</b>：用下拉選單把班級放進時段，這是<b>每週固定</b>的課表（不綁日期）。編輯完記得按儲存。'
+        : '<b>本週檢視</b>：日期會依實際週次自動變動。<b>點一下格子＝該日停課</b>（變灰、不計分），再點一下取消；<b>拖曳格子</b>可把那一節課調到別的時段（只影響這一週）。';
+
+      let html='<table class="w-full text-sm border-collapse select-none"><thead><tr class="bg-slate-50">'
+             + '<th class="border border-slate-200 px-2 py-1 w-16">節次</th>';
+      for(let wd=1; wd<=5; wd++){
+        const d=scDateOf(wd);
+        const isToday=scKey(d)===scKey(new Date());
+        html+=`<th class="border border-slate-200 px-2 py-1 ${isToday?'bg-amber-100':''}">星期${SC_DAYS[wd-1]}
+                 <div class="text-[11px] font-normal ${isToday?'text-amber-700 font-bold':'text-slate-400'}">${d.getMonth()+1}/${d.getDate()}${isToday?' 今天':''}</div></th>`;
+      }
+      html+='</tr></thead><tbody>';
+      for(let p=1;p<=SC_PERIODS;p++){
+        html+=`<tr><td class="border border-slate-200 px-2 py-1 text-center font-bold text-slate-500 bg-slate-50">第${p}節</td>`;
+        for(let wd=1; wd<=5; wd++){
+          const info=scCellInfo(wd,p);
+          if(edit){
+            const cur=_sched.base[`${wd}-${p}`]||'';
+            html+=`<td class="border border-slate-200 p-1">
+              <select onchange="scSetBase('${wd}-${p}', this.value)" class="w-full text-xs border border-slate-200 rounded px-1 py-1">
+                <option value="">—</option>
+                ${_scClasses.map(c=>`<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join('')}
+              </select></td>`;
+          }else if(info.cls){
+            const cls2 = info.off ? 'bg-slate-200 text-slate-400 line-through'
+                       : info.movedIn ? 'bg-violet-100 text-violet-800 border-violet-300'
+                       : 'bg-indigo-50 text-indigo-800';
+            html+=`<td class="border border-slate-200 p-1">
+              <div draggable="true" ondragstart="scDragStart(event,'${info.slot}')" ondragover="event.preventDefault()"
+                   ondrop="scDrop(event,'${info.slot}')" onclick="scToggleOff('${info.slot}')"
+                   title="${info.off?'已停課，點一下恢復':'點一下＝停課；拖曳＝調到別的時段'}"
+                   class="cursor-pointer rounded-lg px-2 py-2 text-center font-bold border ${cls2} hover:shadow transition">
+                ${info.cls}${info.off?'<div class="text-[10px] font-normal">停課</div>':(info.movedIn?'<div class="text-[10px] font-normal">調課</div>':'')}
+              </div></td>`;
+          }else{
+            html+=`<td class="border border-slate-200 p-1" ondragover="event.preventDefault()" ondrop="scDrop(event,'${wd}-${p}')">
+                     <div class="h-9 rounded-lg bg-slate-50"></div></td>`;
+          }
+        }
+        html+='</tr>';
+      }
+      html+='</tbody></table>';
+      document.getElementById('scGrid').innerHTML=html;
+    }
+    function scSetBase(slot,cls){ if(cls) _sched.base[slot]=cls; else delete _sched.base[slot]; }
+    function scToggleOff(slot){
+      const wd=Number(slot.split('-')[0]);
+      const dk=scKey(scDateOf(wd));
+      const list=_sched.off[dk]||[];
+      _sched.off[dk] = list.includes(slot) ? list.filter(x=>x!==slot) : [...list, slot];
+      if(!_sched.off[dk].length) delete _sched.off[dk];
+      scRender();
+    }
+    let _scDrag=null;
+    function scDragStart(e,slot){ _scDrag=slot; e.dataTransfer.effectAllowed='move'; }
+    function scDrop(e,toSlot){
+      e.preventDefault();
+      if(!_scDrag || _scDrag===toSlot) return;
+      const wd=Number(_scDrag.split('-')[0]);
+      const dk=scKey(scDateOf(wd));
+      _sched.move[dk]=Object.assign({}, _sched.move[dk], { [_scDrag]: toSlot });
+      _scDrag=null;
+      scRender();
+    }
+    async function saveSchedule(){
+      const st=document.getElementById('scStatus');
+      st.textContent='儲存中…'; st.className='text-sm font-bold text-slate-500';
+      try{
+        await _gdDb().collection(SC_COL).doc(SC_DOC).set(
+          { base:_sched.base, off:_sched.off, move:_sched.move, updated_at:new Date().toISOString() }, { merge:true });
+        st.textContent='✅ 已儲存'; st.className='text-sm font-bold text-emerald-600';
+      }catch(e){
+        st.textContent='儲存失敗（需教師帳號登入）：'+e.message;
+        st.className='text-sm font-bold text-red-600';
+      }
+    }
+    // 供每週評分使用：某班在某一週實際的上課日期（可能多節；全部停課回傳空陣列）
+    function classDatesOfWeek(cls, weekStart){
+      const saveMon=_scMonday; _scMonday=scMondayOf(weekStart);
+      const dates=new Set();
+      for(let wd=1; wd<=5; wd++) for(let p=1;p<=SC_PERIODS;p++){
+        const info=scCellInfo(wd,p);
+        if(info.cls===cls && !info.off) dates.add(scKey(scDateOf(wd)));
+      }
+      _scMonday=saveMon;
+      return [...dates];
+    }
+    window.openSchedModal=openSchedModal; window.closeSchedModal=closeSchedModal;
+    window.saveSchedule=saveSchedule; window.scRender=scRender; window.scWeek=scWeek;
+    window.scSetBase=scSetBase; window.scToggleOff=scToggleOff;
+    window.scDragStart=scDragStart; window.scDrop=scDrop;
+
+    // ===== 📅 每週評分 =====
+    let _wkyRows = [], _wkyWeeks = 0;
+    async function openWeeklyModal() {
+      const m = document.getElementById('weeklyModal');
+      m.classList.remove('hidden'); m.classList.add('flex');
+      const sel = document.getElementById('wkyClass');
+      if (!sel.options.length) {
+        try {
+          const snap = await _gdDb().collection(window.CONFIG.COLLECTIONS.ROSTER).get();
+          const set = new Set();
+          snap.forEach(d => { const c = d.data().cls; if (c) set.add(String(c)); });
+          sel.innerHTML = [...set].sort().map(c => `<option value="${c}">${c} 班</option>`).join('');
+        } catch (e) { sel.innerHTML = '<option value="">（讀取班級失敗）</option>'; }
+      }
+      // 學期開始日：預設 115 學年下學期第 1 週的星期一（2026-08-31），可自行調整並記住
+      const saved = localStorage.getItem('wky_start');
+      if (saved) document.getElementById('wkyStart').value = saved;
+      else document.getElementById('wkyStart').value = '2026-08-31';
+      const b = localStorage.getItem('wky_base'); if (b) document.getElementById('wkyBase').value = b;
+      const pv = localStorage.getItem('wky_per'); if (pv) document.getElementById('wkyPer').value = pv;
+    }
+    function closeWeeklyModal() {
+      const m = document.getElementById('weeklyModal');
+      m.classList.add('hidden'); m.classList.remove('flex');
+    }
+    // 事件星數：新資料有 stars 欄位；舊資料用模組預設推算
+    function _evStars(ev) {
+      if (typeof ev.stars === 'number') return ev.stars;
+      if (ev.module === 'flowchart' || ev.module === 'thinking') return 2;
+      if (ev.module === 'ethics' && window.GRADING) return window.GRADING.ethicsStar(ev.score);
+      return 0;
+    }
+    async function loadWeekly() {
+      const box = document.getElementById('wkyTable');
+      const cls = document.getElementById('wkyClass').value;
+      const startStr = document.getElementById('wkyStart').value;
+      const base = Math.max(0, Math.min(100, Number(document.getElementById('wkyBase').value) || 0));
+      const per  = Math.max(1, Number(document.getElementById('wkyPer').value) || 4);
+      const weeks = Math.max(1, Math.min(25, Number(document.getElementById('wkyWeeks').value) || 10));
+      if (!cls || !startStr) { box.textContent = '請先選擇班級並填入學期開始日。'; return; }
+      localStorage.setItem('wky_start', startStr);
+      localStorage.setItem('wky_base', String(base));
+      localStorage.setItem('wky_per', String(per));
+      box.textContent = '計算中…';
+      try {
+        const start = new Date(startStr + 'T00:00:00');
+        const rs = await _gdDb().collection(window.CONFIG.COLLECTIONS.ROSTER).where('cls', '==', cls).get();
+        const students = rs.docs.map(d => d.data()).sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
+        if (!students.length) { box.textContent = '此班尚無名冊資料。'; return; }
+
+        _wkyRows = await Promise.all(students.map(async s => {
+          const wk = new Array(weeks).fill(0);
+          try {
+            const p = await _gdDb().collection('11502-progress').doc(s.studentId).get();
+            const hist = (p.exists && p.data().history) || [];
+            hist.forEach(ev => {
+              const at = Number(ev.at); if (!at) return;
+              const idx = Math.floor((at - start.getTime()) / (7 * 86400000));
+              if (idx >= 0 && idx < weeks) wk[idx] += _evStars(ev);
+            });
+          } catch (e) {}
+          return { s, wk };
+        }));
+        _wkyWeeks = weeks;
+
+        const head = Array.from({ length: weeks }, (_, i) => `<th class="border border-slate-200 px-2 py-1 text-center">第${i + 1}週</th>`).join('');
+        const body = _wkyRows.map(({ s, wk }) => {
+          const tds = wk.map(st => {
+            // 教師端＝實際登記用的分數，一律 基本分 + 星數×每星加分（0 星就是基本分）
+            // 注意：學生端的「本週成績卡」在 0 星時故意顯示 0 分，避免學生以為沒做也有分數
+            const score = Math.min(100, base + st * per);
+            const cls2 = st === 0 ? 'text-slate-400' : (score >= 100 ? 'text-emerald-700 font-bold' : 'text-slate-700 font-bold');
+            return `<td class="border border-slate-200 px-2 py-1 text-center ${cls2}" title="${st} 星 → ${base} + ${st}×${per}">${score}</td>`;
+          }).join('');
+          const totalStars = wk.reduce((a, b) => a + b, 0);
+          return `<tr>
+            <td class="border border-slate-200 px-2 py-1 text-center font-mono">${s.no || ''}</td>
+            <td class="border border-slate-200 px-2 py-1 whitespace-nowrap">${s.name || ''}</td>
+            ${tds}
+            <td class="border border-slate-200 px-2 py-1 text-center font-bold text-amber-600">${totalStars}★</td>
+          </tr>`;
+        }).join('');
+        box.innerHTML = `<table class="w-full text-xs border-collapse">
+          <thead><tr class="bg-slate-50">
+            <th class="border border-slate-200 px-2 py-1">座號</th>
+            <th class="border border-slate-200 px-2 py-1">姓名</th>
+            ${head}
+            <th class="border border-slate-200 px-2 py-1">總星</th>
+          </tr></thead><tbody>${body}</tbody></table>
+          <p class="text-[11px] text-slate-400 mt-2">表格內為<b>實際登記分數</b>＝ ${base} ＋ 星數×${per}（滑鼠移上去看計算過程）；灰色代表該週沒有新增星數，仍給基本分 ${base}。學生端當週看到的是 0 分。</p>`;
+      } catch (e) {
+        box.textContent = '計算失敗（需教師帳號登入）：' + e.message;
+      }
+    }
+    function exportWeeklyCsv() {
+      if (!_wkyRows.length) { showToast('請先按「計算」', true); return; }
+      const base = Math.max(0, Math.min(100, Number(document.getElementById('wkyBase').value) || 0));
+      const per  = Math.max(1, Number(document.getElementById('wkyPer').value) || 4);
+      const head = ['座號', '姓名', ...Array.from({ length: _wkyWeeks }, (_, i) => `第${i + 1}週`), '總星數'];
+      const lines = [head.join(',')];
+      _wkyRows.forEach(({ s, wk }) => {
+        const scores = wk.map(st => Math.min(100, base + st * per));   // 登記用：0 星 = 基本分
+        lines.push([s.no || '', s.name || '', ...scores, wk.reduce((a, b) => a + b, 0)].join(','));
+      });
+      const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `每週評分_${document.getElementById('wkyClass').value}班.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+    window.openWeeklyModal = openWeeklyModal;
+    window.closeWeeklyModal = closeWeeklyModal;
+    window.loadWeekly = loadWeekly;
+    window.exportWeeklyCsv = exportWeeklyCsv;
+
+    // ===== 📦 學生程式作品下載 =====
+    async function openWorksModal() {
+      const m = document.getElementById('worksModal');
+      m.classList.remove('hidden'); m.classList.add('flex');
+      const sel = document.getElementById('wkClass');
+      if (!sel.options.length) {
+        try {                                   // 從名冊取得班級清單
+          const snap = await _gdDb().collection(window.CONFIG.COLLECTIONS.ROSTER).get();
+          const set = new Set();
+          snap.forEach(d => { const c = d.data().cls; if (c) set.add(String(c)); });
+          sel.innerHTML = [...set].sort().map(c => `<option value="${c}">${c} 班</option>`).join('');
+        } catch (e) { sel.innerHTML = '<option value="">（讀取班級失敗）</option>'; }
+      }
+      loadWorks();
+    }
+    function closeWorksModal() {
+      const m = document.getElementById('worksModal');
+      m.classList.add('hidden'); m.classList.remove('flex');
+    }
+    async function loadWorks() {
+      const box = document.getElementById('wkTable');
+      const cls = document.getElementById('wkClass').value;
+      if (!cls) { box.textContent = '請先選擇班級。'; return; }
+      box.textContent = '載入中…';
+      try {
+        // 1) 該班名冊（座號、姓名、學號）
+        const rs = await _gdDb().collection(window.CONFIG.COLLECTIONS.ROSTER).where('cls', '==', cls).get();
+        const students = rs.docs.map(d => d.data())
+          .sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
+        if (!students.length) { box.textContent = '此班尚無名冊資料。'; return; }
+
+        // 2) 逐一取進度（含作品連結與星數）
+        const rows = await Promise.all(students.map(async s => {
+          let files = {}, stars = {}, scores = {};
+          try {
+            const p = await _gdDb().collection('11502-progress').doc(s.studentId).get();
+            if (p.exists) {
+              const sc = (p.data().modules || {}).scratch || {};
+              files = sc.unitFiles || {}; stars = sc.unitStars || {}; scores = sc.unitScores || {};
+            }
+          } catch (e) {}
+          return { s, files, stars, scores };
+        }));
+
+        const head = GD_UNITS.map((u, i) => `<th class="border border-slate-200 px-2 py-1 text-center whitespace-nowrap" title="${u[1]}">${String(i + 1).padStart(2, '0')}</th>`).join('');
+        const body = rows.map(({ s, files, stars, scores }) => {
+          const tds = GD_UNITS.map(u => {
+            const url = files[u[0]], st = Number(stars[u[0]] || 0), sc = scores[u[0]];
+            if (!url) return `<td class="border border-slate-200 px-2 py-1 text-center text-slate-300">—</td>`;
+            return `<td class="border border-slate-200 px-1 py-1 text-center">
+              <a href="${url}" target="_blank" rel="noopener" title="${'★'.repeat(st)}${sc != null ? '　' + sc + ' 分' : ''}"
+                 class="inline-block px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 font-bold">⬇${st ? '<span class="text-amber-500">' + st + '★</span>' : ''}</a></td>`;
+          }).join('');
+          const doneCount = GD_UNITS.filter(u => files[u[0]]).length;
+          return `<tr>
+            <td class="border border-slate-200 px-2 py-1 text-center font-mono">${s.no || ''}</td>
+            <td class="border border-slate-200 px-2 py-1 whitespace-nowrap">${s.name || ''}</td>
+            ${tds}
+            <td class="border border-slate-200 px-2 py-1 text-center font-bold ${doneCount ? 'text-teal-700' : 'text-slate-300'}">${doneCount}</td>
+          </tr>`;
+        }).join('');
+
+        box.innerHTML = `<table class="w-full text-xs border-collapse">
+          <thead><tr class="bg-slate-50">
+            <th class="border border-slate-200 px-2 py-1">座號</th>
+            <th class="border border-slate-200 px-2 py-1">姓名</th>
+            ${head}
+            <th class="border border-slate-200 px-2 py-1">已交</th>
+          </tr></thead><tbody>${body}</tbody></table>`;
+      } catch (e) {
+        box.textContent = '讀取失敗（需教師帳號登入）：' + e.message;
+      }
+    }
+    window.openWorksModal = openWorksModal;
+    window.closeWorksModal = closeWorksModal;
+    window.loadWorks = loadWorks;
+
+    window.openGraderModal = openGraderModal;
+    window.closeGraderModal = closeGraderModal;
+    window.saveGraderCriteria = saveGraderCriteria;
+    window.gdUploadExample = gdUploadExample;
+    window.gdUploadTemplate = gdUploadTemplate;
+    window.gdTestGrade = gdTestGrade;
+  </script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>資訊科技課程 · 入口</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  html,body{font-family:'Noto Sans TC',system-ui,sans-serif}
+  body{background-color:#e7e5e4;
+       background-image:linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),
+                        linear-gradient(90deg,rgba(120,113,108,.06) 1px,transparent 1px);
+       background-size:26px 26px}
+</style>
+</head>
+<body class="p-6 text-slate-800">
+
+<div class="max-w-lg mx-auto mt-16 text-center">
+
+  <p class="text-sm font-bold tracking-widest text-slate-500 uppercase">前峰國中 八年級</p>
+  <h1 class="text-3xl font-black mt-2 mb-8">資訊科技課程</h1>
+
+  <div id="auto" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-4">
+    <p class="text-sm font-bold text-slate-500 mb-3">正在前往本學期的闖關基地…</p>
+    <a id="go" href="#" class="inline-block px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-xl transition">
+      沒有自動跳轉？點這裡
+    </a>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3">
+    <a href="11501/hub.html" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition">
+      <div class="text-2xl mb-1">📘</div>
+      <div class="font-black">上學期</div>
+      <div class="text-xs text-slate-400 font-bold mt-1">115-1</div>
+    </a>
+    <a href="11502/hub.html" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition">
+      <div class="text-2xl mb-1">📗</div>
+      <div class="font-black">下學期</div>
+      <div class="text-xs text-slate-400 font-bold mt-1">115-2</div>
+    </a>
+  </div>
+
+  <p class="text-xs text-slate-400 mt-8 leading-relaxed">
+    老師工具：
+    <a href="11501/teacher.html" class="underline hover:text-slate-600">上學期教師端</a> ·
+    <a href="11502/teacher.html" class="underline hover:text-slate-600">下學期教師端</a>
+  </p>
+</div>
+
+<script>
+/* 依月份判斷學期：2～7 月為下學期，其餘為上學期。
+   只在「使用者沒有自己選」的情況下自動導向，並保留手動選擇的兩張卡片，
+   萬一判斷不準（例如提早開學）學生仍然進得去。 */
+(function () {
+  var m = new Date().getMonth() + 1;
+  var term = (m >= 2 && m <= 7) ? '11502' : '11501';
+  var url = term + '/hub.html';
+  document.getElementById('go').href = url;
+  setTimeout(function () { location.replace(url); }, 1200);
+})();
+</script>
+
+</body>
+</html>

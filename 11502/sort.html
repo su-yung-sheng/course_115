@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚔️ 排序演算法大冒險 🛡️</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google 像素風格字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        /* 版面配色統一由 shared/theme.css 提供（方格紙底、Noto Sans TC、slate 中性色）
+           本檔只保留「排序視覺化」真正需要的互動樣式。 */
+
+        /* 面板：白卡（外觀與全站一致） */
+        .glass-panel{
+            background:#fff;
+            border:1px solid #e2e8f0;
+            border-radius:1rem;
+            box-shadow:0 1px 2px rgba(0,0,0,.05);
+        }
+
+        /* 立體按鈕：保留手感，配色改用模組色 fuchsia */
+        .game-btn{
+            border:2px solid #a21caf;
+            border-bottom-width:4px;
+            transition:all .1s ease-in-out;
+        }
+        .game-btn:active:not(:disabled){ border-bottom-width:2px; transform:translateY(2px); }
+        .game-btn:disabled{ filter:grayscale(100%); opacity:.5; cursor:not-allowed; }
+
+        /* 選項卡（技能／藥水） */
+        input[type="radio"]{ display:none; }
+        input[type="radio"] + div{
+            border:2px solid #e2e8f0;
+            background:#f8fafc;
+            color:#334155;
+            transition:all .2s;
+        }
+        input[type="radio"]:checked + div{
+            background:#fdf4ff;                 /* fuchsia-50 */
+            border-color:#e879f9;               /* fuchsia-400 */
+            color:#86198f;                      /* fuchsia-800 */
+            box-shadow:0 0 0 3px rgba(232,121,249,.25);
+            transform:scale(1.03);
+        }
+        input[type="radio"]:disabled + div{ opacity:.5; cursor:not-allowed; }
+
+        /* 滑桿 */
+        input[type=range]{
+            -webkit-appearance:none; background:#e2e8f0;
+            border:1px solid #cbd5e1; height:10px; border-radius:6px; outline:none;
+        }
+        input[type=range]::-webkit-slider-thumb{
+            -webkit-appearance:none; width:20px; height:20px;
+            background:#d946ef; border:2px solid #fff; border-radius:50%;
+            cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.25);
+        }
+
+        /* 長條圖：資料視覺化主體 */
+        .bar{
+            transition:height .1s ease-in-out, background-color .1s ease-in-out;
+            border:1px solid rgba(0,0,0,.08);
+            border-bottom:none; border-radius:4px 4px 0 0;
+        }
+
+        /* 舞台地板 */
+        .stage-floor{
+            height:10px;
+            background:repeating-linear-gradient(45deg,#cbd5e1,#cbd5e1 10px,#e2e8f0 10px,#e2e8f0 20px);
+            border-top:2px solid #94a3b8;
+            border-bottom:2px solid #94a3b8;
+        }
+
+        /* 手動排序方塊 */
+        .manual-block{
+            box-shadow:inset -2px -2px 0 rgba(0,0,0,.08), inset 2px 2px 0 rgba(255,255,255,.7),
+                       0 2px 4px rgba(0,0,0,.12);
+            border:2px solid #cbd5e1;
+        }
+    </style>
+
+<!-- 身分守門：未從闖關基地登入者導回入口 -->
+<script src="../shared/guard.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <!-- 全站主題樣式（單一來源，見 shared/theme.css）-->
+  <link rel="stylesheet" href="../shared/theme.css">
+</head>
+<body class="min-h-screen p-2 md:p-6 flex flex-col items-center">
+<!-- 返回基地：固定左上，每頁只放一顆（嵌入 iframe 時自動隱藏） -->
+<a id="back-to-hub" href="hub.html" title="返回闖關基地"
+   style="position:fixed;top:1rem;left:1rem;z-index:9999;display:inline-flex;align-items:center;gap:.35rem;
+          background:#1e293b;color:#fff;font-weight:700;font-size:.875rem;padding:.5rem .875rem;
+          border-radius:9999px;box-shadow:0 10px 15px -3px rgba(0,0,0,.2);text-decoration:none;">&#8592; 返回基地</a>
+<script>
+if (window.self !== window.top) { var b = document.getElementById('back-to-hub'); if (b) b.style.display='none'; }
+</script>
+
+
+    <div class="max-w-6xl w-full flex flex-col gap-6">
+        
+        <!-- 頂部 HUD 面板 (控制區) -->
+        <div class="glass-panel rounded-2xl p-4 flex flex-col lg:flex-row gap-4 items-center justify-between">
+            
+            <!-- 標題與基礎設定 (HP/MP條風格) -->
+            <div class="flex flex-col gap-3 w-full lg:w-1/4">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-3xl">⚔️</span>
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-bold text-fuchsia-700 drop-shadow-md tracking-wider">排序冒險</h1>
+                        <p class="text-xs text-fuchsia-600">系統版本 v2.0</p>
+                    </div>
+                </div>
+                <div class="bg-black/30 p-3 rounded-lg border border-fuchsia-900/50">
+                    <div class="flex items-center justify-between mb-1">
+                        <label for="arraySize" class="text-xs text-fuchsia-700">🧪 魔物數量: <span id="sizeValue" class="text-amber-600">30</span></label>
+                    </div>
+                    <input type="range" id="arraySize" min="10" max="100" value="30" class="w-full mb-3">
+                    
+                    <div class="flex items-center justify-between mb-1">
+                        <label for="speed" class="text-xs text-fuchsia-700">⏳ 戰鬥速度: <span id="speedValue" class="text-amber-600">中等</span></label>
+                    </div>
+                    <input type="range" id="speed" min="10" max="500" value="100" class="w-full" style="direction: rtl;">
+                </div>
+            </div>
+
+            <!-- 技能列 (演算法選擇) -->
+            <div class="w-full lg:w-2/4 bg-black/20 p-3 rounded-xl border border-fuchsia-400/20">
+                <h3 class="text-xs text-fuchsia-600 mb-2 text-center">📜 選擇發動技能 (演算法)</h3>
+                <div class="flex justify-center gap-2 md:gap-4">
+                    <label class="cursor-pointer group flex-1">
+                        <input type="radio" name="algorithm" value="bubble" checked>
+                        <div class="flex flex-col items-center p-2 rounded-lg group-hover:bg-fuchsia-800/50">
+                            <span class="text-3xl drop-shadow-lg">🫧</span>
+                            <span class="text-xs mt-1 text-center font-bold">氣泡連擊</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer group flex-1">
+                        <input type="radio" name="algorithm" value="selection">
+                        <div class="flex flex-col items-center p-2 rounded-lg group-hover:bg-fuchsia-800/50">
+                            <span class="text-3xl drop-shadow-lg">🎯</span>
+                            <span class="text-xs mt-1 text-center font-bold">精準選擇</span>
+                        </div>
+                    </label>
+                    <label class="cursor-pointer group flex-1">
+                        <input type="radio" name="algorithm" value="insertion">
+                        <div class="flex flex-col items-center p-2 rounded-lg group-hover:bg-fuchsia-800/50">
+                            <span class="text-3xl drop-shadow-lg">🃏</span>
+                            <span class="text-xs mt-1 text-center font-bold">卡牌插入</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 陣營選擇與行動按鈕 -->
+            <div class="w-full lg:w-1/4 flex flex-col gap-3">
+                <div class="flex gap-2">
+                    <label class="cursor-pointer flex-1">
+                        <input type="radio" name="order" value="asc" checked>
+                        <div class="flex items-center justify-center gap-1 p-2 rounded-lg text-sm">
+                            <span>🔼</span>由小到大
+                        </div>
+                    </label>
+                    <label class="cursor-pointer flex-1">
+                        <input type="radio" name="order" value="desc">
+                        <div class="flex items-center justify-center gap-1 p-2 rounded-lg text-sm">
+                            <span>🔽</span>由大到小
+                        </div>
+                    </label>
+                </div>
+                
+                <button id="generateBtn" class="game-btn bg-indigo-600 hover:bg-indigo-500 rounded-lg py-2 font-bold flex justify-center items-center gap-2 disabled:opacity-50">
+                    <span class="text-xl">🔮</span> 重新召喚陣列
+                </button>
+                <button id="sortBtn" class="game-btn bg-fuchsia-600 hover:bg-fuchsia-500 rounded-lg py-3 font-bold flex justify-center items-center gap-2 text-lg disabled:opacity-50">
+                    <span class="text-2xl">⚔️</span> 自動戰鬥開始
+                </button>
+                <button id="stopBtn" class="game-btn bg-red-600 hover:bg-red-500 rounded-lg py-3 font-bold flex justify-center items-center gap-2 text-lg hidden">
+                    <span class="text-2xl">🛑</span> 戰略撤退
+                </button>
+            </div>
+        </div>
+
+        <!-- 橫捲軸戰鬥舞台 (視覺化區域) -->
+        <div class="glass-panel rounded-2xl overflow-hidden flex flex-col">
+            <!-- 狀態圖例與計時器 -->
+            <div class="bg-black/40 p-2 flex flex-col md:flex-row items-center justify-between gap-3 border-b border-fuchsia-500/30">
+                <div class="flex flex-wrap justify-center gap-3 md:gap-6 text-xs text-fuchsia-800">
+                    <div class="flex items-center gap-1"><span class="w-3 h-3 bg-fuchsia-400 border border-black inline-block"></span> 普通</div>
+                    <div class="flex items-center gap-1"><span class="w-3 h-3 bg-red-500 border border-black inline-block"></span> ⚔️ 攻擊/比較</div>
+                    <div class="flex items-center gap-1"><span class="w-3 h-3 bg-yellow-400 border border-black inline-block"></span> 🎯 目標鎖定</div>
+                    <div class="flex items-center gap-1"><span class="w-3 h-3 bg-fuchsia-500 border border-black inline-block"></span> ✨ 淨化完成</div>
+                </div>
+                <!-- 戰鬥耗時面板 -->
+                <div class="text-amber-600 font-bold text-sm bg-black/60 px-3 py-1 rounded border border-yellow-500/50 shadow-[0_0_8px_rgba(250,204,21,0.4)] flex items-center gap-2">
+                    <span>⏱️ 戰鬥耗時:</span>
+                    <span id="timeValue" class="text-slate-800 w-12 text-right">0.00</span>
+                    <span>秒</span>
+                </div>
+            </div>
+            
+            <!-- 舞台 -->
+            <div class="p-4 h-64 md:h-80 w-full flex flex-col justify-end bg-gradient-to-b from-transparent to-fuchsia-900/30">
+                <div id="bars-container" class="flex items-end gap-[1px] md:gap-[2px] w-full h-full px-2">
+                    <!-- 長條圖將透過 JavaScript 動態產生在這裡 -->
+                </div>
+            </div>
+            <!-- 地板 -->
+            <div class="stage-floor w-full"></div>
+        </div>
+
+        <!-- 手動體驗區 (勇者訓練營) -->
+        <div class="glass-panel rounded-2xl p-6 relative overflow-hidden">
+            <!-- 裝飾用圖案 -->
+            <div class="absolute -right-10 -top-10 opacity-20 text-9xl">🏰</div>
+
+            <div class="relative z-10">
+                <h2 class="text-2xl font-bold text-center mb-1 text-amber-600 drop-shadow-md">🏕️ 勇者訓練營：手動挑戰</h2>
+                <p class="text-center text-fuchsia-700 mb-4 text-sm">系統已同步您的技能選擇，請遵守規則手動完成排列！</p>
+                
+                <!-- 對話框風格提示 -->
+                <div class="bg-black/50 border-2 border-fuchsia-400 p-4 mb-6 max-w-3xl mx-auto rounded-xl relative shadow-lg">
+                    <!-- 對話框小尾巴 -->
+                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[10px] border-b-fuchsia-400"></div>
+                    
+                    <h4 class="font-bold text-amber-600 mb-2 flex items-center text-sm md:text-base border-b border-fuchsia-500/50 pb-1">
+                        <span id="manualTipTitle">💡 導師的指導</span>
+                    </h4>
+                    <p id="manualTipDesc" class="text-sm text-fuchsia-800 ml-2 leading-relaxed mt-2"></p>
+                </div>
+
+                <div class="flex justify-center gap-4 mb-6">
+                    <button id="manualGenerateBtn" class="game-btn bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2">
+                        <span>🎲</span> 召喚新挑戰
+                    </button>
+                </div>
+
+                <!-- 訊息提示框 (遊戲系統提示) -->
+                <div id="manualMessage" class="hidden text-center font-bold text-lg mb-4 rounded-lg p-3 transition-all border-2"></div>
+
+                <!-- 手動排序方塊 (寶箱/魔物) -->
+                <div id="manual-container" class="flex flex-wrap justify-center items-center gap-3 md:gap-5 min-h-[6rem] pb-4">
+                    <!-- 手動方塊將由 JS 產生 -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // DOM 元素選取
+        const container = document.getElementById('bars-container');
+        const arraySizeSlider = document.getElementById('arraySize');
+        const speedSlider = document.getElementById('speed');
+        const sizeValue = document.getElementById('sizeValue');
+        const speedValue = document.getElementById('speedValue');
+        const generateBtn = document.getElementById('generateBtn');
+        const sortBtn = document.getElementById('sortBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const radioBtns = document.getElementsByName('algorithm');
+        const orderBtns = document.getElementsByName('order');
+
+        // 手動區變數與 DOM 元素
+        let manualArray = [];
+        let selectedManualIndex = null;
+        const manualContainer = document.getElementById('manual-container');
+        const manualGenerateBtn = document.getElementById('manualGenerateBtn');
+        const manualMessage = document.getElementById('manualMessage');
+        
+        // 手動區狀態追蹤
+        let manualMode = 'bubble';
+        let manualOrder = 'asc';
+        let selectionBoundary = 0; 
+        let insertionTarget = 1;   
+        let insertionCurrent = 1;  
+
+        // 計時器變數
+        let timerInterval = null;
+        let startTime = 0;
+        const timeValue = document.getElementById('timeValue');
+
+        // 全域變數
+        let array = [];
+        let isSorting = false;
+        let delay = 100;
+
+        // 遊戲風格色彩定義
+        const COLOR_DEFAULT = '#60a5fa'; // 柔和藍 (未淨化)
+        const COLOR_COMPARE = '#ef4444'; // 鮮豔紅 (戰鬥/比較)
+        const COLOR_MIN = '#facc15';     // 閃亮黃 (目標)
+        const COLOR_SORTED = '#4ade80';  // 治癒綠 (已淨化)
+
+        // 計時器功能
+        function updateTimer() {
+            const currentTime = Date.now();
+            const elapsed = (currentTime - startTime) / 1000;
+            if(timeValue) timeValue.textContent = elapsed.toFixed(2);
+        }
+
+        function startTimer() {
+            if(timeValue) timeValue.textContent = "0.00";
+            startTime = Date.now();
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 50);
+        }
+
+        function stopTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+        }
+
+        function resetTimer() {
+            stopTimer();
+            if(timeValue) timeValue.textContent = "0.00";
+        }
+
+        // 初始化
+        function init() {
+            generateArray();
+            initManual();
+            
+            arraySizeSlider.addEventListener('input', () => {
+                sizeValue.textContent = arraySizeSlider.value;
+                generateArray();
+            });
+
+            speedSlider.addEventListener('input', () => {
+                delay = speedSlider.value;
+                let text = "普通";
+                if(delay < 50) text = "疾風";
+                else if(delay < 150) text = "敏捷";
+                else if(delay > 350) text = "緩慢";
+                else if(delay > 250) text = "遲鈍";
+                speedValue.textContent = text;
+            });
+
+            generateBtn.addEventListener('click', generateArray);
+            sortBtn.addEventListener('click', startSorting);
+            stopBtn.addEventListener('click', () => {
+                isSorting = false;
+                stopTimer(); // 撤退時停止計時
+                resetUI();
+            });
+        }
+
+        // 產生隨機陣列
+        function generateArray() {
+            if (isSorting) return;
+            resetTimer(); // 產生新陣列時歸零計時器
+            array = [];
+            container.innerHTML = '';
+            const size = parseInt(arraySizeSlider.value);
+            
+            for (let i = 0; i < size; i++) {
+                const value = Math.floor(Math.random() * 90) + 10; // 10 到 100
+                array.push(value);
+                const bar = document.createElement('div');
+                bar.classList.add('bar', 'w-full');
+                bar.style.height = `${value}%`;
+                bar.style.backgroundColor = COLOR_DEFAULT;
+                container.appendChild(bar);
+            }
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function toggleUI(sorting) {
+            isSorting = sorting;
+            generateBtn.disabled = sorting;
+            arraySizeSlider.disabled = sorting;
+            sortBtn.disabled = sorting;
+            
+            radioBtns.forEach(btn => btn.disabled = sorting);
+            orderBtns.forEach(btn => btn.disabled = sorting);
+
+            if (sorting) {
+                sortBtn.classList.add('hidden');
+                stopBtn.classList.remove('hidden');
+            } else {
+                sortBtn.classList.remove('hidden');
+                stopBtn.classList.add('hidden');
+            }
+        }
+
+        function resetUI() {
+            toggleUI(false);
+            let bars = document.getElementsByClassName('bar');
+            for(let bar of bars) {
+                if (bar.style.backgroundColor !== getRGB(COLOR_SORTED)) {
+                    bar.style.backgroundColor = COLOR_DEFAULT;
+                }
+            }
+        }
+
+        function getRGB(hex) {
+            let r = parseInt(hex.slice(1, 3), 16),
+                g = parseInt(hex.slice(3, 5), 16),
+                b = parseInt(hex.slice(5, 7), 16);
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        async function startSorting() {
+            toggleUI(true);
+            let selectedAlgorithm = document.querySelector('input[name="algorithm"]:checked').value;
+            let sortOrder = document.querySelector('input[name="order"]:checked').value;
+
+            let bars = document.getElementsByClassName('bar');
+            for(let bar of bars) {
+                bar.style.backgroundColor = COLOR_DEFAULT;
+            }
+
+            startTimer(); // 開始戰鬥計時
+
+            try {
+                if (selectedAlgorithm === 'bubble') await bubbleSort(sortOrder);
+                else if (selectedAlgorithm === 'selection') await selectionSort(sortOrder);
+                else if (selectedAlgorithm === 'insertion') await insertionSort(sortOrder);
+                
+                if (isSorting) {
+                    for(let bar of bars) {
+                        bar.style.backgroundColor = COLOR_SORTED;
+                    }
+                }
+            } catch (e) {
+                console.error("Sorting interrupted or error", e);
+            } finally {
+                stopTimer(); // 戰鬥結束或中斷時停止計時
+            }
+
+            toggleUI(false);
+        }
+
+        /* -----------------------------------------------------
+           演算法實作區塊 (上方面板用)
+        ----------------------------------------------------- */
+        async function bubbleSort(order) {
+            let bars = document.getElementsByClassName('bar');
+            let len = array.length;
+            for (let i = 0; i < len - 1; i++) {
+                for (let j = 0; j < len - i - 1; j++) {
+                    if (!isSorting) return; 
+                    bars[j].style.backgroundColor = COLOR_COMPARE;
+                    bars[j+1].style.backgroundColor = COLOR_COMPARE;
+                    await sleep(delay);
+                    let condition = order === 'asc' ? array[j] > array[j + 1] : array[j] < array[j + 1];
+                    if (condition) {
+                        let temp = array[j];
+                        array[j] = array[j + 1];
+                        array[j + 1] = temp;
+                        bars[j].style.height = `${array[j]}%`;
+                        bars[j+1].style.height = `${array[j+1]}%`;
+                    }
+                    bars[j].style.backgroundColor = COLOR_DEFAULT;
+                    bars[j+1].style.backgroundColor = COLOR_DEFAULT;
+                }
+                bars[len - 1 - i].style.backgroundColor = COLOR_SORTED;
+            }
+            bars[0].style.backgroundColor = COLOR_SORTED;
+        }
+
+        async function selectionSort(order) {
+            let bars = document.getElementsByClassName('bar');
+            let len = array.length;
+            for (let i = 0; i < len; i++) {
+                if (!isSorting) return;
+
+                // 根據原理設定：目標位置與搜尋範圍
+                let target_pos = order === 'asc' ? i : len - 1 - i;
+                let search_start = order === 'asc' ? i : 0;
+                let search_end = order === 'asc' ? len : len - i;
+
+                let min_idx = search_start;
+                bars[target_pos].style.backgroundColor = COLOR_MIN;
+
+                // 在未排序數列中找出最小值
+                for (let j = search_start; j < search_end; j++) {
+                    if (!isSorting) return;
+                    
+                    if (j !== target_pos) bars[j].style.backgroundColor = COLOR_COMPARE;
+                    await sleep(delay);
+
+                    if (array[j] < array[min_idx]) {
+                        if (min_idx !== target_pos && min_idx !== j) bars[min_idx].style.backgroundColor = COLOR_DEFAULT;
+                        min_idx = j;
+                        if (min_idx !== target_pos) bars[min_idx].style.backgroundColor = COLOR_MIN;
+                    } else {
+                        if (j !== target_pos && j !== min_idx) bars[j].style.backgroundColor = COLOR_DEFAULT;
+                    }
+                }
+
+                // 交換目標位置與最小值
+                if (min_idx !== target_pos) {
+                    let temp = array[target_pos];
+                    array[target_pos] = array[min_idx];
+                    array[min_idx] = temp;
+                    bars[target_pos].style.height = `${array[target_pos]}%`;
+                    bars[min_idx].style.height = `${array[min_idx]}%`;
+                    bars[min_idx].style.backgroundColor = COLOR_DEFAULT;
+                }
+                bars[target_pos].style.backgroundColor = COLOR_SORTED;
+            }
+        }
+
+        async function insertionSort(order) {
+            let bars = document.getElementsByClassName('bar');
+            let len = array.length;
+            bars[0].style.backgroundColor = COLOR_SORTED;
+            for (let i = 1; i < len; i++) {
+                let key = array[i];
+                let j = i - 1;
+                bars[i].style.backgroundColor = COLOR_COMPARE;
+                await sleep(delay);
+                while (j >= 0 && (order === 'asc' ? array[j] > key : array[j] < key)) {
+                    if (!isSorting) return;
+                    bars[j].style.backgroundColor = COLOR_MIN;
+                    await sleep(delay);
+                    array[j + 1] = array[j];
+                    bars[j + 1].style.height = `${array[j + 1]}%`;
+                    bars[j].style.backgroundColor = COLOR_SORTED;
+                    j = j - 1;
+                }
+                array[j + 1] = key;
+                bars[j + 1].style.height = `${array[j + 1]}%`;
+                for(let k = 0; k <= i; k++){
+                    bars[k].style.backgroundColor = COLOR_SORTED;
+                }
+            }
+        }
+
+        /* -----------------------------------------------------
+           手動體驗區邏輯
+        ----------------------------------------------------- */
+        function initManual() {
+            radioBtns.forEach(btn => btn.addEventListener('change', generateManualArray));
+            orderBtns.forEach(btn => btn.addEventListener('change', generateManualArray));
+            manualGenerateBtn.addEventListener('click', generateManualArray);
+            generateManualArray();
+        }
+
+        function updateManualTips() {
+            const titleEl = document.getElementById('manualTipTitle');
+            const descEl = document.getElementById('manualTipDesc');
+            const orderText = manualOrder === 'asc' ? '由小排到大' : '由大排到小';
+
+            if (manualMode === 'bubble') {
+                titleEl.innerHTML = '🫧 技能：氣泡連擊 (Bubble Sort) 的試煉';
+                descEl.innerHTML = `<strong>【施法限制】</strong> 只能點擊交換<strong class="text-amber-600">「相鄰」</strong>的兩個方塊。<br>
+                【任務目標】 請將魔物數字 <strong class="text-amber-600">${orderText}</strong> 淨化。
+                <div class="mt-3 p-3 bg-fuchsia-900/40 rounded border border-fuchsia-500/50 text-sm shadow-inner leading-relaxed">
+                    <span class="block text-fuchsia-700">📖 奧義：較極端的數字會像氣泡一樣，透過不斷相鄰交換「浮」到邊緣。</span>
+                    <span class="block text-amber-700 mt-2">📝 原理：氣泡排序法(Bubble Sort)又稱交換排序法，原理是從第一筆資料開始，逐一比較相鄰兩筆資料，如果兩筆大小順序有誤則做交換，反之則不動，接著再進行下一筆資料比較，所有資料比較完第1回合後，可以確保最後一筆資料是正確的位置。</span>
+                    <span class="block text-fuchsia-700 mt-2">🎒 日常：體育課排隊，老師說「看旁邊的同學，比較高的往後站」，大家兩兩互換。</span>
+                </div>`;
+            } else if (manualMode === 'selection') {
+                titleEl.innerHTML = '🎯 技能：精準選擇 (Selection Sort) 的試煉';
+                let targetLoc = manualOrder === 'asc' ? '前端' : '末端';
+                descEl.innerHTML = `<strong>【施法限制】</strong> 找出未淨化區的<strong class="text-amber-600">「最小值」</strong>，並將它與未淨化區的<strong class="text-violet-600">「${targetLoc} (紫框標示處)」</strong>交換。<br>
+                【任務目標】 每次挑出最小值放好，將陣列 <strong class="text-amber-600">${orderText}</strong> 淨化。
+                <div class="mt-3 p-3 bg-fuchsia-900/40 rounded border border-fuchsia-500/50 text-sm shadow-inner leading-relaxed">
+                    <span class="block text-fuchsia-700">📖 奧義：用眼睛掃描剩餘區域，鎖定目標後，直接「瞬移」交換一次到位。</span>
+                    <span class="block text-amber-700 mt-2">📝 原理：反覆從未排序數列中找出「最小值」，將它與特定的邊界做交換。由大到小排序時，將最小值放到末端；若由小到大排序時，則將最小值放到前端。</span>
+                    <span class="block text-fuchsia-700 mt-2">🎒 日常：整理很重的書箱，先找出最輕的搬到目標位置，每次只搬對的書。</span>
+                </div>`;
+            } else if (manualMode === 'insertion') {
+                titleEl.innerHTML = '🃏 技能：卡牌插入 (Insertion Sort) 的試煉';
+                descEl.innerHTML = `<strong>【施法限制】</strong> 點選<strong class="text-orange-600">「橘框標示的新卡牌」</strong>，並直接點選左側結界中<strong class="text-amber-600">「正確的插入位置」</strong>。<br>
+                【任務目標】 評估左側已排好的數字，將新數字精準安插，將陣列 <strong class="text-amber-600">${orderText}</strong> 淨化。
+                <div class="mt-3 p-3 bg-fuchsia-900/40 rounded border border-fuchsia-500/50 text-sm shadow-inner leading-relaxed">
+                    <span class="block text-fuchsia-700">📖 奧義：將未排序的新元素，逐一「安插」到左側已經排好順序的結界中。</span>
+                    <span class="block text-amber-700 mt-2">📝 原理：逐一將原始資料加入已排序好的資料中，並逐一與已排序好的資料作比較，找到對的位置插入。例如：已有2筆排序好資料，將第3筆資料與前面已排序好的2筆作比較插入，再將第4筆與前面已排序好的3筆作比較插入，以此類推。</span>
+                    <span class="block text-fuchsia-700 mt-2">🎒 日常：玩撲克牌，抽一張新牌後，直接把它插進手中已排好順序的牌堆裡。</span>
+                </div>`;
+            }
+        }
+
+        function generateManualArray() {
+            manualArray = [];
+            manualMessage.classList.add('hidden');
+            selectedManualIndex = null;
+            
+            manualMode = document.querySelector('input[name="algorithm"]:checked').value;
+            manualOrder = document.querySelector('input[name="order"]:checked').value;
+            
+            selectionBoundary = 0;
+            insertionTarget = 1;
+            insertionCurrent = 1;
+
+            const size = 5 + Math.floor(Math.random() * 3); 
+            for (let i = 0; i < size; i++) {
+                manualArray.push(Math.floor(Math.random() * 90) + 10);
+            }
+            
+            updateManualTips();
+            updateManualStates(); 
+            renderManualArray();
+        }
+
+        function updateManualStates() {
+            if (manualMode === 'selection') {
+                while (selectionBoundary < manualArray.length - 1) {
+                    let targetPos = manualOrder === 'asc' ? selectionBoundary : manualArray.length - 1 - selectionBoundary;
+                    let searchStart = manualOrder === 'asc' ? selectionBoundary : 0;
+                    let searchEnd = manualOrder === 'asc' ? manualArray.length : manualArray.length - selectionBoundary;
+                    
+                    let minIdx = searchStart;
+                    for (let i = searchStart + 1; i < searchEnd; i++) {
+                        if (manualArray[i] < manualArray[minIdx]) minIdx = i;
+                    }
+                    
+                    if (minIdx === targetPos) {
+                        selectionBoundary++;
+                    } else {
+                        break;
+                    }
+                }
+            } else if (manualMode === 'insertion') {
+                while (insertionTarget < manualArray.length) {
+                    let needsToMoveLeft = false;
+                    if (insertionCurrent > 0) {
+                        needsToMoveLeft = manualOrder === 'asc' ?
+                            manualArray[insertionCurrent] < manualArray[insertionCurrent - 1] :
+                            manualArray[insertionCurrent] > manualArray[insertionCurrent - 1];
+                    }
+
+                    if (!needsToMoveLeft) {
+                        insertionTarget++;
+                        insertionCurrent = insertionTarget;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        function renderManualArray() {
+            manualContainer.innerHTML = '';
+            manualArray.forEach((value, index) => {
+                const block = document.createElement('div');
+                let baseClasses = 'manual-block flex items-center justify-center w-14 h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 text-xl md:text-3xl font-bold text-slate-800 rounded-xl cursor-pointer transition-all duration-200 select-none relative ';
+                
+                let colorClasses = '';
+                let ringClasses = '';
+                let transformClasses = '';
+
+                if (selectedManualIndex === index) {
+                    colorClasses = 'bg-yellow-500 ';
+                    transformClasses = 'scale-110 -translate-y-2 z-10 ';
+                } else {
+                    transformClasses = 'hover:-translate-y-1 ';
+                    
+                    let isSorted = false;
+                    if (manualMode === 'selection') {
+                        // 判斷是否為已淨化區域
+                        if (manualOrder === 'asc' && index < selectionBoundary) isSorted = true;
+                        if (manualOrder === 'desc' && index >= manualArray.length - selectionBoundary) isSorted = true;
+                    } else if (manualMode === 'insertion') {
+                        if (index < insertionTarget && index !== insertionCurrent) isSorted = true;
+                    }
+
+                    if (isSorted && manualMode === 'selection') {
+                        colorClasses = 'bg-fuchsia-600 hover:bg-fuchsia-500 ';
+                    } else if (isSorted && manualMode === 'insertion') {
+                        colorClasses = 'bg-teal-600 hover:bg-teal-500 ';
+                    } else {
+                        colorClasses = 'bg-fuchsia-600 hover:bg-fuchsia-500 ';
+                    }
+                }
+
+                let targetPos = -1;
+                if (manualMode === 'selection') {
+                    targetPos = manualOrder === 'asc' ? selectionBoundary : manualArray.length - 1 - selectionBoundary;
+                }
+
+                if (manualMode === 'selection' && index === targetPos && selectedManualIndex !== index) {
+                    ringClasses = 'ring-4 ring-purple-400 ring-offset-2 ring-offset-fuchsia-900 ';
+                } else if (manualMode === 'insertion' && index === insertionCurrent && selectedManualIndex !== index) {
+                    ringClasses = 'ring-4 ring-orange-400 ring-offset-2 ring-offset-fuchsia-900 ';
+                }
+
+                block.className = baseClasses + colorClasses + ringClasses + transformClasses;
+                block.textContent = value;
+                block.addEventListener('click', () => handleManualClick(index));
+                manualContainer.appendChild(block);
+            });
+        }
+
+        function showManualError(msg) {
+            manualMessage.innerHTML = msg;
+            manualMessage.className = 'text-center font-bold text-sm md:text-lg mb-4 rounded-lg p-3 bg-red-900/80 text-red-100 border-2 border-red-400 block shadow-[0_0_15px_rgba(239,68,68,0.5)]';
+            manualMessage.classList.remove('hidden');
+        }
+
+        function handleManualClick(index) {
+            manualMessage.classList.add('hidden'); 
+            
+            if (selectedManualIndex === null) {
+                selectedManualIndex = index;
+                renderManualArray();
+                return;
+            } 
+            if (selectedManualIndex === index) {
+                selectedManualIndex = null;
+                renderManualArray();
+                return;
+            }
+
+            let idx1 = selectedManualIndex;
+            let idx2 = index;
+
+            /* ===== 嚴格規則判定 ===== */
+            if (manualMode === 'bubble') {
+                if (Math.abs(idx1 - idx2) !== 1) {
+                    showManualError('❌ 施法失敗！氣泡術只能交換「相鄰」的兩顆方塊！');
+                    selectedManualIndex = null;
+                    renderManualArray();
+                    return;
+                }
+            } 
+            else if (manualMode === 'selection') {
+                // 原理：反覆尋找「最小值」，並根據方向放到前端或末端
+                let targetPos = manualOrder === 'asc' ? selectionBoundary : manualArray.length - 1 - selectionBoundary;
+                let searchStart = manualOrder === 'asc' ? selectionBoundary : 0;
+                let searchEnd = manualOrder === 'asc' ? manualArray.length : manualArray.length - selectionBoundary;
+
+                let minIdx = searchStart;
+                for (let i = searchStart + 1; i < searchEnd; i++) {
+                    if (manualArray[i] < manualArray[minIdx]) minIdx = i;
+                }
+
+                let isValidSwap = (idx1 === targetPos && idx2 === minIdx) || 
+                                  (idx1 === minIdx && idx2 === targetPos);
+
+                if (!isValidSwap) {
+                    let dirText = manualOrder === 'asc' ? '前端' : '末端';
+                    showManualError(`❌ 鎖定錯誤！請將未淨化區的「最小值」與未排序區的「${dirText} (紫框處)」對調！`);
+                    selectedManualIndex = null;
+                    renderManualArray();
+                    return;
+                }
+            }
+            else if (manualMode === 'insertion') {
+                // 依據原理：找出橘框卡牌在左側已排序區域中「正確的落點」
+                let expectedDestIdx = insertionCurrent;
+                for (let i = 0; i < insertionCurrent; i++) {
+                    if (manualOrder === 'asc' ? manualArray[insertionCurrent] < manualArray[i] : manualArray[insertionCurrent] > manualArray[i]) {
+                        expectedDestIdx = i;
+                        break;
+                    }
+                }
+
+                let isValidInsertion = (idx1 === insertionCurrent && idx2 === expectedDestIdx) ||
+                                       (idx1 === expectedDestIdx && idx2 === insertionCurrent);
+
+                if (!isValidInsertion) {
+                    showManualError(`❌ 插入失敗！請比較左側已排序卡牌，將橘框卡牌放入正確的順序位置！`);
+                    selectedManualIndex = null;
+                    renderManualArray();
+                    return;
+                }
+            }
+
+            // 執行陣列操作
+            if (manualMode === 'insertion') {
+                // 插入排序：使用陣列裁切(splice)將元素移出，並安插到新位置
+                let destIdx = (idx1 === insertionCurrent) ? idx2 : idx1;
+                let targetCard = manualArray.splice(insertionCurrent, 1)[0];
+                manualArray.splice(destIdx, 0, targetCard);
+                
+                // 完成一張牌的插入，推進到下一張
+                insertionTarget++;
+                insertionCurrent = insertionTarget;
+            } else {
+                // 氣泡與選擇排序：傳統的位置互換
+                let temp = manualArray[idx1];
+                manualArray[idx1] = manualArray[idx2];
+                manualArray[idx2] = temp;
+                
+                if (manualMode === 'selection') {
+                    selectionBoundary++;
+                }
+            }
+
+            selectedManualIndex = null;
+
+            updateManualStates();
+            renderManualArray(); 
+            checkManualSort(); 
+        }
+
+        function checkManualSort() {
+            let isSorted = true;
+            for (let i = 0; i < manualArray.length - 1; i++) {
+                if (manualOrder === 'asc' ? manualArray[i] > manualArray[i+1] : manualArray[i] < manualArray[i+1]) {
+                    isSorted = false;
+                    break;
+                }
+            }
+
+            if (isSorted) {
+                manualMessage.classList.remove('hidden');
+                manualMessage.innerHTML = '✨ 任務完成！您已成功淨化所有魔物！ ✨';
+                manualMessage.className = 'text-center font-bold text-lg mb-4 rounded-lg p-3 bg-fuchsia-900/80 text-fuchsia-600 border-2 border-fuchsia-400 block shadow-[0_0_15px_rgba(74,222,128,0.5)] animate-pulse';
+                
+                const blocks = manualContainer.children;
+                for(let i = 0; i < blocks.length; i++){
+                    blocks[i].className = 'manual-block flex items-center justify-center w-14 h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 text-xl md:text-3xl font-bold text-slate-800 rounded-xl shadow-md select-none bg-fuchsia-500 transition-colors duration-300 z-0';
+                }
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

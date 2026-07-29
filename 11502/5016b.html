@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arduino 智慧家居｜資訊科技 115-2</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+  html, body, button, input, select, textarea { font-family:'Noto Sans TC', system-ui, sans-serif; }
+  body{
+    background-color:#e7e5e4 !important;
+    background-image:
+      linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),
+      linear-gradient(90deg, rgba(120,113,108,.06) 1px,transparent 1px) !important;
+    background-size:26px 26px !important;
+  }
+  .tape{position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(-3deg);
+        width:76px;height:26px;border-radius:2px;background:rgba(250,204,21,.3);
+        box-shadow:0 1px 2px rgba(0,0,0,.08);z-index:5}
+  .underline-doodle{background:linear-gradient(transparent 62%, rgba(250,204,21,.55) 62%)}
+  .hl  {background:linear-gradient(transparent 52%, rgba(250,204,21,.65) 52%);font-weight:800}
+  .hl-b{background:linear-gradient(transparent 52%, rgba(147,197,253,.7) 52%);font-weight:800}
+  @keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .pop{animation:pop .35s ease-out both}
+
+  /* 依設計規範第 5 節：只有「模擬器區塊」保留深色，模擬電子控制台的情境感 */
+  .console{background:#0f172a;color:#e2e8f0;border-radius:1rem}
+  .led{width:34px;height:34px;border-radius:9999px;background:#1e293b;
+       box-shadow:inset 0 0 0 2px #334155;transition:all .2s}
+  .led.on{background:#fde047;box-shadow:0 0 18px 4px rgba(253,224,71,.55), inset 0 0 0 2px #facc15}
+  .fan{width:44px;height:44px;transition:transform .1s linear}
+  .fan.spin{animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+
+<script src="../shared/guard.js"></script>
+<script src="../shared/grading.js"></script>
+  <!-- 全站主題樣式（單一來源，見 shared/theme.css）-->
+  <link rel="stylesheet" href="../shared/theme.css">
+</head>
+
+<body class="text-slate-800 min-h-screen pb-24">
+
+<a id="back-to-hub" href="hub.html" title="返回闖關基地"
+   class="fixed top-4 left-4 z-50 inline-flex items-center gap-1.5 bg-slate-800 text-white
+          font-bold text-sm px-3.5 py-2 rounded-full shadow-lg hover:bg-slate-700 transition">← 返回基地</a>
+<script>
+if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b.style.display='none';}
+</script>
+
+<main class="max-w-4xl mx-auto px-4 pt-20">
+
+  <header class="text-center mb-8 pop">
+    <span class="inline-block text-xs font-bold px-2.5 py-1 rounded-full border
+                 border-indigo-300 bg-indigo-50 text-indigo-700 mb-3">💡 延伸挑戰</span>
+    <h1 class="text-3xl sm:text-4xl font-black">
+      <span class="underline-doodle">Arduino 智慧家居</span>
+    </h1>
+    <p class="mt-3 text-slate-500 text-sm sm:text-base">
+      房間會自己開燈、自己吹電風扇——只要你教它「什麼時候該動」。
+    </p>
+  </header>
+
+  <!-- 學習目標 -->
+  <section class="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8 pop">
+    <div class="tape"></div>
+    <h2 class="font-black text-lg mb-3">🎯 這個模組你會學到</h2>
+    <ul class="space-y-2 text-slate-700 text-sm sm:text-base">
+      <li>• <span class="hl">感測器</span>就是機器的五官：光敏電阻是眼睛，溫度感測器是皮膚</li>
+      <li>• <span class="hl">控制器</span>是大腦，負責判斷「現在該不該做事」</li>
+      <li>• <span class="hl">致動器</span>是手腳：LED 會亮、風扇會轉</li>
+      <li>• 三者串起來就是一句話：<span class="hl-b">如果…那麼…</span>，跟 Scratch 完全一樣</li>
+    </ul>
+  </section>
+
+  <!-- 模擬器（刻意深色：模擬控制台） -->
+  <section class="console p-6 mb-8 shadow-lg">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="font-black text-lg text-white">🏠 智慧家居模擬器</h2>
+      <span id="sim-mode" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+        手動模式
+      </span>
+    </div>
+
+    <div class="grid sm:grid-cols-2 gap-6">
+      <!-- 感測器（輸入） -->
+      <div class="space-y-5">
+        <p class="text-xs font-bold text-slate-400">📥 感測器（輸入）</p>
+
+        <div>
+          <label class="flex justify-between text-sm font-bold text-slate-300 mb-1">
+            <span>💡 亮度</span><span id="lux-val">50</span>
+          </label>
+          <input id="lux" type="range" min="0" max="100" value="50" class="w-full accent-yellow-400">
+          <p class="text-[11px] text-slate-500 mt-1">拉到左邊＝天黑了</p>
+        </div>
+
+        <div>
+          <label class="flex justify-between text-sm font-bold text-slate-300 mb-1">
+            <span>🌡️ 溫度</span><span id="temp-val">26 °C</span>
+          </label>
+          <input id="temp" type="range" min="10" max="40" value="26" class="w-full accent-rose-400">
+          <p class="text-[11px] text-slate-500 mt-1">拉到右邊＝變熱了</p>
+        </div>
+      </div>
+
+      <!-- 致動器（輸出） -->
+      <div class="space-y-5">
+        <p class="text-xs font-bold text-slate-400">📤 致動器（輸出）</p>
+
+        <div class="flex items-center gap-3">
+          <div id="led" class="led"></div>
+          <div>
+            <p class="text-sm font-bold text-slate-200">客廳燈</p>
+            <p id="led-txt" class="text-xs text-slate-500">關閉</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <svg id="fan" class="fan" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.8">
+            <circle cx="12" cy="12" r="2.2"/>
+            <path d="M12 10c0-4 1-6 3-6s2 3 0 5M14 12c4 0 6 1 6 3s-3 2-5 0M12 14c0 4-1 6-3 6s-2-3 0-5M10 12c-4 0-6-1-6-3s3-2 5 0"/>
+          </svg>
+          <div>
+            <p class="text-sm font-bold text-slate-200">電風扇</p>
+            <p id="fan-txt" class="text-xs text-slate-500">停止</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 規則設定 -->
+    <div class="mt-6 pt-5 border-t border-slate-700">
+      <p class="text-xs font-bold text-slate-400 mb-3">🧠 控制規則（就是「如果…那麼」）</p>
+      <div class="space-y-2 text-sm text-slate-300">
+        <p>如果 亮度 &lt;
+          <input id="rule-lux" type="number" value="30" min="0" max="100"
+                 class="w-16 bg-slate-800 border border-slate-600 rounded px-2 py-0.5 text-center text-yellow-300">
+          → 那麼 開燈
+        </p>
+        <p>如果 溫度 &gt;
+          <input id="rule-temp" type="number" value="28" min="10" max="40"
+                 class="w-16 bg-slate-800 border border-slate-600 rounded px-2 py-0.5 text-center text-rose-300">
+          °C → 那麼 開電風扇
+        </p>
+      </div>
+      <button id="auto-btn"
+              class="mt-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl py-2.5 transition">
+        切換到自動模式
+      </button>
+    </div>
+  </section>
+
+  <!-- 闖關任務 -->
+  <section class="mb-8">
+    <h2 class="font-black text-xl mb-4">🗺️ 闖關任務</h2>
+    <div id="stage-grid" class="grid gap-4 sm:grid-cols-2"></div>
+  </section>
+
+  <!-- 星星結算 -->
+  <section class="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-6 text-center">
+    <div class="tape"></div>
+    <p class="text-sm font-bold text-slate-500">本模組累積</p>
+    <p id="total-star" class="text-4xl font-black text-amber-500 mt-1">⭐ 0</p>
+    <p class="text-xs text-slate-400 mt-2">滿星 3 顆</p>
+  </section>
+
+</main>
+
+<script>
+/* ===================== 模擬器 ===================== */
+let autoMode = false;
+const $ = id => document.getElementById(id);
+
+function apply(){
+  const lux  = Number($('lux').value);
+  const temp = Number($('temp').value);
+  $('lux-val').textContent  = lux;
+  $('temp-val').textContent = temp + ' °C';
+
+  let ledOn = false, fanOn = false;
+  if (autoMode){
+    ledOn = lux  < Number($('rule-lux').value);      // 如果 亮度 < 門檻 → 那麼 開燈
+    fanOn = temp > Number($('rule-temp').value);     // 如果 溫度 > 門檻 → 那麼 開風扇
+  }
+
+  $('led').classList.toggle('on', ledOn);
+  $('led-txt').textContent = ledOn ? '開啟' : '關閉';
+  $('fan').classList.toggle('spin', fanOn);
+  $('fan').setAttribute('stroke', fanOn ? '#818cf8' : '#94a3b8');
+  $('fan-txt').textContent = fanOn ? '運轉中' : '停止';
+
+  // 任務判定
+  if (autoMode && ledOn) clearStage(1);
+  if (autoMode && fanOn) clearStage(2);
+  if (autoMode && ledOn && fanOn) clearStage(3);
+}
+
+['lux','temp','rule-lux','rule-temp'].forEach(id => $(id).addEventListener('input', apply));
+
+$('auto-btn').addEventListener('click', () => {
+  autoMode = !autoMode;
+  $('auto-btn').textContent = autoMode ? '切回手動模式' : '切換到自動模式';
+  $('sim-mode').textContent = autoMode ? '自動模式' : '手動模式';
+  $('sim-mode').className = autoMode
+    ? 'text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+    : 'text-xs font-bold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700';
+  apply();
+});
+
+/* ===================== 闖關任務 ===================== */
+const STAGES = [
+  { no:1, name:'天黑自動開燈', star:1, desc:'切到自動模式，把亮度拉到門檻以下，讓客廳燈自己亮起來。' },
+  { no:2, name:'太熱自動吹風', star:1, desc:'把溫度拉到門檻以上，讓電風扇自己轉起來。' },
+  { no:3, name:'兩個一起來',   star:1, desc:'同時滿足兩個條件，讓燈和風扇一起工作。' }
+];
+const cleared = new Set();
+
+function clearStage(no){
+  if (cleared.has(no)) return;
+  cleared.add(no);
+  renderStages();
+  renderTotal();
+}
+
+function renderStages(){
+  $('stage-grid').innerHTML = STAGES.map(s => {
+    const done = cleared.has(s.no);
+    return `
+      <article class="relative bg-white rounded-2xl border shadow-sm p-5 pop
+                      ${done ? 'border-emerald-300 ring-2 ring-emerald-200' : 'border-slate-200'}">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <span class="text-xs font-bold px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50 text-slate-500">
+              任務 ${s.no}
+            </span>
+            <h3 class="font-black text-lg mt-2">${s.name}</h3>
+          </div>
+          <span class="font-black text-lg ${done ? 'text-amber-500' : 'text-slate-300'}">${done ? '★' : '☆'}</span>
+        </div>
+        <p class="mt-2 text-slate-600 text-sm leading-relaxed">${s.desc}</p>
+        <p class="mt-3 text-xs font-bold ${done ? 'text-emerald-600' : 'text-slate-400'}">
+          ${done ? '✅ 已通關' : '進行中'}
+        </p>
+      </article>`;
+  }).join('');
+}
+
+function renderTotal(){
+  let t = 0;
+  STAGES.forEach(s => { if (cleared.has(s.no)) t += s.star; });
+  $('total-star').textContent = '⭐ ' + t;
+  // ★ 待接：三個任務全部完成 → 寫入 11502-progress 的 modules.arduino
+}
+
+/* ===================== 起始 ===================== */
+renderStages();
+renderTotal();
+apply();
+</script>
+</body>
+</html>

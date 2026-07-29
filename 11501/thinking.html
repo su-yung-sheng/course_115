@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>運算思維挑戰系統</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 全站統一字型：Noto Sans TC -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['"Noto Sans TC"','system-ui','sans-serif'] } } } };</script>
+    <!-- 全站共用計分規則（單一來源；與教師端共用） -->
+    <script src="config.js"></script>
+  <script src="../shared/grading.js"></script>
+    <!-- 引入 React 和 ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- 引入 Babel 用於解析 JSX，指定版本以確保穩定性 -->
+    <script src="https://unpkg.com/@babel/standalone@7.24.4/babel.min.js"></script>
+    <!-- 引入 FontAwesome 圖示庫 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* 隱藏捲軸但保留功能 (針對 iframe 優化) */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c7c7c7; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8; 
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        html, body { font-family: 'Noto Sans TC', system-ui, sans-serif; }
+    </style>
+<style>
+/* === 全站紙膠帶手作風套件（以 hub 為準，勿重複注入） === */
+body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(120,113,108,.06) 1px,transparent 1px) !important; background-size:26px 26px !important; }
+.tape{position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(-3deg);width:76px;height:26px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.08);background:rgba(250,204,21,.3);z-index:5}
+.underline-doodle{background:linear-gradient(transparent 62%, rgba(250,204,21,.55) 62%)}
+</style>
+  <!-- 身分守門：未從闖關基地登入者導回入口 -->
+  <script src="../shared/guard.js"></script>
+</head>
+<body class="bg-slate-100 h-screen overflow-hidden">
+    <div id="root" class="h-full"></div>
+
+    <!-- 加入 data-type="module" 解決 Babel 解析 import 問題 -->
+    <script type="text/babel" data-type="module">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Icon 組件 (SVG) ---
+        const Icon = ({ path, className }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="24" height="24" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className}
+            >
+                {path}
+            </svg>
+        );
+
+        const Icons = {
+            User: (props) => <Icon {...props} path={<><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>} />,
+            LogOut: (props) => <Icon {...props} path={<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></>} />,
+            Play: (props) => <Icon {...props} path={<polygon points="5 3 19 12 5 21 5 3"/>} />,
+            BookOpen: (props) => <Icon {...props} path={<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>} />,
+            Monitor: (props) => <Icon {...props} path={<><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></>} />,
+            Award: (props) => <Icon {...props} path={<><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></>} />,
+            Clock: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>} />,
+            Calendar: (props) => <Icon {...props} path={<><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></>} />,
+            Timer: (props) => <Icon {...props} path={<><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></>} />,
+            AlertCircle: (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>} />
+        };
+
+        // --- 全域時間與日期格式化工具 ---
+        const formatTime = (seconds) => {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        };
+
+        const formatDate = (date) => {
+            const days = ['日', '一', '二', '三', '四', '五', '六'];
+            return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 星期${days[date.getDay()]}`;
+        };
+
+        // --- Firebase 資料庫設定與初始化 ---
+        const fbStore = {
+            db: null, doc: null, getDoc: null, setDoc: null, arrayUnion: null, collection: null, getDocs: null
+        };
+
+        const initFB = async () => {
+            if (fbStore.db) return true;
+            try {
+                // 使用 new Function 包裝 import，防止 Babel 將 import() 編譯為 require()
+                const { initializeApp, getApps, getApp } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js')")();
+                const { getFirestore, doc, getDoc, setDoc, arrayUnion, collection, getDocs } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js')")();
+                const { getAuth, signInAnonymously } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js')")();
+
+                const firebaseConfig = window.CONFIG.FIREBASE;
+
+                const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+                const auth = getAuth(app);
+                
+                try {
+                    await signInAnonymously(auth);
+                } catch (authErr) {
+                    console.warn("匿名登入失敗 (可能未於 Firebase Console 啟用)，將嘗試直接讀寫資料庫:", authErr);
+                }
+                
+                fbStore.db = getFirestore(app);
+                fbStore.doc = doc;
+                fbStore.getDoc = getDoc;
+                fbStore.setDoc = setDoc;
+                fbStore.arrayUnion = arrayUnion;
+                fbStore.collection = collection;
+                fbStore.getDocs = getDocs;
+                return true;
+            } catch (err) {
+                console.error("Firebase 初始化失敗:", err);
+                return false;
+            }
+        };
+
+        // --- 班級過關紀錄查詢 Modal 組件 ---
+        const QueryModal = ({ onClose, userClass }) => {
+            const [studentsData, setStudentsData] = useState([]);
+            const [loadingData, setLoadingData] = useState(true);
+            const [errorMsg, setErrorMsg] = useState("");
+
+            useEffect(() => {
+                const fetchClassData = async () => {
+                    setLoadingData(true);
+                    setErrorMsg("");
+                    try {
+                        const ok = await initFB();
+                        if (!ok) throw new Error("資料庫連線失敗");
+
+                        const progressCol = fbStore.collection(fbStore.db, 'artifacts', 'comp-think-app', 'public', 'data', 'progress');
+                        const snapshot = await fbStore.getDocs(progressCol);
+                        
+                        const data = [];
+                        snapshot.forEach(doc => {
+                            const d = doc.data();
+                            // 只抓取與當前使用者相同班級的資料
+                            if (d.classRoom === userClass) {
+                                data.push(d);
+                            }
+                        });
+                        
+                        data.sort((a, b) => parseInt(a.seatNo) - parseInt(b.seatNo));
+                        setStudentsData(data);
+                        
+                        if(data.length === 0) setErrorMsg(`目前 ${userClass} 班尚無任何通關紀錄。`);
+                    } catch (err) {
+                        setErrorMsg("查詢失敗，請確認 Firebase 資料庫規則已設為允許讀取。" + err.message);
+                    } finally {
+                        setLoadingData(false);
+                    }
+                };
+                fetchClassData();
+            }, [userClass]);
+
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-auto overflow-hidden relative flex flex-col max-h-[90vh]">
+                        <div className="bg-indigo-600 px-6 py-4 flex justify-between items-center shrink-0">
+                            <h3 className="text-xl font-bold text-white"><i className="fa-solid fa-users mr-2"></i>{userClass} 班過關紀錄查詢</h3>
+                            <button onClick={onClose} className="text-indigo-200 hover:text-white transition-colors">
+                                <i className="fa-solid fa-xmark text-2xl"></i>
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+                            {loadingData ? (
+                                <div className="text-center text-slate-500 py-16 flex flex-col items-center">
+                                    <i className="fa-solid fa-spinner animate-spin text-5xl mb-4 text-indigo-500"></i>
+                                    <p className="font-medium">正在載入 {userClass} 班的資料...</p>
+                                </div>
+                            ) : errorMsg ? (
+                                <div className="text-center text-slate-500 py-10 font-medium bg-white rounded-xl border border-dashed border-slate-300">
+                                    {errorMsg}
+                                </div>
+                            ) : (
+                                <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm bg-white">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-100 text-slate-700 text-sm">
+                                                <th className="p-4 border-b border-slate-200 font-bold w-20">座號</th>
+                                                <th className="p-4 border-b border-slate-200 font-bold w-32">姓名</th>
+                                                <th className="p-4 border-b border-slate-200 font-bold w-24 text-center">過關數</th>
+                                                <th className="p-4 border-b border-slate-200 font-bold">已通關關卡 (游標懸停顯示獨立通關日期)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="text-sm">
+                                            {studentsData.map((student, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
+                                                    <td className="p-4 text-slate-600 font-mono font-bold">{student.seatNo}</td>
+                                                    <td className="p-4 font-bold text-slate-800">{student.name}</td>
+                                                    <td className="p-4 text-center">
+                                                        <span className="bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 rounded-full">
+                                                            {student.completed ? student.completed.length : 0}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-slate-500 font-medium">
+                                                        {student.completed && student.completed.length > 0 ? (
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {student.completed.sort((a,b)=>a-b).map(id => (
+                                                                    <div key={id} className="group relative inline-block cursor-help">
+                                                                        <span className="bg-indigo-50 text-indigo-700 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-indigo-100 shadow-sm transition-colors group-hover:bg-indigo-600 group-hover:text-white">
+                                                                            #{id}
+                                                                        </span>
+                                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 hidden group-hover:block bg-slate-800 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap z-10 shadow-lg">
+                                                                            <i className="fa-regular fa-calendar-check mr-1 text-emerald-400"></i>
+                                                                            通關日期: {student.completionDates?.[id] || student[`completionDates.${id}`] || '未知 (舊紀錄)'}
+                                                                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : '無'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 個人通關證書檢視 Modal 組件 ---
+        const MyCertificatesModal = ({ onClose, user, completedChallenges, completedDates, certificateUrls, challenges }) => {
+            const [selectedId, setSelectedId] = useState(
+                completedChallenges.length > 0 ? [...completedChallenges].sort((a,b) => a-b)[0] : null
+            );
+
+            const currentChallenge = challenges.find(c => c.id === selectedId);
+            const todayStr = formatDate(new Date()); 
+            
+            // 抓取雲端紀錄中該獨立關卡的過關日期，如果舊資料尚未記錄，則預設顯示今天
+            const passDate = completedDates[selectedId] || todayStr;
+            // 取出雲端圖片連結 (若為舊紀錄相容則抓帶點的路徑)
+            const driveUrl = certificateUrls ? (certificateUrls[selectedId] || certificateUrls[`certificateUrls.${selectedId}`]) : null;
+
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full mx-auto overflow-hidden flex flex-col md:flex-row min-h-[550px] animate-[fadeIn_0.3s_ease-out]">
+                        
+                        <div className="w-full md:w-1/3 bg-slate-50 border-r border-slate-200 flex flex-col shrink-0 max-h-[50vh] md:max-h-none">
+                            <div className="p-6 bg-indigo-600 text-white flex justify-between items-center shrink-0">
+                                <h3 className="text-lg font-bold"><i className="fa-solid fa-trophy mr-2 text-amber-400"></i>我的成就庫</h3>
+                                <button onClick={onClose} className="md:hidden text-indigo-200 hover:text-white transition-colors">
+                                    <i className="fa-solid fa-xmark text-2xl"></i>
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                {completedChallenges.length === 0 ? (
+                                    <div className="text-center text-slate-400 mt-10">
+                                        <i className="fa-solid fa-folder-open text-5xl mb-4 opacity-50"></i>
+                                        <p className="font-bold">尚未獲得任何證書</p>
+                                        <p className="text-sm mt-1">請先去挑戰關卡吧！</p>
+                                    </div>
+                                ) : (
+                                    [...completedChallenges].sort((a,b) => a-b).map(id => {
+                                        const c = challenges.find(ch => ch.id === id);
+                                        return (
+                                            <button 
+                                                key={id}
+                                                onClick={() => setSelectedId(id)}
+                                                className={`w-full text-left p-4 rounded-xl font-bold flex items-center justify-between transition-all ${
+                                                    selectedId === id 
+                                                        ? 'bg-indigo-100 text-indigo-800 border-2 border-indigo-400 shadow-sm' 
+                                                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${selectedId === id ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                                        {c?.id}
+                                                    </div>
+                                                    <span>{c?.title}</span>
+                                                </div>
+                                                {selectedId === id && <i className="fa-solid fa-chevron-right text-indigo-500"></i>}
+                                            </button>
+                                        )
+                                    })
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="w-full md:w-2/3 p-6 sm:p-10 bg-slate-100 flex flex-col items-center justify-center relative">
+                            <button onClick={onClose} className="hidden md:flex absolute top-6 right-6 text-slate-400 hover:text-slate-600 bg-white hover:bg-slate-200 rounded-full w-10 h-10 items-center justify-center shadow-sm transition-colors z-10">
+                                <i className="fa-solid fa-xmark text-xl"></i>
+                            </button>
+
+                            {currentChallenge ? (
+                                <div className="w-full max-w-lg bg-white border-[8px] border-double border-indigo-100 p-8 sm:p-12 shadow-xl relative text-center animate-[fadeIn_0.4s_ease-out]">
+                                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                                        <div className="bg-gradient-to-br from-amber-400 to-amber-600 text-white w-16 h-16 flex items-center justify-center rounded-full shadow-lg border-4 border-white">
+                                            <i className="fa-solid fa-award text-3xl"></i>
+                                        </div>
+                                    </div>
+                                    <h2 className="text-2xl sm:text-3xl font-black text-indigo-900 mt-6 mb-8 tracking-[0.2em] relative inline-block">
+                                        通關證明
+                                        <span className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-amber-400 rounded-full"></span>
+                                    </h2>
+                                    
+                                    <div className="text-lg text-slate-700 mb-6 leading-relaxed">
+                                        茲證明 <br/>
+                                        <span className="text-2xl font-bold text-indigo-700 mx-2">{user.classRoom}</span> 班 
+                                        <span className="text-2xl font-bold text-indigo-700 mx-2">{user.seatNo}</span> 號 <br/>
+                                        <span className="text-3xl font-black text-slate-900 mt-3 inline-block">{user.name}</span>
+                                    </div>
+
+                                    <div className="text-slate-500 font-bold mb-3">已成功完成運算思維挑戰關卡：</div>
+                                    <div className="text-2xl sm:text-3xl font-black text-emerald-600 mb-8 py-3 px-6 bg-emerald-50 rounded-xl inline-block border border-emerald-100 shadow-inner">
+                                        {currentChallenge.title}
+                                    </div>
+
+                                    <div className="flex justify-between items-end mt-12 pt-6 border-t-2 border-dashed border-slate-200">
+                                        <div className="text-left">
+                                            <div className="font-bold text-slate-800">運算思維挑戰平台</div>
+                                            <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold"><i className="fa-solid fa-check-circle text-emerald-500 mr-1"></i>System Verified</div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-xs font-bold text-slate-500 mb-1">通關日期</div>
+                                            <div className="text-sm font-bold text-slate-700">{passDate}</div>
+                                        </div>
+                                    </div>
+
+                                    {/* 📌 新增：顯示您的雲端截圖 */}
+                                    <div className="mt-6 flex-1 border-2 border-dashed border-indigo-100 rounded-xl overflow-hidden relative flex items-center justify-center bg-slate-50 group min-h-[140px]">
+                                        {driveUrl ? (
+                                            <>
+                                                <img src={driveUrl} className="max-h-[160px] max-w-full object-contain p-2" alt="通關截圖" />
+                                                <div className="absolute bottom-2 right-2 bg-indigo-900/70 text-white text-[10px] px-2.5 py-1 rounded-md backdrop-blur-sm font-bold tracking-wider">
+                                                    <i className="fa-solid fa-cloud text-emerald-400 mr-1"></i>雲端備份
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center text-slate-400 py-6">
+                                                <i className="fa-solid fa-image text-3xl mb-2 opacity-30"></i>
+                                                <span className="text-xs font-bold">無雲端截圖紀錄</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                </div>
+                            ) : (
+                                <div className="text-slate-400 text-center flex flex-col items-center">
+                                    <i className="fa-solid fa-medal text-7xl mb-4 opacity-30"></i>
+                                    <p className="text-lg font-bold">選擇左側列表檢視通關證書</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 證書製作/通關確認 Modal 組件 ---
+        const CertVerificationModal = ({ onClose, user, challenge, studyTime, onComplete }) => {
+            const API_BASE = window.CONFIG.SERVER_URL;                  // 設定集中在 config.js
+            // ⚠️ 班級密碼：需與後端 Colab Secrets 的 CLASS_PASSCODE 一致（僅擋外部亂打，非機密）
+            const CLASS_PASS = window.CONFIG.CLASS_PASS;
+
+            const [isOnline, setIsOnline] = useState(false);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [queueAhead, setQueueAhead] = useState(0);   // 前面還有幾位在辨識
+            const [selectedFile, setSelectedFile] = useState(null);
+            const [previewUrl, setPreviewUrl] = useState(null); // 這邊會存放 Base64
+            const [result, setResult] = useState(null); 
+            
+            const fileInputRef = useRef(null);
+            
+            const [certDate] = useState(formatDate(new Date()));
+            const [certTime] = useState(formatTime(studyTime));
+
+            useEffect(() => {
+                let interval;
+                const checkHealth = async () => {
+                    if(isProcessing) return;
+                    try {
+                        const res = await fetch(API_BASE + "/health", {
+                            headers: { 'ngrok-skip-browser-warning': '1' }
+                        });
+                        setIsOnline(res.ok);
+                    } catch(e) {
+                        setIsOnline(false);
+                    }
+                };
+                checkHealth();
+                interval = setInterval(checkHealth, 5000);
+                return () => clearInterval(interval);
+            }, [isProcessing]);
+
+            const handleFileChange = (e) => {
+                if(e.target.files.length > 0) {
+                    const file = e.target.files[0];
+                    setSelectedFile(file);
+                    
+                    // 📌 修改：使用 FileReader 將圖片轉為 Base64，以利後續上傳給 GAS
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        setPreviewUrl(event.target.result); 
+                    };
+                    reader.readAsDataURL(file);
+                    setResult(null);
+                }
+            };
+
+            const startAnalysis = async () => {
+                if(!selectedFile) return;
+                setIsProcessing(true);
+                setResult(null);
+
+                const englishMappings = {
+                    "跳格子": "number hopscotch",
+                    "任意門": "dokodemo door",
+                    "滑梯公園": "slide park",
+                    "水餃工廠": "portioned dumplings",
+                    "無括號計算機": "bracketless calculator",
+                    "遊覽車共乘": "bus sharing",
+                    "扭蛋轉轉樂": "spinning gacha",
+                    "換零錢機": "exchange machine",
+                    "打地鼠": "whac mole",
+                    "拔蘿蔔": "carrot harvest"
+                };
+                const engTitle = englishMappings[challenge.title] || "";
+
+                const formData = new FormData();
+                formData.append("file", selectedFile);
+                formData.append("keywords", `挑戰成功,${challenge.title},${engTitle}`);
+                formData.append("password", (CLASS_PASS || "").trim());
+
+                // 先看看目前有幾位同學在辨識，並在等待期間持續更新
+                let qTimer = null;
+                const pollQueue = async () => {
+                    try {
+                        // 共用後端的 OCR 佇列（與 Scratch 批改的 /api/student/queue 分開算）
+                        const q = await (await fetch(API_BASE + "/queue",
+                            { headers: { 'ngrok-skip-browser-warning': '1' }, cache: 'no-store' })).json();
+                        setQueueAhead(Math.max(0, (Number(q.pending) || 0) - 1));
+                    } catch (e) { /* 查不到就不顯示排隊資訊 */ }
+                };
+                pollQueue();
+                qTimer = setInterval(pollQueue, 3000);
+
+                try {
+                    const res = await fetch(API_BASE + "/analyze", {
+                        method: 'POST',
+                        headers: { 'ngrok-skip-browser-warning': '1' },
+                        body: formData
+                    });
+                    if(!res.ok) throw new Error("伺服器拒絕連線");
+                    
+                    const data = await res.json();
+                    
+                    if(data.status === "success") {
+                        const rawTexts = data.raw_text || [];
+                        const ocrText = rawTexts.join(" ").replace(/\s+/g, " ").slice(0, 300); // 稽核用摘要
+
+                        // 🔒 判定改由「後端」裁決（data.pass），前端無法竄改條件
+                        if(data.pass === true) {
+                            setResult({ status: 'pass', msg: "驗證成功！正在為您上傳截圖與存檔..." });
+                            // 傳遞截圖(Base64) 與 OCR 文字給主程式儲存（截圖上雲＋文字存檔＝可稽核）
+                            await onComplete(challenge.id, certDate, previewUrl, ocrText);
+                            setResult({ status: 'pass', msg: "驗證成功！已為您生成通關證書並儲存於雲端。" });
+                        } else {
+                            const errors = (data.reasons && data.reasons.length) ? data.reasons : ["截圖未通過驗證"];
+                            setResult({ status: 'fail', msg: "截圖驗證失敗，請確認圖片內容：", errors: errors });
+                        }
+                    } else {
+                        setResult({ status: 'error', msg: "辨識失敗：" + data.message });
+                    }
+                } catch(err) {
+                    setResult({ status: 'error', msg: "連線錯誤：請確認伺服器正在執行，且 API 網址正確。" });
+                } finally {
+                    if (qTimer) clearInterval(qTimer);
+                    setQueueAhead(0);
+                    setIsProcessing(false);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+                    <div className="bg-white/95 backdrop-blur-xl rounded-[32px] p-6 sm:p-10 shadow-2xl max-w-5xl w-full mx-auto relative border border-white/60 my-auto">
+                        <button onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full w-10 h-10 flex items-center justify-center transition-colors z-10">
+                            <i className="fa-solid fa-xmark text-xl"></i>
+                        </button>
+
+                        <div className="text-center mb-8">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-sm font-semibold text-slate-500 mb-6 shadow-sm transition-colors">
+                                <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse shadow-[0_0_0_4px_rgba(16,185,129,0.2)]' : 'bg-slate-300'}`}></span>
+                                <span>{isOnline ? "伺服器連線成功" : "伺服器連線中..."}</span>
+                            </div>
+                            <h2 className="text-3xl sm:text-4xl font-black text-slate-800 mb-3 tracking-tight">運算思維通關確認系統</h2>
+                            <p className="text-slate-500 font-medium">自動辨識通關截圖，並結構化輸出成績資料</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-800 mb-2">
+                                        <i className="fa-solid fa-image text-indigo-500 mr-2"></i>上傳通關截圖
+                                    </label>
+                                    <div 
+                                        className="border-2 border-dashed border-slate-300 rounded-[20px] p-8 text-center bg-slate-50 cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-all group relative"
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                                        {previewUrl ? (
+                                            <img src={previewUrl} alt="預覽" className="max-h-[180px] mx-auto rounded-xl shadow-md" />
+                                        ) : (
+                                            <>
+                                                <i className="fa-solid fa-cloud-arrow-up text-4xl text-slate-400 mb-4 group-hover:text-indigo-500 group-hover:scale-110 transition-transform"></i>
+                                                <div className="text-slate-500 font-medium">點擊或拖曳圖片至此處</div>
+                                                <div className="text-xs text-slate-400 mt-2">系統將驗證是否包含「{challenge.title}」與「挑戰成功」</div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <button 
+                                    onClick={startAnalysis} 
+                                    disabled={!isOnline || !selectedFile || isProcessing}
+                                    className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-bold flex justify-center items-center gap-2 shadow-[0_10px_20px_-10px_rgba(99,102,241,1)] hover:-translate-y-1 hover:shadow-[0_15px_25px_-10px_rgba(99,102,241,1)] transition-all disabled:bg-slate-300 disabled:shadow-none disabled:transform-none disabled:cursor-not-allowed mt-2"
+                                >
+                                    {isProcessing ? (
+                                        <><i className="fa-solid fa-hourglass-half"></i> 資料萃取中...</>
+                                    ) : !isOnline ? (
+                                        <><i className="fa-solid fa-plug-circle-xmark"></i> 等待伺服器連線</>
+                                    ) : !selectedFile ? (
+                                        <><i className="fa-solid fa-upload"></i> 請先上傳截圖</>
+                                    ) : (
+                                        <><i className="fa-solid fa-wand-magic-sparkles"></i> 驗證截圖並產生證書</>
+                                    )}
+                                </button>
+
+                                {isProcessing && (
+                                    <div className="text-center mt-6">
+                                        <i className="fa-solid fa-spinner text-3xl text-indigo-500 animate-spin mb-3"></i>
+                                        <div className="text-slate-500 font-semibold text-sm">
+                                            {queueAhead > 0
+                                                ? `前面還有 ${queueAhead} 位同學在辨識中，請稍候不要重複按`
+                                                : 'AI 正在深度掃描圖片文字中...'}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col h-full">
+                                {!result && !isProcessing && (
+                                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[20px] p-10 text-center min-h-[300px]">
+                                        <i className="fa-solid fa-award text-5xl text-slate-300 mb-4"></i>
+                                        <div className="font-semibold text-slate-500">尚未產生通關證書</div>
+                                        <div className="text-sm mt-2">請上傳圖片並點擊驗證按鈕</div>
+                                    </div>
+                                )}
+
+                                {result && result.status !== 'pass' && (
+                                    <div className="flex-1 flex flex-col gap-6 animate-[fadeIn_0.3s_ease-out]">
+                                        <div className="p-5 rounded-2xl font-bold text-lg flex items-start gap-3 bg-red-50 text-red-700 border border-red-200">
+                                            <i className="fa-solid fa-circle-xmark text-2xl text-red-600 mt-0.5"></i>
+                                            <div className="flex flex-col">
+                                                <span>{result.msg}</span>
+                                                {result.errors && (
+                                                    <div className="mt-2 flex flex-col gap-1.5">
+                                                        {result.errors.map((err, i) => (
+                                                            <span key={i} className="text-sm font-medium text-red-600">❌ {err}</span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {result && result.status === 'pass' && (
+                                    <div className="bg-white border-2 border-indigo-100 rounded-[20px] overflow-hidden shadow-lg flex flex-col flex-1 h-full animate-[fadeIn_0.5s_ease-out] relative">
+                                        <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 px-6 py-4 text-white text-center relative overflow-hidden">
+                                            <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiNmZmYiLz48L3N2Zz4=')]"></div>
+                                            <h3 className="font-black text-xl tracking-widest relative z-10 flex items-center justify-center gap-2">
+                                                <i className="fa-solid fa-award text-yellow-300 text-2xl"></i> 運算思維通關證書
+                                            </h3>
+                                        </div>
+                                        
+                                        <div className="p-5 flex flex-col gap-4 flex-1">
+                                            <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex items-center gap-4">
+                                                <div className="bg-white text-indigo-500 shadow-sm p-3 rounded-full shrink-0">
+                                                    <i className="fa-solid fa-user-graduate text-2xl"></i>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[11px] font-bold text-indigo-500 mb-0.5 uppercase tracking-wider">挑戰者資訊</div>
+                                                    <div className="text-xl font-black text-indigo-950">{user.classRoom} 班 {user.seatNo} 號 - {user.name}</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                                                    <div className="text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider"><i className="fa-solid fa-gamepad mr-1"></i>通關關卡</div>
+                                                    <div className="text-lg font-black text-emerald-600">{challenge.title}</div>
+                                                </div>
+                                                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                                                    <div className="text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider"><i className="fa-regular fa-clock mr-1"></i>完成紀錄</div>
+                                                    <div className="text-sm font-bold text-slate-800">{certDate}</div>
+                                                    <div className="text-sm font-bold text-indigo-600 mt-0.5">學習耗時: {certTime}</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-1 flex-1 min-h-[140px] border-2 border-dashed border-indigo-100 rounded-xl overflow-hidden relative flex items-center justify-center bg-slate-50 group">
+                                                <img src={previewUrl} className="max-h-full max-w-full object-contain p-2" alt="通關證明" />
+                                                <div className="absolute bottom-2 right-2 bg-indigo-900/70 text-white text-[10px] px-2.5 py-1 rounded-md backdrop-blur-sm font-bold tracking-wider">
+                                                    <i className="fa-solid fa-check-circle mr-1 text-emerald-400"></i>VERIFIED
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 主應用程式 ---
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [selectedChallenge, setSelectedChallenge] = useState(null);
+            // 若 hub 已存學號，第一次渲染就直接進「登入中…」，避免閃出登入表單
+            const [loading, setLoading] = useState(() => {
+                try {
+                    const s = localStorage.getItem('sid11501');
+                    return !!(s && /^14\d{5}$/.test(s));
+                } catch (e) { return false; }
+            });
+            const [loginError, setLoginError] = useState('');
+            const [showCertModal, setShowCertModal] = useState(false);
+            const [showQueryModal, setShowQueryModal] = useState(false); 
+            const [showMyCertsModal, setShowMyCertsModal] = useState(false); 
+            const [completedChallenges, setCompletedChallenges] = useState([]); 
+            const [completedDates, setCompletedDates] = useState({}); 
+            const [certificateUrls, setCertificateUrls] = useState({}); // 📌 新增：存圖片網址
+            
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [studyTime, setStudyTime] = useState(0); 
+            
+            // 新增：用來儲存當前關卡的本班通關人數
+            const [classPassCount, setClassPassCount] = useState(null);
+
+            const classes = Array.from({ length: 12 }, (_, i) => `8${String(i + 1).padStart(2, '0')}`);
+            const seatNumbers = Array.from({ length: 30 }, (_, i) => String(i + 1).padStart(2, '0'));
+
+            const challenges = [
+                { id: 1, title: "跳格子", url: "https://reurl.cc/mpY8EY", difficulty: "★★" },
+                { id: 2, title: "任意門", url: "https://reurl.cc/ovYkWl", difficulty: "★★" },
+                { id: 3, title: "滑梯公園", url: "https://reurl.cc/DxOzRN", difficulty: "★★★" },
+                { id: 4, title: "水餃工廠", url: "https://reurl.cc/6Gqo16", difficulty: "★★★" },
+                { id: 5, title: "無括號計算機", url: "https://reurl.cc/Q2arzb", difficulty: "★★★" },
+                { id: 6, title: "遊覽車共乘", url: "https://reurl.cc/53Rj6y", difficulty: "★★★" },
+                { id: 7, title: "扭蛋轉轉樂", url: "https://reurl.cc/N2xvW5", difficulty: "★★★★" },
+                { id: 8, title: "換零錢機", url: "https://reurl.cc/epkRrR", difficulty: "★★★★" },
+                { id: 9, title: "打地鼠", url: "https://reurl.cc/ovYkj3", difficulty: "★★★★" },
+                { id: 10, title: "拔蘿蔔", url: "https://reurl.cc/ppYlGr", difficulty: "★★★★" },
+            ];
+
+            const getDifficultyColor = (level) => {
+                switch (level) {
+                    case "★": return "text-green-500";
+                    case "★★": return "text-blue-500";
+                    case "★★★": return "text-orange-500";
+                    case "★★★★": return "text-red-500";
+                    default: return "text-purple-500";
+                }
+            };
+
+            useEffect(() => {
+                if (user) {
+                    const interval = setInterval(() => {
+                        setCurrentDate(new Date());
+                        setStudyTime(prev => prev + 1);
+                    }, 1000);
+                    return () => clearInterval(interval);
+                }
+            }, [user]);
+
+            // 新增：當選擇的關卡改變時，自動計算該關卡的班級通關人數
+            useEffect(() => {
+                let isMounted = true;
+                const fetchPassCount = async () => {
+                    if (!selectedChallenge || !user) {
+                        if (isMounted) setClassPassCount(null);
+                        return;
+                    }
+                    if (isMounted) setClassPassCount('...'); // 顯示計算中
+                    
+                    try {
+                        const ok = await initFB();
+                        if (!ok) throw new Error("Firebase 未就緒");
+                        
+                        const progressCol = fbStore.collection(fbStore.db, 'artifacts', 'comp-think-app', 'public', 'data', 'progress');
+                        const snapshot = await fbStore.getDocs(progressCol);
+                        
+                        let count = 0;
+                        snapshot.forEach(doc => {
+                            const d = doc.data();
+                            if (d.classRoom === user.classRoom && d.completed && d.completed.includes(selectedChallenge.id)) {
+                                count++;
+                            }
+                        });
+                        
+                        if (isMounted) setClassPassCount(count);
+                    } catch (err) {
+                        console.error("無法取得通關人數:", err);
+                        if (isMounted) setClassPassCount('-');
+                    }
+                };
+                
+                fetchPassCount();
+                return () => { isMounted = false; };
+            }, [selectedChallenge, user, completedChallenges]);
+
+            // 📌 修改：接收第三個參數 Base64 截圖，並觸發上傳
+            const handleChallengeComplete = async (challengeId, passDate, base64Image, ocrText) => {
+                if (!completedChallenges.includes(challengeId)) {
+                    
+                    let driveUrl = null;
+                    const GAS_UPLOAD_URL = window.CONFIG.GAS_UPLOAD_URL;   // 設定集中在 config.js
+
+                    // 若有圖片資料則發起上傳請求
+                    if (base64Image && GAS_UPLOAD_URL) {
+                        try {
+                            const formattedChallengeId = String(challengeId).padStart(2, '0');
+                            const payload = {
+                                // 共用 GAS 靠 term 決定寫進哪個學期資料夾，不可省略
+                                term: window.CONFIG.TERM,
+                                key: window.CONFIG.GAS_UPLOAD_KEY,
+                                classRoom: user.classRoom,
+                                seatNo: user.seatNo,
+                                challengeId: formattedChallengeId,
+                                mimeType: base64Image.split(';')[0].split(':')[1],
+                                base64: base64Image.split(',')[1]
+                            };
+
+                            const res = await fetch(GAS_UPLOAD_URL, {
+                                method: "POST",
+                                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                                body: JSON.stringify(payload)
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                                driveUrl = data.url;
+                            }
+                        } catch (e) {
+                            console.error("雲端上傳截圖失敗:", e);
+                        }
+                    }
+
+                    const newCompleted = [...completedChallenges, challengeId];
+                    setCompletedChallenges(newCompleted);
+                    setCompletedDates(prev => ({...prev, [challengeId]: passDate}));
+                    if (driveUrl) {
+                        setCertificateUrls(prev => ({...prev, [challengeId]: driveUrl}));
+                    }
+                    
+                    if (fbStore.db && user) {
+                        try {
+                            const progressRef = fbStore.doc(fbStore.db, 'artifacts', 'comp-think-app', 'public', 'data', 'progress', user.docId);
+                            // 儲存狀態並包含新的雲端網址
+                            await fbStore.setDoc(progressRef, {
+                                completed: fbStore.arrayUnion(challengeId),
+                                completionDates: {
+                                    [challengeId]: passDate
+                                },
+                                ...(driveUrl && { certificateUrls: { [challengeId]: driveUrl } }),
+                                ...(ocrText && { ocrTexts: { [challengeId]: ocrText } }),
+                                lastUpdated: new Date().toISOString(),
+                                name: user.name,
+                                classRoom: user.classRoom,
+                                seatNo: user.seatNo
+                            }, { merge: true });
+                        } catch (err) {
+                            console.error("寫入進度失敗:", err);
+                        }
+                    }
+
+                    // 🌟 回報到統一進度（11501-progress，供 hub 儀表板與每週成績使用）
+                    if (fbStore.db && user && user.sid) {
+                        try {
+                            const count = newCompleted.length;
+                            const stars = window.GRADING.thinkingStars(count);   // 規則定義在 shared/grading.js（單一來源）
+                            const status = count >= 10 ? 'pass' : 'in-progress';
+                            const now = Date.now();
+                            await fbStore.setDoc(fbStore.doc(fbStore.db, '11501-progress', user.sid), {
+                                studentId: user.sid,
+                                modules: { thinking: { status, level: count, stars, source: 'auto', updatedAt: now } },
+                                history: fbStore.arrayUnion({ module: 'thinking', challenge: challengeId, at: now, stars: 2, ocr: ocrText || '' }),
+                                updatedAt: now
+                            }, { merge: true });
+                        } catch (err) { console.error("回報統一進度失敗:", err); }
+                    }
+                }
+            };
+
+            // 以學號＋驗證碼登入（trusted=true 為 SSO 自動登入，跳過驗證碼比對）
+            const doSidLogin = async (sid, inName, code, trusted) => {
+                const ok = await initFB();
+                if (!ok || !fbStore.db) return '雲端連線失敗，請稍後再試';
+                // 向名冊查學號
+                let info = null;
+                try {
+                    const rsnap = await fbStore.getDoc(fbStore.doc(fbStore.db, window.CONFIG.COLLECTIONS.ROSTER, sid));
+                    if (rsnap.exists()) info = rsnap.data();
+                } catch (err) { console.error("名冊查詢失敗", err); return '驗證失敗，請稍後再試'; }
+                if (!info) return `名冊中查無學號 ${sid}，請找老師確認名冊`;
+                // ★ 本頁不再自己驗證身分。
+                //   全站規則：登入與登出只在闖關基地做（見 shared/docs/02_設計規範.md）。
+                //   驗證碼已搬到學生讀不到的 secret 集合，這裡本來就讀不到也不該讀。
+                if (!trusted) return '請從闖關基地登入後再進入本頁。';
+
+                const classRoom = info.cls, seatNo = String(info.no), name = info.name;
+                const docId = `${classRoom}_${seatNo}_${name}`;
+
+                // 載入先前進度
+                let loadedProgress = [], loadedDates = {}, loadedUrls = {};
+                try {
+                    const progressRef = fbStore.doc(fbStore.db, 'artifacts', 'comp-think-app', 'public', 'data', 'progress', docId);
+                    const snap = await fbStore.getDoc(progressRef);
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        loadedProgress = data.completed || [];
+                        loadedDates = data.completionDates || {};
+                        loadedUrls = data.certificateUrls || {};
+                        Object.keys(data).forEach(key => {
+                            if (key.startsWith('completionDates.')) loadedDates[key.split('.')[1]] = data[key];
+                            if (key.startsWith('certificateUrls.')) loadedUrls[key.split('.')[1]] = data[key];
+                        });
+                    }
+                } catch (err) { console.error("讀取進度失敗:", err); }
+
+                // 依目前完成數同步統一進度的星數（每小關 3 星），讓舊資料也套用新規則
+                if (loadedProgress.length > 0) {
+                    const cnt = loadedProgress.length;
+                    fbStore.setDoc(fbStore.doc(fbStore.db, '11501-progress', sid), {
+                        studentId: sid,
+                        modules: { thinking: { status: cnt >= 10 ? 'pass' : 'in-progress', level: cnt, stars: window.GRADING.thinkingStars(cnt), source: 'auto', updatedAt: Date.now() } },
+                        updatedAt: Date.now()
+                    }, { merge: true }).catch(e => console.error('同步統一進度失敗', e));
+                }
+
+                localStorage.setItem('sid11501', sid);
+                setUser({ classRoom, seatNo, name, docId, sid });
+                setCompletedChallenges(loadedProgress);
+                setCompletedDates(loadedDates);
+                setCertificateUrls(loadedUrls);
+                setStudyTime(0);
+                return null;
+            };
+
+            // 本頁的登入表單已停用：一律導回闖關基地，登入後自動跳回來。
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                if (window.SSO) SSO.toHub('thinking 不自行登入');
+                else location.href = (window.CONFIG && CONFIG.HUB_PAGE) || 'index.html';
+            };
+
+            // SSO：掛載時若 hub 已存學號則自動登入（信任 localStorage）
+            useEffect(() => {
+                const saved = localStorage.getItem('sid11501');
+                if (saved && /^14\d{5}$/.test(saved)) {
+                    setLoading(true);
+                    doSidLogin(saved, '', '', true).then(err => { if (err) setLoading(false); });
+                }
+            }, []);
+
+
+            const handleOpenChallenge = (challenge) => {
+                setSelectedChallenge(challenge);
+                const width = 1024;
+                const height = 768;
+                const left = (window.screen.width - width) / 2;
+                const top = (window.screen.height - height) / 2;
+                
+                window.open(
+                    challenge.url,
+                    `Challenge_${challenge.id}`,
+                    `width=${width},height=${height},top=${top},left=${left},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
+                );
+            };
+
+            if (!user && loading) {
+                return (
+                    <div className="min-h-full bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center p-4 font-sans">
+                        <div className="bg-white rounded-2xl shadow-xl p-10 text-center">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-indigo-600 mx-auto mb-4"></div>
+                            <p className="text-indigo-600 font-bold">登入中…</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!user) {
+                return (
+                    <div className="min-h-full bg-gradient-to-br from-blue-100 to-indigo-200 flex items-center justify-center p-4 font-sans relative">
+                        {showQueryModal && <QueryModal onClose={() => setShowQueryModal(false)} classes={classes} />}
+                        
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden z-10">
+                            <div className="bg-indigo-600 p-6 text-center">
+                                <Icons.Monitor className="w-12 h-12 text-white mx-auto mb-2" />
+                                <h1 className="text-2xl font-bold text-white"><span className="underline-doodle">運算思維挑戰平台</span></h1>
+                                <p className="text-indigo-200 text-sm mt-1">學生登入系統</p>
+                            </div>
+                            
+                            <form onSubmit={handleLogin} className="p-8 space-y-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">學號 (Student ID)</label>
+                                    <input type="text" name="sid" inputMode="numeric" maxLength="7" required placeholder="14XXXXX" className="w-full border-slate-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 p-3 border bg-slate-50 outline-none font-mono tracking-widest"/>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">姓名 <span className="text-slate-400 font-normal">（首次登入才需要）</span></label>
+                                    <input type="text" name="sname" placeholder="首次登入請輸入姓名" className="w-full border-slate-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 p-3 border bg-slate-50 outline-none"/>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">驗證碼 (Code)</label>
+                                    <div className="relative">
+                                        <input type="password" name="code" inputMode="numeric" maxLength="6" placeholder="6 位數字（首次登入請自訂）" className="w-full border-slate-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 p-3 pr-12 border bg-slate-50 outline-none font-mono tracking-widest"/>
+                                        <button type="button" tabIndex={-1} onClick={(e) => { const i = e.currentTarget.parentNode.querySelector('input'); const s = i.type === 'password'; i.type = s ? 'text' : 'password'; e.currentTarget.textContent = s ? '🙈' : '👁'; }} className="absolute right-3 top-1/2 -translate-y-1/2 text-xl text-slate-400 hover:text-slate-600" aria-label="顯示或隱藏驗證碼">👁</button>
+                                    </div>
+                                </div>
+
+                                {loginError && <p className="text-red-500 text-sm font-medium">{loginError}</p>}
+
+                                <button 
+                                    type="submit" 
+                                    disabled={loading}
+                                    className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors ${loading ? 'opacity-70 cursor-wait' : ''}`}
+                                >
+                                    {loading ? '載入雲端進度中...' : '開始挑戰'}
+                                </button>
+                            </form>
+                        </div>
+                        <div className="absolute bottom-6 w-full text-center text-sm text-indigo-800/60 font-medium tracking-widest">
+                            一一五學年度上學期八年級
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="h-full bg-slate-100 flex flex-col font-sans relative">
+                    {showCertModal && <CertVerificationModal onClose={() => setShowCertModal(false)} user={user} challenge={selectedChallenge} studyTime={studyTime} onComplete={handleChallengeComplete} />}
+                    
+                    {showMyCertsModal && <MyCertificatesModal onClose={() => setShowMyCertsModal(false)} user={user} completedChallenges={completedChallenges} completedDates={completedDates} certificateUrls={certificateUrls} challenges={challenges} />}
+                    
+                    {showQueryModal && <QueryModal onClose={() => setShowQueryModal(false)} userClass={user.classRoom} />}
+
+                    {/* 登出彈窗已移除：登入／登出統一由闖關基地處理 */}
+
+                    <header className="bg-white shadow-sm z-10 shrink-0">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+                            <div className="flex items-center space-x-2">
+                                <div className="bg-indigo-600 p-2 rounded-lg"><Icons.Award className="w-6 h-6 text-white" /></div>
+                                <span className="text-xl font-bold text-slate-800 hidden sm:block"><span className="underline-doodle px-1">運算思維挑戰</span></span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setShowQueryModal(true)} className="text-indigo-600 hover:text-indigo-800 transition-colors flex items-center text-sm font-medium px-4 py-2 rounded-md hover:bg-indigo-50">
+                                    <i className="fa-solid fa-users mr-2"></i>班級進度
+                                </button>
+                                {/* 返回基地由左上角的共用浮動按鈕提供，這裡不再重複；登出統一在闖關基地處理 */}
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6 overflow-hidden">
+                        <aside className="w-full lg:w-1/3 xl:w-1/4 flex flex-col gap-4 h-full">
+                            <div className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-full border border-slate-200">
+                                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
+                                    <h2 className="font-bold text-slate-700 flex items-center">
+                                        <Icons.BookOpen className="w-5 h-5 mr-2 text-indigo-500" />挑戰清單
+                                    </h2>
+                                    <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full font-medium">共 {challenges.length} 題</span>
+                                </div>
+                                <div className="overflow-y-auto p-2 space-y-2 flex-1">
+                                    {challenges.map((challenge) => (
+                                        <button
+                                            key={challenge.id}
+                                            onClick={() => handleOpenChallenge(challenge)}
+                                            className={`w-full text-left p-4 rounded-lg transition-all duration-200 flex items-center justify-between group ${selectedChallenge?.id === challenge.id ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-indigo-50 text-slate-700'}`}
+                                        >
+                                            <div>
+                                                <div className={`font-bold text-lg sm:text-xl ${selectedChallenge?.id === challenge.id ? 'text-white' : 'text-slate-800'}`}>
+                                                    {challenge.id}. {challenge.title}
+                                                    {completedChallenges.includes(challenge.id) && (
+                                                        <i className={`fa-solid fa-circle-check ml-2 ${selectedChallenge?.id === challenge.id ? 'text-white' : 'text-emerald-500'}`} title="已通關"></i>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm mt-1 flex items-center">
+                                                    <span className={`${selectedChallenge?.id === challenge.id ? 'text-indigo-200' : 'text-slate-400'} mr-1`}>難度:</span>
+                                                    <span className={`font-bold text-lg ${selectedChallenge?.id === challenge.id ? 'text-yellow-300' : getDifficultyColor(challenge.difficulty)}`}>{challenge.difficulty}</span>
+                                                </div>
+                                            </div>
+                                            <Icons.Play className={`w-6 h-6 ${selectedChallenge?.id === challenge.id ? 'text-white' : 'text-slate-300 group-hover:text-indigo-400'}`} />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </aside>
+
+                        <section className="flex-1 flex flex-col gap-4 h-full">
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 shrink-0">
+                                <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                                    <div className="flex items-center space-x-4">
+                                        <div className="bg-indigo-100 p-3 rounded-full"><Icons.User className="w-8 h-8 text-indigo-600" /></div>
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-slate-800">{user.name}</h2>
+                                            <div className="text-slate-500 flex items-center mt-1">
+                                                <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-sm font-medium mr-2">{user.classRoom} 班</span>
+                                                <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-sm font-medium mr-2">{user.seatNo} 號</span>
+                                                <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-sm font-medium">進度: {completedChallenges.length}/{challenges.length}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                                        <button 
+                                            onClick={() => setShowMyCertsModal(true)}
+                                            className="w-full sm:w-auto px-5 py-3 rounded-xl font-bold flex items-center justify-center shadow-md transition-all bg-amber-500 hover:bg-amber-600 text-white transform hover:scale-105"
+                                        >
+                                            <i className="fa-solid fa-trophy text-xl mr-2"></i> 我的證書
+                                        </button>
+                                        <button 
+                                            onClick={() => selectedChallenge ? setShowCertModal(true) : alert("請先在左側選擇挑戰關卡，再製作證書！")} 
+                                            className={`w-full sm:w-auto px-5 py-3 rounded-xl font-bold flex items-center justify-center shadow-md transition-all ${
+                                                selectedChallenge 
+                                                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white transform hover:scale-105' 
+                                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            <i className="fa-solid fa-award text-xl mr-2"></i> 證書製作
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden flex items-center justify-center min-h-[200px]">
+                                {selectedChallenge ? (
+                                    <div className="text-center text-slate-500 p-8">
+                                        <div className="bg-indigo-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6"><Icons.Monitor className="w-12 h-12 text-indigo-400" /></div>
+                                        <p className="text-lg mb-4">挑戰 <span className="font-bold text-indigo-600">「{selectedChallenge.title}」</span> 正在執行...</p>
+                                        
+                                        {/* 統計人數顯示區塊 */}
+                                        {classPassCount !== null && (
+                                            <div className="inline-flex items-center justify-center space-x-2 bg-emerald-50 text-emerald-700 px-5 py-2 rounded-full text-sm font-medium border border-emerald-200 mb-6 animate-[fadeIn_0.3s_ease-out] shadow-sm">
+                                                <i className="fa-solid fa-fire text-emerald-500"></i>
+                                                <span>本班已通關：<span className="font-bold text-xl mx-1">{classPassCount}</span> 人</span>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="block">
+                                            <button onClick={() => handleOpenChallenge(selectedChallenge)} className="px-6 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-full font-medium transition-colors text-sm">點此重新開啟視窗</button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-slate-400">
+                                        <Icons.BookOpen className="w-16 h-16 mx-auto mb-4 text-slate-200" />
+                                        <div className="text-lg font-medium text-slate-500">請選擇左側挑戰開始學習</div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
+                                <div className="flex items-center space-x-3">
+                                    <Icons.Calendar className="w-6 h-6 text-indigo-500" />
+                                    <div>
+                                        <div className="text-sm text-slate-500">今天是</div>
+                                        <div className="text-lg font-bold text-slate-800">{formatDate(currentDate)}</div>
+                                    </div>
+                                </div>
+                                <div className="h-px w-full sm:h-10 sm:w-px bg-slate-200"></div>
+                                <div className="flex items-center space-x-3">
+                                    <Icons.Timer className="w-6 h-6 text-orange-500" />
+                                    <div className="text-right">
+                                        <div className="text-sm text-slate-500 text-left sm:text-right">本次學習時間</div>
+                                        <div className="text-2xl font-mono font-bold text-indigo-600">{formatTime(studyTime)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </main>
+
+                    <footer className="bg-white py-3 border-t border-slate-200 shrink-0 z-10">
+                        <div className="max-w-7xl mx-auto px-4 text-center text-sm text-slate-500 font-medium tracking-widest">
+                            一一五學年度上學期八年級
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+
+<!-- 返回基地按鈕（自動加入） -->
+<a id="back-to-hub" href="hub.html" title="返回闖關基地"
+   style="position:fixed;top:14px;left:14px;z-index:99999;display:inline-flex;align-items:center;gap:6px;background:#1e293b;color:#fff;font-family:'Noto Sans TC',system-ui,sans-serif;font-weight:700;font-size:14px;padding:8px 14px;border-radius:9999px;text-decoration:none;box-shadow:0 4px 12px rgba(0,0,0,.25);transition:transform .15s;" onmouseover="this.style.transform='translateX(-2px)'" onmouseout="this.style.transform=''">← 返回基地</a>
+</body>
+</html>
