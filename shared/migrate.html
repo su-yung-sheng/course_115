@@ -12,12 +12,13 @@
 <!-- 本頁住在 shared/，設定檔在各學期資料夾裡（11501/config.js、11502/config.js）。
      用網址參數決定要載入哪一份，例如：status.html?term=11502
      沒帶參數就依今天的日期判斷。 -->
+<script src="semester.js"></script>
 <script>
 (function () {
   var t = new URLSearchParams(location.search).get('term');
   if (!t || !/^115\d{2}$/.test(t)) {
-    var m = new Date().getMonth() + 1;          // 2～7 月視為下學期
-    t = (m >= 2 && m <= 7) ? '11502' : '11501';
+    // 沒帶 ?term= 就用學期判定的單一來源（同步載入，這裡一定拿得到）
+    t = (window.SEMESTER && SEMESTER.current) ? SEMESTER.current() : '11501';
   }
   document.write('<scr' + 'ipt src="../' + t + '/config.js"></scr' + 'ipt>');
 })();

@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>資訊科技課程 · 入口</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<!-- 學期判定的單一來源（日期區間，不是用月份猜）-->
+<script src="shared/semester.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   html,body{font-family:'Noto Sans TC',system-ui,sans-serif}
@@ -63,7 +65,7 @@
    ─────────────────────────────────────────────────────────
    ?term=11501     直接前往指定學期（測試、或做書籤用）
    ?stay           完全不自動導向，停在這一頁自己選
-   都沒帶          依月份判斷（2～7 月為下學期），倒數 3 秒後導向
+   都沒帶          依 shared/semester.js 的日期區間判定，倒數 3 秒後導向
 
    為什麼要能取消：原本設 1.2 秒就跳，下面兩張手動選擇的卡片根本按不到，
    想測另一個學期只能手打網址。倒數期間按任何地方都會取消。 */
@@ -83,9 +85,11 @@
   // ③ 同一個瀏覽階段內已經選過「自己選」→ 尊重它，不要每次都倒數
   try { if (sessionStorage.getItem('entry-stay') === '1') return; } catch (e) {}
 
-  var m = new Date().getMonth() + 1;
-  var term = (m >= 2 && m <= 7) ? '11502' : '11501';
-  document.getElementById('term-name').textContent = (term === '11502' ? '下學期' : '上學期');
+  // ★ 學期一律由 shared/semester.js 判定（明確的日期區間）。
+  //   月份判斷會出錯：2026-07 用「2～7 月＝下學期」會判成 11502，
+  //   但那時 115 學年度還沒開始。
+  var term = SEMESTER.current();
+  document.getElementById('term-name').textContent = SEMESTER.name(term);
   document.getElementById('auto').classList.remove('hidden');
 
   var left = 3, timer = null;
