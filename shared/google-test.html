@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google 帳號登入 · 可行性測試</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<!-- 本頁住在 shared/，Firebase 設定在各學期資料夾裡 -->
+<script src="semester.js"></script>
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('term');
+  if (!t || !/^115\d{2}$/.test(t)) {
+    t = (window.SEMESTER && SEMESTER.current) ? SEMESTER.current() : '11501';
+  }
+  document.write('<scr' + 'ipt src="../' + t + '/config.js"></scr' + 'ipt>');
+})();
+</script>
+
+<style>
+  html,body{font-family:'Noto Sans TC',system-ui,sans-serif}
+  body{background-color:#e7e5e4;
+       background-image:linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),
+                        linear-gradient(90deg,rgba(120,113,108,.06) 1px,transparent 1px);
+       background-size:26px 26px}
+</style>
+</head>
+<body class="p-4 md:p-8 text-slate-800">
+
+<div class="max-w-3xl mx-auto space-y-5">
+
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+    <h1 class="text-2xl font-black">Google 帳號登入 · 可行性測試</h1>
+    <p class="text-slate-500 font-bold mt-1 text-sm">只讀不寫，不會動到任何現有資料</p>
+
+    <div class="mt-5 bg-sky-50 border border-sky-200 rounded-xl p-4 text-sm leading-relaxed">
+      <p class="font-black text-sky-800 mb-2">這一頁在測什麼</p>
+      <ol class="list-decimal pl-5 space-y-1 text-slate-700">
+        <li><b>學生帳號能不能登入</b> —— 這是最大的風險。Google Workspace 管理員
+            可以禁止學生授權第三方應用程式，那樣的話整個方案就不能走。</li>
+        <li>登入後拿到的 email 網域對不對</li>
+        <li>能不能從 email 換算出學號（<code>qfm1410112@…</code> → <code>1410112</code>）</li>
+        <li>那個學號在名冊裡找不找得到</li>
+      </ol>
+      <p class="mt-3 text-slate-600">
+        <b>請用一個學生帳號測試</b>，不要只用老師帳號 ——
+        老師帳號通常不受第三方應用程式的限制，測不出真正的問題。
+      </p>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+    <div class="flex flex-wrap gap-2 items-center">
+      <button id="btn-login" class="px-5 py-2.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold rounded-xl shadow-sm flex items-center gap-2 transition">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"/><path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.69 28.18C11.25 26.86 11 25.45 11 24s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z"/><path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"/></svg>
+        用 Google 帳號登入
+      </button>
+      <button id="btn-logout" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl border border-slate-300 transition hidden">
+        登出（換一個帳號測）
+      </button>
+      <span id="status" class="text-sm font-bold text-slate-500"></span>
+    </div>
+
+    <div id="result" class="mt-5"></div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ★ 學校網域：email 一律是 qfm{學號}@{DOMAIN}
+  var DOMAIN = 'mail.qfm.kh.edu.tw';
+  var PREFIX = 'qfm';
+
+  if (!window.CONFIG) {
+    document.body.innerHTML = '<div style="max-width:520px;margin:15vh auto;padding:32px;'
+      + 'background:#fff;border:4px solid #ef4444;border-radius:20px;font-family:system-ui">'
+      + '<h1 style="color:#dc2626;font-weight:900">讀不到 config.js</h1>'
+      + '<p style="font-weight:700;color:#334155;line-height:1.8">'
+      + '這一頁要從 repo 裡的 <code>shared/</code> 開啟，不是 <code>_shared/</code>。<br>'
+      + '網址範例：<code>…/course_115/shared/google-test.html</code></p></div>';
+    return;
+  }
+
+  firebase.initializeApp(window.CONFIG.FIREBASE);
+  var auth = firebase.auth();
+  var db   = firebase.firestore();
+
+  var $ = function (id) { return document.getElementById(id); };
+  function setStatus(t) { $('status').textContent = t || ''; }
+
+  /* 常見錯誤的白話翻譯 —— 出錯時最需要知道的是「該找誰處理」 */
+  var HINT = {
+    'auth/operation-not-allowed':
+      'Firebase 還沒啟用 Google 登入。<br>' +
+      '→ Firebase Console → Authentication → Sign-in method → 啟用 <b>Google</b>',
+    'auth/unauthorized-domain':
+      '這個網域不在 Firebase 的授權清單裡。<br>' +
+      '→ Firebase Console → Authentication → Settings → 已授權的網域，加入 <b>' + location.hostname + '</b>',
+    'auth/popup-blocked':
+      '瀏覽器擋掉了彈出視窗。→ 允許這個網站的彈出視窗後再試一次。',
+    'auth/popup-closed-by-user':
+      '登入視窗被關掉了（可能是手動關的，也可能是被學校政策擋下）。',
+    'auth/internal-error':
+      '登入流程被中斷。若是用學生帳號，<b>很可能是學校管理員禁止授權第三方應用程式</b>。'
+  };
+
+  function row(ok, label, detail) {
+    var c = ok === null ? 'slate' : (ok ? 'emerald' : 'red');
+    var m = ok === null ? '•' : (ok ? '✅' : '❌');
+    return '<tr class="border-t border-slate-100 align-top">'
+         + '<td class="p-2.5 font-bold whitespace-nowrap">' + m + ' ' + label + '</td>'
+         + '<td class="p-2.5 text-sm text-' + c + '-700 leading-relaxed">' + detail + '</td></tr>';
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
+      return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c];
+    });
+  }
+
+  $('btn-login').onclick = function () {
+    setStatus('等待 Google 登入…');
+    $('result').innerHTML = '';
+
+    var provider = new firebase.auth.GoogleAuthProvider();
+    // hd 只是「請 Google 優先顯示這個網域的帳號」，不是安全限制。
+    // 真正的把關在下面的網域檢查與安全規則。
+    provider.setCustomParameters({ hd: DOMAIN, prompt: 'select_account' });
+
+    auth.signInWithPopup(provider).then(report).catch(function (e) {
+      var code = e.code || '';
+      setStatus('登入失敗');
+      $('result').innerHTML =
+        '<div class="bg-red-50 border border-red-200 rounded-xl p-5">'
+      + '<p class="font-black text-red-700 mb-2">❌ 登入失敗：<code>' + esc(code || e.message) + '</code></p>'
+      + '<p class="text-sm text-slate-700 leading-relaxed">' + (HINT[code] || esc(e.message)) + '</p>'
+      + '<p class="text-xs text-slate-500 mt-4 leading-relaxed">'
+      + '如果<b>老師帳號可以登入、學生帳號不行</b>，那就是 Google Workspace 的'
+      + '「應用程式存取控制」把這個 app 擋掉了，要請資訊組到 '
+      + 'Google 管理控制台 → 安全性 → API 控管 → 應用程式存取控制，把它設為信任。</p>'
+      + '</div>';
+    });
+  };
+
+  $('btn-logout').onclick = function () {
+    auth.signOut().then(function () {
+      $('result').innerHTML = '';
+      $('btn-logout').classList.add('hidden');
+      setStatus('已登出。注意：Google 本身的登入仍留在瀏覽器，換帳號時請選「使用其他帳戶」。');
+    });
+  };
+
+  function report(cred) {
+    var u = cred.user;
+    var email = (u.email || '').toLowerCase();
+    var out = [];
+
+    setStatus('登入成功，檢查中…');
+    $('btn-logout').classList.remove('hidden');
+
+    out.push(row(true, '① Google 登入', '成功 —— <b>最大的風險排除了</b>'));
+    out.push(row(null, '登入帳號', '<code>' + esc(email) + '</code>'));
+    out.push(row(null, '顯示名稱', esc(u.displayName || '（無）')));
+
+    var domainOk = email.indexOf('@' + DOMAIN) > 0;
+    out.push(row(domainOk, '② 網域正確',
+      domainOk ? '是 <code>@' + DOMAIN + '</code>'
+               : '不是學校網域。規則會用 <code>email.matches(\'@' + DOMAIN + '$\')</code> 擋掉這種帳號。'));
+
+    out.push(row(u.emailVerified, 'email_verified',
+      u.emailVerified ? 'true（Google 保證這個 email 是本人的）'
+                      : 'false —— 規則會要求這一項為 true'));
+
+    // ③ 從 email 推導學號
+    var local = email.split('@')[0];
+    var sid = '';
+    var sidOk = false;
+    if (local.indexOf(PREFIX) === 0) {
+      sid = local.slice(PREFIX.length);
+      sidOk = /^\d{7}$/.test(sid);
+    }
+    out.push(row(sidOk, '③ 換算學號',
+      sidOk ? '<code>' + esc(local) + '</code> → 學號 <b class="text-lg">' + esc(sid) + '</b>'
+            : '換不出 7 位數學號（取到的是 <code>' + esc(local) + '</code>）。'
+              + '<br>如果老師帳號不是這個格式是正常的，請改用學生帳號測。'));
+
+    if (sidOk) {
+      out.push(row(null, '未來規則會這樣比對',
+        '<code>request.auth.token.email == \'' + PREFIX + '\' + sid + \'@' + DOMAIN + '\'</code>'
+        + '<br>也就是：學號 <code>' + esc(sid) + '</code> 的進度，只有 <code>' + esc(email) + '</code> 寫得進去。'));
+    }
+
+    $('result').innerHTML = '<table class="w-full"><tbody>' + out.join('') + '</tbody></table>'
+      + '<div class="p-4 text-sm text-slate-500">名冊比對中…</div>';
+
+    // ④ 名冊裡有沒有這個學號
+    if (!sidOk) { setStatus('檢查完成'); return; }
+    db.collection(window.CONFIG.SHARED.ROSTER).doc(sid).get().then(function (snap) {
+      var d = snap.exists ? (snap.data() || {}) : null;
+      out.push(row(!!d, '④ 名冊比對',
+        d ? '找到了：<b>' + esc(d.cls) + ' 班 ' + esc(d.no) + ' 號 ' + esc(d.name) + '</b>'
+          : '名冊 <code>' + esc(window.CONFIG.SHARED.ROSTER) + '</code> 裡沒有 <code>' + esc(sid) + '</code>'
+            + '<br>（如果這是老師帳號或測試帳號，找不到是正常的）'));
+      finish(out, sidOk && domainOk && u.emailVerified);
+    }).catch(function (e) {
+      out.push(row(false, '④ 名冊比對', '讀取失敗：<code>' + esc(e.code || e.message) + '</code>'));
+      finish(out, false);
+    });
+  }
+
+  function finish(out, allOk) {
+    setStatus('檢查完成');
+    $('result').innerHTML = '<table class="w-full"><tbody>' + out.join('') + '</tbody></table>'
+      + '<div class="mt-4 p-4 rounded-xl border ' + (allOk
+          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          : 'bg-amber-50 border-amber-200 text-amber-800') + ' text-sm leading-relaxed">'
+      + (allOk
+          ? '<b>✅ 這個帳號完全可行。</b>再用另外一兩個學生帳號測一次（不同班級），'
+            + '確認格式一致之後就可以動工。'
+          : '<b>⚠️ 有項目沒過。</b>如果是用老師帳號測的，「換算學號」和「名冊比對」沒過是正常的 —— '
+            + '關鍵是第 ① 項有沒有成功。請務必再用一個<b>學生帳號</b>測一次。')
+      + '</div>';
+  }
+
+})();
+</script>
+
+</body>
+</html>
