@@ -10,16 +10,29 @@
    （index.html 沒有 config.js，可以單獨載入這一支，日期表不依賴 CONFIG）
 
    ---------------------------------------------------------------------
-   ★ 要「鎖住學期」時，把下面的 LOCK 改成 true。
+   ★ 學期鎖（LOCK = true）
 
-     鎖住後：學生開到非當學期的頁面，會看到提示並被導向當學期，
-             也就不可能在下學期去累積上學期的星星。
-     不受影響：教師端（teacher.html 不載入這一支）、狀態檢查、轉換工具。
+     學生開到非當學期的頁面 → 擋下並導向當學期，不可能累積到錯誤學期的星星。
+
+     這一層擋的是「走錯 + 手動改網址」。真正的防線在 shared/firestore.rules：
+     那裡用 request.time（伺服器時間）限制 {學期}-progress 的寫入期間，
+     改前端繞不過去。兩層要一起看。
+
+     不受鎖影響：
+       ‧ 教師端（teacher.html 刻意不載入這一支）
+       ‧ 狀態檢查、轉換工具（shared/ 底下，推導不出學期）
+       ‧ TEST_IDS 裡的測試帳號
    ===================================================================== */
 (function (global) {
   'use strict';
 
-  var LOCK = false;        // ← 開學前改成 true 就會生效
+  var LOCK = true;         // 學期鎖：學生只能使用當學期
+
+  /* 測試帳號：不受學期鎖限制，任何時候都能進出兩個學期。
+     ⚠️ 這份清單在 shared/firestore.rules 裡有一份**一模一樣**的複製
+        （安全規則沒辦法載入 JS）。改這裡就要改那裡，兩邊都改才有效。
+        搜尋 firestore.rules 裡的 isTestAccount 就找得到。 */
+  var TEST_IDS = ['1400000'];      // ← 換成你自己的測試學號
 
   /* 學期的日期區間（含頭含尾）。
      這裡是「學期歸屬」的界線，與 config.js 的 TERM_START 不同 ——
@@ -56,9 +69,15 @@
     return x ? x.name : term;
   }
 
+  function isTestAccount(sid) {
+    return TEST_IDS.indexOf(String(sid || '')) >= 0;
+  }
+
   global.SEMESTER = {
     TABLE: TABLE,
     LOCK: LOCK,
+    TEST_IDS: TEST_IDS,
+    isTestAccount: isTestAccount,
     current: current,
     info: info,
     name: name,
@@ -86,6 +105,15 @@
   if (!mine) return;
   var active = current();
   if (mine === active) return;                     // 正是當學期，放行
+
+  // 測試帳號豁免：開學前要驗下學期、學期中要回頭驗上學期，都需要這個出口
+  try {
+    var sid = sessionStorage.getItem('sid' + mine);
+    if (isTestAccount(sid)) {
+      console.warn('[SEMESTER] 測試帳號 ' + sid + '：略過學期鎖（現在是' + name(active) + '）');
+      return;
+    }
+  } catch (e) {}
 
   // 走到這裡＝學生開錯學期了。擋下來並指路，不要讓他在這裡累積進度。
   document.addEventListener('DOMContentLoaded', function () {

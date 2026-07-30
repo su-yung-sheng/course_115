@@ -20,6 +20,8 @@ rules_version = '2';
 //    ② 刪掉 {學期}-grades：規則裡有，但全站沒有任何一行程式讀寫它。
 //    ③ 闖關紀錄（quiz_records）改存進 {學期}-progress 的 history。
 //       舊集合的規則移到「待淘汰」區，舊版頁面下線後刪除。
+//    ④ 學期鎖：{學期}-progress 的學生寫入限制在該學期期間（用 request.time）。
+//       老師不受限；測試帳號見 isTestAccount()。
 // ---------------------------------------------------------------------
 //  身分判斷方式：
 //    老師 = 以 email/密碼登入（教師端 signInWithEmailAndPassword）
@@ -56,6 +58,29 @@ service cloud.firestore {
     function loginShapeOk() {
       return request.resource.data.keys().hasOnly(['code', 'at'])
           && request.resource.data.code is string;
+    }
+
+    /* ===== 學期鎖 =====
+       學生只能寫「當學期」的進度。這是真正的防線 ——
+       request.time 是伺服器時間，改前端、改電腦時鐘都繞不過去。
+       （前端 shared/semester.js 的鎖只是先擋下畫面、給提示。）
+
+       界線：2027-02-01 起為下學期。
+         ‧ 學年開始前（準備期）算上學期 → 11501 沒有下界
+         ‧ 學年結束後仍算下學期       → 11502 沒有上界
+       與 shared/semester.js 的 TABLE 一致，改一邊要改另一邊。 */
+    function beforeSpring() {
+      return request.time < timestamp.date(2027, 2, 1);
+    }
+    function afterSpring() {
+      return request.time >= timestamp.date(2027, 2, 1);
+    }
+
+    /* 測試帳號：不受學期鎖限制。
+       ⚠️ 這份清單在 shared/semester.js 裡有一份**一模一樣**的複製
+          （安全規則沒辦法載入 JS）。改一邊就要改另一邊。 */
+    function isTestAccount(sid) {
+      return sid in ['1400000'];        // ← 換成你自己的測試學號
     }
 
     // ===== 進度文件的防呆（學生匿名登入，規則認不出本人，只能限制「動作幅度」）=====
@@ -155,9 +180,15 @@ service cloud.firestore {
     match /11501-progress/{sid} {
       allow get: if isSignedIn();
       allow list: if isTeacher();          // ❌ 學生不可整批下載全班成績
-      allow create: if isSignedIn() && firstWriteIsSmall();
+
+      // ★ 學生只能在上學期期間寫入（2027-02-01 之前）；老師與測試帳號不受限
+      allow create: if isTeacher()
+                    || (isSignedIn() && firstWriteIsSmall()
+                        && (beforeSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
-                    || (isSignedIn() && starsNotReduced() && gainIsSmall());
+                    || (isSignedIn() && starsNotReduced() && gainIsSmall()
+                        && (beforeSpring() || isTestAccount(sid)));
+
       allow delete: if isTeacher();        // ❌ 避免有人清掉別人的成績
     }
 
@@ -188,9 +219,15 @@ service cloud.firestore {
     match /11502-progress/{sid} {
       allow get: if isSignedIn();
       allow list: if isTeacher();
-      allow create: if isSignedIn() && firstWriteIsSmall();
+
+      // ★ 學生只能在下學期期間寫入（2027-02-01 起）；老師與測試帳號不受限
+      allow create: if isTeacher()
+                    || (isSignedIn() && firstWriteIsSmall()
+                        && (afterSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
-                    || (isSignedIn() && starsNotReduced() && gainIsSmall());
+                    || (isSignedIn() && starsNotReduced() && gainIsSmall()
+                        && (afterSpring() || isTestAccount(sid)));
+
       allow delete: if isTeacher();
     }
 

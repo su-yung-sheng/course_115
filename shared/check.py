@@ -245,6 +245,36 @@ def check_bat_crlf():
             errors.append(f'{os.path.basename(path)}：換行是 LF，Windows 批次檔必須用 CRLF')
 
 
+# ── 7. 學期鎖：測試帳號清單前後端必須一致 ───────────────
+def check_test_ids():
+    """
+    測試帳號豁免清單在兩個地方各有一份：
+      shared/semester.js     前端（擋畫面）
+      shared/firestore.rules 後端（擋寫入）
+    安全規則沒辦法載入 JS，所以只能複製。只改一邊會出現
+    「畫面進得去但存不了進度」這種很難查的狀況，這裡守住。
+    """
+    js = os.path.join(ROOT, 'shared', 'semester.js')
+    rl = os.path.join(ROOT, 'shared', 'firestore.rules')
+    if not (os.path.exists(js) and os.path.exists(rl)):
+        return
+
+    m = re.search(r'TEST_IDS\s*=\s*\[([^\]]*)\]', open(js, encoding='utf-8').read())
+    n = re.search(r'isTestAccount\(sid\)\s*\{[^}]*?sid in \[([^\]]*)\]',
+                  open(rl, encoding='utf-8').read(), re.S)
+    if not m or not n:
+        warns.append('找不到 TEST_IDS 或 isTestAccount，略過測試帳號一致性檢查')
+        return
+
+    ids = lambda t: sorted(x.strip().strip('\'"') for x in t.split(',') if x.strip())
+    a, b = ids(m.group(1)), ids(n.group(1))
+    if a != b:
+        errors.append('學期鎖的測試帳號清單不一致：\n'
+                      f'     semester.js     → {a}\n'
+                      f'     firestore.rules → {b}\n'
+                      '     兩邊必須相同，否則畫面進得去但進度存不了。')
+
+
 def main():
     log('檢查中…\n')
     check_empty()
@@ -253,6 +283,7 @@ def main():
     check_js()
     check_roster()
     check_bat_crlf()
+    check_test_ids()
 
     if warns:
         for w in warns:
