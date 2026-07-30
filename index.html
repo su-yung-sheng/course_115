@@ -16,48 +16,98 @@
 </head>
 <body class="p-6 text-slate-800">
 
-<div class="max-w-lg mx-auto mt-16 text-center">
+<div class="max-w-lg mx-auto mt-12 text-center">
 
   <p class="text-sm font-bold tracking-widest text-slate-500 uppercase">前峰國中 八年級</p>
   <h1 class="text-3xl font-black mt-2 mb-8">資訊科技課程</h1>
 
-  <div id="auto" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-4">
-    <p class="text-sm font-bold text-slate-500 mb-3">正在前往本學期的闖關基地…</p>
-    <a id="go" href="#" class="inline-block px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-xl transition">
-      沒有自動跳轉？點這裡
-    </a>
+  <!-- 自動導向提示：倒數可以取消，否則按不到下面的手動選擇 -->
+  <div id="auto" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4 hidden">
+    <p class="text-sm font-bold text-slate-600">
+      <span id="sec">3</span> 秒後前往<span id="term-name" class="text-slate-900"></span>…
+    </p>
+    <button id="cancel" class="mt-3 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl border border-slate-300 transition">
+      先不要，我自己選
+    </button>
   </div>
 
   <div class="grid grid-cols-2 gap-3">
-    <a href="11501/hub.html" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition">
+    <a href="11501/hub.html" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-slate-300 transition">
       <div class="text-2xl mb-1">📘</div>
       <div class="font-black">上學期</div>
       <div class="text-xs text-slate-400 font-bold mt-1">115-1</div>
     </a>
-    <a href="11502/hub.html" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition">
+    <a href="11502/hub.html" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-slate-300 transition">
       <div class="text-2xl mb-1">📗</div>
       <div class="font-black">下學期</div>
       <div class="text-xs text-slate-400 font-bold mt-1">115-2</div>
     </a>
   </div>
 
-  <p class="text-xs text-slate-400 mt-8 leading-relaxed">
-    老師工具：
-    <a href="11501/teacher.html" class="underline hover:text-slate-600">上學期教師端</a> ·
-    <a href="11502/teacher.html" class="underline hover:text-slate-600">下學期教師端</a>
-  </p>
+  <div class="mt-8 text-xs text-slate-400 leading-relaxed">
+    <p>
+      老師工具：
+      <a href="11501/teacher.html" class="underline hover:text-slate-600">上學期教師端</a> ·
+      <a href="11502/teacher.html" class="underline hover:text-slate-600">下學期教師端</a>
+    </p>
+    <p class="mt-2">
+      系統檢查：
+      <a href="shared/status.html?term=11501" class="underline hover:text-slate-600">上學期</a> ·
+      <a href="shared/status.html?term=11502" class="underline hover:text-slate-600">下學期</a>
+    </p>
+  </div>
 </div>
 
 <script>
-/* 依月份判斷學期：2～7 月為下學期，其餘為上學期。
-   只在「使用者沒有自己選」的情況下自動導向，並保留手動選擇的兩張卡片，
-   萬一判斷不準（例如提早開學）學生仍然進得去。 */
+/* 總入口的導向規則
+   ─────────────────────────────────────────────────────────
+   ?term=11501     直接前往指定學期（測試、或做書籤用）
+   ?stay           完全不自動導向，停在這一頁自己選
+   都沒帶          依月份判斷（2～7 月為下學期），倒數 3 秒後導向
+
+   為什麼要能取消：原本設 1.2 秒就跳，下面兩張手動選擇的卡片根本按不到，
+   想測另一個學期只能手打網址。倒數期間按任何地方都會取消。 */
 (function () {
+  var q = new URLSearchParams(location.search);
+
+  // ① 指定學期 → 直接走
+  var want = q.get('term');
+  if (want && /^115\d{2}$/.test(want)) {
+    location.replace(want + '/hub.html');
+    return;
+  }
+
+  // ② 要求停留 → 什麼都不做
+  if (q.has('stay')) return;
+
+  // ③ 同一個瀏覽階段內已經選過「自己選」→ 尊重它，不要每次都倒數
+  try { if (sessionStorage.getItem('entry-stay') === '1') return; } catch (e) {}
+
   var m = new Date().getMonth() + 1;
   var term = (m >= 2 && m <= 7) ? '11502' : '11501';
-  var url = term + '/hub.html';
-  document.getElementById('go').href = url;
-  setTimeout(function () { location.replace(url); }, 1200);
+  document.getElementById('term-name').textContent = (term === '11502' ? '下學期' : '上學期');
+  document.getElementById('auto').classList.remove('hidden');
+
+  var left = 3, timer = null;
+  var secEl = document.getElementById('sec');
+
+  function stop() {
+    if (!timer) return;
+    clearInterval(timer); timer = null;
+    document.getElementById('auto').classList.add('hidden');
+    try { sessionStorage.setItem('entry-stay', '1'); } catch (e) {}
+  }
+
+  timer = setInterval(function () {
+    left--;
+    if (left <= 0) { clearInterval(timer); timer = null; location.replace(term + '/hub.html'); return; }
+    secEl.textContent = left;
+  }, 1000);
+
+  // 按取消、點畫面任何地方、或按鍵，都算「我要自己選」
+  document.getElementById('cancel').addEventListener('click', function (e) { e.stopPropagation(); stop(); });
+  document.addEventListener('click', stop);
+  document.addEventListener('keydown', stop);
 })();
 </script>
 

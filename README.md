@@ -4,7 +4,22 @@
 
 - 上學期 https://su-yung-sheng.github.io/course_115/11501/hub.html
 - 下學期 https://su-yung-sheng.github.io/course_115/11502/hub.html
-- 總入口 https://su-yung-sheng.github.io/course_115/ （依日期自動導向）
+- 總入口 https://su-yung-sheng.github.io/course_115/ （依日期倒數 3 秒後導向，可取消）
+
+### 測試不同學期
+
+學期資料夾的網址是固定的，直接開就好；總入口另外支援兩個參數：
+
+| 網址 | 行為 |
+|---|---|
+| `/course_115/11501/hub.html` | 直接進上學期 |
+| `/course_115/11502/hub.html` | 直接進下學期 |
+| `/course_115/?term=11501` | 總入口直接導向上學期（可做書籤） |
+| `/course_115/?stay` | 停在總入口不自動導向，自己選 |
+| `/course_115/shared/status.html?term=11502` | 下學期的系統狀態檢查 |
+
+> 學生的進度是分學期的（`{學期}-progress`），所以在兩個學期之間切換測試不會互相污染；
+> 名冊與驗證碼則是共用的（`roster` / `secret`），同一組帳號兩邊都能登入。
 
 ---
 
