@@ -18,6 +18,10 @@
 | `/course_115/?stay` | 停在總入口不自動導向，自己選 |
 | `/course_115/shared/status.html?term=11502` | 下學期的系統狀態檢查 |
 
+**本機測試**請雙擊 `本機預覽.bat` —— 它會起一個 localhost 伺服器並列出所有常用網址。
+不要直接雙擊 HTML：`file://` 來源會讓 Google 登入直接失敗
+（`auth/operation-not-supported-in-this-environment`）。
+
 > 學生的進度是分學期的（`{學期}-progress`），所以在兩個學期之間切換測試不會互相污染；
 > 名冊與驗證碼則是共用的（`roster` / `secret`），同一組帳號兩邊都能登入。
 
