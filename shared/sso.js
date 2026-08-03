@@ -10,9 +10,16 @@
         班級／座號／姓名，直接進入內容，不再詢問任何身分資訊
      3. 查不到名冊 → 導回 hub 重新確認身分（不讓學生自己亂填）
 
-   為什麼可以信任 localStorage：
+   為什麼可以信任 sessionStorage 裡的學號：
      guard.js 已經擋掉「沒登入就直接開網址」的情形；
      能走到這裡代表已經過 hub 驗證，這裡不再重複驗證碼比對。
+
+   ⚠️ 已知限制（2026-08-03 確認）：
+     sessionStorage 是「每個分頁各一份」，所以同一台電腦開兩個分頁
+     就能同時登入兩個不同學號 —— 這是瀏覽器的規格，不是 bug。
+     真正的解法是改用學校 Google 帳號（見 shared/auth.js）：
+     Firebase 的 Google session 跨分頁共用，而且安全規則的 isOwner()
+     會擋掉「寫別人的進度」。在那之前，前端擋不住知道別人驗證碼的人。
 
    ---------------------------------------------------------------------
    用法（各頁面自己提供「怎麼讀 Firestore」，因為各頁用的 SDK 版本不同）：
@@ -68,9 +75,13 @@
     location.replace(HUB + '?next=' + encodeURIComponent(here));
   }
 
-  /* 身分快取放 localStorage（不是 sessionStorage）：
+  /* 身分快取和學號一樣放 sessionStorage：
      hub 登入時就寫好完整身分，各關卡頁一進站同步就拿得到，
-     不必等 Firestore，也就不會出現「正在確認身分…」的停格畫面。 */
+     不必等 Firestore，也就不會出現「正在確認身分…」的停格畫面。
+
+     ⚠️ 快取一定要跟學號同一種儲存體。放 localStorage 的話，
+        關掉分頁學號沒了、姓名班級卻還在，下一個人會看到別人的名字。
+        （這段註解原本寫的是 localStorage，與實際程式不符，2026-08-03 更正。） */
   function readCache(id) {
     try {
       var c = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');

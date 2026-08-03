@@ -36,6 +36,8 @@
 
 <script src="config.js"></script>
 <script src="../shared/semester.js"></script>
+<!-- 登入邏輯單一來源（含「不要蓋掉 Google 身分」的匿名登入把關）-->
+<script src="../shared/auth.js"></script>
 <script src="../shared/guard.js"></script>
 <script src="../shared/grading.js"></script>
   <!-- 全站主題樣式（單一來源，見 shared/theme.css）-->
@@ -301,7 +303,9 @@ repaint();
       msg.textContent = '⚠️ 讀不到你的闖關進度，畫面可能不是最新的。請重新整理，若一直這樣請找老師。';
     }
   });
-  signInAnonymously(auth).catch(e => console.error('登入失敗', e));
+  // AUTH.anonIfNeeded()：已經有身分（例如剛在闖關基地用學校 Google 帳號登入）
+  //    就不要再匿名登入，否則會把 Google 身分蓋掉，安全規則的 isOwner() 失效。
+  AUTH.anonIfNeeded(auth, signInAnonymously, onAuthStateChanged);
 </script>
 </body>
 </html>

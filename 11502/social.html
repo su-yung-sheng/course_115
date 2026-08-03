@@ -88,6 +88,8 @@
 <!-- 身分守門：未從闖關基地登入者導回入口 -->
 <script src="config.js"></script>
 <script src="../shared/semester.js"></script>
+<!-- 登入邏輯單一來源（含「不要蓋掉 Google 身分」的匿名登入把關）-->
+<script src="../shared/auth.js"></script>
 <script src="../shared/guard.js"></script>
 <!-- 全站單一登入：身分一律由闖關基地帶入 -->
 <script src="../shared/sso.js"></script>
@@ -773,7 +775,9 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
 
                 const initAuth = async () => {
                     try {
-                        await signInAnonymously(auth);
+                        // AUTH.anonIfNeeded()：已經有身分（例如剛在闖關基地用學校 Google 帳號登入）
+                        //    就不要再匿名登入，否則會把 Google 身分蓋掉，安全規則的 isOwner() 失效。
+                        await AUTH.anonIfNeeded(auth, signInAnonymously, onAuthStateChanged);
                     } catch(e) { console.error("Firebase Auth Error", e); }
                 };
                 initAuth();

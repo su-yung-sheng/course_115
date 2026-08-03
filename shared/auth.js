@@ -121,6 +121,36 @@
     return fb.signOut(fb.auth);
   }
 
+  /**
+   * 沒有任何登入紀錄時才匿名登入。
+   *
+   * ⚠️ 為什麼不能直接呼叫 signInAnonymously：
+   *    Firebase 的登入狀態是「整個網域共用」的（存在 localStorage）。
+   *    學生在闖關基地用學校 Google 帳號登入後，只要任何一頁再跑一次
+   *    signInAnonymously，就會把 Google 身分換成匿名的——
+   *    安全規則的 isOwner() 立刻失效，而且畫面上完全看不出來。
+   *
+   * ⚠️ 也不能只判斷 auth.currentUser：頁面剛載入時 Firebase 還在
+   *    非同步還原登入狀態，currentUser 可能暫時是 null，
+   *    判斷完就搶先匿名登入，一樣會蓋掉。所以要等第一次
+   *    onAuthStateChanged 回報之後再決定。
+   *
+   * 各頁的 SDK 版本不同，所以函式由呼叫端傳進來。
+   *
+   * @returns {Promise<user|null>} 目前的使用者（匿名登入失敗時回 null）
+   */
+  function anonIfNeeded(auth, signInAnonymously, onAuthStateChanged) {
+    return new Promise(function (resolve) {
+      var stop = onAuthStateChanged(auth, function (user) {
+        stop();                                   // 只看第一次回報
+        if (user) return resolve(user);           // 已經有身分（Google 或先前的匿名）
+        signInAnonymously(auth)
+          .then(function (cred) { resolve(cred && cred.user); })
+          .catch(function (e) { console.error('匿名登入失敗', e); resolve(null); });
+      });
+    });
+  }
+
   global.AUTH = {
     DOMAIN: DOMAIN,
     PREFIX: PREFIX,
@@ -128,6 +158,7 @@
     configure: configure,
     signIn: signIn,
     signOut: signOut,
+    anonIfNeeded: anonIfNeeded,
     sidFromEmail: sidFromEmail,
     emailFromSid: emailFromSid,
     isTeacherEmail: isTeacherEmail,

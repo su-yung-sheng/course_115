@@ -39,6 +39,8 @@
 <!-- 身分守門：未從闖關基地登入者導回入口 -->
 <script src="config.js"></script>
 <script src="../shared/semester.js"></script>
+<!-- 登入邏輯單一來源（含「不要蓋掉 Google 身分」的匿名登入把關）-->
+<script src="../shared/auth.js"></script>
 <script src="../shared/guard.js"></script>
 <!-- 全站單一登入：身分一律由闖關基地帶入 -->
 <script src="../shared/sso.js"></script>
@@ -117,7 +119,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
             try {
                 const { initializeApp, getApps, getApp } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js')")();
                 const { getFirestore, doc, getDoc, setDoc, arrayUnion, collection, getDocs } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js')")();
-                const { getAuth, signInAnonymously } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js')")();
+                const { getAuth, signInAnonymously, onAuthStateChanged } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js')")();
 
                 // Firebase：核心設定集中在 config.js，
                 // 這裡只覆蓋本頁專屬的 appId／measurementId（運算思維）
@@ -130,7 +132,9 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                 const auth = getAuth(app);
                 
                 try {
-                    await signInAnonymously(auth);
+                    // AUTH.anonIfNeeded()：已經有身分（例如剛在闖關基地用學校 Google 帳號登入）
+                    //    就不要再匿名登入，否則會把 Google 身分蓋掉，安全規則的 isOwner() 失效。
+                    await AUTH.anonIfNeeded(auth, signInAnonymously, onAuthStateChanged);
                 } catch (authErr) {
                     console.warn("匿名登入失敗 (可能未於 Firebase Console 啟用)，將嘗試直接讀寫資料庫:", authErr);
                 }

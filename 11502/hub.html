@@ -28,9 +28,12 @@
 
   <script src="config.js"></script>
 <script src="../shared/semester.js"></script>
+<!-- 學校 Google 帳號登入（單一來源，兩學期共用）-->
+<script src="../shared/auth.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged,
+         GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // ===== Firebase 設定（集中在 config.js）=====
@@ -48,6 +51,50 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+
+    /* ===== 學校 Google 帳號登入 =====
+       判斷邏輯（email 怎麼換算成學號、哪個是老師）全在 shared/auth.js，
+       這裡只負責把 SDK 函式交給它、接結果。
+
+       為什麼要改用 Google：驗證碼是 6 位數字、學生自己設，
+       上課時很容易被旁邊的人看到；而且匿名登入下安全規則認不出誰是誰，
+       學生按 F12 就寫得動別人的進度。改用 Google 之後，
+       規則的 isOwner() 才真正做得到「只有本人能寫自己的進度」。
+
+       驗證碼登入暫時保留當備援（帳號還沒開通、或 Google 掛掉時用），
+       全班順利轉換後再整段移除。 */
+    AUTH.configure({ auth, GoogleAuthProvider, signInWithPopup, signOut });
+
+    async function googleLogin(){
+      const btn = document.getElementById('google-go');
+      if(btn){ btn.disabled = true; btn.textContent = '登入中…'; }
+      state.loginError = '';
+      try{
+        const me = await AUTH.signIn();
+
+        if(me.isTeacher){
+          // 老師誤按到學生入口：直說並停在原地，不要把他當成學號 0 的學生
+          await AUTH.signOut();
+          state.loginError = '這是老師的帳號，請改用「教師端」頁面登入。';
+          render(); return;
+        }
+
+        // 名冊沒有這個學號 → 多半是帳號打錯或還沒加進名冊，
+        // 這裡先擋下來，免得後面每一頁都顯示空白姓名。
+        const r = await getDoc(doc(db, ROSTER, me.sid));
+        if(!r.exists()){
+          await AUTH.signOut();
+          state.loginError = `名冊裡找不到學號 ${me.sid}（${me.email}）。請找老師確認。`;
+          render(); return;
+        }
+        state.studentName = r.data().name || '';
+        startSession(me.sid);
+      }catch(e){
+        // auth.js 會把常見錯誤碼翻成白話；沒有 friendly 就用錯誤碼兜一句
+        state.loginError = e.friendly || AUTH.hintFor((e && e.code) || 'unknown');
+        render();
+      }
+    }
 
     // ===== 關卡定義（module ID 對應規格文件） =====
     const MODULES = [
@@ -108,7 +155,13 @@
     } catch (e) {}
 
     // ===== 認證 =====
-    signInAnonymously(auth).catch(e=>console.error('登入失敗',e));
+    /* 只有「完全沒有登入紀錄」時才用匿名登入。
+       ⚠️ 不能無條件呼叫：Firebase 的登入狀態是整個網域共用的，
+          學生用 Google 登入後再跑一次 signInAnonymously，
+          會把 Google 身分換成匿名的，安全規則的 isOwner() 就失效了。 */
+    onAuthStateChanged(auth, u => {
+      if(!u) signInAnonymously(auth).catch(e=>console.error('登入失敗',e));
+    });
     onAuthStateChanged(auth, user=>{
       if(user){
         state.authReady = true;
@@ -303,6 +356,16 @@
                 ${new URLSearchParams(location.search).get('next') ? `<p class="mt-3 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">🔒 請先在這裡確認身分，登入後會自動帶你回到剛才要去的頁面。</p>` : ''}
               </div>
               <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                <button id="google-go" class="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-slate-50 border-2 border-slate-300 text-slate-700 font-bold text-base py-3 rounded-lg active:scale-95 transition">
+                  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M45 24c0-1.6-.1-2.7-.4-4H24v7.5h12c-.2 2-1.5 5-4.4 7l6.7 5.2C42.2 36 45 30.6 45 24z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.9-5.4C29.7 36.6 27.1 37.5 24 37.5c-5.8 0-10.7-3.9-12.4-9.1l-7.1 5.5C8 41 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.6 28.4c-.5-1.4-.7-2.9-.7-4.4s.3-3 .7-4.4l-7.1-5.5C2.9 17 2 20.4 2 24s.9 7 2.5 9.9l7.1-5.5z"/><path fill="#EA4335" d="M24 10.5c4.1 0 6.9 1.8 8.5 3.3l6.2-6C34.9 4.2 29.9 2 24 2 15.4 2 8 7 4.5 14.1l7.1 5.5C13.3 14.4 18.2 10.5 24 10.5z"/></svg>
+                  用學校帳號登入
+                </button>
+                <p class="text-xs text-slate-400 mt-2 text-center">帳號是 qfm＋你的學號＠mail.qfm.kh.edu.tw</p>
+                ${state.loginError?`<p class="text-red-500 text-sm mt-3 leading-relaxed">${state.loginError}</p>`:''}
+
+                <details class="mt-5 border-t border-slate-200 pt-4">
+                  <summary class="text-sm font-bold text-slate-400 cursor-pointer hover:text-slate-600 list-none">▸ 學校帳號不能用？改用學號＋驗證碼</summary>
+                  <div class="mt-4">
                 <label class="block text-sm font-bold text-slate-500 mb-2">學號</label>
                 <input id="sid" type="text" inputmode="numeric" autocomplete="off" value="${state.tempId}" placeholder="14XXXXX"
                   class="w-full bg-transparent border-0 border-b-2 border-slate-300 focus:border-indigo-500 text-2xl font-mono tracking-widest py-2 outline-none">
@@ -312,9 +375,10 @@
                     class="w-full bg-transparent border-0 border-b-2 border-slate-300 focus:border-indigo-500 text-2xl font-mono tracking-widest py-2 pr-10 outline-none">
                   <button type="button" tabindex="-1" onclick="var i=document.getElementById('code');var s=i.type==='password';i.type=s?'text':'password';this.textContent=s?'🙈':'👁';" class="absolute right-0 bottom-2 text-xl text-slate-400 hover:text-slate-600" aria-label="顯示或隱藏驗證碼">👁</button>
                 </div>
-                ${state.loginError?`<p class="text-red-500 text-sm mt-3">${state.loginError}</p>`:''}
                 <button id="go" class="mt-6 w-full bg-slate-800 hover:bg-slate-700 text-white font-bold text-lg py-3 rounded-lg active:scale-95 transition">進入基地</button>
-                <button id="demo" class="mt-3 w-full text-slate-400 hover:text-slate-600 text-sm underline">先看範例畫面</button>
+                  </div>
+                </details>
+                <button id="demo" class="mt-4 w-full text-slate-400 hover:text-slate-600 text-sm underline">先看範例畫面</button>
               </div>
             </div>
           </div>`;
@@ -516,6 +580,7 @@
       if(e.target.closest('#confirm-yes')){ confirmFirstLogin(); return; }
       if(e.target.closest('#confirm-back')){ state.status='login'; state.loginError=''; state.confirmName=''; render(); return; }
       if(e.target.closest('#ack-setup')){ state.justSetup=false; render(); return; }
+      if(e.target.closest('#google-go')){ googleLogin(); return; }
       if(e.target.closest('#demo')){ state.demo=true; state.status='main'; render(); return; }
       if(e.target.closest('#logout')){ logout(); return; }
       if(e.target.closest('#open-week')){ state.showWeek=true; render(); return; }

@@ -14,6 +14,8 @@
     <!-- 全站共用計分規則（單一來源；與教師端共用） -->
     <script src="config.js"></script>
 <script src="../shared/semester.js"></script>
+<!-- 登入邏輯單一來源（含「不要蓋掉 Google 身分」的匿名登入把關）-->
+<script src="../shared/auth.js"></script>
   <script src="../shared/grading.js"></script>
     <!-- 引入 React 和 ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -116,7 +118,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 // 使用 new Function 包裝 import，防止 Babel 將 import() 編譯為 require()
                 const { initializeApp, getApps, getApp } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js')")();
                 const { getFirestore, doc, getDoc, setDoc, arrayUnion, collection, getDocs } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js')")();
-                const { getAuth, signInAnonymously } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js')")();
+                const { getAuth, signInAnonymously, onAuthStateChanged } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js')")();
 
                 const firebaseConfig = window.CONFIG.FIREBASE;
 
@@ -124,7 +126,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 const auth = getAuth(app);
                 
                 try {
-                    await signInAnonymously(auth);
+                    // AUTH.anonIfNeeded()：已經有身分（例如剛在闖關基地用學校 Google 帳號登入）
+                    //    就不要再匿名登入，否則會把 Google 身分蓋掉，安全規則的 isOwner() 失效。
+                    await AUTH.anonIfNeeded(auth, signInAnonymously, onAuthStateChanged);
                 } catch (authErr) {
                     console.warn("匿名登入失敗 (可能未於 Firebase Console 啟用)，將嘗試直接讀寫資料庫:", authErr);
                 }
