@@ -218,8 +218,15 @@ service cloud.firestore {
     //   ⚠️ 學生讀得到 ＝ 這個集合只能放「公開也無所謂」的設定。
     //      任何密碼、名單、答案都不可以放這裡；
     //      課程設定請放 {學期}-config（那個是老師才讀得到的）。
+    //
+    //   ★ read 是 `if true`，不是 `if isSignedIn()`：
+    //     闖關基地要在「還沒登入」的狀態下讀它，才知道登入畫面該不該
+    //     顯示驗證碼欄位。寫成 isSignedIn() 會變成雞生蛋 ——
+    //     沒登入讀不到 → 一律當關閉 → 驗證碼備援永遠打不開，
+    //     而那正是 Google 掛掉時唯一的退路。
+    //     內容只有一個布林值，公開讀沒有任何損失。
     match /config/{docId} {
-      allow read:  if isSignedIn();
+      allow read:  if true;
       allow write: if isTeacher();
     }
 

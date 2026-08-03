@@ -65,9 +65,18 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
       </div>
       <h2 class="text-2xl font-bold mb-2 text-slate-800">教師成績系統(11502)</h2>
-      <p class="text-slate-500 mb-8 text-sm">請以教師帳號登入系統。</p>
+      <p class="text-slate-500 mb-6 text-sm">請以教師帳號登入系統。</p>
 
-      <form onsubmit="handleLogin(event)" class="flex flex-col gap-4">
+      <!-- 學校 Google 帳號（推薦）：安全規則的 isTeacher() 認的就是這個 email -->
+      <button id="teacher-google" onclick="googleTeacherLogin()"
+              class="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-slate-50 border-2 border-slate-300 text-slate-700 font-bold py-3.5 rounded-xl active:scale-[0.98] transition-all text-lg">
+        <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M45 24c0-1.6-.1-2.7-.4-4H24v7.5h12c-.2 2-1.5 5-4.4 7l6.7 5.2C42.2 36 45 30.6 45 24z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.9-5.4C29.7 36.6 27.1 37.5 24 37.5c-5.8 0-10.7-3.9-12.4-9.1l-7.1 5.5C8 41 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.6 28.4c-.5-1.4-.7-2.9-.7-4.4s.3-3 .7-4.4l-7.1-5.5C2.9 17 2 20.4 2 24s.9 7 2.5 9.9l7.1-5.5z"/><path fill="#EA4335" d="M24 10.5c4.1 0 6.9 1.8 8.5 3.3l6.2-6C34.9 4.2 29.9 2 24 2 15.4 2 8 7 4.5 14.1l7.1 5.5C13.3 14.4 18.2 10.5 24 10.5z"/></svg>
+        用學校帳號登入
+      </button>
+
+      <details class="mt-5 border-t border-slate-200 pt-4 text-left">
+        <summary class="text-sm font-bold text-slate-400 cursor-pointer hover:text-slate-600 list-none text-center">▸ 改用 Email＋密碼登入</summary>
+      <form onsubmit="handleLogin(event)" class="flex flex-col gap-4 mt-4">
         <input
           type="email"
           id="email-input"
@@ -89,6 +98,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
         </button>
       </form>
+      </details>
       <p id="login-error" class="text-red-500 text-sm mt-4 hidden font-medium flex items-center justify-center gap-1.5">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
         密碼錯誤，請重試！
@@ -576,6 +586,42 @@
     // 教師登出
     window.teacherLogout = function() {
       extAuth.signOut().then(() => location.reload()).catch(e => console.error('登出失敗', e));
+    };
+
+    /* ===== 用學校 Google 帳號登入教師端 =====
+       安全規則的 isTeacher() 本來就接受這個 email，只是登入畫面一直沒給入口。
+       好處是不必再記一組只有這裡用得到的密碼。
+
+       教師端用的是 compat SDK，shared/auth.js 是照 modular 寫的，
+       所以這裡包一層轉接。 */
+    AUTH.configure({
+      auth: extAuth,
+      GoogleAuthProvider: firebase.auth.GoogleAuthProvider,
+      signInWithPopup: (a, p) => a.signInWithPopup(p),
+      signOut: (a) => a.signOut()
+    });
+
+    window.googleTeacherLogin = async function() {
+      const btn = document.getElementById('teacher-google');
+      const errorEl = document.getElementById('login-error');
+      const original = btn.innerHTML;
+      errorEl.classList.add('hidden');
+      btn.disabled = true; btn.textContent = '登入中…';
+      try {
+        const me = await AUTH.signIn();
+        if (!me.isTeacher) {
+          // 學生帳號誤入教師端：登出並說清楚，不要讓他停在半登入狀態
+          await AUTH.signOut();
+          throw Object.assign(new Error(''), {
+            friendly: `${me.email} 是學生帳號，不能登入教師端。`
+          });
+        }
+        // 成功後 onAuthStateChanged 會呼叫 showMainApp()
+      } catch (e) {
+        errorEl.innerHTML = e.friendly || AUTH.hintFor((e && e.code) || 'unknown');
+        errorEl.classList.remove('hidden');
+        btn.disabled = false; btn.innerHTML = original;
+      }
     };
 
     window.handleLogin = async function(e) {

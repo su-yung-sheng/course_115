@@ -163,7 +163,11 @@
       try{
         const snap = await getDoc(doc(db, window.CONFIG.SHARED.AUTH_COL, window.CONFIG.SHARED.AUTH_DOC));
         state.allowLegacy = snap.exists() && snap.data().allowLegacy === true;
-      }catch(e){ state.allowLegacy = false; }
+      }catch(e){
+        // 讀不到就當關閉。規則是公開讀，所以走到這裡通常是網路問題，
+        // 不是權限問題 —— 顯示一個按下去必定失敗的表單只會更困惑。
+        state.allowLegacy = false;
+      }
       if(state.status === 'login') render();
     }
 
