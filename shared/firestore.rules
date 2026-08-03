@@ -31,19 +31,24 @@ rules_version = '2';
 //       ★ 這一份規則不做欄位白名單，只看 totalStars 的增減，
 //         所以新增欄位不必改規則——這裡記一筆是避免日後有人以為漏改了。
 //         學生端用 merge 寫入，totalStars 不動，starsNotReduced 自然成立。
+//    ⑦ 2026-08-03：驗證碼備援加上總開關 config/auth。
+//       全站已改用學校 Google 帳號，驗證碼只留備援。
+//       開關關掉時，舊的匿名寫入路徑、驗證碼設定、登入試探全部失效。
+//       ★ 這個開關必須做在規則裡才有意義：只把前端欄位藏起來的話，
+//         匿名路徑還在，任何登入者照樣寫得動別人的進度。
 // ---------------------------------------------------------------------
 //  身分判斷方式：
-//    老師 = 以 email/密碼登入（教師端 signInWithEmailAndPassword）
-//    學生 = 匿名登入（各學生頁 signInAnonymously）
+//    老師 = email/密碼登入（教師端）或學校 Google 帳號（白名單）
+//    學生 = 學校 Google 帳號 qfm{學號}@mail.qfm.kh.edu.tw
+//           （舊的匿名登入＋驗證碼只在 config/auth 開關打開時有效）
 //
-//  ⚠️ 已知限制：學生為匿名登入，規則無法驗證「這個人是不是本人」。
-//     因此仍無法百分之百防止學生寫入他人的成績文件。
-//     要完全防篡改，需改為「由可信伺服器獨佔寫入成績」。
-//     本規則的目標是擋掉最容易發生、傷害最大的幾種情形：
-//       1. 整批撈走全班姓名與驗證碼（名冊）
-//       2. 整批撈走或刪除全班成績
-//       3. 竄改已存在的答題紀錄
-//       4. 學生覆蓋他人已設定的驗證碼
+//  ⚠️ 已知限制：只要 legacyAllowed() 是開的，那條匿名路徑就認不出本人，
+//     仍防不住學生寫別人的成績文件（只能靠「動作幅度」防呆）。
+//     關掉開關之後才真正只剩 isOwner()，也就是「只有本人能寫自己的」。
+//     其餘一直有效的防線：
+//       1. 整批撈走全班姓名與驗證碼（名冊）→ list 只給老師
+//       2. 整批撈走或刪除全班成績 → list/delete 只給老師
+//       3. 學生覆蓋他人已設定的驗證碼 → secret 只能 create 一次
 // =====================================================================
 
 service cloud.firestore {
@@ -90,6 +95,31 @@ service cloud.firestore {
       return googleVerified()
           && request.auth.token.email.matches('^qfm[0-9]{7}@mail[.]qfm[.]kh[.]edu[.]tw$');
     }
+    /* ===== 驗證碼備援的總開關（2026-08-03）=====
+       全面改用學校 Google 帳號之後，舊的「匿名登入＋6 位數驗證碼」
+       只留作備援。但只要規則裡的匿名路徑還在，
+       任何登入者就寫得動別人的進度 —— 前端把欄位藏起來一點用也沒有。
+
+       所以開關做在這裡：老師在教師端切換 config/auth 的 allowLegacy，
+       規則跟著讀，關掉時匿名路徑整條失效。
+
+       ★ 文件不存在 → false（往安全的方向失效）。
+         所以「還沒建立這份文件」＝驗證碼不能用，不是全開。
+
+       ★ 代價：每次進度寫入多 exists()+get() 兩次文件讀取，會計費。
+         以一個學校的量看不出來，但知道一下。
+
+       ★ 逃生路徑：教師端是 email/密碼登入，不依賴 Google。
+         就算學校 Google 整個掛掉、全班登不進去，老師仍進得了教師端
+         把開關打開。 */
+    function AUTH_DOC() {
+      return /databases/$(database)/documents/config/auth;
+    }
+    function legacyAllowed() {
+      return exists(AUTH_DOC())
+          && get(AUTH_DOC()).data.allowLegacy == true;
+    }
+
     // 名冊上的「是否已設定驗證碼」旗標（驗證碼本體不在名冊裡，見下方 A2）
     function codeNotSet() {
       return !('hasCode' in resource.data) || resource.data.hasCode != true;
@@ -180,6 +210,20 @@ service cloud.firestore {
     }
 
 
+    // ---------- A1b. 全站開關（★ 學生「讀得到」）----------
+    //   目前只有一份 config/auth：{ allowLegacy: bool }
+    //   學生端要讀它才知道登入畫面該不該顯示驗證碼欄位，
+    //   規則也讀它決定要不要開放舊的匿名寫入路徑（見 legacyAllowed()）。
+    //
+    //   ⚠️ 學生讀得到 ＝ 這個集合只能放「公開也無所謂」的設定。
+    //      任何密碼、名單、答案都不可以放這裡；
+    //      課程設定請放 {學期}-config（那個是老師才讀得到的）。
+    match /config/{docId} {
+      allow read:  if isSignedIn();
+      allow write: if isTeacher();
+    }
+
+
     // ---------- A2. 驗證碼本體（★ 學生完全讀不到）----------
     //   跟名冊一樣跨學期共用一份：同一批學生，不需要設兩次。
     //
@@ -193,7 +237,9 @@ service cloud.firestore {
       allow list: if isTeacher();
 
       // 首次設定：create 只在文件不存在時成立，天然只能成功一次
-      allow create: if isSignedIn()
+      //   開關關掉時連設定都不給 —— 否則學生設了碼卻登不進去，只會來問老師
+      allow create: if legacyAllowed()
+                    && isSignedIn()
                     && request.resource.data.keys().hasOnly(['code', 'at'])
                     && request.resource.data.code is string;
 
@@ -212,7 +258,9 @@ service cloud.firestore {
       allow list: if isTeacher();
       allow delete: if isTeacher();
 
-      allow create, update: if isSignedIn()
+      //   開關關掉時直接不成立 ＝ 驗證碼登入整條路封死
+      allow create, update: if legacyAllowed()
+                            && isSignedIn()
                             && loginShapeOk()
                             && request.resource.data.code ==
                                get(/databases/$(database)/documents/secret/$(sid)).data.code;
@@ -240,11 +288,11 @@ service cloud.firestore {
          全面切換到 Google 之後，把 ② 整段刪掉，防呆條件也可以一起拿掉。 */
       allow create: if isTeacher()
                     || (isOwner(sid) && (beforeSpring() || isTestAccount(sid)))
-                    || (isSignedIn() && firstWriteIsSmall()
+                    || (legacyAllowed() && isSignedIn() && firstWriteIsSmall()
                         && (beforeSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
                     || (isOwner(sid) && (beforeSpring() || isTestAccount(sid)))
-                    || (isSignedIn() && starsNotReduced() && gainIsSmall()
+                    || (legacyAllowed() && isSignedIn() && starsNotReduced() && gainIsSmall()
                         && (beforeSpring() || isTestAccount(sid)));
 
       allow delete: if isTeacher();        // ❌ 避免有人清掉別人的成績
@@ -284,11 +332,11 @@ service cloud.firestore {
          全面切換到 Google 之後，把 ② 整段刪掉。 */
       allow create: if isTeacher()
                     || (isOwner(sid) && (afterSpring() || isTestAccount(sid)))
-                    || (isSignedIn() && firstWriteIsSmall()
+                    || (legacyAllowed() && isSignedIn() && firstWriteIsSmall()
                         && (afterSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
                     || (isOwner(sid) && (afterSpring() || isTestAccount(sid)))
-                    || (isSignedIn() && starsNotReduced() && gainIsSmall()
+                    || (legacyAllowed() && isSignedIn() && starsNotReduced() && gainIsSmall()
                         && (afterSpring() || isTestAccount(sid)));
 
       allow delete: if isTeacher();
