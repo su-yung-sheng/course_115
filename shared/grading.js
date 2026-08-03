@@ -68,9 +68,15 @@ window.GRADING = {
     //   （scratchStar 未滿 75 分回 0 星，所以 2 顆＝有拿到星）
     PASS_STARS: 2,
 
-    /** 這一關兩項都完成了嗎？ */
+    /**
+     * 這一關完成了嗎？
+     *
+     * flowDone 傳 null＝這個學期沒有「逐關流程圖」這件事，只看程式星數。
+     *   （下學期的 flowchart.html 是一份綜合測驗，不是逐關排流程圖，
+     *     沒有 per-unit 的完成紀錄可以查。）
+     */
     cleared: function (unitId, flowDone, unitStars) {
-      var flow = !!(flowDone || {})[unitId];
+      var flow = (flowDone === null) ? true : !!(flowDone || {})[unitId];
       var stars = Number((unitStars || {})[unitId]) || 0;
       return flow && stars >= this.PASS_STARS;
     },
@@ -111,7 +117,7 @@ window.GRADING = {
       if (this.isOpen(no, units, leadDone, flowDone, unitStars)) return '';
       var open = this.openUpTo(units, leadDone, flowDone, unitStars);
       var u = units[open - 1] || {};
-      var flow = !!(flowDone || {})[u.id];
+      var flow = (flowDone === null) ? true : !!(flowDone || {})[u.id];
       var stars = Number((unitStars || {})[u.id]) || 0;
       var lack = !flow
         ? '排出正確的流程圖'

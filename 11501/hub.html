@@ -187,7 +187,10 @@
       // 若是被關卡頁導回來確認身分的（?next=xxx.html），登入成功就送他回去
       try{
         const next = new URLSearchParams(location.search).get('next');
-        if(next && /^11501_[\w.-]+\.html(\?[\w=&%.\-]*)?$/.test(next)){
+        // 白名單刻意只認「同資料夾的相對檔名」，擋掉 //evil.com 這種外部導轉。
+        // ⚠️ 2026-08-03：原本比對 ^11501_ 前綴，但檔名早已去掉學期前綴，
+        //    等於這個條件永遠不成立，登入後一律留在 hub、回不到原本要去的頁面。
+        if(next && /^[\w.-]+\.html(\?[\w=&%.\-]*)?$/.test(next)){
           location.replace(next);
           return;
         }

@@ -77,6 +77,22 @@ def case_exact(target):
     return True
 
 
+def strip_comments(s):
+    """
+    粗略拿掉註解，只給「找殘留舊寫法」用。
+
+    ★ 為什麼需要：註解裡常常會寫「原本是 11502_hub.html，已改掉」，
+      那是說明不是錯誤。不拿掉的話，寫得越清楚的註解越容易被誤報，
+      久了就會有人把檢查關掉。
+    不求精準（字串裡的 // 之類不管），寧可漏報也不要誤報。
+    """
+    s = re.sub(r'<!--.*?-->', '', s, flags=re.S)      # HTML 註解
+    s = re.sub(r'/\*.*?\*/', '', s, flags=re.S)       # JS 區塊註解
+    # 整行註解（含 JSDoc 續行的 *）；行尾註解不處理，避免誤刪網址裡的 //
+    s = re.sub(r'^[ \t]*(//|\*).*$', '', s, flags=re.M)
+    return s
+
+
 def all_pages():
     """repo 裡所有要檢查的 HTML：根目錄、shared/、各學期資料夾"""
     pats = [os.path.join(ROOT, '*.html'),
@@ -275,6 +291,69 @@ def check_test_ids():
                       '     兩邊必須相同，否則畫面進得去但進度存不了。')
 
 
+# ── 7.5 舊檔名前綴殘留 ──────────────────────────────────
+def check_old_prefix():
+    """
+    整併成單一 repo 時，檔名去掉了學期前綴：
+        11502_flowchart.html → 11502/flowchart.html
+
+    但有些參照是「用字串拼出來的」，例如
+        location.replace(term + '_hub.html')
+    死連結檢查看不到這種寫法（它只認完整的引號字串），
+    結果 guard.js 整整導向了一個不存在的檔案，
+    任何直接貼網址進來的學生都吃 404 —— 而檢查還顯示全部通過。
+
+    所以這裡改用「找舊檔名的樣子」：115xx_ 開頭又接 .html 的東西，
+    以及 '_hub.html' 這種拼接殘骸。
+    """
+    # 不比對完整檔名，而是看「同一行裡同時出現學期前綴和 .html」——
+    # 因為殘留可能寫成正規式（/^11501_[\w.-]+\.html/）或字串拼接（term + '_hub.html'），
+    # 逐字比對檔名兩種都抓不到。
+    prefix = re.compile(r'115\d{2}_')
+    joined = re.compile(r'''['"]_[\w.\-]*\.html['"]''')
+    for path in all_pages() + all_scripts():
+        name = rel(path)
+        try:
+            s = strip_comments(open(path, encoding='utf-8').read())
+        except (UnicodeDecodeError, FileNotFoundError):
+            continue
+        for i, line in enumerate(s.split('\n'), 1):
+            if '.html' in line and prefix.search(line):
+                errors.append(f'{name} 第 {i} 行：帶學期前綴的舊檔名（{prefix.search(line).group()}….html）。'
+                              '檔名已改成「學期資料夾／不帶前綴」，這個參照會 404。')
+            m = joined.search(line)
+            if m:
+                errors.append(f'{name} 第 {i} 行：拼接用的檔名片段 {m.group()}。'
+                              '這是舊的 `{學期} + \'_xxx.html\'` 寫法，會導到不存在的檔案。')
+
+
+# ── 7.6 兩學期的單元清單是不是還沒改 ────────────────────
+def check_units_copied():
+    """
+    UNITS（單元代號＋名稱）是課程內容，兩學期不可能完全一樣。
+    完全一樣就代表其中一邊還是複製過來的還沒改。
+
+    這裡只給「提醒」不擋提交：課程本來就會晚一點才定案，
+    每次 commit 都被擋住只會讓人把檢查關掉。
+    """
+    seen = {}
+    for t in TERMS:
+        p = os.path.join(ROOT, t, 'config.js')
+        if not os.path.exists(p):
+            continue
+        m = re.search(r'UNITS:\s*\[(.*?)\]\s*,', open(p, encoding='utf-8').read(), re.S)
+        if m:
+            seen[t] = re.sub(r'\s+', '', m.group(1))
+
+    terms = sorted(seen)
+    for i in range(len(terms)):
+        for j in range(i + 1, len(terms)):
+            if seen[terms[i]] == seen[terms[j]]:
+                warns.append(f'{terms[i]} 與 {terms[j]} 的 CONFIG.UNITS 完全相同，'
+                             '其中一邊八成還是複製來的。單元代號同時是 AI 批改星數的 key '
+                             '與作品備份的檔名編號，定案後記得只改 config.js。')
+
+
 # ── 8. 每週評分的起算日 ─────────────────────────────────
 def check_term_start():
     """
@@ -319,6 +398,8 @@ def main():
     check_roster()
     check_bat_crlf()
     check_test_ids()
+    check_old_prefix()
+    check_units_copied()
     check_term_start()
 
     if warns:
