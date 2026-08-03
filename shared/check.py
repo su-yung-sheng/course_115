@@ -275,6 +275,41 @@ def check_test_ids():
                       '     兩邊必須相同，否則畫面進得去但進度存不了。')
 
 
+# ── 8. 每週評分的起算日 ─────────────────────────────────
+def check_term_start():
+    """
+    TERM_START 是「第 1 週的星期一」，每週評分與出席週次都以它為準。
+
+    擋兩件事：
+      ① 兩學期填成同一天 —— 幾乎一定是複製忘了改，
+         下學期的週次會從上學期開始算，成績全錯。
+      ② 不是星期一 —— 週次會整個偏移。
+    """
+    seen = {}
+    for t in TERMS:
+        p = os.path.join(ROOT, t, 'config.js')
+        if not os.path.exists(p):
+            continue
+        m = re.search(r"TERM_START:\s*'(\d{4}-\d{2}-\d{2})'", open(p, encoding='utf-8').read())
+        if not m:
+            continue
+        d = m.group(1)
+        seen.setdefault(d, []).append(t)
+
+        try:
+            import datetime
+            if datetime.date.fromisoformat(d).weekday() != 0:
+                errors.append(f'{t}/config.js：TERM_START {d} 不是星期一，週次會整個偏移')
+        except ValueError:
+            errors.append(f'{t}/config.js：TERM_START {d} 不是合法日期')
+
+    for d, terms in seen.items():
+        if len(terms) > 1:
+            errors.append('／'.join(terms) + f' 的 TERM_START 都是 {d}。'
+                          '兩學期不可能同一天開學，八成是複製忘了改 —— '
+                          '週次算錯會讓每週評分整批失準。')
+
+
 def main():
     log('檢查中…\n')
     check_empty()
@@ -284,6 +319,7 @@ def main():
     check_roster()
     check_bat_crlf()
     check_test_ids()
+    check_term_start()
 
     if warns:
         for w in warns:
