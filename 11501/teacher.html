@@ -15,6 +15,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
   <!-- 全站共用計分規則（單一來源；與學生端共用，改這支即同步「重算星星」） -->
   <script src="config.js"></script>
+  <!-- 老師 email 的判斷（與 shared/firestore.rules 的 isTeacher 同一份定義）-->
+  <script src="../shared/auth.js"></script>
   <script src="../shared/grading.js"></script>
 
   <style>
@@ -548,8 +550,32 @@
 
     // 以 Firebase Auth 判斷登入狀態
     let mainShown = false;
-    extAuth.onAuthStateChanged((user) => {
-      if (user && !mainShown) { mainShown = true; showMainApp(); }
+    /* ⚠️ 只判斷 user 存不存在是不夠的（2026-08-03 修正）。
+       教師端和學生頁是同一個 Firebase 專案、同一個網域，
+       登入狀態存在 localStorage、**整個瀏覽器共用**。
+       所以只要這台電腦開過學生頁（匿名或學生的 Google 帳號），
+       打開教師端時 user 就是非 null，舊寫法會直接跳過登入畫面
+       進到主畫面 —— 然後每一筆讀取都被安全規則擋下（list 只給老師），
+       看起來就像「登不進去」或「一片空白」。
+
+       所以這裡要問的不是「有沒有人登入」，而是「登入的是不是老師」。 */
+    function isTeacherUser(user) {
+      if (!user) return false;
+      // ① email／密碼登入 —— 安全規則的 isTeacher() 認的就是這個
+      if ((user.providerData || []).some(p => p && p.providerId === 'password')) return true;
+      // ② 學校 Google 帳號，且是老師本人（判斷邏輯在 shared/auth.js，與規則同一份）
+      return !!(user.email && window.AUTH && AUTH.isTeacherEmail(user.email));
+    }
+
+    extAuth.onAuthStateChanged(async (user) => {
+      if (!user) return;                       // 還沒登入 → 停在登入畫面
+      if (!isTeacherUser(user)) {
+        // 學生頁留下的登入狀態，不能拿來進教師端
+        console.warn('偵測到非教師身分的登入狀態，已登出：', user.email || '(匿名)');
+        try { await extAuth.signOut(); } catch (e) {}
+        return;
+      }
+      if (!mainShown) { mainShown = true; showMainApp(); }
     });
 
     // 教師登出
@@ -575,7 +601,22 @@
         // 成功後 onAuthStateChanged 會自動呼叫 showMainApp()
       } catch (error) {
         console.error('登入失敗', error);
-        errorEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>帳號或密碼錯誤，請重試！`;
+        // 依 Firebase 回傳的錯誤碼給出真正的原因，不要一律說「密碼錯誤」
+        const HINT = {
+          'auth/invalid-credential':   '帳號或密碼錯誤，請重試！',
+          'auth/wrong-password':       '密碼錯誤，請重試！',
+          'auth/user-not-found':       '找不到這個帳號，請確認 Email 是否正確。',
+          'auth/invalid-email':        'Email 格式不正確。',
+          'auth/too-many-requests':    '嘗試次數過多，Firebase 暫時鎖住了。請等幾分鐘再試。',
+          'auth/user-disabled':        '這個帳號已被停用。',
+          'auth/network-request-failed':'連不上 Firebase。請檢查網路，或確認沒有被學校防火牆擋掉。',
+          'auth/unauthorized-domain':  '這個網域沒有被授權。若你是「直接雙擊開啟檔案」(file://)，請改用網址開啟；或到 Firebase Console → Authentication → Settings → 授權網域 把網域加進去。',
+          'auth/operation-not-allowed':'專案尚未啟用「電子郵件/密碼」登入方式，請到 Firebase Console → Authentication → Sign-in method 開啟。',
+          'auth/api-key-not-valid':    'Firebase 設定的 apiKey 不正確，請檢查 extFirebaseConfig。'
+        };
+        const code = (error && error.code) ? error.code : 'unknown';
+        const msg  = HINT[code] || ('登入失敗：' + code);
+        errorEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span>${msg}<br><span class="text-slate-400 text-xs font-mono">${code}</span></span>`;
         errorEl.classList.remove('hidden');
       } finally {
         btn.innerHTML = originalBtnText;
