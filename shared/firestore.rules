@@ -22,6 +22,11 @@ rules_version = '2';
 //       舊集合的規則移到「待淘汰」區，舊版頁面下線後刪除。
 //    ④ 學期鎖：{學期}-progress 的學生寫入限制在該學期期間（用 request.time）。
 //       老師不受限；測試帳號見 isTestAccount()。
+//    ⑤ 2026-07-30：加入學校 Google 帳號路徑 isOwner(sid)。
+//       email 由學號直接組出（qfm{學號}@mail.qfm.kh.edu.tw），不需要對照表，
+//       真正做到「只有本人能寫自己的進度」——這是匿名登入時期做不到的。
+//       目前與舊的匿名路徑並存，兩條都能寫；全面切換後刪掉匿名那條。
+//       老師身分改用 email 白名單（師生都是 google.com，分不出 provider）。
 // ---------------------------------------------------------------------
 //  身分判斷方式：
 //    老師 = 以 email/密碼登入（教師端 signInWithEmailAndPassword）
@@ -44,10 +49,42 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
-    // 老師：以 email/密碼登入（非匿名）
+    /* ===== 學校 Google 帳號 =====
+       學生：qfm{7 位學號}@mail.qfm.kh.edu.tw
+       老師：suyungsheng@mail.qfm.kh.edu.tw（固定，不會更換）
+
+       ⚠️ 師生都用 Google 登入之後，sign_in_provider 都是 'google.com'，
+          沒辦法再靠登入方式分辨身分，所以老師改用 email 白名單。 */
+    function TEACHER_EMAIL() { return 'suyungsheng@mail.qfm.kh.edu.tw'; }
+    function DOMAIN()        { return '@mail.qfm.kh.edu.tw'; }
+
+    function googleVerified() {
+      return request.auth != null
+          && request.auth.token.email_verified == true
+          && request.auth.token.email is string;
+    }
+
+    /** 老師。過渡期同時接受兩種：
+          ① 舊的 email/密碼登入（現有教師端還在用）
+          ② 新的學校 Google 帳號
+        全面切換到 Google 之後，把 ① 那一行刪掉。 */
     function isTeacher() {
       return request.auth != null
-          && request.auth.token.firebase.sign_in_provider == 'password';
+          && (request.auth.token.firebase.sign_in_provider == 'password'
+              || (googleVerified() && request.auth.token.email == TEACHER_EMAIL()));
+    }
+
+    /** 這個 Google 帳號是不是「學號 sid 本人」。
+        email 直接由學號組出來，不需要任何對照表 —— 這是這套帳號格式最大的好處。 */
+    function isOwner(sid) {
+      return googleVerified()
+          && request.auth.token.email == 'qfm' + sid + DOMAIN();
+    }
+
+    /** 是不是學校網域的學生帳號（不指定是誰） */
+    function isSchoolStudent() {
+      return googleVerified()
+          && request.auth.token.email.matches('^qfm[0-9]{7}@mail[.]qfm[.]kh[.]edu[.]tw$');
     }
     // 名冊上的「是否已設定驗證碼」旗標（驗證碼本體不在名冊裡，見下方 A2）
     function codeNotSet() {
@@ -91,11 +128,22 @@ service cloud.firestore {
     function starsIn(d) {
       return ('totalStars' in d) ? d.totalStars : 0;
     }
+
+    /* ⚠️ 這兩個要先擋 resource == null。
+       正式環境 update 一定有既有文件，但「規則遊樂場」可以模擬
+       update 一份不存在的文件，那時 resource 是 null，
+       讀 resource.data 會直接拋出
+         "Property data is undefined on object"
+       —— 錯誤訊息完全看不出真正的原因，會誤導人以為規則寫錯。
+       文件不存在時視同「沒有舊星數」，用 0 當基準。 */
+    function oldStars() {
+      return resource == null ? 0 : starsIn(resource.data);
+    }
     function starsNotReduced() {
-      return starsIn(request.resource.data) >= starsIn(resource.data);
+      return starsIn(request.resource.data) >= oldStars();
     }
     function gainIsSmall() {
-      return starsIn(request.resource.data) <= starsIn(resource.data) + 6;
+      return starsIn(request.resource.data) <= oldStars() + 6;
     }
     function firstWriteIsSmall() {
       return starsIn(request.resource.data) <= 6;
@@ -181,11 +229,17 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isTeacher();          // ❌ 學生不可整批下載全班成績
 
-      // ★ 學生只能在上學期期間寫入（2027-02-01 之前）；老師與測試帳號不受限
+      /* ★ 寫入條件（過渡期兩條路徑並存）
+           ① Google 帳號本人 isOwner(sid) —— 真正做到「只有本人能寫」
+           ② 舊的匿名登入 —— 認不出本人，只能靠「動作幅度」防呆
+         兩條都要通過學期鎖；老師與測試帳號不受限。
+         全面切換到 Google 之後，把 ② 整段刪掉，防呆條件也可以一起拿掉。 */
       allow create: if isTeacher()
+                    || (isOwner(sid) && (beforeSpring() || isTestAccount(sid)))
                     || (isSignedIn() && firstWriteIsSmall()
                         && (beforeSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
+                    || (isOwner(sid) && (beforeSpring() || isTestAccount(sid)))
                     || (isSignedIn() && starsNotReduced() && gainIsSmall()
                         && (beforeSpring() || isTestAccount(sid)));
 
@@ -220,11 +274,16 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isTeacher();
 
-      // ★ 學生只能在下學期期間寫入（2027-02-01 起）；老師與測試帳號不受限
+      /* ★ 寫入條件（過渡期兩條路徑並存）—— 與上學期完全相同的邏輯
+           ① Google 帳號本人 isOwner(sid)
+           ② 舊的匿名登入（動作幅度防呆）
+         全面切換到 Google 之後，把 ② 整段刪掉。 */
       allow create: if isTeacher()
+                    || (isOwner(sid) && (afterSpring() || isTestAccount(sid)))
                     || (isSignedIn() && firstWriteIsSmall()
                         && (afterSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
+                    || (isOwner(sid) && (afterSpring() || isTestAccount(sid)))
                     || (isSignedIn() && starsNotReduced() && gainIsSmall()
                         && (afterSpring() || isTestAccount(sid)));
 
