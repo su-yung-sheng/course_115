@@ -372,9 +372,9 @@ function reset(){
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
-  // AUTH.anonIfNeeded()：已經有身分（例如剛在闖關基地用學校 Google 帳號登入）
+  // AUTH.attachSession()：已經有身分（例如剛在闖關基地用學校 Google 帳號登入）
   //    就不要再匿名登入，否則會把 Google 身分蓋掉，安全規則的 isOwner() 失效。
-  AUTH.anonIfNeeded(auth, signInAnonymously, onAuthStateChanged);
+  AUTH.attachSession(auth, signInAnonymously, onAuthStateChanged);
 
   // 查名冊（姓名讓學生確認沒打錯學號；班級座號給作品備份用）
   window.lookupStudent = async function (sid) {

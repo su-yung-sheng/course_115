@@ -133,7 +133,9 @@
       justSetup: false,
       loginError: '',
       data: null,          // Firestore 文件內容
-      demo: false,         // 範例預覽模式
+      demo: false,
+      detected: null,     // 偵測到「這台電腦已有人用學校帳號登入」
+         // 範例預覽模式
       showWeek: false      // 是否顯示「本週成績卡」
     };
     let unsub = null;
@@ -155,12 +157,19 @@
     } catch (e) {}
 
     // ===== 認證 =====
-    /* 只有「完全沒有登入紀錄」時才用匿名登入。
-       ⚠️ 不能無條件呼叫：Firebase 的登入狀態是整個網域共用的，
-          學生用 Google 登入後再跑一次 signInAnonymously，
-          會把 Google 身分換成匿名的，安全規則的 isOwner() 就失效了。 */
-    onAuthStateChanged(auth, u => {
-      if(!u) signInAnonymously(auth).catch(e=>console.error('登入失敗',e));
+    /* 建立這個分頁的登入狀態（規則在 shared/auth.js）：
+         · 完全沒有登入紀錄才匿名登入，不會蓋掉既有的 Google 身分
+         · 之後持續盯著「Firebase 的身分」有沒有和「這個分頁的學號」對不上，
+           對不上就讓這個分頁下線（教室換人用電腦時會發生） */
+    AUTH.attachSession(auth, signInAnonymously, onAuthStateChanged, {
+      /* 偵測到這台電腦已經有人用學校帳號登入，但這個分頁還沒身分。
+         刻意不自動登入 —— 電腦教室是共用的，Google 的登入狀態
+         關掉分頁不會消失，前一位沒按登出就走人的話，
+         下一位打開就變成他了。所以問一句「是你嗎？」。 */
+      onDetect: (user, sid) => {
+        state.detected = { sid, email: user.email, name: user.displayName || '' };
+        if (state.status === 'login') render();
+      }
     });
     onAuthStateChanged(auth, user=>{
       if(user){
@@ -266,7 +275,11 @@
         render();
       }, err=>console.error('讀取失敗',err));
     }
-    function logout(){ if(unsub)unsub(); sessionStorage.removeItem(SAVED_KEY); state.status='login'; state.studentId=''; state.tempId=''; state.tempCode=''; state.confirmName=''; state.justSetup=false; state.data=null; state.demo=false; render(); }
+    /* 登出一定要連 Firebase 一起登出。
+       ⚠️ 只清 sessionStorage 是不夠的：Google 的登入狀態存在 localStorage，
+          attachSession 會立刻偵測到又問「是你嗎」，看起來像登不出去；
+          在共用電腦上更糟 —— 下一位同學會被問要不要用前一位的身分。 */
+    function logout(){ if(unsub)unsub(); AUTH.signOut(); state.detected=null; sessionStorage.removeItem(SAVED_KEY); state.status='login'; state.studentId=''; state.tempId=''; state.tempCode=''; state.confirmName=''; state.justSetup=false; state.data=null; state.demo=false; render(); }
 
     // ===== 計算 =====
     function starStr(n){ n=Math.max(0,Math.min(3,n||0)); return '★'.repeat(n)+'☆'.repeat(3-n); }
@@ -354,8 +367,18 @@
                 <h1 class="text-3xl font-black mt-4">資訊科技 <span class="underline-doodle">闖關基地</span></h1>
                 <p class="text-slate-500 text-sm mt-2">輸入學號與驗證碼；首次登入請自訂驗證碼 🚀</p>
                 ${new URLSearchParams(location.search).get('next') ? `<p class="mt-3 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">🔒 請先在這裡確認身分，登入後會自動帶你回到剛才要去的頁面。</p>` : ''}
+                ${(() => { const sw = new URLSearchParams(location.search).get('switched');
+                   return sw ? `<p class="mt-3 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 leading-relaxed">🔄 這台電腦已經改用 <b>${sw}</b> 登入，所以你這個分頁自動下線了。<br>一台電腦同時只能有一個人登入 —— 如果那不是你，請按下面的按鈕重新登入。</p>` : ''; })()}
               </div>
               <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6">
+                ${state.detected ? `
+                  <div class="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-4 mb-5">
+                    <div class="text-xs font-black text-emerald-700 mb-1">這台電腦目前登入的是</div>
+                    <div class="font-black text-lg text-emerald-900 leading-tight">${state.detected.name || state.detected.sid}</div>
+                    <div class="text-xs text-emerald-600 font-mono mt-0.5 break-all">${state.detected.email}</div>
+                    <button id="detect-yes" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg active:scale-95 transition">就是我，繼續 →</button>
+                    <button id="detect-no" class="mt-2 w-full text-emerald-700 hover:text-emerald-900 text-sm underline">不是我，換帳號登入</button>
+                  </div>` : ''}
                 <button id="google-go" class="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-slate-50 border-2 border-slate-300 text-slate-700 font-bold text-base py-3 rounded-lg active:scale-95 transition">
                   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M45 24c0-1.6-.1-2.7-.4-4H24v7.5h12c-.2 2-1.5 5-4.4 7l6.7 5.2C42.2 36 45 30.6 45 24z"/><path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.9-5.4C29.7 36.6 27.1 37.5 24 37.5c-5.8 0-10.7-3.9-12.4-9.1l-7.1 5.5C8 41 15.4 46 24 46z"/><path fill="#FBBC05" d="M11.6 28.4c-.5-1.4-.7-2.9-.7-4.4s.3-3 .7-4.4l-7.1-5.5C2.9 17 2 20.4 2 24s.9 7 2.5 9.9l7.1-5.5z"/><path fill="#EA4335" d="M24 10.5c4.1 0 6.9 1.8 8.5 3.3l6.2-6C34.9 4.2 29.9 2 24 2 15.4 2 8 7 4.5 14.1l7.1 5.5C13.3 14.4 18.2 10.5 24 10.5z"/></svg>
                   用學校帳號登入
@@ -581,6 +604,8 @@
       if(e.target.closest('#confirm-back')){ state.status='login'; state.loginError=''; state.confirmName=''; render(); return; }
       if(e.target.closest('#ack-setup')){ state.justSetup=false; render(); return; }
       if(e.target.closest('#google-go')){ googleLogin(); return; }
+      if(e.target.closest('#detect-yes')){ const d=state.detected; state.detected=null; startSession(d.sid); return; }
+      if(e.target.closest('#detect-no')){ state.detected=null; AUTH.signOut().finally(()=>render()); return; }
       if(e.target.closest('#demo')){ state.demo=true; state.status='main'; render(); return; }
       if(e.target.closest('#logout')){ logout(); return; }
       if(e.target.closest('#open-week')){ state.showWeek=true; render(); return; }

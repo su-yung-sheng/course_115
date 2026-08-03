@@ -121,34 +121,116 @@
     return fb.signOut(fb.auth);
   }
 
-  /**
-   * 沒有任何登入紀錄時才匿名登入。
-   *
-   * ⚠️ 為什麼不能直接呼叫 signInAnonymously：
-   *    Firebase 的登入狀態是「整個網域共用」的（存在 localStorage）。
-   *    學生在闖關基地用學校 Google 帳號登入後，只要任何一頁再跑一次
-   *    signInAnonymously，就會把 Google 身分換成匿名的——
-   *    安全規則的 isOwner() 立刻失效，而且畫面上完全看不出來。
-   *
-   * ⚠️ 也不能只判斷 auth.currentUser：頁面剛載入時 Firebase 還在
-   *    非同步還原登入狀態，currentUser 可能暫時是 null，
-   *    判斷完就搶先匿名登入，一樣會蓋掉。所以要等第一次
-   *    onAuthStateChanged 回報之後再決定。
-   *
-   * 各頁的 SDK 版本不同，所以函式由呼叫端傳進來。
-   *
-   * @returns {Promise<user|null>} 目前的使用者（匿名登入失敗時回 null）
-   */
-  function anonIfNeeded(auth, signInAnonymously, onAuthStateChanged) {
+  /* ===================================================================
+     分頁的身分維護（每一頁進站時呼叫一次）
+     -------------------------------------------------------------------
+     核心觀念：**Google 登入時，身分以 Firebase 為準，不以分頁為準。**
+
+     Firebase 的登入狀態存在 localStorage，是「整個瀏覽器一份」，
+     而且會自動同步到所有分頁；
+     我們自己的 sessionStorage 學號卻是「每個分頁一份」。
+     兩者不同步就會出事 —— 2026-08-03 實測到的情形：
+       在第二個分頁登入另一個帳號，Firebase 那邊已經換人了，
+       第一個分頁卻毫不知情，看起來一切正常，
+       實際上它手上拿的是別人的令牌；再加上規則裡舊的匿名路徑還在
+       （isSignedIn 就能寫），它照樣寫得進去，等於 isOwner() 白裝。
+
+     所以這裡讓 sessionStorage 一律跟著 Firebase 走：
+
+       ① 完全沒有登入紀錄 → 匿名登入（舊的驗證碼流程還要能用）。
+          不能直接呼叫 signInAnonymously，會把既有的 Google 身分蓋掉。
+          也不能只判斷 auth.currentUser：頁面剛載入時 Firebase 還在
+          非同步還原，currentUser 可能暫時是 null，判斷完就搶先登入，
+          一樣會蓋掉。要等第一次 onAuthStateChanged 回報之後再決定。
+
+       ② Firebase 是學校 Google 帳號：
+          · 分頁原本是別人 → 強制換成新的人並重新整理。
+            這不是選擇題：令牌已經換了，畫面不跟著換只會騙人。
+          · 分頁原本沒有身分 → **不自動登入**，只回報「偵測到誰」。
+            ⚠️ 電腦教室是共用的：Google 的登入狀態存在 localStorage，
+               關掉分頁不會消失。若這裡自動沿用，
+               前一位同學沒按登出就走人，下一位打開就變成他了。
+               所以交給闖關基地問一句「是你嗎？」，一鍵繼續或換帳號。
+
+       ③ Firebase 是老師帳號（或不是學校帳號）→ 這個分頁沒有學生身分，
+          清掉並導回闖關基地說明原因。
+
+     各頁的 SDK 版本不同，所以函式由呼叫端傳進來。
+
+     @returns {Promise<user|null>} 目前的使用者（匿名登入失敗時回 null）
+     =================================================================== */
+  function attachSession(auth, signInAnonymously, onAuthStateChanged, opts) {
+    opts = opts || {};
+    var cfg  = global.CONFIG || {};
+    var term = opts.term || cfg.TERM ||
+               (String(global.location && global.location.pathname || '').match(/\/(115\d{2})\//) || [])[1];
+    var hub  = opts.hub || cfg.HUB_PAGE || 'hub.html';
+    var first = true;
+
     return new Promise(function (resolve) {
-      var stop = onAuthStateChanged(auth, function (user) {
-        stop();                                   // 只看第一次回報
-        if (user) return resolve(user);           // 已經有身分（Google 或先前的匿名）
+      onAuthStateChanged(auth, function (user) {
+        // 每次狀態變動都要同步，不只第一次 —— 別的分頁換人時就是靠這個
+        if (user && user.email) {
+          var r = syncSid(user, term);
+          if (r === 'changed')    { reload(opts); return; }    // 換人了，畫面要重來
+          if (r === 'notstudent') { toHubSwitched(user, term, hub, opts); return; }
+          if (r === 'detected' && typeof opts.onDetect === 'function') {
+            opts.onDetect(user, sidFromEmail(user.email));
+          }
+        }
+
+        if (!first) return;
+        first = false;
+        if (user) return resolve(user);
         signInAnonymously(auth)
           .then(function (cred) { resolve(cred && cred.user); })
           .catch(function (e) { console.error('匿名登入失敗', e); resolve(null); });
       });
     });
+  }
+
+  /**
+   * 把 Firebase 的 Google 身分同步到這個分頁的 sessionStorage。
+   * @returns 'same' 沒變／'detected' 這個分頁還沒身分（交給呼叫端問）／
+   *          'changed' 分頁原本是別人（已強制換掉）／'notstudent' 不是學生帳號
+   */
+  function syncSid(user, term) {
+    var sid = sidFromEmail(user.email);
+    if (!sid) return 'notstudent';              // 老師或外部帳號
+
+    var tabSid = null;
+    try { tabSid = sessionStorage.getItem('sid' + term); } catch (e) {}
+    if (tabSid === sid) return 'same';
+
+    // 分頁還沒有身分：不擅自登入，只回報偵測到誰（理由見上面的說明）
+    if (!tabSid) return 'detected';
+
+    try {
+      sessionStorage.setItem('sid' + term, sid);
+      sessionStorage.removeItem('me' + term);   // 姓名快取是前一個人的，一定要清
+    } catch (e) {}
+    return 'changed';
+  }
+
+  /* 換人之後重新整理。
+     不會無限重整：sessionStorage 已經寫成新學號，下一次載入就是 'same'。
+     ⚠️ 也因此「登出」一定要連 Firebase 一起登出，否則清掉 sessionStorage
+        之後這裡會立刻把身分再撿回來，看起來像登不出去。 */
+  function reload(opts) {
+    if (typeof opts.onSwitch === 'function') { opts.onSwitch(); return; }
+    try { global.location.reload(); } catch (e) {}
+  }
+
+  /** 不是學生帳號（老師或外部帳號）：這個分頁沒有身分可用 */
+  function toHubSwitched(user, term, hub, opts) {
+    try {
+      sessionStorage.removeItem('sid' + term);
+      sessionStorage.removeItem('me'  + term);
+    } catch (e) {}
+    if (typeof opts.onMismatch === 'function') { opts.onMismatch(user); return; }
+    try {
+      global.location.replace(hub + '?switched=' + encodeURIComponent(user.email || ''));
+    } catch (e) {}
   }
 
   global.AUTH = {
@@ -158,7 +240,7 @@
     configure: configure,
     signIn: signIn,
     signOut: signOut,
-    anonIfNeeded: anonIfNeeded,
+    attachSession: attachSession,
     sidFromEmail: sidFromEmail,
     emailFromSid: emailFromSid,
     isTeacherEmail: isTeacherEmail,

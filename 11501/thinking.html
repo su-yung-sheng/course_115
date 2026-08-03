@@ -126,9 +126,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 const auth = getAuth(app);
                 
                 try {
-                    // AUTH.anonIfNeeded()：已經有身分（例如剛在闖關基地用學校 Google 帳號登入）
+                    // AUTH.attachSession()：已經有身分（例如剛在闖關基地用學校 Google 帳號登入）
                     //    就不要再匿名登入，否則會把 Google 身分蓋掉，安全規則的 isOwner() 失效。
-                    await AUTH.anonIfNeeded(auth, signInAnonymously, onAuthStateChanged);
+                    await AUTH.attachSession(auth, signInAnonymously, onAuthStateChanged);
                 } catch (authErr) {
                     console.warn("匿名登入失敗 (可能未於 Firebase Console 啟用)，將嘗試直接讀寫資料庫:", authErr);
                 }
