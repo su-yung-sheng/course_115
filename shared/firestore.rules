@@ -4,7 +4,7 @@ rules_version = '2';
 //  Firestore 安全規則 — 專案 suyungsheng-5f948
 //  涵蓋：115 學年【上學期 11501】＋【下學期 11502】
 //  貼上位置：Firebase Console → Firestore Database → 規則 → 發佈
-//  最後更新：2026-07-29
+//  最後更新：2026-08-03
 // ---------------------------------------------------------------------
 //  ⚠️ 一個 Firebase 專案只有「一份」規則，發佈時整份覆蓋。
 //     這份是 _shared/ 的產物，改請改 _shared/firestore.rules 再執行 sync_shared.py。
@@ -36,6 +36,11 @@ rules_version = '2';
 //       開關關掉時，舊的匿名寫入路徑、驗證碼設定、登入試探全部失效。
 //       ★ 這個開關必須做在規則裡才有意義：只把前端欄位藏起來的話，
 //         匿名路徑還在，任何登入者照樣寫得動別人的進度。
+//    ⑧ 2026-08-03：Colab 後端改用服務帳戶（不受安全規則限制），
+//       {學期}-grader 與 {學期}-scratch-submissions 因此收成只有老師。
+//       ⚠️ 順序很重要：先設好 Colab 的 FIREBASE_SA、確認 /api/health 的
+//          fs_auth_mode 是 service_account，再發布這份規則。
+//          反過來的話 AI 批改會寫不進去，而關卡是依序開放的，全班會卡住。
 // ---------------------------------------------------------------------
 //  身分判斷方式：
 //    老師 = email/密碼登入（教師端）或學校 Google 帳號（白名單）
@@ -306,18 +311,20 @@ service cloud.firestore {
     }
 
     // Scratch AI 批改：評分標準
-    //   ★ 2026-07-29：Colab 後端改為匿名登入後帶 idToken，
-    //     所以這裡從 `if true`（全世界可讀）收成 `if isSignedIn()`。
+    //   ★ 2026-08-03：Colab 後端改用服務帳戶，服務帳戶**不受安全規則限制**，
+    //     所以不必再為後端留 isSignedIn() 的縫，直接收成只有老師。
+    //     （前端完全不碰這個集合：教師端是透過後端的 /api/teacher/config 存取。）
+    //   ⚠️ 這條規則等於「後端必須用服務帳戶」。發布前請先確認
+    //      /api/health 的 fs_auth_mode 是 service_account，否則批改會寫不進去。
     match /11501-grader/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isTeacher();
+      allow read, write: if isTeacher();
     }
 
     // Scratch AI 批改：批改紀錄（Colab 後端新增）
-    //   ★ 同上：原本 `create: if true` 等於全世界都能往這裡無限寫入，帳單算老師的。
+    //   ★ 2026-08-03：改用服務帳戶後 create 也收成只有老師
+    //     （寫入的是後端，它不受規則限制；學生端從來沒碰過這個集合）。
     match /11501-scratch-submissions/{recId} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if isTeacher();
+      allow create, read, update, delete: if isTeacher();
     }
 
 
@@ -349,14 +356,21 @@ service cloud.firestore {
       allow delete: if isTeacher();
     }
 
+    // Scratch AI 批改：評分標準
+    //   ★ 2026-08-03：Colab 後端改用服務帳戶，服務帳戶**不受安全規則限制**，
+    //     所以不必再為後端留 isSignedIn() 的縫，直接收成只有老師。
+    //     （前端完全不碰這個集合：教師端是透過後端的 /api/teacher/config 存取。）
+    //   ⚠️ 這條規則等於「後端必須用服務帳戶」。發布前請先確認
+    //      /api/health 的 fs_auth_mode 是 service_account，否則批改會寫不進去。
     match /11502-grader/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isTeacher();
+      allow read, write: if isTeacher();
     }
 
+    // Scratch AI 批改：批改紀錄（Colab 後端新增）
+    //   ★ 2026-08-03：改用服務帳戶後 create 也收成只有老師
+    //     （寫入的是後端，它不受規則限制；學生端從來沒碰過這個集合）。
     match /11502-scratch-submissions/{recId} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if isTeacher();
+      allow create, read, update, delete: if isTeacher();
     }
 
 

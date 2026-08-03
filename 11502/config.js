@@ -74,7 +74,7 @@ window.CONFIG = {
   //   前端需要後端具備的功能（對應 /api/health 回傳的 features）
   //   ⚠️ 只在「前端新寫的功能依賴新的後端端點」時才加一項；
   //      單純改後端內部邏輯不必動這裡，版本號也不必寫進前端。
-  BACKEND_FEATURES: ['queue', 'ocr_queue', 'models_from_secrets', 'term_param', 'fs_auth'],
+  BACKEND_FEATURES: ['queue', 'ocr_queue', 'models_from_secrets', 'term_param', 'fs_auth', 'sa_auth'],
 
   //   作品備份用的 Google Apps Script（shared/filebackup.gs 部署後的網址）
   //   ★ 上下學期共用同一支部署：路徑為 <根>/學期/單元/班級/座號/檔名，

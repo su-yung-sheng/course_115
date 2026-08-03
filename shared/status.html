@@ -216,6 +216,23 @@ if (!window.CONFIG) {
         d += row('功能', '<span class="font-mono text-xs">' + esc(have.join('、')) + '</span>');
         set(el, 'ok', '最新版', d);
       }
+
+      /* 後端用哪一種身分存取 Firestore。
+         顯示 anonymous 代表 Colab 的 FIREBASE_SA 沒設好 ——
+         這時 Firebase 的「匿名」登入方式還不能關，而且後端在安全規則
+         眼中和學生是同一種身分。這一項比版本號更容易被忽略，所以獨立顯示。 */
+      var mode = j.fs_auth_mode;
+      if (mode === 'service_account') {
+        d += row('資料庫身分', '<span class="text-emerald-700 font-bold">服務帳戶</span>');
+      } else if (mode === 'anonymous') {
+        d += row('資料庫身分', '<span class="text-amber-700 font-bold">匿名（退路）</span>');
+        d += '<div class="mt-2 text-amber-700">Colab 的 <span class="font-mono">FIREBASE_SA</span> 沒設好，'
+           + '後端退回匿名登入。這時不能關閉 Firebase 的「匿名」登入方式，'
+           + '而且批改標準／批改紀錄的規則若已收緊，後端會寫不進去。</div>';
+        set(el, 'warn', '資料庫身分是匿名', d);
+      } else if (mode) {
+        d += row('資料庫身分', '<span class="text-rose-700 font-bold">' + esc(mode) + '</span>');
+      }
       return j;
     }).catch(function (e) {
       set(el, 'bad', '連不上', row('網址', '<span class="font-mono text-xs">' + esc(SERVER) + '</span>') +
