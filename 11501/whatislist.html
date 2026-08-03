@@ -215,11 +215,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     ]
                 },
                 {
-                    title: "🎉 結業測驗完成！",
-                    desc: "恭喜你！你已經親手體驗了清單的四大核心功能：添加、插入、替換、刪除。接下來，帶著你現在的裝備，進入完整的「積木實驗室」吧！",
-                    btnText: "🚀 進入積木實驗室",
+                    title: "🎉 清單特訓完成！",
+                    desc: "你已經親手體驗了清單的四大核心功能：添加、插入、替換、刪除。最後來個結業測驗——抽 3 題，全部答對就能解鎖後面的 10 個程式關卡！",
+                    btnText: "📝 開始結業測驗",
                     action: () => {
-                        setMessage("歡迎來到積木實驗室！現在你可以自由點擊上方的按鈕，或者直接點擊 Scratch 積木來操控清單！");
+                        setMessage("最後一關！仔細想清楚再選，要 3 題全對才算過關喔。");
                         onComplete();
                     }
                 }
@@ -233,7 +233,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 { icon: '🌲', name: '森林' },
                 { icon: '🧚', name: '泉水' },
                 { icon: '⛺', name: '營地' },
-                { icon: '🏰', name: '實驗室' }
+                { icon: '📝', name: '結業測驗' }
             ];
 
             const handleAction = () => {
@@ -351,7 +351,144 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         };
 
         // ==========================================
-        // 元件 3：第二階段 - 自由探索 (Sandbox Mode)
+        // 元件 2.5：結業測驗（Quiz Mode）
+        // ------------------------------------------
+        // 為什麼要考：教學模式選錯只會給提示、不會有代價，硬猜也走得完。
+        // 這關是「前導教材過了沒」的唯一憑據，後面 10 個程式關卡都靠它開門，
+        // 所以改成從題庫抽 3 題、全對才算過，錯了就整組重抽。
+        // 規則刻意與程式設計關卡的自我檢核測驗一致，學生不必重新學規則。
+        // ==========================================
+        const QUIZ_BANK = [
+            { q:'Scratch 清單裡，第一個項目的編號（索引）是多少？',
+              o:['0','1','-1','看清單長度而定'], a:1,
+              why:'Scratch 從 1 開始數，和背包的第 1 格一樣。' },
+            { q:'要把新物品放到清單的「最後一個空位」，用哪個積木？',
+              o:['插入 ... 到第 1 項','添加 ... 到清單','替換第 1 項','刪除第 1 項'], a:1,
+              why:'「添加」是往後接；「插入」才是指定位置。' },
+            { q:'想把第 2 項的東西「直接換成」別的，用哪個積木？',
+              o:['替換第 2 項內容','插入到第 2 項','添加到最後','刪除第 2 項'], a:0,
+              why:'插入會把原本第 2 項往後推，數量變多；替換才是原地換掉。' },
+            { q:'把物品「插入到第 2 項」，原本的第 2 項會怎樣？',
+              o:['被覆蓋掉','往後移到第 3 項','被刪除','移到最後面'], a:1,
+              why:'插入會把它後面的通通往後推一格，清單長度 +1。' },
+            { q:'「刪除清單的第 2 項」之後，原本的第 3 項會變成第幾項？',
+              o:['還是第 3 項','第 2 項','第 4 項','消失了'], a:1,
+              why:'刪除後面的會自動往前遞補，這就是為什麼抽號碼不會重複。' },
+            { q:'要清空整個背包，該用哪個積木？',
+              o:['刪除第 1 項','刪除清單的所有項目','隱藏清單','替換第 1 項為空白'], a:1,
+              why:'一項一項刪太慢；「刪除全部」一次重置。' },
+            { q:'要知道清單裡目前有幾樣東西，用什麼？',
+              o:['清單的長度','清單包含 ... 嗎？','項目 ... 的位置','隨機取數'], a:0,
+              why:'長度＝資料筆數，點名算人數、成績算平均都要用它。' },
+            { q:'要「依序讀出清單的每一項」，迴圈通常要重複幾次？',
+              o:['10 次','無限次','清單的長度 次','1 次'], a:2,
+              why:'重複「清單長度」次，才會剛好每一項都讀到、不多不少。' },
+            { q:'要檢查「小明」在不在名單裡，最直接的是？',
+              o:['清單包含 小明 嗎？','清單的長度','刪除 小明','添加 小明'], a:0,
+              why:'「包含…嗎？」回答是或否，正好給「如果…那麼」用。' }
+        ];
+        const QUIZ_PICK = 3;
+
+        const QuizMode = ({ onPass }) => {
+            const pick = () => {
+                const a = QUIZ_BANK.slice();
+                for (let i = a.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [a[i], a[j]] = [a[j], a[i]];
+                }
+                return a.slice(0, QUIZ_PICK);
+            };
+            const [set, setSet] = useState(pick);
+            const [idx, setIdx] = useState(0);
+            const [picked, setPicked] = useState(null);
+            const [score, setScore] = useState(0);
+            const [failed, setFailed] = useState(false);
+
+            const q = set[idx];
+            const done = idx >= set.length;
+
+            const retry = () => { setSet(pick()); setIdx(0); setPicked(null); setScore(0); setFailed(false); };
+            const choose = (i) => {
+                if (picked !== null) return;
+                setPicked(i);
+                if (i === q.a) setScore(score + 1); else setFailed(true);
+            };
+            const next = () => { setIdx(idx + 1); setPicked(null); };
+
+            if (done) {
+                const allRight = !failed && score === set.length;
+                return (
+                    <div className="bg-white rounded-3xl shadow-lg p-8 md:p-10 border-t-8 border-green-500 min-h-[500px] flex flex-col justify-center items-center text-center animate-[fadeIn_0.4s_ease-out]">
+                        {allRight ? (
+                            <>
+                                <div className="text-6xl mb-4">🏆</div>
+                                <h2 className="text-3xl font-black text-green-600 mb-3">結業測驗全對！</h2>
+                                <p className="text-lg text-slate-600 mb-8 leading-relaxed">
+                                    清單的觀念過關了。<br/>關卡已經解鎖，去試試第 1 關「班級置物櫃」吧！
+                                </p>
+                                <button onClick={onPass}
+                                    className="bg-green-500 hover:bg-green-600 text-white text-2xl font-bold py-4 px-8 rounded-full shadow-lg transition-all active:scale-95 hover:-translate-y-1">
+                                    🚀 進入積木實驗室
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <div className="text-6xl mb-4">🤔</div>
+                                <h2 className="text-3xl font-black text-amber-600 mb-3">差一點，再來一次</h2>
+                                <p className="text-lg text-slate-600 mb-8 leading-relaxed">
+                                    要<b className="text-amber-700">全部答對</b>才算過關。<br/>
+                                    看看右邊貓咪老師的解說，重新抽 {QUIZ_PICK} 題再挑戰。
+                                </p>
+                                <button onClick={retry}
+                                    className="bg-teal-500 hover:bg-teal-600 text-white text-xl font-bold py-3 px-8 rounded-full shadow-lg transition-transform active:scale-95">
+                                    🔄 重新挑戰
+                                </button>
+                            </>
+                        )}
+                    </div>
+                );
+            }
+
+            return (
+                <div className="bg-white rounded-3xl shadow-lg p-8 md:p-10 border-t-8 border-amber-400 min-h-[500px] flex flex-col justify-center animate-[fadeIn_0.4s_ease-out]">
+                    <div className="flex items-center justify-between mb-4">
+                        <span className="text-sm font-black text-amber-600">✅ 結業測驗（{QUIZ_PICK} 題全對才過關）</span>
+                        <span className="text-sm font-bold text-slate-400">第 {idx + 1} / {set.length} 題</span>
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-800 mb-6 leading-relaxed">{q.q}</h2>
+                    <div className="flex flex-col gap-3 items-stretch">
+                        {q.o.map((opt, i) => {
+                            let cls = 'bg-white hover:bg-amber-50 border-slate-300 hover:border-amber-400 text-slate-800';
+                            if (picked !== null) {
+                                if (i === q.a) cls = 'bg-green-50 border-green-500 text-green-800';
+                                else if (i === picked) cls = 'bg-red-50 border-red-400 text-red-700';
+                                else cls = 'bg-white border-slate-200 text-slate-400';
+                            }
+                            return (
+                                <button key={i} onClick={() => choose(i)} disabled={picked !== null}
+                                    className={`border-2 text-lg font-bold py-3 px-5 rounded-2xl shadow-sm transition-all active:scale-95 text-left ${cls}`}>
+                                    {picked !== null && i === q.a ? '✅ ' : ''}
+                                    {picked !== null && i === picked && i !== q.a ? '❌ ' : ''}
+                                    {opt}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {picked !== null && (
+                        <div className="mt-6 animate-[fadeIn_0.3s_ease-out]">
+                            <p className="text-base text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-4">💡 {q.why}</p>
+                            <button onClick={next}
+                                className="w-full bg-teal-500 hover:bg-teal-600 text-white text-xl font-bold py-3 rounded-full shadow-lg transition-transform active:scale-95">
+                                {idx + 1 < set.length ? '下一題 ➡️' : '看結果 🏁'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // ==========================================
+        // 元件 3：第三階段 - 自由探索 (Sandbox Mode)
         // ==========================================
         const SandboxMode = ({ list, setList, setMessage, onTraverse }) => {
             const [useItemIndex, setUseItemIndex] = useState('1');
@@ -626,12 +763,38 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         };
 
         // ==========================================
+        // 回報「前導教材通過了」
+        // ------------------------------------------
+        // 這一頁刻意不碰 Firebase：它是被 flowchart.html 用 iframe 嵌進去的，
+        // 由父頁負責寫進度（父頁本來就有學生身分與資料庫連線）。
+        // 這裡只送一個訊息出去，父頁收到才寫入 modules.list。
+        //
+        // ⚠️ 這是「課堂秩序」機制，不是防作弊機制：
+        //    學生開 F12 一樣送得出這個訊息。真正擋得住的是後面每一關的
+        //    程式作品星數（由 AI 批改決定，前端改不動）。
+        // ==========================================
+        function reportPassed() {
+            if (window.self === window.top) return;   // 沒有被嵌入就沒人要收
+            try {
+                var origin = (location.protocol === 'http:' || location.protocol === 'https:')
+                    ? location.origin : '*';
+                window.parent.postMessage({ type: 'lead-done', module: 'list' }, origin);
+            } catch (e) { /* 送不出去就算了，學生仍可繼續操作 */ }
+        }
+
+        // ==========================================
         // 主程式 (控制階段切換)
         // ==========================================
         function App() {
-            const [mode, setMode] = useState('tutorial'); // 階段狀態：'tutorial' 或 'sandbox'
+            /* 三個階段：tutorial（特訓）→ quiz（結業測驗）→ sandbox（積木實驗室）
+               ?done=1 是父頁（flowchart.html）帶進來的：這位同學之前已經考過了，
+               不必再考一次，直接進實驗室自由玩。 */
+            const alreadyPassed = new URLSearchParams(location.search).get('done') === '1';
+            const [mode, setMode] = useState(alreadyPassed ? 'sandbox' : 'tutorial');
             const [list, setList] = useState([]);         // 共享的背包資料（跨階段保留）
-            const [message, setMessage] = useState("勇者你好！我是貓咪導師。在出發冒險前，請先完成左側的「清單特訓」，學習怎麼管理你的背包！");
+            const [message, setMessage] = useState(alreadyPassed
+                ? "歡迎回到積木實驗室！你已經考過結業測驗了，這裡可以自由操作，隨時回來複習清單積木。"
+                : "勇者你好！我是貓咪導師。在出發冒險前，請先完成左側的「清單特訓」，學習怎麼管理你的背包！");
             const [highlightIndex, setHighlightIndex] = useState(-1); // 走訪動畫用：目前高亮到第幾項
 
             // 🔁 走訪整個清單（迴圈）：編號從 1 開始，重複「清單長度」次，逐項讀出
@@ -658,12 +821,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     {/* 左側：操作區 (根據階段切換介面) */}
                     <div className="w-full md:w-3/5 pb-20">
                         {mode === 'tutorial' ? (
-                            <TutorialMode 
-                                list={list} 
-                                setList={setList} 
-                                setMessage={setMessage} 
-                                onComplete={() => setMode('sandbox')} 
+                            <TutorialMode
+                                list={list}
+                                setList={setList}
+                                setMessage={setMessage}
+                                onComplete={() => setMode('quiz')}
                             />
+                        ) : mode === 'quiz' ? (
+                            <QuizMode onPass={() => { reportPassed(); setMode('sandbox'); }} />
                         ) : (
                             <SandboxMode
                                 list={list}
