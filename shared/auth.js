@@ -146,11 +146,15 @@
        ② Firebase 是學校 Google 帳號：
           · 分頁原本是別人 → 強制換成新的人並重新整理。
             這不是選擇題：令牌已經換了，畫面不跟著換只會騙人。
-          · 分頁原本沒有身分 → **不自動登入**，只回報「偵測到誰」。
-            ⚠️ 電腦教室是共用的：Google 的登入狀態存在 localStorage，
-               關掉分頁不會消失。若這裡自動沿用，
-               前一位同學沒按登出就走人，下一位打開就變成他了。
-               所以交給闖關基地問一句「是你嗎？」，一鍵繼續或換帳號。
+          · 分頁原本沒有身分 → 直接沿用，新開的分頁不必再登入一次。
+
+            ★ 曾經改成「先問一句是你嗎」，理由是 Google 的登入狀態存在
+              localStorage、關掉分頁不會消失，怕前一位沒登出就走人。
+              2026-08-03 確認學校電腦教室裝了還原卡，關機就重置，
+              沒有帳號殘留的問題，所以拿掉這一步、改回零阻力。
+              坐錯位子的情形靠 hub 上顯示的姓名和「登出」處理就夠了。
+              ⚠️ 若日後有「沒有還原機制的共用機器」（例如圖書館、
+                 導師班的公用電腦），要把這一步加回來。
 
        ③ Firebase 是老師帳號（或不是學校帳號）→ 這個分頁沒有學生身分，
           清掉並導回闖關基地說明原因。
@@ -174,8 +178,12 @@
           var r = syncSid(user, term);
           if (r === 'changed')    { reload(opts); return; }    // 換人了，畫面要重來
           if (r === 'notstudent') { toHubSwitched(user, term, hub, opts); return; }
-          if (r === 'detected' && typeof opts.onDetect === 'function') {
-            opts.onDetect(user, sidFromEmail(user.email));
+          if (r === 'adopted') {
+            /* 這個分頁沿用了現有的登入。頁面通常還停在「請登入」的畫面，
+               要推它一把才會進去；hub 自己接手（onAdopt），
+               其他頁沒接的話就重新整理，讓 SSO 重新讀一次。 */
+            if (typeof opts.onAdopt === 'function') { opts.onAdopt(user, sidFromEmail(user.email)); return; }
+            reload(opts); return;
           }
         }
 
@@ -191,7 +199,7 @@
 
   /**
    * 把 Firebase 的 Google 身分同步到這個分頁的 sessionStorage。
-   * @returns 'same' 沒變／'detected' 這個分頁還沒身分（交給呼叫端問）／
+   * @returns 'same' 沒變／'adopted' 新分頁沿用現有登入／
    *          'changed' 分頁原本是別人（已強制換掉）／'notstudent' 不是學生帳號
    */
   function syncSid(user, term) {
@@ -202,14 +210,11 @@
     try { tabSid = sessionStorage.getItem('sid' + term); } catch (e) {}
     if (tabSid === sid) return 'same';
 
-    // 分頁還沒有身分：不擅自登入，只回報偵測到誰（理由見上面的說明）
-    if (!tabSid) return 'detected';
-
     try {
       sessionStorage.setItem('sid' + term, sid);
       sessionStorage.removeItem('me' + term);   // 姓名快取是前一個人的，一定要清
     } catch (e) {}
-    return 'changed';
+    return tabSid ? 'changed' : 'adopted';
   }
 
   /* 換人之後重新整理。
