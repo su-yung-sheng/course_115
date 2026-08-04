@@ -350,6 +350,19 @@
       const nextModule = MODULES.find(m => (cardData(m,mods).status || 'todo') !== 'pass');
       const allDone = !nextModule;
 
+      /* 卡片尺寸依數量調整。
+         上學期只有 4 張，用原本的小卡會在寬版面裡顯得空盪；
+         下學期有 8 張，放大反而會一直往下捲。
+         所以由資料決定，而不是兩支 hub 各寫死一套。 */
+      const roomy = MODULES.length <= 5;
+      const SZ = roomy
+        ? { pad:'p-7', icon:'text-5xl', title:'text-xl',  desc:'text-sm',
+            tag:'text-xs',    badge:'text-xs',    go:'text-sm',
+            wrap:'max-w-4xl', gap:'gap-7' }
+        : { pad:'p-5', icon:'text-3xl', title:'text-base', desc:'text-xs',
+            tag:'text-[11px]', badge:'text-[11px]', go:'text-xs',
+            wrap:'max-w-3xl', gap:'gap-6' };
+
       const cards = MODULES.map(m=>{
         const d = cardData(m, mods);
         const st = STATUS[d.status] || STATUS['todo'];
@@ -357,31 +370,31 @@
         const showStars = (d.stars||0) > 0;
         const starsHtml = showStars
           ? ((m.maxStars||3) > 3
-              ? `<div class="text-amber-500 text-sm font-black mt-1">⭐ ${d.stars} 星</div>`
-              : `<div class="text-amber-500 text-lg tracking-widest mt-1">${starStr(d.stars)}</div>`)
+              ? `<div class="text-amber-500 ${roomy?'text-base':'text-sm'} font-black mt-1">⭐ ${d.stars} 星</div>`
+              : `<div class="text-amber-500 ${roomy?'text-xl':'text-lg'} tracking-widest mt-1">${starStr(d.stars)}</div>`)
           : '';
         const extra = (d.status==='pass' && d.score!=null) ? `<span class="text-xs opacity-70">分數 ${d.score}</span>`
                     : (d.status==='pass' && d.level!=null) ? `<span class="text-xs opacity-70">通關 ${d.level} 關</span>` : '';
         return `
-          <a href="${m.href}" class="group relative block p-5 rounded-xl border shadow-md hover:shadow-xl transition-all duration-300 ${m.rot} hover:rotate-0 hover:-translate-y-1 ${m.theme} ${st.dim?'opacity-70 hover:opacity-100':''} ${isNext?'ring-2 ring-indigo-500 ring-offset-2':''}">
+          <a href="${m.href}" class="group relative block ${SZ.pad} rounded-2xl border shadow-md hover:shadow-xl transition-all duration-300 ${m.rot} hover:rotate-0 hover:-translate-y-1 ${m.theme} ${st.dim?'opacity-70 hover:opacity-100':''} ${isNext?'ring-2 ring-indigo-500 ring-offset-2':''}">
             <span class="tape ${m.tape}"></span>
             ${isNext?`<span class="absolute -top-2 -right-2 bg-indigo-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow z-10 -rotate-3">👉 下一關</span>`:''}
             <div class="flex items-center justify-between mb-2">
-              <div class="text-3xl">${m.icon}</div>
-              <span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ${st.badge}">${st.label}</span>
+              <div class="${SZ.icon}">${m.icon}</div>
+              <span class="${SZ.badge} font-bold px-2.5 py-1 rounded-full border ${st.badge}">${st.label}</span>
             </div>
             <div class="flex items-center gap-2 mb-1 flex-wrap">
-              <h3 class="text-base font-bold leading-tight">${m.title}</h3>
+              <h3 class="${SZ.title} font-black leading-tight">${m.title}</h3>
               ${m.lead?`<span class="text-[10px] font-black text-teal-700 bg-teal-200/70 px-1.5 py-0.5 rounded-full border border-teal-300 whitespace-nowrap">🔰 前導</span>`:''}
               ${m.prereqTitle?`<span class="text-[10px] font-bold text-orange-700 bg-orange-200/60 px-1.5 py-0.5 rounded-full border border-orange-300 whitespace-nowrap">前導：清單學習機</span>`:''}
             </div>
-            <p class="text-xs opacity-75 leading-relaxed mb-2">${m.desc}</p>
+            <p class="${SZ.desc} opacity-75 leading-relaxed mb-3">${m.desc}</p>
             <div class="flex items-center justify-between">
-              <span class="text-[11px] font-bold bg-white/50 px-2 py-0.5 rounded-full border border-black/5">${m.tag}</span>
+              <span class="${SZ.tag} font-bold bg-white/50 px-2.5 py-1 rounded-full border border-black/5">${m.tag}</span>
               ${extra}
             </div>
             ${starsHtml}
-            <span class="mt-3 inline-flex items-center gap-1 text-xs font-bold opacity-70 group-hover:opacity-100 group-hover:gap-2 transition-all">${d.status==='pass'?'再玩一次':'開始闖關'} →</span>
+            <span class="mt-3 inline-flex items-center gap-1 ${SZ.go} font-bold opacity-70 group-hover:opacity-100 group-hover:gap-2 transition-all">${d.status==='pass'?'再玩一次':'開始闖關'} →</span>
           </a>`;
       }).join('');
 
@@ -478,7 +491,7 @@
             </a>` : `
             <div class="mb-8 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-2xl p-4 text-center font-black shadow-sm">🏆 太厲害了，所有關卡都通關了！</div>`}
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-12 max-w-3xl mx-auto">
+          <div class="grid grid-cols-1 sm:grid-cols-2 ${SZ.gap} pb-12 ${SZ.wrap} mx-auto">
             ${cards}
           </div>
 
