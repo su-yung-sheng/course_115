@@ -283,8 +283,18 @@ async function loadTask(){
     const j=await r.json();
     if(j.ok){
       const c=j.config; showScore=c.student_show_score!==false;
-      $('themeText').textContent=c.theme||'（老師尚未設定作業主題）';
-      $('rulesText').textContent=c.rules?('評分重點：\n'+c.rules):'';
+      /* ⚠️ 「讀取失敗」和「老師沒設定」不是同一件事。
+         原本兩種都顯示「（老師尚未設定作業主題）」，老師明明設定過，
+         卻被告知沒設定 —— 完全找不到方向。後端現在會分開回報。 */
+      if(j.criteria_error){
+        $('themeText').innerHTML='<span style="color:#b45309;font-weight:700">'
+          +'⚠️ 讀不到老師設定的批改標準</span>';
+        $('rulesText').innerHTML='<span style="color:#b45309">'+j.criteria_error
+          +'<br>請把這段話告訴老師。</span>';
+      }else{
+        $('themeText').textContent=c.theme||'（老師尚未設定作業主題）';
+        $('rulesText').textContent=c.rules?('評分重點：\n'+c.rules):'';
+      }
       if(!c.has_api_key){
         $('setupHint').textContent='⚠️ 老師尚未完成設定，暫時無法自評。';
         setLight('on','🟢 已連線（老師尚未完成設定）');
