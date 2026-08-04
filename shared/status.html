@@ -229,8 +229,14 @@ if (!window.CONFIG) {
         d += row('資料庫身分', '<span class="text-emerald-700 font-bold">服務帳戶</span>');
       } else if (mode === 'anonymous') {
         d += row('資料庫身分', '<span class="text-amber-700 font-bold">匿名（退路）</span>');
-        d += '<div class="mt-2 text-amber-700">Colab 的 <span class="font-mono">FIREBASE_SA</span> 沒設好，'
-           + '後端退回匿名登入。這時不能關閉 Firebase 的「匿名」登入方式，'
+        /* 後端會回報卡在哪一步（沒建立密鑰／沒開筆記本存取權／貼錯專案…）。
+           只說「沒設好」的話，已經設過的人會一直懷疑自己貼錯，
+           實際上最常見的是密鑰建了但沒開「筆記本存取權」。 */
+        if (j.fs_auth_detail) {
+          d += row('卡在哪', '<span class="text-amber-800">' + esc(j.fs_auth_detail) + '</span>');
+        }
+        d += '<div class="mt-2 text-amber-700">後端退回匿名登入。'
+           + '這時不能關閉 Firebase 的「匿名」登入方式，'
            + '而且批改標準／批改紀錄的規則若已收緊，後端會寫不進去。</div>';
         kind = 'warn'; label = '資料庫身分是匿名';
       } else if (!mode) {
