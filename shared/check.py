@@ -291,6 +291,29 @@ def check_test_ids():
                       '     兩邊必須相同，否則畫面進得去但進度存不了。')
 
 
+# ── 7.4 每支 config 都要有 HUB_PAGE ─────────────────────
+def check_hub_page():
+    """
+    guard.js 與 shared/grader.html 都靠 CONFIG.HUB_PAGE 組出闖關基地的網址。
+
+    ★ 為什麼要檢查而不是在程式裡寫後備值：
+      後備值 `CONFIG.HUB_PAGE || 'hub.html'` 會讓死連結檢查看到一個
+      無法解析的字串常數而誤報；更糟的是它會把「設定漏了」變成
+      靜悄悄可以跑，等到檔名一改才 404。在這裡擋住比較實在。
+    """
+    for t in TERMS:
+        p = os.path.join(ROOT, t, 'config.js')
+        if not os.path.exists(p):
+            continue
+        m = re.search(r"HUB_PAGE:\s*'([^']+)'", open(p, encoding='utf-8').read())
+        if not m:
+            errors.append(f'{t}/config.js：缺少 HUB_PAGE（guard.js 與 shared/grader.html 要用它組網址）')
+            continue
+        target = os.path.join(ROOT, t, m.group(1))
+        if not os.path.exists(target):
+            errors.append(f'{t}/config.js：HUB_PAGE 指到不存在的 {m.group(1)}')
+
+
 # ── 7.5 舊檔名前綴殘留 ──────────────────────────────────
 def check_old_prefix():
     """
@@ -398,6 +421,7 @@ def main():
     check_roster()
     check_bat_crlf()
     check_test_ids()
+    check_hub_page()
     check_old_prefix()
     check_units_copied()
     check_term_start()

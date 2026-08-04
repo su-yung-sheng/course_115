@@ -62,12 +62,22 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-<!-- 全站共用計分規則（單一來源） -->
-<script src="config.js"></script>
-<script src="../shared/semester.js"></script>
+<!-- 本頁住在 shared/，設定檔在各學期資料夾裡（11501/config.js、11502/config.js）。
+     用網址參數決定要載入哪一份，例如：grader.html?term=11502&unit=2-1-2
+     沒帶參數就依今天的日期判斷。做法與 shared/status.html 一致。 -->
+<script src="semester.js"></script>
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('term');
+  if (!t || !/^115\d{2}$/.test(t)) {
+    t = (window.SEMESTER && SEMESTER.current) ? SEMESTER.current() : '11501';
+  }
+  document.write('<scr' + 'ipt src="../' + t + '/config.js"></scr' + 'ipt>');
+})();
+</script>
 <!-- 登入邏輯單一來源（含「不要蓋掉 Google 身分」的匿名登入把關）-->
-<script src="../shared/auth.js"></script>
-  <script src="../shared/grading.js"></script>
+<script src="auth.js"></script>
+<script src="grading.js"></script>
 <style>
 /* === 全站紙膠帶手作風套件（以 hub 為準） === */
 html, body, button, input, select { font-family:'Noto Sans TC', system-ui, sans-serif; }
@@ -76,10 +86,30 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 #back-to-hub{position:fixed;top:14px;left:14px;z-index:99999;display:inline-flex;align-items:center;gap:6px;background:#1e293b;color:#fff;font-weight:700;font-size:14px;padding:8px 14px;border-radius:9999px;text-decoration:none;box-shadow:0 4px 12px rgba(0,0,0,.25)}
 </style>
   <!-- 身分守門：未從闖關基地登入者導回入口 -->
-  <script src="../shared/guard.js"></script>
+  <script src="guard.js"></script>
 </head>
 <body>
-<a id="back-to-hub" href="hub.html" title="返回闖關基地">← 返回基地</a>
+<script>
+/* 直接雙擊 shared/grader.html（沒有 ?term=、或路徑不對）時，上一層沒有 config.js。
+   不擋的話後面每一行都會 undefined，畫面一片空白又看不出原因。 */
+if (!window.CONFIG) {
+  document.write('<div style="max-width:520px;margin:80px auto;padding:24px;border:2px solid #fecaca;'
+    + 'background:#fef2f2;border-radius:16px;font-family:system-ui">'
+    + '<h1 style="color:#dc2626;font-weight:900;font-size:20px;margin:0 0 12px">⚠️ 讀不到 config.js</h1>'
+    + '<p style="margin:0;line-height:1.8;color:#7f1d1d">這一頁要從闖關基地或程式設計頁進入，'
+    + '或在網址加上學期參數，例如 <code>grader.html?term=11501</code>。</p></div>');
+  throw new Error('CONFIG 未載入');
+}
+</script>
+<a id="back-to-hub" href="#" title="返回闖關基地">← 返回基地</a>
+<script>
+/* 本頁住在 shared/，闖關基地在學期資料夾裡，所以連結要用 CONFIG 組出來。
+   （被嵌在 iframe 裡時下面那段會直接把按鈕藏起來，這行只在單獨開啟時有用） */
+(function(){ var a=document.getElementById('back-to-hub');
+  // 刻意不寫後備檔名：兩支 config.js 都一定要有 HUB_PAGE，check.py 會擋。
+  // 在這裡補一個寫死的檔名，反而會讓死連結檢查誤判成真的參照。
+  if(a && window.CONFIG) a.href='../' + CONFIG.TERM + '/' + CONFIG.HUB_PAGE; })();
+</script>
 <script>
 /* 被嵌入 iframe（程式設計頁）時：隱藏返回基地按鈕，並取消 min-height，
    讓外層可以把 iframe 調成內容高度 → 只用外層頁面的捲軸，不會有內部捲軸 */

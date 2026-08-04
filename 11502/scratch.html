@@ -87,7 +87,9 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
     <div id="stage-grid" class="grid gap-4 sm:grid-cols-2"></div>
   </section>
 
-  <!-- 作品上傳 -->
+  <!-- 作品上傳與 AI 批改：嵌入共用的自評站 shared/grader.html
+       ★ 與上學期用的是同一份檔案，靠 ?term= 決定讀哪個學期的批改標準。
+         下學期原本只有一段「開發中」的提示，按送出什麼也不會發生。 -->
   <section class="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
     <h2 class="font-black text-lg mb-2">📤 上傳作品給 AI 助教批改</h2>
     <p class="text-sm text-slate-500 mb-4">
@@ -95,29 +97,14 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
       選好關卡後上傳。<span class="hl">75 分以上才算通關</span>；分數比上次高才會覆蓋舊作品。
     </p>
 
-    <div class="grid sm:grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-bold text-slate-500 mb-1">選擇關卡</label>
-        <select id="up-unit" class="w-full p-2.5 border border-slate-300 rounded-xl text-sm bg-white"></select>
+    <div id="grader-box">
+      <div id="grader-locked" class="hidden bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-6 text-center">
+        <div class="text-3xl mb-2">🔒</div>
+        <p class="text-sm font-bold text-slate-500" id="grader-locked-msg"></p>
       </div>
-      <div>
-        <label class="block text-sm font-bold text-slate-500 mb-1">作品檔（.sb3）</label>
-        <input id="up-file" type="file" accept=".sb3"
-               class="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0
-                      file:bg-slate-100 file:text-slate-700 file:font-bold file:cursor-pointer">
-      </div>
+      <iframe id="grader-frame" class="w-full block bg-white rounded-xl border border-slate-200"
+              style="height:560px;border:0;overflow:hidden" scrolling="no" title="Scratch 作品評分"></iframe>
     </div>
-
-    <button id="up-btn"
-            class="mt-4 w-full bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl py-3 transition">
-      送出批改
-    </button>
-    <p id="up-msg" class="mt-3 text-sm font-bold text-center text-slate-500"></p>
-
-    <p class="mt-4 text-xs text-slate-400 leading-relaxed border-t border-slate-200 pt-3">
-      ⚠️ 開發中：作品備份端點（<code>shared/filebackup.gs</code>）已就緒，但 AI 批改流程尚未接上，
-      按下送出目前只會顯示提示。批改標準可先在教師端「🤖 Scratch AI 批改標準」設定。
-    </p>
   </section>
 
   <!-- 星星結算 -->
@@ -131,15 +118,6 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
 </main>
 
 <script>
-/* ===================== 本頁設定 =====================
-   ⚠️ 命名為 PAGE 而不是 CONFIG：全站共用設定放在 window.CONFIG（config.js），
-      同名會把它整個蓋掉。 */
-const PAGE = {
-  gasUrl: window.CONFIG.GAS_UPLOAD_URL,   // 作品備份用（見 config.js）
-  moduleId: 'scratch',                    // 對應 11502-progress 的 module ID
-  maxStars: 30
-};
-
 /* ===================== 關卡定義 =====================
    ★ 單元清單以 config.js 的 CONFIG.UNITS 為準（單一來源）。
      教師端的批改標準、AI 批改寫回的星數 key、作品備份的檔名編號，
@@ -225,48 +203,41 @@ function renderTotal(){
   document.getElementById('total-star').textContent = '⭐ ' + t;
 }
 
-/* 上傳的下拉只列「已開放的關卡」。
-   不然學生選得到第 10 關就等於繞過依序開放——
-   關卡卡片鎖住了，上傳表單卻沒鎖，是最容易漏掉的一個缺口。 */
-function fillUnitSelect(){
-  const openTo = openUpTo();
-  const list = UNITS.filter(u => u.no <= openTo);
-  const sel = document.getElementById('up-unit');
-  sel.innerHTML = list.length
-    ? list.map(u => '<option value="' + u.id + '">第 ' + String(u.no).padStart(2,'0') + ' 關 · ' + u.name + '</option>').join('')
-    : '<option value="">（還沒有開放的關卡）</option>';
-  sel.disabled = !list.length;
+function renderTotal(){
+  // 星數一律走共用計分規則，不在這裡寫死門檻
+  const t = (window.GRADING && window.GRADING.scratchTotal)
+    ? window.GRADING.scratchTotal(unitStars).stars
+    : Object.values(unitStars).reduce((a,b)=>a+b,0);
+  document.getElementById('total-star').textContent = '⭐ ' + t;
 }
-
-/* ===================== 上傳（端點未接時給明確提示） ===================== */
-document.getElementById('up-btn').addEventListener('click', () => {
-  const msg  = document.getElementById('up-msg');
-  const file = document.getElementById('up-file').files[0];
-  const say = (t, cls) => { msg.className = 'mt-3 text-sm font-bold text-center ' + cls; msg.textContent = t; };
-
-  const unitId = document.getElementById('up-unit').value;
-
-  // 依序開放：下拉本來就只列開放的關卡，這裡再擋一次
-  // （學生用 F12 把 option 改掉的話，前面那道就沒用了）
-  if (!unitId || !unitOpen((UNITS.find(u => u.id === unitId) || {}).no)) {
-    say(lockReason(UNITS.length), 'text-amber-600'); return;
-  }
-  if (!file) { say('請先選擇 .sb3 作品檔', 'text-red-600'); return; }
-  if (!file.name.toLowerCase().endsWith('.sb3')) {
-    say('檔案格式不對，要上傳 Scratch 的 .sb3 檔', 'text-red-600'); return;
-  }
-  // 備份端點已就緒，但 AI 批改流程（Colab 後端）尚未接上，
-  // 所以這裡先誠實告知，不要讓學生卡在「上傳中…」。
-  say('⚠️ AI 批改功能開發中，作品請先自行保存，稍後再上傳', 'text-amber-600');
-  return;
-  // ★ 待實作：讀成 base64 → POST 到 PAGE.gasUrl（kind:'sb3'）→ 取回分數
-  //   → window.GRADING.scratchStar(score) 換算星星 → 寫入 11502-progress
-});
 
 /* ===================== 起始 ===================== */
 //   先用「全部 0 星」畫一次（等於只開第 1 關），讀到進度再重畫。
 //   刻意不是先全開再鎖：萬一讀取失敗，畫面停在「保守」而不是「全開」。
-function repaint(){ fillUnitSelect(); renderStages(); renderTotal(); }
+function repaint(){ renderStages(); renderTotal(); paintGrader(); }
+
+/* 評分區也要跟著依序開放。
+   關卡卡片鎖了、上傳表單沒鎖，等於沒鎖 —— 所以直接把 iframe 的
+   ?unit= 固定成「目前該做的那一關」，學生沒得選別關。 */
+function paintGrader(){
+  const openTo = openUpTo();
+  const u = UNITS[openTo - 1];
+  const frame  = document.getElementById('grader-frame');
+  const locked = document.getElementById('grader-locked');
+  if(!frame || !locked) return;
+
+  if(!u){
+    frame.classList.add('hidden');
+    locked.classList.remove('hidden');
+    document.getElementById('grader-locked-msg').textContent = lockReason(1);
+    return;
+  }
+  locked.classList.add('hidden');
+  frame.classList.remove('hidden');
+  const src = '../shared/grader.html?term=' + encodeURIComponent(window.CONFIG.TERM)
+            + '&unit=' + encodeURIComponent(u.id);
+  if(frame.getAttribute('src') !== src) frame.setAttribute('src', src);   // 避免每次重畫都重載
+}
 
 /* 讀完 Firestore 的那支 module script 用這個把星數交進來。
    刻意包成函式而不是直接改變數：跨 script 改別人的變數不好追，
@@ -297,10 +268,16 @@ repaint();
       window.applyStars((mods.scratch && mods.scratch.unitStars) || {});
     } catch (e) {
       console.error('讀進度失敗', e);
-      // 讀不到就維持「只開第 1 關」。寧可少開，也不要因為連線問題整批放行。
-      const msg = document.getElementById('up-msg');
-      msg.className = 'mt-3 text-sm font-bold text-center text-amber-600';
-      msg.textContent = '⚠️ 讀不到你的闖關進度，畫面可能不是最新的。請重新整理，若一直這樣請找老師。';
+      /* 讀不到就維持「只開第 1 關」。寧可少開，也不要因為連線問題整批放行。
+         提示畫在闖關地圖上方 —— 原本是寫進上傳表單的訊息列，
+         但那張表單已經換成 shared/grader.html，元素不在了會 null 錯誤。 */
+      const box = document.getElementById('stage-grid');
+      if (box) {
+        const p = document.createElement('p');
+        p.className = 'sm:col-span-2 text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3';
+        p.textContent = '⚠️ 讀不到你的闖關進度，畫面可能不是最新的。請重新整理，若一直這樣請找老師。';
+        box.prepend(p);
+      }
     }
   });
   // AUTH.attachSession()：已經有身分（例如剛在闖關基地用學校 Google 帳號登入）

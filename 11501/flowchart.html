@@ -820,7 +820,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                   <div class="text-sm font-black text-orange-800">🤖 程式評分（AI 助教）</div>
                   <div class="text-[11px] text-orange-700 leading-snug mt-0.5 lg:whitespace-nowrap">寫好存成 <b>.sb3</b> 上傳即可評分：<b>90 分↑ 3⭐、75 分↑ 2⭐</b>；未滿 75 分不給星，要修改後再傳。</div>
                 </div>
-                <iframe id="grader-frame" src="scratch_ScratchGrader_student.html?unit=${u.id}" class="w-full block bg-white" style="height:560px;border:0;overflow:hidden" scrolling="no" title="Scratch 作品評分"></iframe>
+                <iframe id="grader-frame" src="../shared/grader.html?term=${window.CONFIG.TERM}&unit=${u.id}" class="w-full block bg-white" style="height:560px;border:0;overflow:hidden" scrolling="no" title="Scratch 作品評分"></iframe>
                 <div class="p-3 border-t border-slate-100 text-center">
                   <p class="text-[11px] text-slate-500">上傳後看到「⭐ 已記錄 N 星」就代表這一關完成了，不必再按任何按鈕。<br>要看更新後的星數，點左上角的「← 關卡列表」即可。</p>
                 </div>
