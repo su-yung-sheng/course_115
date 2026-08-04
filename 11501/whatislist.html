@@ -55,7 +55,20 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
     <!-- 加入 data-type="module" 以解決 Babel 在特定環境下附加 script 標籤時發生的 import 錯誤 -->
     <script type="text/babel" data-type="module">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        /* 洗牌（Fisher–Yates）。
+           ⚠️ 為什麼需要：原本每一關的三個積木選項，正解**都排在第一個**，
+              學生按第一個就過關，等於沒有在判斷。
+              前導教材是後面 10 關的門檻，這樣等於門是虛掩的。 */
+        function shuffled(arr) {
+          const a = arr.slice();
+          for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [a[i], a[j]] = [a[j], a[i]];
+          }
+          return a;
+        }
 
         // ==========================================
         // 元件 1：右側的「背包顯示器」與「貓咪老師」 (共用元件)
@@ -226,6 +239,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             ];
 
             const current = steps[step];
+            /* 綁 step：同一關內重繪（例如選錯給提示）順序不會跳動，
+               換關才重洗。順序一直跳的話學生會以為畫面壞了。 */
+            const choices = useMemo(
+              () => (current.choices ? shuffled(current.choices) : null),
+              [step]
+            );
 
             // 冒險地圖的地點設定
             const mapNodes = [
@@ -273,7 +292,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                 <div className="w-full">
                                     <p className="text-center text-sm font-bold text-slate-500 mb-4">🤔 想一想，這個任務要用哪一個積木？點下去試試看！</p>
                                     <div className="flex flex-col gap-3 items-stretch max-w-xl mx-auto">
-                                        {current.choices.map((c, ci) => (
+                                        {choices.map((c, ci) => (
                                             <button key={ci} onClick={() => handleChoice(c)}
                                                 className="bg-white hover:bg-teal-50 border-2 border-slate-300 hover:border-teal-400 text-slate-800 text-lg font-bold py-3 px-5 rounded-2xl shadow-sm transition-all active:scale-95 text-left">
                                                 {c.text}
@@ -398,7 +417,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 }
                 return a.slice(0, QUIZ_PICK);
             };
-            const [set, setSet] = useState(pick);
+            /* 選項也洗過：題目雖然是抽的，但選項順序固定的話，
+               同一題重複出現時記位置就好，不必真的懂。 */
+            const withShuffledOptions = (qs) => qs.map(q => {
+              const order = shuffled(q.o.map((text, i) => ({ text, i })));
+              return { ...q, o: order.map(x => x.text),
+                            a: order.findIndex(x => x.i === q.a) };
+            });
+            const [set, setSet] = useState(() => withShuffledOptions(pick()));
             const [idx, setIdx] = useState(0);
             const [picked, setPicked] = useState(null);
             const [score, setScore] = useState(0);
@@ -407,7 +433,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             const q = set[idx];
             const done = idx >= set.length;
 
-            const retry = () => { setSet(pick()); setIdx(0); setPicked(null); setScore(0); setFailed(false); };
+            const retry = () => { setSet(withShuffledOptions(pick())); setIdx(0); setPicked(null); setScore(0); setFailed(false); };
             const choose = (i) => {
                 if (picked !== null) return;
                 setPicked(i);

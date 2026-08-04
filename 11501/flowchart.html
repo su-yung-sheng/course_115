@@ -235,6 +235,16 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     }
 
     const READ_SECONDS = 30;   // 閱讀頁強制停留秒數（切走畫面會暫停）
+
+    /* 這一關要強制讀幾秒。
+       ⚠️ 已經排對過流程圖的關卡回傳 0 —— 強制停留是為了「第一次別亂點」，
+          不是懲罰。已經通關的人回來查資料、或想重排一次練習，
+          每次都被鎖 30 秒只會讓人覺得系統在找麻煩。
+          排錯太多次被退回重讀時也一樣：他本來就會通關的關卡，
+          再罰他讀一次沒有意義。 */
+    function readSecondsFor(u) {
+      return (u && state.done[u.id]) ? 0 : READ_SECONDS;
+    }
     const HINT_SECONDS = 10;   // 選件頁提示顯示秒數（只有一次機會）
     const SELECT_TRIES = 3;    // 選元件可確認的次數，用完退回重讀
     let readTimer = null, hintTimer = null;
@@ -442,7 +452,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       if(!u || !unitOpen(u.no)){ refuse(u ? u.no : 1); return; }
       clearTimers();
       state.unit=u; state.status='read'; state.refOpen=false; state.graderOpen=false;
-      state.readLeft=READ_SECONDS; state.hintUsed=false;   // 每關重新計時、提示機會重置
+      state.readLeft=readSecondsFor(u); state.hintUsed=false;   // 每關重新計時、提示機會重置
       render();
     }
     function beginSelect(){ if(readTimer){clearInterval(readTimer);readTimer=null;} const u=state.unit; state.candidates=buildCandidates(u); state.selected={}; state.selMsg=''; state.status='select'; render(); }
@@ -459,7 +469,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       const left = SELECT_TRIES - state.selTries;
       if(left <= 0){
         clearTimers();
-        state.status='read'; state.readLeft=READ_SECONDS; state.hintUsed=false; state.hintLeft=0; state.selTries=0;
+        state.status='read'; state.readLeft=readSecondsFor(state.unit); state.hintUsed=false; state.hintLeft=0; state.selTries=0;
         state.selMsg='';
         render();
         setTimeout(()=>alert('三次都沒挑對，先回去把步驟再讀一次，我們再來一次！'), 50);
@@ -481,7 +491,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         // 錯誤次數超過待排積木總數 → 退回重新閱讀
         if(state.mistakes > state.unit.steps.length){
           clearTimers();
-          state.status='read'; state.readLeft=READ_SECONDS; state.hintUsed=false; state.hintLeft=0;
+          state.status='read'; state.readLeft=readSecondsFor(state.unit); state.hintUsed=false; state.hintLeft=0;
           state.selTries=0; state.selMsg=''; state.mistakes=0;
           render();
           setTimeout(()=>alert('排錯太多次了，先回去把流程再讀一次，等一下就會順很多！'), 50);
@@ -634,7 +644,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 ${refPanel(u)}
               </div>
             </div>
-            <button id="begin-sel" disabled class="mt-5 w-full bg-slate-300 text-white font-bold text-lg py-3 rounded-xl cursor-not-allowed transition">請先仔細閱讀…（還要 ${state.readLeft} 秒）</button>
+            ${state.readLeft > 0
+              ? `<button id="begin-sel" disabled class="mt-5 w-full bg-slate-300 text-white font-bold text-lg py-3 rounded-xl cursor-not-allowed transition">請先仔細閱讀…（還要 ${state.readLeft} 秒）</button>`
+              : `<button id="begin-sel" class="mt-5 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg py-3 rounded-xl active:scale-95 transition">我讀完了，開始闖關 →</button>
+                 ${state.done[u.id] ? `<p class="text-xs text-emerald-600 font-bold mt-2 text-center">✓ 這一關你已經排對過了，不用再等 ${READ_SECONDS} 秒</p>` : ''}`}
             <p class="text-xs text-slate-400 mt-3 text-center">先把上面的步驟讀懂，等一下要自己挑出正確的元件　·　也可對照 <a href="reference.html" class="text-purple-600 underline">完整參考說明</a></p>
           </div>`;
         startReadCountdown();
@@ -834,7 +847,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       if(e.target.closest('#hint-btn')){
         if(state.hintUsed){                    // 已用掉提示 → 退回上一步重新閱讀（重新計時 30 秒）
           clearTimers();
-          state.status='read'; state.readLeft=READ_SECONDS; render();
+          state.status='read'; state.readLeft=readSecondsFor(state.unit); render();
         }else{
           showHint();                          // 第一次：顯示 10 秒
         }
