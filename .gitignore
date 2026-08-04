@@ -13,3 +13,13 @@ desktop.ini
 # Python 快取
 __pycache__/
 *.pyc
+
+# ── 服務帳戶／私密金鑰：一律不進版本控制 ─────────────────
+#   2026-08-04 有一把 firebase-adminsdk 金鑰被 git add -A 掃進來並推上
+#   公開 repo。金鑰已作廢重發，這裡擋住同樣的事再發生一次。
+#   金鑰請放 Colab Secrets（FIREBASE_SA），不要放在資料夾裡。
+*firebase-adminsdk*.json
+*service-account*.json
+*serviceAccount*.json
+*-key.json
+*.pem

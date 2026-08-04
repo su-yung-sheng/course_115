@@ -291,6 +291,60 @@ def check_test_ids():
                       '     兩邊必須相同，否則畫面進得去但進度存不了。')
 
 
+# ── 7.3 金鑰外洩防線（★ 最高優先）────────────────────────
+def check_secrets():
+    """
+    擋住「私密金鑰被 commit 進來」。
+
+    ★ 2026-08-04 真的發生過：一把 firebase-adminsdk 服務帳戶金鑰
+      被放在 repo 根目錄，`git add -A` 直接掃進來，推上公開 repo。
+      那把金鑰等於資料庫的完整管理權限。
+
+      這種錯的特性是「一次就毀了」——事後刪檔、改寫歷史都救不回來，
+      唯一有效的處置是把金鑰作廢重發。所以這裡擋在 commit 之前。
+
+    掃兩種訊號：
+      ① 檔名長得像金鑰
+      ② 檔案內容有服務帳戶 JSON 的特徵欄位
+    只掃「git 追蹤中或即將加入」的檔案不容易做到，
+    這裡直接掃工作目錄裡的可疑檔案，寧可多問一次。
+    """
+    import fnmatch
+    NAME_PATTERNS = ['*firebase-adminsdk*.json', '*service-account*.json',
+                     '*serviceAccount*.json', '*-key.json', '*.pem']
+    MARKERS = ('"type": "service_account"', '"private_key"', 'BEGIN PRIVATE KEY')
+
+    ignored = set()
+    gi = os.path.join(ROOT, '.gitignore')
+    if os.path.exists(gi):
+        ignored = {l.strip() for l in open(gi, encoding='utf-8') if l.strip() and not l.startswith('#')}
+
+    for dirpath, dirnames, filenames in os.walk(ROOT):
+        dirnames[:] = [d for d in dirnames
+                       if d not in ('.git', 'node_modules', '_archive')
+                       and not d.startswith('course_115')]
+        for fn in filenames:
+            path = os.path.join(dirpath, fn)
+            name = rel(path)
+            hit = any(fnmatch.fnmatch(fn, p) for p in NAME_PATTERNS)
+            if not hit and fn.endswith('.json') and os.path.getsize(path) < 20000:
+                try:
+                    txt = open(path, encoding='utf-8', errors='ignore').read()
+                    hit = any(m in txt for m in MARKERS)
+                except OSError:
+                    pass
+            if not hit:
+                continue
+            covered = any(fnmatch.fnmatch(fn, p) for p in ignored)
+            if covered:
+                warns.append(f'{name} 看起來是私密金鑰（已被 .gitignore 排除，不會進版本控制）'
+                             '。建議還是別放在 repo 資料夾裡，改放 Colab Secrets。')
+            else:
+                errors.append(f'❗ {name} 看起來是私密金鑰，而且**沒有**被 .gitignore 排除。'
+                              '推上去等於公開資料庫的管理權限。'
+                              '請把它移出這個資料夾，或加進 .gitignore。')
+
+
 # ── 7.4 每支 config 都要有 HUB_PAGE ─────────────────────
 def check_hub_page():
     """
@@ -421,6 +475,7 @@ def main():
     check_roster()
     check_bat_crlf()
     check_test_ids()
+    check_secrets()
     check_hub_page()
     check_old_prefix()
     check_units_copied()
