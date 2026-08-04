@@ -41,10 +41,6 @@
     // 統一共用集合名稱（見「11501_資料格式規格」文件）
     const COLLECTION = window.CONFIG.COLLECTIONS.PROGRESS;
     const ROSTER = window.CONFIG.COLLECTIONS.ROSTER;
-    // 驗證碼不放名冊裡：本體在 secret（學生讀不到），登入靠寫 session 試探。
-    // 安全規則跑在伺服器端，讀得到 secret 去比對；學生自己讀不到。
-    const SECRET  = window.CONFIG.SHARED.SECRET;
-    const SESSION = window.CONFIG.SHARED.SESSION;
     // 記住登入學號的鍵（同一個分頁內免得重打；關閉瀏覽器就失效）
     const SAVED_KEY = 'sid11501';
 
@@ -118,15 +114,9 @@
       authReady: false,
       studentId: '',
       studentName: '',
-      tempId: '',
-      tempCode: '',
-      confirmName: '',
-      justSetup: false,
       loginError: '',
       data: null,          // Firestore 文件內容
       demo: false,
-      allowLegacy: false,  // 驗證碼備援開關（讀 config/auth；讀不到就當關閉）
-
       detected: null,     // 偵測到「這台電腦已有人用學校帳號登入」
          // 範例預覽模式
       showWeek: false      // 是否顯示「本週成績卡」
@@ -154,23 +144,6 @@
          · 完全沒有登入紀錄才匿名登入，不會蓋掉既有的 Google 身分
          · 之後持續盯著「Firebase 的身分」有沒有和「這個分頁的學號」對不上，
            對不上就讓這個分頁下線（教室換人用電腦時會發生） */
-    /* 驗證碼備援的總開關（config/auth）。
-       ⚠️ 這裡讀到的值只決定「登入畫面要不要顯示驗證碼欄位」——
-          真正把那條路封死的是安全規則裡的 legacyAllowed()。
-          前端讀失敗時當作「關閉」，寧可少給一個入口，
-          也不要顯示一個按下去必定失敗的表單。 */
-    async function loadLegacyFlag(){
-      try{
-        const snap = await getDoc(doc(db, window.CONFIG.SHARED.AUTH_COL, window.CONFIG.SHARED.AUTH_DOC));
-        state.allowLegacy = snap.exists() && snap.data().allowLegacy === true;
-      }catch(e){
-        // 讀不到就當關閉。規則是公開讀，所以走到這裡通常是網路問題，
-        // 不是權限問題 —— 顯示一個按下去必定失敗的表單只會更困惑。
-        state.allowLegacy = false;
-      }
-      if(state.status === 'login') render();
-    }
-
     AUTH.attachSession(auth, signInAnonymously, onAuthStateChanged, {
       /* 這台電腦已經用學校帳號登入過（可能是另一個分頁登的），
          這個分頁直接沿用，不必再登入一次。
@@ -187,59 +160,16 @@
         }
       }
     });
-    loadLegacyFlag();
     // 保險：2.5 秒內未連上也先進登入頁（範例預覽不需連線）
     setTimeout(()=>{ if(state.status==='loading'){ state.status='login'; render(); } }, 2500);
 
-    // ===== 登入 =====
-    async function handleLogin(id, code){
-      const t = (id||'').trim();
-      const c = (code||'').trim();
-      state.tempId = t; state.tempCode = c;
-      if(!t){ state.loginError='請輸入學號'; render(); return; }
-      if(!/^14\d{5}$/.test(t)){ state.loginError='學號格式錯誤：需為 7 位數字且以 14 開頭'; render(); return; }
-      if(!/^\d{6}$/.test(c)){ state.loginError='請輸入 6 位數字驗證碼'; render(); return; }
-      try {
-        const rsnap = await getDoc(doc(db, ROSTER, t));
-        if(!rsnap.exists()){ state.loginError=`找不到學號 ${t}，請找老師確認名冊`; render(); return; }
-        const info = rsnap.data();
-        if(info.hasCode !== true){
-          // 首次登入：進入確認畫面（用名冊姓名讓學生確認身分）
-          state.confirmName = info.name || '（未命名）';
-          state.loginError=''; state.status='confirm'; render(); return;
-        }
-      } catch(e){ console.error('讀取名冊失敗',e); state.loginError='驗證失敗，請稍後再試'; render(); return; }
+    /* ===== 2026-08-04：驗證碼登入整套移除 =====
+       Firebase 已停用「匿名」登入方式，而驗證碼登入本來就是匿名登入 ——
+       留著只會是一個按下去必定失敗的表單。
+       一併移除的還有：首次登入自訂驗證碼、secret／session 兩個集合、
+       名冊的 hasCode 旗標，以及安全規則的 legacyAllowed()。
+       現在只有一條路：學校 Google 帳號。 */
 
-      // 已設定：往 session 寫一筆試探。
-      //   規則會拿這裡的 code 去比對 secret/{學號}——寫得進去就是對的。
-      //   學生從頭到尾讀不到正確的驗證碼，只知道自己這次「對或不對」。
-      try {
-        await setDoc(doc(db, SESSION, t), { code: c, at: Date.now() });
-      } catch(e){
-        if(e && e.code === 'permission-denied'){ state.loginError='驗證碼錯誤'; render(); return; }
-        console.error('驗證失敗',e); state.loginError='驗證失敗，請稍後再試'; render(); return;
-      }
-      startSession(t);
-    }
-
-    // 首次登入確認：學生自訂驗證碼
-    //   驗證碼寫進 secret/{學號}，這個集合學生完全讀不到（只有老師看得到）。
-    //   規則只開放 create，所以同一個學號只能設定成功一次。
-    async function confirmFirstLogin(){
-      const t = state.tempId, c = state.tempCode;
-      try {
-        await setDoc(doc(db, SECRET, t), { code: c, at: Date.now() });
-        await setDoc(doc(db, ROSTER, t), { hasCode: true, updatedAt: Date.now() }, { merge: true });
-        state.justSetup = true;
-      } catch(e){
-        if(e && e.code === 'permission-denied'){
-          state.loginError='這個學號已經設定過驗證碼了，請直接輸入；忘記了請找老師重設。';
-          state.status='login'; render(); return;
-        }
-        console.error('設定失敗',e); state.loginError='設定失敗，請稍後再試'; render(); return;
-      }
-      startSession(t);
-    }
     // 出席紀錄：只寫「當天第一次登入」的時間，同一天重複進出不覆蓋
     async function recordAttendance(sid){
       try{
@@ -288,7 +218,7 @@
     /* 登出一定要連 Firebase 一起登出。
        ⚠️ 只清 sessionStorage 是不夠的：Google 的登入狀態存在 localStorage，
           attachSession 會立刻又把身分撿回來，看起來像登不出去。 */
-    function logout(){ if(unsub)unsub(); AUTH.signOut(); sessionStorage.removeItem(SAVED_KEY); state.status='login'; state.studentId=''; state.tempId=''; state.tempCode=''; state.confirmName=''; state.justSetup=false; state.data=null; state.demo=false; render(); }
+    function logout(){ if(unsub)unsub(); AUTH.signOut(); sessionStorage.removeItem(SAVED_KEY); state.status='login'; state.studentId=''; state.data=null; state.demo=false; render(); }
 
     // ===== 計算 =====
     function starStr(n){ n=Math.max(0,Math.min(3,n||0)); return '★'.repeat(n)+'☆'.repeat(3-n); }
@@ -396,49 +326,11 @@
                 <p class="text-xs text-slate-400 mt-2 text-center">帳號是 qfm＋你的學號＠mail.qfm.kh.edu.tw</p>
                 ${state.loginError?`<p class="text-red-500 text-sm mt-3 leading-relaxed">${state.loginError}</p>`:''}
 
-                ${state.allowLegacy ? `
-                <details class="mt-5 border-t border-slate-200 pt-4">
-                  <summary class="text-sm font-bold text-slate-400 cursor-pointer hover:text-slate-600 list-none">▸ 學校帳號不能用？改用學號＋驗證碼</summary>
-                  <div class="mt-4">
-                <label class="block text-sm font-bold text-slate-500 mb-2">學號</label>
-                <input id="sid" type="text" inputmode="numeric" autocomplete="off" value="${state.tempId}" placeholder="14XXXXX"
-                  class="w-full bg-transparent border-0 border-b-2 border-slate-300 focus:border-indigo-500 text-2xl font-mono tracking-widest py-2 outline-none">
-                <label class="block text-sm font-bold text-slate-500 mb-2 mt-4">驗證碼</label>
-                <div class="relative">
-                  <input id="code" type="password" inputmode="numeric" maxlength="6" autocomplete="off" value="${state.tempCode||''}" placeholder="6 位數字（首次登入請自訂）"
-                    class="w-full bg-transparent border-0 border-b-2 border-slate-300 focus:border-indigo-500 text-2xl font-mono tracking-widest py-2 pr-10 outline-none">
-                  <button type="button" tabindex="-1" onclick="var i=document.getElementById('code');var s=i.type==='password';i.type=s?'text':'password';this.textContent=s?'🙈':'👁';" class="absolute right-0 bottom-2 text-xl text-slate-400 hover:text-slate-600" aria-label="顯示或隱藏驗證碼">👁</button>
-                </div>
-                <button id="go" class="mt-6 w-full bg-slate-800 hover:bg-slate-700 text-white font-bold text-lg py-3 rounded-lg active:scale-95 transition">進入基地</button>
-                  </div>
-                </details>` : ''}
                 <button id="demo" class="mt-4 w-full text-slate-400 hover:text-slate-600 text-sm underline">先看範例畫面</button>
               </div>
             </div>
           </div>`;
         setTimeout(()=>document.getElementById('sid')?.focus(),0);
-        return;
-      }
-
-      if(state.status==='confirm'){
-        el.innerHTML = `
-          <div class="min-h-screen flex items-center justify-center p-4">
-            <div class="w-full max-w-md pop">
-              <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 text-center">
-                <div class="text-4xl mb-3">👋</div>
-                <p class="text-slate-500 text-sm mb-1">首次登入確認</p>
-                <h2 class="text-2xl font-black text-slate-800 mb-1">你是 ${state.confirmName} 嗎？</h2>
-                <p class="text-slate-500 text-sm mb-5">學號 ${state.tempId}</p>
-                <div class="bg-indigo-50 border border-indigo-200 rounded-xl py-3 mb-5">
-                  <div class="text-xs text-indigo-400 font-bold mb-1">你設定的驗證碼</div>
-                  <div class="text-3xl font-black tracking-[0.3em] text-indigo-700 font-mono">${state.tempCode}</div>
-                </div>
-                ${state.loginError?`<p class="text-red-500 text-sm mb-3">${state.loginError}</p>`:''}
-                <button id="confirm-yes" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold text-lg py-3 rounded-lg active:scale-95 transition mb-3">是，就是我 → 設定並進入</button>
-                <button id="confirm-back" class="w-full text-slate-400 hover:text-slate-600 text-sm underline">不是我，返回</button>
-              </div>
-            </div>
-          </div>`;
         return;
       }
 
@@ -493,19 +385,6 @@
           </a>`;
       }).join('');
 
-      const setupModalHtml = state.justSetup ? `
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center pop">
-            <div class="text-5xl mb-3">🎉</div>
-            <h3 class="text-xl font-black text-slate-800 mb-2">驗證碼設定成功！</h3>
-            <p class="text-slate-500 text-sm mb-4">請記住你的驗證碼，下次用「學號＋驗證碼」就能登入。</p>
-            <div class="bg-indigo-50 border border-indigo-200 rounded-xl py-3 mb-5">
-              <div class="text-xs text-indigo-400 font-bold mb-1">你的驗證碼</div>
-              <div class="text-3xl font-black tracking-[0.3em] text-indigo-700 font-mono">${state.tempCode || ''}</div>
-            </div>
-            <button id="ack-setup" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-lg active:scale-95 transition">我記住了，開始闖關 🚀</button>
-          </div>
-        </div>` : '';
 
       // 本週成績卡（點「累積星星」開啟）
       const maxBar = Math.max(1, ...wk.recent.map(r=>r.stars));
@@ -559,7 +438,6 @@
         </div>` : '';
 
       el.innerHTML = `
-        ${setupModalHtml}
         ${weekCard}
         <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
           ${isDemo?`<div class="mb-4 text-center"><span class="inline-block bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1 rounded-full border border-amber-300">🔎 範例預覽模式（非真實資料）</span></div>`:''}
@@ -610,10 +488,6 @@
 
     // ===== 事件 =====
     document.addEventListener('click', e=>{
-      if(e.target.closest('#go')){ handleLogin(document.getElementById('sid').value, document.getElementById('code').value); return; }
-      if(e.target.closest('#confirm-yes')){ confirmFirstLogin(); return; }
-      if(e.target.closest('#confirm-back')){ state.status='login'; state.loginError=''; state.confirmName=''; render(); return; }
-      if(e.target.closest('#ack-setup')){ state.justSetup=false; render(); return; }
       if(e.target.closest('#google-go')){ googleLogin(); return; }
       if(e.target.closest('#demo')){ state.demo=true; state.status='main'; render(); return; }
       if(e.target.closest('#logout')){ logout(); return; }
@@ -621,9 +495,6 @@
       if(e.target.closest('#close-week')){ state.showWeek=false; render(); return; }
       // 點卡片外的暗色區域也可關閉
       if(state.showWeek && e.target.id==='week-mask'){ state.showWeek=false; render(); return; }
-    });
-    document.addEventListener('keypress', e=>{
-      if(e.key==='Enter' && state.status==='login'){ const s=document.getElementById('sid'), c=document.getElementById('code'); if(s&&c) handleLogin(s.value, c.value); }
     });
 
     render();

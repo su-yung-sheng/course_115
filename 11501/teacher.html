@@ -71,31 +71,6 @@
         用學校帳號登入
       </button>
 
-      <details class="mt-5 border-t border-slate-200 pt-4 text-left">
-        <summary class="text-sm font-bold text-slate-400 cursor-pointer hover:text-slate-600 list-none text-center">▸ 改用 Email＋密碼登入</summary>
-      <form onsubmit="handleLogin(event)" class="flex flex-col gap-4 mt-4">
-        <input
-          type="email"
-          id="email-input"
-          placeholder="教師 Email"
-          autocomplete="username"
-          class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-lg text-center"
-          required
-        >
-        <input
-          type="password"
-          id="password-input"
-          placeholder="請輸入密碼"
-          autocomplete="current-password"
-          class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-lg tracking-widest text-center"
-          required
-        >
-        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all shadow-md shadow-blue-200 text-lg flex items-center justify-center gap-2">
-          <span>登入系統</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
-        </button>
-      </form>
-      </details>
       <p id="login-error" class="text-red-500 text-sm mt-4 hidden font-medium flex items-center justify-center gap-1.5">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
         密碼錯誤，請重試！
@@ -189,13 +164,6 @@
               <button onclick="openWeeklyModal()" class="px-4 py-2 bg-rose-50 text-rose-700 rounded-full text-sm font-bold hover:bg-rose-100 border border-rose-200 shadow-sm flex items-center gap-1.5 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 每週評分
-              </button>
-
-              <!-- 🔑 登入方式（驗證碼備援的總開關；開著會讓安全規則放行舊的匿名路徑）-->
-              <button onclick="openAuthModal()" class="px-4 py-2 bg-slate-800 text-white rounded-full text-sm font-bold hover:bg-slate-700 border border-slate-900 shadow-sm flex items-center gap-1.5 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                登入方式
-                <span id="authBadge" class="ml-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-white/20">…</span>
               </button>
 
               <!-- 🩺 系統狀態檢查（上課前確認後端是最新版、兩學期資料沒混到） -->
@@ -629,47 +597,11 @@
       }
     };
 
-    window.handleLogin = async function(e) {
-      e.preventDefault();
-      const email = document.getElementById('email-input').value.trim();
-      const pwdInput = document.getElementById('password-input').value;
-      const errorEl = document.getElementById('login-error');
-      const btn = e.target.querySelector('button[type="submit"]');
-      const originalBtnText = btn.innerHTML;
-
-      errorEl.classList.add('hidden');
-      btn.innerHTML = `<svg class="animate-spin h-5 w-5 mr-3 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span>驗證中...</span>`;
-      btn.disabled = true;
-
-      try {
-        // Firebase Authentication 登入（密碼由 Firebase 安全保管）
-        await extAuth.signInWithEmailAndPassword(email, pwdInput);
-        // 成功後 onAuthStateChanged 會自動呼叫 showMainApp()
-      } catch (error) {
-        console.error('登入失敗', error);
-        // 依 Firebase 回傳的錯誤碼給出真正的原因，不要一律說「密碼錯誤」
-        const HINT = {
-          'auth/invalid-credential':   '帳號或密碼錯誤，請重試！',
-          'auth/wrong-password':       '密碼錯誤，請重試！',
-          'auth/user-not-found':       '找不到這個帳號，請確認 Email 是否正確。',
-          'auth/invalid-email':        'Email 格式不正確。',
-          'auth/too-many-requests':    '嘗試次數過多，Firebase 暫時鎖住了。請等幾分鐘再試。',
-          'auth/user-disabled':        '這個帳號已被停用。',
-          'auth/network-request-failed':'連不上 Firebase。請檢查網路，或確認沒有被學校防火牆擋掉。',
-          'auth/unauthorized-domain':  '這個網域沒有被授權。若你是「直接雙擊開啟檔案」(file://)，請改用網址開啟；或到 Firebase Console → Authentication → Settings → 授權網域 把網域加進去。',
-          'auth/operation-not-allowed':'專案尚未啟用「電子郵件/密碼」登入方式，請到 Firebase Console → Authentication → Sign-in method 開啟。',
-          'auth/api-key-not-valid':    'Firebase 設定的 apiKey 不正確，請檢查 extFirebaseConfig。'
-        };
-        const code = (error && error.code) ? error.code : 'unknown';
-        const msg  = HINT[code] || ('登入失敗：' + code);
-        errorEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><span>${msg}<br><span class="text-slate-400 text-xs font-mono">${code}</span></span>`;
-        errorEl.classList.remove('hidden');
-      } finally {
-        btn.innerHTML = originalBtnText;
-        btn.disabled = false;
-        document.getElementById('password-input').value = '';
-      }
-    };
+    /* 2026-08-04：Email＋密碼登入整套移除。
+       Firebase 已停用這種登入方式，教師端一律用學校 Google 帳號。
+       安全規則的 isTeacher() 也一併刪掉 password 分支 ——
+       原本「只要用密碼登入就算老師」等於任何一個用 email/密碼註冊的
+       帳號都是老師，那條件其實太寬。 */
 
     async function showMainApp() {
       document.getElementById('login-view').classList.add('hidden');
@@ -717,8 +649,9 @@
       document.getElementById('login-view').classList.remove('hidden');
       const err = document.getElementById('login-error');
       if (err) { err.innerHTML = '⚠️ ' + message; err.classList.remove('hidden'); }
-      document.getElementById('password-input').value = '';
       mainShown = false;                       // 允許重新進入主畫面
+      const gbtn = document.getElementById('teacher-google');
+      if (gbtn) gbtn.disabled = false;         // 讓他可以再按一次登入
       try { extAuth.signOut(); } catch (e) {}   // 清掉半殘的登入狀態
     }
 
@@ -2367,60 +2300,6 @@
   </div>
 
   <!-- ==================================================================
-       🔑 登入方式：驗證碼備援的總開關（config/auth）
-       ================================================================== -->
-  <div id="authModal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/50 p-3">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[94vh] overflow-y-auto">
-      <div class="flex items-center justify-between px-6 py-3 border-b border-slate-200">
-        <h3 class="text-lg font-black text-slate-800">🔑 學生登入方式</h3>
-        <button onclick="closeAuthModal()" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
-      </div>
-
-      <div class="p-6">
-        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
-          <div class="font-black text-emerald-800 text-sm mb-1">✅ 學校 Google 帳號（一直開著）</div>
-          <p class="text-xs text-emerald-700 leading-relaxed">
-            qfm＋學號＠mail.qfm.kh.edu.tw。這是唯一能讓安全規則認出「本人」的方式，
-            也只有這種登入方式擋得住學生改別人的成績。
-          </p>
-        </div>
-
-        <div id="authLegacyBox" class="border-2 rounded-xl p-4">
-          <div class="flex items-start justify-between gap-3">
-            <div class="flex-1">
-              <div class="font-black text-sm mb-1">🔢 學號＋6 位數驗證碼（備援）</div>
-              <p class="text-xs text-slate-500 leading-relaxed">
-                Google 帳號還沒開通、或學校 Google 出狀況時的退路。
-              </p>
-            </div>
-            <button id="authToggle" onclick="toggleLegacy()"
-                    class="flex-shrink-0 px-4 py-2 rounded-full text-sm font-black transition">…</button>
-          </div>
-
-          <div class="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <div class="text-xs font-black text-amber-800 mb-1">⚠️ 打開的代價</div>
-            <p class="text-xs text-amber-700 leading-relaxed">
-              驗證碼是匿名登入，安全規則<b>認不出誰是誰</b>。開著的期間，
-              任何登入的學生都寫得動別人的進度（只剩「星數不能變少、一次不能加太多」這種防呆）。
-              關掉之後才真正只剩「本人能寫自己的」。
-              <br><br>
-              所以平常請關著，需要時再開，用完記得關回去。
-            </p>
-          </div>
-
-          <p class="text-[11px] text-slate-400 mt-3 leading-relaxed">
-            這個開關同時控制安全規則與學生的登入畫面 —— 不是只把欄位藏起來而已。
-            關掉時學生也無法設定新的驗證碼。
-            <br>
-            教師端是用 email／密碼登入、不經過 Google，所以就算學校 Google 全掛，你仍進得來把它打開。
-          </p>
-          <p id="authMsg" class="text-sm font-bold mt-3"></p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================================================================
        🗓️ 上課日設定：每班上課星期 + 停課／補課（供每週評分判斷）
        ================================================================== -->
   <div id="schedModal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/50 p-3">
@@ -2922,75 +2801,11 @@
     window.openLiveModal=openLiveModal; window.closeLiveModal=closeLiveModal;
     window.startLive=startLive; window.lvSetNow=lvSetNow;
 
-    /* ===== 🔑 登入方式：驗證碼備援總開關（config/auth）=====
-       ★ 這個開關的意義在於「安全規則也讀同一份文件」：
-         規則的 legacyAllowed() 會 exists()+get() 這份文件，
-         關掉時舊的匿名寫入路徑、驗證碼設定、登入試探全部失效。
-         只改前端是沒有用的 —— 洞在規則，不在畫面。
-       ★ 文件不存在＝關閉（往安全的方向失效）。 */
-    const AUTH_COL = 'config', AUTH_DOC = 'auth';
-    let legacyOn = false;
-
-    async function loadLegacy(){
-      try{
-        const snap = await extDb.collection(AUTH_COL).doc(AUTH_DOC).get();
-        legacyOn = snap.exists && snap.data().allowLegacy === true;
-      }catch(e){ console.error('讀登入設定失敗', e); legacyOn = false; }
-      paintLegacy();
-    }
-
-    function paintLegacy(){
-      const badge = document.getElementById('authBadge');
-      const btn   = document.getElementById('authToggle');
-      const box   = document.getElementById('authLegacyBox');
-      if(badge){
-        badge.textContent = legacyOn ? '驗證碼 開' : '僅 Google';
-        badge.className = 'ml-1 text-[10px] font-black px-1.5 py-0.5 rounded-full ' +
-                          (legacyOn ? 'bg-amber-400 text-amber-900' : 'bg-white/20');
-      }
-      if(btn){
-        btn.textContent = legacyOn ? '關閉備援' : '開啟備援';
-        btn.className = 'flex-shrink-0 px-4 py-2 rounded-full text-sm font-black transition ' +
-          (legacyOn ? 'bg-rose-600 hover:bg-rose-700 text-white'
-                    : 'bg-slate-200 hover:bg-slate-300 text-slate-700');
-      }
-      if(box) box.className = 'border-2 rounded-xl p-4 ' +
-        (legacyOn ? 'border-amber-400 bg-amber-50/40' : 'border-slate-200');
-    }
-
-    async function toggleLegacy(){
-      const next = !legacyOn;
-      const msg  = document.getElementById('authMsg');
-      if(next && !confirm('要開啟驗證碼備援嗎？\n\n開著的期間，學生可以寫別人的進度（安全規則認不出本人）。\n用完請記得關回來。')) return;
-      msg.textContent = '儲存中…'; msg.className = 'text-sm font-bold mt-3 text-slate-500';
-      try{
-        await extDb.collection(AUTH_COL).doc(AUTH_DOC)
-                   .set({ allowLegacy: next, updatedAt: Date.now() }, { merge:true });
-        legacyOn = next; paintLegacy();
-        msg.textContent = next
-          ? '✅ 已開啟。學生的登入畫面會出現驗證碼欄位；記得用完關回來。'
-          : '✅ 已關閉。現在只有學校 Google 帳號能登入，也只有本人寫得動自己的進度。';
-        msg.className = 'text-sm font-bold mt-3 text-emerald-600';
-      }catch(e){
-        console.error(e);
-        msg.textContent = '❌ 存檔失敗：' + (e.code || e.message);
-        msg.className = 'text-sm font-bold mt-3 text-rose-600';
-      }
-    }
-
-    function openAuthModal(){
-      const m = document.getElementById('authModal');
-      m.classList.remove('hidden'); m.classList.add('flex');
-      document.getElementById('authMsg').textContent = '';
-      loadLegacy();
-    }
-    function closeAuthModal(){
-      const m = document.getElementById('authModal');
-      m.classList.add('hidden'); m.classList.remove('flex');
-    }
-    window.openAuthModal = openAuthModal;
-    window.closeAuthModal = closeAuthModal;
-    window.toggleLegacy = toggleLegacy;
+    /* ===== 2026-08-04：驗證碼備援整套移除 =====
+       Firebase 已停用「匿名」登入方式，而驗證碼登入本來就是匿名登入，
+       這個開關已經沒有意義（開了也不能用）。
+       安全規則的 legacyAllowed()、secret／session 集合也一併刪掉。
+       現在師生都只有一條路：學校 Google 帳號。 */
 
     // ===== 🗓️ 課表與停課（存 11501-config/schedule）=====
     //  base : { "星期-節次": "班級" }        例如 { "3-2": "801" } = 週三第2節上801

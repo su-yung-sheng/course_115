@@ -52,14 +52,10 @@ window.CONFIG = {
   },
 
   // 跨學期共用的集合（同一批學生，只需要一份）
-  //   AUTH_DOC：登入方式的總開關 config/auth = { allowLegacy: bool }
-  //   ★ 學生讀得到這個集合，所以裡面只能放「公開也無所謂」的設定。
+  //   ★ 2026-08-04：驗證碼備援整套移除，secret／session／config-auth
+  //     都不再使用（Firebase 已停用匿名登入，那套本來就不能用了）。
   SHARED: {
-    AUTH_COL: 'config',   // 全站開關（學生可讀、老師可寫）
-    AUTH_DOC: 'auth',
-    ROSTER:  'roster',    // 名冊：姓名／班級／座號（不含驗證碼）
-    SECRET:  'secret',    // 驗證碼本體：學生完全讀不到，只有老師看得到
-    SESSION: 'session'    // 登入試探：寫得進去＝驗證通過
+    ROSTER: 'roster'      // 名冊：姓名／班級／座號
   },
 
   // ── 後端服務 ────────────────────────────────────────────
