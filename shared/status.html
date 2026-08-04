@@ -192,9 +192,8 @@ if (!window.CONFIG) {
            '/databases/(default)/documents';
   }
 
-  function fsDoc(path) {
-    return getJSON(fsBase() + '/' + path + '?key=' + FB.apiKey, 10000);
-  }
+  /* fsDoc() 已移除：安全規則收緊後，未登入的 REST 讀不到任何後端集合。
+     需要資料庫內容的檢查一律改問 /api/health（後端有服務帳戶）。 */
 
   // ── 檢查 1：後端連線與版本 ───────────────────────────
   function checkBackend(el) {
@@ -277,42 +276,43 @@ if (!window.CONFIG) {
   }
 
   // ── 檢查 3：兩個學期的批改標準是否分開 ───────────────
-  function checkCriteria(el) {
-    return Promise.all(TERMS.map(function (t) {
-      return fsDoc(t + '-grader/criteria')
-        .then(function (doc) { return { term: t, ok: true, doc: doc }; })
-        .catch(function (e) { return { term: t, ok: false, err: e.message }; });
-    })).then(function (res) {
-      var d = '', anySet = false, sameContent = false, texts = {};
+  function checkCriteria(el, health) {
+    /* ⚠️ 這一項原本自己用未登入的 REST 去讀 {學期}-grader。
+       安全規則把那兩個集合收成只有老師之後，這裡一律讀不到，
+       然後把「讀不到」誤判成「老師還沒設定」—— 老師明明設過。
+       改由後端回報（它有服務帳戶，讀得到），這頁只負責呈現。 */
+    var c = health && health.criteria;
+    if (!c) {
+      set(el, 'warn', '後端沒回報',
+          '<div class="text-amber-700">Colab 跑的是舊版 notebook（新版才會在 /api/health 帶出批改標準摘要）。'
+        + '請重新上傳 <span class="font-mono">shared/backend.ipynb</span> 並全部執行。</div>');
+      return Promise.resolve();
+    }
 
-      res.forEach(function (r) {
-        if (!r.ok) {
-          d += row(r.term, '<span class="text-slate-400">讀不到（' + esc(r.err) + '）</span>');
-          return;
-        }
-        var f = (r.doc && r.doc.fields) || {};
-        var theme = (f.theme && f.theme.stringValue) || '';
-        var units = (f.units_json && f.units_json.stringValue) || '';
-        var upd = r.doc.updateTime ? r.doc.updateTime.slice(0, 10) : '—';
-        texts[r.term] = theme + '|' + units;
-        if (theme || units) anySet = true;
-        var nUnit = 0;
-        try { nUnit = Object.keys(JSON.parse(units || '{}')).length; } catch (e) { nUnit = 0; }
-        d += row(r.term, '已設定 ' + nUnit + ' 個關卡標準　<span class="text-slate-400">更新 ' + upd + '</span>');
-      });
-
-      if (texts['11501'] && texts['11502'] && texts['11501'] === texts['11502'] && texts['11501'] !== '|') {
-        sameContent = true;
-      }
-
-      if (!anySet) {
-        set(el, 'warn', '尚未設定', d + '<div class="mt-2 text-amber-700">還沒有任何批改標準。到教師端設定後才能讓學生自評。</div>');
-      } else if (sameContent) {
-        set(el, 'warn', '兩學期一模一樣', d + '<div class="mt-2 text-amber-700">內容完全相同，可能是其中一邊誤寫到另一邊的集合。請確認前端有送出正確的 term。</div>');
-      } else {
-        set(el, 'ok', '各自獨立', d);
-      }
+    var d = '', anySet = false, keys = {};
+    TERMS.forEach(function (t) {
+      var r = c[t];
+      if (!r) { d += row(t, '<span class="text-slate-400">後端沒有這個學期的資料</span>'); return; }
+      if (!r.ok) { d += row(t, '<span class="text-rose-600">讀不到（' + esc(r.error || '') + '）</span>'); return; }
+      var n = (r.units || []).length;
+      keys[t] = (r.units || []).join(',');
+      if (n || r.has_theme) anySet = true;
+      d += row(t, n
+        ? '已設定 <b>' + n + '</b> 個關卡標準　<span class="text-slate-400 font-mono text-xs">'
+          + esc((r.units || []).join('、')) + '</span>'
+        : '<span class="text-slate-400">尚未設定任何關卡</span>');
     });
+
+    if (!anySet) {
+      set(el, 'warn', '尚未設定',
+          d + '<div class="mt-2 text-amber-700">兩學期都沒有批改標準。到教師端「批改標準」設定後，學生才看得到作業主題。</div>');
+    } else if (keys['11501'] && keys['11501'] === keys['11502']) {
+      set(el, 'warn', '兩學期關卡完全相同',
+          d + '<div class="mt-2 text-amber-700">兩邊設定的關卡一模一樣，可能是其中一邊誤寫到另一個學期的集合。</div>');
+    } else {
+      set(el, 'ok', '各自獨立', d);
+    }
+    return Promise.resolve();
   }
 
   // ── 檢查 4：安全規則是否擋住整批下載 ─────────────────
@@ -366,7 +366,7 @@ if (!window.CONFIG) {
       checkKeys(c2, health);
       return Promise.all([
         checkQueue(c3, health),
-        checkCriteria(c4),
+        checkCriteria(c4, health),
         checkRules(c5)
       ]);
     }).catch(function (e) {
