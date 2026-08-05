@@ -303,6 +303,30 @@ if (!window.CONFIG) {
         : '<span class="text-slate-400">尚未設定任何關卡</span>');
     });
 
+    /* 範本／參考解答是不是舊格式（2026-08-06 起虛擬碼的自訂積木改了寫法）。
+       這種壞法不會有錯誤訊息：AI 照樣批改、照樣給分，只是
+       「與範本完全一致 → 0 分」「與參考解答完全一致 → 滿分」兩條永遠不成立。
+       所以一定要在狀態檢查裡講出來，否則老師沒有任何機會發現。 */
+    var stale = (health && health.stale_reference) || {};
+    var staleTerms = Object.keys(stale);
+    if (staleTerms.length) {
+      var sd = d;
+      staleTerms.forEach(function (t) {
+        var names = (stale[t].fields || []).map(function (f) {
+          return f === 'template_code' ? '初始空白範本' : '參考解答';
+        }).join('、');
+        sd += row(t + ' 參考資料', '<span class="text-amber-700">' + esc(names) + ' 還是舊格式</span>');
+      });
+      set(el, 'warn', '參考資料要重新上傳',
+          sd + '<div class="mt-2 text-amber-700">'
+             + '這些是舊版解析器轉出來的，裡面沒有自訂積木的名字。'
+             + '批改本身正常，但「與範本完全一致 → 0 分」與「與參考解答完全一致 → 滿分」'
+             + '這兩條規則會<b>默默失效</b>（格式不同，永遠比不出「完全一致」）。<br>'
+             + '到教師端重新上傳一次該學期的初始空白範本與參考解答就好。'
+             + '沒有用到自訂積木的作業不受影響。</div>');
+      return Promise.resolve();
+    }
+
     if (!anySet) {
       set(el, 'warn', '尚未設定',
           d + '<div class="mt-2 text-amber-700">兩學期都沒有批改標準。到教師端「批改標準」設定後，學生才看得到作業主題。</div>');
