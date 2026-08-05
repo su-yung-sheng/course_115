@@ -31,64 +31,86 @@
 
   /* ===== 積木定義 =====
      label 裡的 %n / %s 是參數欄位（數字／文字），順序對應 args。
-     shape: 'stack' 一般積木｜'c' 可以包住其他積木｜'hat' 開頭帽子 */
+     shape: 'stack' 一般積木｜'c' 可以包住其他積木｜'hat' 開頭帽子
+
+     ★★ 積木名稱一律照 Scratch 官方繁體中文，一個字都不改 ★★
+     來源：scratch-l10n（Scratch 官方翻譯庫）
+       積木   https://github.com/scratchfoundation/scratch-l10n/blob/master/editor/blocks/zh-tw.json
+       擴充   https://github.com/scratchfoundation/scratch-l10n/blob/master/editor/extensions/zh-tw.json
+     學生在這裡練完回去打開 Scratch，看到的必須是同一個名字 ——
+     自己取「落筆」「全部擦掉」這種聽起來比較白話的名字，等於逼學生
+     學兩套詞彙，那是我們自己製造的障礙。
+     每個積木後面都標了官方的訊息代號，之後要對照就從那裡查。
+     check.py 會比對常用積木的名稱，改錯會被擋下來。
+
+     下面標「★自訂」的幾塊在 Scratch 裡沒有對應積木（是為了避開
+     「回報值積木」而做的簡化），只有那幾塊是我們自己命名的。 */
   /* 宣告順序＝調色盤的分類順序，刻意照真的 Scratch 排：
-     動作 → 外觀 → 音效 → 事件 → 控制 → 變數 → 清單 → 我的積木 → 畫筆（擴充）
+     動作 → 外觀 → 音效 → 事件 → 控制 → 變數 → 清單 → 函式積木 → 畫筆（擴充）
      顏色也用 Scratch 的原色，學生在這裡看到的藍色，回到 Scratch 還是同一個藍色。 */
   var CATS = {
-    motion:  { name: '動作',   color: '#4c97ff', dark: '#3373cc' },
-    looks:   { name: '外觀',   color: '#9966ff', dark: '#774dcb' },
-    sound:   { name: '音效',   color: '#cf63cf', dark: '#bd42bd' },
-    events:  { name: '事件',   color: '#ffbf00', dark: '#cc9900' },
-    control: { name: '控制',   color: '#ffab19', dark: '#cf8b17' },
-    data:    { name: '變數',   color: '#ff8c1a', dark: '#db6e00' },
-    list:    { name: '清單',   color: '#ff661a', dark: '#e64d00' },
-    my:      { name: '我的積木', color: '#ff6680', dark: '#ff4d6a' },
-    pen:     { name: '畫筆',   color: '#0fbd8c', dark: '#0b8e69' }
+    motion:  { name: '動作',   color: '#4c97ff', dark: '#3373cc' },  // CATEGORY_MOTION
+    looks:   { name: '外觀',   color: '#9966ff', dark: '#774dcb' },  // CATEGORY_LOOKS
+    sound:   { name: '音效',   color: '#cf63cf', dark: '#bd42bd' },  // CATEGORY_SOUND
+    events:  { name: '事件',   color: '#ffbf00', dark: '#cc9900' },  // CATEGORY_EVENTS
+    control: { name: '控制',   color: '#ffab19', dark: '#cf8b17' },  // CATEGORY_CONTROL
+    data:    { name: '變數',   color: '#ff8c1a', dark: '#db6e00' },  // CATEGORY_VARIABLES
+    list:    { name: '清單',   color: '#ff661a', dark: '#e64d00' },  // Scratch 把清單放在「變數」裡，顏色是這個
+    my:      { name: '函式積木', color: '#ff6680', dark: '#ff4d6a' }, // CATEGORY_MYBLOCKS（不是「我的積木」）
+    pen:     { name: '畫筆',   color: '#0fbd8c', dark: '#0b8e69' }   // pen.categoryName
   };
 
   var DEFS = {
     // %flag 會畫成綠旗（就是 Scratch 的那面旗子），不是播放三角形
-    'events.whenflag':  { cat:'events',  shape:'hat',   label:'當 %flag 被點擊' },
-    'motion.move':      { cat:'motion',  shape:'stack', label:'移動 %n 點',        args:[10] },
-    'motion.turnright': { cat:'motion',  shape:'stack', label:'右轉 %n 度',        args:[90] },
-    'motion.turnleft':  { cat:'motion',  shape:'stack', label:'左轉 %n 度',        args:[90] },
-    'motion.goto':      { cat:'motion',  shape:'stack', label:'定位到 x: %n y: %n', args:[0, 0] },
-    'motion.changey':   { cat:'motion',  shape:'stack', label:'y 改變 %n',          args:[10] },
-    'looks.say':        { cat:'looks',   shape:'stack', label:'說 %s',              args:['你好！'] },
-    'looks.sayfor':     { cat:'looks',   shape:'stack', label:'說 %s 持續 %n 秒',    args:['你好！', 2] },
-    'looks.next':       { cat:'looks',   shape:'stack', label:'下一個造型' },
-    'looks.change':     { cat:'looks',   shape:'stack', label:'尺寸改變 %n',        args:[10] },
-    'sound.play':       { cat:'sound',   shape:'stack', label:'播放音效 %s',        args:['喵'] },
-    'control.wait':     { cat:'control', shape:'stack', label:'等待 %n 秒',         args:[1] },
-    'control.repeat':   { cat:'control', shape:'c',     label:'重複 %n 次',         args:[10] },
-    'data.setvar':      { cat:'data',    shape:'stack', label:'設定 %s 為 %n',      args:['分數', 0] },
-    'data.changevar':   { cat:'data',    shape:'stack', label:'%s 改變 %n',         args:['分數', 1] },
+    'events.whenflag':  { cat:'events',  shape:'hat',   label:'當 %flag 被點擊' },              // EVENT_WHENFLAGCLICKED
+    'motion.move':      { cat:'motion',  shape:'stack', label:'移動 %n 點',        args:[10] }, // MOTION_MOVESTEPS
+    // ↻ ↺ 是 Scratch 積木上真的有的箭頭圖示（MOTION_TURNRIGHT 的 %1）
+    // 預設 15 度也照 Scratch —— 順便讓調色盤不會直接把答案（90）送給學生
+    'motion.turnright': { cat:'motion',  shape:'stack', label:'右轉 ↻ %n 度',      args:[15] }, // MOTION_TURNRIGHT
+    'motion.turnleft':  { cat:'motion',  shape:'stack', label:'左轉 ↺ %n 度',      args:[15] }, // MOTION_TURNLEFT
+    'motion.goto':      { cat:'motion',  shape:'stack', label:'定位到 x:%n y:%n',  args:[0, 0] },// MOTION_GOTOXY（冒號後沒空格）
+    'motion.changey':   { cat:'motion',  shape:'stack', label:'y 改變 %n',         args:[10] }, // MOTION_CHANGEYBY
+    'looks.say':        { cat:'looks',   shape:'stack', label:'說出 %s',           args:['Hello!'] },     // LOOKS_SAY
+    'looks.sayfor':     { cat:'looks',   shape:'stack', label:'說出 %s 持續 %n 秒', args:['Hello!', 2] }, // LOOKS_SAYFORSECS
+    'looks.next':       { cat:'looks',   shape:'stack', label:'造型換成下一個' },                // LOOKS_NEXTCOSTUME
+    'looks.change':     { cat:'looks',   shape:'stack', label:'尺寸改變 %n',       args:[10] }, // LOOKS_CHANGESIZEBY
+    'sound.play':       { cat:'sound',   shape:'stack', label:'播放音效 %s',       args:['喵'] },// SOUND_PLAY
+    'control.wait':     { cat:'control', shape:'stack', label:'等待 %n 秒',        args:[1] },  // CONTROL_WAIT
+    'control.repeat':   { cat:'control', shape:'c',     label:'重複 %n 次',        args:[10] }, // CONTROL_REPEAT
+    'data.setvar':      { cat:'data',    shape:'stack', label:'變數 %s 設為 %n',   args:['分數', 0] }, // DATA_SETVARIABLETO
+    'data.changevar':   { cat:'data',    shape:'stack', label:'變數 %s 改變 %n',   args:['分數', 1] }, // DATA_CHANGEVARIABLEBY
 
-    /* 畫筆：1～3 關畫正方形、正多邊形要用 */
-    'pen.clear':        { cat:'pen',     shape:'stack', label:'全部擦掉' },
-    'pen.down':         { cat:'pen',     shape:'stack', label:'落筆' },
-    'pen.up':           { cat:'pen',     shape:'stack', label:'提筆' },
-    'pen.color':        { cat:'pen',     shape:'stack', label:'筆的顏色設為 %s', args:['紅'] },
+    /* 畫筆（擴充積木）：1～3 關畫正方形、正多邊形要用 */
+    'pen.clear':        { cat:'pen',     shape:'stack', label:'筆跡全部清除' },                  // pen.clear
+    'pen.down':         { cat:'pen',     shape:'stack', label:'下筆' },                          // pen.penDown
+    'pen.up':           { cat:'pen',     shape:'stack', label:'停筆' },                          // pen.penUp
+    'pen.color':        { cat:'pen',     shape:'stack', label:'筆跡顏色設為 %s', args:['紅'] },  // pen.setHue
 
-    /* 自訂積木（函式）：1～3 關的主角
+    /* 函式積木（Scratch 的「函式積木」分類）：1～3 關的主角
+       PROCEDURES_DEFINITION 是「定義 %1」，呼叫時就是積木自己的名字。
        ⚠️ 只支援「一個數字參數」。真正的 Scratch 可以有任意個參數，
           但這裡是結構化練習題，一個參數就分得出「有參數／沒參數」的差別，
           多做只會讓判定與畫面複雜好幾倍。 */
-    'my.define':        { cat:'my',      shape:'c',     label:'定義 %s',          args:['畫正方形'] },
-    'my.definep':       { cat:'my',      shape:'c',     label:'定義 %s（邊長）',   args:['畫正方形'] },
-    'my.call':          { cat:'my',      shape:'stack', label:'%s',               args:['畫正方形'] },
-    'my.callp':         { cat:'my',      shape:'stack', label:'%s 邊長 %n',       args:['畫正方形', 50] },
-    'my.movearg':       { cat:'my',      shape:'stack', label:'移動（邊長）點' },
+    'my.define':        { cat:'my',      shape:'c',     label:'定義 %s',           args:['畫正方形'] },
+    'my.definep':       { cat:'my',      shape:'c',     label:'定義 %s (邊長)',    args:['畫正方形'] },
+    'my.call':          { cat:'my',      shape:'stack', label:'%s',                args:['畫正方形'] },
+    'my.callp':         { cat:'my',      shape:'stack', label:'%s %n',             args:['畫正方形', 50] },
+    // 在 Scratch 裡是把橢圓形的參數「邊長」拖進「移動 () 點」，
+    // 這裡沒有橢圓積木，所以做成一塊固定的積木，名字照樣是「移動 () 點」
+    'my.movearg':       { cat:'my',      shape:'stack', label:'移動 (邊長) 點' },
 
-    /* 清單與判斷：5～10 關的排序、搜尋要用 */
-    'list.swap':        { cat:'list',    shape:'stack', label:'交換第 %n 項和第 %n 項', args:[1, 2] },
-    'list.say':         { cat:'list',    shape:'stack', label:'說出第 %n 項',      args:[1] },
-    'list.setidx':      { cat:'list',    shape:'stack', label:'設定 %s 為 %n',     args:['位置', 1] },
-    'list.changeidx':   { cat:'list',    shape:'stack', label:'%s 改變 %n',        args:['位置', 1] },
-    'control.ifless':   { cat:'control', shape:'c',     label:'如果 第 %n 項 < 第 %n 項 那麼', args:[1, 2] },
-    'control.repeatlen':{ cat:'control', shape:'c',     label:'重複 清單長度 次' },
-    'control.until':    { cat:'control', shape:'c',     label:'重複直到 找到目標' }
+    /* 清單與判斷：5～10 關的排序、搜尋要用
+       ★自訂 —— 這幾塊在 Scratch 裡是好幾塊積木組起來的（要用橢圓形的
+       回報值積木塞進另一塊裡）。引擎還不支援巢狀的回報值，先做成單塊，
+       名稱盡量沿用官方用詞（「清單 %1 的長度」「%2 的第 %1 項」）。
+       等引擎補上回報值積木，這幾塊就該拆回真正的 Scratch 組合。 */
+    'list.swap':        { cat:'list',    shape:'stack', label:'交換 數列 的第 %n 項和第 %n 項', args:[1, 2] }, // ★自訂
+    'list.say':         { cat:'list',    shape:'stack', label:'說出 數列 的第 %n 項', args:[1] },              // ★自訂
+    'list.setidx':      { cat:'list',    shape:'stack', label:'變數 %s 設為 %n',   args:['位置', 1] },         // DATA_SETVARIABLETO
+    'list.changeidx':   { cat:'list',    shape:'stack', label:'變數 %s 改變 %n',   args:['位置', 1] },         // DATA_CHANGEVARIABLEBY
+    'control.ifless':   { cat:'control', shape:'c',     label:'如果 數列 的第 %n 項 < 數列 的第 %n 項 那麼', args:[1, 2] }, // ★自訂
+    'control.repeatlen':{ cat:'control', shape:'c',     label:'重複 清單 數列 的長度 次' },                     // ★自訂
+    'control.until':    { cat:'control', shape:'c',     label:'重複直到 找到目標' }                            // ★自訂
   };
 
   /* ===== 小工具 ===== */

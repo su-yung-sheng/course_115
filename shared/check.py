@@ -466,6 +466,206 @@ def check_term_start():
                           '週次算錯會讓每週評分整批失準。')
 
 
+# ── 7.8 積木名稱要和 Scratch 官方繁中一致 ────────────────
+def check_scratch_names():
+    """
+    積木模擬器上的字，必須和學生打開真的 Scratch 看到的一模一樣。
+
+    ★ 為什麼值得一個檢查：
+      名字取得「比較白話」是很自然的衝動 —— 落筆、提筆、全部擦掉，
+      唸起來確實比下筆、停筆、筆跡全部清除順。
+      但學生要在兩邊來回：模擬器練完，回 Scratch 找不到那塊積木，
+      是我們自己造出來的障礙。這種錯不會有任何錯誤訊息，
+      只會變成「老師，我找不到那個積木」，所以要在提交前擋。
+
+    下面的字串抄自 Scratch 官方翻譯庫 scratch-l10n（zh-tw），
+    只收模擬器實際用到的：
+      editor/blocks/zh-tw.json      一般積木
+      editor/extensions/zh-tw.json  畫筆等擴充積木
+    模擬器裡標了「★自訂」的積木（Scratch 沒有對應的單塊積木）不在此列。
+    """
+    p = os.path.join(ROOT, 'shared', 'blocks.js')
+    if not os.path.exists(p):
+        return
+    src = open(p, encoding='utf-8').read()
+
+    # 積木代號 → Scratch 官方繁中（%n／%s 是我們的參數欄位，對應官方的 %1 %2）
+    OFFICIAL = {
+        'events.whenflag':  '當 %flag 被點擊',      # EVENT_WHENFLAGCLICKED「當 %1 被點擊」
+        'motion.move':      '移動 %n 點',            # MOTION_MOVESTEPS
+        'motion.turnright': '右轉 ↻ %n 度',          # MOTION_TURNRIGHT「右轉 %1 %2 度」
+        'motion.turnleft':  '左轉 ↺ %n 度',          # MOTION_TURNLEFT
+        'motion.goto':      '定位到 x:%n y:%n',      # MOTION_GOTOXY（冒號後沒有空格）
+        'motion.changey':   'y 改變 %n',             # MOTION_CHANGEYBY
+        'looks.say':        '說出 %s',               # LOOKS_SAY（不是「說」）
+        'looks.sayfor':     '說出 %s 持續 %n 秒',     # LOOKS_SAYFORSECS
+        'looks.next':       '造型換成下一個',          # LOOKS_NEXTCOSTUME（不是「下一個造型」）
+        'looks.change':     '尺寸改變 %n',           # LOOKS_CHANGESIZEBY
+        'sound.play':       '播放音效 %s',           # SOUND_PLAY
+        'control.wait':     '等待 %n 秒',            # CONTROL_WAIT
+        'control.repeat':   '重複 %n 次',            # CONTROL_REPEAT
+        'data.setvar':      '變數 %s 設為 %n',       # DATA_SETVARIABLETO（不是「設定…為」）
+        'data.changevar':   '變數 %s 改變 %n',       # DATA_CHANGEVARIABLEBY
+        'pen.clear':        '筆跡全部清除',           # pen.clear（不是「全部擦掉」）
+        'pen.down':         '下筆',                  # pen.penDown（不是「落筆」）
+        'pen.up':           '停筆',                  # pen.penUp（不是「提筆」）
+        'my.define':        '定義 %s',               # PROCEDURES_DEFINITION
+    }
+    CATS = {'my': '函式積木', 'pen': '畫筆', 'motion': '動作', 'looks': '外觀',
+            'sound': '音效', 'events': '事件', 'control': '控制', 'data': '變數'}
+
+    for bid, want in OFFICIAL.items():
+        m = re.search(r"'" + re.escape(bid) + r"':\s*\{[^}]*?label:\s*'([^']*)'", src)
+        if not m:
+            warns.append(f'blocks.js 找不到積木 {bid}，略過名稱比對')
+            continue
+        if m.group(1) != want:
+            errors.append(f'積木 {bid} 的名稱和 Scratch 官方繁中不一樣：\n'
+                          f'     現在寫的 → 「{m.group(1)}」\n'
+                          f'     Scratch  → 「{want}」\n'
+                          '     學生要在模擬器和 Scratch 之間來回，名字必須一模一樣。')
+
+    for cat, want in CATS.items():
+        m = re.search(r'\b' + cat + r":\s*\{\s*name:\s*'([^']*)'", src)
+        if m and m.group(1) != want:
+            errors.append(f'積木分類 {cat} 叫「{m.group(1)}」，Scratch 官方是「{want}」')
+
+
+# ── 7.9 關卡答案要和老師的 Scratch 原始檔一致 ─────────────
+def check_sb3_levels():
+    """
+    把 11502/content/reference/*.sb3（老師課堂用的原始檔）直接解出來，
+    和 11502/content/blocks.js 裡寫的答案逐格比對。
+
+    ★ 為什麼要比：
+      模擬器的答案是人抄過去的，抄錯一個數字不會有任何徵兆 ——
+      學生照課堂投影片組出來卻被判錯，只會以為自己不會。
+      「我看起來一樣」不算檢查，這裡是機器逐格比。
+
+    ★ 為什麼 .sb3 要收進 repo：
+      不收就沒得比。40KB 的教材檔，換來的是「教材改了、關卡忘了改」
+      會在提交當下就被擋住。
+
+    只比對得出對應關係的關卡；沒有 .sb3 的關卡（例如第 3 關）不管。
+    """
+    import zipfile, json as _json
+    refdir = os.path.join(ROOT, '11502', 'content', 'reference')
+    lvpath = os.path.join(ROOT, '11502', 'content', 'blocks.js')
+    if not os.path.isdir(refdir) or not os.path.exists(lvpath):
+        return
+
+    # 檔名 → 單元代號。新增參考檔時在這裡加一行。
+    PAIRS = {'11502_單元一.sb3': '2-1-1', '11502_單元二.sb3': '2-1-2'}
+    OPS = {'event_whenflagclicked': 'events.whenflag', 'pen_clear': 'pen.clear',
+           'pen_penDown': 'pen.down', 'pen_penUp': 'pen.up',
+           'motion_turnright': 'motion.turnright', 'motion_turnleft': 'motion.turnleft',
+           'motion_gotoxy': 'motion.goto', 'control_repeat': 'control.repeat',
+           'control_wait': 'control.wait'}
+
+    def n(x):
+        f = float(x)
+        return int(f) if f == int(f) else f
+
+    def convert(bl):
+        def raw(b, name):
+            inp = b.get('inputs', {}).get(name)
+            if not inp:
+                return None
+            v = inp[1]
+            return v[1] if isinstance(v, list) else bl.get(v)
+
+        def walk(k):
+            out = []
+            while k:
+                b = bl[k]
+                op = b['opcode']
+                if op == 'procedures_definition':
+                    code = bl[b['inputs']['custom_block'][1]]['mutation']['proccode']
+                    out.append({'id': 'my.definep' if ' %' in code else 'my.define',
+                                'args': [code.split(' %')[0]],
+                                'children': walk(b.get('next'))})
+                    return out                       # 定義底下整串都是它的內容
+                if op == 'procedures_call':
+                    code = b['mutation']['proccode']
+                    ids = _json.loads(b['mutation']['argumentids'])
+                    out.append({'id': 'my.callp', 'args': [code.split(' %')[0], n(b['inputs'][ids[0]][1][1])]}
+                               if ids else {'id': 'my.call', 'args': [code.split(' %')[0]]})
+                elif op == 'motion_movesteps':
+                    v = raw(b, 'STEPS')
+                    out.append({'id': 'my.movearg'} if isinstance(v, dict)
+                               else {'id': 'motion.move', 'args': [n(v)]})
+                elif op in OPS:
+                    node = {'id': OPS[op]}
+                    if op == 'motion_gotoxy':
+                        node['args'] = [n(raw(b, 'X')), n(raw(b, 'Y'))]
+                    elif op == 'control_repeat':
+                        node['args'] = [n(raw(b, 'TIMES'))]
+                        sub = b['inputs'].get('SUBSTACK')
+                        node['children'] = walk(sub[1]) if sub else []
+                    elif op == 'control_wait':
+                        node['args'] = [n(raw(b, 'DURATION'))]
+                    elif op in ('motion_turnright', 'motion_turnleft'):
+                        node['args'] = [n(raw(b, 'DEGREES'))]
+                    out.append(node)
+                else:
+                    raise KeyError(op)
+                k = b.get('next')
+            return out
+
+        tops = [k for k, b in bl.items() if isinstance(b, dict) and b.get('topLevel')]
+        tops.sort(key=lambda k: 0 if bl[k]['opcode'] == 'procedures_definition' else 1)
+        r = []
+        for t in tops:
+            r += walk(t)
+        return r
+
+    # 用 node 把 blocks.js 的 goal 讀出來（它是 JS，不是 JSON）
+    try:
+        import subprocess
+        src = open(lvpath, encoding='utf-8').read()
+        out = subprocess.run(['node', '-e', 'global.window={};' + src +
+                              ';console.log(JSON.stringify(window.BLOCK_LEVELS))'],
+                             capture_output=True, text=True, timeout=20)
+        if out.returncode != 0:
+            warns.append('讀不到 11502 關卡資料，略過與 .sb3 的比對')
+            return
+        levels = _json.loads(out.stdout)
+    except (OSError, ValueError, _json.JSONDecodeError):
+        warns.append('沒有 node 或關卡資料讀不出來，略過與 .sb3 的比對')
+        return
+
+    def norm(x):
+        d = {'id': x['id']}
+        if x.get('args') is not None:
+            d['args'] = x['args']
+        if x.get('children') is not None:
+            d['children'] = [norm(c) for c in x['children']]
+        return d
+
+    for fn, uid in PAIRS.items():
+        path = os.path.join(refdir, fn)
+        if not os.path.exists(path) or uid not in levels:
+            continue
+        try:
+            with zipfile.ZipFile(path) as z:
+                proj = _json.loads(z.read('project.json').decode('utf-8'))
+            tgt = [t for t in proj['targets'] if t.get('blocks')][0]
+            want = [norm(x) for x in convert(tgt['blocks'])]
+        except KeyError as e:
+            warns.append(f'{fn} 用到模擬器還沒有的積木（{e.args[0]}），略過這一關的比對')
+            continue
+        except (zipfile.BadZipFile, ValueError, IndexError):
+            warns.append(f'{fn} 讀不開，略過比對')
+            continue
+
+        got = [norm(x) for x in levels[uid]['goal']]
+        if got != want:
+            errors.append(f'第 {uid} 關的答案和 {fn} 不一致 —— '
+                          '學生照課堂教材組出來會被判錯。\n'
+                          f'     .sb3   → {_json.dumps(want, ensure_ascii=False)}\n'
+                          f'     關卡   → {_json.dumps(got, ensure_ascii=False)}')
+
+
 def main():
     log('檢查中…\n')
     check_empty()
@@ -480,6 +680,8 @@ def main():
     check_old_prefix()
     check_units_copied()
     check_term_start()
+    check_scratch_names()
+    check_sb3_levels()
 
     if warns:
         for w in warns:
