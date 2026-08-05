@@ -91,10 +91,12 @@
        ⚠️ 只支援「一個數字參數」。真正的 Scratch 可以有任意個參數，
           但這裡是結構化練習題，一個參數就分得出「有參數／沒參數」的差別，
           多做只會讓判定與畫面複雜好幾倍。 */
-    'my.define':        { cat:'my',      shape:'c',     label:'定義 %s',           args:['畫正方形'] },
-    'my.definep':       { cat:'my',      shape:'c',     label:'定義 %s (邊長)',    args:['畫正方形'] },
-    'my.call':          { cat:'my',      shape:'stack', label:'%s',                args:['畫正方形'] },
-    'my.callp':         { cat:'my',      shape:'stack', label:'%s %n',             args:['畫正方形', 50] },
+    // idArgs 標出「這一格是學生自己取的名字」，判定時只看定義與呼叫有沒有對上，
+    // 不要求跟參考答案同名（詳見下面 canon()）。廣播積木加進來時也要標。
+    'my.define':        { cat:'my',      shape:'c',     label:'定義 %s',           args:['畫正方形'], idArgs:[0] },
+    'my.definep':       { cat:'my',      shape:'c',     label:'定義 %s (邊長)',    args:['畫正方形'], idArgs:[0] },
+    'my.call':          { cat:'my',      shape:'stack', label:'%s',                args:['畫正方形'], idArgs:[0] },
+    'my.callp':         { cat:'my',      shape:'stack', label:'%s %n',             args:['畫正方形', 50], idArgs:[0] },
     // 在 Scratch 裡是把橢圓形的參數「邊長」拖進「移動 () 點」，
     // 這裡沒有橢圓積木，所以做成一塊固定的積木，名字照樣是「移動 () 點」
     'my.movearg':       { cat:'my',      shape:'stack', label:'移動 (邊長) 點' },
@@ -226,7 +228,7 @@
     return { uid: uid(), id: id, args: (d.args || []).slice(), children: d.shape === 'c' ? [] : null };
   }
 
-  /** 樹 → 可比對的純資料（丟掉 uid） */
+  /** 樹 → 可比對的純資料（丟掉 uid）。這是「原樣」，名稱不動 —— 存進資料庫用這個 */
   function plain(list) {
     return (list || []).map(function (n) {
       var o = { id: n.id, args: n.args.map(function (v) { return String(v).trim(); }) };
@@ -235,18 +237,48 @@
     });
   }
 
-  /** 兩棵樹是否一致（順序、參數、巢狀都要對） */
-  function same(a, b) {
-    return JSON.stringify(plain(a)) === JSON.stringify(normGoal(b));
+  /* ===== 判定用的正規化 =====
+     ★ 自訂積木的名字、廣播訊息的名字，由學生自己取，不該影響對錯。
+
+     學生把積木取名「正方形」而不是「畫正方形」，程式一模一樣，
+     卻被判錯 —— 那是在考背名字，不是考程式。名字取得好不好可以講評，
+     但不該是通不通關的條件。
+
+     真正該檢查的是**對應關係**：定義的那個名字，和呼叫的那個名字，
+     是不是同一個。所以這裡把每個名字換成出現順序的代號
+     （第一個出現的叫「名稱#1」，第二個叫「名稱#2」…），再比對。
+     · 定義 A、呼叫 A → #1、#1 ✔（不管 A 是什麼字）
+     · 定義 A、呼叫 B → #1、#2 ✘（正確地判錯：呼叫了沒定義的積木）
+     這在程式語言理論裡叫 alpha 等價，就是「換個變數名不算改程式」。
+
+     哪些欄位算「名字」由 DEFS 的 idArgs 指定；沒標的欄位（數字、秒數）
+     還是要一字不差。廣播積木之後加進來時，記得也標 idArgs。 */
+  function canon(list) {
+    var map = {}, seq = 0;
+    function nameKey(s) {
+      s = String(s).trim();
+      // 沒取名字不是「另一種取法」，是還沒做完 —— 給一個永遠對不上的值
+      if (s === '') return '(沒有取名字)';
+      if (!Object.prototype.hasOwnProperty.call(map, s)) map[s] = '名稱#' + (++seq);
+      return map[s];
+    }
+    function walk(l) {
+      return (l || []).map(function (n) {
+        var d = DEFS[n.id] || {};
+        var args = (n.args != null ? n.args : (d.args || []))
+          .map(function (v) { return String(v).trim(); });
+        (d.idArgs || []).forEach(function (i) { args[i] = nameKey(args[i]); });
+        var o = { id: n.id, args: args };
+        if (d.shape === 'c') o.children = walk(n.children);
+        return o;
+      });
+    }
+    return walk(list);
   }
-  function normGoal(list) {
-    return (list || []).map(function (n) {
-      var d = DEFS[n.id] || {};
-      var args = (n.args != null ? n.args : (d.args || [])).map(function (v) { return String(v).trim(); });
-      var o = { id: n.id, args: args };
-      if (d.shape === 'c') o.children = normGoal(n.children);
-      return o;
-    });
+
+  /** 兩棵樹是否一致（順序、參數、巢狀都要對；名字只看對應關係） */
+  function same(a, b) {
+    return JSON.stringify(canon(a)) === JSON.stringify(canon(b));
   }
 
   /* ===== 主體 ===== */
@@ -706,21 +738,37 @@
         say('✅ 組對了！' + (passed ? '' : ' 這一關通過。'), true);
         if (!passed) { passed = true; if (opts.onPass) opts.onPass(plain(all)); }
       } else {
-        say('❌ ' + diffHint(plain(all), normGoal(goal)));
+        say('❌ ' + diffHint(canon(all), canon(goal)));
       }
     }
-    /** 給一句「差在哪」，不要只說錯 —— 學生看到「錯了」只會亂試 */
-    function diffHint(got, want) {
-      if (got.length < want.length) return '積木還不夠，再想想少了哪一步。';
-      if (got.length > want.length) return '積木太多了，有幾塊是用不到的。';
+    /** 給一句「差在哪」，不要只說錯 —— 學生看到「錯了」只會亂試。
+        差別藏在 C 型積木裡面時要一路追進去講（「第 5 塊裡面的第 2 塊」）：
+        只說「裡面包的積木不對」，等於叫學生自己一塊一塊試。 */
+    function diffHint(got, want, where) {
+      where = where || '';
+      if (got.length < want.length) return where + '積木還不夠，再想想少了哪一步。';
+      if (got.length > want.length) return where + '積木太多了，有幾塊是用不到的。';
       for (var i = 0; i < want.length; i++) {
-        if (got[i].id !== want[i].id) return '第 ' + (i + 1) + ' 塊積木不對。';
-        if (JSON.stringify(got[i].args) !== JSON.stringify(want[i].args))
-          return '第 ' + (i + 1) + ' 塊積木的數字或文字要再改一下。';
+        var at = where + '第 ' + (i + 1) + ' 塊積木';
+        if (got[i].id !== want[i].id) return at + '不對。';
+        if (JSON.stringify(got[i].args) !== JSON.stringify(want[i].args)) {
+          /* 名字對不上要講清楚是「對不上」，不是「取錯字」——
+             名字本來就可以自己取，說「文字要再改一下」會害學生
+             回頭去猜參考答案到底叫什麼，那正是我們不想考的東西。 */
+          var d = DEFS[want[i].id] || {};
+          var bad = (d.idArgs || []).filter(function (k) { return got[i].args[k] !== want[i].args[k]; });
+          if (bad.length) {
+            return got[i].args[bad[0]] === '(沒有取名字)'
+              ? at + '還沒取名字。'
+              : at + '的名字，和你在別的地方寫的對不起來 —— '
+                + '「定義」和「呼叫」要用同一個名字（叫什麼都可以）。';
+          }
+          return at + '的數字或文字要再改一下。';
+        }
         if (want[i].children && JSON.stringify(got[i].children) !== JSON.stringify(want[i].children))
-          return '第 ' + (i + 1) + ' 塊積木「裡面」包的積木不對。';
+          return diffHint(got[i].children, want[i].children, at + '裡面的');
       }
-      return '順序好像不太對，再對照一次任務說明。';
+      return where ? where + '順序不太對。' : '順序好像不太對，再對照一次任務說明。';
     }
 
     var stopped = false;
@@ -755,7 +803,7 @@
     DEFS: DEFS,
     mount: mount,
     _plain: plain,
-    _normGoal: normGoal,
+    _canon: canon,
     _same: same
   };
 
