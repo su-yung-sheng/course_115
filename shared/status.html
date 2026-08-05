@@ -312,10 +312,9 @@ if (!window.CONFIG) {
     if (staleTerms.length) {
       var sd = d;
       staleTerms.forEach(function (t) {
-        var names = (stale[t].fields || []).map(function (f) {
-          return f === 'template_code' ? '初始空白範本' : '參考解答';
-        }).join('、');
-        sd += row(t + ' 參考資料', '<span class="text-amber-700">' + esc(names) + ' 還是舊格式</span>');
+        // 後端已經整理成看得懂的名稱（「2-1-1 的參考解答」「全域的初始空白範本」）
+        sd += row(t + ' 要重傳',
+                  '<span class="text-amber-700">' + esc((stale[t].fields || []).join('、')) + '</span>');
       });
       set(el, 'warn', '參考資料要重新上傳',
           sd + '<div class="mt-2 text-amber-700">'
