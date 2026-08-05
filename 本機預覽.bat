@@ -55,6 +55,7 @@ echo       上學期          %BASE%/11501/hub.html
 echo       下學期          %BASE%/11502/hub.html
 echo       教師端(上)      %BASE%/11501/teacher.html
 echo       教師端(下)      %BASE%/11502/teacher.html
+echo       積木模擬器試玩  %BASE%/shared/blocks-demo.html
 echo       Google 測試     %BASE%/shared/google-test.html
 echo       狀態檢查        %BASE%/shared/status.html?term=11501
 echo       名冊轉換工具    %BASE%/shared/migrate.html

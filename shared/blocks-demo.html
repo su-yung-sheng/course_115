@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>積木模擬器 試玩｜course_115</title>
+
+<!-- ⚠️ 這是「試玩／驗收」頁，不是給學生用的關卡頁：
+     · 刻意不載入 config.js、guard.js —— 不需要登入，直接打開就能玩
+     · 不寫任何進度到資料庫
+     · 用途是在把十關題目寫完之前，先確認拖曳手感與判定行為
+     學生實際會用的是 11502/scratch.html。 -->
+
+<style>
+  html,body{margin:0;font-family:'Noto Sans TC',system-ui,sans-serif;background:#e7e5e4;color:#1e293b}
+  .wrap{max-width:1000px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:22px;font-weight:900;margin:0 0 4px}
+  .sub{color:#64748b;font-size:14px;margin:0 0 20px;line-height:1.7}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .tab{border:2px solid #cbd5e1;background:#fff;border-radius:999px;padding:7px 15px;
+       font-weight:700;font-size:14px;cursor:pointer;color:#475569}
+  .tab.on{background:#4f46e5;border-color:#4f46e5;color:#fff}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:18px;margin-bottom:18px}
+  .task{font-size:15px;font-weight:700;line-height:1.8;margin:0 0 14px}
+  .ans{margin-top:14px;font-size:13px;color:#64748b;line-height:1.8}
+  .ans summary{cursor:pointer;font-weight:700;color:#475569}
+  .ans pre{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
+           padding:10px 12px;overflow:auto;font-size:12px;line-height:1.7;margin:8px 0 0}
+  .note{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:12px 14px;
+        font-size:13px;line-height:1.8;color:#78350f}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧱 積木模擬器 試玩</h1>
+  <p class="sub">
+    這一頁不需要登入、不會寫任何進度。用來在十關題目寫完之前，先確認拖曳好不好用、判定合不合理。<br>
+    <b>怎麼玩：</b>從左邊把積木拖到中間 → 按「▶ 執行」看小貓怎麼動 → 按「✓ 檢查答案」。
+  </p>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="card">
+    <p class="task" id="task"></p>
+    <div id="sim"></div>
+    <details class="ans" id="ansBox">
+      <summary>看答案（驗收用，正式關卡不會有這個）</summary>
+      <pre id="ans"></pre>
+    </details>
+  </div>
+
+  <div class="note">
+    <b>要特別試這幾件事：</b><br>
+    ① 把積木拖進「重複 N 次」<b>裡面</b>，和放在它<b>後面</b> —— 判定要分得出來<br>
+    ② 從程式區把積木拖到空白處丟掉<br>
+    ③ 點積木上的白色欄位改數字（改的時候不應該觸發拖曳）<br>
+    ④ 故意組錯，看它說的「差在哪」有沒有幫助<br>
+    ⑤ 如果有觸控螢幕或平板，用手指拖看看
+  </div>
+</div>
+
+<script src="blocks.js"></script>
+<script>
+/* 三道示範題，涵蓋三種難度：直線、迴圈、自訂積木 */
+var LEVELS = [
+  {
+    name: '① 打招呼',
+    task: '讓小貓說「你好！」，然後往前移動 100 點。',
+    palette: ['looks.say', 'motion.move', 'motion.turnright', 'control.wait'],
+    goal: [
+      { id: 'looks.say',   args: ['你好！'] },
+      { id: 'motion.move', args: [100] }
+    ]
+  },
+  {
+    name: '② 畫正方形',
+    task: '用「重複」讓小貓走出一個正方形：重複 4 次（移動 100 點、右轉 90 度）。',
+    palette: ['control.repeat', 'motion.move', 'motion.turnright', 'motion.turnleft', 'pen.down'],
+    goal: [
+      { id: 'control.repeat', args: [4], children: [
+        { id: 'motion.move',      args: [100] },
+        { id: 'motion.turnright', args: [90] }
+      ]}
+    ]
+  },
+  {
+    name: '③ 自訂積木',
+    task: '先「定義 畫正方形」，裡面放重複 4 次的移動與右轉；再呼叫它一次。',
+    palette: ['my.define', 'my.call', 'control.repeat', 'motion.move', 'motion.turnright'],
+    goal: [
+      { id: 'my.define', args: ['畫正方形'], children: [
+        { id: 'control.repeat', args: [4], children: [
+          { id: 'motion.move',      args: [100] },
+          { id: 'motion.turnright', args: [90] }
+        ]}
+      ]},
+      { id: 'my.call', args: ['畫正方形'] }
+    ]
+  }
+];
+
+var tabs = document.getElementById('tabs');
+var cur = 0;
+
+function pretty(list, depth) {
+  depth = depth || 0;
+  return (list || []).map(function (n) {
+    var d = BLOCKS.DEFS[n.id] || {};
+    var lab = (d.label || n.id), i = 0;
+    lab = lab.replace(/%[ns]/g, function () {
+      var v = (n.args != null ? n.args : (d.args || []))[i++];
+      return '[' + v + ']';
+    });
+    var line = '  '.repeat(depth) + '· ' + lab;
+    if (n.children) line += '\n' + pretty(n.children, depth + 1);
+    return line;
+  }).join('\n');
+}
+
+function show(i) {
+  cur = i;
+  var lv = LEVELS[i];
+  [].forEach.call(tabs.children, function (b, k) {
+    b.className = 'tab' + (k === i ? ' on' : '');
+  });
+  document.getElementById('task').textContent = '🎯 ' + lv.task;
+  document.getElementById('ans').textContent = pretty(lv.goal);
+  document.getElementById('ansBox').open = false;
+  BLOCKS.mount(document.getElementById('sim'), {
+    palette: lv.palette,
+    goal: lv.goal,
+    hint: lv.task,
+    onPass: function () { console.log('通過：' + lv.name); }
+  });
+}
+
+LEVELS.forEach(function (lv, i) {
+  var b = document.createElement('button');
+  b.className = 'tab';
+  b.textContent = lv.name;
+  b.onclick = function () { show(i); };
+  tabs.appendChild(b);
+});
+show(0);
+</script>
+</body>
+</html>
