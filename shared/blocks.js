@@ -156,10 +156,11 @@
       '           padding:10px;max-height:420px;overflow:auto}',
 
       /* ★ 程式區：Scratch 的淺灰格點底 */
-      '.bk-script{min-height:230px;padding:14px;border-radius:8px;background:#f9f9f9;',
+      '.bk-script{min-height:300px;padding:14px;border-radius:8px;background:#f9f9f9;',
       '           background-image:radial-gradient(#d9d9d9 1px, transparent 1px);',
       '           background-size:22px 22px;border:1px solid #e5e7eb}',
       'body.bk-dragging .bk-script{border-color:#4c97ff}',
+      '.bk-defarea{min-height:120px}',
       '.bk-empty{color:#9aa0b4;font-size:13px;text-align:center;padding:34px 8px;pointer-events:none}',
 
       /* ★ 舞台：白底 ＋ 綠旗／停止列 */
@@ -216,7 +217,7 @@
 
     host.innerHTML = '';
     var wrap = el('div');
-    wrap.style.cssText = 'display:grid;grid-template-columns:minmax(150px,190px) minmax(0,1fr) 200px;gap:12px;align-items:start';
+    wrap.style.cssText = 'display:grid;grid-template-columns:minmax(150px,185px) minmax(0,1fr) 230px;gap:14px;align-items:start';
 
     /* ── 左：積木調色盤 ──
        依分類分組、直向排列，和真的 Scratch 一樣。
@@ -243,9 +244,29 @@
     });
     palBox.appendChild(palWrap);
 
-    /* ── 中：程式區 ── */
+    /* ── 中：程式區 ──
+       ★ 有自訂積木的關卡會多切一個「函式區」。
+         這不只是為了空間 —— 真實 Scratch 裡「定義」本來就是一段**獨立的腳本**，
+         不會跟主程式接在一起。把它們疊成一長條反而不像。
+         沒有自訂積木的關卡就不顯示，免得空著讓人困惑。 */
+    var hasDefine = (opts.palette || []).some(function (id) {
+      return id === 'my.define' || id === 'my.definep';
+    });
+
     var midBox = el('div');
-    midBox.appendChild(tag('程式區'));
+    var defs = [];                 // 函式區的積木（只放定義）
+    var defArea = null;
+
+    if (hasDefine) {
+      midBox.appendChild(tag('函式區（定義自訂積木）'));
+      defArea = el('div', 'bk-script bk-defarea');
+      midBox.appendChild(defArea);
+      var gap = el('div');
+      gap.style.height = '14px';
+      midBox.appendChild(gap);
+    }
+
+    midBox.appendChild(tag(hasDefine ? '主程式' : '程式區'));
     var script = el('div', 'bk-script');
     midBox.appendChild(script);
 
@@ -361,8 +382,9 @@
         box.appendChild(renderBlock(n, false));
         box.appendChild(dropZone(list, i + 1));
       });
-      if (!list.length && box === script) {
-        box.appendChild(el('div', 'bk-empty', '把左邊的積木拖到這裡'));
+      if (!list.length) {
+        if (box === script) box.appendChild(el('div', 'bk-empty', '把左邊的積木拖到這裡'));
+        else if (box === defArea) box.appendChild(el('div', 'bk-empty', '把「定義…」積木拖到這裡'));
       }
     }
     function dropZone(list, idx) {
@@ -371,19 +393,25 @@
       return z;
     }
     function redraw() {
+      if (defArea) { fill(defArea, defs); defArea.classList.add('bk-stack'); }
       fill(script, program);
       script.classList.add('bk-stack');
     }
+    /** 所有程式區（判定與拖曳都要一起看） */
+    function areas() { return defArea ? [defArea, script] : [script]; }
+    /** 完整的程式 = 函式區 ＋ 主程式（順序固定，goal 也照這個順序寫） */
+    function whole() { return defs.concat(program); }
 
     /* ── 拖曳（pointer events：滑鼠、觸控、觸控筆都能用）── */
     var drag = null;
+    var rejected = '';        // 這次拖曳被區域規則擋下的原因（放開時顯示）
     function startDrag(e, node, srcEl, isTemplate) {
       if (e.button != null && e.button !== 0) return;
       e.preventDefault(); e.stopPropagation();
 
       // 從調色盤拖 = 複製一塊新的；從程式區拖 = 搬移（先摘下來）
       var moving = isTemplate ? makeNode(node.id) : node;
-      if (!isTemplate) detach(program, node);
+      if (!isTemplate && !detach(program, node)) detach(defs, node);
 
       var ghost = renderBlock(moving, false);
       ghost.classList.add('bk-ghost');
@@ -391,6 +419,7 @@
       document.body.appendChild(ghost);
 
       drag = { node: moving, ghost: ghost, zone: null };
+      rejected = '';
       document.body.classList.add('bk-dragging');   // 讓所有縫隙顯形
       document.addEventListener('dragstart', stopNativeDrag);
       moveGhost(e);
@@ -416,14 +445,34 @@
        不問瀏覽器任何事，就沒有被誰擋住的問題。
        水平距離只給兩成權重，因為 C 型積木的凹槽是靠縮排區分的，
        主要仍看垂直位置。 */
-    function nearestZone(x, y) {
-      var r = script.getBoundingClientRect();
+    function nearestZone(x, y, node) {
       var pad = 48;                                   // 邊緣外一點也算，手不必很準
-      if (x < r.left - pad || x > r.right + pad ||
-          y < r.top - pad  || y > r.bottom + pad) return null;
+      var box = null;
+      areas().forEach(function (a) {
+        var r = a.getBoundingClientRect();
+        if (x >= r.left - pad && x <= r.right + pad &&
+            y >= r.top - pad  && y <= r.bottom + pad) box = a;
+      });
+      if (!box) return null;
 
-      var zones = [].slice.call(script.querySelectorAll('.bk-drop'));
-      if (!zones.length) return null;
+      /* 放置限制：定義積木只能放函式區的頂層，其他積木不能放函式區頂層。
+         這不是刁難 —— 「定義」在真實 Scratch 也不能接在主程式下面，
+         而且分開放才看得出「定義」與「呼叫」是兩件事。 */
+      var isDef = node && (node.id === 'my.define' || node.id === 'my.definep');
+      var all = [].slice.call(box.querySelectorAll('.bk-drop'));
+      var zones = all.filter(function (z) {
+        var top = z.parentNode === box;               // 頂層（不在 C 型積木的凹槽裡）
+        if (!top) return true;                        // 凹槽裡一律可放
+        return box === defArea ? isDef : !isDef;
+      });
+      if (!zones.length) {
+        /* 游標在區域內但這塊積木不該放這裡。
+           記下原因 —— 積木默默消失是最讓人困惑的失敗方式。 */
+        rejected = box === defArea
+          ? '函式區只放「定義…」積木，其他積木請放到下面的主程式。'
+          : '「定義…」積木要放在上面的函式區，不能接在主程式裡。';
+        return null;
+      }
 
       var best = null, bestD = Infinity;
       zones.forEach(function (z) {
@@ -441,7 +490,8 @@
       e.preventDefault();          // 順手擋掉行動裝置的捲動與長按選字
       moveGhost(e);
       // 不再需要「先把分身藏起來再問瀏覽器」——現在只量座標，分身不影響
-      var z = nearestZone(e.clientX, e.clientY);
+      rejected = '';
+      var z = nearestZone(e.clientX, e.clientY, drag.node);
       if (drag.zone && drag.zone !== z) drag.zone.classList.remove('on');
       drag.zone = z;
       if (z) z.classList.add('on');
@@ -458,10 +508,11 @@
       var z = drag.zone;
       if (z) { z.classList.remove('on'); z._list.splice(z._idx, 0, drag.node); }
       // 沒放在任何放置點 = 丟掉（等於刪除積木）
+      var why = z ? '' : rejected;
       drag.ghost.remove();
       drag = null;
       redraw();
-      say('');
+      say(why);
     }
     /** 從樹裡把某個節點摘掉（可能在巢狀裡） */
     function detach(list, node) {
@@ -516,7 +567,8 @@
       running = true; runBtn.disabled = true;
       resetStage();
       var steps = [];
-      flatten(program, steps, collectDefs(program), 0, 0);
+      var all = whole();
+      flatten(all, steps, collectDefs(all), 0, 0);
       var i = 0;
       stopped = false;
       (function tick() {
@@ -599,12 +651,13 @@
       msg.style.color = t ? (ok ? '#16a34a' : '#b45309') : '';
     }
     function check() {
-      if (!program.length) { say('程式區還是空的，先從左邊拖幾塊積木過來。'); return; }
-      if (same(program, goal)) {
+      var all = whole();
+      if (!all.length) { say('程式區還是空的，先從左邊拖幾塊積木過來。'); return; }
+      if (same(all, goal)) {
         say('✅ 組對了！' + (passed ? '' : ' 這一關通過。'), true);
-        if (!passed) { passed = true; if (opts.onPass) opts.onPass(plain(program)); }
+        if (!passed) { passed = true; if (opts.onPass) opts.onPass(plain(all)); }
       } else {
-        say('❌ ' + diffHint(plain(program), normGoal(goal)));
+        say('❌ ' + diffHint(plain(all), normGoal(goal)));
       }
     }
     /** 給一句「差在哪」，不要只說錯 —— 學生看到「錯了」只會亂試 */
@@ -627,16 +680,24 @@
     runBtn.addEventListener('click', run);
     checkBtn.addEventListener('click', check);
     clearBtn.addEventListener('click', function () {
-      program.length = 0; redraw(); resetStage(); say('');
+      program.length = 0; defs.length = 0; redraw(); resetStage(); say('');
     });
 
     redraw();
     setTimeout(resetStage, 0);
 
     return {
-      reset: function () { program.length = 0; redraw(); resetStage(); say(''); },
-      load: function (list) { program = list || []; redraw(); },
-      get program() { return plain(program); }
+      reset: function () { program.length = 0; defs.length = 0; redraw(); resetStage(); say(''); },
+      /* 載入：自動把「定義」放進函式區、其餘放進主程式 */
+      load: function (list) {
+        defs.length = 0; program.length = 0;
+        (list || []).forEach(function (n) {
+          var d = (n.id === 'my.define' || n.id === 'my.definep');
+          (d && defArea ? defs : program).push(n);
+        });
+        redraw();
+      },
+      get program() { return plain(whole()); }
     };
   }
 
