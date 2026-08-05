@@ -6,9 +6,11 @@
 <title>積木模擬器 試玩｜course_115</title>
 
 <!-- ⚠️ 這是「試玩／驗收」頁，不是給學生用的關卡頁：
-     · 刻意不載入 config.js、guard.js —— 不需要登入，直接打開就能玩
+     · 不載入 guard.js —— 不需要登入，直接打開就能玩
      · 不寫任何進度到資料庫
-     · 用途是在把十關題目寫完之前，先確認拖曳手感與判定行為
+     · 題目讀的是 11502/content/blocks.js，也就是學生會看到的同一份
+       （不自己寫一份示範題：那會變成第二份來源，改了關卡卻忘了改這裡，
+         驗收的就不是真正上線的東西）
      學生實際會用的是 11502/scratch.html。 -->
 
 <style>
@@ -34,7 +36,7 @@
 <div class="wrap">
   <h1>🧱 積木模擬器 試玩</h1>
   <p class="sub">
-    這一頁不需要登入、不會寫任何進度。用來在十關題目寫完之前，先確認拖曳好不好用、判定合不合理。<br>
+    這一頁不需要登入、不會寫任何進度，但題目就是<b>下學期真正的關卡</b>（讀 <code>11502/content/blocks.js</code>）。<br>
     <b>怎麼玩：</b>從左邊把積木拖到中間 → 按「▶ 執行」看小貓怎麼動 → 按「✓ 檢查答案」。
   </p>
 
@@ -59,45 +61,26 @@
   </div>
 </div>
 
+<!-- 只為了取單元名稱與關卡資料；仍然不載 guard.js，不需要登入 -->
+<script src="../11502/config.js"></script>
+<script src="../11502/content/blocks.js"></script>
 <script src="blocks.js"></script>
 <script>
-/* 三道示範題，涵蓋三種難度：直線、迴圈、自訂積木 */
-var LEVELS = [
-  {
-    name: '① 打招呼',
-    task: '讓小貓說「你好！」，然後往前移動 100 點。',
-    palette: ['looks.say', 'motion.move', 'motion.turnright', 'control.wait'],
-    goal: [
-      { id: 'looks.say',   args: ['你好！'] },
-      { id: 'motion.move', args: [100] }
-    ]
-  },
-  {
-    name: '② 畫正方形',
-    task: '用「重複」讓小貓走出一個正方形：重複 4 次（移動 100 點、右轉 90 度）。',
-    palette: ['control.repeat', 'motion.move', 'motion.turnright', 'motion.turnleft', 'pen.down'],
-    goal: [
-      { id: 'control.repeat', args: [4], children: [
-        { id: 'motion.move',      args: [100] },
-        { id: 'motion.turnright', args: [90] }
-      ]}
-    ]
-  },
-  {
-    name: '③ 自訂積木',
-    task: '先「定義 畫正方形」，裡面放重複 4 次的移動與右轉；再呼叫它一次。',
-    palette: ['my.define', 'my.call', 'control.repeat', 'motion.move', 'motion.turnright'],
-    goal: [
-      { id: 'my.define', args: ['畫正方形'], children: [
-        { id: 'control.repeat', args: [4], children: [
-          { id: 'motion.move',      args: [100] },
-          { id: 'motion.turnright', args: [90] }
-        ]}
-      ]},
-      { id: 'my.call', args: ['畫正方形'] }
-    ]
-  }
-];
+/* 直接讀下學期的真正關卡（11502/content/blocks.js）。
+   ★ 不再自己寫一份示範題 —— 那會變成第二份題目來源，
+     改了關卡卻忘了改試玩頁，看到的就不是學生會看到的東西。 */
+var LEVELS = Object.keys(window.BLOCK_LEVELS || {}).map(function (id) {
+  var lv = window.BLOCK_LEVELS[id];
+  var u = (window.CONFIG && window.CONFIG.UNITS || []).find(function (x) { return x[0] === id; });
+  var no = (window.CONFIG && window.CONFIG.UNITS || []).findIndex(function (x) { return x[0] === id; }) + 1;
+  return {
+    name: '第 ' + no + ' 關 ' + (u ? u[1] : id),
+    task: lv.task,
+    tips: lv.tips || [],
+    palette: lv.palette,
+    goal: lv.goal
+  };
+});
 
 var tabs = document.getElementById('tabs');
 var cur = 0;
@@ -123,7 +106,10 @@ function show(i) {
   [].forEach.call(tabs.children, function (b, k) {
     b.className = 'tab' + (k === i ? ' on' : '');
   });
-  document.getElementById('task').textContent = '🎯 ' + lv.task;
+  document.getElementById('task').innerHTML =
+    '🎯 ' + lv.task +
+    (lv.tips.length ? '<div style="font-weight:400;font-size:13px;color:#64748b;margin-top:8px;line-height:1.9">'
+      + lv.tips.map(function (t) { return '· ' + t; }).join('<br>') + '</div>' : '');
   document.getElementById('ans').textContent = pretty(lv.goal);
   document.getElementById('ansBox').open = false;
   BLOCKS.mount(document.getElementById('sim'), {

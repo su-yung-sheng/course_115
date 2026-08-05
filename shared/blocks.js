@@ -276,6 +276,11 @@
     rightBox.appendChild(sbar);
     var stage = el('div', 'bk-stage');
     stage.style.cssText += ';width:100%;aspect-ratio:4/3';
+    /* 畫筆軌跡畫在 canvas 上。1～3 關要畫正方形、正多邊形，
+       沒有這層的話按「執行」只看得到小貓亂跑，看不出畫了什麼。 */
+    var pen = el('canvas');
+    pen.style.cssText = 'position:absolute;inset:0;width:100%;height:100%';
+    stage.appendChild(pen);
     var sprite = el('div', 'bk-sprite', '🐱');
     var bubble = el('div', 'bk-bubble');
     bubble.style.display = 'none';
@@ -468,16 +473,33 @@
     }
 
     /* ── 執行：在小舞台上跑一遍 ── */
-    var st;
+    var st, ctx;
+    var PEN_COLORS = { '紅':'#e5484d', '藍':'#0090ff', '綠':'#30a46c',
+                       '黃':'#ffb224', '紫':'#8e4ec6', '黑':'#333' };
     function resetStage() {
-      st = { x: 0, y: 0, dir: 90, size: 1 };
+      st = { x: 0, y: 0, dir: 90, size: 1, down: false, color: '#e5484d' };
+      // canvas 的像素尺寸要跟著實際版面走，不然畫出來會糊掉或偏移
+      var w = stage.clientWidth || 240, h = stage.clientHeight || 180;
+      pen.width = w; pen.height = h;
+      ctx = pen.getContext ? pen.getContext('2d') : null;
+      if (ctx) { ctx.clearRect(0, 0, w, h); ctx.lineWidth = 3; ctx.lineCap = 'round'; }
       paint(); bubble.style.display = 'none';
+    }
+    /** 舞台座標（中心為原點、y 向上）→ canvas 座標 */
+    function toCanvas(x, y) {
+      return [pen.width / 2 + x, pen.height / 2 - y];
+    }
+    function drawTo(x0, y0, x1, y1) {
+      if (!ctx || !st.down) return;
+      var a = toCanvas(x0, y0), b = toCanvas(x1, y1);
+      ctx.strokeStyle = st.color;
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
     }
     function paint() {
       var w = stage.clientWidth, h = stage.clientHeight;
       sprite.style.left = (w / 2 + st.x - 18) + 'px';
       sprite.style.top = (h / 2 - st.y - 18) + 'px';
-      sprite.style.transform = 'rotate(' + (st.dir - 90) + 'deg) scale(' + st.size + ')';
+      sprite.style.transform = 'rotate(' + (st.dir - 90) + 'deg) scale(' + st.size + ')';   // 90 度＝朝右
       if (bubble.style.display !== 'none') {
         bubble.style.left = Math.min(w - 160, w / 2 + st.x + 10) + 'px';
         bubble.style.top = Math.max(4, h / 2 - st.y - 52) + 'px';
@@ -494,7 +516,7 @@
       running = true; runBtn.disabled = true;
       resetStage();
       var steps = [];
-      flatten(program, steps);
+      flatten(program, steps, collectDefs(program), 0, 0);
       var i = 0;
       stopped = false;
       (function tick() {
@@ -503,28 +525,63 @@
         setTimeout(tick, wait);
       })();
     }
-    /** 把樹展開成一串動作（重複 N 次直接展開，最多 200 步防呆） */
-    function flatten(list, out) {
-      list.forEach(function (n) {
+    /* 把樹展開成一串動作。
+       · 重複 N 次 → 直接展開
+       · 自訂積木 → 找到定義，把它的內容接進來（等於 inline）
+         參數（邊長）用 argVal 一路傳下去，遇到「移動（邊長）點」才用得到。
+       防呆：遞迴深度 8 層、總步數 400 步 —— 學生把自訂積木寫成自己呼叫自己
+       是很常見的意外，沒有上限的話瀏覽器會直接當掉。 */
+    function collectDefs(list) {
+      var m = {};
+      (list || []).forEach(function (n) {
+        if (n.id === 'my.define' || n.id === 'my.definep') m[String(n.args[0]).trim()] = n;
+      });
+      return m;
+    }
+    function flatten(list, out, defs, argVal, depth) {
+      depth = depth || 0;
+      if (depth > 8) return;
+      (list || []).forEach(function (n) {
+        if (out.length >= 400) return;
+        if (n.id === 'my.define' || n.id === 'my.definep') return;   // 定義本身不執行
+        if (n.id === 'my.call' || n.id === 'my.callp') {
+          var d = defs[String(n.args[0]).trim()];
+          if (!d) return;                                            // 呼叫了不存在的積木 → 略過
+          var a = n.id === 'my.callp' ? (parseFloat(n.args[1]) || 0) : argVal;
+          flatten(d.children, out, defs, a, depth + 1);
+          return;
+        }
         if (n.id === 'control.repeat') {
           var t = Math.max(0, Math.min(50, parseInt(n.args[0], 10) || 0));
-          for (var k = 0; k < t && out.length < 200; k++) flatten(n.children, out);
-        } else if (out.length < 200) {
-          out.push(n);
+          for (var k = 0; k < t && out.length < 400; k++) flatten(n.children, out, defs, argVal, depth + 1);
+          return;
         }
+        out.push({ node: n, arg: argVal });
       });
     }
-    function exec(n) {
-      var a = n.args, num = function (i) { return parseFloat(a[i]) || 0; };
+    function exec(step) {
+      var n = step.node, a = n.args;
+      var num = function (i) { return parseFloat(a[i]) || 0; };
+      var move = function (dist) {
+        var x0 = st.x, y0 = st.y;
+        // Scratch 的方向：90 = 右、0 = 上
+        st.x += Math.sin(st.dir * Math.PI / 180) * dist;
+        st.y += Math.cos(st.dir * Math.PI / 180) * dist;
+        drawTo(x0, y0, st.x, st.y);
+      };
       switch (n.id) {
-        case 'motion.move':
-          st.x += Math.cos((st.dir - 90) * Math.PI / 180) * num(0);
-          st.y -= Math.sin((st.dir - 90) * Math.PI / 180) * num(0);
-          break;
+        case 'motion.move':      move(num(0)); break;
+        case 'my.movearg':       move(step.arg || 0); break;
+        case 'pen.down':         st.down = true; break;
+        case 'pen.up':           st.down = false; break;
+        case 'pen.clear':        if (ctx) ctx.clearRect(0, 0, pen.width, pen.height); break;
+        case 'pen.color':        st.color = PEN_COLORS[String(a[0]).trim()] || '#e5484d'; break;
         case 'motion.turnright': st.dir += num(0); break;
         case 'motion.turnleft':  st.dir -= num(0); break;
-        case 'motion.goto':      st.x = num(0); st.y = num(1); break;
-        case 'motion.changey':   st.y += num(0); break;
+        case 'motion.goto':      st.x = num(0); st.y = num(1); break;   // 定位不留筆跡
+        case 'motion.changey': {
+          var y0 = st.y; st.y += num(0); drawTo(st.x, y0, st.x, st.y); break;
+        }
         case 'looks.say':        speak(a[0]); break;
         case 'looks.sayfor':     speak(a[0], num(1) * 1000); return Math.max(200, num(1) * 1000);
         case 'looks.change':     st.size = Math.max(.3, Math.min(2.5, st.size + num(0) / 100)); break;
