@@ -242,6 +242,12 @@
     function renderBlock(node, isTemplate) {
       var d = DEFS[node.id], c = CATS[d.cat];
       var b = el('div', 'bk' + (d.shape === 'hat' ? ' hat' : '') + (d.shape === 'c' ? ' bk-c' : ''));
+      /* ⚠️ 一定要關掉原生拖曳。瀏覽器看到「按住有文字的元素在移動」
+         會自己啟動 HTML5 drag，而原生 drag 一開始，pointermove 就不再觸發 ——
+         拖曳整個斷掉，放開時當然什麼也沒發生。
+         user-select:none 擋不住這件事，要明確設 draggable=false。 */
+      b.draggable = false;
+      b.addEventListener('dragstart', function (ev) { ev.preventDefault(); });
       b.style.background = c.color;
       b.dataset.uid = node.uid;
       b.dataset.id = node.id;
@@ -319,37 +325,45 @@
 
       drag = { node: moving, ghost: ghost, zone: null };
       document.body.classList.add('bk-dragging');   // 讓所有縫隙顯形
+      document.addEventListener('dragstart', stopNativeDrag);
       moveGhost(e);
       if (!isTemplate) redraw();
 
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
     }
     function moveGhost(e) {
       drag.ghost.style.left = (e.clientX - 30) + 'px';
       drag.ghost.style.top = (e.clientY - 16) + 'px';
     }
     /* 找「該放到哪一道縫」。
-       ⚠️ 原本用 elementFromPoint 直接抓 .bk-drop —— 那些縫只有 8px 高，
-          等於要求學生精準命中兩塊積木之間的細線；拖到空白的程式區
-          更是完全沒反應（整片空白只有最上面一條是有效區）。
-       改成：先看游標落在哪個容器（程式區或某個 C 型積木的凹槽），
-       再從那個容器裡挑「垂直距離最近」的一道縫。放哪都有反應。 */
-    function nearestZone(x, y) {
-      var under = document.elementFromPoint(x, y);
-      if (!under || !under.closest) return null;
-      var box = under.closest('.bk-slot') || under.closest('.bk-script');
-      if (!box || !script.contains(box) && box !== script) return null;
 
-      var zones = [].filter.call(box.children, function (c) {
-        return c.classList && c.classList.contains('bk-drop');
-      });
+       ⚠️ 前兩版都靠 document.elementFromPoint + closest() 去問
+          「游標下面是誰」。那在瀏覽器裡很脆弱：只要有任何東西疊在上面
+          （拖曳中的分身、transition 進行中的元素、瀏覽器自己的選取層），
+          問到的就不是我們要的元素，於是判定成「沒有放置目標」，
+          放開後積木就消失了 —— 也就是「拖不進去、放開不會停住」。
+
+       改成純幾何：直接量所有縫隙的座標，挑離游標最近的一道。
+       不問瀏覽器任何事，就沒有被誰擋住的問題。
+       水平距離只給兩成權重，因為 C 型積木的凹槽是靠縮排區分的，
+       主要仍看垂直位置。 */
+    function nearestZone(x, y) {
+      var r = script.getBoundingClientRect();
+      var pad = 48;                                   // 邊緣外一點也算，手不必很準
+      if (x < r.left - pad || x > r.right + pad ||
+          y < r.top - pad  || y > r.bottom + pad) return null;
+
+      var zones = [].slice.call(script.querySelectorAll('.bk-drop'));
       if (!zones.length) return null;
 
       var best = null, bestD = Infinity;
       zones.forEach(function (z) {
-        var r = z.getBoundingClientRect();
-        var d = Math.abs((r.top + r.bottom) / 2 - y);
+        var b = z.getBoundingClientRect();
+        var cy = (b.top + b.bottom) / 2;
+        var dx = x < b.left ? b.left - x : (x > b.right ? x - b.right : 0);
+        var d = Math.abs(y - cy) + dx * 0.2;
         if (d < bestD) { bestD = d; best = z; }
       });
       return best;
@@ -357,17 +371,21 @@
 
     function onMove(e) {
       if (!drag) return;
+      e.preventDefault();          // 順手擋掉行動裝置的捲動與長按選字
       moveGhost(e);
-      drag.ghost.style.display = 'none';
+      // 不再需要「先把分身藏起來再問瀏覽器」——現在只量座標，分身不影響
       var z = nearestZone(e.clientX, e.clientY);
-      drag.ghost.style.display = '';
       if (drag.zone && drag.zone !== z) drag.zone.classList.remove('on');
       drag.zone = z;
       if (z) z.classList.add('on');
     }
+    function stopNativeDrag(ev) { ev.preventDefault(); }
+
     function onUp() {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
+      document.removeEventListener('dragstart', stopNativeDrag);
       document.body.classList.remove('bk-dragging');
       if (!drag) return;
       var z = drag.zone;
