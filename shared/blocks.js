@@ -48,7 +48,8 @@
   };
 
   var DEFS = {
-    'events.whenflag':  { cat:'events',  shape:'hat',   label:'當 ▶ 被點擊' },
+    // %flag 會畫成綠旗（就是 Scratch 的那面旗子），不是播放三角形
+    'events.whenflag':  { cat:'events',  shape:'hat',   label:'當 %flag 被點擊' },
     'motion.move':      { cat:'motion',  shape:'stack', label:'移動 %n 點',        args:[10] },
     'motion.turnright': { cat:'motion',  shape:'stack', label:'右轉 %n 度',        args:[90] },
     'motion.turnleft':  { cat:'motion',  shape:'stack', label:'左轉 %n 度',        args:[90] },
@@ -98,6 +99,25 @@
     return n;
   }
   function uid() { return 'b' + Math.random().toString(36).slice(2, 9); }
+
+  /* Scratch 的綠旗與紅色停止鈕。
+     用 SVG 而不是 emoji：unicode 裡根本沒有「綠旗」這個字元
+     （白旗、黑旗、格子旗都不是），而且 emoji 在不同系統長得不一樣。
+     積木上的圖示應該到哪一台電腦都是同一面旗子。 */
+  var FLAG_SVG =
+    '<svg viewBox="0 0 32 32" width="15" height="15" aria-hidden="true" style="vertical-align:-2px">' +
+    '<rect x="4" y="3" width="3" height="26" rx="1.5" fill="#4cbf56"/>' +
+    '<path fill="#4cbf56" d="M8 4c6-3 12 3 19 0v12c-7 3-13-3-19 0z"/></svg>';
+  var STOP_SVG =
+    '<svg viewBox="0 0 32 32" width="15" height="15" aria-hidden="true" style="vertical-align:-2px">' +
+    '<path fill="#ec5959" d="M10.5 3h11L29 10.5v11L21.5 29h-11L3 21.5v-11z"/></svg>';
+
+  function svgSpan(svg) {
+    var n = document.createElement('span');
+    n.innerHTML = svg;
+    n.style.cssText = 'display:inline-flex;align-items:center;margin:0 2px';
+    return n;
+  }
 
   /** 一次注入樣式（多個模擬器共用同一份） */
   function ensureStyle() {
@@ -272,8 +292,9 @@
 
     var bar = el('div');
     bar.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
-    var runBtn = el('button', '', '▶ 執行');
-    runBtn.style.cssText = btnCss('#16a34a');
+    var runBtn = el('button');
+    runBtn.innerHTML = FLAG_SVG + '<span style="margin-left:6px">執行</span>';
+    runBtn.style.cssText = btnCss('#16a34a') + ';display:inline-flex;align-items:center';
     var checkBtn = el('button', '', '✓ 檢查答案');
     checkBtn.style.cssText = btnCss('#4f46e5');
     var clearBtn = el('button', '', '🗑 全部清除');
@@ -289,10 +310,14 @@
     var rightBox = el('div');
     rightBox.appendChild(tag('舞台'));
     var sbar = el('div', 'bk-stagebar');
-    var flagBtn = el('button', 'bk-flag', '🏳️');
+    var flagBtn = el('button', 'bk-flag');
+    flagBtn.innerHTML = FLAG_SVG;
     flagBtn.title = '執行';
-    var stopBtn = el('button', 'bk-flag', '🛑');
+    flagBtn.setAttribute('aria-label', '執行');
+    var stopBtn = el('button', 'bk-flag');
+    stopBtn.innerHTML = STOP_SVG;
     stopBtn.title = '停止';
+    stopBtn.setAttribute('aria-label', '停止');
     sbar.appendChild(flagBtn); sbar.appendChild(stopBtn);
     rightBox.appendChild(sbar);
     var stage = el('div', 'bk-stage');
@@ -343,10 +368,12 @@
       b.dataset.id = node.id;
 
       // label 裡的 %n / %s 換成輸入框
-      var parts = d.label.split(/(%n|%s)/), ai = 0;
+      var parts = d.label.split(/(%n|%s|%flag)/), ai = 0;
       var head = el('div', 'bk-row');
       parts.forEach(function (p) {
-        if (p === '%n' || p === '%s') {
+        if (p === '%flag') {
+          head.appendChild(svgSpan(FLAG_SVG));
+        } else if (p === '%n' || p === '%s') {
           var i = el('input', 'bk-in' + (p === '%s' ? ' s' : ''));
           i.value = node.args[ai];
           if (p === '%n') i.type = 'number';

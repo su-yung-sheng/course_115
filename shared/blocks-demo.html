@@ -37,7 +37,7 @@
   <h1>🧱 積木模擬器 試玩</h1>
   <p class="sub">
     這一頁不需要登入、不會寫任何進度，但題目就是<b>下學期真正的關卡</b>（讀 <code>11502/content/blocks.js</code>）。<br>
-    <b>怎麼玩：</b>從左邊把積木拖到中間 → 按「▶ 執行」看小貓怎麼動 → 按「✓ 檢查答案」。
+    <b>怎麼玩：</b>從左邊把積木拖到中間 → 按<b>綠旗</b>執行看小貓怎麼動 → 按「✓ 檢查答案」。
   </p>
 
   <div class="tabs" id="tabs"></div>
@@ -90,10 +90,11 @@ function pretty(list, depth) {
   return (list || []).map(function (n) {
     var d = BLOCKS.DEFS[n.id] || {};
     var lab = (d.label || n.id), i = 0;
-    lab = lab.replace(/%[ns]/g, function () {
-      var v = (n.args != null ? n.args : (d.args || []))[i++];
-      return '[' + v + ']';
-    });
+    lab = lab.replace(/%flag/g, '綠旗')      // 純文字答案裡畫不出旗子，寫成字
+             .replace(/%[ns]/g, function () {
+               var v = (n.args != null ? n.args : (d.args || []))[i++];
+               return '[' + v + ']';
+             });
     var line = '  '.repeat(depth) + '· ' + lab;
     if (n.children) line += '\n' + pretty(n.children, depth + 1);
     return line;
