@@ -32,16 +32,19 @@
   /* ===== 積木定義 =====
      label 裡的 %n / %s 是參數欄位（數字／文字），順序對應 args。
      shape: 'stack' 一般積木｜'c' 可以包住其他積木｜'hat' 開頭帽子 */
+  /* 宣告順序＝調色盤的分類順序，刻意照真的 Scratch 排：
+     動作 → 外觀 → 音效 → 事件 → 控制 → 變數 → 清單 → 我的積木 → 畫筆（擴充）
+     顏色也用 Scratch 的原色，學生在這裡看到的藍色，回到 Scratch 還是同一個藍色。 */
   var CATS = {
-    motion:  { name: '動作', color: '#4c97ff', dark: '#3373cc' },
-    looks:   { name: '外觀', color: '#9966ff', dark: '#774dcb' },
-    sound:   { name: '音效', color: '#cf63cf', dark: '#bd42bd' },
-    control: { name: '控制', color: '#ffab19', dark: '#cf8b17' },
-    events:  { name: '事件', color: '#ffbf00', dark: '#cc9900' },
-    data:    { name: '變數', color: '#ff8c1a', dark: '#db6e00' },
-    pen:     { name: '畫筆', color: '#0fbd8c', dark: '#0b8e69' },
-    my:      { name: '函式', color: '#ff6680', dark: '#ff4d6a' },
-    list:    { name: '清單', color: '#ff661a', dark: '#e64d00' }
+    motion:  { name: '動作',   color: '#4c97ff', dark: '#3373cc' },
+    looks:   { name: '外觀',   color: '#9966ff', dark: '#774dcb' },
+    sound:   { name: '音效',   color: '#cf63cf', dark: '#bd42bd' },
+    events:  { name: '事件',   color: '#ffbf00', dark: '#cc9900' },
+    control: { name: '控制',   color: '#ffab19', dark: '#cf8b17' },
+    data:    { name: '變數',   color: '#ff8c1a', dark: '#db6e00' },
+    list:    { name: '清單',   color: '#ff661a', dark: '#e64d00' },
+    my:      { name: '我的積木', color: '#ff6680', dark: '#ff4d6a' },
+    pen:     { name: '畫筆',   color: '#0fbd8c', dark: '#0b8e69' }
   };
 
   var DEFS = {
@@ -102,34 +105,73 @@
     var s = el('style');
     s.id = 'blocks-style';
     s.textContent = [
-      '.bk{position:relative;display:block;border-radius:6px;color:#fff;font-weight:700;',
-      '    font-size:14px;line-height:1.2;padding:9px 12px;margin:0;cursor:grab;',
-      '    box-shadow:0 2px 0 rgba(0,0,0,.22);user-select:none;touch-action:none;white-space:nowrap}',
-      '.bk.hat{border-radius:16px 16px 6px 6px;padding-top:14px}',
-      '.bk.drag{opacity:.45}',
-      '.bk-ghost{position:fixed;z-index:9999;pointer-events:none;opacity:.9;transform:rotate(-2deg)}',
-      '.bk-in{width:44px;border:0;border-radius:11px;padding:2px 7px;margin:0 3px;',
-      '       font:inherit;font-size:13px;color:#1f2937;text-align:center;background:#fff}',
-      '.bk-in.s{width:76px}',
-      '.bk-c{padding-bottom:0}',
-      '.bk-slot{min-height:26px;margin:6px 0 0 16px;padding:3px;border-radius:6px;',
-      '         background:rgba(0,0,0,.16)}',
-      '.bk-foot{height:12px;margin-left:0;border-radius:0 0 6px 6px}',
-      '.bk-stack>*{margin-bottom:3px}',
-      '.bk-drop{height:8px;margin:2px 0;border-radius:4px;background:transparent;transition:all .12s}',
-      '.bk-drop.on{background:#fbbf24;height:16px}',
-      'body.bk-dragging .bk-drop{background:rgba(148,163,184,.35);height:10px}',
-      'body.bk-dragging .bk-drop.on{background:#fbbf24;height:16px}',
-      'body.bk-dragging .bk-script{border-color:#6366f1;background:#eef2ff}',
-      'body.bk-dragging .bk-slot{outline:2px dashed rgba(255,255,255,.55);outline-offset:-2px}',
-      '.bk-empty{color:#94a3b8;font-size:13px;font-weight:700;text-align:center;padding:26px 8px;pointer-events:none}',
-      '.bk-pal{display:flex;flex-wrap:wrap;gap:7px;align-content:flex-start}',
-      '.bk-script{min-height:180px;padding:10px;border-radius:12px;',
-      '           background:#f1f5f9;border:2px dashed #cbd5e1}',
-      '.bk-stage{background:#fff;border:1px solid #e2e8f0;border-radius:12px;position:relative;overflow:hidden}',
-      '.bk-sprite{position:absolute;font-size:36px;line-height:1;transition:left .25s,top .25s,transform .25s}',
-      '.bk-bubble{position:absolute;background:#fff;border:2px solid #cbd5e1;border-radius:12px;',
-      '           padding:5px 10px;font-size:13px;font-weight:700;color:#1f2937;max-width:150px}'
+      /* ★ 積木形狀：用 clip-path 切出上凹下凸的榫頭。
+         這是「像不像 Scratch」最關鍵的一件事 —— 圓角方塊排在一起
+         看起來只是清單，有榫頭才看得出「它們是接在一起的」。
+         盒子底部多留 4px 給凸榫，所以堆疊時不留任何縫隙。 */
+      ':root{--bk-notch:4px}',
+      '.bk{position:relative;display:block;color:#fff;font-weight:500;',
+      '    font-size:13px;line-height:1.25;padding:8px 12px 12px;margin:0;cursor:grab;',
+      '    background:var(--c);user-select:none;touch-action:none;white-space:nowrap;',
+      '    clip-path:polygon(0 0, 12px 0, 16px 4px, 26px 4px, 30px 0, 100% 0,',
+      '                      100% calc(100% - 4px), 30px calc(100% - 4px), 26px 100%,',
+      '                      16px 100%, 12px calc(100% - 4px), 0 calc(100% - 4px))}',
+      /* 帽子積木：上緣是圓弧，沒有凹槽 */
+      '.bk.hat{padding-top:20px;',
+      '    clip-path:polygon(0 14px, 6px 6px, 16px 1px, 30px 0, 44px 1px, 54px 6px, 60px 14px, 100% 14px,',
+      '                      100% calc(100% - 4px), 30px calc(100% - 4px), 26px 100%,',
+      '                      16px 100%, 12px calc(100% - 4px), 0 calc(100% - 4px))}',
+      '.bk-row{display:flex;align-items:center;flex-wrap:wrap;gap:2px}',
+      '.bk-ghost{position:fixed;z-index:9999;pointer-events:none;opacity:.92;',
+      '          filter:drop-shadow(0 6px 10px rgba(0,0,0,.3))}',
+      /* 參數欄位：Scratch 是白色圓角膠囊 */
+      '.bk-in{width:42px;border:0;border-radius:12px;padding:3px 8px;margin:0 3px;',
+      '       font:inherit;font-size:12px;font-weight:500;color:#1f2937;text-align:center;',
+      '       background:#fff;outline:0}',
+      '.bk-in.s{width:82px}',
+      '.bk-in:focus{box-shadow:0 0 0 2px rgba(0,0,0,.25)}',
+
+      /* ★ C 型積木：左側直條 ＋ 上下臂，中間的嘴巴露出程式區底色 */
+      '.bk-c{padding-bottom:0;clip-path:none;border-radius:4px 4px 0 0}',
+      '.bk-c>.bk-row{padding-bottom:4px}',
+      '.bk-slot{min-height:24px;margin:0 0 0 15px;padding:0;',
+      '         background:var(--bk-canvas);border-radius:4px 0 0 4px}',
+      '.bk-foot{height:14px;background:var(--c);',
+      '         clip-path:polygon(0 0, 100% 0, 100% calc(100% - 4px), 30px calc(100% - 4px),',
+      '                           26px 100%, 16px 100%, 12px calc(100% - 4px), 0 calc(100% - 4px))}',
+
+      /* ★ 積木之間不留縫 —— 有榫頭又有縫會很怪 */
+      '.bk-stack>.bk{margin:0}',
+      '.bk-drop{height:0;margin:0;border-radius:3px;background:transparent;transition:height .1s}',
+      'body.bk-dragging .bk-drop{height:8px;background:rgba(100,116,139,.25)}',
+      'body.bk-dragging .bk-drop.on{height:20px;background:#ffd400}',
+
+      /* ★ 調色盤：分類清單，積木直向排列（和真的 Scratch 一樣） */
+      '.bk-cat{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;',
+      '        color:#575e75;margin:10px 0 6px}',
+      '.bk-cat:first-child{margin-top:0}',
+      '.bk-dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto}',
+      '.bk-pal{display:flex;flex-direction:column;gap:8px;align-items:flex-start}',
+      '.bk-palbox{background:#f9f9f9;border:1px solid #e5e7eb;border-radius:8px;',
+      '           padding:10px;max-height:420px;overflow:auto}',
+
+      /* ★ 程式區：Scratch 的淺灰格點底 */
+      '.bk-script{min-height:230px;padding:14px;border-radius:8px;background:#f9f9f9;',
+      '           background-image:radial-gradient(#d9d9d9 1px, transparent 1px);',
+      '           background-size:22px 22px;border:1px solid #e5e7eb}',
+      'body.bk-dragging .bk-script{border-color:#4c97ff}',
+      '.bk-empty{color:#9aa0b4;font-size:13px;text-align:center;padding:34px 8px;pointer-events:none}',
+
+      /* ★ 舞台：白底 ＋ 綠旗／停止列 */
+      '.bk-stagebar{display:flex;align-items:center;gap:8px;background:#e6e9ef;',
+      '             border:1px solid #d7dbe3;border-bottom:0;border-radius:8px 8px 0 0;padding:5px 9px}',
+      '.bk-flag{background:none;border:0;font-size:15px;cursor:pointer;line-height:1;padding:2px}',
+      '.bk-stage{background:#fff;border:1px solid #d7dbe3;border-radius:0 0 8px 8px;',
+      '          position:relative;overflow:hidden}',
+      '.bk-sprite{position:absolute;font-size:34px;line-height:1;',
+      '           transition:left .25s,top .25s,transform .25s}',
+      '.bk-bubble{position:absolute;background:#fff;border:1px solid #c8cbd6;border-radius:12px;',
+      '           padding:5px 10px;font-size:12px;color:#1f2937;max-width:150px}'
     ].join('\n');
     document.head.appendChild(s);
   }
@@ -176,20 +218,34 @@
     var wrap = el('div');
     wrap.style.cssText = 'display:grid;grid-template-columns:minmax(150px,190px) minmax(0,1fr) 200px;gap:12px;align-items:start';
 
-    /* ── 左：積木調色盤 ── */
+    /* ── 左：積木調色盤 ──
+       依分類分組、直向排列，和真的 Scratch 一樣。
+       原本是一團 flex-wrap 的色塊，看起來像標籤雲不像積木箱。 */
     var palBox = el('div');
-    palBox.appendChild(tag('🧱 可用的積木'));
-    var pal = el('div', 'bk-pal');
+    palBox.appendChild(tag('積木'));
+    var palWrap = el('div', 'bk-palbox');
+    var groups = {};
     (opts.palette || []).forEach(function (id) {
       if (!DEFS[id]) return;
-      var b = renderBlock(makeNode(id), true);
-      pal.appendChild(b);
+      (groups[DEFS[id].cat] = groups[DEFS[id].cat] || []).push(id);
     });
-    palBox.appendChild(pal);
+    Object.keys(CATS).forEach(function (cat) {
+      if (!groups[cat]) return;
+      var head = el('div', 'bk-cat');
+      var dot = el('span', 'bk-dot');
+      dot.style.background = CATS[cat].color;
+      head.appendChild(dot);
+      head.appendChild(el('span', '', CATS[cat].name));
+      palWrap.appendChild(head);
+      var list = el('div', 'bk-pal');
+      groups[cat].forEach(function (id) { list.appendChild(renderBlock(makeNode(id), true)); });
+      palWrap.appendChild(list);
+    });
+    palBox.appendChild(palWrap);
 
     /* ── 中：程式區 ── */
     var midBox = el('div');
-    midBox.appendChild(tag('🧩 我的程式'));
+    midBox.appendChild(tag('程式區'));
     var script = el('div', 'bk-script');
     midBox.appendChild(script);
 
@@ -210,7 +266,14 @@
 
     /* ── 右：舞台 ── */
     var rightBox = el('div');
-    rightBox.appendChild(tag('🎬 舞台'));
+    rightBox.appendChild(tag('舞台'));
+    var sbar = el('div', 'bk-stagebar');
+    var flagBtn = el('button', 'bk-flag', '🏳️');
+    flagBtn.title = '執行';
+    var stopBtn = el('button', 'bk-flag', '🛑');
+    stopBtn.title = '停止';
+    sbar.appendChild(flagBtn); sbar.appendChild(stopBtn);
+    rightBox.appendChild(sbar);
     var stage = el('div', 'bk-stage');
     stage.style.cssText += ';width:100%;aspect-ratio:4/3';
     var sprite = el('div', 'bk-sprite', '🐱');
@@ -242,20 +305,20 @@
     function renderBlock(node, isTemplate) {
       var d = DEFS[node.id], c = CATS[d.cat];
       var b = el('div', 'bk' + (d.shape === 'hat' ? ' hat' : '') + (d.shape === 'c' ? ' bk-c' : ''));
+      b.style.setProperty('--c', c.color);
+      b.style.setProperty('--bk-canvas', '#f9f9f9');   // C 型積木「嘴巴」露出的底色
       /* ⚠️ 一定要關掉原生拖曳。瀏覽器看到「按住有文字的元素在移動」
          會自己啟動 HTML5 drag，而原生 drag 一開始，pointermove 就不再觸發 ——
          拖曳整個斷掉，放開時當然什麼也沒發生。
          user-select:none 擋不住這件事，要明確設 draggable=false。 */
       b.draggable = false;
       b.addEventListener('dragstart', function (ev) { ev.preventDefault(); });
-      b.style.background = c.color;
       b.dataset.uid = node.uid;
       b.dataset.id = node.id;
 
       // label 裡的 %n / %s 換成輸入框
       var parts = d.label.split(/(%n|%s)/), ai = 0;
-      var head = el('div');
-      head.style.cssText = 'display:flex;align-items:center;flex-wrap:wrap;gap:1px';
+      var head = el('div', 'bk-row');
       parts.forEach(function (p) {
         if (p === '%n' || p === '%s') {
           var i = el('input', 'bk-in' + (p === '%s' ? ' s' : ''));
@@ -277,7 +340,6 @@
         slot.dataset.slot = '1';
         b.appendChild(slot);
         var foot = el('div', 'bk-foot');
-        foot.style.background = c.dark;
         b.appendChild(foot);
         if (!isTemplate) fill(slot, node.children);
       }
@@ -434,8 +496,9 @@
       var steps = [];
       flatten(program, steps);
       var i = 0;
+      stopped = false;
       (function tick() {
-        if (i >= steps.length) { running = false; runBtn.disabled = false; return; }
+        if (stopped || i >= steps.length) { running = false; runBtn.disabled = false; return; }
         var wait = exec(steps[i++]);
         setTimeout(tick, wait);
       })();
@@ -501,6 +564,9 @@
       return '順序好像不太對，再對照一次任務說明。';
     }
 
+    var stopped = false;
+    flagBtn.addEventListener('click', run);
+    stopBtn.addEventListener('click', function () { stopped = true; });
     runBtn.addEventListener('click', run);
     checkBtn.addEventListener('click', check);
     clearBtn.addEventListener('click', function () {
