@@ -116,8 +116,13 @@
       '         background:rgba(0,0,0,.16)}',
       '.bk-foot{height:12px;margin-left:0;border-radius:0 0 6px 6px}',
       '.bk-stack>*{margin-bottom:3px}',
-      '.bk-drop{height:8px;margin:2px 0;border-radius:4px;background:transparent;transition:background .12s}',
-      '.bk-drop.on{background:#fbbf24;height:14px}',
+      '.bk-drop{height:8px;margin:2px 0;border-radius:4px;background:transparent;transition:all .12s}',
+      '.bk-drop.on{background:#fbbf24;height:16px}',
+      'body.bk-dragging .bk-drop{background:rgba(148,163,184,.35);height:10px}',
+      'body.bk-dragging .bk-drop.on{background:#fbbf24;height:16px}',
+      'body.bk-dragging .bk-script{border-color:#6366f1;background:#eef2ff}',
+      'body.bk-dragging .bk-slot{outline:2px dashed rgba(255,255,255,.55);outline-offset:-2px}',
+      '.bk-empty{color:#94a3b8;font-size:13px;font-weight:700;text-align:center;padding:26px 8px;pointer-events:none}',
       '.bk-pal{display:flex;flex-wrap:wrap;gap:7px;align-content:flex-start}',
       '.bk-script{min-height:180px;padding:10px;border-radius:12px;',
       '           background:#f1f5f9;border:2px dashed #cbd5e1}',
@@ -283,6 +288,9 @@
         box.appendChild(renderBlock(n, false));
         box.appendChild(dropZone(list, i + 1));
       });
+      if (!list.length && box === script) {
+        box.appendChild(el('div', 'bk-empty', '把左邊的積木拖到這裡'));
+      }
     }
     function dropZone(list, idx) {
       var z = el('div', 'bk-drop');
@@ -310,6 +318,7 @@
       document.body.appendChild(ghost);
 
       drag = { node: moving, ghost: ghost, zone: null };
+      document.body.classList.add('bk-dragging');   // 讓所有縫隙顯形
       moveGhost(e);
       if (!isTemplate) redraw();
 
@@ -320,13 +329,38 @@
       drag.ghost.style.left = (e.clientX - 30) + 'px';
       drag.ghost.style.top = (e.clientY - 16) + 'px';
     }
+    /* 找「該放到哪一道縫」。
+       ⚠️ 原本用 elementFromPoint 直接抓 .bk-drop —— 那些縫只有 8px 高，
+          等於要求學生精準命中兩塊積木之間的細線；拖到空白的程式區
+          更是完全沒反應（整片空白只有最上面一條是有效區）。
+       改成：先看游標落在哪個容器（程式區或某個 C 型積木的凹槽），
+       再從那個容器裡挑「垂直距離最近」的一道縫。放哪都有反應。 */
+    function nearestZone(x, y) {
+      var under = document.elementFromPoint(x, y);
+      if (!under || !under.closest) return null;
+      var box = under.closest('.bk-slot') || under.closest('.bk-script');
+      if (!box || !script.contains(box) && box !== script) return null;
+
+      var zones = [].filter.call(box.children, function (c) {
+        return c.classList && c.classList.contains('bk-drop');
+      });
+      if (!zones.length) return null;
+
+      var best = null, bestD = Infinity;
+      zones.forEach(function (z) {
+        var r = z.getBoundingClientRect();
+        var d = Math.abs((r.top + r.bottom) / 2 - y);
+        if (d < bestD) { bestD = d; best = z; }
+      });
+      return best;
+    }
+
     function onMove(e) {
       if (!drag) return;
       moveGhost(e);
       drag.ghost.style.display = 'none';
-      var under = document.elementFromPoint(e.clientX, e.clientY);
+      var z = nearestZone(e.clientX, e.clientY);
       drag.ghost.style.display = '';
-      var z = under && under.closest ? under.closest('.bk-drop') : null;
       if (drag.zone && drag.zone !== z) drag.zone.classList.remove('on');
       drag.zone = z;
       if (z) z.classList.add('on');
@@ -334,6 +368,7 @@
     function onUp() {
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
+      document.body.classList.remove('bk-dragging');
       if (!drag) return;
       var z = drag.zone;
       if (z) { z.classList.remove('on'); z._list.splice(z._idx, 0, drag.node); }
