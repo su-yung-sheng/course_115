@@ -69,6 +69,7 @@
     'motion.turnright': { cat:'motion',  shape:'stack', label:'右轉 ↻ %n 度',      args:[15] }, // MOTION_TURNRIGHT
     'motion.turnleft':  { cat:'motion',  shape:'stack', label:'左轉 ↺ %n 度',      args:[15] }, // MOTION_TURNLEFT
     'motion.goto':      { cat:'motion',  shape:'stack', label:'定位到 x:%n y:%n',  args:[0, 0] },// MOTION_GOTOXY（冒號後沒空格）
+    'motion.changex':   { cat:'motion',  shape:'stack', label:'x 改變 %n',         args:[10] }, // MOTION_CHANGEXBY
     'motion.changey':   { cat:'motion',  shape:'stack', label:'y 改變 %n',         args:[10] }, // MOTION_CHANGEYBY
     'looks.say':        { cat:'looks',   shape:'stack', label:'說出 %s',           args:['Hello!'] },     // LOOKS_SAY
     'looks.sayfor':     { cat:'looks',   shape:'stack', label:'說出 %s 持續 %n 秒', args:['Hello!', 2] }, // LOOKS_SAYFORSECS
@@ -77,8 +78,9 @@
     'sound.play':       { cat:'sound',   shape:'stack', label:'播放音效 %s',       args:['喵'] },// SOUND_PLAY
     'control.wait':     { cat:'control', shape:'stack', label:'等待 %n 秒',        args:[1] },  // CONTROL_WAIT
     'control.repeat':   { cat:'control', shape:'c',     label:'重複 %n 次',        args:[10] }, // CONTROL_REPEAT
-    'data.setvar':      { cat:'data',    shape:'stack', label:'變數 %s 設為 %n',   args:['分數', 0] }, // DATA_SETVARIABLETO
-    'data.changevar':   { cat:'data',    shape:'stack', label:'變數 %s 改變 %n',   args:['分數', 1] }, // DATA_CHANGEVARIABLEBY
+    // 變數名稱也是學生自己取的 → idArgs
+    'data.setvar':      { cat:'data',    shape:'stack', label:'變數 %s 設為 %n',   args:['大小', 0], idArgs:[0] }, // DATA_SETVARIABLETO
+    'data.changevar':   { cat:'data',    shape:'stack', label:'變數 %s 改變 %n',   args:['大小', 1], idArgs:[0] }, // DATA_CHANGEVARIABLEBY
 
     /* 畫筆（擴充積木）：1～3 關畫正方形、正多邊形要用 */
     'pen.clear':        { cat:'pen',     shape:'stack', label:'筆跡全部清除' },                  // pen.clear
@@ -100,6 +102,9 @@
     // 在 Scratch 裡是把橢圓形的參數「邊長」拖進「移動 () 點」，
     // 這裡沒有橢圓積木，所以做成一塊固定的積木，名字照樣是「移動 () 點」
     'my.movearg':       { cat:'my',      shape:'stack', label:'移動 (邊長) 點' },
+    // 呼叫時把「變數」的目前值帶進去（在真的 Scratch 裡是把變數那顆橢圓
+    // 積木拖進呼叫積木的空格）。兩格都是名字：積木名、變數名。
+    'my.callvar':       { cat:'my',      shape:'stack', label:'%s (%s)', args:['畫正五邊形', '大小'], idArgs:[0, 1] },
 
     /* 清單與判斷：5～10 關的排序、搜尋要用
        ★自訂 —— 這幾塊在 Scratch 裡是好幾塊積木組起來的（要用橢圓形的
@@ -617,9 +622,18 @@
       if (ctx) { ctx.clearRect(0, 0, w, h); ctx.lineWidth = 3; ctx.lineCap = 'round'; }
       paint(); bubble.style.display = 'none';
     }
+    /* Scratch 舞台就是 480×360、原點在正中央、y 向上。
+       ★ 這裡一定要照抄，不能拿畫面上的像素當座標：
+         我們的小舞台只有 230 像素寬，若把座標當像素用，x 只到 ±115，
+         老師課堂檔案裡的「定位到 x:-140」就會畫到框外，
+         學生在 Scratch 看到的圖和這裡看到的不一樣 —— 那比不畫還糟。 */
+    var STAGE_W = 480, STAGE_H = 360;
+    function sx() { return pen.width / STAGE_W; }
+    function sy() { return pen.height / STAGE_H; }
+
     /** 舞台座標（中心為原點、y 向上）→ canvas 座標 */
     function toCanvas(x, y) {
-      return [pen.width / 2 + x, pen.height / 2 - y];
+      return [pen.width / 2 + x * sx(), pen.height / 2 - y * sy()];
     }
     function drawTo(x0, y0, x1, y1) {
       if (!ctx || !st.down) return;
@@ -629,12 +643,13 @@
     }
     function paint() {
       var w = stage.clientWidth, h = stage.clientHeight;
-      sprite.style.left = (w / 2 + st.x - 18) + 'px';
-      sprite.style.top = (h / 2 - st.y - 18) + 'px';
+      var px = w / STAGE_W, py = h / STAGE_H;          // 小貓也要用同一套換算，否則會和筆跡對不上
+      sprite.style.left = (w / 2 + st.x * px - 18) + 'px';
+      sprite.style.top = (h / 2 - st.y * py - 18) + 'px';
       sprite.style.transform = 'rotate(' + (st.dir - 90) + 'deg) scale(' + st.size + ')';   // 90 度＝朝右
       if (bubble.style.display !== 'none') {
-        bubble.style.left = Math.min(w - 160, w / 2 + st.x + 10) + 'px';
-        bubble.style.top = Math.max(4, h / 2 - st.y - 52) + 'px';
+        bubble.style.left = Math.min(w - 160, w / 2 + st.x * px + 10) + 'px';
+        bubble.style.top = Math.max(4, h / 2 - st.y * py - 52) + 'px';
       }
     }
     function speak(t, ms) {
@@ -650,11 +665,21 @@
       var steps = [];
       var all = whole();
       flatten(all, steps, collectDefs(all), 0, 0);
+
+      /* 每一步之間停多久。
+         ★ 為什麼不是固定值：原本每步固定 280ms，三塊積木的程式剛剛好，
+           但第 3 關要畫九個五邊形＝一百多個動作，會變成整整 35 秒 ——
+           一節課裡學生每改一次就等半分鐘，沒有人會想按第二次執行。
+         改成「整段大約跑 3 秒」，程式短就慢慢演給你看，程式長就快轉。
+         上下限是為了兩頭都不失控：太快看不出在畫什麼，太慢等到不耐煩。
+         opts.stepMs 可以指定（測試用 0，就不必真的等）。 */
+      var stepMs = opts.stepMs != null ? Number(opts.stepMs)
+                 : Math.max(14, Math.min(280, 3000 / Math.max(1, steps.length)));
       var i = 0;
       stopped = false;
       (function tick() {
         if (stopped || i >= steps.length) { running = false; runBtn.disabled = false; return; }
-        var wait = exec(steps[i++]);
+        var wait = exec(steps[i++], stepMs);
         setTimeout(tick, wait);
       })();
     }
@@ -671,28 +696,47 @@
       });
       return m;
     }
-    function flatten(list, out, defs, argVal, depth) {
+    /* vars 是一個共用的物件，整趟展開共用同一份。
+       ★ 為什麼變數在「展開」時算，而不是在「執行」時算：
+         展開本來就是照執行順序走的（重複已經被拆開成一次一次），
+         所以走到某一塊時，變數的值就是那一刻該有的值。
+         這樣「呼叫 畫正五邊形 (大小)」才能在每一次拿到不同的數字 ——
+         九個五邊形會一個比一個大，就是靠這個。 */
+    function flatten(list, out, defs, argVal, depth, vars) {
       depth = depth || 0;
+      vars = vars || {};
       if (depth > 8) return;
       (list || []).forEach(function (n) {
         if (out.length >= 400) return;
         if (n.id === 'my.define' || n.id === 'my.definep') return;   // 定義本身不執行
-        if (n.id === 'my.call' || n.id === 'my.callp') {
+        if (n.id === 'data.setvar') {
+          vars[String(n.args[0]).trim()] = parseFloat(n.args[1]) || 0;
+          return;                                                    // 沒有畫面效果，不必排進動作
+        }
+        if (n.id === 'data.changevar') {
+          var k = String(n.args[0]).trim();
+          vars[k] = (vars[k] || 0) + (parseFloat(n.args[1]) || 0);
+          return;
+        }
+        if (n.id === 'my.call' || n.id === 'my.callp' || n.id === 'my.callvar') {
           var d = defs[String(n.args[0]).trim()];
           if (!d) return;                                            // 呼叫了不存在的積木 → 略過
-          var a = n.id === 'my.callp' ? (parseFloat(n.args[1]) || 0) : argVal;
-          flatten(d.children, out, defs, a, depth + 1);
+          var a = argVal;
+          if (n.id === 'my.callp')   a = parseFloat(n.args[1]) || 0;
+          if (n.id === 'my.callvar') a = vars[String(n.args[1]).trim()] || 0;
+          flatten(d.children, out, defs, a, depth + 1, vars);
           return;
         }
         if (n.id === 'control.repeat') {
           var t = Math.max(0, Math.min(50, parseInt(n.args[0], 10) || 0));
-          for (var k = 0; k < t && out.length < 400; k++) flatten(n.children, out, defs, argVal, depth + 1);
+          for (var k2 = 0; k2 < t && out.length < 400; k2++) flatten(n.children, out, defs, argVal, depth + 1, vars);
           return;
         }
         out.push({ node: n, arg: argVal });
       });
     }
-    function exec(step) {
+    function exec(step, stepMs) {
+      if (stepMs == null) stepMs = 280;
       var n = step.node, a = n.args;
       var num = function (i) { return parseFloat(a[i]) || 0; };
       var move = function (dist) {
@@ -712,10 +756,14 @@
         case 'motion.turnright': st.dir += num(0); break;
         case 'motion.turnleft':  st.dir -= num(0); break;
         case 'motion.goto':      st.x = num(0); st.y = num(1); break;   // 定位不留筆跡
+        case 'motion.changex': {
+          var x0 = st.x; st.x += num(0); drawTo(x0, st.y, st.x, st.y); break;
+        }
         case 'motion.changey': {
           var y0 = st.y; st.y += num(0); drawTo(st.x, y0, st.x, st.y); break;
         }
         case 'looks.say':        speak(a[0]); break;
+        // 這兩塊的秒數是程式自己寫的，不受快轉影響 —— 它們就是在「等」
         case 'looks.sayfor':     speak(a[0], num(1) * 1000); return Math.max(200, num(1) * 1000);
         case 'looks.change':     st.size = Math.max(.3, Math.min(2.5, st.size + num(0) / 100)); break;
         case 'looks.next':       sprite.textContent = sprite.textContent === '🐱' ? '😺' : '🐱'; break;
@@ -723,7 +771,7 @@
         case 'control.wait':     return Math.max(200, num(0) * 1000);
       }
       paint();
-      return 280;
+      return stepMs;
     }
 
     /* ── 檢查答案 ── */

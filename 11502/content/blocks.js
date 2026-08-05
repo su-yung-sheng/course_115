@@ -120,56 +120,71 @@ window.BLOCK_LEVELS = {
     ]
   },
 
-  /* ── 第 3 關：正多邊形變化 ──────────────────────────
-     ⚠️ 這一關**還沒有參考程式**，是照前兩關的風格擬的，老師可以改。
-     教學重點：綜合應用，並帶出「外角總和 360 度」。
-     正三角形轉 120 度、正方形 90 度、正六邊形 60 度 ——
-     學生在填數字的過程中會自己發現 360 ÷ 邊數。
+  /* ── 第 3 關：3×3 排列、愈畫愈大的正五邊形 ──────────
+     ⚠️ 這一關還沒有 .sb3 參考檔，是照課程設計擬的，老師可以改。
 
-     這一關刻意不給自訂積木：邊數會變，而模擬器的自訂積木只吃一個參數，
-     真要做成「畫正多邊形（邊數）」得同時把重複次數和轉的角度都算出來，
-     那是下一步的事。先讓他們把三個圖形排好，看出 360÷N 的規律。 */
+     這一關是**第 1 關＋第 2 關**：
+       第 1 關學「排列」（重複產生一整排），
+       第 2 關學「參數」（同一個積木做出不同大小），
+       這裡兩件事同時發生 —— 而且是 3×3，排列要用兩層重複。
+
+     新東西只有一個：**變數**。
+     第 2 關的邊長是寫死在呼叫積木上的（50、100、150、200），
+     九個圖形要一個比一個大，寫死就要寫九次。改成「把邊長記在一個
+     會變的盒子裡，每畫完一個就加 5」，九次就變成一個迴圈。
+     這正是變數存在的理由，而不是「因為課本這一章教變數」。
+     後面 2-3-x 排序、2-4-x 搜尋都少不了變數，在這裡先見一次面剛好。
+
+     順帶還是有 360÷邊數：正五邊形轉 72 度。
+
+     版面（Scratch 舞台 480×360，原點在正中央）：
+       起點 x:-150 y:110、欄距 105、列距 -100、邊長 15 起每次 +5
+       → 九個都在舞台內，同一列相鄰不重疊（算過的） */
   '2-1-3': {
-    task: '畫出正三角形、正方形、正六邊形各一個，而且三個不重疊。',
+    task: '用「有參數的自訂積木」加上「變數」，畫出 3×3 排列、而且一個比一個大的正五邊形（共 9 個）。',
     tips: [
-      '正 N 邊形＝重複 N 次（移動 60 點、右轉 360÷N 度）。',
-      '三角形轉 120 度、正方形轉 90 度、六邊形轉 60 度 —— 看出規律了嗎？',
-      '每個圖形都用「定位到 x y → 下筆 → 重複 → 停筆」，換位置就不會黏在一起。',
-      '三個圖形分別定位在 x:-160、-40、80，y 都是 -40。'
+      '先「定義 畫正五邊形 (邊長)」：下筆 → 重複 5 次（移動 (邊長) 點、右轉 72 度）→ 停筆。',
+      '為什麼是 72 度？360 ÷ 5。和上一關的正方形（360 ÷ 4 ＝ 90）是同一個道理。',
+      '變數就像一個會記數字的盒子。開頭「變數 大小 設為 15」，每畫完一個就「變數 大小 改變 5」，下一個自然比較大。',
+      '呼叫時用「畫正五邊形 (大小)」—— 把盒子裡的數字帶進去，不是寫死的數字。這是和上一關最大的差別。',
+      '3×3 要用兩層重複：外層 3 次管「換到下一列」，內層 3 次管「同一列往右排」。',
+      '同一列每畫一個就 x 改變 105；一列畫完要 x 改變 -315 回到最左邊，再 y 改變 -100 往下。'
     ],
+    /* 干擾積木挑得有意思：
+       · 「畫正五邊形 50」（寫死數字的呼叫）—— 用它九個會一樣大，
+         正好逼學生想清楚為什麼需要變數
+       · 左轉 —— 老朋友了 */
     palette: [
       'events.whenflag',
-      'motion.move', 'motion.turnright', 'motion.goto',
+      'motion.goto', 'motion.changex', 'motion.changey',
+      'motion.turnright', 'motion.turnleft',
       'control.repeat',
-      'pen.clear', 'pen.down', 'pen.up', 'pen.color'
+      'data.setvar', 'data.changevar',
+      'my.definep', 'my.callvar', 'my.callp', 'my.movearg',
+      'pen.clear', 'pen.down', 'pen.up'
     ],
     goal: [
+      { id: 'my.definep', args: ['畫正五邊形'], children: [
+        { id: 'pen.down' },
+        { id: 'control.repeat', args: [5], children: [
+          { id: 'my.movearg' },
+          { id: 'motion.turnright', args: [72] }
+        ]},
+        { id: 'pen.up' }
+      ]},
       { id: 'events.whenflag' },
       { id: 'pen.clear' },
-
-      { id: 'motion.goto', args: [-160, -40] },
-      { id: 'pen.down' },
-      { id: 'control.repeat', args: [3], children: [
-        { id: 'motion.move',      args: [60] },
-        { id: 'motion.turnright', args: [120] }
-      ]},
-      { id: 'pen.up' },
-
-      { id: 'motion.goto', args: [-40, -40] },
-      { id: 'pen.down' },
-      { id: 'control.repeat', args: [4], children: [
-        { id: 'motion.move',      args: [60] },
-        { id: 'motion.turnright', args: [90] }
-      ]},
-      { id: 'pen.up' },
-
-      { id: 'motion.goto', args: [80, -40] },
-      { id: 'pen.down' },
-      { id: 'control.repeat', args: [6], children: [
-        { id: 'motion.move',      args: [60] },
-        { id: 'motion.turnright', args: [60] }
-      ]},
-      { id: 'pen.up' }
+      { id: 'data.setvar',  args: ['大小', 15] },
+      { id: 'motion.goto',  args: [-150, 110] },
+      { id: 'control.repeat', args: [3], children: [          // 三列
+        { id: 'control.repeat', args: [3], children: [        // 每列三個
+          { id: 'my.callvar',    args: ['畫正五邊形', '大小'] },
+          { id: 'data.changevar', args: ['大小', 5] },
+          { id: 'motion.changex', args: [105] }
+        ]},
+        { id: 'motion.changex', args: [-315] },               // 回到最左邊
+        { id: 'motion.changey', args: [-100] }                // 往下一列
+      ]}
     ]
   }
 
