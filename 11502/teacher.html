@@ -174,7 +174,7 @@
               <!-- 📥 繳交審核與加分（程式錄影 ＋1⭐；下學期沒有逐關流程圖） -->
               <!-- 同一個分頁開啟：教師端用 SESSION 持久性，登入狀態在 sessionStorage，
                    那是每個分頁各自獨立的 —— 開新分頁會變成要再登入一次。 -->
-              <a href="../shared/review.html?term=11502"
+              <a href="../shared/review.html?term=11502" data-bust
                  class="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full text-sm font-bold hover:bg-indigo-200 border border-indigo-300 shadow-sm flex items-center gap-1.5 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 繳交審核
@@ -3046,5 +3046,22 @@
     window.gdUploadTemplate = gdUploadTemplate;
     window.gdTestGrade = gdTestGrade;
   </script>
+
+<script>
+/* 帶時間戳開啟教師工具頁。
+   ★ 為什麼需要：HTML 本身也會被 GitHub Pages 快取 10 分鐘，
+     而「改版後畫面沒變」和「功能壞掉」長得一模一樣 ——
+     老師分不出來，只能一直重整、一直問。
+     網址多一個參數，瀏覽器就當成不同的網址，完全不會命中快取。
+   （放在 body 結尾，DOM 已經在了才抓得到連結。） */
+(function () {
+  var t = String(Date.now());
+  var list = document.querySelectorAll('a[data-bust]');
+  for (var i = 0; i < list.length; i++) {
+    var a = list[i];
+    a.href += (a.href.indexOf('?') < 0 ? '?' : '&') + 'v=' + t;
+  }
+})();
+</script>
 </body>
 </html>
