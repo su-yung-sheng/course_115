@@ -107,6 +107,68 @@ window.GRADING = {
     };
   },
 
+  /* ===================================================================
+     加分的合理性檢查
+     -------------------------------------------------------------------
+     ★ 這件事的前提：學生要先把流程圖排對，才生得出 Mermaid 圖片；
+       要先把程式寫到會動，才錄得出執行過程。所以
+         「沒有原始分數，卻有附件」
+         「附件的時間比完成時間還早」
+       兩者都代表哪裡不對 —— 可能是交錯關卡、交了舊檔、或根本不是自己做的。
+
+     ★ 為什麼只警告、不硬擋（2026-08-06 決定）
+       流程圖那一邊，硬擋大致沒問題（圖片只有完成畫面生得出來）。
+       但程式那一邊不行：AI 批改可能因為 Colab 沒開而根本沒跑，
+       學生的程式明明會動、影片也錄了，老師卻給不了分 ——
+       那是把後端的故障轉嫁到學生身上。
+       這個專案已經因為「不留手動解鎖後門」吃過一次苦頭。
+
+       所以做成：把可疑的地方講清楚，讓老師按之前先看到，
+       但最後決定權還是在老師手上。整個功能本來就是人工審核。
+     =================================================================== */
+
+  /** 這一關的「原始分數」狀態：拿到了沒、什麼時候拿到的 */
+  baseFor: function (progress, kind, unitId) {
+    var p = progress || {}, m = p.modules || {};
+    var hist = p.history || [];
+    function timeOf(module) {
+      var t = 0;
+      hist.forEach(function (h) {
+        if (h && h.module === module && h.unit === unitId) t = Math.max(t, Number(h.at) || 0);
+      });
+      return t;
+    }
+    if (kind === 'img') {
+      var units = (m.flowchart || {}).units || [];
+      var done = units.indexOf(unitId) >= 0;
+      return { done: done, stars: done ? this.FLOWCHART_PER_UNIT : 0,
+               label: done ? '流程圖已排對' : '流程圖還沒排對',
+               at: timeOf('flowchart') };
+    }
+    var stars = Number(((m.scratch || {}).unitStars || {})[unitId]) || 0;
+    var ok = stars >= this.GATE.PASS_STARS;
+    return { done: ok, stars: stars,
+             label: ok ? ('程式 ' + stars + '⭐')
+                       : (stars ? ('程式只有 ' + stars + '⭐') : '程式還沒通過'),
+             at: timeOf('scratch') };
+  },
+
+  /**
+   * 給這一分之前，有什麼值得先看一眼的？
+   * 回空字串＝沒問題。有字＝畫面上要顯示，而且按下去前要再確認一次。
+   *
+   * submittedAt 是 Classroom 的繳交時間（毫秒；沒有就傳 0）。
+   */
+  bonusWarning: function (base, submittedAt) {
+    base = base || {};
+    if (!base.done) return '這一關的原始分數還沒拿到（' + (base.label || '') + '）';
+    var sub = Number(submittedAt) || 0;
+    if (base.at && sub && sub < base.at) {
+      return '附件的時間比完成時間還早 —— 交的可能是別關或舊的檔案';
+    }
+    return '';
+  },
+
   /** 這一關的圖片／影片加分給過了嗎（教師端用來顯示勾勾） */
   hasBonus: function (unitsMap, unitId) {
     return !!((unitsMap || {})[unitId]);

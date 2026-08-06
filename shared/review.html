@@ -272,13 +272,22 @@ async function loadThisUnit() {
 
 /** 整批給分：只給「真的有那一種附件」的人 —— 沒交影片的不該拿到影片的分 */
 async function awardAllHandedIn() {
-  const todo = [];
+  const todo = [], skipped = [];
   students().forEach(s => Object.keys(KINDS).forEach(kk => {
-    if (s.per[kk].atts.length && !s.per[kk].given) todo.push([s.sid, kk]);
+    if (!s.per[kk].atts.length || s.per[kk].given) return;
+    // 有疑慮的不整批給 —— 那幾個正是最需要老師親自看的
+    if (s.per[kk].warn) { skipped.push(`${s.name} ${KINDS[kk].icon}`); return; }
+    todo.push([s.sid, kk]);
   }));
-  if (!todo.length) { state.msg = '沒有「有繳交但還沒給分」的項目。'; render(); return; }
+  if (!todo.length) {
+    state.msg = skipped.length
+      ? `沒有可以整批給分的項目。有 ${skipped.length} 個有疑慮，請一個一個看：${skipped.join('、')}`
+      : '沒有「有繳交但還沒給分」的項目。';
+    render(); return;
+  }
   const who = (state.klass || '這一') + ' 班';
   if (!confirm(`${who}第 ${state.no} 關：把 ${todo.length} 個「有繳交但還沒給分」的項目一次給分？\n` +
+               (skipped.length ? `（另有 ${skipped.length} 個有疑慮，會跳過留給你自己看：${skipped.join('、')}）\n` : '') +
                '（沒有交那一種檔案的不會給。還是建議先點開看過幾份再按）')) return;
   for (const [sid, kk] of todo) await award(sid, kk, true);
 }
@@ -312,6 +321,14 @@ async function award(sid, kindKey, on) {
   const k = KINDS[kindKey];
   const unitId = unitIdOf(kindKey);
   if (!unitId) { state.msg = '這個學期沒有對應的關卡，無法加分。'; render(); return; }
+  /* 可疑就先問一次。
+     ★ 為什麼不直接擋：程式那一邊的原始分數可能因為 Colab 沒開而沒跑到，
+       硬擋等於把後端的故障轉嫁到學生身上。把疑點講清楚、讓老師決定。 */
+  if (on) {
+    const st = students().find(x => x.sid === sid);
+    const w = st && st.per[kindKey] && st.per[kindKey].warn;
+    if (w && !confirm(`${st.name}（${sid}）\n\n⚠️ ${w}\n\n還是要給這一分嗎？`)) return;
+  }
   const cur = ((state.progress[sid] || {}).modules || {})[k.mod] || {};
   const map = Object.assign({}, cur[k.field] || {});
   if (on) map[unitId] = { at: Date.now(), by: state.who.email };
@@ -359,13 +376,20 @@ function students() {
       const r = state.roster[sid] || {};
       const p = state.progress[sid] || {};
       const sub = state.cr.rows[sid] || null;
+      const subAt = sub && sub.updateTime ? Date.parse(sub.updateTime) || 0 : 0;
       const per = {};
       Object.keys(KINDS).forEach(kk => {
         const k = KINDS[kk], uid = unitIdOf(kk);
+        /* 原始分數與合理性檢查：
+           學生要先排對流程圖才生得出圖片、先把程式寫到會動才錄得出影片。
+           缺原始分數、或附件比完成時間還早，都代表哪裡不對 —— 先講出來。 */
+        const base = uid ? GRADING.baseFor(p, kk, uid) : { done: false, label: '沒有這一關' };
         per[kk] = {
           unitId: uid,
           given: uid ? GRADING.hasBonus(((p.modules || {})[k.mod] || {})[k.field], uid) : false,
-          atts: attOf(sub, kk === 'img' ? 'image' : 'video')
+          atts: attOf(sub, kk === 'img' ? 'image' : 'video'),
+          base: base,
+          warn: uid ? GRADING.bonusWarning(base, subAt) : ''
         };
       });
       return {
@@ -475,16 +499,21 @@ function card(s) {
 function block(s, kk) {
   const k = KINDS[kk], p = s.per[kk];
   const has = p.atts.length > 0;
+  /* 有繳交但「哪裡不對」時用琥珀色框 —— 和「沒交」「已加分」分得開。
+     三種顏色各有意思：灰虛線＝沒交、藍＝可以審、琥珀＝有疑慮、綠＝已給分。 */
   const box = p.given
     ? 'bg-emerald-50 border-emerald-400'
-    : (has ? 'bg-white border-blue-400' : 'bg-slate-50 border-dashed border-slate-300');
+    : (has ? (p.warn ? 'bg-amber-50 border-amber-400' : 'bg-white border-blue-400')
+           : 'bg-slate-50 border-dashed border-slate-300');
   return `
     <div class="border-2 ${box} rounded-xl p-2 text-center">
       <div class="text-xs font-black text-slate-600 mb-1">${k.icon} ${esc(k.label.replace('流程圖圖片', '流程圖').replace('程式錄影', '程式'))}</div>
+      <div class="text-[10px] mb-1 ${p.base.done ? 'text-slate-400' : 'text-amber-700 font-bold'}">${esc(p.base.label || '')}</div>
       <div class="text-[11px] leading-snug mb-2 min-h-[2.2em]">
         ${has ? p.atts.map(a => link(a, s.sid, kk)).join('<br>')
               : `<span class="text-slate-400">${state.cr.on ? '未繳交' : '未連接'}</span>`}
       </div>
+      ${p.warn && has ? `<div class="text-[10px] text-amber-700 leading-snug mb-1">⚠️ ${esc(p.warn)}</div>` : ''}
       <button data-award="${esc(s.sid)}" data-kind="${kk}" data-on="${p.given ? '0' : '1'}"
         ${p.unitId ? '' : 'disabled'}
         class="w-full px-2 py-1.5 rounded-lg text-xs font-bold transition
