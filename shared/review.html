@@ -17,8 +17,16 @@
     t = (window.SEMESTER && SEMESTER.current) ? SEMESTER.current() : '11501';
   }
   window.__TERM = t;
-  document.write('<scr' + 'ipt src="../' + t + '/config.js"></scr' + 'ipt>');
-  document.write('<scr' + 'ipt src="../' + t + '/content/flowchart.js"></scr' + 'ipt>');
+  /* ?v=… 是防快取。
+     ★ 為什麼需要：config.js 是靜態檔，GitHub Pages 會叫瀏覽器快取 10 分鐘。
+       改了 SERVER_URL（ngrok 常換）或 CLASSROOM.CLIENT_ID 之後，
+       畫面上會**沿用舊值**卻毫無徵兆 —— 症狀是「後端明明開著卻說離線」、
+       「ID 明明填了卻說沒設定」，然後花半小時找不存在的 bug。
+       這幾頁是老師的工具頁，一天開不了幾次，永遠拿最新的最划算。
+       （學生的闖關頁沒有加：那些頁一堂課會被載幾十次，
+         而且 10 分鐘後快取本來就會自己過期。） */
+  document.write('<scr' + 'ipt src="../' + t + '/config.js?v=' + Date.now() + '"></scr' + 'ipt>');
+  document.write('<scr' + 'ipt src="../' + t + '/content/flowchart.js?v=' + Date.now() + '"></scr' + 'ipt>');
 })();
 </script>
 <script src="auth.js"></script>
@@ -75,10 +83,37 @@ const KINDS = {
   vid: { key: 'vid', label: '程式錄影',   icon: '🎬', units: PROG, mod: 'scratch',   field: 'vidUnits' }
 };
 
+/* 班級與座號。
+   ★ 名冊的欄位是 cls／no（不是 class／seat）—— 我一開始寫錯，
+     那一欄會永遠是空的而且不會報錯。規格見 docs/03_資料格式規格.md。
+   名冊沒填時從學號推算：1410112 → 班級 801、座號 12（後四碼）。 */
+function clsOf(sid, r) {
+  var v = String((r && r.cls) || '').trim();
+  if (v) return v;
+  sid = String(sid || '');
+  return sid.length >= 4 ? '8' + sid.slice(-4, -2) : '';
+}
+function noOf(sid, r) {
+  var v = String((r && r.no) || '').trim();
+  if (v) return v;
+  return String(sid || '').slice(-2);
+}
+
+/* 從 Classroom 的課程名稱抓班級：「資訊科技 801」→ 801。
+   ★ 為什麼要自動抓：Classroom 一個班一門課，選了「資訊科技 801」
+     繳交清單本來就只有 801 的人；但名冊那一側是全校十二個班混在一起，
+     不跟著篩就要在幾百列裡面找那三十個人。
+   抓不到就不動篩選（例如課名沒寫班級），不要亂猜。 */
+function classFromCourseName(name) {
+  const m = String(name || '').match(/\b(8\d{2})\b/);
+  return m ? m[1] : '';
+}
+
 const state = {
   who: null,            // 登入的老師
   kind: FLOW.length ? 'img' : 'vid',
   unit: '',
+  klass: '',            // '' = 全部班級
   roster: {},           // 學號 → { name, class, seat }
   progress: {},         // 學號 → progress 文件
   cr: { on: false, err: '', courses: [], works: [], courseId: '', workId: '', rows: {} },
@@ -135,6 +170,10 @@ async function connectClassroom() {
 }
 async function pickCourse(id) {
   state.cr.courseId = id; state.cr.workId = ''; state.cr.rows = {};
+  // 課名裡有班級就自動篩到那一班（「資訊科技 801」→ 801）
+  const course = state.cr.courses.find(c => c.id === id);
+  const guess = classFromCourseName(course && course.name);
+  if (guess && allClasses().indexOf(guess) >= 0) state.klass = guess;
   state.busy = '讀取作業清單…'; render();
   try { state.cr.works = await CLASSROOM.coursework(id); }
   catch (e) { state.cr.err = e.message; }
@@ -193,26 +232,40 @@ async function award(sid, on) {
 async function awardAllHandedIn() {
   const list = students().filter(s => s.sub && CLASSROOM.handedIn(s.sub) && !s.given);
   if (!list.length) { state.msg = '沒有「已繳交但還沒給分」的人。'; render(); return; }
-  if (!confirm(`把 ${list.length} 位「已繳交」的學生一次給分？\n（還是建議先點開看過幾份再按）`)) return;
+  const who = state.klass ? state.klass + ' 班' : '全部班級';
+  if (!confirm(`把 ${who} ${list.length} 位「已繳交」的學生一次給分？\n（還是建議先點開看過幾份再按）`)) return;
   for (const s of list) await award(s.sid, true);
 }
 
 /* ── 資料整理 ───────────────────────────────────── */
+/** 名冊裡實際有哪些班級（供下拉選單用） */
+function allClasses() {
+  const set = {};
+  Object.keys(state.roster).forEach(sid => {
+    const c = clsOf(sid, state.roster[sid]);
+    if (c) set[c] = true;
+  });
+  return Object.keys(set).sort();
+}
+
 function students() {
   const k = KINDS[state.kind];
-  return Object.keys(state.roster).sort().map(sid => {
-    const r = state.roster[sid] || {};
-    const p = state.progress[sid] || {};
-    const mod = (p.modules || {})[k.mod] || {};
-    return {
-      sid,
-      name: r.name || '',
-      klass: (r.class || '') + (r.seat ? ' ' + r.seat + '號' : ''),
-      given: GRADING.hasBonus(mod[k.field], state.unit),
-      stars: GRADING.starsWithBonus(p),
-      sub: state.cr.rows[sid] || null
-    };
-  });
+  return Object.keys(state.roster).sort()
+    .filter(sid => !state.klass || clsOf(sid, state.roster[sid]) === state.klass)
+    .map(sid => {
+      const r = state.roster[sid] || {};
+      const p = state.progress[sid] || {};
+      const mod = (p.modules || {})[k.mod] || {};
+      return {
+        sid,
+        name: r.name || '',
+        cls: clsOf(sid, r),
+        no: noOf(sid, r),
+        given: GRADING.hasBonus(mod[k.field], state.unit),
+        stars: GRADING.starsWithBonus(p),
+        sub: state.cr.rows[sid] || null
+      };
+    });
 }
 
 /* ── 畫面 ───────────────────────────────────────── */
@@ -229,6 +282,7 @@ function render() {
   }
 
   const k = KINDS[state.kind];
+  const classes = allClasses();
   const list = students();
   const doneCount = list.filter(s => s.given).length;
   const inCount = list.filter(s => s.sub && CLASSROOM.handedIn(s.sub)).length;
@@ -245,12 +299,23 @@ function render() {
             ${state.kind === x.key ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-400'}">
             ${x.icon} ${x.label} +1⭐</button>`).join('')}
       </div>
-      <label class="block text-xs font-black text-slate-500 mb-1">要審核哪一關</label>
-      <select id="unit" class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-medium">
-        ${k.units.map(u => `<option value="${esc(u.id)}" ${u.id === state.unit ? 'selected' : ''}>第 ${u.no} 關　${esc(u.title)}</option>`).join('')}
-      </select>
+      <div class="grid sm:grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs font-black text-slate-500 mb-1">班級</label>
+          <select id="klass" class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-medium">
+            <option value="">全部班級（${Object.keys(state.roster).length} 人）</option>
+            ${classes.map(c => `<option value="${esc(c)}" ${c === state.klass ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-xs font-black text-slate-500 mb-1">要審核哪一關</label>
+          <select id="unit" class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-medium">
+            ${k.units.map(u => `<option value="${esc(u.id)}" ${u.id === state.unit ? 'selected' : ''}>第 ${u.no} 關　${esc(u.title)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
       <div class="mt-3 text-xs text-slate-500">
-        全班 ${list.length} 人｜已給分 <b class="text-emerald-600">${doneCount}</b>
+        ${state.klass ? esc(state.klass) + ' 班' : '全部班級'} ${list.length} 人｜已給分 <b class="text-emerald-600">${doneCount}</b>
         ${state.cr.on ? `｜Classroom 顯示已繳交 <b class="text-indigo-600">${inCount}</b>` : ''}
       </div>
     </div>
@@ -273,7 +338,7 @@ function render() {
             <tr class="border-t border-slate-100 ${s.given ? 'bg-emerald-50/40' : ''}">
               <td class="px-4 py-2">
                 <div class="font-bold">${esc(s.name || '（名冊沒有姓名）')}</div>
-                <div class="text-xs text-slate-400">${esc(s.sid)}${s.klass ? '　' + esc(s.klass) : ''}</div>
+                <div class="text-xs text-slate-400">${esc(s.sid)}${s.cls ? `　${esc(s.cls)} ${esc(s.no)}號` : ''}</div>
               </td>
               <td class="px-3 py-2 text-xs text-slate-500">
                 流程圖 ${s.stars.flowchart}⭐<br>程式 ${s.stars.scratch}⭐
@@ -337,6 +402,7 @@ function crPanel() {
             <option value="">請選擇…</option>
             ${state.cr.courses.map(c => `<option value="${esc(c.id)}" ${c.id === state.cr.courseId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
           </select>
+          <p class="text-[11px] text-slate-400 mt-1">課名裡有班級（例如「資訊科技 801」）就會自動把名單篩到那一班。</p>
         </div>
         <div>
           <label class="block text-xs font-black text-slate-500 mb-1">作業</label>
@@ -376,6 +442,7 @@ document.addEventListener('click', async (e) => {
   if (ab) { award(ab.dataset.award, ab.dataset.on === '1'); return; }
 });
 document.addEventListener('change', (e) => {
+  if (e.target.id === 'klass') { state.klass = e.target.value; render(); return; }
   if (e.target.id === 'unit') { state.unit = e.target.value; render(); return; }
   if (e.target.id === 'cr-course') { pickCourse(e.target.value); return; }
   if (e.target.id === 'cr-work') { pickWork(e.target.value); return; }

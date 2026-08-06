@@ -18,7 +18,15 @@
   if (!t || !/^115\d{2}$/.test(t)) {
     t = (window.SEMESTER && SEMESTER.current) ? SEMESTER.current() : '11501';
   }
-  document.write('<scr' + 'ipt src="../' + t + '/config.js"></scr' + 'ipt>');
+  /* ?v=… 是防快取。
+     ★ 為什麼需要：config.js 是靜態檔，GitHub Pages 會叫瀏覽器快取 10 分鐘。
+       改了 SERVER_URL（ngrok 常換）或 CLASSROOM.CLIENT_ID 之後，
+       畫面上會**沿用舊值**卻毫無徵兆 —— 症狀是「後端明明開著卻說離線」、
+       「ID 明明填了卻說沒設定」，然後花半小時找不存在的 bug。
+       這幾頁是老師的工具頁，一天開不了幾次，永遠拿最新的最划算。
+       （學生的闖關頁沒有加：那些頁一堂課會被載幾十次，
+         而且 10 分鐘後快取本來就會自己過期。） */
+  document.write('<scr' + 'ipt src="../' + t + '/config.js?v=' + Date.now() + '"></scr' + 'ipt>');
 })();
 </script>
 
