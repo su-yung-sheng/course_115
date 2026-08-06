@@ -35,8 +35,8 @@ const API = new Function(
 )();
 const { STEP_NOTES, esc, stepNote, mermaidShape, toMermaid } = API;
 
-const units=[...s.matchAll(/title:'(.*?)'[\s\S]*?steps:\[(.*?)\]/g)]
-  .map(([_,t,raw])=>({t,steps:raw.split("','").map(x=>x.replace(/^'|'$/g,''))}));
+const units=[...s.matchAll(/title:'(.*?)'[\s\S]*?desc:'(.*?)'[\s\S]*?steps:\[(.*?)\]/g)]
+  .map(([_,t,desc,raw])=>({t,desc,steps:raw.split("','").map(x=>x.replace(/^'|'$/g,''))}));
 
 console.log('── 每個步驟都有說明，而且不洩漏順序 ──');
 const allSteps=[...new Set(units.flatMap(u=>u.steps))];
@@ -81,6 +81,22 @@ is((m10.match(/-->\|是\|/g)||[]).length,2,'第 10 關：兩個判斷各分出�
 
 console.log('\n── HTML 逸出 ──');
 is(esc('S0 --> S1'),'S0 --&gt; S1','箭頭的 > 有逸出，不會被當成標籤');
+
+console.log('\n── 排序畫面要看得到「這個程式要做什麼」──');
+const play = s.slice(s.indexOf("if(state.status==='play')"), s.indexOf("if(state.status==='clear')"));
+is(/\$\{u\.desc\}/.test(play), true, '排序畫面有帶出這一關的目標（u.desc）');
+is(/這個程式要做什麼/.test(play), true, '而且標題講白話，不是只丟一段文字');
+is(/u\.details/.test(play), true, '可以展開「再看一次這一關的重點」');
+is(/\$\{nudge\}/.test(play), true, '有一句隨進度變化的提示');
+is(units.every(u => u.desc && u.desc.length > 10), true, '十關都寫了目標說明');
+
+console.log('\n── 那一句提示：第一步要講得出從哪開始 ──');
+const nudgeSrc = play.slice(play.indexOf('const nudge'), play.indexOf('const placedHtml'));
+is(/placed\.length === 0/.test(nudgeSrc), true, '一張都還沒排時走另一條分支');
+is(/先找「開始」/.test(nudgeSrc), true, '★ 明說先找「開始」—— 那是流程圖的規則，不是這一題的答案');
+is(/結束/.test(nudgeSrc), true, '順便講明以「結束」收尾');
+is(/\$\{last\}/.test(nudgeSrc), true, '排了之後改成提醒「你已經排到哪一步」');
+is(/第\s*\$\{|正確答案|下一步是/.test(nudgeSrc), false, '沒有直接說出下一步是什麼');
 
 console.log(`\n通過 ${pass}／失敗 ${fail}`);
 process.exit(fail?1:0);
