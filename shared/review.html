@@ -53,7 +53,8 @@
 
 <main class="max-w-5xl mx-auto px-4 py-8">
   <header class="mb-6">
-    <h1 class="text-2xl sm:text-3xl font-black">📥 繳交審核與加分</h1>
+    <a href="#" id="back-teacher" class="text-sm font-bold text-slate-400 hover:text-slate-700">← 回教師端</a>
+    <h1 class="text-2xl sm:text-3xl font-black mt-2">📥 繳交審核與加分</h1>
     <p class="text-slate-500 text-sm mt-2 leading-relaxed">
       學生把<b>流程圖圖片</b>與<b>程式執行錄影</b>交到 Google Classroom，
       你在這裡確認之後按一下給分：圖片 <b>+1⭐</b>、影片 <b>+1⭐</b>（每一關各算各的）。<br>
@@ -69,7 +70,8 @@
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged }
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
+         setPersistence, browserSessionPersistence }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, getDocs, doc, setDoc }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -126,6 +128,8 @@ const state = {
 };
 
 const el = id => document.getElementById(id);
+// 同一個分頁開啟，所以要有回去的路
+{ const b = el('back-teacher'); if (b) b.href = '../' + TERM + '/teacher.html'; }
 // 版本印在畫面上：改版後看到舊值就知道是快取，不必猜是不是壞了
 { const v = el('ver'); if (v) v.textContent = (window.CLASSROOM && CLASSROOM.VERSION) || '（舊版 classroom.js）'; }
 const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -137,12 +141,28 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
 function isTeacher(u) {
   return !!(u && u.email && window.AUTH && AUTH.isTeacherEmail(u.email));
 }
-onAuthStateChanged(auth, async (u) => {
-  if (!isTeacher(u)) { render(); return; }
-  state.who = u;
-  await loadAll();
-  render();
-});
+/* ★ 持久性要和教師端一致（SESSION ＝ sessionStorage），而且要在
+   掛上 onAuthStateChanged 之前設好。
+
+   為什麼會影響到「又要登入一次」：
+     教師端用 SESSION 持久性，登入狀態存在 sessionStorage ——
+     那是**每個分頁各自獨立**的。這一頁若用預設的 LOCAL，
+     會去 localStorage 找，那裡根本沒有東西，於是要求重新登入。
+     教師端的連結也改成同一個分頁開啟，sessionStorage 才帶得過來。
+
+   ⚠️ 這個登入不能省。Firestore 的安全規則要一個 Firebase 身分才肯讓人
+      讀全班名冊與進度、寫加分欄位；Classroom 那條線（Apps Script ＋
+      通行碼）Firestore 完全不認得。沒有它，這一頁連名單都讀不出來。 */
+setPersistence(auth, browserSessionPersistence)
+  .catch(e => console.warn('設定持久性失敗', e))
+  .finally(() => {
+    onAuthStateChanged(auth, async (u) => {
+      if (!isTeacher(u)) { render(); return; }
+      state.who = u;
+      await loadAll();
+      render();
+    });
+  });
 
 async function loadAll() {
   state.busy = '讀取名冊與進度…'; render();
@@ -325,7 +345,10 @@ function render() {
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center pop">
         <div class="text-4xl mb-3">🔐</div>
         <h2 class="text-xl font-black mb-2">請用老師的學校 Google 帳號登入</h2>
-        <p class="text-slate-500 text-sm mb-5">這一頁會讀全班成績，只有老師進得來。</p>
+        <p class="text-slate-500 text-sm mb-2">這一頁會讀全班成績，只有老師進得來。</p>
+        <p class="text-slate-400 text-xs mb-5 leading-relaxed">
+          資料庫的安全規則要一個 Firebase 身分才肯放行，Classroom 那邊的連線它不認得。<br>
+          從教師端點「📥 繳交審核」進來的話會沿用你在那邊的登入，不必再登一次。</p>
         <button id="login" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-6 py-3 rounded-xl">用 Google 登入</button>
       </div>`;
     return;
