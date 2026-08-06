@@ -88,6 +88,21 @@ const dup = C.findWork([{ id: 'x', title: 'A：2-1-2 甲' }, { id: 'y', title: '
 is(dup.work, null, '同一個代號對到兩份 → 不猜');
 is(dup.many.length, 2, '　並回報是哪兩份，讓老師選');
 
+section('依班級自動挑課程');
+const CS = [
+  { id: 'c1', name: '資訊科技 801' },
+  { id: 'c2', name: '資訊科技 802' },
+  { id: 'c3', name: '八年級資訊科技812' }
+];
+is(C.findCourse(CS, '801').course.id, 'c1', '801 → 對到那一門');
+is(C.findCourse(CS, '812').course.id, 'c3', '沒空格也對得到');
+is(C.findCourse(CS, '809').course, null, '沒有那一班的課 → 不猜');
+is(C.findCourse(CS, '').course, null, '還沒選班級 → 不動');
+const dupC = C.findCourse([{ id: 'x', name: '資訊科技 801 上' },
+                           { id: 'y', name: '資訊科技 801 下' }], '801');
+is(dupC.course, null, '★ 同一班有兩門課 → 不猜（猜錯會讀到另一門的繳交）');
+is(dupC.many.length, 2, '　並回報是哪兩門');
+
 section('從課名抓班級');
 is(C.classFromCourseName('資訊科技 801'), '801', '「資訊科技 801」→ 801');
 is(C.classFromCourseName('八年級資訊科技812'), '812', '沒空格也抓得到');

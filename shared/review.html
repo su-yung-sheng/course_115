@@ -176,6 +176,11 @@ async function loadAll() {
     // 一載入就選好第一個班（教師成績登錄系統也是一開啟就有一個班在作用中）
     if (!state.klass) { const cs = allClasses(); state.klass = cs.length ? cs[0] : ''; }
     state.msg = '';
+    /* 通行碼上次已經存在這台瀏覽器了，就不要再叫老師按一次「連接」——
+       每次進來都要重按一個「明明可以自己做」的按鈕，是最沒必要的摩擦。
+       連不上也不擋畫面：錯誤會顯示在面板上，名單與加分照樣能用。 */
+    const gasUrl = (C.CLASSROOM && C.CLASSROOM.GAS_URL) || '';
+    if (gasUrl && CLASSROOM.savedKey() && !state.cr.on) connectClassroom();
   } catch (e) {
     state.msg = '讀不到資料：' + e.message;
   }
@@ -193,11 +198,22 @@ async function connectClassroom(keyFromInput) {
     CLASSROOM.saveKey(key);                 // 通行碼記在這台瀏覽器，不進版控
     state.cr.courses = await CLASSROOM.courses();
     state.cr.on = true;
+    await autoPickCourse();      // 班級選過了就不必再選一次課程
   } catch (e) {
     state.cr.err = e.message;      // classroom.js 已經把錯誤翻成「下一步怎麼辦」
   }
   state.busy = ''; render();
 }
+/* 依目前班級自動挑課程：「資訊科技 801」對到 801。
+   ★ 為什麼值得自動：班級在上面已經選過了，課程下拉問的是同一件事。
+     讓人把同一個答案填兩次，是介面在浪費對方的注意力。
+   對不到（課名沒寫班級、或同一班有兩門課）就不動，下拉留著給老師自己選。 */
+async function autoPickCourse() {
+  if (!state.cr.on || !state.klass) return;
+  const r = CLASSROOM.findCourse(state.cr.courses, state.klass);
+  if (r.course && r.course.id !== state.cr.courseId) await pickCourse(r.course.id);
+}
+
 async function pickCourse(id) {
   state.cr.courseId = id; state.cr.workId = ''; state.cr.rows = {};
   // 課名裡有班級就自動篩到那一班（「資訊科技 801」→ 801）
@@ -503,12 +519,14 @@ function crPanel() {
       ${state.cr.err ? errBox(state.cr.err) : ''}
       <div class="grid sm:grid-cols-2 gap-3">
         <div>
-          <label class="block text-xs font-black text-slate-500 mb-1">課程</label>
+          <label class="block text-xs font-black text-slate-500 mb-1">課程（依班級自動對應，可改）</label>
           <select id="cr-course" class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm">
             <option value="">請選擇…</option>
             ${state.cr.courses.map(c => `<option value="${esc(c.id)}" ${c.id === state.cr.courseId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
           </select>
-          <p class="text-[11px] text-slate-400 mt-1">課名裡有班級（例如「資訊科技 801」）就會自動把名單篩到那一班。</p>
+          <p class="text-[11px] text-slate-400 mt-1">
+            ${state.cr.courseId ? '已依班級對到這門課。' : '課名要帶班級（例如「資訊科技 801」）才對得到，否則請自己選。'}
+          </p>
         </div>
         <div class="flex items-end">
           <button id="cr-load" ${state.cr.courseId ? '' : 'disabled'}
@@ -545,7 +563,14 @@ document.addEventListener('click', async (e) => {
     return;
   }
   const cb = e.target.closest('[data-klass]');
-  if (cb) { state.klass = cb.dataset.klass; render(); return; }
+  if (cb) {
+    state.klass = cb.dataset.klass;
+    // 換班就換課程，順便清掉上一班的繳交資料（留著會張冠李戴）
+    state.cr.workId = ''; state.cr.rows = {}; state.cr.matched = ''; state.cr.ambiguous = null;
+    render();
+    autoPickCourse();
+    return;
+  }
   const nb = e.target.closest('[data-no]');
   if (nb) {
     state.no = Number(nb.dataset.no);

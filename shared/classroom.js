@@ -42,7 +42,7 @@
        （GitHub Pages 快取 10 分鐘）。老師看到的是「我改了但畫面沒變」，
        而「沒變」和「壞了」長得一模一樣，只能猜。
        把版本印在畫面上，就從「猜」變成「看一眼就知道要不要強制重新整理」。 */
-  var VERSION = '2026-08-06-row';
+  var VERSION = '2026-08-06-auto';
 
   var url = '';
   var key = '';
@@ -204,6 +204,19 @@
     return { work: null, id: '', many: null };
   }
 
+  /**
+   * 從課程清單裡找出某一班的那一門課。
+   * 和 findWork 同一套原則：對到剛好一門才回傳，對到多門或零門就不猜。
+   */
+  function findCourse(courses, klass) {
+    if (!klass) return { course: null, many: null };
+    var hit = (courses || []).filter(function (c) {
+      return classFromCourseName(c.name) === String(klass);
+    });
+    if (hit.length === 1) return { course: hit[0], many: null };
+    return { course: null, many: hit.length ? hit : null };
+  }
+
   /** 從課程名稱抓班級：「資訊科技 801」→ 801；抓不到回空字串（不要亂猜） */
   function classFromCourseName(name) {
     var m = String(name || '').match(/\b(8\d{2})\b/);
@@ -226,6 +239,7 @@
     guessKind: guessKind,
     classFromCourseName: classFromCourseName,
     findWork: findWork,
+    findCourse: findCourse,
     _explainError: explainError,
     _explainNonJson: explainNonJson
   };
