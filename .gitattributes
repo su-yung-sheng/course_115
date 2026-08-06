@@ -8,3 +8,19 @@
 
 # git hook 在 Git Bash 執行，必須是 LF
 shared/hooks/* text eol=lf
+
+# ★ 二進位資產：明確標成 binary，不要靠 git 的自動偵測
+#   .sb3 是 ZIP 壓縮檔。目前沒出事是因為裡面有 NUL 位元組、
+#   git 猜對了它是二進位；但那是啟發式判斷，不是保證 ——
+#   萬一哪天猜錯而做了換行轉換，壓縮檔會**直接壞掉**，
+#   而且 git diff 只會顯示「binary files differ」，看不出是什麼時候壞的。
+#   教材原始檔壞掉等於課堂範例沒了，不值得賭在猜測上。
+*.sb3 binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
