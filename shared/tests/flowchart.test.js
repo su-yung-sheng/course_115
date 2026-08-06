@@ -20,13 +20,21 @@ const s = fs.readFileSync(path.resolve(__dirname, '..', '..', '11501', 'flowchar
 let pass=0,fail=0;
 const is=(g,w,l)=>{const ok=JSON.stringify(g)===JSON.stringify(w);ok?pass++:fail++;
  console.log((ok?'  ✅ ':'  ❌ ')+l+(ok?'':`\n       期望 ${JSON.stringify(w)}\n       實得 ${JSON.stringify(g)}`))};
-// 抽出要測的函式（整份是 module，不能直接跑）
-const grab=re=>s.match(re)[0];
-eval(grab(/const STEP_NOTES = \{[\s\S]*?\n    \};/).replace('const','var'));
-eval(grab(/function esc\(t\)[\s\S]*?\n/));
-eval(grab(/function stepNote\(s\)[\s\S]*?\n/));
-eval(grab(/function mermaidShape[\s\S]*?\n    \}/));
-eval(grab(/function toMermaid[\s\S]*?\n    \}/));
+/* 從 HTML 裡把要測的幾個函式原封不動取出來執行。
+   ★ 為什麼用 new Function 而不是 eval：
+     這支測試是嚴格模式，eval 裡的函式宣告進不到外層，
+     取出來也用不到（而且不會報錯，只會在用的時候說「未定義」）。 */
+const grab = re => s.match(re)[0];
+const API = new Function(
+  grab(/const STEP_NOTES = \{[\s\S]*?\n    \};/) + '\n' +
+  grab(/function esc\(t\)[\s\S]*?\n/) + '\n' +
+  grab(/function stepNote\(s\)[\s\S]*?\n/) + '\n' +
+  grab(/function mermaidShape[\s\S]*?\n    \}/) + '\n' +
+  grab(/function toMermaid[\s\S]*?\n    \}/) + '\n' +
+  'return { STEP_NOTES, esc, stepNote, mermaidShape, toMermaid };'
+)();
+const { STEP_NOTES, esc, stepNote, mermaidShape, toMermaid } = API;
+
 const units=[...s.matchAll(/title:'(.*?)'[\s\S]*?steps:\[(.*?)\]/g)]
   .map(([_,t,raw])=>({t,steps:raw.split("','").map(x=>x.replace(/^'|'$/g,''))}));
 
