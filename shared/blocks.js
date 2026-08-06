@@ -79,8 +79,8 @@
     'control.wait':     { cat:'control', shape:'stack', label:'等待 %n 秒',        args:[1] },  // CONTROL_WAIT
     'control.repeat':   { cat:'control', shape:'c',     label:'重複 %n 次',        args:[10] }, // CONTROL_REPEAT
     // 變數名稱也是學生自己取的 → idArgs
-    'data.setvar':      { cat:'data',    shape:'stack', label:'變數 %s 設為 %n',   args:['大小', 0], idArgs:[0] }, // DATA_SETVARIABLETO
-    'data.changevar':   { cat:'data',    shape:'stack', label:'變數 %s 改變 %n',   args:['大小', 1], idArgs:[0] }, // DATA_CHANGEVARIABLEBY
+    'data.setvar':      { cat:'data',    shape:'stack', label:'變數 %s 設為 %n',   args:['我的變數', 0], idArgs:[0] }, // DATA_SETVARIABLETO（Scratch 新專案的預設變數就叫「我的變數」）
+    'data.changevar':   { cat:'data',    shape:'stack', label:'變數 %s 改變 %n',   args:['我的變數', 1], idArgs:[0] }, // DATA_CHANGEVARIABLEBY
 
     /* 畫筆（擴充積木）：1～3 關畫正方形、正多邊形要用 */
     'pen.clear':        { cat:'pen',     shape:'stack', label:'筆跡全部清除' },                  // pen.clear
@@ -102,9 +102,23 @@
     // 在 Scratch 裡是把橢圓形的參數「邊長」拖進「移動 () 點」，
     // 這裡沒有橢圓積木，所以做成一塊固定的積木，名字照樣是「移動 () 點」
     'my.movearg':       { cat:'my',      shape:'stack', label:'移動 (邊長) 點' },
+
+    /* 參數叫「邊數」的那一組（第 3 關的正 N 邊形）。
+       ⚠️ 為什麼要另外一組，而不是沿用上面的：
+         Scratch 的積木上會顯示參數**自己取的名字**，而這裡的標籤是寫死的。
+         第 2 關的參數是「邊長」，第 3 關是「邊數」——
+         若沿用「移動 (邊長) 點」那一組，學生會看到自己明明取名邊數，
+         積木上卻寫邊長。寧可多一組積木，也不要顯示錯的名字。
+         （兩組不會同時出現在同一關的調色盤上。） */
+    'my.defsides':      { cat:'my',      shape:'c',     label:'定義 %s (邊數)',    args:['畫正N邊形'], idArgs:[0] },
+    'my.repeatsides':   { cat:'my',      shape:'c',     label:'重複 (邊數) 次' },
+    // 在 Scratch 裡是「右轉 ↻ ( 360 / (邊數) ) 度」——
+    // 運算積木塞進轉向積木裡。引擎還沒有回報值積木，先做成一塊。
+    'my.turnsides':     { cat:'my',      shape:'stack', label:'右轉 ↻ (360 ÷ 邊數) 度' },
+
     // 呼叫時把「變數」的目前值帶進去（在真的 Scratch 裡是把變數那顆橢圓
     // 積木拖進呼叫積木的空格）。兩格都是名字：積木名、變數名。
-    'my.callvar':       { cat:'my',      shape:'stack', label:'%s (%s)', args:['畫正五邊形', '大小'], idArgs:[0, 1] },
+    'my.callvar':       { cat:'my',      shape:'stack', label:'%s (%s)', args:['畫正N邊形', '邊數'], idArgs:[0, 1] },
 
     /* 清單與判斷：5～10 關的排序、搜尋要用
        ★自訂 —— 這幾塊在 Scratch 裡是好幾塊積木組起來的（要用橢圓形的
@@ -128,6 +142,13 @@
     return n;
   }
   function uid() { return 'b' + Math.random().toString(36).slice(2, 9); }
+
+  /* 哪些積木是「定義」。散在五、六個地方各寫一次 id 比對，
+     以後新增一種定義積木就一定會漏掉其中一處（而且不會報錯，
+     只會變成「那塊積木放進函式區卻不被當成定義」）。集中在這裡。 */
+  var DEFINE_IDS = { 'my.define': 1, 'my.definep': 1, 'my.defsides': 1 };
+  function isDefine(id) { return !!DEFINE_IDS[id]; }
+  var CALL_IDS = { 'my.call': 1, 'my.callp': 1, 'my.callvar': 1 };
 
   /* Scratch 的綠旗與紅色停止鈕。
      用 SVG 而不是 emoji：unicode 裡根本沒有「綠旗」這個字元
@@ -329,7 +350,7 @@
          不會跟主程式接在一起。把它們疊成一長條反而不像。
          沒有自訂積木的關卡就不顯示，免得空著讓人困惑。 */
     var hasDefine = (opts.palette || []).some(function (id) {
-      return id === 'my.define' || id === 'my.definep';
+      return isDefine(id);
     });
 
     var midBox = el('div');
@@ -544,7 +565,7 @@
       /* 放置限制：定義積木只能放函式區的頂層，其他積木不能放函式區頂層。
          這不是刁難 —— 「定義」在真實 Scratch 也不能接在主程式下面，
          而且分開放才看得出「定義」與「呼叫」是兩件事。 */
-      var isDef = node && (node.id === 'my.define' || node.id === 'my.definep');
+      var isDef = node && isDefine(node.id);
       var all = [].slice.call(box.querySelectorAll('.bk-drop'));
       var zones = all.filter(function (z) {
         var top = z.parentNode === box;               // 頂層（不在 C 型積木的凹槽裡）
@@ -692,7 +713,7 @@
     function collectDefs(list) {
       var m = {};
       (list || []).forEach(function (n) {
-        if (n.id === 'my.define' || n.id === 'my.definep') m[String(n.args[0]).trim()] = n;
+        if (isDefine(n.id)) m[String(n.args[0]).trim()] = n;
       });
       return m;
     }
@@ -708,7 +729,7 @@
       if (depth > 8) return;
       (list || []).forEach(function (n) {
         if (out.length >= 400) return;
-        if (n.id === 'my.define' || n.id === 'my.definep') return;   // 定義本身不執行
+        if (isDefine(n.id)) return;                                  // 定義本身不執行
         if (n.id === 'data.setvar') {
           vars[String(n.args[0]).trim()] = parseFloat(n.args[1]) || 0;
           return;                                                    // 沒有畫面效果，不必排進動作
@@ -718,13 +739,18 @@
           vars[k] = (vars[k] || 0) + (parseFloat(n.args[1]) || 0);
           return;
         }
-        if (n.id === 'my.call' || n.id === 'my.callp' || n.id === 'my.callvar') {
+        if (CALL_IDS[n.id]) {
           var d = defs[String(n.args[0]).trim()];
           if (!d) return;                                            // 呼叫了不存在的積木 → 略過
           var a = argVal;
           if (n.id === 'my.callp')   a = parseFloat(n.args[1]) || 0;
           if (n.id === 'my.callvar') a = vars[String(n.args[1]).trim()] || 0;
           flatten(d.children, out, defs, a, depth + 1, vars);
+          return;
+        }
+        if (n.id === 'my.repeatsides') {                               // 重複 (邊數) 次
+          var ts = Math.max(0, Math.min(50, Math.round(argVal) || 0));
+          for (var k3 = 0; k3 < ts && out.length < 400; k3++) flatten(n.children, out, defs, argVal, depth + 1, vars);
           return;
         }
         if (n.id === 'control.repeat') {
@@ -754,6 +780,8 @@
         case 'pen.clear':        if (ctx) ctx.clearRect(0, 0, pen.width, pen.height); break;
         case 'pen.color':        st.color = PEN_COLORS[String(a[0]).trim()] || '#e5484d'; break;
         case 'motion.turnright': st.dir += num(0); break;
+        // 360 ÷ 邊數 ＝ 外角。正 N 邊形轉一圈剛好 360 度，這是這一關的重點
+        case 'my.turnsides':     st.dir += 360 / (Math.round(step.arg) || 1); break;
         case 'motion.turnleft':  st.dir -= num(0); break;
         case 'motion.goto':      st.x = num(0); st.y = num(1); break;   // 定位不留筆跡
         case 'motion.changex': {
@@ -837,7 +865,7 @@
       load: function (list) {
         defs.length = 0; program.length = 0;
         (list || []).forEach(function (n) {
-          var d = (n.id === 'my.define' || n.id === 'my.definep');
+          var d = isDefine(n.id);
           (d && defArea ? defs : program).push(n);
         });
         redraw();
