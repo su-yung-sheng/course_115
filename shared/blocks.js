@@ -253,6 +253,7 @@
       'body.bk-dragging .bk-script{border-color:#4c97ff}',
       '.bk-defarea{min-height:120px}',
       '.bk-empty{color:#9aa0b4;font-size:13px;text-align:center;padding:34px 8px;pointer-events:none}',
+      '.bk-parahint{color:#8d8fa6;font-size:11px;line-height:1.7;padding:2px 4px}',
 
       /* ★ 舞台：白底 ＋ 綠旗／停止列 */
       '.bk-stagebar{display:flex;align-items:center;gap:8px;background:#e6e9ef;',
@@ -362,24 +363,71 @@
     var palBox = el('div');
     palBox.appendChild(tag('積木'));
     var palWrap = el('div', 'bk-palbox');
-    var groups = {};
-    (opts.palette || []).forEach(function (id) {
-      if (!DEFS[id]) return;
-      (groups[DEFS[id].cat] = groups[DEFS[id].cat] || []).push(id);
-    });
-    Object.keys(CATS).forEach(function (cat) {
-      if (!groups[cat]) return;
-      var head = el('div', 'bk-cat');
-      var dot = el('span', 'bk-dot');
-      dot.style.background = CATS[cat].color;
-      head.appendChild(dot);
-      head.appendChild(el('span', '', CATS[cat].name));
-      palWrap.appendChild(head);
-      var list = el('div', 'bk-pal');
-      groups[cat].forEach(function (id) { list.appendChild(renderBlock(makeNode(id), true)); });
-      palWrap.appendChild(list);
-    });
     palBox.appendChild(palWrap);
+
+    /* 目前「定義」積木上宣告了哪些參數名（依出現順序、去重、不含空白）。
+       兩個定義各自宣告的參數都算 —— 調色盤是一個，不分定義。 */
+    function declaredParams() {
+      var out = [];
+      function walk(list) {
+        (list || []).forEach(function (n) {
+          if (isDefine(n.id)) {
+            for (var i = 1; i <= DEFINE_IDS[n.id]; i++) {
+              var nm = String(n.args[i] == null ? '' : n.args[i]).trim();
+              if (nm && out.indexOf(nm) < 0) out.push(nm);
+            }
+          }
+          walk(n.children);
+        });
+      }
+      walk(defs); walk(program);
+      return out;
+    }
+
+    /* 畫調色盤。
+       ★ 參數橢圓不是固定的一顆，而是「你在定義上打了什麼名字，
+         這裡就出現什麼」—— 和真的 Scratch 一樣。
+         原本只給一顆通用的橢圓、要學生自己把名字打對，
+         等於多考一件與概念無關的事（而且打錯字不會有任何提示）。
+       每次程式結構有變動都會重畫，所以改一個字就會立刻反映。 */
+    function drawPalette() {
+      palWrap.innerHTML = '';
+      var groups = {};
+      (opts.palette || []).forEach(function (id) {
+        if (!DEFS[id]) return;
+        (groups[DEFS[id].cat] = groups[DEFS[id].cat] || []).push(id);
+      });
+      Object.keys(CATS).forEach(function (cat) {
+        if (!groups[cat]) return;
+        var head = el('div', 'bk-cat');
+        var dot = el('span', 'bk-dot');
+        dot.style.background = CATS[cat].color;
+        head.appendChild(dot);
+        head.appendChild(el('span', '', CATS[cat].name));
+        palWrap.appendChild(head);
+        var list = el('div', 'bk-pal');
+        groups[cat].forEach(function (id) {
+          if (id === 'arg.param') {
+            var names = declaredParams();
+            if (!names.length) {
+              // 還沒定義任何參數 —— 說清楚，而不是給一顆空橢圓讓人亂猜
+              var hint = el('div', 'bk-parahint',
+                '先在「定義」積木上打好參數名稱，這裡就會出現對應的橢圓積木。');
+              list.appendChild(hint);
+              return;
+            }
+            names.forEach(function (nm) {
+              var node = makeNode('arg.param');
+              node.args[0] = nm;
+              list.appendChild(renderBlock(node, true));
+            });
+            return;
+          }
+          list.appendChild(renderBlock(makeNode(id), true));
+        });
+        palWrap.appendChild(list);
+      });
+    }
 
     /* ── 中：程式區 ──
        ★ 有自訂積木的關卡會多切一個「函式區」。
@@ -525,7 +573,18 @@
         var i = el('input', 'bk-in' + (kind === '%s' ? ' s' : ''));
         i.value = v == null ? '' : v;
         if (kind === '%n') i.type = 'number';
-        i.addEventListener('input', function () { node.args[idx] = i.value; });
+        i.addEventListener('input', function () {
+          var before = node.args[idx];
+          node.args[idx] = i.value;
+          /* 改的是「定義」上的參數名 → 定義裡面已經放好的橢圓要跟著改。
+             不跟的話那些橢圓會突然指向一個不存在的參數，
+             程式默默停止運作而畫面上完全看不出來 —— 最糟的一種壞法。
+             真的 Scratch 也是這樣連動的。 */
+          if (isDefine(node.id) && idx >= 1 && idx <= DEFINE_IDS[node.id]) {
+            renameParam(node, String(before).trim(), i.value.trim());
+            drawPalette();
+          }
+        });
         i.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); // 打字不要觸發拖曳
         hole.appendChild(i);
       }
@@ -553,6 +612,22 @@
       return r;
     }
 
+    /** 把定義內部所有指向 from 的參數橢圓改成 to */
+    function renameParam(defNode, from, to) {
+      if (!from || from === to) return;
+      (function walk(list) {
+        (list || []).forEach(function (n) {
+          (n.args || []).forEach(function (a, i) {
+            if (a && typeof a === 'object') {
+              if (a.id === 'arg.param' && String(a.args[0]).trim() === from) a.args[0] = to;
+              walk([a]);
+            }
+          });
+          walk(n.children);
+        });
+      })(defNode.children);
+    }
+
     /** 把一串 node 畫進容器，中間夾放置點 */
     function fill(box, list) {
       box.innerHTML = '';
@@ -575,6 +650,7 @@
       if (defArea) { fill(defArea, defs); defArea.classList.add('bk-stack'); }
       fill(script, program);
       script.classList.add('bk-stack');
+      drawPalette();          // 定義上的參數名可能變了，調色盤要跟著換
     }
     /** 所有程式區（判定與拖曳都要一起看） */
     function areas() { return defArea ? [defArea, script] : [script]; }

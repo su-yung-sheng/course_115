@@ -162,19 +162,24 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
    ['motion.point', '面朝 [90] 度'],
    ['motion.setx', 'x 設為 [0]'],
    ['my.callp', '[畫正方形] [50]'],
-   ['arg.param', '[邊長]'],
    ['data.var', '[我的變數]'],
    ['op.div', '[360] / [4]']
   ].forEach(([id, want]) => is(drawnLabel(id), want, id));
   is(drawnLabel('events.whenflag').includes('▶'), false, '綠旗不是播放三角形');
 
   section('橢圓的回報值積木（函式參數 vs 一般變數）');
+  /* 參數橢圓只有在「定義」積木上宣告了參數之後才會出現在調色盤，
+     所以要先放一塊定義進去（這正是下一節要驗的行為）。 */
   function repEl(id) {
     document.getElementById('sim').innerHTML = '';
-    B.mount(document.getElementById('sim'), { palette: [id], goal: [] });
-    return document.querySelector('.bk-pal .bk-rep');
+    const s2 = B.mount(document.getElementById('sim'),
+      { palette: [id, 'my.definep'], goal: [] });
+    if (id === 'arg.param') s2.load(build([{ id: 'my.definep', args: ['A', '邊長'] }]));
+    return [...document.querySelectorAll('.bk-pal .bk-rep')].find(n => n.dataset.id === id);
   }
   is(!!repEl('arg.param'), true, '參數畫成橢圓（.bk-rep），不是方塊');
+  is(repEl('arg.param').querySelector('input').value, '邊長',
+    '橢圓上寫的就是定義裡宣告的參數名');
   is(!!repEl('data.var'), true, '變數畫成橢圓');
   const cParam = repEl('arg.param').style.getPropertyValue('--c');
   const cVar = repEl('data.var').style.getPropertyValue('--c');
@@ -196,6 +201,39 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   const dfn = swapped.find(n => n.id === 'my.definep2');
   dfn.args[1] = '邊長'; dfn.args[2] = 'N';
   is(B._same(swapped, g3), false, '★ 只把定義的兩個參數名對調 → 判錯（N 和 邊長 指到相反的東西）');
+
+  section('調色盤跟著「定義」上打的參數名走');
+  document.getElementById('sim').innerHTML = '';
+  const simP = B.mount(document.getElementById('sim'), { palette: L['2-1-3'].palette, goal: g3 });
+  const ovals = () => [...document.querySelectorAll('.bk-pal .bk-rep')]
+    .filter(n => n.dataset.id === 'arg.param').map(n => n.querySelector('input').value);
+  is(ovals(), [], '函式區還是空的 → 沒有參數橢圓');
+  is(!!document.querySelector('.bk-parahint'), true,
+    '改成一句提示，而不是給一顆空橢圓讓學生亂猜名字');
+  simP.load(build(g3));
+  is(ovals(), ['N', '邊長'], '放好「定義 畫圖形 (N) (邊長)」→ 兩顆橢圓自動出現');
+  is(document.querySelector('.bk-parahint'), null, '有參數之後提示收起來');
+
+  // 在定義上改名字：調色盤與「定義裡已經放好的橢圓」都要跟著改
+  const box = [...document.querySelectorAll('.bk-defarea input')].find(i => i.value === 'N');
+  box.value = '邊數'; box.dispatchEvent(new W.Event('input'));
+  is(ovals(), ['邊數', '邊長'], '改名後調色盤的橢圓跟著變');
+  const used = [];
+  (function w(l) {
+    (l || []).forEach(n => {
+      (n.args || []).forEach(a => {
+        if (a && typeof a === 'object') { if (a.id === 'arg.param') used.push(a.args[0]); w([a]); }
+      });
+      w(n.children);
+    });
+  })(simP.program);
+  is(used.sort(), ['邊數', '邊數', '邊長'], '★ 定義裡已經放好的橢圓也一起改名（否則會默默指向不存在的參數）');
+  const asTree = l => (l || []).map(x => {
+    const d = B.DEFS[x.id], a = v => (v && typeof v === 'object') ? asTree([v])[0] : v;
+    return { uid: 'u', id: x.id, args: (x.args || []).map(a),
+             children: x.children ? asTree(x.children) : (d.shape === 'c' ? [] : null) };
+  });
+  is(B._same(asTree(simP.program), g3), true, '★ 改完名字，整段程式仍判定通過');
 
   /* ═══ 二、名字由學生自訂，只看對應關係 ═══════════════ */
   section('名字自己取（考的是程式，不是背名字）');
