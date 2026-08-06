@@ -42,7 +42,7 @@
        （GitHub Pages 快取 10 分鐘）。老師看到的是「我改了但畫面沒變」，
        而「沒變」和「壞了」長得一模一樣，只能猜。
        把版本印在畫面上，就從「猜」變成「看一眼就知道要不要強制重新整理」。 */
-  var VERSION = '2026-08-06-gas';
+  var VERSION = '2026-08-06-cards';
 
   var url = '';
   var key = '';
@@ -175,6 +175,35 @@
     return 'unknown';
   }
 
+  /**
+   * 從作業清單裡找出「這一關」的那一份。
+   *
+   * 老師的作業名稱長這樣：
+   *   2026/08/06 任務一：2-1-1A 班級置物櫃
+   * 裡面帶著單元代號，所以選好關卡就找得到，不必每次在下拉選單裡翻。
+   *
+   * ★ 比對要卡邊界，不能用單純的 indexOf：
+   *   「2-1-1」是「2-1-1A」的前綴，直接包含比對會把 2-1-1A 那份
+   *   誤認成 2-1-1 的作業 —— 而且是安靜地認錯，老師會對著別關的繳交給分。
+   *   所以代號後面不可以再接英數字。
+   * ★ 多個候選代號時（流程圖與程式各有自己的十關）長的先比，
+   *   同樣是為了讓 2-1-1A 贏過 2-1-1。
+   * ★ 找到不只一份就回報「不確定」，讓老師自己選 —— 猜錯的代價
+   *   是整班分數登記到錯的關卡上。
+   */
+  function findWork(works, ids) {
+    var cands = (ids || []).filter(Boolean)
+      .slice().sort(function (a, b) { return String(b).length - String(a).length; });
+    for (var i = 0; i < cands.length; i++) {
+      var id = String(cands[i]);
+      var re = new RegExp(id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![0-9A-Za-z])');
+      var hit = (works || []).filter(function (w) { return re.test(String(w.title || '')); });
+      if (hit.length === 1) return { work: hit[0], id: id, many: null };
+      if (hit.length > 1) return { work: null, id: id, many: hit };
+    }
+    return { work: null, id: '', many: null };
+  }
+
   /** 從課程名稱抓班級：「資訊科技 801」→ 801；抓不到回空字串（不要亂猜） */
   function classFromCourseName(name) {
     var m = String(name || '').match(/\b(8\d{2})\b/);
@@ -196,6 +225,7 @@
     handedIn: handedIn,
     guessKind: guessKind,
     classFromCourseName: classFromCourseName,
+    findWork: findWork,
     _explainError: explainError,
     _explainNonJson: explainNonJson
   };

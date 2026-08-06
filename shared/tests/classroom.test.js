@@ -70,6 +70,24 @@ is(C.guessKind({ title: '錄影 2026.MP4' }), 'video', '大寫副檔名也認得
 is(C.guessKind({ kind: 'youtube', title: 'x' }), 'video', 'YouTube → 影片');
 is(C.guessKind({ title: '我的作業' }), 'unknown', '★ 看不出來就說看不出來，不亂猜');
 
+section('從作業名稱找出「這一關」的那一份');
+const W = [
+  { id: 'a', title: '2026/08/06 任務一：2-1-1A 班級置物櫃' },
+  { id: 'b', title: '2026/08/13 任務二：2-1-1B 集合點名' },
+  { id: 'c', title: '2026/08/20 任務三：2-1-2 演奏小星星' }
+];
+is(C.findWork(W, ['2-1-1A']).work.id, 'a', '2-1-1A → 找到第一份');
+is(C.findWork(W, ['2-1-1B']).work.id, 'b', '2-1-1B → 找到第二份');
+is(C.findWork(W, ['2-1-2']).work.id, 'c', '2-1-2 → 找到第三份');
+is(C.findWork(W, ['2-1-1']).work, null,
+   '★ 「2-1-1」不會誤中 2-1-1A／2-1-1B —— 前綴相同時安靜認錯，會讓整班分數登記到別關');
+is(C.findWork(W, ['2-9-9']).work, null, '沒有對應作業 → 回 null（交給老師自己指定）');
+is(C.findWork([], ['2-1-1A']).work, null, '作業清單是空的也不會爆');
+is(C.findWork(W, ['2-1-2', '2-1-1A']).work.id, 'a', '多個候選代號時長的先比');
+const dup = C.findWork([{ id: 'x', title: 'A：2-1-2 甲' }, { id: 'y', title: 'B：2-1-2 乙' }], ['2-1-2']);
+is(dup.work, null, '同一個代號對到兩份 → 不猜');
+is(dup.many.length, 2, '　並回報是哪兩份，讓老師選');
+
 section('從課名抓班級');
 is(C.classFromCourseName('資訊科技 801'), '801', '「資訊科技 801」→ 801');
 is(C.classFromCourseName('八年級資訊科技812'), '812', '沒空格也抓得到');

@@ -115,12 +115,12 @@ function noOf(sid, r) {
 
 const state = {
   who: null,            // 登入的老師
-  kind: FLOW.length ? 'img' : 'vid',
-  unit: '',
+  no: 1,                // 第幾關（流程圖與程式各有自己的十關，用序號一起對應）
   klass: '',            // 目前在看哪一班（載入後會自動選第一個）
   roster: {},           // 學號 → { name, class, seat }
   progress: {},         // 學號 → progress 文件
-  cr: { on: false, err: '', courses: [], works: [], courseId: '', workId: '', rows: {} },
+  cr: { on: false, err: '', courses: [], works: [], courseId: '', workId: '', rows: {},
+        matched: '', ambiguous: null },   // 這一關配到哪一份作業／配到多份時的候選
   busy: '',
   msg: ''
 };
@@ -153,7 +153,6 @@ async function loadAll() {
     const p = {};
     ps.forEach(d => { p[d.id] = d.data() || {}; });
     state.roster = r; state.progress = p;
-    if (!state.unit) { const list = KINDS[state.kind].units; state.unit = list.length ? list[0].id : ''; }
     // 一載入就選好第一個班（教師成績登錄系統也是一開啟就有一個班在作用中）
     if (!state.klass) { const cs = allClasses(); state.klass = cs.length ? cs[0] : ''; }
     state.msg = '';
@@ -190,6 +189,40 @@ async function pickCourse(id) {
   catch (e) { state.cr.err = e.message; }
   state.busy = ''; render();
 }
+/**
+ * 讀取「這一關」的繳交。
+ *
+ * 老師的作業名稱帶著單元代號（「2026/08/06 任務一：2-1-1A 班級置物櫃」），
+ * 所以選好關卡按一下就找得到，不必每次在下拉選單裡翻。
+ * 找不到或找到多份時**不會亂猜** —— 改成讓老師自己指定，
+ * 猜錯的代價是整班的分數登記到別關去。
+ */
+async function loadThisUnit() {
+  state.cr.err = ''; state.cr.matched = ''; state.cr.ambiguous = null;
+  const ids = Object.keys(KINDS).map(unitIdOf).filter(Boolean);
+  const r = CLASSROOM.findWork(state.cr.works, ids);
+  if (r.work) { state.cr.matched = r.work.title; return pickWork(r.work.id); }
+  state.cr.ambiguous = r.many || [];
+  state.cr.err = (r.many && r.many.length)
+    ? `作業名稱裡有「${r.id}」的不只一份（${r.many.length} 份），請自己指定是哪一份。`
+    : `這門課裡找不到作業名稱含「${ids.join('」或「')}」的那一份。`
+      + '請確認作業標題有帶關卡代號，或自己從下拉選單指定。';
+  render();
+}
+
+/** 整批給分：只給「真的有那一種附件」的人 —— 沒交影片的不該拿到影片的分 */
+async function awardAllHandedIn() {
+  const todo = [];
+  students().forEach(s => Object.keys(KINDS).forEach(kk => {
+    if (s.per[kk].atts.length && !s.per[kk].given) todo.push([s.sid, kk]);
+  }));
+  if (!todo.length) { state.msg = '沒有「有繳交但還沒給分」的項目。'; render(); return; }
+  const who = (state.klass || '這一') + ' 班';
+  if (!confirm(`${who}第 ${state.no} 關：把 ${todo.length} 個「有繳交但還沒給分」的項目一次給分？\n` +
+               '（沒有交那一種檔案的不會給。還是建議先點開看過幾份再按）')) return;
+  for (const [sid, kk] of todo) await award(sid, kk, true);
+}
+
 async function pickWork(id) {
   state.cr.workId = id;
   state.busy = '讀取繳交狀況…'; render();
@@ -207,12 +240,22 @@ async function pickWork(id) {
    寫進 modules.{flowchart|scratch}.{imgUnits|vidUnits}[單元] = { at, by }。
    這兩格學生寫不動（安全規則擋著），所以學生端之後怎麼寫自己的進度
    都不會把加分蓋掉。 */
-async function award(sid, on) {
-  const k = KINDS[state.kind];
+/* 一份作業裡同時有「流程圖圖片」和「程式錄影」兩個附件，
+   所以卡片上兩塊都要顯示。附件是圖片還是影片用 guessKind 判斷 ——
+   那只是「看起來」，最後仍然由老師點開確認。 */
+function attOf(sub, kind) {
+  if (!sub) return [];
+  return (sub.attachments || []).filter(a => CLASSROOM.guessKind(a) === kind);
+}
+
+async function award(sid, kindKey, on) {
+  const k = KINDS[kindKey];
+  const unitId = unitIdOf(kindKey);
+  if (!unitId) { state.msg = '這個學期沒有對應的關卡，無法加分。'; render(); return; }
   const cur = ((state.progress[sid] || {}).modules || {})[k.mod] || {};
   const map = Object.assign({}, cur[k.field] || {});
-  if (on) map[state.unit] = { at: Date.now(), by: state.who.email };
-  else delete map[state.unit];
+  if (on) map[unitId] = { at: Date.now(), by: state.who.email };
+  else delete map[unitId];
 
   state.busy = '寫入…'; render();
   try {
@@ -232,16 +275,14 @@ async function award(sid, on) {
   state.busy = ''; render();
 }
 
-async function awardAllHandedIn() {
-  const list = students().filter(s => s.sub && CLASSROOM.handedIn(s.sub) && !s.given);
-  if (!list.length) { state.msg = '沒有「已繳交但還沒給分」的人。'; render(); return; }
-  const who = (state.klass || '這一') + ' 班';
-  if (!confirm(`把 ${who} ${list.length} 位「已繳交」的學生一次給分？\n（還是建議先點開看過幾份再按）`)) return;
-  for (const s of list) await award(s.sid, true);
+/** 這一關在該模組裡的單元代號（流程圖與程式各有自己的十關，用第幾關對應） */
+function unitIdOf(kindKey) {
+  const list = KINDS[kindKey].units;
+  const u = list.find(x => x.no === state.no);
+  return u ? u.id : '';
 }
 
-/* ── 資料整理 ───────────────────────────────────── */
-/** 名冊裡實際有哪些班級（供下拉選單用） */
+/** 名冊裡實際有哪些班級 */
 function allClasses() {
   const set = {};
   Object.keys(state.roster).forEach(sid => {
@@ -252,21 +293,27 @@ function allClasses() {
 }
 
 function students() {
-  const k = KINDS[state.kind];
   return Object.keys(state.roster).sort()
     .filter(sid => !state.klass || clsOf(sid, state.roster[sid]) === state.klass)
     .map(sid => {
       const r = state.roster[sid] || {};
       const p = state.progress[sid] || {};
-      const mod = (p.modules || {})[k.mod] || {};
+      const sub = state.cr.rows[sid] || null;
+      const per = {};
+      Object.keys(KINDS).forEach(kk => {
+        const k = KINDS[kk], uid = unitIdOf(kk);
+        per[kk] = {
+          unitId: uid,
+          given: uid ? GRADING.hasBonus(((p.modules || {})[k.mod] || {})[k.field], uid) : false,
+          atts: attOf(sub, kk === 'img' ? 'image' : 'video')
+        };
+      });
       return {
-        sid,
-        name: r.name || '',
-        cls: clsOf(sid, r),
-        no: noOf(sid, r),
-        given: GRADING.hasBonus(mod[k.field], state.unit),
+        sid, name: r.name || '', cls: clsOf(sid, r), no: noOf(sid, r),
         stars: GRADING.starsWithBonus(p),
-        sub: state.cr.rows[sid] || null
+        sub, per,
+        // 看不出類型的附件單獨列出來，不要默默藏起來
+        other: sub ? (sub.attachments || []).filter(a => CLASSROOM.guessKind(a) === 'unknown') : []
       };
     });
 }
@@ -284,27 +331,18 @@ function render() {
     return;
   }
 
-  const k = KINDS[state.kind];
   const classes = allClasses();
   const list = students();
-  const doneCount = list.filter(s => s.given).length;
-  const inCount = list.filter(s => s.sub && CLASSROOM.handedIn(s.sub)).length;
+  const cnt = k => list.filter(s => s.per[k].given).length;
+  const inCnt = list.filter(s => s.sub && CLASSROOM.handedIn(s.sub)).length;
+  const maxNo = Math.max(FLOW.length, PROG.length, 1);
 
   el('app').innerHTML = `
     ${state.busy ? `<div class="mb-3 text-sm font-bold text-slate-500">⏳ ${esc(state.busy)}</div>` : ''}
     ${state.msg ? `<div class="mb-3 bg-amber-50 border border-amber-300 text-amber-800 text-sm rounded-xl px-4 py-3">${esc(state.msg)}</div>` : ''}
 
-    <!-- 要審哪一種、哪一關 -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4 pop">
-      <div class="flex flex-wrap gap-2 mb-4">
-        ${Object.values(KINDS).filter(x => x.units.length).map(x => `
-          <button data-kind="${x.key}" class="px-4 py-2 rounded-full text-sm font-bold border-2 transition
-            ${state.kind === x.key ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-400'}">
-            ${x.icon} ${x.label} +1⭐</button>`).join('')}
-      </div>
-      <!-- 班級：一排藥丸分頁，和教師成績登錄系統同一套操作
-           （那邊也是一次看一個班，沒有「全部」—— 一次面對三十個人剛好，
-             三百多個人的清單捲起來只會找不到自己要的那一列） -->
+      <!-- 班級：一排藥丸分頁，和教師成績登錄系統同一套操作 -->
       <div class="flex items-center gap-2 flex-wrap mb-4">
         <span class="text-sm font-bold text-slate-600">班級：</span>
         ${classes.length
@@ -317,73 +355,89 @@ function render() {
           : '<span class="text-sm text-slate-400">名冊是空的</span>'}
       </div>
 
-      <label class="block text-xs font-black text-slate-500 mb-1">要審核哪一關</label>
-      <select id="unit" class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-medium">
-        ${k.units.map(u => `<option value="${esc(u.id)}" ${u.id === state.unit ? 'selected' : ''}>第 ${u.no} 關　${esc(u.title)}</option>`).join('')}
-      </select>
-      <div class="mt-3 text-xs text-slate-500">
-        ${esc(state.klass || '—')} 班 ${list.length} 人｜已給分 <b class="text-emerald-600">${doneCount}</b>
-        ${state.cr.on ? `｜Classroom 顯示已繳交 <b class="text-indigo-600">${inCount}</b>` : ''}
+      <!-- 關卡：流程圖與程式各有自己的十關，用「第幾關」一起對應
+           （學生交的是同一份作業，裡面有 png 也有 mp4） -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="text-sm font-bold text-slate-600">關卡：</span>
+        ${Array.from({ length: maxNo }, (_, i) => i + 1).map(n => `
+          <button data-no="${n}" class="w-10 h-10 rounded-full text-sm transition-all duration-200
+            ${n === state.no
+              ? 'font-bold bg-indigo-600 text-white shadow-md'
+              : 'font-medium bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}">
+            ${n}</button>`).join('')}
+      </div>
+      <div class="mt-3 text-xs text-slate-500 leading-relaxed">
+        ${esc(state.klass || '—')} 班 ${list.length} 人｜第 ${state.no} 關
+        ${FLOW.length ? `　🖼️ ${esc((FLOW.find(u => u.no === state.no) || {}).title || '')}` : ''}
+        ${PROG.length ? `　🎬 ${esc((PROG.find(u => u.no === state.no) || {}).title || '')}` : ''}
+        <br>已給分：流程圖 <b class="text-emerald-600">${cnt('img')}</b>、程式 <b class="text-emerald-600">${cnt('vid')}</b>
+        ${state.cr.on ? `｜Classroom 顯示已繳交 <b class="text-indigo-600">${inCnt}</b>` : ''}
       </div>
     </div>
 
     ${crPanel()}
 
-    <!-- 名單 -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden pop">
-      <table class="w-full text-sm">
-        <thead class="bg-slate-50 text-slate-500 text-xs">
-          <tr>
-            <th class="text-left px-4 py-2 font-bold">學生</th>
-            <th class="text-left px-3 py-2 font-bold">目前星數</th>
-            <th class="text-left px-3 py-2 font-bold">Classroom 繳交</th>
-            <th class="text-right px-4 py-2 font-bold">這一關的 ${esc(k.label)}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${list.map(s => `
-            <tr class="border-t border-slate-100 ${s.given ? 'bg-emerald-50/40' : ''}">
-              <td class="px-4 py-2">
-                <div class="font-bold">${esc(s.name || '（名冊沒有姓名）')}</div>
-                <div class="text-xs text-slate-400">${esc(s.sid)}${s.cls ? `　${esc(s.cls)} ${esc(s.no)}號` : ''}</div>
-              </td>
-              <td class="px-3 py-2 text-xs text-slate-500">
-                流程圖 ${s.stars.flowchart}⭐<br>程式 ${s.stars.scratch}⭐
-                ${s.stars.bonus ? `<span class="text-emerald-600">（含加分 ${s.stars.bonus}）</span>` : ''}
-              </td>
-              <td class="px-3 py-2 text-xs">${subCell(s)}</td>
-              <td class="px-4 py-2 text-right">
-                <button data-award="${esc(s.sid)}" data-on="${s.given ? '0' : '1'}"
-                  class="px-3 py-1.5 rounded-lg text-xs font-bold transition
-                  ${s.given ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                            : 'bg-indigo-600 text-white hover:bg-indigo-700'}">
-                  ${s.given ? '✅ 已給 +1⭐（點一下取消）' : '給 +1⭐'}
-                </button>
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      ${list.map(card).join('') || '<div class="text-slate-400 text-sm">這一班名冊是空的。</div>'}
     </div>`;
 }
 
-function subCell(s) {
-  if (!state.cr.on) return '<span class="text-slate-300">未連接</span>';
-  if (!s.sub) return '<span class="text-slate-400">沒有這個人的繳交</span>';
-  if (!CLASSROOM.handedIn(s.sub)) {
-    return `<span class="text-amber-600">${s.sub.attachments.length ? '放了附件但沒按繳交' : '未繳交'}</span>`;
-  }
-  const kindWord = { image: '圖片', video: '影片', unknown: '看不出類型' };
-  return s.sub.attachments.map(a => `
-      <a href="${esc(a.link)}" target="_blank" rel="noopener"
-         class="inline-block text-indigo-600 underline hover:text-indigo-800">
-        ${esc(a.title)}</a>
-      <span class="text-slate-400">（${kindWord[CLASSROOM.guessKind(a)]}）</span>`).join('<br>')
-    + (s.sub.late ? '<div class="text-rose-500">遲交</div>' : '');
+/* 一張學生小卡（沿用教師成績登錄系統的卡片樣式）。
+   ★ 有繳交就加框線 —— 老師掃一眼就知道要點誰，不必一個一個開。
+     沒繳交是虛線灰框，和「已加分」的綠底一眼分得出三種狀態。 */
+function card(s) {
+  const hasAny = s.sub && CLASSROOM.handedIn(s.sub);
+  const base = hasAny
+    ? 'bg-white border-blue-300 shadow-[0_0_0_3px_rgba(147,197,253,0.35)]'
+    : 'bg-white border-gray-200';
+  return `
+    <div class="${base} border rounded-2xl p-4 transition-all duration-200 hover:shadow-lg">
+      <div class="flex items-baseline justify-between mb-3">
+        <h3 class="font-bold text-gray-800 text-lg truncate" title="${esc(s.name)}">${esc(s.name || '（名冊沒有姓名）')}</h3>
+        <span class="text-xs text-gray-400 font-mono shrink-0 ml-2">${esc(s.cls)} ${esc(s.no)}號</span>
+      </div>
+      <div class="text-[11px] text-gray-400 font-mono -mt-2 mb-3">${esc(s.sid)}　
+        <span class="text-amber-500">流程圖 ${s.stars.flowchart}⭐ ・ 程式 ${s.stars.scratch}⭐</span>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        ${block(s, 'img')}
+        ${block(s, 'vid')}
+      </div>
+      ${s.other.length ? `<div class="mt-2 text-[11px] text-slate-400">
+        其他附件（看不出類型）：${s.other.map(a => link(a)).join('、')}</div>` : ''}
+    </div>`;
 }
 
-/* 錯誤訊息可能是好幾行（例如要轉給管理員的那一段），
-   而且裡面可能有網址。用 pre-wrap 保留換行，網址做成可以點的連結 ——
-   叫老師自己把一長串網址反白複製，是最容易在這裡放棄的一步。 */
+/** 卡片上的一塊：流程圖 或 程式 */
+function block(s, kk) {
+  const k = KINDS[kk], p = s.per[kk];
+  const has = p.atts.length > 0;
+  const box = p.given
+    ? 'bg-emerald-50 border-emerald-400'
+    : (has ? 'bg-white border-blue-400' : 'bg-slate-50 border-dashed border-slate-300');
+  return `
+    <div class="border-2 ${box} rounded-xl p-2 text-center">
+      <div class="text-xs font-black text-slate-600 mb-1">${k.icon} ${esc(k.label.replace('流程圖圖片', '流程圖').replace('程式錄影', '程式'))}</div>
+      <div class="text-[11px] leading-snug mb-2 min-h-[2.2em]">
+        ${has ? p.atts.map(a => link(a)).join('<br>')
+              : `<span class="text-slate-400">${state.cr.on ? '未繳交' : '未連接'}</span>`}
+      </div>
+      <button data-award="${esc(s.sid)}" data-kind="${kk}" data-on="${p.given ? '0' : '1'}"
+        ${p.unitId ? '' : 'disabled'}
+        class="w-full px-2 py-1.5 rounded-lg text-xs font-bold transition
+        ${p.given ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400'}">
+        ${p.given ? '✅ 已加分（點一下取消）' : '+1⭐'}
+      </button>
+    </div>`;
+}
+
+/** 附件連結：點開就是那份 png／mp4（在 Drive 裡開，老師本來就登入了） */
+function link(a) {
+  return `<a href="${esc(a.link)}" target="_blank" rel="noopener"
+     class="text-indigo-600 underline hover:text-indigo-800 break-all">${esc(a.title)}</a>`;
+}
+
 function errBox(msg) {
   const html = esc(msg).replace(/(https?:\/\/\S+)/g,
     '<a href="$1" target="_blank" rel="noopener" class="underline font-bold break-all">$1</a>');
@@ -433,18 +487,27 @@ function crPanel() {
           </select>
           <p class="text-[11px] text-slate-400 mt-1">課名裡有班級（例如「資訊科技 801」）就會自動把名單篩到那一班。</p>
         </div>
-        <div>
-          <label class="block text-xs font-black text-slate-500 mb-1">作業</label>
-          <select id="cr-work" class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm" ${state.cr.courseId ? '' : 'disabled'}>
-            <option value="">請選擇…</option>
-            ${state.cr.works.map(w => `<option value="${esc(w.id)}" ${w.id === state.cr.workId ? 'selected' : ''}>${esc(w.title)}</option>`).join('')}
-          </select>
+        <div class="flex items-end">
+          <button id="cr-load" ${state.cr.courseId ? '' : 'disabled'}
+            class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm font-bold px-4 py-2 rounded-lg">
+            🔍 讀取第 ${state.no} 關的繳交
+          </button>
         </div>
       </div>
+      ${state.cr.matched ? `<p class="mt-2 text-xs text-emerald-700">已對到作業：<b>${esc(state.cr.matched)}</b></p>` : ''}
+      ${(state.cr.ambiguous || state.cr.err) && state.cr.courseId ? `
+        <div class="mt-3">
+          <label class="block text-xs font-black text-slate-500 mb-1">自己指定作業</label>
+          <select id="cr-work" class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm">
+            <option value="">請選擇…</option>
+            ${((state.cr.ambiguous && state.cr.ambiguous.length) ? state.cr.ambiguous : state.cr.works)
+              .map(w => `<option value="${esc(w.id)}" ${w.id === state.cr.workId ? 'selected' : ''}>${esc(w.title)}</option>`).join('')}
+          </select>
+        </div>` : ''}
       ${state.cr.workId ? `
-        <div class="mt-3 flex items-center gap-3">
+        <div class="mt-3 flex items-center gap-3 flex-wrap">
           <button id="cr-all" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg">
-            把「已繳交」的人一次給分
+            把「已繳交」的人一次給分（流程圖＋程式）
           </button>
           <span class="text-xs text-slate-400">建議先點開看過幾份再按 —— 系統分不出交的是不是對的東西。</span>
         </div>` : ''}
@@ -460,13 +523,14 @@ document.addEventListener('click', async (e) => {
   }
   const cb = e.target.closest('[data-klass]');
   if (cb) { state.klass = cb.dataset.klass; render(); return; }
-  const kb = e.target.closest('[data-kind]');
-  if (kb) {
-    state.kind = kb.dataset.kind;
-    const list = KINDS[state.kind].units;
-    state.unit = list.length ? list[0].id : '';
+  const nb = e.target.closest('[data-no]');
+  if (nb) {
+    state.no = Number(nb.dataset.no);
+    // 換關卡就要重新對作業 —— 舊的繳交資料留著會張冠李戴
+    state.cr.workId = ''; state.cr.rows = {}; state.cr.matched = ''; state.cr.ambiguous = null;
     render(); return;
   }
+  if (e.target.closest('#cr-load')) { loadThisUnit(); return; }
   if (e.target.closest('#cr-connect')) {
     const box = document.getElementById('cr-key');
     connectClassroom(box ? box.value : undefined);
@@ -479,10 +543,9 @@ document.addEventListener('click', async (e) => {
   }
   if (e.target.closest('#cr-all')) { awardAllHandedIn(); return; }
   const ab = e.target.closest('[data-award]');
-  if (ab) { award(ab.dataset.award, ab.dataset.on === '1'); return; }
+  if (ab) { award(ab.dataset.award, ab.dataset.kind, ab.dataset.on === '1'); return; }
 });
 document.addEventListener('change', (e) => {
-  if (e.target.id === 'unit') { state.unit = e.target.value; render(); return; }
   if (e.target.id === 'cr-course') { pickCourse(e.target.value); return; }
   if (e.target.id === 'cr-work') { pickWork(e.target.value); return; }
 });
