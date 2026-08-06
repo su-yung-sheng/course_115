@@ -68,6 +68,30 @@
   <div id="app"></div>
 </main>
 
+<!-- 作業預覽的浮動視窗。
+     ★ 為什麼不開新分頁：審核就是「看一眼、按一下」。每看一份都要開分頁、
+       看完再關掉，一個班三十人就是六十次視窗切換 ——
+       那是把老師的時間花在視窗管理上。
+     ⚠️ Drive 有可能拒絕被嵌（權限或檔案類型），所以視窗裡一定要
+       同時留「在新分頁開啟」，不能只有 iframe，否則就變成死路。 -->
+<div id="modal" class="hidden fixed inset-0 z-50 bg-black/60 p-4 sm:p-8" role="dialog" aria-modal="true">
+  <div class="bg-white rounded-2xl max-w-4xl mx-auto h-full flex flex-col overflow-hidden shadow-2xl">
+    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200">
+      <div class="min-w-0">
+        <div id="modal-title" class="font-bold truncate"></div>
+        <div id="modal-sub" class="text-xs text-slate-400 truncate"></div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <a id="modal-open" href="#" target="_blank" rel="noopener"
+           class="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline">在新分頁開啟</a>
+        <button id="modal-close" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 font-black">✕</button>
+      </div>
+    </div>
+    <div id="modal-body" class="flex-1 bg-slate-50"></div>
+    <div id="modal-foot" class="px-4 py-3 border-t border-slate-200 flex items-center gap-2 flex-wrap"></div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
@@ -443,7 +467,7 @@ function card(s) {
         ${block(s, 'vid')}
       </div>
       ${s.other.length ? `<div class="mt-2 text-[11px] text-slate-400">
-        其他附件（看不出類型）：${s.other.map(a => link(a)).join('、')}</div>` : ''}
+        其他附件（看不出類型）：${s.other.map(a => link(a, s.sid, '')).join('、')}</div>` : ''}
     </div>`;
 }
 
@@ -458,7 +482,7 @@ function block(s, kk) {
     <div class="border-2 ${box} rounded-xl p-2 text-center">
       <div class="text-xs font-black text-slate-600 mb-1">${k.icon} ${esc(k.label.replace('流程圖圖片', '流程圖').replace('程式錄影', '程式'))}</div>
       <div class="text-[11px] leading-snug mb-2 min-h-[2.2em]">
-        ${has ? p.atts.map(a => link(a)).join('<br>')
+        ${has ? p.atts.map(a => link(a, s.sid, kk)).join('<br>')
               : `<span class="text-slate-400">${state.cr.on ? '未繳交' : '未連接'}</span>`}
       </div>
       <button data-award="${esc(s.sid)}" data-kind="${kk}" data-on="${p.given ? '0' : '1'}"
@@ -471,10 +495,51 @@ function block(s, kk) {
     </div>`;
 }
 
-/** 附件連結：點開就是那份 png／mp4（在 Drive 裡開，老師本來就登入了） */
-function link(a) {
-  return `<a href="${esc(a.link)}" target="_blank" rel="noopener"
+/** 附件：點了在浮動視窗裡預覽，不必離開這一頁 */
+function link(a, sid, kk) {
+  return `<a href="#" data-prev="${esc(a.link)}" data-title="${esc(a.title)}"
+     data-sid="${esc(sid || '')}" data-kind="${esc(kk || '')}"
      class="text-indigo-600 underline hover:text-indigo-800 break-all">${esc(a.title)}</a>`;
+}
+
+/* ── 預覽視窗 ─────────────────────────────────────── */
+let previewing = null;      // { sid, kind } —— 看完可以直接在視窗裡加分
+
+function openPreview(link0, title, sid, kk) {
+  const url = CLASSROOM.previewUrl({ link: link0 });
+  previewing = (sid && kk) ? { sid, kind: kk } : null;
+  el('modal-title').textContent = title || '作業預覽';
+  const s = students().find(x => x.sid === sid);
+  el('modal-sub').textContent = s ? `${s.name}　${s.cls} ${s.no}號` : '';
+  el('modal-open').href = link0;
+  el('modal-body').innerHTML = url
+    ? `<iframe src="${esc(url)}" class="w-full h-full" allow="autoplay" allowfullscreen
+         sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"></iframe>`
+    : `<div class="h-full flex flex-col items-center justify-center text-slate-500 text-sm gap-2">
+         <div>這個附件沒辦法直接嵌在頁面裡預覽。</div>
+         <a href="${esc(link0)}" target="_blank" rel="noopener"
+            class="text-indigo-600 underline font-bold">在新分頁開啟</a>
+       </div>`;
+  // 看完直接在視窗裡加分，不必關掉再去卡片上找
+  el('modal-foot').innerHTML = previewing
+    ? (() => {
+        const given = s && s.per[kk] && s.per[kk].given;
+        return `<button id="modal-award" data-on="${given ? '0' : '1'}"
+          class="px-4 py-2 rounded-lg text-sm font-bold transition
+          ${given ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'}">
+          ${given ? '✅ 已加分（點一下取消）' : `給 ${KINDS[kk].icon} ${esc(KINDS[kk].label)} +1⭐`}
+        </button>
+        <span class="text-xs text-slate-400">看過沒問題就按這裡，不必關掉視窗。</span>`;
+      })()
+    : '';
+  el('modal').classList.remove('hidden');
+}
+
+function closePreview() {
+  el('modal').classList.add('hidden');
+  el('modal-body').innerHTML = '';     // 停掉影片播放
+  previewing = null;
 }
 
 function errBox(msg) {
@@ -590,8 +655,25 @@ document.addEventListener('click', async (e) => {
     render(); return;
   }
   if (e.target.closest('#cr-all')) { awardAllHandedIn(); return; }
+  const pv = e.target.closest('[data-prev]');
+  if (pv) {
+    e.preventDefault();
+    openPreview(pv.dataset.prev, pv.dataset.title, pv.dataset.sid, pv.dataset.kind);
+    return;
+  }
+  if (e.target.closest('#modal-close') || e.target.id === 'modal') { closePreview(); return; }
+  const ma = e.target.closest('#modal-award');
+  if (ma && previewing) {
+    const { sid, kind } = previewing;
+    award(sid, kind, ma.dataset.on === '1').then(closePreview);
+    return;
+  }
   const ab = e.target.closest('[data-award]');
   if (ab) { award(ab.dataset.award, ab.dataset.kind, ab.dataset.on === '1'); return; }
+});
+// Esc 關視窗：滑鼠移到右上角按叉叉，是審三十份時最累的那個動作
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !el('modal').classList.contains('hidden')) closePreview();
 });
 document.addEventListener('change', (e) => {
   if (e.target.id === 'cr-course') { pickCourse(e.target.value); return; }

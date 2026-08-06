@@ -42,7 +42,7 @@
        （GitHub Pages 快取 10 分鐘）。老師看到的是「我改了但畫面沒變」，
        而「沒變」和「壞了」長得一模一樣，只能猜。
        把版本印在畫面上，就從「猜」變成「看一眼就知道要不要強制重新整理」。 */
-  var VERSION = '2026-08-06-auto';
+  var VERSION = '2026-08-06-preview';
 
   var url = '';
   var key = '';
@@ -205,6 +205,30 @@
   }
 
   /**
+   * 把附件連結轉成「可以嵌在頁面裡預覽」的網址。
+   *
+   *   Drive   .../file/d/<ID>/view  →  .../file/d/<ID>/preview
+   *   YouTube youtu.be/<ID>／watch?v=<ID>  →  youtube.com/embed/<ID>
+   *
+   * ★ 為什麼值得做：審核就是「看一眼、按一下」。每看一份都要開新分頁、
+   *   看完再關掉，三十個人就是六十次分頁切換 —— 那是把老師的時間
+   *   花在視窗管理上。
+   * ★ 轉不出來就回空字串，畫面會退回「在新分頁開啟」。
+   *   Drive 也可能拒絕被嵌（權限或檔案類型），所以預覽視窗裡
+   *   一定要同時留一個「在新分頁開啟」，不能只有 iframe。
+   */
+  function previewUrl(att) {
+    var u = String((att && att.link) || '');
+    var m = u.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+    if (m) return 'https://drive.google.com/file/d/' + m[1] + '/preview';
+    m = u.match(/drive\.google\.com\/open\?id=([^&]+)/);
+    if (m) return 'https://drive.google.com/file/d/' + m[1] + '/preview';
+    m = u.match(/youtu\.be\/([^?&/]+)/) || u.match(/youtube\.com\/watch\?v=([^&]+)/);
+    if (m) return 'https://www.youtube.com/embed/' + m[1];
+    return '';
+  }
+
+  /**
    * 從課程清單裡找出某一班的那一門課。
    * 和 findWork 同一套原則：對到剛好一門才回傳，對到多門或零門就不猜。
    */
@@ -240,6 +264,7 @@
     classFromCourseName: classFromCourseName,
     findWork: findWork,
     findCourse: findCourse,
+    previewUrl: previewUrl,
     _explainError: explainError,
     _explainNonJson: explainNonJson
   };

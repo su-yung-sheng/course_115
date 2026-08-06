@@ -88,6 +88,19 @@ const dup = C.findWork([{ id: 'x', title: 'A：2-1-2 甲' }, { id: 'y', title: '
 is(dup.work, null, '同一個代號對到兩份 → 不猜');
 is(dup.many.length, 2, '　並回報是哪兩份，讓老師選');
 
+section('作業預覽：轉成可以嵌在頁面裡的網址');
+is(C.previewUrl({ link: 'https://drive.google.com/file/d/ABC123/view?usp=sharing' }),
+   'https://drive.google.com/file/d/ABC123/preview', 'Drive 的 /view → /preview');
+is(C.previewUrl({ link: 'https://drive.google.com/open?id=XYZ789' }),
+   'https://drive.google.com/file/d/XYZ789/preview', '舊式 open?id= 也認得');
+is(C.previewUrl({ link: 'https://youtu.be/VID111' }),
+   'https://www.youtube.com/embed/VID111', 'youtu.be → embed');
+is(C.previewUrl({ link: 'https://www.youtube.com/watch?v=VID222&t=3' }),
+   'https://www.youtube.com/embed/VID222', 'watch?v= → embed');
+is(C.previewUrl({ link: 'https://example.com/x.png' }), '',
+   '★ 不認得就回空字串 —— 畫面會退回「在新分頁開啟」，不要嵌一個空白框');
+is(C.previewUrl(null), '', '沒有附件也不會爆');
+
 section('依班級自動挑課程');
 const CS = [
   { id: 'c1', name: '資訊科技 801' },
