@@ -95,6 +95,167 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         details:['用分身產生大量螞蟻群。','用「面朝乳酪」加隨機轉向，模擬覓食。','碰到乳酪後改變狀態，讓乳酪跟隨螞蟻移動。','搬回蟻穴就加分，並把乳酪重置回起點。'],
         steps:['開始','用分身產生大量螞蟻','每隻螞蟻面朝乳酪前進','判斷：碰到乳酪？','是→狀態設為「搬運中」、乳酪跟隨螞蟻','判斷：回到蟻穴？','是→分數 ＋1、乳酪重置回起點','結束'] }
     ];
+
+    /* ── 每個步驟的一句話說明 ────────────────────────────
+       ★ 為什麼要加：步驟卡上只有一句很短的術語（「用『插入』把物品放到
+         指定編號」），看得懂字但不見得知道它在做什麼、該排在誰前面。
+         學生只好用猜的，猜錯就扣次數 —— 那是在考手氣不是考理解。
+       ★ 但說明不能洩漏順序：這裡只講「這一步在做什麼、為什麼要它」，
+         絕不寫「這是第 3 步」或「要放在 XXX 後面」。
+       key 是步驟文字（去掉開頭的全形縮排空白），干擾用的步驟也要有 —— 
+       看懂了才知道它不屬於這一題。 */
+    const STEP_NOTES = {
+      '開始': '流程圖的起點，每張流程圖都從這裡出發',
+      '結束': '流程圖的終點',
+
+      // 1 班級置物櫃
+      '建立清單（置物櫃）': '先有櫃子才能放東西 —— 清單要先建立才能使用',
+      '用「添加」把物品放到最後一格': '接在現有資料的後面，不會影響前面的編號',
+      '用「插入」把物品放到指定編號': '塞進中間，後面的東西會整批往後挪一格',
+      '用「取代」更新指定格子的物品': '格子位置不變，只換裡面的內容',
+      '用「刪除」清空指定格子': '拿掉某一格，後面的會往前遞補',
+      '用「全部刪除」重置清單': '整個清空，回到什麼都沒有的狀態',
+
+      // 2 集合點名
+      '用「長度」取得班級總人數': '清單裡有幾筆資料＝班上有幾個人',
+      '輸入要查詢的姓名': '要先知道找誰，才能去名單裡比對',
+      '判斷：清單包含這個人嗎？': '菱形＝要做決定，答案只有「是」或「否」',
+      '是→說出「在名單內、第幾號」': '判斷成立時走的那一條路',
+      '否→說出「不在名單內」': '判斷不成立時走的那一條路',
+
+      // 3 演奏小星星
+      '把音階匯入清單': '把整首曲子的音一次存進清單',
+      '編號設為 1': '從第 1 個音開始 —— 這個變數負責記「現在演奏到第幾個」',
+      '重複（清單長度）次': '有幾個音就重複幾次，曲子多長都不必改程式',
+      '演奏清單第（編號）項的音': '迴圈內：把「現在這一個」音播出來',
+      '編號 = 編號 ＋ 1': '迴圈內：往下一個音移動，沒有這一步會一直播同一個音',
+
+      // 4 計算成績
+      '清空清單、總分設為 0': '重算之前要先歸零，不然會累加到上一次的結果',
+      '把成績匯入清單': '把每個人的分數存進清單',
+      '重複（清單長度）次：總分 = 總分 ＋ 清單第 i 項': '一筆一筆加起來，這是「累加」的標準寫法',
+      '平均 = 總分 ÷ 清單長度': '全部加完之後才算得出平均',
+      '判斷：平均 ≥ 60？': '菱形＝要做決定，用平均分數決定及不及格',
+      '是→顯示「及格」；否→顯示「不及格」': '兩條路各自的結果',
+
+      // 5 抽號碼
+      '用迴圈把 1～座號 加入清單': '先把全班座號準備好，才有得抽',
+      '重複（要抽的人數）次': '要抽幾個人就重複幾次',
+      '從 1～清單長度 隨機抽一個編號': '迴圈內：抽的是「第幾格」，不是號碼本身',
+      '說出抽中的號碼': '迴圈內：把抽到的結果講出來',
+      '從清單刪除該號碼（防重複）': '迴圈內：抽過就拿掉，下次才不會抽到同一個人',
+
+      // 6 撲克發牌
+      '用雙重迴圈建立 52 張牌': '4 種花色 × 13 個數字，用兩層迴圈組合出來',
+      '洗牌：隨機抽牌移到新清單，直到原牌堆清空': '打亂順序 —— 要先洗好才能發',
+      '點擊發牌': '事件：玩家按下去才開始發牌',
+      '依清單第 1 項換造型': '發牌時：最上面那張就是清單的第 1 項',
+      '刪除清單第 1 項': '發牌時：發出去的牌要從牌堆拿掉',
+      '清單為空→隱藏角色': '牌發完了，把牌堆藏起來',
+
+      // 7 動物點點名
+      '建立「全域變數」總數並歸零': '全域＝所有角色共用同一個數字',
+      '點擊動物→全域變數 ＋ 1（大家共用、接續累加）': '點哪一隻都加到同一個數字上',
+      '建立「角色變數」各自計數': '角色變數＝每個角色都有一份自己的',
+      '點擊某隻小貓→該角色變數 ＋ 1（各自獨立）': '只有被點的那一隻會加，其他不受影響',
+
+      // 8 戰車王
+      '設定每輛敵機的血量（角色變數）': '每架敵機各記各的血，才不會一起扣',
+      '偵測方向鍵→移動戰車': '事件：按方向鍵控制自己的戰車',
+      '按空白鍵→發射子彈分身': '事件：用分身當子彈，可以同時射很多發',
+      '判斷：子彈碰到敵機？': '菱形＝要做決定，有沒有打中',
+      '是→爆炸造型、刪除子彈、該敵機血量 －1': '打中之後要做的三件事',
+      '血量 = 0→敵機消失': '血扣完了才把敵機移除',
+
+      // 9 分身小貓
+      '隱藏本尊': '本尊只負責生分身，自己不出場',
+      '重複 N 次：編號 ＋1、建立分身': '先加編號再生分身，分身才會帶著不同的號碼',
+      '當分身產生': '事件：每一個分身出生時各自執行下面這段',
+      '繼承編號當作專屬 ID': '分身內：記住自己是第幾號',
+      '一邊走一邊說出自己的編號': '分身內：證明每一隻真的都不一樣',
+
+      // 10 螞蟻搬乳酪
+      '用分身產生大量螞蟻': '一次做出很多隻，不必複製角色',
+      '每隻螞蟻面朝乳酪前進': '每隻分身各自去找目標',
+      '判斷：碰到乳酪？': '菱形＝要做決定，找到了沒',
+      '是→狀態設為「搬運中」、乳酪跟隨螞蟻': '找到之後改變狀態，乳酪才會跟著走',
+      '判斷：回到蟻穴？': '菱形＝要做決定，搬到家了沒',
+      '是→分數 ＋1、乳酪重置回起點': '搬到家才得分，然後重新開始下一輪'
+    };
+    /** 放進 HTML 前先逸出，Mermaid 程式碼裡有 --> 這種符號 */
+    function esc(t){ return String(t).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+    /** 取步驟說明（步驟文字前面可能有全形縮排空白，要先去掉） */
+    function stepNote(s){ return STEP_NOTES[String(s).replace(/^[　\s]+/, '')] || ''; }
+
+
+    /* ── 流程圖 → Mermaid 程式碼 ──────────────────────────
+       學生排完之後，把同一張流程圖變成 Mermaid 語法，
+       貼到 mermaid.ai 就會長出真正的流程圖（有方框、菱形、箭頭）。
+
+       ★ 為什麼值得做：排卡片排出來的是「順序」，但流程圖真正的重點是
+         **形狀有意義** —— 圓角是起訖、矩形是處理、菱形是判斷、
+         平行四邊形是輸入輸出。看到自己排的東西變成正式的流程圖，
+         那些形狀才會從課本上的圖變成自己畫得出來的東西。
+       ★ 形狀依步驟文字判斷，規則就是課本教的那一套：
+         開始／結束 → 圓角     判斷／？ → 菱形
+         輸入／說出／顯示／演奏 → 平行四邊形     其餘 → 矩形 */
+    function mermaidShape(text){
+      if(text==='開始' || text==='結束') return ['([', '])'];
+      if(/判斷|？|\?$/.test(text))       return ['{', '}'];
+      if(/^輸入|說出|顯示|演奏|換造型/.test(text)) return ['[/', '/]'];
+      return ['[', ']'];
+    }
+    function toMermaid(steps){
+      const out = ['flowchart TD'];
+      const id = i => 'S' + i;
+      let pending = [];          // 還在等著接到下一個節點的節點
+      let lastDecision = null;   // 最近一個菱形（是／否 要從它分出去）
+      let parent = null;         // 縮排步驟的上層節點
+      let chain = null;          // 縮排段落目前接到哪一個
+
+      steps.forEach((raw, i) => {
+        const indented = /^[　\s]/.test(raw);
+        const text = String(raw).replace(/^[　\s]+/, '');
+        const [o, c] = mermaidShape(text);
+        out.push('    ' + id(i) + o + '"' + text.replace(/"/g, "'") + '"' + c);
+
+        if(indented){
+          // 縮排＝上一個節點的內容（迴圈裡面、或事件底下）
+          out.push('    ' + id(chain === null ? parent : chain) + ' --> ' + id(i));
+          chain = i;
+          return;
+        }
+        // 離開縮排段落：如果上層是迴圈，最後一步要繞回去
+        if(chain !== null && parent !== null){
+          if(/重複|迴圈/.test(String(steps[parent]).replace(/^[　\s]+/, ''))){
+            out.push('    ' + id(chain) + ' --> ' + id(parent));
+            pending = [parent];
+          } else {
+            pending = [chain];
+          }
+          chain = null;
+        }
+
+        // 「是→…」「否→…」要從最近的菱形分出去，並標上是／否
+        const both = /是→/.test(text) && /否→/.test(text);
+        const yes = !both && /^是→/.test(text);
+        const no  = !both && /^否→/.test(text);
+        if((yes || no) && lastDecision !== null){
+          out.push('    ' + id(lastDecision) + ' -->|' + (yes ? '是' : '否') + '| ' + id(i));
+          pending = pending.filter(x => x !== lastDecision).concat(i);
+        } else {
+          pending.forEach(pv => out.push('    ' + id(pv) + ' --> ' + id(i)));
+          pending = [i];
+        }
+
+        if(/判斷|？/.test(text)) lastDecision = i;
+        parent = i;
+      });
+      return out.join('\n');
+    }
+    /** Mermaid 官方網站沒有「用網址帶程式碼」的公開格式，所以做成「複製 → 貼上」 */
+    const MERMAID_SITE = 'https://mermaid.ai/';
+
     const COLORS = {
       blue:'bg-blue-100 text-blue-600 border-blue-400', cyan:'bg-cyan-100 text-cyan-600 border-cyan-400',
       purple:'bg-purple-100 text-purple-600 border-purple-400', green:'bg-green-100 text-green-600 border-green-400',
@@ -704,8 +865,17 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             </div>
             ${i<u.steps.length-1?'<div class="text-purple-300 text-center leading-none text-lg">↓</div>':''}
           </div>`).join('');
-        const poolHtml = state.pool.map((s,i)=>`
-          <button data-pick="${i}" class="pick-btn text-left bg-white border-2 border-slate-200 hover:border-purple-400 rounded-lg px-3 py-2.5 text-sm font-medium shadow-sm active:scale-95 transition">${s}</button>`).join('');
+        /* 每張卡片附一句「這一步在做什麼」。
+           只有術語的話學生只能用猜的，猜錯還要扣次數 —— 那是考手氣不是考理解。
+           說明刻意不提順序，該想的還是要自己想。 */
+        const poolHtml = state.pool.map((s,i)=>{
+          const note = stepNote(s);
+          return `
+          <button data-pick="${i}" class="pick-btn text-left bg-white border-2 border-slate-200 hover:border-purple-400 rounded-lg px-3 py-2.5 shadow-sm active:scale-95 transition">
+            <div class="text-sm font-medium">${s}</div>
+            ${note?`<div class="text-xs text-slate-400 font-normal mt-1 leading-snug">${note}</div>`:''}
+          </button>`;
+        }).join('');
         el.innerHTML = `
           <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
             <div class="flex items-center justify-between mb-4">
@@ -716,6 +886,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
               <div class="text-xs text-purple-600 font-bold mb-1">第 ${u.no} 關</div>
               <h2 class="text-xl font-black">${u.title} — 排出正確流程圖</h2>
               <p class="text-slate-500 text-sm mt-1">從下方點選「下一步」，把流程圖從「開始」排到「結束」。順序對才會加進去。</p>
+              <p class="text-slate-400 text-xs mt-1">每張卡片下面那行灰字，是這一步在做什麼 —— 看懂了再決定它該排在哪。</p>
             </div>
             <div class="mb-2 text-xs font-black text-purple-500">🧩 流程圖（${state.placed.length}/${u.steps.length}）</div>
             <div class="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-4 mb-6 min-h-[80px]">
@@ -737,7 +908,32 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
               <div class="text-5xl mb-2">🎉</div>
               <h2 class="text-2xl font-black text-emerald-700 mb-1">流程圖完成！</h2>
               <p class="text-slate-500 text-sm mb-4">${u.title}　獲得 <b class="text-amber-500">+${STARS_PER_UNIT}⭐</b>（累積 ${doneCount*STARS_PER_UNIT}⭐）</p>
-              <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 text-left space-y-1 mb-5">${fc}</div>
+              <div class="bg-slate-50 rounded-xl border border-slate-200 p-4 text-left space-y-1 mb-4">${fc}</div>
+
+              <!-- 把剛排好的流程圖變成 Mermaid 程式碼。
+                   排卡片排出來的是「順序」，但流程圖真正的重點是形狀有意義：
+                   圓角起訖、矩形處理、菱形判斷、平行四邊形輸入輸出。
+                   貼到 Mermaid 看到它長成正式的流程圖，那些形狀才會變成
+                   自己畫得出來的東西，而不只是課本上的圖。 -->
+              <details class="text-left bg-indigo-50 border border-indigo-200 rounded-xl mb-5" open>
+                <summary class="cursor-pointer px-4 py-3 font-bold text-indigo-800 text-sm">
+                  🧜 把這張流程圖變成真的圖（Mermaid）
+                </summary>
+                <div class="px-4 pb-4">
+                  <p class="text-xs text-indigo-900/70 leading-relaxed mb-2">
+                    下面是這張流程圖的 <b>Mermaid 程式碼</b>。複製起來貼到
+                    <a href="${MERMAID_SITE}" target="_blank" rel="noopener" class="underline font-bold">mermaid.ai</a>，
+                    就會畫出正式的流程圖。<br>
+                    注意形狀：<b>圓角</b>＝開始／結束、<b>矩形</b>＝處理、
+                    <b>菱形</b>＝判斷、<b>平行四邊形</b>＝輸入／輸出。
+                  </p>
+                  <pre id="mmd-code" class="bg-white border border-indigo-200 rounded-lg p-3 text-[11px] leading-relaxed overflow-auto max-h-56 whitespace-pre">${esc(toMermaid(u.steps))}</pre>
+                  <div class="flex flex-wrap gap-2 mt-2">
+                    <button id="copy-mmd" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition">📋 複製程式碼</button>
+                    <a href="${MERMAID_SITE}" target="_blank" rel="noopener" class="bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-300 text-xs font-bold px-4 py-2 rounded-lg transition">開啟 Mermaid →</a>
+                  </div>
+                </div>
+              </details>
               <div class="flex flex-wrap gap-2 justify-center">
                 <button id="to-program" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2.5 rounded-lg transition">🐱 接著做程式設計 →</button>
                 <button id="back-menu2" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-5 py-2.5 rounded-lg transition">回關卡列表</button>
@@ -870,6 +1066,22 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       const sc=e.target.closest('.sel-chip'); if(sc){ toggleSelect(state.candidates[+sc.dataset.sel]); return; }
       if(e.target.closest('#confirm-sel')){ confirmSelect(); return; }
       const pk=e.target.closest('.pick-btn'); if(pk){ pickStep(+pk.dataset.pick); return; }
+      if(e.target.closest('#copy-mmd')){
+        const box = document.getElementById('mmd-code');
+        const btn = e.target.closest('#copy-mmd');
+        const txt = box ? box.textContent : '';
+        // 電腦教室的瀏覽器不一定給剪貼簿權限，失敗時退回「幫你選起來，自己按 Ctrl+C」
+        const ok = () => { btn.textContent = '✅ 複製好了，去貼上吧'; setTimeout(()=>{ btn.textContent='📋 複製程式碼'; }, 2500); };
+        const fallback = () => {
+          const r = document.createRange(); r.selectNodeContents(box);
+          const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+          btn.textContent = '已選取，請按 Ctrl+C';
+        };
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(txt).then(ok).catch(fallback);
+        } else { fallback(); }
+        return;
+      }
       if(e.target.closest('#to-program')){ startProgram(); return; }
       const ans=e.target.closest('.ans-btn'); if(ans){ pickAns(+ans.dataset.ans); return; }
       if(e.target.closest('#next-q')){ nextQ(); return; }
