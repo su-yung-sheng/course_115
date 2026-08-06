@@ -2,7 +2,8 @@
    積木模擬器的測試（shared/blocks.js ＋ 11502/content/blocks.js）
    ---------------------------------------------------------------------
    怎麼跑：
-       npm install jsdom          （只需要做一次）
+       npm install jsdom          （只需要做一次；裝在 repo 外面也可以，
+                                    用 NODE_PATH=<裝的位置> node …）
        node shared/tests/blocks.test.js
 
    ★ 這一份的重點是「真的跑一遍再量結果」，不是只比對資料結構。
@@ -71,10 +72,13 @@ const B = W.BLOCKS, L = W.BLOCK_LEVELS, CFG = W.CONFIG;
 
 /** 把關卡的 goal（規格）變成「學生真的組出來的樹」 */
 function build(list, rename) {
+  const arg = v => (v && typeof v === 'object') ? build([v], rename)[0] : v;
   return (list || []).map(x => {
     const d = B.DEFS[x.id];
-    const args = x.args != null ? x.args.slice() : (d.args || []).slice();
-    if (rename && d.idArgs) d.idArgs.forEach(i => { if (rename[args[i]] != null) args[i] = rename[args[i]]; });
+    const args = (x.args != null ? x.args : (d.args || [])).map(arg);
+    if (rename && d.idArgs) d.idArgs.forEach(i => {
+      if (typeof args[i] !== 'object' && rename[args[i]] != null) args[i] = rename[args[i]];
+    });
     return {
       uid: 'u' + Math.random(), id: x.id, args,
       children: x.children ? build(x.children, rename) : (d.shape === 'c' ? [] : null)
@@ -120,15 +124,26 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
 
   /* ═══ 一、積木名稱要和 Scratch 官方繁中一樣 ═══════════ */
   section('積木名稱（學生要能回 Scratch 找到同一塊）');
+  /* 把畫出來的積木讀成一行字。
+     空格用 [值] 表示；空格裡若塞著一顆橢圓積木，用 (…) 包起來 —— 
+     這樣「移動 [10] 點」和「移動 (邊長) 點」一眼就分得出來。 */
+  function labelOf(box) {
+    return [...box.childNodes].map(n => {
+      if (n.nodeType === 3) return n.textContent;
+      if (n.classList && n.classList.contains('bk-hole')) {
+        const inp = n.firstChild;
+        if (inp && inp.tagName === 'INPUT') return '[' + inp.value + ']';
+        return '(' + labelOf(inp) + ')';           // 裡面是一顆橢圓積木
+      }
+      if (n.querySelector && n.querySelector('svg')) return '{綠旗}';
+      return n.textContent;
+    }).join('');
+  }
   function drawnLabel(id) {
     document.getElementById('sim').innerHTML = '';
     B.mount(document.getElementById('sim'), { palette: [id], goal: [] });
-    const b = document.querySelector('.bk-pal .bk');
-    return [...b.childNodes[0].childNodes].map(n =>
-      n.nodeType === 3 ? n.textContent
-        : (n.tagName === 'INPUT' ? '[' + n.value + ']'
-          : (n.querySelector && n.querySelector('svg') ? '{綠旗}' : n.textContent))
-    ).join('');
+    const b = document.querySelector('.bk-pal .bk, .bk-pal .bk-rep');
+    return labelOf(b.classList.contains('bk-rep') ? b : b.childNodes[0]);
   }
   [['events.whenflag', '當 {綠旗} 被點擊'],
    ['motion.move', '移動 [10] 點'],
@@ -141,11 +156,48 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
    ['pen.down', '下筆'],
    ['pen.up', '停筆'],
    ['my.define', '定義 [畫正方形]'],
-   ['my.defsides', '定義 [畫正N邊形] (邊數)'],
-   ['my.repeatsides', '重複 (邊數) 次'],
-   ['my.turnsides', '右轉 ↻ (360 ÷ 邊數) 度']
+   ['my.definep', '定義 [畫正方形] ([邊長])'],
+   ['my.callp', '[畫正方形] [50]'],
+   ['arg.param', '[邊長]'],
+   ['data.var', '[我的變數]'],
+   ['op.div', '[360] / [4]']
   ].forEach(([id, want]) => is(drawnLabel(id), want, id));
   is(drawnLabel('events.whenflag').includes('▶'), false, '綠旗不是播放三角形');
+
+  section('橢圓的回報值積木（函式參數 vs 一般變數）');
+  function repEl(id) {
+    document.getElementById('sim').innerHTML = '';
+    B.mount(document.getElementById('sim'), { palette: [id], goal: [] });
+    return document.querySelector('.bk-pal .bk-rep');
+  }
+  is(!!repEl('arg.param'), true, '參數畫成橢圓（.bk-rep），不是方塊');
+  is(!!repEl('data.var'), true, '變數畫成橢圓');
+  const cParam = repEl('arg.param').style.getPropertyValue('--c');
+  const cVar = repEl('data.var').style.getPropertyValue('--c');
+  const cOp = repEl('op.div').style.getPropertyValue('--c');
+  is(cParam, '#ff6680', '函式參數是函式積木的紅色');
+  is(cVar, '#ff8c1a', '一般變數是變數的橘色');
+  is(cParam !== cVar, true, '★ 兩者顏色不同 —— 學生一眼看得出不是同一種東西');
+  is(cOp, '#59c059', '運算積木是綠色');
+  is(B.DEFS['arg.param'].idNs, ['param'], '參數屬於 param 命名空間');
+  is(B.DEFS['data.var'].idNs, ['var'], '變數屬於 var 命名空間');
+
+  section('參數名和變數名是兩套，不能混著算');
+  const g3 = L['2-1-3'].goal;
+  is(B._same(build(g3), g3), true, '照參考答案（參數和變數剛好同名）→ 通過');
+  is(B._same(build(g3, { 邊數: 'n', 畫正N邊形: 'poly' }), g3), true,
+    '參數和變數都改名 → 通過');
+  // 參考答案裡參數與變數同名，學生取成不同名字也該過（Scratch 本來就是兩套東西）
+  const sep = build(g3);
+  (function rename(l) {
+    (l || []).forEach(n => {
+      if (n.id === 'arg.param') n.args[0] = 'n';
+      if (n.id === 'my.definep') n.args[1] = 'n';
+      (n.args || []).forEach(a => { if (a && typeof a === 'object') rename([a]); });
+      rename(n.children);
+    });
+  })(sep);
+  is(B._same(sep, g3), true, '★ 參數叫 n、變數仍叫邊數 → 通過（兩套命名空間分開算）');
 
   /* ═══ 二、名字由學生自訂，只看對應關係 ═══════════════ */
   section('名字自己取（考的是程式，不是背名字）');
@@ -205,16 +257,17 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   is([0, 1].every(i => Math.max(...rows[i].map(s => s.y1)) < Math.min(...rows[i + 1].map(s => s.y0))),
     true, '上下列不重疊');
 
-  section('第 3 關寫死數字就過不了（這一關的重點）');
+  section('空格裡打數字就過不了（這一關的重點）');
   const lv3 = L['2-1-3'];
   const fixedN = build(lv3.goal);
-  const def = fixedN.find(n => n.id === 'my.defsides');
-  def.children[1] = { uid: 'z', id: 'control.repeat', args: ['5'], children: def.children[1].children };
-  is(B._same(fixedN, lv3.goal), false, '「重複 (邊數) 次」換成「重複 5 次」→ 判錯');
+  fixedN.find(n => n.id === 'my.definep').children[1].args[0] = '5';   // 重複 5 次
+  is(B._same(fixedN, lv3.goal), false, '重複的空格打死 5 → 判錯');
   const fixedT = build(lv3.goal);
-  const def2 = fixedT.find(n => n.id === 'my.defsides');
-  def2.children[1].children[1] = { uid: 'z', id: 'motion.turnright', args: ['72'], children: null };
-  is(B._same(fixedT, lv3.goal), false, '「右轉 (360÷邊數) 度」換成「右轉 72 度」→ 判錯');
+  fixedT.find(n => n.id === 'my.definep').children[1].children[1].args[0] = '72';
+  is(B._same(fixedT, lv3.goal), false, '右轉的空格打死 72 → 判錯');
+  const fixed2 = build(L['2-1-2'].goal);
+  fixed2.find(n => n.id === 'my.definep').children[1].children[0].args[0] = '50';
+  is(B._same(fixed2, L['2-1-2'].goal), false, '第 2 關「移動」的空格打死 50 → 判錯');
 
   /* ═══ 五、長程式要快轉，不然學生等到不想按第二次 ═══ */
   section('執行速度');

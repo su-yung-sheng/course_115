@@ -580,10 +580,17 @@ def check_sb3_levels():
                 b = bl[k]
                 op = b['opcode']
                 if op == 'procedures_definition':
-                    code = bl[b['inputs']['custom_block'][1]]['mutation']['proccode']
-                    out.append({'id': 'my.definep' if ' %' in code else 'my.define',
-                                'args': [code.split(' %')[0]],
-                                'children': walk(b.get('next'))})
+                    mut = bl[b['inputs']['custom_block'][1]]['mutation']
+                    code = mut['proccode']
+                    try:
+                        names = _json.loads(mut.get('argumentnames', '[]'))
+                    except (ValueError, TypeError):
+                        names = []
+                    # 有參數的定義：積木名 ＋ 參數名（參數名也是學生自己取的）
+                    node = {'id': 'my.definep' if ' %' in code else 'my.define',
+                            'args': [code.split(' %')[0]] + (names[:1] if ' %' in code else []),
+                            'children': walk(b.get('next'))}
+                    out.append(node)
                     return out                       # 定義底下整串都是它的內容
                 if op == 'procedures_call':
                     code = b['mutation']['proccode']
@@ -592,8 +599,13 @@ def check_sb3_levels():
                                if ids else {'id': 'my.call', 'args': [code.split(' %')[0]]})
                 elif op == 'motion_movesteps':
                     v = raw(b, 'STEPS')
-                    out.append({'id': 'my.movearg'} if isinstance(v, dict)
-                               else {'id': 'motion.move', 'args': [n(v)]})
+                    if isinstance(v, dict):
+                        # 空格裡塞著一顆橢圓積木（函式的參數），不是寫死的數字
+                        pname = v.get('fields', {}).get('VALUE', [''])[0]
+                        out.append({'id': 'motion.move',
+                                    'args': [{'id': 'arg.param', 'args': [pname]}]})
+                    else:
+                        out.append({'id': 'motion.move', 'args': [n(v)]})
                 elif op in OPS:
                     node = {'id': OPS[op]}
                     if op == 'motion_gotoxy':
@@ -635,9 +647,11 @@ def check_sb3_levels():
         return
 
     def norm(x):
+        def a(v):
+            return norm(v) if isinstance(v, dict) else v      # 空格裡可能是一顆橢圓積木
         d = {'id': x['id']}
         if x.get('args') is not None:
-            d['args'] = x['args']
+            d['args'] = [a(v) for v in x['args']]
         if x.get('children') is not None:
             d['children'] = [norm(c) for c in x['children']]
         return d

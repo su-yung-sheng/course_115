@@ -56,6 +56,7 @@
     control: { name: '控制',   color: '#ffab19', dark: '#cf8b17' },  // CATEGORY_CONTROL
     data:    { name: '變數',   color: '#ff8c1a', dark: '#db6e00' },  // CATEGORY_VARIABLES
     list:    { name: '清單',   color: '#ff661a', dark: '#e64d00' },  // Scratch 把清單放在「變數」裡，顏色是這個
+    operator:{ name: '運算',   color: '#59c059', dark: '#389438' },  // CATEGORY_OPERATORS
     my:      { name: '函式積木', color: '#ff6680', dark: '#ff4d6a' }, // CATEGORY_MYBLOCKS（不是「我的積木」）
     pen:     { name: '畫筆',   color: '#0fbd8c', dark: '#0b8e69' }   // pen.categoryName
   };
@@ -79,8 +80,8 @@
     'control.wait':     { cat:'control', shape:'stack', label:'等待 %n 秒',        args:[1] },  // CONTROL_WAIT
     'control.repeat':   { cat:'control', shape:'c',     label:'重複 %n 次',        args:[10] }, // CONTROL_REPEAT
     // 變數名稱也是學生自己取的 → idArgs
-    'data.setvar':      { cat:'data',    shape:'stack', label:'變數 %s 設為 %n',   args:['我的變數', 0], idArgs:[0] }, // DATA_SETVARIABLETO（Scratch 新專案的預設變數就叫「我的變數」）
-    'data.changevar':   { cat:'data',    shape:'stack', label:'變數 %s 改變 %n',   args:['我的變數', 1], idArgs:[0] }, // DATA_CHANGEVARIABLEBY
+    'data.setvar':      { cat:'data',    shape:'stack', label:'變數 %s 設為 %n',   args:['我的變數', 0], idArgs:[0], idNs:['var'] }, // DATA_SETVARIABLETO（Scratch 新專案的預設變數就叫「我的變數」）
+    'data.changevar':   { cat:'data',    shape:'stack', label:'變數 %s 改變 %n',   args:['我的變數', 1], idArgs:[0], idNs:['var'] }, // DATA_CHANGEVARIABLEBY
 
     /* 畫筆（擴充積木）：1～3 關畫正方形、正多邊形要用 */
     'pen.clear':        { cat:'pen',     shape:'stack', label:'筆跡全部清除' },                  // pen.clear
@@ -95,30 +96,29 @@
           多做只會讓判定與畫面複雜好幾倍。 */
     // idArgs 標出「這一格是學生自己取的名字」，判定時只看定義與呼叫有沒有對上，
     // 不要求跟參考答案同名（詳見下面 canon()）。廣播積木加進來時也要標。
-    'my.define':        { cat:'my',      shape:'c',     label:'定義 %s',           args:['畫正方形'], idArgs:[0] },
-    'my.definep':       { cat:'my',      shape:'c',     label:'定義 %s (邊長)',    args:['畫正方形'], idArgs:[0] },
-    'my.call':          { cat:'my',      shape:'stack', label:'%s',                args:['畫正方形'], idArgs:[0] },
-    'my.callp':         { cat:'my',      shape:'stack', label:'%s %n',             args:['畫正方形', 50], idArgs:[0] },
-    // 在 Scratch 裡是把橢圓形的參數「邊長」拖進「移動 () 點」，
-    // 這裡沒有橢圓積木，所以做成一塊固定的積木，名字照樣是「移動 () 點」
-    'my.movearg':       { cat:'my',      shape:'stack', label:'移動 (邊長) 點' },
+    'my.define':        { cat:'my',      shape:'c',     label:'定義 %s',       args:['畫正方形'], idArgs:[0], idNs:['proc'] },
+    // 積木名和「參數名」都由學生自己取（Scratch 就是這樣），所以兩格都是 idArgs
+    'my.definep':       { cat:'my',      shape:'c',     label:'定義 %s (%s)',  args:['畫正方形', '邊長'], idArgs:[0, 1], idNs:['proc', 'param'] },
+    'my.call':          { cat:'my',      shape:'stack', label:'%s',            args:['畫正方形'], idArgs:[0], idNs:['proc'] },
+    // 呼叫時那一格可以填數字，也可以塞一顆橢圓積木（變數或參數）
+    'my.callp':         { cat:'my',      shape:'stack', label:'%s %n',         args:['畫正方形', 50], idArgs:[0], idNs:['proc'] },
 
-    /* 參數叫「邊數」的那一組（第 3 關的正 N 邊形）。
-       ⚠️ 為什麼要另外一組，而不是沿用上面的：
-         Scratch 的積木上會顯示參數**自己取的名字**，而這裡的標籤是寫死的。
-         第 2 關的參數是「邊長」，第 3 關是「邊數」——
-         若沿用「移動 (邊長) 點」那一組，學生會看到自己明明取名邊數，
-         積木上卻寫邊長。寧可多一組積木，也不要顯示錯的名字。
-         （兩組不會同時出現在同一關的調色盤上。） */
-    'my.defsides':      { cat:'my',      shape:'c',     label:'定義 %s (邊數)',    args:['畫正N邊形'], idArgs:[0] },
-    'my.repeatsides':   { cat:'my',      shape:'c',     label:'重複 (邊數) 次' },
-    // 在 Scratch 裡是「右轉 ↻ ( 360 / (邊數) ) 度」——
-    // 運算積木塞進轉向積木裡。引擎還沒有回報值積木，先做成一塊。
-    'my.turnsides':     { cat:'my',      shape:'stack', label:'右轉 ↻ (360 ÷ 邊數) 度' },
+    /* ===== 橢圓形的回報值積木 =====
+       這幾塊可以被拖進別的積木的空格裡，就像真的 Scratch 一樣。
 
-    // 呼叫時把「變數」的目前值帶進去（在真的 Scratch 裡是把變數那顆橢圓
-    // 積木拖進呼叫積木的空格）。兩格都是名字：積木名、變數名。
-    'my.callvar':       { cat:'my',      shape:'stack', label:'%s (%s)', args:['畫正N邊形', '邊數'], idArgs:[0, 1] },
+       ★ 為什麼值得做，而不是繼續用「移動 (邊長) 點」這種一體成形的假積木：
+         在 Scratch 裡「移動 (邊長) 點」是**兩塊**—— 標準的「移動 ( ) 點」
+         加上函式專用的參數「邊長」拖進去。做成一塊的話，學生在這裡
+         按一下就完成，回到 Scratch 卻找不到那塊積木，也不知道
+         「參數是可以拖進任何空格的東西」。那正是這一課的核心概念。
+
+       ★ 顏色也照 Scratch 分：
+         函式的參數是**函式積木的紅**，一般變數是**變數的橘**。
+         兩者長得像但來源完全不同 —— 參數只在自己的定義裡有意義，
+         變數則是整個程式共用。顏色是學生分辨這件事的第一個線索。 */
+    'arg.param':        { cat:'my',       shape:'reporter', label:'%s', args:['邊長'],    idArgs:[0], idNs:['param'] }, // argument_reporter
+    'data.var':         { cat:'data',     shape:'reporter', label:'%s', args:['我的變數'], idArgs:[0], idNs:['var'] },   // data_variable
+    'op.div':           { cat:'operator', shape:'reporter', label:'%n / %n', args:[360, 4] },            // OPERATORS_DIVIDE
 
     /* 清單與判斷：5～10 關的排序、搜尋要用
        ★自訂 —— 這幾塊在 Scratch 裡是好幾塊積木組起來的（要用橢圓形的
@@ -127,8 +127,8 @@
        等引擎補上回報值積木，這幾塊就該拆回真正的 Scratch 組合。 */
     'list.swap':        { cat:'list',    shape:'stack', label:'交換 數列 的第 %n 項和第 %n 項', args:[1, 2] }, // ★自訂
     'list.say':         { cat:'list',    shape:'stack', label:'說出 數列 的第 %n 項', args:[1] },              // ★自訂
-    'list.setidx':      { cat:'list',    shape:'stack', label:'變數 %s 設為 %n',   args:['位置', 1] },         // DATA_SETVARIABLETO
-    'list.changeidx':   { cat:'list',    shape:'stack', label:'變數 %s 改變 %n',   args:['位置', 1] },         // DATA_CHANGEVARIABLEBY
+    'list.setidx':      { cat:'list',    shape:'stack', label:'變數 %s 設為 %n',   args:['位置', 1], idArgs:[0], idNs:['var'] }, // DATA_SETVARIABLETO
+    'list.changeidx':   { cat:'list',    shape:'stack', label:'變數 %s 改變 %n',   args:['位置', 1], idArgs:[0], idNs:['var'] }, // DATA_CHANGEVARIABLEBY
     'control.ifless':   { cat:'control', shape:'c',     label:'如果 數列 的第 %n 項 < 數列 的第 %n 項 那麼', args:[1, 2] }, // ★自訂
     'control.repeatlen':{ cat:'control', shape:'c',     label:'重複 清單 數列 的長度 次' },                     // ★自訂
     'control.until':    { cat:'control', shape:'c',     label:'重複直到 找到目標' }                            // ★自訂
@@ -146,9 +146,9 @@
   /* 哪些積木是「定義」。散在五、六個地方各寫一次 id 比對，
      以後新增一種定義積木就一定會漏掉其中一處（而且不會報錯，
      只會變成「那塊積木放進函式區卻不被當成定義」）。集中在這裡。 */
-  var DEFINE_IDS = { 'my.define': 1, 'my.definep': 1, 'my.defsides': 1 };
+  var DEFINE_IDS = { 'my.define': 1, 'my.definep': 1 };
   function isDefine(id) { return !!DEFINE_IDS[id]; }
-  var CALL_IDS = { 'my.call': 1, 'my.callp': 1, 'my.callvar': 1 };
+  var CALL_IDS = { 'my.call': 1, 'my.callp': 1 };
 
   /* Scratch 的綠旗與紅色停止鈕。
      用 SVG 而不是 emoji：unicode 裡根本沒有「綠旗」這個字元
@@ -199,6 +199,18 @@
       '       font:inherit;font-size:12px;font-weight:500;color:#1f2937;text-align:center;',
       '       background:#fff;outline:0}',
       '.bk-in.s{width:82px}',
+      /* ★ 橢圓形的回報值積木（Scratch 的圓角膠囊） */
+      '.bk-rep{display:inline-flex;align-items:center;gap:3px;background:var(--c);',
+      '        color:#fff;border-radius:999px;padding:2px 4px;margin:0 3px;font-size:12px;',
+      '        font-weight:700;line-height:1.6;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);',
+      '        cursor:grab;white-space:nowrap}',
+      '.bk-rep .bk-in{width:38px;margin:0 1px;font-size:11px;padding:1px 6px}',
+      '.bk-rep .bk-in.s{width:64px}',
+      '.bk-rep>span{padding:0 4px}',
+      /* 空格（可以填數字，也可以塞一顆橢圓積木進來） */
+      '.bk-hole{display:inline-flex;align-items:center;border-radius:999px}',
+      'body.bk-dragging.bk-rep-drag .bk-script .bk-hole{box-shadow:0 0 0 2px rgba(255,255,255,.7)}',
+      'body.bk-dragging.bk-rep-drag .bk-script .bk-hole.on{box-shadow:0 0 0 3px #ffd400}',
       '.bk-in:focus{box-shadow:0 0 0 2px rgba(0,0,0,.25)}',
 
       /* ★ C 型積木：左側直條 ＋ 上下臂，中間的嘴巴露出程式區底色 */
@@ -256,8 +268,12 @@
 
   /** 樹 → 可比對的純資料（丟掉 uid）。這是「原樣」，名稱不動 —— 存進資料庫用這個 */
   function plain(list) {
+    function arg(v) {
+      // 空格裡可能塞著一顆橢圓積木，不是單純的字串
+      return (v && typeof v === 'object') ? { id: v.id, args: v.args.map(arg) } : String(v).trim();
+    }
     return (list || []).map(function (n) {
-      var o = { id: n.id, args: n.args.map(function (v) { return String(v).trim(); }) };
+      var o = { id: n.id, args: n.args.map(arg) };
       if (n.children) o.children = plain(n.children);
       return o;
     });
@@ -280,25 +296,37 @@
      哪些欄位算「名字」由 DEFS 的 idArgs 指定；沒標的欄位（數字、秒數）
      還是要一字不差。廣播積木之後加進來時，記得也標 idArgs。 */
   function canon(list) {
-    var map = {}, seq = 0;
-    function nameKey(s) {
+    /* 每一種名字各有自己的一份代號。
+       ★ 為什麼不能全部共用一份：
+         函式的參數和一般變數在 Scratch 是兩套不同的東西（顏色都不一樣）。
+         若共用一份代號，學生把參數取名 n、變數取名 size，
+         會拿到 #1 和 #2；而參考答案兩個剛好同名，兩個都是 #1 ——
+         程式明明一模一樣卻被判錯。反過來也一樣糟。
+         分成 proc（積木名）／param（參數）／var（變數）三套就沒有這個問題。 */
+    var maps = {}, seqs = {};
+    function nameKey(s, ns) {
+      ns = ns || 'name';
       s = String(s).trim();
       // 沒取名字不是「另一種取法」，是還沒做完 —— 給一個永遠對不上的值
       if (s === '') return '(沒有取名字)';
-      if (!Object.prototype.hasOwnProperty.call(map, s)) map[s] = '名稱#' + (++seq);
-      return map[s];
+      if (!maps[ns]) { maps[ns] = {}; seqs[ns] = 0; }
+      if (!Object.prototype.hasOwnProperty.call(maps[ns], s)) maps[ns][s] = ns + '#' + (++seqs[ns]);
+      return maps[ns][s];
     }
-    function walk(l) {
-      return (l || []).map(function (n) {
-        var d = DEFS[n.id] || {};
-        var args = (n.args != null ? n.args : (d.args || []))
-          .map(function (v) { return String(v).trim(); });
-        (d.idArgs || []).forEach(function (i) { args[i] = nameKey(args[i]); });
-        var o = { id: n.id, args: args };
-        if (d.shape === 'c') o.children = walk(n.children);
-        return o;
+    function one(n) {
+      var d = DEFS[n.id] || {};
+      var args = (n.args != null ? n.args : (d.args || [])).map(function (v) {
+        // 空格裡塞著橢圓積木時，整顆一起正規化（裡面的名字也要換代號）
+        return (v && typeof v === 'object') ? one(v) : String(v).trim();
       });
+      (d.idArgs || []).forEach(function (i, k) {
+        if (typeof args[i] !== 'object') args[i] = nameKey(args[i], (d.idNs || [])[k]);
+      });
+      var o = { id: n.id, args: args };
+      if (d.shape === 'c') o.children = walk(n.children);
+      return o;
     }
+    function walk(l) { return (l || []).map(one); }
     return walk(list);
   }
 
@@ -435,6 +463,7 @@
     /* ── 畫積木 ── */
     function renderBlock(node, isTemplate) {
       var d = DEFS[node.id], c = CATS[d.cat];
+      if (d.shape === 'reporter') return renderReporter(node, isTemplate);
       var b = el('div', 'bk' + (d.shape === 'hat' ? ' hat' : '') + (d.shape === 'c' ? ' bk-c' : ''));
       b.style.setProperty('--c', c.color);
       b.style.setProperty('--bk-canvas', '#f9f9f9');   // C 型積木「嘴巴」露出的底色
@@ -454,13 +483,7 @@
         if (p === '%flag') {
           head.appendChild(svgSpan(FLAG_SVG));
         } else if (p === '%n' || p === '%s') {
-          var i = el('input', 'bk-in' + (p === '%s' ? ' s' : ''));
-          i.value = node.args[ai];
-          if (p === '%n') i.type = 'number';
-          var myIdx = ai;
-          i.addEventListener('input', function () { node.args[myIdx] = i.value; });
-          i.addEventListener('pointerdown', function (e) { e.stopPropagation(); });   // 打字不要觸發拖曳
-          head.appendChild(i);
+          head.appendChild(renderHole(node, ai, p, isTemplate));
           ai++;
         } else if (p) {
           head.appendChild(el('span', '', p));
@@ -479,6 +502,46 @@
 
       b.addEventListener('pointerdown', function (e) { startDrag(e, node, b, isTemplate); });
       return b;
+    }
+
+    /* 一個「空格」：可以打字，也可以被拖一顆橢圓積木進來。
+       DOM 上掛 _node/_idx，拖曳時才知道要塞進誰的第幾格。 */
+    function renderHole(node, idx, kind, isTemplate) {
+      var hole = el('span', 'bk-hole');
+      hole._node = node; hole._idx = idx; hole._tpl = !!isTemplate;
+      var v = node.args[idx];
+      if (v && typeof v === 'object') {           // 裡面已經有一顆橢圓積木
+        hole.appendChild(renderReporter(v, false, node, idx));
+      } else {
+        var i = el('input', 'bk-in' + (kind === '%s' ? ' s' : ''));
+        i.value = v == null ? '' : v;
+        if (kind === '%n') i.type = 'number';
+        i.addEventListener('input', function () { node.args[idx] = i.value; });
+        i.addEventListener('pointerdown', function (e) { e.stopPropagation(); }); // 打字不要觸發拖曳
+        hole.appendChild(i);
+      }
+      return hole;
+    }
+
+    /** 橢圓形的回報值積木。owner/oidx 是「它現在被塞在誰的第幾格」 */
+    function renderReporter(node, isTemplate, owner, oidx) {
+      var d = DEFS[node.id], c = CATS[d.cat];
+      var r = el('span', 'bk-rep');
+      r.style.setProperty('--c', c.color);
+      r.draggable = false;
+      r.addEventListener('dragstart', function (ev) { ev.preventDefault(); });
+      r.dataset.uid = node.uid;
+      r.dataset.id = node.id;
+      var parts = d.label.split(/(%n|%s)/), ai = 0;
+      parts.forEach(function (p) {
+        if (p === '%n' || p === '%s') { r.appendChild(renderHole(node, ai, p, isTemplate)); ai++; }
+        else if (p) r.appendChild(el('span', '', p));
+      });
+      r.addEventListener('pointerdown', function (e) {
+        e.stopPropagation();                       // 不要連帶把外層的整塊積木拖走
+        startDrag(e, node, r, isTemplate, owner, oidx);
+      });
+      return r;
     }
 
     /** 把一串 node 畫進容器，中間夾放置點 */
@@ -512,22 +575,32 @@
     /* ── 拖曳（pointer events：滑鼠、觸控、觸控筆都能用）── */
     var drag = null;
     var rejected = '';        // 這次拖曳被區域規則擋下的原因（放開時顯示）
-    function startDrag(e, node, srcEl, isTemplate) {
+    function startDrag(e, node, srcEl, isTemplate, owner, oidx) {
       if (e.button != null && e.button !== 0) return;
       e.preventDefault(); e.stopPropagation();
 
       // 從調色盤拖 = 複製一塊新的；從程式區拖 = 搬移（先摘下來）
       var moving = isTemplate ? makeNode(node.id) : node;
-      if (!isTemplate && !detach(program, node)) detach(defs, node);
+      if (!isTemplate) {
+        if (owner) {
+          // 從別的積木的空格裡拉出來 → 那一格恢復成可以打字的欄位
+          owner.args[oidx] = (DEFS[owner.id].args || [])[oidx];
+          if (owner.args[oidx] == null) owner.args[oidx] = '';
+        } else if (!detach(program, node)) {
+          detach(defs, node);
+        }
+      }
+      var isRep = DEFS[moving.id].shape === 'reporter';
 
       var ghost = renderBlock(moving, false);
       ghost.classList.add('bk-ghost');
       ghost.style.width = srcEl.offsetWidth + 'px';
       document.body.appendChild(ghost);
 
-      drag = { node: moving, ghost: ghost, zone: null };
+      drag = { node: moving, ghost: ghost, zone: null, rep: isRep };
       rejected = '';
       document.body.classList.add('bk-dragging');   // 讓所有縫隙顯形
+      if (isRep) document.body.classList.add('bk-rep-drag');   // 改成讓「空格」顯形
       document.addEventListener('dragstart', stopNativeDrag);
       moveGhost(e);
       if (!isTemplate) redraw();
@@ -552,6 +625,25 @@
        不問瀏覽器任何事，就沒有被誰擋住的問題。
        水平距離只給兩成權重，因為 C 型積木的凹槽是靠縮排區分的，
        主要仍看垂直位置。 */
+    /* 橢圓積木要找的是「空格」，不是積木之間的縫。
+       ⚠️ 不能塞進自己裡面（把一顆積木拖進它自己的空格會變成無限巢狀），
+          也不能塞進調色盤上的樣板。 */
+    function nearestHole(x, y, node) {
+      var pad = 30, best = null, bestD = Infinity;
+      areas().forEach(function (a) {
+        [].slice.call(a.querySelectorAll('.bk-hole')).forEach(function (h) {
+          if (h._tpl) return;
+          var b = h.getBoundingClientRect();
+          if (!b.width) return;
+          var cx = (b.left + b.right) / 2, cy = (b.top + b.bottom) / 2;
+          var d = Math.abs(x - cx) + Math.abs(y - cy);
+          if (d > b.width / 2 + b.height / 2 + pad * 2) return;
+          if (d < bestD) { bestD = d; best = h; }
+        });
+      });
+      return best;
+    }
+
     function nearestZone(x, y, node) {
       var pad = 48;                                   // 邊緣外一點也算，手不必很準
       var box = null;
@@ -598,7 +690,8 @@
       moveGhost(e);
       // 不再需要「先把分身藏起來再問瀏覽器」——現在只量座標，分身不影響
       rejected = '';
-      var z = nearestZone(e.clientX, e.clientY, drag.node);
+      var z = drag.rep ? nearestHole(e.clientX, e.clientY, drag.node)
+                       : nearestZone(e.clientX, e.clientY, drag.node);
       if (drag.zone && drag.zone !== z) drag.zone.classList.remove('on');
       drag.zone = z;
       if (z) z.classList.add('on');
@@ -611,9 +704,14 @@
       document.removeEventListener('pointercancel', onUp);
       document.removeEventListener('dragstart', stopNativeDrag);
       document.body.classList.remove('bk-dragging');
+      document.body.classList.remove('bk-rep-drag');
       if (!drag) return;
       var z = drag.zone;
-      if (z) { z.classList.remove('on'); z._list.splice(z._idx, 0, drag.node); }
+      if (z) {
+        z.classList.remove('on');
+        if (drag.rep) z._node.args[z._idx] = drag.node;    // 塞進空格
+        else z._list.splice(z._idx, 0, drag.node);         // 接進積木串
+      }
       // 沒放在任何放置點 = 丟掉（等於刪除積木）
       var why = z ? '' : rejected;
       drag.ghost.remove();
@@ -723,6 +821,26 @@
          所以走到某一塊時，變數的值就是那一刻該有的值。
          這樣「呼叫 畫正五邊形 (大小)」才能在每一次拿到不同的數字 ——
          九個五邊形會一個比一個大，就是靠這個。 */
+    /* 把一個空格的內容算成數字。
+       字串就是字串；橢圓積木要看它是哪一種：
+         參數（arg.param）→ 這一次呼叫帶進來的值
+         變數（data.var） → 變數目前的值
+         除法（op.div）   → 左邊 ÷ 右邊（360 ÷ 邊數 就是這樣來的） */
+    function evalArg(v, vars, argVal) {
+      if (!v || typeof v !== 'object') return v;
+      if (v.id === 'arg.param') return argVal;
+      if (v.id === 'data.var')  return vars[String(v.args[0]).trim()] || 0;
+      if (v.id === 'op.div') {
+        var a = parseFloat(evalArg(v.args[0], vars, argVal)) || 0;
+        var b = parseFloat(evalArg(v.args[1], vars, argVal)) || 0;
+        return b === 0 ? 0 : a / b;                    // 除以 0 就當 0，不要讓畫面炸掉
+      }
+      return 0;
+    }
+    function evalArgs(n, vars, argVal) {
+      return (n.args || []).map(function (v) { return evalArg(v, vars, argVal); });
+    }
+
     function flatten(list, out, defs, argVal, depth, vars) {
       depth = depth || 0;
       vars = vars || {};
@@ -730,40 +848,34 @@
       (list || []).forEach(function (n) {
         if (out.length >= 400) return;
         if (isDefine(n.id)) return;                                  // 定義本身不執行
+        var v = evalArgs(n, vars, argVal);            // 空格先算成數字
         if (n.id === 'data.setvar') {
-          vars[String(n.args[0]).trim()] = parseFloat(n.args[1]) || 0;
+          vars[String(n.args[0]).trim()] = parseFloat(v[1]) || 0;
           return;                                                    // 沒有畫面效果，不必排進動作
         }
         if (n.id === 'data.changevar') {
           var k = String(n.args[0]).trim();
-          vars[k] = (vars[k] || 0) + (parseFloat(n.args[1]) || 0);
+          vars[k] = (vars[k] || 0) + (parseFloat(v[1]) || 0);
           return;
         }
         if (CALL_IDS[n.id]) {
           var d = defs[String(n.args[0]).trim()];
           if (!d) return;                                            // 呼叫了不存在的積木 → 略過
-          var a = argVal;
-          if (n.id === 'my.callp')   a = parseFloat(n.args[1]) || 0;
-          if (n.id === 'my.callvar') a = vars[String(n.args[1]).trim()] || 0;
+          var a = n.id === 'my.callp' ? (parseFloat(v[1]) || 0) : argVal;
           flatten(d.children, out, defs, a, depth + 1, vars);
           return;
         }
-        if (n.id === 'my.repeatsides') {                               // 重複 (邊數) 次
-          var ts = Math.max(0, Math.min(50, Math.round(argVal) || 0));
-          for (var k3 = 0; k3 < ts && out.length < 400; k3++) flatten(n.children, out, defs, argVal, depth + 1, vars);
-          return;
-        }
         if (n.id === 'control.repeat') {
-          var t = Math.max(0, Math.min(50, parseInt(n.args[0], 10) || 0));
+          var t = Math.max(0, Math.min(50, Math.round(parseFloat(v[0])) || 0));
           for (var k2 = 0; k2 < t && out.length < 400; k2++) flatten(n.children, out, defs, argVal, depth + 1, vars);
           return;
         }
-        out.push({ node: n, arg: argVal });
+        out.push({ node: n, arg: argVal, vals: v });
       });
     }
     function exec(step, stepMs) {
       if (stepMs == null) stepMs = 280;
-      var n = step.node, a = n.args;
+      var n = step.node, a = step.vals || n.args;     // vals 是空格算完的值
       var num = function (i) { return parseFloat(a[i]) || 0; };
       var move = function (dist) {
         var x0 = st.x, y0 = st.y;
@@ -774,14 +886,11 @@
       };
       switch (n.id) {
         case 'motion.move':      move(num(0)); break;
-        case 'my.movearg':       move(step.arg || 0); break;
         case 'pen.down':         st.down = true; break;
         case 'pen.up':           st.down = false; break;
         case 'pen.clear':        if (ctx) ctx.clearRect(0, 0, pen.width, pen.height); break;
         case 'pen.color':        st.color = PEN_COLORS[String(a[0]).trim()] || '#e5484d'; break;
         case 'motion.turnright': st.dir += num(0); break;
-        // 360 ÷ 邊數 ＝ 外角。正 N 邊形轉一圈剛好 360 度，這是這一關的重點
-        case 'my.turnsides':     st.dir += 360 / (Math.round(step.arg) || 1); break;
         case 'motion.turnleft':  st.dir -= num(0); break;
         case 'motion.goto':      st.x = num(0); st.y = num(1); break;   // 定位不留筆跡
         case 'motion.changex': {
