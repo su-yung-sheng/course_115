@@ -29,9 +29,18 @@
   document.write('<scr' + 'ipt src="../' + t + '/content/flowchart.js?v=' + Date.now() + '"></scr' + 'ipt>');
 })();
 </script>
-<script src="auth.js"></script>
-<script src="grading.js"></script>
-<script src="classroom.js"></script>
+<script>
+/* 共用 JS 也要防快取 —— 只擋 config.js 是不夠的。
+   2026-08-06 第三次踩到：頁面明明改好也推上去了，老師看到的還是舊畫面，
+   因為 classroom.js 還是快取裡那一份。改版後「沒變」和「壞了」長得一樣，
+   老師沒有辦法分辨，只能一直問。 */
+(function () {
+  var v = '?v=' + Date.now();
+  ['auth.js', 'grading.js', 'classroom.js'].forEach(function (f) {
+    document.write('<scr' + 'ipt src="' + f + v + '"></scr' + 'ipt>');
+  });
+})();
+</script>
 
 <style>
   html,body,button,input,select{font-family:'Noto Sans TC',system-ui,sans-serif}
@@ -49,7 +58,9 @@
       學生把<b>流程圖圖片</b>與<b>程式執行錄影</b>交到 Google Classroom，
       你在這裡確認之後按一下給分：圖片 <b>+1⭐</b>、影片 <b>+1⭐</b>（每一關各算各的）。<br>
       <span class="text-slate-400 text-xs">給分是人工的 —— 系統只幫你把名單、繳交狀態和目前星數排在一起，
-      最後點開看過再決定的還是你。</span>
+      最後點開看過再決定的還是你。</span><br>
+      <span class="text-slate-300 text-[11px]">版本 <span id="ver" class="font-mono"></span>
+        —— 和預期不符就按 Ctrl+Shift+R 強制重新整理（GitHub Pages 會快取 10 分鐘）</span>
     </p>
   </header>
 
@@ -115,6 +126,8 @@ const state = {
 };
 
 const el = id => document.getElementById(id);
+// 版本印在畫面上：改版後看到舊值就知道是快取，不必猜是不是壞了
+{ const v = el('ver'); if (v) v.textContent = (window.CLASSROOM && CLASSROOM.VERSION) || '（舊版 classroom.js）'; }
 const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ── 登入：只有老師 ─────────────────────────────────

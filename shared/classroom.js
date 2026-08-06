@@ -37,6 +37,13 @@
 (function (global) {
   'use strict';
 
+  /* 版本字串：畫面上會顯示。
+     ★ 為什麼需要：教師工具頁改版後，瀏覽器可能還拿著舊的 HTML／JS
+       （GitHub Pages 快取 10 分鐘）。老師看到的是「我改了但畫面沒變」，
+       而「沒變」和「壞了」長得一模一樣，只能猜。
+       把版本印在畫面上，就從「猜」變成「看一眼就知道要不要強制重新整理」。 */
+  var VERSION = '2026-08-06-gas';
+
   var url = '';
   var key = '';
 
@@ -175,6 +182,7 @@
   }
 
   global.CLASSROOM = {
+    VERSION: VERSION,
     init: init,
     ready: ready,
     hasUrl: hasUrl,
