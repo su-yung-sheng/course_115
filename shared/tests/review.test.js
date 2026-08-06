@@ -16,10 +16,11 @@ const grab = re => s.match(re)[0];
 const API = new Function(
   grab(/function clsOf[\s\S]*?\n\}/) + '\n' +
   grab(/function noOf[\s\S]*?\n\}/) + '\n' +
-  grab(/function classFromCourseName[\s\S]*?\n\}/) + '\n' +
-  'return { clsOf, noOf, classFromCourseName };'
+  'return { clsOf, noOf };'
 )();
-const { clsOf, noOf, classFromCourseName } = API;
+const { clsOf, noOf } = API;
+// classFromCourseName 已經搬到 shared/classroom.js（兩邊都用得到），
+// 它的測試在 classroom.test.js
 
 let pass = 0, fail = 0;
 const is = (g, w, l) => {
@@ -42,22 +43,14 @@ is(clsOf('1411235', {}), '812', '1411235 → 812 班');
 is(noOf('1411235', {}), '35', '→ 35 號');
 is(clsOf('', {}), '', '學號是空的就不要亂猜');
 
-section('從 Classroom 課名抓班級');
-is(classFromCourseName('資訊科技 801'), '801', '「資訊科技 801」→ 801');
-is(classFromCourseName('八年級資訊科技812'), '812', '沒空格也抓得到');
-is(classFromCourseName('資訊科技 801 (上)'), '801', '後面還有字也沒問題');
-is(classFromCourseName('資訊科技'), '', '★ 課名沒寫班級就不要猜 —— 猜錯會篩掉整班');
-is(classFromCourseName('社會 2024'), '', '不是 8xx 的數字不算');
-is(classFromCourseName(null), '', 'null 不會爆掉');
-
 section('十二個班都認得');
 const all = [];
 for (let i = 1; i <= 12; i++) {
   const c = '8' + String(i).padStart(2, '0');
   const sid = '141' + String(i).padStart(2, '0') + '07';
-  all.push(clsOf(sid, {}) === c && classFromCourseName('資訊科技 ' + c) === c);
+  all.push(clsOf(sid, {}) === c);
 }
-is(all.every(Boolean), true, '801～812 的學號推算與課名比對都對');
+is(all.every(Boolean), true, '801～812 的學號推算都對');
 
 console.log(`\n通過 ${pass}／失敗 ${fail}`);
 process.exit(fail ? 1 : 0);

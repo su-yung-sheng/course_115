@@ -19,7 +19,7 @@
   window.__TERM = t;
   /* ?v=… 是防快取。
      ★ 為什麼需要：config.js 是靜態檔，GitHub Pages 會叫瀏覽器快取 10 分鐘。
-       改了 SERVER_URL（ngrok 常換）或 CLASSROOM.CLIENT_ID 之後，
+       改了 SERVER_URL（ngrok 常換）或 CLASSROOM.GAS_URL 之後，
        畫面上會**沿用舊值**卻毫無徵兆 —— 症狀是「後端明明開著卻說離線」、
        「ID 明明填了卻說沒設定」，然後花半小時找不存在的 bug。
        這幾頁是老師的工具頁，一天開不了幾次，永遠拿最新的最划算。
@@ -99,15 +99,8 @@ function noOf(sid, r) {
   return String(sid || '').slice(-2);
 }
 
-/* 從 Classroom 的課程名稱抓班級：「資訊科技 801」→ 801。
-   ★ 為什麼要自動抓：Classroom 一個班一門課，選了「資訊科技 801」
-     繳交清單本來就只有 801 的人；但名冊那一側是全校十二個班混在一起，
-     不跟著篩就要在幾百列裡面找那三十個人。
-   抓不到就不動篩選（例如課名沒寫班級），不要亂猜。 */
-function classFromCourseName(name) {
-  const m = String(name || '').match(/\b(8\d{2})\b/);
-  return m ? m[1] : '';
-}
+/* 「資訊科技 801」→ 801 的抽取放在 shared/classroom.js（CLASSROOM.classFromCourseName），
+   兩邊都會用到，不要各寫一份。 */
 
 const state = {
   who: null,            // 登入的老師
@@ -158,11 +151,14 @@ async function loadAll() {
 }
 
 /* ── Classroom ───────────────────────────────────── */
-async function connectClassroom() {
-  state.cr.err = ''; state.busy = '等待 Google 授權…'; render();
+async function connectClassroom(keyFromInput) {
+  const gasUrl = (C.CLASSROOM && C.CLASSROOM.GAS_URL) || '';
+  const key = String(keyFromInput != null ? keyFromInput : CLASSROOM.savedKey()).trim();
+  state.cr.err = ''; state.busy = '連線中…'; render();
   try {
-    CLASSROOM.init((C.CLASSROOM && C.CLASSROOM.CLIENT_ID) || '');
-    await CLASSROOM.signIn();
+    CLASSROOM.init(gasUrl, key);
+    await CLASSROOM.ping();                 // 先確認網址與通行碼，錯了不必等後面
+    CLASSROOM.saveKey(key);                 // 通行碼記在這台瀏覽器，不進版控
     state.cr.courses = await CLASSROOM.courses();
     state.cr.on = true;
   } catch (e) {
@@ -174,7 +170,7 @@ async function pickCourse(id) {
   state.cr.courseId = id; state.cr.workId = ''; state.cr.rows = {};
   // 課名裡有班級就自動篩到那一班（「資訊科技 801」→ 801）
   const course = state.cr.courses.find(c => c.id === id);
-  const guess = classFromCourseName(course && course.name);
+  const guess = CLASSROOM.classFromCourseName(course && course.name);
   if (guess && allClasses().indexOf(guess) >= 0) state.klass = guess;
   state.busy = '讀取作業清單…'; render();
   try { state.cr.works = await CLASSROOM.coursework(id); }
@@ -185,18 +181,10 @@ async function pickWork(id) {
   state.cr.workId = id;
   state.busy = '讀取繳交狀況…'; render();
   try {
-    const [subs, rost] = await Promise.all([
-      CLASSROOM.submissions(state.cr.courseId, id),
-      CLASSROOM.roster(state.cr.courseId)
-    ]);
-    /* 用 email 換回學號 —— 學校帳號是 qfm{學號}@…，
-       換算規則只寫在 shared/auth.js 一處，這裡直接呼叫，不自己再寫一次。 */
-    const rows = {};
-    subs.map(s => CLASSROOM.normalize(s, rost)).forEach(r => {
-      const sid = AUTH.sidFromEmail(r.email);
-      if (sid) rows[sid] = r;
-    });
-    state.cr.rows = rows;
+    /* Apps Script 回來的就是「學號 → 這一筆繳交」，
+       email → 學號 的對應在 .gs 裡面做完了 ——
+       這樣回應裡不含姓名與 email，網址萬一外流也不會把全班名單帶出去。 */
+    state.cr.rows = await CLASSROOM.submissions(state.cr.courseId, id);
     state.cr.err = '';
   } catch (e) { state.cr.err = e.message; }
   state.busy = ''; render();
@@ -390,7 +378,7 @@ function errBox(msg) {
 }
 
 function crPanel() {
-  const cid = (C.CLASSROOM && C.CLASSROOM.CLIENT_ID) || '';
+  const gasUrl = (C.CLASSROOM && C.CLASSROOM.GAS_URL) || '';
   if (!state.cr.on) {
     return `
       <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4 pop">
@@ -399,16 +387,29 @@ function crPanel() {
           接起來之後，這一頁會直接列出誰交了、交了什麼，點開就能看。<br>
           <b>不接也能用</b> —— 自己開 Classroom 看完，回來按給分就好。
         </p>
-        ${cid ? '' : `<p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
-          還沒設定 <span class="font-mono">CLASSROOM.CLIENT_ID</span>（在 ${esc(TERM)}/config.js）。
-          設定步驟寫在 <span class="font-mono">shared/classroom.js</span> 開頭。</p>`}
+        ${gasUrl ? '' : `<p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+          還沒設定 <span class="font-mono">CLASSROOM.GAS_URL</span>（在 ${esc(TERM)}/config.js）。
+          部署步驟寫在 <span class="font-mono">shared/classroom.gs</span> 開頭，約五分鐘。</p>`}
         ${state.cr.err ? errBox(state.cr.err) : ''}
-        <button id="cr-connect" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-lg">連接 Google Classroom</button>
+        <!-- 通行碼刻意不放在 config.js —— 那個 repo 是公開的。
+             在這裡輸入一次，記在這台瀏覽器裡。 -->
+        <div class="flex flex-wrap items-end gap-2">
+          <div>
+            <label class="block text-xs font-black text-slate-500 mb-1">通行碼</label>
+            <input id="cr-key" type="password" value="${esc(CLASSROOM.savedKey())}" placeholder="Apps Script 的 QUERY_KEY"
+                   class="border-2 border-slate-200 rounded-lg px-3 py-2 text-sm w-56">
+          </div>
+          <button id="cr-connect" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-lg" ${gasUrl ? '' : 'disabled'}>連接 Google Classroom</button>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-2">通行碼就是 Apps Script「專案設定 → 指令碼屬性」裡的 <span class="font-mono">QUERY_KEY</span>，只會存在這台電腦。</p>
       </div>`;
   }
   return `
     <div class="bg-white rounded-2xl border border-indigo-200 shadow-sm p-5 mb-4 pop">
-      <div class="font-black text-sm mb-3">🔗 Google Classroom　<span class="text-emerald-600 text-xs">已連接</span></div>
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-black text-sm">🔗 Google Classroom　<span class="text-emerald-600 text-xs">已連接</span></div>
+        <button id="cr-off" class="text-xs text-slate-400 hover:text-rose-600 font-bold">中斷並清除通行碼</button>
+      </div>
       ${state.cr.err ? errBox(state.cr.err) : ''}
       <div class="grid sm:grid-cols-2 gap-3">
         <div>
@@ -453,7 +454,16 @@ document.addEventListener('click', async (e) => {
     state.unit = list.length ? list[0].id : '';
     render(); return;
   }
-  if (e.target.closest('#cr-connect')) { connectClassroom(); return; }
+  if (e.target.closest('#cr-connect')) {
+    const box = document.getElementById('cr-key');
+    connectClassroom(box ? box.value : undefined);
+    return;
+  }
+  if (e.target.closest('#cr-off')) {
+    CLASSROOM.forgetKey();
+    state.cr = { on: false, err: '', courses: [], works: [], courseId: '', workId: '', rows: {} };
+    render(); return;
+  }
   if (e.target.closest('#cr-all')) { awardAllHandedIn(); return; }
   const ab = e.target.closest('[data-award]');
   if (ab) { award(ab.dataset.award, ab.dataset.on === '1'); return; }

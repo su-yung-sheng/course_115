@@ -34,9 +34,14 @@ window.CONFIG = {
   // Firestore 集合名稱
   /* Google Classroom（繳交審核頁 shared/review.html 用，可以留空）
      留空的話審核頁仍然能用，只是不會列出繳交狀況，要自己開 Classroom 看。
-     怎麼申請這個 ID：shared/classroom.js 開頭有十分鐘的步驟。 */
+
+     GAS_URL 是 shared/classroom.gs 部署出來的網頁應用程式網址（結尾 /exec）。
+     部署步驟寫在那支 .gs 的開頭，約五分鐘。
+
+     ⚠️ 通行碼（QUERY_KEY）**不要**寫在這裡 —— 這個 repo 是公開的。
+        在審核頁上輸入一次就好，會記在那台瀏覽器裡。 */
   CLASSROOM: {
-    CLIENT_ID: '85509938573-i6drsd6996d2v6o5c5kajjoujtd0tb1u.apps.googleusercontent.com'        // ← 例：1234567890-abc123.apps.googleusercontent.com
+    GAS_URL: ''        // 例：https://script.google.com/macros/s/AKfy…/exec
   },
 
   COLLECTIONS: {
