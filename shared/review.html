@@ -492,13 +492,18 @@ function block(s, kk) {
               : `<span class="text-slate-400">${state.cr.on ? '未繳交' : '未連接'}</span>`}
       </div>
       ${p.warn && has ? `<div class="text-[10px] text-amber-700 leading-snug mb-1">⚠️ ${esc(p.warn)}</div>` : ''}
-      <button data-award="${esc(s.sid)}" data-kind="${kk}" data-on="${p.given ? '0' : '1'}"
-        ${p.unitId ? '' : 'disabled'}
-        class="w-full px-2 py-1.5 rounded-lg text-xs font-bold transition
-        ${p.given ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400'}">
-        ${p.given ? '✅ 已加分（點一下取消）' : '+1⭐'}
-      </button>
+      <!-- ★ 這裡刻意「不是按鈕」。
+           加分鈕原本就在附件連結旁邊，手滑一下分數就給出去了 ——
+           而「看過再給」正是這個功能存在的理由。
+           改成要先點開預覽、看完在視窗裡給，流程就和意圖對齊了。
+           （已加分但附件不見了的少數情況，留一個要確認的小字連結可以取消。） -->
+      ${p.given
+        ? `<div class="text-xs font-bold text-emerald-700">✅ 已加分 +${GRADING.BONUS[kk]}⭐
+             <button data-undo="${esc(s.sid)}" data-kind="${kk}"
+               class="ml-1 text-[10px] font-normal text-slate-400 hover:text-rose-600 underline">取消</button>
+           </div>`
+        : (has ? '<div class="text-xs text-slate-400">點附件看過再給分</div>'
+               : '<div class="text-xs text-slate-300">—</div>')}
     </div>`;
 }
 
@@ -531,13 +536,15 @@ function openPreview(link0, title, sid, kk) {
   el('modal-foot').innerHTML = previewing
     ? (() => {
         const given = s && s.per[kk] && s.per[kk].given;
+        const w = s && s.per[kk] && s.per[kk].warn;
         return `<button id="modal-award" data-on="${given ? '0' : '1'}"
-          class="px-4 py-2 rounded-lg text-sm font-bold transition
+          class="px-5 py-2.5 rounded-lg text-sm font-bold transition
           ${given ? 'bg-emerald-600 text-white hover:bg-emerald-700'
                   : 'bg-indigo-600 text-white hover:bg-indigo-700'}">
-          ${given ? '✅ 已加分（點一下取消）' : `給 ${KINDS[kk].icon} ${esc(KINDS[kk].label)} +1⭐`}
+          ${given ? '✅ 已加分（點一下取消）' : `給 ${KINDS[kk].icon} ${esc(KINDS[kk].label)} +${GRADING.BONUS[kk]}⭐`}
         </button>
-        <span class="text-xs text-slate-400">看過沒問題就按這裡，不必關掉視窗。</span>`;
+        ${w ? `<span class="text-xs text-amber-700 font-bold">⚠️ ${esc(w)}</span>`
+            : '<span class="text-xs text-slate-400">看過沒問題就按這裡，不必關掉視窗。</span>'}`;
       })()
     : '';
   el('modal').classList.remove('hidden');
@@ -672,8 +679,14 @@ document.addEventListener('click', async (e) => {
     award(sid, kind, ma.dataset.on === '1').then(closePreview);
     return;
   }
-  const ab = e.target.closest('[data-award]');
-  if (ab) { award(ab.dataset.award, ab.dataset.kind, ab.dataset.on === '1'); return; }
+  const ub = e.target.closest('[data-undo]');
+  if (ub) {
+    const st = students().find(x => x.sid === ub.dataset.undo);
+    if (confirm(`取消 ${st ? st.name : ub.dataset.undo} 的「${KINDS[ub.dataset.kind].label}」加分？`)) {
+      award(ub.dataset.undo, ub.dataset.kind, false);
+    }
+    return;
+  }
 });
 // Esc 關視窗：滑鼠移到右上角按叉叉，是審三十份時最累的那個動作
 document.addEventListener('keydown', (e) => {
