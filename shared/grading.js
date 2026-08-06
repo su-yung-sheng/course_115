@@ -27,6 +27,67 @@ window.GRADING = {
     return (Number(completedCount) || 0) * this.FLOWCHART_PER_UNIT;
   },
 
+  /* ===================================================================
+     繳交加分（老師人工審核後給）
+     -------------------------------------------------------------------
+     學生把流程圖轉成的圖片、以及程式執行過程的錄影，上傳到 Google
+     Classroom；老師看過確認無誤，才給這一分。
+
+     · 流程圖圖片  每關 +1★（排對 2★ ＋ 交圖 1★ ＝ 單關最高 3★）
+     · 程式錄影    每關 +1★（AI 批改 2～3★ ＋ 交影片 1★ ＝ 單關最高 4★）
+
+     ★ 為什麼另外存一個欄位，而不是直接把星數加上去：
+       學生端每完成一關就會用 merge 寫入 modules.flowchart.stars，
+       那是「自動算出來的」。若把老師給的加分也寫進同一格，
+       學生下次通關時整格會被自己的自動值覆蓋掉 —— 加分默默消失，
+       而且沒有任何人會發現。所以加分存在**學生寫不到的欄位**，
+       顯示時才把兩者相加。
+       安全規則上，這些欄位只有老師寫得動（學生連自己的都不能改）。
+
+     資料長這樣（存在 {學期}-progress/{學號}）：
+       modules.flowchart.imgUnits = { '2-1-1A': { at: 1690000000000, by: '老師email' } }
+       modules.scratch.vidUnits   = { '2-1-1':  { at: …, by: … } }
+     用物件而不是陣列：同一關重複審核不會變成兩筆，也記得住時間與是誰給的。
+     =================================================================== */
+  BONUS_PER_ITEM: 1,
+
+  /** 這個模組拿到幾顆加分星（imgUnits／vidUnits 的關卡數 × 1） */
+  bonusStars: function (unitsMap) {
+    var n = 0;
+    for (var k in (unitsMap || {})) {
+      if (Object.prototype.hasOwnProperty.call(unitsMap, k) && unitsMap[k]) n++;
+    }
+    return n * this.BONUS_PER_ITEM;
+  },
+
+  /** 流程圖模組的總星數：排對的自動星 ＋ 老師給的交圖加分 */
+  flowchartTotalWithBonus: function (completedCount, imgUnits) {
+    return this.flowchartStars(completedCount) + this.bonusStars(imgUnits);
+  },
+
+  /**
+   * 從一份 progress 文件算出「顯示用」的各模組星數（含加分）。
+   * 教師端與學生端都該用這一支，不要各自把加分再加一次或漏加。
+   */
+  starsWithBonus: function (progress) {
+    var m = (progress || {}).modules || {};
+    var flow = m.flowchart || {}, scr = m.scratch || {};
+    var flowBonus = this.bonusStars(flow.imgUnits);
+    var scrBonus  = this.bonusStars(scr.vidUnits);
+    return {
+      flowchart: (Number(flow.stars) || 0) + flowBonus,
+      scratch:   (Number(scr.stars) || 0) + scrBonus,
+      bonus:     flowBonus + scrBonus,
+      flowchartBonus: flowBonus,
+      scratchBonus:   scrBonus
+    };
+  },
+
+  /** 這一關的圖片／影片加分給過了嗎（教師端用來顯示勾勾） */
+  hasBonus: function (unitsMap, unitId) {
+    return !!((unitsMap || {})[unitId]);
+  },
+
   // 程式設計（Scratch）：依 AI 批改分數給星（每單元 2–3 星，10 單元滿 30 星）
   //   三星 ≥ 90 分、二星 ≥ 75 分；未滿 75 分不給星，代表這一關還沒通關，要修改後重傳
   scratchStar: function (score) {

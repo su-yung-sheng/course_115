@@ -192,9 +192,11 @@ service cloud.firestore {
          兩條都要通過學期鎖；老師與測試帳號不受限。
          全面切換到 Google 之後，把 ② 整段刪掉，防呆條件也可以一起拿掉。 */
       allow create: if isTeacher()
-                    || (isOwner(sid) && (beforeSpring() || isTestAccount(sid)));
+                    || (isOwner(sid) && bonusEmpty()
+                        && (beforeSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
-                    || (isOwner(sid) && (beforeSpring() || isTestAccount(sid)));
+                    || (isOwner(sid) && bonusUnchanged()
+                        && (beforeSpring() || isTestAccount(sid)));
 
       allow delete: if isTeacher();        // ❌ 避免有人清掉別人的成績
     }
@@ -234,9 +236,11 @@ service cloud.firestore {
            ② 舊的匿名登入（動作幅度防呆）
          全面切換到 Google 之後，把 ② 整段刪掉。 */
       allow create: if isTeacher()
-                    || (isOwner(sid) && (afterSpring() || isTestAccount(sid)));
+                    || (isOwner(sid) && bonusEmpty()
+                        && (afterSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
-                    || (isOwner(sid) && (afterSpring() || isTestAccount(sid)));
+                    || (isOwner(sid) && bonusUnchanged()
+                        && (afterSpring() || isTestAccount(sid)));
 
       allow delete: if isTeacher();
     }

@@ -41,6 +41,13 @@ window.CONFIG = {
   },
 
   // Firestore 集合名稱
+  /* Google Classroom（繳交審核頁 shared/review.html 用，可以留空）
+     留空的話審核頁仍然能用，只是不會列出繳交狀況，要自己開 Classroom 看。
+     怎麼申請這個 ID：shared/classroom.js 開頭有十分鐘的步驟。 */
+  CLASSROOM: {
+    CLIENT_ID: ''        // ← 例：1234567890-abc123.apps.googleusercontent.com
+  },
+
   COLLECTIONS: {
     PROGRESS: '11502-progress',
     // ★ 2026-07-29 名冊已合併為跨學期共用的 roster（見 shared/docs/03）

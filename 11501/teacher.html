@@ -166,6 +166,13 @@
                 每週評分
               </button>
 
+              <!-- 📥 繳交審核與加分（流程圖圖片 ＋1⭐、程式錄影 ＋1⭐） -->
+              <a href="../shared/review.html?term=11501" target="_blank" rel="noopener"
+                 class="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full text-sm font-bold hover:bg-indigo-200 border border-indigo-300 shadow-sm flex items-center gap-1.5 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                繳交審核
+              </a>
+
               <!-- 🩺 系統狀態檢查（上課前確認後端是最新版、兩學期資料沒混到） -->
               <a href="../shared/status.html?term=11501" target="_blank" rel="noopener"
                  class="px-4 py-2 bg-slate-100 text-slate-700 rounded-full text-sm font-bold hover:bg-slate-200 border border-slate-300 shadow-sm flex items-center gap-1.5 transition-colors">
@@ -791,7 +798,9 @@
     // 各模組星數上限（與學生端 hub 完全一致）
     //   資訊倫理 10 章 × 3★ = 30　　運算思維 10 關 × 2★ = 20
     //   流程圖   10 關 × 2★ = 20　　程式設計 10 關 × 3★ = 30（未達 75 分 0★）
-    const MODULE_MAX = { ethics: 30, thinking: 20, flowchart: 20, scratch: 30 };
+    // 流程圖 10 關 ×（排對 2★ ＋ 交圖 1★）＝ 30
+    // 程式設計 10 關 ×（AI 批改 3★ ＋ 交影片 1★）＝ 40
+    const MODULE_MAX = { ethics: 30, thinking: 20, flowchart: 30, scratch: 40 };
     function subjMax(key){ return MODULE_MAX[key] || 3; }
     function sumSubjMax(subjectList){ return subjectList.reduce((a, s) => a + subjMax(s.key), 0); }
 

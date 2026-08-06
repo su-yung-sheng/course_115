@@ -16,7 +16,9 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const s = fs.readFileSync(path.resolve(__dirname, '..', '..', '11501', 'flowchart.html'), 'utf8');
+const s = fs.readFileSync(path.resolve(__dirname, '..', '..', '11501', 'flowchart.html'), 'utf8')
+  // 單元資料 2026-08-06 起搬到 content/flowchart.js（審核頁也要用同一份），兩邊接起來一起測
+  + '\n' + fs.readFileSync(path.resolve(__dirname, '..', '..', '11501', 'content', 'flowchart.js'), 'utf8');
 let pass=0,fail=0;
 const is=(g,w,l)=>{const ok=JSON.stringify(g)===JSON.stringify(w);ok?pass++:fail++;
  console.log((ok?'  ✅ ':'  ❌ ')+l+(ok?'':`\n       期望 ${JSON.stringify(w)}\n       實得 ${JSON.stringify(g)}`))};
