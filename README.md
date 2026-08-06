@@ -223,6 +223,7 @@ course_115/
 | 後端與資料庫（Firestore／GAS／Colab） | [04](shared/docs/04_後端與資料庫.md) |
 | 安全性（擋得住什麼、擋不住什麼） | [05](shared/docs/05_安全性.md) |
 | 上線檢查表 | [06](shared/docs/06_上線檢查表.md) |
+| **手動設定清單**（程式幫不了的那些步驟） | [07](shared/docs/07_手動設定清單.md) |
 
 ---
 
