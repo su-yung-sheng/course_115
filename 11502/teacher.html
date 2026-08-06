@@ -757,7 +757,12 @@
     }
 
     // 各模組星數上限（與 hub 一致）：運算思維 20、資訊倫理 30、其餘 3
-    const MODULE_MAX = { thinking: 20, ethics: 30 };
+    /* 流程圖與程式設計的上限含「繳交加分」，所以從 grading.js 算 ——
+       加分權重只寫在那一支，這裡跟著變，不會兩邊各改各的。 */
+    const MODULE_MAX = Object.assign(
+      { ethics: 30, thinking: 20 },
+      (window.GRADING && GRADING.moduleMax) ? GRADING.moduleMax(10) : { flowchart: 30, scratch: 40 }
+    );
     function subjMax(key){ return MODULE_MAX[key] || 3; }
     function sumSubjMax(subjectList){ return subjectList.reduce((a, s) => a + subjMax(s.key), 0); }
 

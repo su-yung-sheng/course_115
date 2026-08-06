@@ -798,9 +798,12 @@
     // 各模組星數上限（與學生端 hub 完全一致）
     //   資訊倫理 10 章 × 3★ = 30　　運算思維 10 關 × 2★ = 20
     //   流程圖   10 關 × 2★ = 20　　程式設計 10 關 × 3★ = 30（未達 75 分 0★）
-    // 流程圖 10 關 ×（排對 2★ ＋ 交圖 1★）＝ 30
-    // 程式設計 10 關 ×（AI 批改 3★ ＋ 交影片 1★）＝ 40
-    const MODULE_MAX = { ethics: 30, thinking: 20, flowchart: 30, scratch: 40 };
+    /* 流程圖與程式設計的上限含「繳交加分」，所以從 grading.js 算 ——
+       加分權重只寫在那一支，這裡跟著變，不會兩邊各改各的。 */
+    const MODULE_MAX = Object.assign(
+      { ethics: 30, thinking: 20 },
+      (window.GRADING && GRADING.moduleMax) ? GRADING.moduleMax(10) : { flowchart: 30, scratch: 40 }
+    );
     function subjMax(key){ return MODULE_MAX[key] || 3; }
     function sumSubjMax(subjectList){ return subjectList.reduce((a, s) => a + subjMax(s.key), 0); }
 

@@ -49,20 +49,44 @@ window.GRADING = {
        modules.scratch.vidUnits   = { '2-1-1':  { at: …, by: … } }
      用物件而不是陣列：同一關重複審核不會變成兩筆，也記得住時間與是誰給的。
      =================================================================== */
-  BONUS_PER_ITEM: 1,
+  /* 一關交了各值幾顆星。改這裡就好，教師端的星數上限也是從這裡算出來的。
 
-  /** 這個模組拿到幾顆加分星（imgUnits／vidUnits 的關卡數 × 1） */
-  bonusStars: function (unitsMap) {
+     ★ 為什麼影片是 1 不是 2（2026-08-06 決定）：
+       AI 批改給 2～3★。影片若給 2★，「程式 75 分＋交影片」＝4★ 會贏過
+       「程式 95 分沒交影片」＝3★ —— 等於告訴學生「與其把程式改好，
+       不如去錄一段影片」。給 1★ 時兩者打平，錄影仍然有價值，
+       但不會蓋過程式本身的品質。
+       錄影確實比截圖費工，它換到的是「證明程式真的跑得起來」——
+       那是 AI 讀靜態程式碼看不出來的事，值得給分，
+       不值得給到比寫好程式更划算。 */
+  BONUS: {
+    img: 1,        // 流程圖圖片（單關上限 2＋1 ＝ 3★）
+    vid: 1         // 程式執行錄影（單關上限 3＋1 ＝ 4★）
+  },
+
+  /** 這個模組拿到幾顆加分星（單元數 × 該項的加分） */
+  bonusStars: function (unitsMap, kind) {
+    var per = this.BONUS[kind || 'img'];
+    if (per == null) per = 1;
     var n = 0;
     for (var k in (unitsMap || {})) {
       if (Object.prototype.hasOwnProperty.call(unitsMap, k) && unitsMap[k]) n++;
     }
-    return n * this.BONUS_PER_ITEM;
+    return n * per;
+  },
+
+  /** 各模組的星數上限（教師端顯示 x / y 用；關卡數 × 每關上限） */
+  moduleMax: function (units) {
+    units = units || 10;
+    return {
+      flowchart: units * (this.FLOWCHART_PER_UNIT + this.BONUS.img),
+      scratch:   units * (3 + this.BONUS.vid)      // AI 批改單關最高 3★
+    };
   },
 
   /** 流程圖模組的總星數：排對的自動星 ＋ 老師給的交圖加分 */
   flowchartTotalWithBonus: function (completedCount, imgUnits) {
-    return this.flowchartStars(completedCount) + this.bonusStars(imgUnits);
+    return this.flowchartStars(completedCount) + this.bonusStars(imgUnits, 'img');
   },
 
   /**
@@ -72,8 +96,8 @@ window.GRADING = {
   starsWithBonus: function (progress) {
     var m = (progress || {}).modules || {};
     var flow = m.flowchart || {}, scr = m.scratch || {};
-    var flowBonus = this.bonusStars(flow.imgUnits);
-    var scrBonus  = this.bonusStars(scr.vidUnits);
+    var flowBonus = this.bonusStars(flow.imgUnits, 'img');
+    var scrBonus  = this.bonusStars(scr.vidUnits, 'vid');
     return {
       flowchart: (Number(flow.stars) || 0) + flowBonus,
       scratch:   (Number(scr.stars) || 0) + scrBonus,
