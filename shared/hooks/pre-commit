@@ -28,12 +28,28 @@ if [ -z "$PY" ]; then
 fi
 
 if [ -f "shared/check.py" ]; then
-  "$PY" shared/check.py || {
+  OUT=$("$PY" shared/check.py 2>&1)
+  RC=$?
+  echo "$OUT"
+  if [ $RC -ne 0 ]; then
     echo ""
-    echo "❌ 檢查沒過，這次提交已取消。"
-    echo "   修好上面列出的問題再按一次 Commit。"
+    # 「檢查程式自己壞了」和「檢查有發現問題」要分得出來。
+    # 2026-08-06 就踩過：check.py 印中文時在 cp950 主控台崩潰，
+    # hook 只看到非 0 就說「檢查沒過」，於是提交被取消、檔案留在 staged，
+    # 使用者看到的是「按 Commit 沒反應、也推不上去」，完全找不到方向。
+    case "$OUT" in
+      *Traceback*|*UnicodeEncodeError*)
+        echo "⚠️  檢查程式本身出錯了（不是你的檔案有問題），這次提交已取消。"
+        echo "   請在命令列執行：$PY shared/check.py   看完整錯誤訊息。"
+        echo "   真的急著提交可以用：git commit --no-verify"
+        ;;
+      *)
+        echo "❌ 檢查沒過，這次提交已取消。"
+        echo "   修好上面列出的問題再按一次 Commit。"
+        ;;
+    esac
     exit 1
-  }
+  fi
 else
   echo "⚠️  找不到 shared/check.py，略過完整性檢查"
 fi

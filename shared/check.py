@@ -22,10 +22,30 @@
 import os
 import re
 import sys
+
+# ── 輸出編碼：不能讓「印字」把整支檢查弄掛 ──────────────
+#
+# ★ 2026-08-06 真的發生過，而且症狀完全看不出原因：
+#   Windows 的 Git Bash 主控台常是 cp950（繁中預設），
+#   而這支會印 ✅ ❌ ⚠️。cp950 編不出這些字元 → UnicodeEncodeError
+#   → 整支 crash、離開碼非 0 → pre-commit hook 判定「檢查沒過」
+#   → **提交被取消，檔案留在 staged**。
+#
+#   使用者看到的是「按了 Commit 沒反應、按 Push 也推不上去」，
+#   完全聯想不到是「印一個勾勾印掛了」。老師連續兩次卡在這裡。
+#
+#   改成一律用 UTF-8 輸出，編不出來的字用替代字元頂替 ——
+#   顯示醜一點沒關係，絕對不可以因為顯示而讓檢查失敗。
 import glob
 import shutil
 import subprocess
 import tempfile
+
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass          # Python 3.6 以下沒有 reconfigure；印不出來也不該中斷
 
 # 這支放在 shared/ 底下，要檢查的是它的上一層（repo 根目錄）
 _HERE = os.path.dirname(os.path.abspath(__file__))

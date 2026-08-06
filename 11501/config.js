@@ -41,7 +41,7 @@ window.CONFIG = {
      ⚠️ 通行碼（QUERY_KEY）**不要**寫在這裡 —— 這個 repo 是公開的。
         在審核頁上輸入一次就好，會記在那台瀏覽器裡。 */
   CLASSROOM: {
-    GAS_URL: ''        // 例：https://script.google.com/macros/s/AKfy…/exec
+    GAS_URL: 'https://script.google.com/macros/s/AKfycbzGQQWlGGUKmyBR6gETbbEluFl_jjyE4Rd7W24HgizSfYHP8LJ3thIF9kCtHb4TAYzf7A/exec'        // 例：https://script.google.com/macros/s/AKfy…/exec
   },
 
   COLLECTIONS: {
