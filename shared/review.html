@@ -380,6 +380,15 @@ function subCell(s) {
     + (s.sub.late ? '<div class="text-rose-500">遲交</div>' : '');
 }
 
+/* 錯誤訊息可能是好幾行（例如要轉給管理員的那一段），
+   而且裡面可能有網址。用 pre-wrap 保留換行，網址做成可以點的連結 ——
+   叫老師自己把一長串網址反白複製，是最容易在這裡放棄的一步。 */
+function errBox(msg) {
+  const html = esc(msg).replace(/(https?:\/\/\S+)/g,
+    '<a href="$1" target="_blank" rel="noopener" class="underline font-bold break-all">$1</a>');
+  return `<div class="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 mb-3 whitespace-pre-wrap leading-relaxed">${html}</div>`;
+}
+
 function crPanel() {
   const cid = (C.CLASSROOM && C.CLASSROOM.CLIENT_ID) || '';
   if (!state.cr.on) {
@@ -393,14 +402,14 @@ function crPanel() {
         ${cid ? '' : `<p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
           還沒設定 <span class="font-mono">CLASSROOM.CLIENT_ID</span>（在 ${esc(TERM)}/config.js）。
           設定步驟寫在 <span class="font-mono">shared/classroom.js</span> 開頭。</p>`}
-        ${state.cr.err ? `<p class="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 mb-3">${esc(state.cr.err)}</p>` : ''}
+        ${state.cr.err ? errBox(state.cr.err) : ''}
         <button id="cr-connect" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2 rounded-lg">連接 Google Classroom</button>
       </div>`;
   }
   return `
     <div class="bg-white rounded-2xl border border-indigo-200 shadow-sm p-5 mb-4 pop">
       <div class="font-black text-sm mb-3">🔗 Google Classroom　<span class="text-emerald-600 text-xs">已連接</span></div>
-      ${state.cr.err ? `<p class="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 mb-3">${esc(state.cr.err)}</p>` : ''}
+      ${state.cr.err ? errBox(state.cr.err) : ''}
       <div class="grid sm:grid-cols-2 gap-3">
         <div>
           <label class="block text-xs font-black text-slate-500 mb-1">課程</label>

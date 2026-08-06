@@ -54,4 +54,20 @@ is(/管理員|允許清單/.test(say('admin_policy_enforced')),true,'學校擋�
 is(/JavaScript 來源/.test(say('invalid_client')),true,'用戶端設定錯 → 指出要檢查哪一個欄位');
 is(/手動/.test(say('weird_error')),true,'不認得的錯誤 → 至少告訴他還能手動審核');
 
+console.log('\n── 兩個最容易卡死的設定錯誤，訊息要能直接照做 ──');
+C.init('85509938573-abc123.apps.googleusercontent.com');
+is(C.projectNumber(),'85509938573','從用戶端 ID 取得專案編號');
+is(C.enableApiUrl(),
+   'https://console.cloud.google.com/apis/library/classroom.googleapis.com?project=85509938573',
+   '★ 啟用 API 的連結直接指到正確的專案（老師常有好幾個專案，說錯會繼續卡住）');
+const a=say('access_not_configured');
+is(/沒有啟用 Classroom API/.test(a),true,'400 access_not_configured → 說是「API 沒啟用」');
+is(a.includes('project=85509938573'),true,'　並附上可以直接點的連結');
+
+const b=say('admin_policy_enforced');
+is(/管理第三方應用程式存取權/.test(b),true,'學校擋掉 → 給出管理控制台的完整路徑');
+is(b.includes('85509938573-abc123.apps.googleusercontent.com'),true,'　並附上要加進允許清單的用戶端 ID');
+is(/唯讀/.test(b)&&/不含 Drive/.test(b),true,'　說明要哪些權限（管理員一定會問）');
+is(/仍然可以正常使用/.test(b),true,'★ 並告訴老師「在核准之前照樣能上課」—— 不然會以為整個功能廢了');
+
 console.log('\n通過 '+p+'／失敗 '+f); process.exit(f?1:0);

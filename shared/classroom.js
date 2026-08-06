@@ -62,6 +62,21 @@
   var tokenClient = null;
 
   function init(id) { clientId = String(id || '').trim(); }
+
+  /* 用戶端 ID 的開頭就是 Google Cloud 的專案編號
+     （例：85509938573-abc123.apps.googleusercontent.com → 85509938573）。
+     有了它就能給出「直接指到正確專案」的設定連結 ——
+     老師手上常常不只一個 Google 專案，叫他「去 Cloud Console 啟用 API」
+     而不說是哪一個專案，很容易啟用到另一個然後繼續卡住。 */
+  function projectNumber() {
+    var m = /^(\d+)-/.exec(clientId);
+    return m ? m[1] : '';
+  }
+  function enableApiUrl() {
+    var p = projectNumber();
+    return 'https://console.cloud.google.com/apis/library/classroom.googleapis.com'
+         + (p ? '?project=' + p : '');
+  }
   function ready() { return !!clientId; }
   function signedIn() { return !!token; }
 
@@ -126,9 +141,35 @@
     if (/access_denied|user_denied/i.test(t)) {
       return '你在同意畫面按了拒絕。要讀 Classroom 的繳交就必須同意這幾項唯讀權限。';
     }
-    if (/admin|policy|disallowed|blocked/i.test(t)) {
-      return '學校的 Google Workspace 把第三方應用程式擋下來了。' +
-             '請管理員把這個用戶端 ID 加進允許清單，或改用手動審核模式。';
+    /* ★ 學校擋第三方應用程式。
+       Google 的原話是「貴機構的管理員必須先針對這個應用程式進行審查及設定存取權」。
+       這一關**程式端改不動**，只有 Workspace 管理員能開。
+       所以訊息要直接寫成「可以整段轉給管理員的請求」——
+       只說「請找管理員」等於把問題丟回去，老師還要自己查該講什麼。 */
+    if (/admin|policy|disallowed|blocked|org_internal|restricted/i.test(t)) {
+      return '學校的 Google Workspace 目前擋下未經核准的第三方應用程式，'
+           + '所以這個功能要管理員核准後才能用。\n\n'
+           + '把下面這段轉給資訊組／網域管理員：\n'
+           + '────────────────\n'
+           + '請在 Google 管理控制台將以下應用程式設為「信任」：\n'
+           + '　路徑：安全性 → 存取權和資料控管 → API 控管 → 管理第三方應用程式存取權\n'
+           + '　→ 設定新的應用程式 → OAuth 應用程式名稱或用戶端 ID\n'
+           + '　用戶端 ID：' + (clientId || '（尚未設定）') + '\n'
+           + '　用途：教師本人讀取自己 Classroom 課程的作業繳交狀況，供成績登錄使用\n'
+           + '　權限：全部唯讀（課程、作業繳交、名單、電子郵件），不含 Drive、不會寫入任何資料\n'
+           + '────────────────\n\n'
+           + '在管理員核准之前，審核頁仍然可以正常使用 —— '
+           + '自己開 Classroom 看過，再回來按給分就好，功能完全不受影響。';
+    }
+    /* ★ access_not_configured 是最容易卡住又最難看懂的一個。
+       Google 的意思是「這個專案沒有啟用 Classroom API」，
+       但畫面上只會顯示「發生錯誤 400：access_not_configured」，
+       完全看不出要去哪裡開什麼。而且**要啟用在跟用戶端 ID 同一個專案**——
+       老師手上常常不只一個專案，啟用錯地方會繼續卡在同一個錯誤。 */
+    if (/access_not_configured|accessnotconfigured|api.*not.*enabled/i.test(t)) {
+      return '這個 Google Cloud 專案還沒有啟用 Classroom API。'
+           + '請開啟下面這個連結（已經指到正確的專案）並按「啟用」，等一兩分鐘再回來重試：\n'
+           + enableApiUrl();
     }
     if (/idpiframe|invalid_client|origin/i.test(t)) {
       return 'OAuth 用戶端 ID 設定不符 —— 檢查「已授權的 JavaScript 來源」有沒有填目前這個網址。';
@@ -147,9 +188,23 @@
       headers: { Authorization: 'Bearer ' + token }
     }).then(function (r) {
       if (r.status === 401) { token = ''; throw new Error('授權過期了，請再按一次「連接 Google Classroom」。'); }
-      if (r.status === 403) {
-        throw new Error('沒有權限讀這份資料。確認你在這門課是「老師」身分，' +
-                        '而且 Google Cloud 專案已啟用 Classroom API。');
+      /* 400／403 都可能是「API 沒啟用」。Google 兩種都回過，
+         而且訊息藏在 body 裡 —— 只看狀態碼會把它誤報成權限問題。 */
+      if (r.status === 400 || r.status === 403) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          var reason = ((j.error || {}).message || '') + ' ' +
+                       (((j.error || {}).errors || []).map(function (x) { return x.reason || ''; }).join(' '));
+          if (/access_?not_?configured|not been used in project|is disabled/i.test(reason)) {
+            throw new Error('這個 Google Cloud 專案還沒有啟用 Classroom API。'
+              + '請開啟下面這個連結（已經指到正確的專案）並按「啟用」，等一兩分鐘再回來重試：\n'
+              + enableApiUrl());
+          }
+          if (r.status === 403) {
+            throw new Error('沒有權限讀這份資料。確認你在這門課是「老師」身分。'
+              + (reason.trim() ? '\nGoogle 說：' + reason.trim() : ''));
+          }
+          throw new Error('Classroom 回應 HTTP 400。' + (reason.trim() ? 'Google 說：' + reason.trim() : ''));
+        });
       }
       if (!r.ok) throw new Error('Classroom 回應 HTTP ' + r.status);
       return r.json();
@@ -269,6 +324,8 @@
     handedIn: handedIn,
     guessKind: guessKind,
     _explainAuthError: explainAuthError,
+    enableApiUrl: enableApiUrl,
+    projectNumber: projectNumber,
     SCOPES: SCOPES
   };
 
