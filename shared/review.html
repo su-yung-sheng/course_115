@@ -487,9 +487,9 @@ function block(s, kk) {
     <div class="border-2 ${box} rounded-xl p-2 text-center">
       <div class="text-xs font-black text-slate-600 mb-1">${k.icon} ${esc(k.label.replace('流程圖圖片', '流程圖').replace('程式錄影', '程式'))}</div>
       <div class="text-[10px] mb-1 ${p.base.done ? 'text-slate-400' : 'text-amber-700 font-bold'}">${esc(p.base.label || '')}</div>
-      <div class="text-[11px] leading-snug mb-2 min-h-[2.2em]">
-        ${has ? p.atts.map(a => link(a, s.sid, kk)).join('<br>')
-              : `<span class="text-slate-400">${state.cr.on ? '未繳交' : '未連接'}</span>`}
+      <div class="flex items-center justify-center gap-1.5 flex-wrap mb-2 min-h-[2.2em]">
+        ${has ? p.atts.map(a => link(a, s.sid, kk)).join('')
+              : `<span class="text-[11px] text-slate-400">${state.cr.on ? '未繳交' : '未連接'}</span>`}
       </div>
       ${p.warn && has ? `<div class="text-[10px] text-amber-700 leading-snug mb-1">⚠️ ${esc(p.warn)}</div>` : ''}
       <!-- ★ 這裡刻意「不是按鈕」。
@@ -498,20 +498,37 @@ function block(s, kk) {
            改成要先點開預覽、看完在視窗裡給，流程就和意圖對齊了。
            （已加分但附件不見了的少數情況，留一個要確認的小字連結可以取消。） -->
       ${p.given
-        ? `<div class="text-xs font-bold text-emerald-700">✅ 已加分 +${GRADING.BONUS[kk]}⭐
-             <button data-undo="${esc(s.sid)}" data-kind="${kk}"
-               class="ml-1 text-[10px] font-normal text-slate-400 hover:text-rose-600 underline">取消</button>
-           </div>`
-        : (has ? '<div class="text-xs text-slate-400">點附件看過再給分</div>'
+        ? (has
+            ? `<button data-prev="${esc(p.atts[0].link)}" data-title="${esc(p.atts[0].title)}"
+                 data-sid="${esc(s.sid)}" data-kind="${kk}"
+                 class="w-full px-2 py-1 rounded-lg text-xs font-bold text-emerald-700
+                        bg-emerald-100 hover:bg-emerald-200 transition">
+                 ✅ 已加分 +${GRADING.BONUS[kk]}⭐
+               </button>`
+            /* 給過分但附件不見了（作業被撤回、老師改了作業）——
+               沒有東西可以點開，只好留一個要確認的小字連結，不然分數就取消不掉。 */
+            : `<button data-undo="${esc(s.sid)}" data-kind="${kk}"
+                 class="text-xs font-bold text-emerald-700 hover:text-rose-600">
+                 ✅ 已加分 +${GRADING.BONUS[kk]}⭐<span class="text-[10px] font-normal underline ml-1">取消</span>
+               </button>`)
+        : (has ? '<div class="text-xs text-slate-400">點圖示看過再給分</div>'
                : '<div class="text-xs text-slate-300">—</div>')}
     </div>`;
 }
 
-/** 附件：點了在浮動視窗裡預覽，不必離開這一頁 */
+/* 附件：一個小圖示，點了在浮動視窗裡預覽。
+   ★ 為什麼不寫檔名：學生的檔名長這樣 ——
+       「11501_課本練習_2-1-1 班級置物櫃(範例) on Scratch - Google Chrome 2026-08-06 20-00-07.mp4」
+     一行放不下就折成三四行，卡片被撐爛，而且那串字對審核完全沒有幫助（要看的是內容）。
+     圖示固定大小，兩個附件也排得下；檔名放進 title，游標停著還是看得到。
+   ⚠️ 圖示是用副檔名猜的，猜不出來就用 📎 —— 別讓它看起來像系統驗過了。 */
+const ATT_ICON = { image: '🖼️', video: '🎬', unknown: '📎' };
 function link(a, sid, kk) {
-  return `<a href="#" data-prev="${esc(a.link)}" data-title="${esc(a.title)}"
-     data-sid="${esc(sid || '')}" data-kind="${esc(kk || '')}"
-     class="text-indigo-600 underline hover:text-indigo-800 break-all">${esc(a.title)}</a>`;
+  const g = CLASSROOM.guessKind(a);
+  return `<button data-prev="${esc(a.link)}" data-title="${esc(a.title)}"
+     data-sid="${esc(sid || '')}" data-kind="${esc(kk || '')}" title="${esc(a.title)}"
+     class="w-9 h-9 rounded-lg bg-white border-2 border-indigo-300 hover:border-indigo-600
+            hover:bg-indigo-50 transition text-base leading-none">${ATT_ICON[g] || '📎'}</button>`;
 }
 
 /* ── 預覽視窗 ─────────────────────────────────────── */
