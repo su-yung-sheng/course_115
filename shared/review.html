@@ -58,8 +58,8 @@
     <p class="text-slate-500 text-sm mt-2 leading-relaxed">
       學生把<b>流程圖圖片</b>與<b>程式執行錄影</b>交到 Google Classroom，
       你在這裡確認之後按一下給分：圖片 <b>+1⭐</b>、影片 <b>+1⭐</b>（每一關各算各的）。<br>
-      <span class="text-slate-400 text-xs">給分是人工的 —— 系統只幫你把名單、繳交狀態和目前星數排在一起，
-      最後點開看過再決定的還是你。</span><br>
+      <span class="text-slate-400 text-xs">給分一律一個一個給 —— 系統只幫你把名單、繳交狀態和目前星數
+      排在一起，點開看過再決定的還是你。</span><br>
       <span class="text-slate-300 text-[11px]">版本 <span id="ver" class="font-mono"></span>
         —— 和預期不符就按 Ctrl+Shift+R 強制重新整理（GitHub Pages 會快取 10 分鐘）</span>
     </p>
@@ -268,28 +268,6 @@ async function loadThisUnit() {
     : `這門課裡找不到作業名稱含「${ids.join('」或「')}」的那一份。`
       + '請確認作業標題有帶關卡代號，或自己從下拉選單指定。';
   render();
-}
-
-/** 整批給分：只給「真的有那一種附件」的人 —— 沒交影片的不該拿到影片的分 */
-async function awardAllHandedIn() {
-  const todo = [], skipped = [];
-  students().forEach(s => Object.keys(KINDS).forEach(kk => {
-    if (!s.per[kk].atts.length || s.per[kk].given) return;
-    // 有疑慮的不整批給 —— 那幾個正是最需要老師親自看的
-    if (s.per[kk].warn) { skipped.push(`${s.name} ${KINDS[kk].icon}`); return; }
-    todo.push([s.sid, kk]);
-  }));
-  if (!todo.length) {
-    state.msg = skipped.length
-      ? `沒有可以整批給分的項目。有 ${skipped.length} 個有疑慮，請一個一個看：${skipped.join('、')}`
-      : '沒有「有繳交但還沒給分」的項目。';
-    render(); return;
-  }
-  const who = (state.klass || '這一') + ' 班';
-  if (!confirm(`${who}第 ${state.no} 關：把 ${todo.length} 個「有繳交但還沒給分」的項目一次給分？\n` +
-               (skipped.length ? `（另有 ${skipped.length} 個有疑慮，會跳過留給你自己看：${skipped.join('、')}）\n` : '') +
-               '（沒有交那一種檔案的不會給。還是建議先點開看過幾份再按）')) return;
-  for (const [sid, kk] of todo) await award(sid, kk, true);
 }
 
 async function pickWork(id) {
@@ -640,12 +618,10 @@ function crPanel() {
           </select>
         </div>` : ''}
       ${state.cr.workId ? `
-        <div class="mt-3 flex items-center gap-3 flex-wrap">
-          <button id="cr-all" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg">
-            把「已繳交」的人一次給分（流程圖＋程式）
-          </button>
-          <span class="text-xs text-slate-400">建議先點開看過幾份再按 —— 系統分不出交的是不是對的東西。</span>
-        </div>` : ''}
+        <p class="mt-3 text-xs text-slate-400">
+          讀好了。點卡片上的附件看內容，確認沒問題再按該項的 +1⭐ ——
+          <b>一個一個給</b>，系統分不出交的是不是對的東西。
+        </p>` : ''}
     </div>`;
 }
 
@@ -683,7 +659,6 @@ document.addEventListener('click', async (e) => {
     state.cr = { on: false, err: '', courses: [], works: [], courseId: '', workId: '', rows: {} };
     render(); return;
   }
-  if (e.target.closest('#cr-all')) { awardAllHandedIn(); return; }
   const pv = e.target.closest('[data-prev]');
   if (pv) {
     e.preventDefault();
