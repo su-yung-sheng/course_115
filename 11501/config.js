@@ -36,7 +36,7 @@ window.CONFIG = {
      留空的話審核頁仍然能用，只是不會列出繳交狀況，要自己開 Classroom 看。
      怎麼申請這個 ID：shared/classroom.js 開頭有十分鐘的步驟。 */
   CLASSROOM: {
-    CLIENT_ID: ''        // ← 例：1234567890-abc123.apps.googleusercontent.com
+    CLIENT_ID: '85509938573-i6drsd6996d2v6o5c5kajjoujtd0tb1u.apps.googleusercontent.com'        // ← 例：1234567890-abc123.apps.googleusercontent.com
   },
 
   COLLECTIONS: {
