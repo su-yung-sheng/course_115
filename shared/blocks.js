@@ -70,6 +70,9 @@
     'motion.turnright': { cat:'motion',  shape:'stack', label:'右轉 ↻ %n 度',      args:[15] }, // MOTION_TURNRIGHT
     'motion.turnleft':  { cat:'motion',  shape:'stack', label:'左轉 ↺ %n 度',      args:[15] }, // MOTION_TURNLEFT
     'motion.goto':      { cat:'motion',  shape:'stack', label:'定位到 x:%n y:%n',  args:[0, 0] },// MOTION_GOTOXY（冒號後沒空格）
+    'motion.point':     { cat:'motion',  shape:'stack', label:'面朝 %n 度',        args:[90] }, // MOTION_POINTINDIRECTION
+    'motion.setx':      { cat:'motion',  shape:'stack', label:'x 設為 %n',         args:[0] },  // MOTION_SETX
+    'motion.sety':      { cat:'motion',  shape:'stack', label:'y 設為 %n',         args:[0] },  // MOTION_SETY
     'motion.changex':   { cat:'motion',  shape:'stack', label:'x 改變 %n',         args:[10] }, // MOTION_CHANGEXBY
     'motion.changey':   { cat:'motion',  shape:'stack', label:'y 改變 %n',         args:[10] }, // MOTION_CHANGEYBY
     'looks.say':        { cat:'looks',   shape:'stack', label:'說出 %s',           args:['Hello!'] },     // LOOKS_SAY
@@ -91,17 +94,20 @@
 
     /* 函式積木（Scratch 的「函式積木」分類）：1～3 關的主角
        PROCEDURES_DEFINITION 是「定義 %1」，呼叫時就是積木自己的名字。
-       ⚠️ 只支援「一個數字參數」。真正的 Scratch 可以有任意個參數，
-          但這裡是結構化練習題，一個參數就分得出「有參數／沒參數」的差別，
-          多做只會讓判定與畫面複雜好幾倍。 */
+       參數支援 0～2 個。真正的 Scratch 要幾個都行，兩個已經夠課程用
+       （「畫圖形 (邊數) (邊長)」同時決定形狀與大小）。 */
     // idArgs 標出「這一格是學生自己取的名字」，判定時只看定義與呼叫有沒有對上，
     // 不要求跟參考答案同名（詳見下面 canon()）。廣播積木加進來時也要標。
     'my.define':        { cat:'my',      shape:'c',     label:'定義 %s',       args:['畫正方形'], idArgs:[0], idNs:['proc'] },
     // 積木名和「參數名」都由學生自己取（Scratch 就是這樣），所以兩格都是 idArgs
     'my.definep':       { cat:'my',      shape:'c',     label:'定義 %s (%s)',  args:['畫正方形', '邊長'], idArgs:[0, 1], idNs:['proc', 'param'] },
+    // 兩個參數（Scratch 的自訂積木要幾個參數都行；這裡做到兩個，
+    // 因為課程用得到「畫圖形 (邊數) (邊長)」這種同時決定形狀與大小的積木）
+    'my.definep2':      { cat:'my',      shape:'c',     label:'定義 %s (%s) (%s)', args:['畫圖形', 'N', '邊長'], idArgs:[0, 1, 2], idNs:['proc', 'param', 'param'] },
     'my.call':          { cat:'my',      shape:'stack', label:'%s',            args:['畫正方形'], idArgs:[0], idNs:['proc'] },
     // 呼叫時那一格可以填數字，也可以塞一顆橢圓積木（變數或參數）
     'my.callp':         { cat:'my',      shape:'stack', label:'%s %n',         args:['畫正方形', 50], idArgs:[0], idNs:['proc'] },
+    'my.callp2':        { cat:'my',      shape:'stack', label:'%s %n %n',      args:['畫圖形', 4, 30], idArgs:[0], idNs:['proc'] },
 
     /* ===== 橢圓形的回報值積木 =====
        這幾塊可以被拖進別的積木的空格裡，就像真的 Scratch 一樣。
@@ -146,9 +152,12 @@
   /* 哪些積木是「定義」。散在五、六個地方各寫一次 id 比對，
      以後新增一種定義積木就一定會漏掉其中一處（而且不會報錯，
      只會變成「那塊積木放進函式區卻不被當成定義」）。集中在這裡。 */
-  var DEFINE_IDS = { 'my.define': 1, 'my.definep': 1 };
-  function isDefine(id) { return !!DEFINE_IDS[id]; }
-  var CALL_IDS = { 'my.call': 1, 'my.callp': 1 };
+  /* 定義／呼叫積木，以及它們各有幾個參數。
+     數字＝參數個數，也就是「args 從第 1 格起有幾格是參數」。 */
+  var DEFINE_IDS = { 'my.define': 0, 'my.definep': 1, 'my.definep2': 2 };
+  var CALL_IDS   = { 'my.call': 0, 'my.callp': 1, 'my.callp2': 2 };
+  function isDefine(id) { return Object.prototype.hasOwnProperty.call(DEFINE_IDS, id); }
+  function isCall(id) { return Object.prototype.hasOwnProperty.call(CALL_IDS, id); }
 
   /* Scratch 的綠旗與紅色停止鈕。
      用 SVG 而不是 emoji：unicode 裡根本沒有「綠旗」這個字元
@@ -783,7 +792,7 @@
       resetStage();
       var steps = [];
       var all = whole();
-      flatten(all, steps, collectDefs(all), 0, 0);
+      flatten(all, steps, collectDefs(all), {}, 0, {});
 
       /* 每一步之間停多久。
          ★ 為什麼不是固定值：原本每步固定 280ms，三塊積木的程式剛剛好，
@@ -804,8 +813,9 @@
     }
     /* 把樹展開成一串動作。
        · 重複 N 次 → 直接展開
-       · 自訂積木 → 找到定義，把它的內容接進來（等於 inline）
-         參數（邊長）用 argVal 一路傳下去，遇到「移動（邊長）點」才用得到。
+       · 自訂積木 → 找到定義，把它的內容接進來（等於 inline），
+         並把「定義時取的參數名」配上「呼叫時填的值」傳下去（params），
+         橢圓的參數積木就是靠名字去 params 裡拿值。
        防呆：遞迴深度 8 層、總步數 400 步 —— 學生把自訂積木寫成自己呼叫自己
        是很常見的意外，沒有上限的話瀏覽器會直接當掉。 */
     function collectDefs(list) {
@@ -826,29 +836,32 @@
          參數（arg.param）→ 這一次呼叫帶進來的值
          變數（data.var） → 變數目前的值
          除法（op.div）   → 左邊 ÷ 右邊（360 ÷ 邊數 就是這樣來的） */
-    function evalArg(v, vars, argVal) {
+    function evalArg(v, vars, params) {
       if (!v || typeof v !== 'object') return v;
-      if (v.id === 'arg.param') return argVal;
+      // 參數用「名字」找 —— 一個自訂積木可以有兩個參數（例如 N 和 邊長），
+      // 靠名字才分得出橢圓積木指的是哪一個
+      if (v.id === 'arg.param') return params[String(v.args[0]).trim()] || 0;
       if (v.id === 'data.var')  return vars[String(v.args[0]).trim()] || 0;
       if (v.id === 'op.div') {
-        var a = parseFloat(evalArg(v.args[0], vars, argVal)) || 0;
-        var b = parseFloat(evalArg(v.args[1], vars, argVal)) || 0;
+        var a = parseFloat(evalArg(v.args[0], vars, params)) || 0;
+        var b = parseFloat(evalArg(v.args[1], vars, params)) || 0;
         return b === 0 ? 0 : a / b;                    // 除以 0 就當 0，不要讓畫面炸掉
       }
       return 0;
     }
-    function evalArgs(n, vars, argVal) {
-      return (n.args || []).map(function (v) { return evalArg(v, vars, argVal); });
+    function evalArgs(n, vars, params) {
+      return (n.args || []).map(function (v) { return evalArg(v, vars, params); });
     }
 
-    function flatten(list, out, defs, argVal, depth, vars) {
+    function flatten(list, out, defs, params, depth, vars) {
       depth = depth || 0;
       vars = vars || {};
+      params = params || {};
       if (depth > 8) return;
       (list || []).forEach(function (n) {
         if (out.length >= 400) return;
         if (isDefine(n.id)) return;                                  // 定義本身不執行
-        var v = evalArgs(n, vars, argVal);            // 空格先算成數字
+        var v = evalArgs(n, vars, params);            // 空格先算成數字
         if (n.id === 'data.setvar') {
           vars[String(n.args[0]).trim()] = parseFloat(v[1]) || 0;
           return;                                                    // 沒有畫面效果，不必排進動作
@@ -858,19 +871,24 @@
           vars[k] = (vars[k] || 0) + (parseFloat(v[1]) || 0);
           return;
         }
-        if (CALL_IDS[n.id]) {
+        if (isCall(n.id)) {
           var d = defs[String(n.args[0]).trim()];
           if (!d) return;                                            // 呼叫了不存在的積木 → 略過
-          var a = n.id === 'my.callp' ? (parseFloat(v[1]) || 0) : argVal;
-          flatten(d.children, out, defs, a, depth + 1, vars);
+          /* 把「定義時取的參數名」配上「呼叫時填的值」。
+             定義 畫圖形 (N) (邊長) ＋ 呼叫 畫圖形 4 30 → { N:4, 邊長:30 } */
+          var np = {}, cnt = Math.min(CALL_IDS[n.id], DEFINE_IDS[d.id]);
+          for (var q = 0; q < cnt; q++) {
+            np[String(d.args[q + 1]).trim()] = parseFloat(v[q + 1]) || 0;
+          }
+          flatten(d.children, out, defs, np, depth + 1, vars);
           return;
         }
         if (n.id === 'control.repeat') {
           var t = Math.max(0, Math.min(50, Math.round(parseFloat(v[0])) || 0));
-          for (var k2 = 0; k2 < t && out.length < 400; k2++) flatten(n.children, out, defs, argVal, depth + 1, vars);
+          for (var k2 = 0; k2 < t && out.length < 400; k2++) flatten(n.children, out, defs, params, depth + 1, vars);
           return;
         }
-        out.push({ node: n, arg: argVal, vals: v });
+        out.push({ node: n, vals: v });
       });
     }
     function exec(step, stepMs) {
@@ -893,6 +911,13 @@
         case 'motion.turnright': st.dir += num(0); break;
         case 'motion.turnleft':  st.dir -= num(0); break;
         case 'motion.goto':      st.x = num(0); st.y = num(1); break;   // 定位不留筆跡
+        case 'motion.point':     st.dir = num(0); break;
+        case 'motion.setx': {
+          var xs0 = st.x; st.x = num(0); drawTo(xs0, st.y, st.x, st.y); break;
+        }
+        case 'motion.sety': {
+          var ys0 = st.y; st.y = num(0); drawTo(st.x, ys0, st.x, st.y); break;
+        }
         case 'motion.changex': {
           var x0 = st.x; st.x += num(0); drawTo(x0, st.y, st.x, st.y); break;
         }

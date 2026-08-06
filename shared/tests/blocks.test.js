@@ -157,6 +157,10 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
    ['pen.up', '停筆'],
    ['my.define', '定義 [畫正方形]'],
    ['my.definep', '定義 [畫正方形] ([邊長])'],
+   ['my.definep2', '定義 [畫圖形] ([N]) ([邊長])'],
+   ['my.callp2', '[畫圖形] [4] [30]'],
+   ['motion.point', '面朝 [90] 度'],
+   ['motion.setx', 'x 設為 [0]'],
    ['my.callp', '[畫正方形] [50]'],
    ['arg.param', '[邊長]'],
    ['data.var', '[我的變數]'],
@@ -182,22 +186,16 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   is(B.DEFS['arg.param'].idNs, ['param'], '參數屬於 param 命名空間');
   is(B.DEFS['data.var'].idNs, ['var'], '變數屬於 var 命名空間');
 
-  section('參數名和變數名是兩套，不能混著算');
+  section('兩個參數要靠名字分辨，不是靠順序');
   const g3 = L['2-1-3'].goal;
-  is(B._same(build(g3), g3), true, '照參考答案（參數和變數剛好同名）→ 通過');
-  is(B._same(build(g3, { 邊數: 'n', 畫正N邊形: 'poly' }), g3), true,
-    '參數和變數都改名 → 通過');
-  // 參考答案裡參數與變數同名，學生取成不同名字也該過（Scratch 本來就是兩套東西）
-  const sep = build(g3);
-  (function rename(l) {
-    (l || []).forEach(n => {
-      if (n.id === 'arg.param') n.args[0] = 'n';
-      if (n.id === 'my.definep') n.args[1] = 'n';
-      (n.args || []).forEach(a => { if (a && typeof a === 'object') rename([a]); });
-      rename(n.children);
-    });
-  })(sep);
-  is(B._same(sep, g3), true, '★ 參數叫 n、變數仍叫邊數 → 通過（兩套命名空間分開算）');
+  is(B._same(build(g3), g3), true, '照參考答案 → 通過');
+  is(B._same(build(g3, { N: '邊數', 邊長: 's', 畫圖形: 'poly' }), g3), true,
+    '積木名和兩個參數名全部改掉 → 一樣通過');
+  // 把定義裡兩個參數的名字對調，但橢圓積木沒跟著換 → 形狀和大小會顛倒
+  const swapped = build(g3);
+  const dfn = swapped.find(n => n.id === 'my.definep2');
+  dfn.args[1] = '邊長'; dfn.args[2] = 'N';
+  is(B._same(swapped, g3), false, '★ 只把定義的兩個參數名對調 → 判錯（N 和 邊長 指到相反的東西）');
 
   /* ═══ 二、名字由學生自訂，只看對應關係 ═══════════════ */
   section('名字自己取（考的是程式，不是背名字）');
@@ -242,29 +240,32 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   is(c0.every(c => c[0] === c0[0][0]), true, '四個從同一個角落畫起（一個包一個）');
   is(gr.every(onStage), true, '四個都在舞台內');
 
-  section('第 3 關：自己定義的正 N 邊形，3×3');
-  const N = [3, 4, 5, 6, 7, 8, 9, 10, 11];
-  let pg = shapes(await draw('2-1-3', 63), N);          // 3+4+…+11 = 63
-  is(pg.filter(Boolean).length, 9, '畫出九個');
-  is(pg.map(s => s.n), N, '邊數 3 → 11（同一塊自訂積木畫出九種形狀）');
-  is(pg.map(s => s.len), N.map(() => 25), '九個的邊長都是 25 —— 變的是邊數，不是邊長');
-  is(pg.every((s, i) => i === 0 || (s.x1 - s.x0) >= (pg[i - 1].x1 - pg[i - 1].x0)), true,
-    '邊數愈多、圖形愈大');
-  is(pg.every(onStage), true, '九個都在舞台內');
-  const rows = [0, 1, 2].map(r => pg.slice(r * 3, r * 3 + 3));
-  is(rows.map(r => r[0].x0 < r[1].x0 && r[1].x0 < r[2].x0), [true, true, true], '同一列由左往右');
-  is(rows.map(r => r.every((s, i) => i === 0 || s.x0 > r[i - 1].x1)), [true, true, true], '同一列不重疊');
-  is([0, 1].every(i => Math.max(...rows[i].map(s => s.y1)) < Math.min(...rows[i + 1].map(s => s.y0))),
-    true, '上下列不重疊');
+  section('第 3 關：畫圖形 (邊數) (邊長)，三列（來自老師的參考程式）');
+  const SIDES = [].concat(
+    Array(6).fill(4), Array(6).fill(6), Array(6).fill(10));   // 4×6 + 6×6 + 10×6 = 120 段
+  let pg = shapes(await draw('2-1-3', 120), SIDES);
+  is(pg.filter(Boolean).length, 18, '畫出十八個（三列各 6 個）');
+  is(pg.map(s => s.n), SIDES, '邊數 4／6／10 —— 同一塊自訂積木畫出三種形狀');
+  is(pg.map(s => s.len), [].concat(Array(6).fill(30), Array(6).fill(40), Array(6).fill(40)),
+    '邊長 30／40／40 —— 形狀和大小各由一個參數決定');
+  is(pg.every(onStage), true, '十八個都在舞台內');
+  const rows3 = [0, 1, 2].map(r => pg.slice(r * 6, r * 6 + 6));
+  is(rows3.map(r => r.every((s, i) => i === 0 || s.x0 > r[i - 1].x0)), [true, true, true],
+    '每一列由左往右');
+  is(rows3.map(r => Math.round(r[1].x0 - r[0].x0)), [60, 60, 60], '間隔都是 60');
+  is([0, 1].every(i => rows3[i][0].y0 < rows3[i + 1][0].y0), true, '一列比一列低');
+  // 第二、三列刻意交疊成花紋 —— 確認「不重疊」不是誤以為的需求
+  is(rows3[2].some((s, i) => i > 0 && s.x0 < rows3[2][i - 1].x1), true,
+    '第三列相鄰有交疊（老師的設計就是要疊出花紋，不是版面沒算好）');
 
   section('空格裡打數字就過不了（這一關的重點）');
   const lv3 = L['2-1-3'];
   const fixedN = build(lv3.goal);
-  fixedN.find(n => n.id === 'my.definep').children[1].args[0] = '5';   // 重複 5 次
-  is(B._same(fixedN, lv3.goal), false, '重複的空格打死 5 → 判錯');
+  fixedN.find(n => n.id === 'my.definep2').children[1].args[0] = '4';   // 重複 4 次
+  is(B._same(fixedN, lv3.goal), false, '重複的空格打死 4 → 判錯');
   const fixedT = build(lv3.goal);
-  fixedT.find(n => n.id === 'my.definep').children[1].children[1].args[0] = '72';
-  is(B._same(fixedT, lv3.goal), false, '右轉的空格打死 72 → 判錯');
+  fixedT.find(n => n.id === 'my.definep2').children[1].children[1].args[0] = '90';
+  is(B._same(fixedT, lv3.goal), false, '右轉的空格打死 90 → 判錯');
   const fixed2 = build(L['2-1-2'].goal);
   fixed2.find(n => n.id === 'my.definep').children[1].children[0].args[0] = '50';
   is(B._same(fixed2, L['2-1-2'].goal), false, '第 2 關「移動」的空格打死 50 → 判錯');
