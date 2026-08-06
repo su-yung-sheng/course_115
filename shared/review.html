@@ -113,7 +113,7 @@ const state = {
   who: null,            // 登入的老師
   kind: FLOW.length ? 'img' : 'vid',
   unit: '',
-  klass: '',            // '' = 全部班級
+  klass: '',            // 目前在看哪一班（載入後會自動選第一個）
   roster: {},           // 學號 → { name, class, seat }
   progress: {},         // 學號 → progress 文件
   cr: { on: false, err: '', courses: [], works: [], courseId: '', workId: '', rows: {} },
@@ -148,6 +148,8 @@ async function loadAll() {
     ps.forEach(d => { p[d.id] = d.data() || {}; });
     state.roster = r; state.progress = p;
     if (!state.unit) { const list = KINDS[state.kind].units; state.unit = list.length ? list[0].id : ''; }
+    // 一載入就選好第一個班（教師成績登錄系統也是一開啟就有一個班在作用中）
+    if (!state.klass) { const cs = allClasses(); state.klass = cs.length ? cs[0] : ''; }
     state.msg = '';
   } catch (e) {
     state.msg = '讀不到資料：' + e.message;
@@ -232,7 +234,7 @@ async function award(sid, on) {
 async function awardAllHandedIn() {
   const list = students().filter(s => s.sub && CLASSROOM.handedIn(s.sub) && !s.given);
   if (!list.length) { state.msg = '沒有「已繳交但還沒給分」的人。'; render(); return; }
-  const who = state.klass ? state.klass + ' 班' : '全部班級';
+  const who = (state.klass || '這一') + ' 班';
   if (!confirm(`把 ${who} ${list.length} 位「已繳交」的學生一次給分？\n（還是建議先點開看過幾份再按）`)) return;
   for (const s of list) await award(s.sid, true);
 }
@@ -299,23 +301,27 @@ function render() {
             ${state.kind === x.key ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-400'}">
             ${x.icon} ${x.label} +1⭐</button>`).join('')}
       </div>
-      <div class="grid sm:grid-cols-3 gap-3">
-        <div>
-          <label class="block text-xs font-black text-slate-500 mb-1">班級</label>
-          <select id="klass" class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-medium">
-            <option value="">全部班級（${Object.keys(state.roster).length} 人）</option>
-            ${classes.map(c => `<option value="${esc(c)}" ${c === state.klass ? 'selected' : ''}>${esc(c)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="sm:col-span-2">
-          <label class="block text-xs font-black text-slate-500 mb-1">要審核哪一關</label>
-          <select id="unit" class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-medium">
-            ${k.units.map(u => `<option value="${esc(u.id)}" ${u.id === state.unit ? 'selected' : ''}>第 ${u.no} 關　${esc(u.title)}</option>`).join('')}
-          </select>
-        </div>
+      <!-- 班級：一排藥丸分頁，和教師成績登錄系統同一套操作
+           （那邊也是一次看一個班，沒有「全部」—— 一次面對三十個人剛好，
+             三百多個人的清單捲起來只會找不到自己要的那一列） -->
+      <div class="flex items-center gap-2 flex-wrap mb-4">
+        <span class="text-sm font-bold text-slate-600">班級：</span>
+        ${classes.length
+          ? classes.map(c => `
+            <button data-klass="${esc(c)}" class="px-6 py-2 rounded-full text-sm transition-all duration-200
+              ${c === state.klass
+                ? 'font-bold bg-blue-600 text-white shadow-md transform hover:scale-105'
+                : 'font-medium bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 hover:shadow-sm'}">
+              ${esc(c)}</button>`).join('')
+          : '<span class="text-sm text-slate-400">名冊是空的</span>'}
       </div>
+
+      <label class="block text-xs font-black text-slate-500 mb-1">要審核哪一關</label>
+      <select id="unit" class="w-full border-2 border-slate-200 rounded-lg px-3 py-2 text-sm font-medium">
+        ${k.units.map(u => `<option value="${esc(u.id)}" ${u.id === state.unit ? 'selected' : ''}>第 ${u.no} 關　${esc(u.title)}</option>`).join('')}
+      </select>
       <div class="mt-3 text-xs text-slate-500">
-        ${state.klass ? esc(state.klass) + ' 班' : '全部班級'} ${list.length} 人｜已給分 <b class="text-emerald-600">${doneCount}</b>
+        ${esc(state.klass || '—')} 班 ${list.length} 人｜已給分 <b class="text-emerald-600">${doneCount}</b>
         ${state.cr.on ? `｜Classroom 顯示已繳交 <b class="text-indigo-600">${inCount}</b>` : ''}
       </div>
     </div>
@@ -429,6 +435,8 @@ document.addEventListener('click', async (e) => {
     catch (err) { state.msg = '登入失敗：' + err.message; render(); }
     return;
   }
+  const cb = e.target.closest('[data-klass]');
+  if (cb) { state.klass = cb.dataset.klass; render(); return; }
   const kb = e.target.closest('[data-kind]');
   if (kb) {
     state.kind = kb.dataset.kind;
@@ -442,7 +450,6 @@ document.addEventListener('click', async (e) => {
   if (ab) { award(ab.dataset.award, ab.dataset.on === '1'); return; }
 });
 document.addEventListener('change', (e) => {
-  if (e.target.id === 'klass') { state.klass = e.target.value; render(); return; }
   if (e.target.id === 'unit') { state.unit = e.target.value; render(); return; }
   if (e.target.id === 'cr-course') { pickCourse(e.target.value); return; }
   if (e.target.id === 'cr-work') { pickWork(e.target.value); return; }
