@@ -365,12 +365,13 @@ function render() {
     ${state.msg ? `<div class="mb-3 bg-amber-50 border border-amber-300 text-amber-800 text-sm rounded-xl px-4 py-3">${esc(state.msg)}</div>` : ''}
 
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4 pop">
-      <!-- 班級：一排藥丸分頁，和教師成績登錄系統同一套操作 -->
+      <!-- 班級：一排藥丸分頁，和教師成績登錄系統同一套操作。
+           ★ 不加「班級：」字樣，px 也收窄一點 —— 十二個班要排得下一行。
+             多那三個字就會擠掉最後一班，然後 812 自己掉到第二行。 -->
       <div class="flex items-center gap-2 flex-wrap mb-4">
-        <span class="text-sm font-bold text-slate-600">班級：</span>
         ${classes.length
           ? classes.map(c => `
-            <button data-klass="${esc(c)}" class="px-6 py-2 rounded-full text-sm transition-all duration-200
+            <button data-klass="${esc(c)}" class="px-4 py-2 rounded-full text-sm transition-all duration-200
               ${c === state.klass
                 ? 'font-bold bg-blue-600 text-white shadow-md transform hover:scale-105'
                 : 'font-medium bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 hover:shadow-sm'}">
@@ -381,7 +382,6 @@ function render() {
       <!-- 關卡：流程圖與程式各有自己的十關，用「第幾關」一起對應
            （學生交的是同一份作業，裡面有 png 也有 mp4） -->
       <div class="flex items-center gap-2 flex-wrap">
-        <span class="text-sm font-bold text-slate-600">關卡：</span>
         ${Array.from({ length: maxNo }, (_, i) => i + 1).map(n => `
           <button data-no="${n}" class="w-10 h-10 rounded-full text-sm transition-all duration-200
             ${n === state.no
