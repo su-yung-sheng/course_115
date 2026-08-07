@@ -223,6 +223,28 @@ function handle_(e) {
                      keys: keyReport_(),
                      hasDebug: !!prop_('DEBUG_KEY', '') });
     }
+    /* ── echo：把 Gemini 切開 ──────────────────────
+       ★ 為什麼需要
+         2026-08-07：ping 通、ask 卻回「找不到網頁」（＝GAS 掛掉，
+         回的是 Google 的錯誤頁不是 JSON）。ask 比 ping 多做四件事：
+           抓題目的 keys → 關鍵字比對 → 呼叫 Gemini → 檢查回覆
+         哪一件炸掉，從外面完全看不出來。
+         echo 做前兩件、跳過 Gemini —— 一次就分得出來：
+           echo 通、ask 不通 → problem 在呼叫 Gemini 那一段
+           echo 也不通       → problem 在前面（題目、快取、通行碼之後的任何一行） */
+    if (p.action === 'echo') {
+      var it = pickQuestion_(p.unit, p.qi);
+      if (!it) return json_({ ok: false, error: '找不到這一問（' + p.unit + ' / ' + p.qi + '）。' });
+      var ans = String(p.answer || '').slice(0, num_('MAX_ANSWER', DEFAULTS.MAX_ANSWER));
+      var kk = hitKeys_(ans, it.keys);
+      return json_({ ok: true, version: VERSION, echo: true,
+                     q: it.q,
+                     hasForbid: (it.forbid || []).length,
+                     hasKeys: (it.keys || []).length,
+                     hit: kk.hit, miss: kk.miss, done: kk.done,
+                     promptChars: buildPrompt_(it, ans).length });
+    }
+
     if (p.action !== 'ask') return json_({ ok: false, error: '不認得的 action：' + p.action });
 
     /* ── 配額 ──────────────────────────────────────

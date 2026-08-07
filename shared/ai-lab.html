@@ -49,6 +49,10 @@
            兩者的失敗原因完全不同，所以要能分開試。 -->
       <a id="openAsk" href="#" target="_blank" rel="noopener"
          class="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline">新分頁直接送一題</a>
+      <!-- ★ echo 做和 ask 一樣的事，只是不呼叫 Gemini。
+           ask 掛掉時，這一個通不通就分得出是「Gemini 那一段」還是「更前面」。 -->
+      <a id="openEcho" href="#" target="_blank" rel="noopener"
+         class="text-xs font-bold text-slate-500 hover:text-slate-800 underline">新分頁測 echo（不叫 AI）</a>
     </div>
     <span id="pingOut" class="text-xs"></span>
 
@@ -145,11 +149,10 @@ function refreshRaw() {
      新分頁送得出答案、頁面裡卻 Failed to fetch，就是跨來源；
      兩邊都卡住，就是 GAS 或 Gemini 那一端。 */
   const x = QS[+($('q').value || 0)] || {};
-  $('openAsk').href = GAS
-    ? (GAS + '?action=ask&key=' + encodeURIComponent(k) +
-       '&unit=' + encodeURIComponent(x.id || '2-1-1') + '&qi=' + (x.qi || 0) +
-       '&sid=lab&answer=' + encodeURIComponent('有一段一直重複'))
-    : '#';
+  const tail = '&unit=' + encodeURIComponent(x.id || '2-1-1') + '&qi=' + (x.qi || 0) +
+               '&sid=lab&answer=' + encodeURIComponent('有一段一直重複');
+  $('openAsk').href  = GAS ? (GAS + '?action=ask&key='  + encodeURIComponent(k) + tail) : '#';
+  $('openEcho').href = GAS ? (GAS + '?action=echo&key=' + encodeURIComponent(k) + tail) : '#';
 }
 /* refreshRaw() 的第一次呼叫搬到 QS 建好之後 —— 它要讀「目前選的那一問」，
    在這裡叫會踩到 QS 還沒初始化。 */
