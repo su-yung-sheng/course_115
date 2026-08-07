@@ -50,7 +50,9 @@
       <textarea id="forbid" rows="3"
         class="w-full border-2 border-slate-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea>
       <p class="text-xs text-slate-400 mt-1">
-        這幾項會直接寫進提示詞，也會用來檢查回覆有沒有洩漏。<b>不給的話 AI 會自己編一個答案，可能還編錯。</b>
+        這幾項會直接寫進提示詞，也會用來檢查回覆有沒有洩漏。<b>不給的話 AI 會自己編一個答案，可能還編錯。</b><br>
+        下拉選單裡標了 ⚠️ 的，是還沒在 <code>blocks.js</code> 設 <code>forbid</code> 的問題 ——
+        那幾問測起來不準，因為「洩漏答案」根本檢查不到。
       </p>
     </div>
   </section>
@@ -99,29 +101,20 @@ Object.keys(window.BLOCK_LEVELS || {}).forEach(id => {
   const a = (window.BLOCK_LEVELS[id] || {}).analysis;
   if (!a) return;
   (a.qs || []).forEach((x, i) => QS.push({
-    id, no: i + 1, q: x.q, hint: x.hint,
-    // 「不可以說出口的」預設從提示裡抓關鍵詞，你可以自己改
-    forbid: guessForbid(id, i, x)
+    id, no: i + 1, qi: QS.length, q: x.q, hint: x.hint,
+    /* 「不可以說出口的」直接讀關卡資料裡的 forbid ——
+       原本是靠關鍵字猜的，猜不準；而這一欄準不準，
+       直接決定「洩漏答案」這條檢查有沒有意義。 */
+    forbid: x.forbid || []
   }));
-  if (a.write) QS.push({ id, no: '寫', q: a.write.q, hint: a.write.sample, forbid: guessForbid(id, -1, a.write) });
+  if (a.write) QS.push({ id, no: '寫', q: a.write.q, hint: a.write.sample, forbid: a.write.forbid || [] });
 });
-
-function guessForbid(id, i, x) {
-  // 每一問真正的答案是什麼，機器猜不準 —— 這裡只給起手式，你自己補
-  const t = AIGUIDE._strip(x.hint || x.sample || '');
-  const out = [];
-  if (/畫正方形/.test(t)) out.push('畫正方形');
-  if (/下筆/.test(t)) out.push('下筆');
-  if (/360/.test(t)) out.push('360');
-  if (/邊長/.test(t)) out.push('邊長');
-  if (/最小值|最矮/.test(t)) out.push('最小值');
-  return out;
-}
 
 QS.forEach((x, i) => {
   const o = document.createElement('option');
   o.value = i;
-  o.textContent = x.id + ' 第 ' + x.no + ' 問　' + AIGUIDE._strip(x.q).slice(0, 40);
+  o.textContent = (x.forbid.length ? '' : '⚠️ ') + x.id + ' 第 ' + x.no + ' 問　'
+                + AIGUIDE._strip(x.q).slice(0, 36);
   $('q').appendChild(o);
 });
 $('q').onchange = syncForbid;
