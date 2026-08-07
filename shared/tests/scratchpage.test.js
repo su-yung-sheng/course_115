@@ -43,9 +43,31 @@ ok(!/out\.push\('analysis'\);\s*out\.push\('derive'\)/.test(html), '步驟不是
 ok(/const kind = steps\[preStage\]/.test(html), '一次只畫目前這一步');
 ok(/preUnit !== u\.id.*preStage = 0/s.test(html), '換關卡要從第一步重來');
 
-/* 讀秒：拆解沒有「答對」，只能給時間。沒有讀秒等於一顆「下一步」按鈕 */
-ok(/countdown\(foot, 20,/.test(html), '拆解那一步要讀秒（20 秒）');
+/* ★ 拆解那一步的關卡是「真的做了兩件事」，不是讀秒。
+   讀秒等於承認這一步沒東西可判 —— 學生乾等 20 秒再按下一步，什麼也沒發生。
+   現在要圈對「哪一段一直重複」，而且要寫下自己的想法。 */
+ok(!/countdown\(foot, 20,/.test(html), '★ 拆解那一步不再用讀秒充數');
+ok(/renderAnalysis\(body, lv\.analysis, \{/.test(html), '   改成把關卡交給拆解本身');
+ok(/onDone:\s*function \(\) \{ preStage\+\+/.test(html), '   拆解自己說完成了才進下一步');
+ok(/onWrite:.*saveNote/.test(html), '   寫的內容會存起來');
 ok(/countdown\(foot, 0,/.test(html), '推導做完之後不必再等');
+
+/* 每一關的拆解裡，那個「值得動手圈」的題目要真的有 */
+['2-1-1', '2-1-2'].forEach(id => {
+  const a = W.BLOCK_LEVELS[id].analysis;
+  ok(a.qs.filter(q => q.pick).length === 1, id + ' 有一題要動手圈（不是每一問都要作答，那會變問卷）');
+  ok(!!a.write, id + ' 有「先寫再對照」');
+  const pk = a.qs.find(q => q.pick).pick;
+  ok(pk.answer && pk.answer.length >= 1, id + ' 的圈選題有標準答案');
+  ok(!!pk.tooMany && !!pk.tooFew, id + ' 多選、少選要給不同的話 —— 講反了會把學生推向反方向');
+  ok(!/答案|正確/.test(pk.prompt), id + ' 題目本身不暗示答案');
+  ok(a.write.min >= 10, id + ' 寫作有字數下限（一個字就過等於沒有）');
+  ok(a.write.sample.length > 40, id + ' 課本的說法要夠具體，不然對照不出東西');
+});
+
+/* ★ 學生寫的字會存進 Firestore，一定要有長度上限 */
+ok(/slice\(0, 500\)/.test(html), '★ 存的字數有上限（不能讓人往資料庫塞小說）');
+ok(/想法沒存成功（不影響闖關）/.test(html), '存失敗不擋人');
 
 /* 完成紀錄 */
 ok(/modules: \{ scratch: \{ pre: \{ \[unitId\]: true \} \} \}/.test(html),
