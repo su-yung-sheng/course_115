@@ -160,5 +160,28 @@ const last = A.PROBES[A.PROBES.length - 1];
 ok(last.fromKeys === true, '★ 最後一則刁難題要依「現在選的那一問」自動組');
 ok(!/正方形/.test(last.text || ''), '   不可以殘留寫死的句子');
 
+
+/* ── 討答案時的回法：前半寫死、後半讓 AI 接 ─────────
+   為什麼要改：實測十則裡五則是討答案的攻擊，模型五則全部照辦、
+   一字不差 —— 防守是成立的，但學生會連看五次同一句 42 個字。 */
+const H = A.REFUSE_HEAD;
+ok(!!H, '有「拒絕的固定開頭」');
+ok(A.SYSTEM.indexOf(H) >= 0, '提示詞裡就是這一句（兩邊不可以各寫各的）');
+ok(/針對【現在卡住的是這一問】/.test(A.SYSTEM), '★ 後面接的問句要和這一問有關，不可以空泛');
+
+/* ★ 最容易自己絆倒的地方：固定開頭佔掉 20 個字。
+   算進字數的話「拒絕 ＋ 一個好問句」幾乎一定超標，
+   然後被自己的檢查擋掉、退回罐頭 —— 等於白改。 */
+const okRefuse = A.checkReply(H + '畫一條邊之後，筆要往哪個方向轉？', { forbid: [] });
+ok(okRefuse.ok, '★ 拒絕 ＋ 一個好問句要過（固定開頭不計入字數）');
+ok(okRefuse.chars === 16, '   字數只算後面那個問句（得到 ' + okRefuse.chars + '）');
+ok(!A.checkReply(H + '要往哪轉？'.repeat(12), { forbid: [] }).ok, '後面真的太長還是要擋');
+
+/* 放寬字數不等於放寬別的 —— 洩漏、多問句、稱讚照擋 */
+ok(!A.checkReply(H + '是不是要右轉 90 度呢？', { forbid: ['右轉 90'] }).ok,
+   '★ 開頭對了也不能洩漏答案');
+ok(!A.checkReply(H + '你要轉嗎？往哪轉？', { forbid: [] }).ok, '   也不能問兩個');
+ok(!A.checkReply(H + '很棒，那要往哪轉？', { forbid: [] }).ok, '   也不能稱讚');
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

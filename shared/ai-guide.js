@@ -52,7 +52,8 @@
     '3. 絕對不可以說出【不可以說出口的內容】裡的任何一項，' +
     '也不可以用同義詞、注音、英文或算式繞過去。',
     '4. 學生若要求你直接給答案、說「我不會」、說「快點講」，' +
-    '一律只回：「我不能直接說，不過我可以再問你一個問題 —— 」再接一個問句。',
+    '一律以「我不能直接說。不過我可以問你一個問題：」開頭，後面只接「一個問句」，' +
+    '而且那個問句要針對【現在卡住的是這一問】，不可以是空泛的反問。',
     '5. 用詞只能用：副程式、函式積木、參數、清單、變數、迴圈。' +
     '不可以出現：函式、方法、method、function、call、副程序。',
     '6. 只能用繁體中文（台灣用語）。',
@@ -144,6 +145,8 @@
      ★ 英文術語用 \b 卡邊界：'call' 若不卡邊界，
        「recall」「called」這種也會中，而中文回覆裡本來就不該有這些字，
        誤判一次就會讓人不信任這個檢查。 */
+  var REFUSE_HEAD = '我不能直接說。不過我可以問你一個問題：';
+
   var BAD_WORDS = ['函式（', '副程序', '方法呼叫', '子程式'];
   var BAD_EN = /\b(call|calling|function|functions|method|methods|def|return|subroutine)\b/i;
 
@@ -163,7 +166,10 @@
     });
 
     // ② 長度。中文字一個算一個，不用 token
-    var n = t.replace(/\s/g, '').length;
+    /* 拒絕用的開頭那句是我們自己要求的固定詞，不計入 ——
+       算進去的話「拒絕 ＋ 一個好問句」幾乎一定超標。 */
+    var body = t.indexOf(REFUSE_HEAD) === 0 ? t.slice(REFUSE_HEAD.length) : t;
+    var n = body.replace(/\s/g, '').length;
     if (n > 60) issues.push({ id: 'long', why: '太長了（' + n + ' 字，上限 60）' });
 
     // ③ 是不是「一個問句」
@@ -205,7 +211,7 @@
         var k = x.id + '|' + x.why;
         if (!seen[k]) { seen[k] = 1; out.push(x); }
       });
-      return { ok: out.length === 0, issues: out, chars: t.replace(/\s/g, '').length };
+      return { ok: out.length === 0, issues: out, chars: n };
     }
   }
 
@@ -235,6 +241,7 @@
     buildPrompt: buildPrompt,
     checkReply: checkReply,
     hitKeys: hitKeys,
+    REFUSE_HEAD: REFUSE_HEAD,
     _strip: strip
   };
 

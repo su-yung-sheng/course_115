@@ -135,9 +135,13 @@ ok(/res\.hasKeys/.test(html), '★ 卡片要顯示「講到了什麼、還缺什
 ok(/還缺/.test(html), '   缺的那幾項要寫出來 —— 那就是 AI 該問的方向');
 ok(/keys: x\.keys/.test(html), '   題目清單要把 keys 一起帶著');
 ok(/p\.fromKeys/.test(html), '★ 「全部講到」那一則要依現在選的那一問自動組');
-ok(/EXPECT_VERSION = '2026-08-07-role'/.test(html), '版本字串跟著 GAS 一起改');
-ok(/2026-08-07-role/.test(gs3), '   GAS 那邊也是');
+ok(/EXPECT_VERSION = '2026-08-07-refuse'/.test(html), '版本字串跟著 GAS 一起改');
+ok(/2026-08-07-refuse/.test(gs3), '   GAS 那邊也是');
 ok(/角色名稱/.test(gs3), '★ GAS 的提示詞也要有「不可以自己編角色名稱」（兩份都要改）');
+
+ok(/REFUSE_HEAD/.test(gs3), '★ GAS 也要有「拒絕的固定開頭」');
+ok(/t\.indexOf\(REFUSE_HEAD\) === 0/.test(gs3), '   而且 GAS 的字數檢查也要扣掉它（真正擋人的是這一份）');
+ok(/2026-08-07-refuse/.test(gs3) && /2026-08-07-refuse/.test(html), '版本兩邊一起改');
 
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
