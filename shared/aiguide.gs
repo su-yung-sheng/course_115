@@ -38,6 +38,10 @@
         MODEL        （可省略）預設 gemini-2.5-flash
                      —— 想省額度可改 gemini-2.5-flash-lite，但先用測試台確認它守得住
         SHEET_ID     （可省略）要存對話紀錄的話，填 Google 試算表 ID
+        DEBUG_KEY    （可省略）★ 只有你知道的偵錯碼，測試台用
+                     帶了它才會回傳「模型原始的回覆」與「為什麼被擋」，
+                     也才能當場指定 model 比較不同模型。
+                     ⚠️ 不要寫進 config.js —— 學生手上只該有 QUERY_KEY。
    3. 先在編輯器裡執行 selfTest —— 它會印出模型回了什麼、檢查有沒有過
    4. 部署 → 網頁應用程式：執行身分「我自己」、誰可以存取「任何人」
    5. 把 /exec 網址填進 config.js 的 AIGUIDE.GAS_URL
@@ -172,7 +176,8 @@ function handle_(e) {
     if (p.action === 'ping') {
       return json_({ ok: true, model: prop_('MODEL', DEFAULTS.MODEL),
                      units: Object.keys(levels_()).length, used: usedToday_(),
-                     keys: keyReport_() });
+                     keys: keyReport_(),
+                     hasDebug: !!prop_('DEBUG_KEY', '') });
     }
     if (p.action !== 'ask') return json_({ ok: false, error: '不認得的 action：' + p.action });
 
@@ -193,6 +198,17 @@ function handle_(e) {
 
     var answer = String(p.answer || '').slice(0, num_('MAX_ANSWER', DEFAULTS.MAX_ANSWER));
 
+    /* ── 偵錯模式（只有老師）──────────────────────
+       ★ 為什麼要有
+         擋下違規回覆是對的，但那讓「測試」變成瞎子 ——
+         你看到的是替代的安全提示，不知道模型原本說了什麼。
+       ★ 為什麼要另一把碼
+         QUERY_KEY 會出現在學生的頁面上（公開 repo）。
+         用同一把的話，學生也看得到原始回覆，擋下就沒意義了。
+       ⚠️ DEBUG_KEY 沒設的時候，dbg 一定不成立 —— 不能讓空字串對上空字串。 */
+    var dk = prop_('DEBUG_KEY', '');
+    var debug = !!dk && p.dbg === dk;
+
     /* ── 先用關鍵概念判一次 ────────────────────────
        ★ 全部講到了就不必問 AI
          省額度、省學生等待，而且回饋是你寫的、每次都一樣。
@@ -205,14 +221,25 @@ function handle_(e) {
                      reply: '你講到了：' + k.hit.join('、') + '。這一題想通了，往下做吧。' });
     }
 
-    var reply = askGemini_(buildPrompt_(item, answer));
+    /* 偵錯模式可以指定模型 —— 這樣不必為了比較 Flash 與 Lite 重新部署。
+       ⚠️ 一樣只有帶對 DEBUG_KEY 才行，否則學生可以指定一個沒有限制的模型。 */
+    var model = debug && p.model ? String(p.model).slice(0, 60) : '';
+
+    var reply = askGemini_(buildPrompt_(item, answer), model);
     var v = checkReply_(reply, item.forbid);
 
     bump_(sid);
     log_(sid, p.unit, p.qi, answer, reply, v);
 
     /* 違規的回覆不送出去。學生拿到的是安全的那一句。 */
-    return json_({ ok: true, reply: v.ok ? reply : FALLBACK, blocked: !v.ok });
+    var out = { ok: true, reply: v.ok ? reply : FALLBACK, blocked: !v.ok };
+    if (debug) {
+      out.raw = reply;                 // 模型原本說了什麼
+      out.why = v.why;                 // 為什麼被擋
+      out.model = model || prop_('MODEL', DEFAULTS.MODEL);
+      out.prompt = buildPrompt_(item, answer);
+    }
+    return json_(out);
 
   } catch (err) {
     // 一律回 200 ＋ ok:false：Apps Script 回非 200 時是一頁 HTML，
@@ -363,10 +390,10 @@ function buildPrompt_(item, answer) {
   ].join('\n');
 }
 
-function askGemini_(prompt) {
+function askGemini_(prompt, modelOverride) {
   var all = keys_();
   if (!all.length) throw new Error('還沒設定 GEMINI_KEY（專案設定 → 指令碼屬性）。');
-  var model = prop_('MODEL', DEFAULTS.MODEL);
+  var model = modelOverride || prop_('MODEL', DEFAULTS.MODEL);
   var lastErr = '';
 
   /* 有幾把就最多試幾次。每一把只試一次 ——

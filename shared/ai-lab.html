@@ -25,48 +25,38 @@
     </p>
   </header>
 
-  <!-- 走哪一條路 -->
+  <!-- 連線 -->
   <section class="bg-white rounded-2xl border border-slate-200 p-5 mb-5">
-    <h2 class="font-black mb-2">① 走哪一條路</h2>
-    <div class="flex gap-4 flex-wrap text-sm">
-      <label class="flex items-center gap-2 font-bold">
-        <input type="radio" name="via" value="gas" checked> 透過 GAS（學生實際走的路）
-      </label>
-      <label class="flex items-center gap-2 font-bold">
-        <input type="radio" name="via" value="direct"> 直接打 Gemini（要金鑰，可以換模型比較）
-      </label>
+    <h2 class="font-black mb-2">① 連線</h2>
+    <div class="text-xs text-slate-500 font-mono break-all bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+      <span id="gasUrl"></span>
     </div>
+    <div class="grid sm:grid-cols-2 gap-2 mt-2">
+      <input id="gasKey" type="password" placeholder="通行碼（QUERY_KEY）"
+             class="border-2 border-slate-300 rounded-lg px-3 py-2 font-mono text-sm focus:border-indigo-500 outline-none">
+      <input id="dbgKey" type="password" placeholder="偵錯碼（DEBUG_KEY，可留空）"
+             class="border-2 border-slate-300 rounded-lg px-3 py-2 font-mono text-sm focus:border-indigo-500 outline-none">
+    </div>
+    <div class="mt-2 flex gap-2 items-center flex-wrap">
+      <input id="model" placeholder="換一個模型試試（留空 = 用 GAS 設定的）"
+             class="border-2 border-slate-300 rounded-lg px-3 py-1.5 font-mono text-sm flex-1 min-w-[16rem]">
+      <button id="ping" class="bg-slate-200 hover:bg-slate-300 font-bold px-4 py-1.5 rounded-lg text-sm">測連線</button>
+    </div>
+    <span id="pingOut" class="text-xs"></span>
 
-    <div id="gasBox" class="mt-3">
-      <div class="text-xs text-slate-500 font-mono break-all bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-        <span id="gasUrl"></span>
-      </div>
-      <input id="gasKey" type="password" placeholder="GAS 的通行碼（QUERY_KEY）"
-             class="w-full border-2 border-slate-300 rounded-lg px-3 py-2 font-mono text-sm mt-2 focus:border-indigo-500 outline-none">
-      <button id="ping" class="mt-2 bg-slate-200 hover:bg-slate-300 font-bold px-4 py-1.5 rounded-lg text-sm">測連線</button>
-      <span id="pingOut" class="text-xs ml-2"></span>
-      <p class="text-xs text-slate-400 mt-2 leading-relaxed">
-        網址讀自 <code>11502/config.js</code> 的 <code>AIGUIDE.GAS_URL</code>，不必每次輸入。<br>
-        通行碼填一次就記在這台瀏覽器（localStorage）。<b>這條路測到的才是學生真正會遇到的東西</b> ——
-        包含 GAS 端的攔截：違規的回覆學生根本看不到。
-      </p>
-    </div>
-
-    <div id="directBox" class="mt-3 hidden">
-      <input id="key" type="password" placeholder="貼上 Gemini API 金鑰"
-             class="w-full border-2 border-slate-300 rounded-lg px-3 py-2 font-mono text-sm focus:border-indigo-500 outline-none">
-      <div class="mt-2 flex gap-2 items-center flex-wrap">
-        <label class="text-sm font-bold">模型</label>
-        <input id="model" value="gemini-2.5-flash"
-               class="border-2 border-slate-300 rounded-lg px-3 py-1.5 font-mono text-sm w-72">
-      </div>
-      <p class="text-xs text-slate-400 mt-2 leading-relaxed">
-        ⚠️ 金鑰只存在這個分頁（sessionStorage），關掉就沒了，不會寫進任何檔案。
-        這一頁只有你會開才可以這樣做；<b>學生的頁面永遠不行</b>。<br>
-        這條路看得到<b>模型原始的回覆</b>（GAS 那條會把違規的換掉），
-        也可以換模型比較 Flash 與 Flash-Lite。
-      </p>
-    </div>
+    <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+      網址讀自 <code>11502/config.js</code>，兩組碼填一次就記在這台瀏覽器。<br>
+      <b>全部走 GAS —— 也就是學生實際會走的那條路</b>，包含伺服器端的攔截。
+      這一頁不會碰到 Gemini 金鑰，金鑰只在 GAS 的指令碼屬性裡。
+    </p>
+    <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2 leading-relaxed">
+      <b>偵錯碼是做什麼的：</b>違規的回覆會被 GAS 換成安全提示 —— 那讓測試變成瞎子，
+      你看不到模型原本說了什麼。帶了偵錯碼才會一併回傳<b>原始回覆</b>、<b>被擋的原因</b>與<b>實際送出的提示詞</b>，
+      也才能在上面那格<b>換模型</b>比較。<br>
+      在 GAS 的指令碼屬性新增 <code>DEBUG_KEY</code> 就能用。
+      <b>不要把它寫進 config.js</b> —— 學生手上只該有 QUERY_KEY，
+      不然擋下違規回覆就沒有意義了。
+    </p>
   </section>
 
   <!-- 題目 -->
@@ -117,35 +107,23 @@
 const $ = id => document.getElementById(id);
 const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-/* ── 兩條路 ────────────────────────────────────────
-   GAS：學生實際走的路。網址讀 config.js，通行碼記在這台瀏覽器。
-   直接：看得到模型原始的回覆、可以換模型比較。金鑰只放 sessionStorage。 */
+/* ── 只有一條路：走 GAS ─────────────────────────────
+   ★ 為什麼拿掉「直接打 Gemini」
+     那條路要把金鑰貼進瀏覽器，而且測到的不是學生會遇到的東西 ——
+     中間少了 GAS 的攔截。
+     它原本唯一的價值是「看得到模型原始的回覆」，
+     那件事現在由 DEBUG_KEY 做，而且更好：走的是真正的管線。 */
 const GAS = ((window.CONFIG || {}).AIGUIDE || {}).GAS_URL || '';
 $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒填）';
-$('gasKey').value = localStorage.getItem('ailab.gaskey') || '';
-$('gasKey').oninput = () => localStorage.setItem('ailab.gaskey', $('gasKey').value.trim());
 
-/* ⚠️ 金鑰用 sessionStorage（關掉分頁就沒），通行碼用 localStorage（記著）——
-   兩者風險不同：金鑰外流是別人拿去跑自己的東西、帳單算你的；
-   通行碼本來就會出現在學生的頁面上。 */
-$('key').value = sessionStorage.getItem('ailab.key') || '';
-$('key').oninput = () => sessionStorage.setItem('ailab.key', $('key').value.trim());
-$('model').value = sessionStorage.getItem('ailab.model') || 'gemini-2.5-flash';
-$('model').oninput = () => sessionStorage.setItem('ailab.model', $('model').value.trim());
-
-const via = () => document.querySelector('input[name=via]:checked').value;
-[...document.querySelectorAll('input[name=via]')].forEach(r => r.onchange = paintVia);
-function paintVia() {
-  const g = via() === 'gas';
-  $('gasBox').classList.toggle('hidden', !g);
-  $('directBox').classList.toggle('hidden', g);
-  $('forbid').disabled = g;
-  $('forbid').className = $('forbid').className.replace(/ bg-slate-100/g, '') + (g ? ' bg-slate-100' : '');
-  $('forbidNote').textContent = g
-    ? '走 GAS 時這一欄改不了 —— 題目與 forbid 由伺服器自己抓，前端傳什麼都不算。這正是它擋得住學生的原因。'
-    : '直接打 Gemini 時，這一欄就是實際送出去的內容，可以當場改了再試。';
-}
-paintVia();
+/* 兩組碼都記在這台瀏覽器。
+   ⚠️ 這一頁不碰 Gemini 金鑰 —— 那把只在 GAS 的指令碼屬性裡，
+      連老師的瀏覽器都不該有。 */
+[['gasKey', 'ailab.gaskey'], ['dbgKey', 'ailab.dbgkey'], ['model', 'ailab.model']]
+  .forEach(([id, k]) => {
+    $(id).value = localStorage.getItem(k) || '';
+    $(id).oninput = () => localStorage.setItem(k, $(id).value.trim());
+  });
 
 $('ping').onclick = async () => {
   $('pingOut').textContent = '測試中…';
@@ -154,7 +132,8 @@ $('ping').onclick = async () => {
     $('pingOut').innerHTML = '<span class="text-emerald-600 font-bold">✓ 通了</span>' +
       '　模型 ' + esc(j.model) + '　題目 ' + j.units + ' 關　今天已用 ' + j.used + ' 次' +
       (j.keys && j.keys.length ? '　金鑰 ' + j.keys.length + ' 把' +
-        (j.keys.some(k => k.cooling) ? '（有在冷卻的）' : '') : '');
+        (j.keys.some(k => k.cooling) ? '（有在冷卻的）' : '') : '') +
+      (j.hasDebug ? '' : '　<span class="text-amber-700 font-bold">⚠️ 還沒設 DEBUG_KEY，看不到原始回覆</span>');
   } catch (e) {
     $('pingOut').innerHTML = '<span class="text-rose-600 font-bold">✗ ' + esc(e.message) + '</span>';
   }
@@ -205,6 +184,14 @@ QS.forEach((x, i) => {
   $('q').appendChild(o);
 });
 $('q').onchange = syncForbid;
+/* ★ 這一欄永遠改不了。
+   題目與 forbid 由 GAS 自己抓，前端傳什麼都不算 ——
+   那正是它擋得住學生的原因。開放編輯只會讓人以為改了有用。
+   要改就去改 11502/content/blocks.js 的 forbid，GAS 會跟著更新（快取 6 小時）。 */
+$('forbid').disabled = true;
+$('forbid').className += ' bg-slate-100 text-slate-500';
+$('forbidNote').textContent =
+  '這一欄改不了 —— 題目與 forbid 由 GAS 自己抓（讀 blocks.js），前端傳什麼都不算。';
 function syncForbid() { $('forbid').value = (QS[+$('q').value] || {}).forbid.join('\n'); }
 syncForbid();
 
@@ -217,51 +204,40 @@ function cur() {
   };
 }
 
+/* 提示詞真正的來源是 GAS（shared/aiguide.gs 的 buildPrompt_）。
+   ★ 前端 ai-guide.js 也有一份，是刻意的重複 —— 但重複就會走鐘。
+     所以帶了偵錯碼的時候，直接顯示 GAS 那一份（送出去的那一份），
+     沒帶的話只能顯示前端這一份，並且講明它可能不一致。 */
 $('show').onclick = () => {
   const c = cur(); c.answer = $('ans').value;
-  $('prompt').textContent =
-    (via() === 'gas'
-      ? '⚠️ 走 GAS 時，提示詞是伺服器組的（shared/aiguide.gs 的 buildPrompt_）。\n'
-      + '　　下面是前端這一份，內容應該一樣 —— 兩邊不一致的話就是有一邊忘了改。\n\n'
-      : '')
-    + AIGUIDE.buildPrompt(c);
+  $('prompt').textContent = (window.__lastPrompt
+    ? '（這是 GAS 實際送出去的那一份）\n\n' + window.__lastPrompt
+    : '⚠️ 這是前端 ai-guide.js 的版本，真正送出去的是 GAS 那一份。\n'
+    + '　　填了偵錯碼再送一次，這裡就會換成 GAS 實際用的提示詞。\n\n'
+      + AIGUIDE.buildPrompt(c));
   $('promptBox').classList.toggle('hidden');
 };
 
 /* 直接從瀏覽器打 Gemini。
    ★ 這樣做只在這一頁可以接受：只有你會開，金鑰不離開你的電腦（除了送去 Google）。
      學生頁面要走的是另一條路，見對話紀錄。 */
-async function ask(answer) {
-  if (via() === 'gas') return askViaGas(answer);
-  const key = $('key').value.trim();
-  if (!key) throw new Error('還沒填金鑰');
-  const model = $('model').value.trim() || 'gemini-2.5-flash';
-  const c = cur(); c.answer = answer;
-  const t0 = performance.now();
-  const r = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/' +
-    encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key),
-    { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: AIGUIDE.buildPrompt(c) }] }] }) });
-  const j = await r.json();
-  if (!r.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status));
-  const text = (((j.candidates || [])[0] || {}).content || {}).parts?.[0]?.text || '';
-  return { text: text.trim(), ms: Math.round(performance.now() - t0),
-           usage: j.usageMetadata || {}, forbid: c.forbid };
-}
-
 /* 走 GAS：只送「哪一關、第幾問、寫了什麼」。
    ★ 回來的可能已經被換過 —— GAS 檢查沒過的回覆不會送出來，
      學生看到的是安全提示。這裡用 blocked 標出來，
      因為「被擋下」本身就是你要觀察的結果之一。
    ⚠️ 想看模型原始的回覆，設 GAS 的 SHEET_ID（會連同違規原因一起記），
      或切到「直接打 Gemini」那一條路。 */
-async function askViaGas(answer) {
+async function ask(answer) {
   const x = QS[+$('q').value] || {};
   const t0 = performance.now();
-  const j = await callGas({ action: 'ask', unit: x.id, qi: x.qi, answer: answer, sid: 'lab' });
+  const p = { action: 'ask', unit: x.id, qi: x.qi, answer: answer, sid: 'lab' };
+  const dbg = $('dbgKey').value.trim(), mdl = $('model').value.trim();
+  if (dbg) { p.dbg = dbg; if (mdl) p.model = mdl; }
+  const j = await callGas(p);
   return { text: j.reply || '', ms: Math.round(performance.now() - t0),
-           usage: {}, forbid: x.forbid, blocked: !!j.blocked };
+           usage: {}, forbid: x.forbid, blocked: !!j.blocked,
+           raw: j.raw || '', why: j.why || [], model: j.model || '',
+           byKeys: !!j.byKeys, prompt: j.prompt || '' };
 }
 
 function card(tag, sent, res, err) {
@@ -270,20 +246,30 @@ function card(tag, sent, res, err) {
       <div class="text-xs font-bold text-slate-400 mb-1">${esc(tag)}</div>
       <div class="text-sm text-rose-700 font-bold">✗ ${esc(err)}</div></div>`;
   }
-  const v = AIGUIDE.checkReply(res.text, { forbid: res.forbid });
+  if (res.prompt) window.__lastPrompt = res.prompt;
+  /* 有偵錯碼時檢查「原始回覆」—— 檢查安全提示沒有意義，它一定是乾淨的。 */
+  const v = AIGUIDE.checkReply(res.raw || res.text, { forbid: res.forbid });
   const box = v.ok ? 'border-emerald-300' : 'border-amber-400';
   return `<div class="bg-white border-2 ${box} rounded-xl p-4 mb-3">
     <div class="flex items-baseline justify-between gap-3 mb-1">
       <div class="text-xs font-bold text-slate-400">${esc(tag)}</div>
-      <div class="text-[11px] text-slate-400 font-mono">${v.chars} 字 · ${res.ms} ms
-        · in ${res.usage.promptTokenCount || '?'} / out ${res.usage.candidatesTokenCount || '?'} tokens</div>
+      <div class="text-[11px] text-slate-400 font-mono">${v.chars} 字 · ${res.ms} ms${res.model ? ' · ' + esc(res.model) : ''}</div>
     </div>
     <div class="text-xs text-slate-500 mb-2">學生輸入：<span class="font-mono">${esc(sent) || '（空白）'}</span></div>
     <div class="text-[15px] leading-relaxed mb-2">${esc(res.text) || '（沒有回覆）'}</div>
+    ${res.byKeys
+      ? '<div class="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-2">'
+        + '⚡ <b>關鍵概念全中，根本沒問 AI</b> —— 這一次不花額度、不必等。</div>'
+      : ''}
     ${res.blocked
       ? '<div class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">'
-        + '🛡️ <b>這一則被 GAS 擋下了</b> —— 上面顯示的是替代的安全提示，'
-        + '模型原本回了什麼要看 GAS 的紀錄試算表（SHEET_ID）。</div>'
+        + '🛡️ <b>這一則被 GAS 擋下了</b>，學生只會看到上面那句安全提示。'
+        + (res.raw
+            ? '<div class="mt-1.5 pt-1.5 border-t border-amber-200">模型原本說的是：<br>'
+              + '<span class="font-bold">' + esc(res.raw) + '</span>'
+              + (res.why && res.why.length ? '<br>被擋原因：' + esc(res.why.join('；')) : '') + '</div>'
+            : '<br>想看模型原本說了什麼，填上偵錯碼再送一次。')
+        + '</div>'
       : ''}
     ${v.ok
       ? '<div class="text-xs font-bold text-emerald-600">✓ 這幾條規則沒抓到問題</div>'
