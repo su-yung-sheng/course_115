@@ -41,6 +41,10 @@
       <input id="model" placeholder="換一個模型試試（留空 = 用 GAS 設定的）"
              class="border-2 border-slate-300 rounded-lg px-3 py-1.5 font-mono text-sm flex-1 min-w-[16rem]">
       <button id="ping" class="bg-slate-200 hover:bg-slate-300 font-bold px-4 py-1.5 rounded-lg text-sm">測連線</button>
+      <!-- ★ 連不上時，這個連結一秒分辨是「GAS 有問題」還是「瀏覽器擋掉」：
+           新分頁開得出 JSON ＝ GAS 沒問題，問題在跨來源；開不出來 ＝ GAS 那邊。 -->
+      <a id="openRaw" href="#" target="_blank" rel="noopener"
+         class="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline">在新分頁直接開這個網址</a>
     </div>
     <span id="pingOut" class="text-xs"></span>
 
@@ -125,6 +129,14 @@ $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒�
     $(id).oninput = () => localStorage.setItem(k, $(id).value.trim());
   });
 
+/* 這個連結和程式送的是同一個網址 —— 用來分辨「GAS 有問題」還是「瀏覽器擋掉」 */
+function refreshRaw() {
+  const k = $('gasKey').value.trim();
+  $('openRaw').href = GAS ? (GAS + '?action=ping&key=' + encodeURIComponent(k)) : '#';
+}
+refreshRaw();
+$('gasKey').addEventListener('input', refreshRaw);
+
 $('ping').onclick = async () => {
   $('pingOut').textContent = '測試中…';
   try {
@@ -135,7 +147,8 @@ $('ping').onclick = async () => {
         (j.keys.some(k => k.cooling) ? '（有在冷卻的）' : '') : '') +
       (j.hasDebug ? '' : '　<span class="text-amber-700 font-bold">⚠️ 還沒設 DEBUG_KEY，看不到原始回覆</span>');
   } catch (e) {
-    $('pingOut').innerHTML = '<span class="text-rose-600 font-bold">✗ ' + esc(e.message) + '</span>';
+    $('pingOut').innerHTML = '<div class="text-rose-700 bg-rose-50 border border-rose-200 rounded-lg ' +
+      'px-3 py-2 mt-2 whitespace-pre-wrap leading-relaxed">✗ ' + esc(e.message) + '</div>';
   }
 };
 
@@ -145,7 +158,23 @@ async function callGas(params) {
   if (!k) throw new Error('還沒填 GAS 的通行碼');
   const qs = Object.keys(params).map(n =>
     encodeURIComponent(n) + '=' + encodeURIComponent(params[n])).join('&');
-  const r = await fetch(GAS + '?key=' + encodeURIComponent(k) + '&' + qs, { redirect: 'follow' });
+  const url = GAS + '?key=' + encodeURIComponent(k) + '&' + qs;
+  let r;
+  try {
+    r = await fetch(url, { redirect: 'follow' });
+  } catch (e) {
+    /* ★ 「Failed to fetch」是連線層的錯 —— 請求沒送到，或回應被瀏覽器擋掉。
+       瀏覽器基於安全不會告訴你是哪一種，所以只能把可能性列出來。
+       ⚠️ 這則訊息本身就是除錯工具：沒有它，看到「Failed to fetch」
+          完全不知道要從哪裡開始查。 */
+    throw new Error(
+      '連不上（Failed to fetch）。這是連線層的問題，不是 GAS 回了錯誤。三個常見原因：\n' +
+      '① 部署時「誰可以存取」沒選「任何人」—— 最常見。改完要重新部署（版本選「新版本」）。\n' +
+      '② 這一頁是用 file:// 直接開的 —— 本機檔案的來源是 null，瀏覽器會擋跨來源請求。' +
+      '要從 https://su-yung-sheng.github.io/… 開這一頁。\n' +
+      '③ 網址不是「部署」出來的那一個（結尾要是 /exec，不是編輯器網址）。\n' +
+      '→ 按右邊「在新分頁直接開這個網址」：開得出 JSON 就是 ①②，開不出來就是 ③ 或還沒部署。');
+  }
   const t = await r.text();
   let j;
   try { j = JSON.parse(t); }
