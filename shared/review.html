@@ -370,10 +370,18 @@ function students() {
           warn: uid ? GRADING.bonusWarning(base, subAt) : ''
         };
       });
+      /* 學生在「動手之前」用自己的話寫的那一句（11502 程式設計關卡）。
+         ★ 為什麼放在這一頁：這裡本來就選好了班級和關卡、也已經讀出全班名冊，
+           要看「這一關全班怎麼想」不必再做一頁。
+         ⚠️ 這不是成績，沒有加分按鈕。它的用途是下一節課挑兩三句出來討論。 */
+      const noteUnit = unitIdOf('vid');
+      const note = noteUnit
+        ? String((((p.modules || {}).scratch || {}).notes || {})[noteUnit] || '')
+        : '';
       return {
         sid, name: r.name || '', cls: clsOf(sid, r), no: noOf(sid, r),
         stars: GRADING.starsWithBonus(p),
-        sub, per,
+        sub, per, note,
         // 看不出類型的附件單獨列出來，不要默默藏起來
         other: sub ? (sub.attachments || []).filter(a => CLASSROOM.guessKind(a) === 'unknown') : []
       };
@@ -470,6 +478,12 @@ function card(s) {
       </div>
       ${s.other.length ? `<div class="mt-2 text-[11px] text-slate-400">
         其他附件（看不出類型）：${s.other.map(a => link(a, s.sid, '')).join('、')}</div>` : ''}
+      ${s.note ? `
+        <details class="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <summary class="text-[11px] font-bold text-amber-800 cursor-pointer">
+            ✍️ 他寫的想法（${s.note.length} 字）</summary>
+          <p class="mt-1.5 text-xs text-amber-900 leading-relaxed whitespace-pre-wrap">${esc(s.note)}</p>
+        </details>` : ''}
     </div>`;
 }
 

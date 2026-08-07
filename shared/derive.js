@@ -239,7 +239,23 @@
     '.dv-hint[open] summary::before{content:"▾ "}',
     '.dv-hint summary:hover{color:#6366f1}',
     '.dv-hint>div{margin-top:5px;background:#f8fafc;border-left:3px solid #cbd5e1;',
-    '  border-radius:0 8px 8px 0;padding:8px 12px;font-size:13px;line-height:1.9;color:#475569}'
+    '  border-radius:0 8px 8px 0;padding:8px 12px;font-size:13px;line-height:1.9;color:#475569}',
+    /* 圈選：一行一顆，點了會亮起來。長得像積木堆，和下面的拼圖對得起來 */
+    '.dv-pick{margin-top:8px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px}',
+    '.dv-pt{font-size:12.5px;color:#64748b;font-weight:700;margin-bottom:7px}',
+    '.dv-line{display:block;width:100%;text-align:left;margin-bottom:5px;padding:7px 11px;',
+    '  border:2px solid #e2e8f0;background:#f8fafc;border-radius:8px;font-size:13.5px;',
+    '  font-family:inherit;cursor:pointer;transition:.12s;color:#334155}',
+    '.dv-line:hover{border-color:#cbd5e1}',
+    '.dv-line.on{background:#eef2ff;border-color:#6366f1;color:#3730a3;font-weight:700}',
+    '.dv-line.on::before{content:"✓ ";font-weight:900}',
+    /* 先寫再對照 */
+    '.dv-write{margin-top:14px;background:#fffbeb;border:2px solid #fde68a;border-radius:12px;padding:12px 14px}',
+    '.dv-write textarea{width:100%;box-sizing:border-box;margin-top:7px;padding:9px 11px;',
+    '  border:2px solid #fde68a;border-radius:9px;font-family:inherit;font-size:13.5px;',
+    '  line-height:1.8;resize:vertical}',
+    '.dv-write textarea:focus{outline:none;border-color:#f59e0b}',
+    '.dv-write textarea:disabled{background:#fff;color:#78350f}'
   ].join('');
 
   function ensureStyle() {
@@ -427,21 +443,136 @@
        五個問題連答案一起攤開，就變成「照著抄」。
        先讓學生自己想，想不出來才點開 ——
        點開這個動作本身也讓學生知道自己卡在第幾問。 */
-  function renderAnalysis(host, data) {
+  function renderAnalysis(host, data, opts) {
     ensureStyle();
+    opts = opts || {};
     if (!host) return;
     if (!data || !(data.qs || []).length) { host.innerHTML = ''; host.style.display = 'none'; return; }
     host.style.display = '';
     host.className = 'dv';
+
+    /* 每一問底下可以掛一個小互動：
+         pick  —— 圈出重複的那一段（有標準答案，判得出來）
+         沒有掛的就只有問句和提示。
+       ★ 為什麼不是每一問都掛
+         五問全部要作答會變成問卷。只有「這一關真正的判斷」值得問 ——
+         第 1 關是「哪一段一直重複」，第 2 關是「哪個數字每次都不一樣」。 */
+    var picksLeft = data.qs.filter(function (x) { return x.pick; }).length;
+
     host.innerHTML =
       (data.intro ? '<div class="dv-intro">' + data.intro + '</div>' : '') +
-      '<ol class="dv-qs">' + data.qs.map(function (it) {
+      '<ol class="dv-qs">' + data.qs.map(function (it, i) {
         return '<li><div class="dv-qt">' + it.q + '</div>' +
+          (it.pick ? pickHtml(it.pick, i) : '') +
           (it.hint
             ? '<details class="dv-hint"><summary>想不出來？點開看提示</summary><div>' +
               it.hint + '</div></details>'
             : '') + '</li>';
-      }).join('') + '</ol>';
+      }).join('') + '</ol>' +
+      (data.write ? writeHtml(data.write) : '') +
+      (opts.onDone ? '<div id="dv-go"></div>' : '');
+
+    data.qs.forEach(function (it, i) { if (it.pick) wirePick(host, it.pick, i); });
+    if (data.write) wireWrite(host, data.write, opts);
+    refreshGo();
+
+    function refreshGo() {
+      var box = host.querySelector('#dv-go');
+      if (!box || !opts.onDone) return;
+      var wroteOk = !data.write || (host.__wrote || '').trim().length >= (data.write.min || 12);
+      var ready = picksLeft === 0 && wroteOk;
+      box.innerHTML = '<button class="dv-btn" style="width:100%;padding:11px" ' +
+        (ready ? '' : 'disabled ') + 'id="dv-godo">' +
+        (ready ? '想清楚了，開始動手 →'
+               : (picksLeft > 0 ? '上面還有 ' + picksLeft + ' 題沒答對' : '先寫下你的想法'))
+        + '</button>';
+      var b = box.querySelector('#dv-godo');
+      b.style.opacity = ready ? '' : '.5';
+      b.style.cursor = ready ? 'pointer' : 'not-allowed';
+      if (ready) b.onclick = function () { opts.onDone(host.__wrote || ''); };
+    }
+
+    function wirePick(root, p, i) {
+      var wrap = root.querySelector('[data-pick="' + i + '"]');
+      var fb = wrap.querySelector('.dv-fb');
+      var done = false;
+      wrap.addEventListener('click', function (e) {
+        var row = e.target.closest('[data-line]');
+        if (row && !done) { row.classList.toggle('on'); return; }
+        if (!e.target.closest('[data-check]') || done) return;
+        var got = [].slice.call(wrap.querySelectorAll('[data-line].on'))
+          .map(function (r) { return Number(r.dataset.line); }).sort();
+        var want = (p.answer || []).slice().sort();
+        fb.style.display = '';
+        if (got.join() === want.join()) {
+          done = true; picksLeft--;
+          fb.className = 'dv-fb good';
+          fb.innerHTML = '✓ ' + (p.ok || '對了。');
+          wrap.querySelector('[data-check]').remove();
+          refreshGo();
+        } else {
+          fb.className = 'dv-fb bad';
+          fb.innerHTML = '✗ ' + missMsg(p, got, want);
+        }
+      });
+    }
+
+    function wireWrite(root, w, o) {
+      var ta = root.querySelector('#dv-write');
+      var btn = root.querySelector('#dv-wbtn');
+      var out = root.querySelector('#dv-wout');
+      btn.onclick = function () {
+        var t = ta.value.trim();
+        if (t.length < (w.min || 12)) {
+          out.style.display = '';
+          out.className = 'dv-fb bad';
+          out.textContent = '再多寫一點 —— 至少 ' + (w.min || 12) + ' 個字。（現在 ' + t.length + ' 個字）';
+          return;
+        }
+        host.__wrote = t;
+        ta.disabled = true; btn.remove();
+        out.style.display = '';
+        out.className = 'dv-fb good';
+        /* ★ 寫完才顯示課本的說法。
+             先給答案的話，學生會照抄；而這一步的重點是「先有自己的想法」，
+             寫得對不對反而是其次 —— 所以不判分，只讓他自己比對。 */
+        out.innerHTML = '<b>你寫的：</b>' + esc(t) + '<div style="margin-top:8px">' +
+          '<b>課本是這樣說的：</b>' + w.sample + '</div>' +
+          '<div style="margin-top:6px;font-size:12px;opacity:.75">兩邊不一樣沒關係 —— 講得出自己的理由才是重點。</div>';
+        if (o.onWrite) o.onWrite(t);
+        refreshGo();
+      };
+    }
+  }
+
+  /** 圈選題：哪幾行是一直重複的 */
+  function pickHtml(p, i) {
+    return '<div class="dv-pick" data-pick="' + i + '">' +
+      '<div class="dv-pt">' + (p.prompt || '點選你認為對的那幾行') + '</div>' +
+      (p.lines || []).map(function (t, k) {
+        return '<button data-line="' + k + '" class="dv-line">' + t + '</button>';
+      }).join('') +
+      '<button data-check class="dv-btn" style="margin-top:8px">確定</button>' +
+      '<div class="dv-fb" style="display:none"></div></div>';
+  }
+
+  /* 錯的時候要講「哪裡不一樣」，不是只說錯。
+     多選了或少選了是兩種不同的誤解，講反了會把學生推向反方向。 */
+  function missMsg(p, got, want) {
+    var extra = got.filter(function (x) { return want.indexOf(x) < 0; });
+    var less = want.filter(function (x) { return got.indexOf(x) < 0; });
+    if (extra.length && p.tooMany) return p.tooMany;
+    if (less.length && p.tooFew) return p.tooFew;
+    if (extra.length) return '多選了 ' + extra.length + ' 行。再想想那一行是不是這件事的一部分。';
+    return '還少了 ' + less.length + ' 行。';
+  }
+
+  function writeHtml(w) {
+    return '<div class="dv-write">' +
+      '<div class="dv-qt">✍️ ' + w.q + '</div>' +
+      '<textarea id="dv-write" rows="3" placeholder="用你自己的話寫，寫完才會看到課本怎麼說"></textarea>' +
+      '<button id="dv-wbtn" class="dv-btn" style="margin-top:8px">寫好了，看看課本怎麼說</button>' +
+      '<div id="dv-wout" class="dv-fb" style="display:none"></div></div>';
   }
 
   global.DERIVE = {

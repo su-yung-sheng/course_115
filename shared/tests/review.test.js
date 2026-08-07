@@ -52,5 +52,21 @@ for (let i = 1; i <= 12; i++) {
 }
 is(all.every(Boolean), true, '801～812 的學號推算都對');
 
+section('學生寫的想法');
+/* ── 學生寫的想法（動手之前那一步）─────────────────
+   這不是成績，是下一節課的討論素材。所以：看得到、但沒有加分按鈕。 */
+{
+  const h = require('fs').readFileSync(
+    require('path').join(__dirname, '..', 'review.html'), 'utf8');
+  is(/modules \|\| \{\}\)\.scratch \|\| \{\}\)\.notes/.test(h), true, '從 modules.scratch.notes 讀出來');
+  is(/unitIdOf\('vid'\)/.test(h), true, '照目前選的關卡取，不是整包倒出來');
+  is(/他寫的想法/.test(h), true, '卡片上看得到');
+  is(/<details/.test(h.slice(Math.max(0, h.indexOf('他寫的想法') - 300))), true, '預設收起來，不然卡片會被長文撐爛');
+  is(/whitespace-pre-wrap/.test(h), true, '學生打的換行要留著');
+  is(!/data-award[^>]*note|note[^>]*data-award/.test(h), true, '★ 想法旁邊沒有加分按鈕（這不是成績）');
+  is(/esc\(s\.note\)/.test(h), true, '★ 學生打的字要跳脫 —— 不然打 <script> 就出事了');
+}
+
 console.log(`\n通過 ${pass}／失敗 ${fail}`);
 process.exit(fail ? 1 : 0);
+

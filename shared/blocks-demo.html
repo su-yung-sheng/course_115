@@ -134,7 +134,10 @@ function show(i) {
         學生的關卡頁要不要擋，是接進 scratch.html 時才決定的事。 */
   var ac = document.getElementById('ana-card');
   ac.style.display = lv.analysis ? '' : 'none';
-  DERIVE.renderAnalysis(document.getElementById('ana'), lv.analysis);
+  DERIVE.renderAnalysis(document.getElementById('ana'), lv.analysis, {
+    onWrite: function (t) { console.log('學生寫的：' + t); },
+    onDone:  function () { console.log('拆解完成'); }
+  });
 
   var dc = document.getElementById('derive-card');
   if (lv.derive) {

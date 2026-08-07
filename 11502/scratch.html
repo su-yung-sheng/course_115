@@ -317,13 +317,17 @@ function renderPre(u, lv){
   const foot = document.getElementById('pre-foot');
 
   if (kind === 'analysis') {
-    DERIVE.renderAnalysis(body, lv.analysis);
-    /* 讀秒按鈕：拆解沒有「答對」這種事，只能給時間。
-       ★ 為什麼要讀秒：不讀秒的話這一步等於一顆「下一步」按鈕，
-         學生會在零點五秒內按掉，那不如不要做。
-       ★ 為什麼只有 20 秒：這一步的目的是「讓人真的看一眼」，
-         不是罰站。太長會讓已經想清楚的學生開始討厭這一頁。 */
-    countdown(foot, 20, '我想過了，下一步 →', function(){ preStage++; paintGrader(); });
+    /* 這一步原本是「點開提示 ＋ 讀秒 20 秒」。
+       ★ 為什麼換掉：讀秒是假的關卡 —— 它等於承認這一步沒東西可判，
+         學生就是乾等 20 秒再按下一步，什麼也沒發生。
+       現在要做兩件真的事：圈出這一關真正的判斷、寫下自己的想法。
+       寫的內容會存起來，下一節課老師拿得出來討論。 */
+    DERIVE.renderAnalysis(body, lv.analysis, {
+      onWrite: function (t) { if (window.saveNote) window.saveNote(u.id, t); },
+      onDone:  function () { preStage++; paintGrader(); }
+    });
+    foot.innerHTML = '<p class="text-xs text-slate-400">' +
+      '這裡沒有分數，寫錯也不會扣分 —— 先有自己的想法，等一下拼積木才不是照抄。</p>';
     return;
   }
 
@@ -350,7 +354,7 @@ function renderPre(u, lv){
                  + '真正要交的還是 Scratch 做出來的作品。</p>';
 }
 
-/** 讀秒按鈕（秒數 0 = 直接可按） */
+/** 按鈕（秒數 0 = 直接可按；讀秒的用法已經拿掉，留著是給推導完成用的） */
 function countdown(host, sec, label, done){
   const b = document.createElement('button');
   b.className = 'w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white '
@@ -435,6 +439,22 @@ repaint();
         { modules: { scratch: { pre: { [unitId]: true } } } }, { merge: true });
     } catch (e) {
       console.warn('思考關卡完成紀錄沒存成功（不影響上傳）', e);
+    }
+  };
+
+  /* 學生在「先寫再對照」寫的那一句。
+     ★ 為什麼要存
+       這是全班唯一一份「用自己的話講模組化」的東西。下一節課挑兩三句
+       貼出來討論，比老師再講一次有用得多。
+     ⚠️ 和 pre 一樣，寫失敗不擋人 —— 這不是成績。 */
+  window.saveNote = async function (unitId, text) {
+    if (!sid || !unitId) return;
+    try {
+      await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
+        { modules: { scratch: { notes: { [unitId]: String(text || '').slice(0, 500) } } } },
+        { merge: true });
+    } catch (e) {
+      console.warn('想法沒存成功（不影響闖關）', e);
     }
   };
 
