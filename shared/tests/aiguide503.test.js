@@ -97,4 +97,19 @@ ok(/每專案、每模型、每天/.test(src), '   而且要寫清楚為什麼�
 ok(!/429 只是塞車/.test(src), '★ 不可以寫死「429 只是塞車」—— 每日用完時那句是錯的');
 ok(/403＝那把根本不能用/.test(src), '403 要講「等再久也沒用」');
 
+/* ★ 冷卻多久，Google 自己講了 —— 不要用猜的。
+   2026-08-07 實測：訊息裡寫「Please retry in 47.861074189s」，
+   但 quotaId 寫著 PerDay，於是我照代號冰了 30 分鐘 ——
+   那把金鑰 48 秒後就能用了，被多冰了 29 分鐘。
+   代號只是標籤，retryDelay 是可以驗證的事實。 */
+ok(/retry in \(\[0-9\.\]\+\)s/.test(src), '★ 要解析 Google 給的等待秒數');
+ok(/retryDelay/.test(src), '   結構化的 retryDelay 也收');
+ok(/retryS > 0 \? Math\.ceil\(retryS\) \+ 3/.test(src), '★ 有講就照講的冰，不要照代號猜');
+ok(/limit:\\s\*\(\\d\+\)/.test(src), '把實際上限抓出來 —— 那決定一堂課撐不撐得住');
+
+/* 新專案不能用舊模型，那是 404 不是金鑰壞掉 */
+ok(/function listModels/.test(src), '有「這把金鑰能用哪些模型」的工具');
+ok(/no longer available to new users|不能用我們指定的模型/.test(src), '   而且寫下為什麼需要它');
+ok(/x-goog-api-key/.test(src.slice(src.indexOf('function listModels'))), '列模型用標頭送金鑰');
+
 console.log('通過 '+pass+'／失敗 '+fail); process.exit(fail?1:0);

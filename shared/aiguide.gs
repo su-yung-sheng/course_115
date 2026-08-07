@@ -83,7 +83,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-testkeys';
+var VERSION = '2026-08-07-models';
 
 var DEFAULTS = {
   MODEL: 'gemini-2.5-flash',
@@ -433,6 +433,49 @@ function levels_() {
 
 function clearCache() { CacheService.getScriptCache().remove('levels'); }
 
+/* ── 這把金鑰有哪些模型可以用（編輯器執行 listModels）──
+   ★ 為什麼需要
+     2026-08-07 實測：新申請的金鑰（GEMINI_KEY_2）回
+       「This model models/gemini-2.5-flash is no longer available to new users.」
+     也就是說 —— **那把金鑰是好的，它只是不能用我們指定的模型**。
+     這種錯誤長得很像「金鑰壞了」，實際上完全是另一回事：
+     舊專案還能用的模型，新專案已經不給了。
+
+   ★ 為什麼要用問的，不要我寫死一份清單
+     模型名稱會下架、會改名，寫死的清單一定會過期，
+     而過期的清單比沒有清單更糟 —— 它看起來像答案。
+     這支直接問 Google：這把金鑰現在能用什麼。 */
+function listModels() {
+  ['GEMINI_KEY', 'GEMINI_KEY_2', 'GEMINI_KEY_3'].forEach(function (name) {
+    var key = prop_(name, '');
+    if (!key) { Logger.log('%s：（沒設定）', name); return; }
+    try {
+      var res = UrlFetchApp.fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',
+        { method: 'get', muteHttpExceptions: true,
+          headers: { 'x-goog-api-key': key.trim() } });
+      if (res.getResponseCode() !== 200) {
+        Logger.log('── %s：拿不到清單（%s）%s', name, res.getResponseCode(),
+                   res.getContentText().slice(0, 160));
+        return;
+      }
+      var all = (JSON.parse(res.getContentText()).models || []);
+      /* 只留「能拿來產生內容」而且是 flash／lite 這一類的 ——
+         全部印出來會有幾十個，反而看不到重點。 */
+      var usable = all.filter(function (m) {
+        return (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0;
+      }).map(function (m) { return m.name.replace('models/', ''); });
+      var cheap = usable.filter(function (n) { return /flash|lite/i.test(n) && !/embedding|image|tts|audio|live/i.test(n); });
+      Logger.log('── %s：能產生內容的共 %s 個', name, usable.length);
+      Logger.log('   flash／lite 這一類（我們要的）：%s', cheap.join('、') || '（一個都沒有）');
+    } catch (e) {
+      Logger.log('── %s：連不出去 %s', name, e.message);
+    }
+  });
+  Logger.log('把「三把都有」的那個模型名稱設進指令碼屬性 MODEL —— ' +
+             '三把不能用同一個模型的話，分流就沒有意義了。');
+}
+
 /* ── 一把一把測（在編輯器裡執行 testKeys）─────────
    ★ 為什麼需要這個
      平常的錯誤訊息只說「某把在冷卻」，說不出「那把到底怎麼了」——
@@ -669,7 +712,20 @@ function askGemini_(prompt, modelOverride, noFallback) {
          而真正該做的是「今天別再測了」或「換一把新的」。
          ⚠️ 只認關鍵字，不解析完整結構：Google 的錯誤格式會變，
             認錯了頂多退回舊行為（當成每分鐘），不會壞掉。 */
+      /* ★ 冷卻多久，Google 自己在回應裡就講了 —— 不要用猜的。
+         2026-08-07 實測拿到的訊息裡有「Please retry in 47.861074189s」，
+         我卻因為 quotaId 寫著 PerDay 就冷卻 30 分鐘 ——
+         那把金鑰其實 48 秒後就能用了，被我多冰了 29 分鐘。
+         ⚠️ quotaId 和 retryDelay 曾經互相矛盾（代號說「每天」，
+            但只要等 48 秒）。這種時候**以能動的那個為準**：
+            retryDelay 是可以驗證的，代號只是標籤。 */
+      var retryS = parseFloat(
+            (body.match(/[Pp]lease retry in ([0-9.]+)s/) || [])[1] ||
+            (body.match(/"retryDelay"\s*:\s*"([0-9.]+)s"/) || [])[1] || 0);
       var perDay = /PerDay|per day|daily limit|RequestsPerDay/i.test(body);
+      /* 免費層的實際數字也在訊息裡（limit: 20）。抓出來，
+         因為那決定了「這套東西一堂課撐不撐得住」。 */
+      var lim = (body.match(/limit:\s*(\d+)/) || [])[1] || '';
       /* ★ 這個配額是「每專案、每模型、每天」——
          配額代號自己就寫明了：GenerateRequestsPerDayPerProjectPerModel。
          也就是說**換一個模型就有另一份當天的額度**。
@@ -677,12 +733,15 @@ function askGemini_(prompt, modelOverride, noFallback) {
          （和 503 過載退避是同一個機制，只是原因不同）。 */
       if (perDay) dayCapped = true;
       var quota = (body.match(/"quotaId"\s*:\s*"([^"]+)"/) || [])[1] || '';
-      coolDown_(k, '429 ' + (perDay ? '今天的份用完了' : '這一分鐘問太多次')
-                 + (quota ? '（' + quota + '）' : ''),
-                perDay ? 1800 : 0);
-      lastErr = k.name + '：' + (perDay
-        ? '今天的額度用完了（' + (quota || 'PerDay') + '）—— 等一分鐘沒用，要換金鑰或等明天'
-        : '這一分鐘問太多次了（等一下就好）');
+      /* Google 說幾秒就冰幾秒（多留 3 秒緩衝）；沒講才用我們的預設。 */
+      var coolFor = retryS > 0 ? Math.ceil(retryS) + 3 : (perDay ? 1800 : 0);
+      coolDown_(k, '429 ' + (retryS > 0 ? '要等 ' + Math.ceil(retryS) + ' 秒'
+                                        : (perDay ? '今天的份用完了' : '這一分鐘問太多次'))
+                 + (lim ? '，上限 ' + lim : '') + (quota ? '（' + quota + '）' : ''),
+                coolFor);
+      lastErr = k.name + '：額度滿了' + (lim ? '（上限 ' + lim + '）' : '')
+              + (retryS > 0 ? '，Google 說等 ' + Math.ceil(retryS) + ' 秒'
+                            : (perDay ? '，今天的份用完了' : '，等一下就好'));
       continue;
     }
     if (code === 403) {
