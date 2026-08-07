@@ -83,7 +83,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-perday';
+var VERSION = '2026-08-07-testkeys';
 
 var DEFAULTS = {
   MODEL: 'gemini-2.5-flash',
@@ -432,6 +432,73 @@ function levels_() {
 }
 
 function clearCache() { CacheService.getScriptCache().remove('levels'); }
+
+/* ── 一把一把測（在編輯器裡執行 testKeys）─────────
+   ★ 為什麼需要這個
+     平常的錯誤訊息只說「某把在冷卻」，說不出「那把到底怎麼了」——
+     而三把金鑰混在輪替裡，壞的那把會被其他把掩蓋掉。
+     2026-08-07 就是這樣：GEMINI_KEY_2 從頭到尾是 403，
+     但因為另外兩把還能用，整整一天都沒發現。
+
+   ★ 為什麼兩種送法都試
+     金鑰可以放在網址參數（?key=）或標頭（x-goog-api-key）。
+     Google 兩種都收，但**專案的 API 金鑰限制**可能只擋其中一種 ——
+     於是同一把金鑰換個送法就活了。
+     猜是猜不出來的，直接兩種都送，看哪一種回 200。
+
+   ⚠️ 這支會真的呼叫 Gemini，每把每種送法各一次（三把 ＝ 6 次）。
+      額度見底的時候跑，看到的會是 429 而不是真正的問題。 */
+function testKeys() {
+  var names = ['GEMINI_KEY', 'GEMINI_KEY_2', 'GEMINI_KEY_3'];
+  var model = prop_('MODEL', DEFAULTS.MODEL);
+  var cache = CacheService.getScriptCache();
+
+  Logger.log('模型：%s', model);
+  names.forEach(function (name) {
+    var key = prop_(name, '');
+    if (!key) { Logger.log('%s：（沒設定）', name); return; }
+
+    /* 只印長度和開頭四碼 —— 足以分辨「貼錯了」「多了空白」「換了格式」，
+       又不會把金鑰本身寫進執行紀錄。 */
+    Logger.log('── %s：長度 %s，開頭 %s…%s', name, key.length, key.slice(0, 4),
+               (key !== key.trim() ? '　⚠️ 前後有空白（貼上時帶進來的，會讓它整把失效）' : ''));
+
+    // 先把冷卻清掉，不然剛換的金鑰會被上一次的 403 蓋住
+    var i = names.indexOf(name) + 1;
+    cache.remove('cool.' + i);
+
+    [['網址參數 ?key=', 'query'], ['標頭 x-goog-api-key', 'header']].forEach(function (way) {
+      var url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+                encodeURIComponent(model) + ':generateContent';
+      var opt = { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+                  payload: JSON.stringify({
+                    contents: [{ parts: [{ text: '回一個字：好' }] }],
+                    generationConfig: { maxOutputTokens: 5, thinkingConfig: { thinkingBudget: 0 } }
+                  }) };
+      if (way[1] === 'query') url += '?key=' + encodeURIComponent(key.trim());
+      else opt.headers = { 'x-goog-api-key': key.trim() };
+
+      try {
+        var res = UrlFetchApp.fetch(url, opt);
+        var code = res.getResponseCode();
+        var body = res.getContentText();
+        if (code === 200) { Logger.log('   %s → ✅ 200 可以用', way[0]); return; }
+        var msg = (body.match(/"message"\s*:\s*"([^"]+)"/) || [])[1] || body.slice(0, 160);
+        var quota = (body.match(/"quotaId"\s*:\s*"([^"]+)"/) || [])[1];
+        Logger.log('   %s → ❌ %s：%s%s', way[0], code, msg, quota ? '（' + quota + '）' : '');
+        if (code === 403) {
+          Logger.log('        403 常見原因：① 該專案沒啟用 Generative Language API' +
+                     ' ② 金鑰設了「API 限制」把這個 API 擋掉 ③ 金鑰設了來源限制（HTTP referrer／IP）' +
+                     '　—— Apps Script 是從 Google 的伺服器送出，沒有固定 IP，所以來源限制一定要關掉。');
+        }
+      } catch (e) {
+        Logger.log('   %s → ❌ 連不出去：%s', way[0], e.message);
+      }
+    });
+  });
+  Logger.log('（兩種送法只要有一種 200，那把就是好的 —— ' +
+             '如果只有標頭那種通得過，告訴我，我把程式改成用標頭。）');
+}
 
 /* 把今天的用量歸零（在編輯器裡執行）。
    ★ 什麼時候會用到：測試台測一測撞到上限，或者你想重跑一次完整的刁難題。

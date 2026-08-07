@@ -78,4 +78,13 @@ ok(iDone > 0 && iDone < iCap2, '★ 「關鍵概念全中」要排在配額檢�
 const iSid2 = src.indexOf('var sid = String(p.student');
 ok(iSid2 > 0 && iSid2 < iDone, '   而 sid 要更早 —— 不然那一則的紀錄會少掉學號');
 
+/* ★ 三把金鑰混在輪替裡，壞的那把會被好的掩蓋掉。
+   2026-08-07：GEMINI_KEY_2 從頭到尾是 403，整整一天沒發現。 */
+ok(/function testKeys/.test(src), '有「一把一把測」的工具');
+ok(/x-goog-api-key/.test(src), '★ 標頭那種送法也要試 —— 金鑰限制可能只擋網址參數那種');
+ok(/key\.slice\(0, 4\)/.test(src), '只印開頭四碼和長度，不把金鑰寫進執行紀錄');
+ok(/前後有空白/.test(src), '前後空白要當場點出來 —— 那用眼睛看不出來');
+ok(/cache\.remove\('cool\.'/.test(src), '★ 測之前先清冷卻，不然剛換的金鑰會被上一次的 403 蓋住');
+ok(/來源限制/.test(src), '403 要列出常見原因，不能只說「不能用」');
+
 console.log('通過 '+pass+'／失敗 '+fail); process.exit(fail?1:0);
