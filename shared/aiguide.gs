@@ -79,7 +79,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-nothink';
+var VERSION = '2026-08-07-503';
 
 var DEFAULTS = {
   MODEL: 'gemini-2.5-flash',
@@ -95,7 +95,14 @@ var DEFAULTS = {
      免費層的實際數字 Google 已經不公布了（要看 AI Studio 自己的頁面），
      10 是個保守值。三把就是每分鐘約 30 次，一班 30 人大致接得住。 */
   RPM_PER_KEY: 10,
-  COOL_SEC: 60         // 某把吃到 429 之後冷卻幾秒
+  COOL_SEC: 60,        // 某把吃到 429／403 之後冷卻幾秒（過載不冷卻，見 askGemini_）
+  /* 模型過載（503）時退到哪一個。
+     ★ 2026-08-07 實際遇到：gemini-2.5-flash 回
+       「This model is currently experiencing high demand」——
+       和金鑰、額度、參數都無關，就是那個模型當下人太多。
+       Lite 的負載通常比較輕，退過去至少學生有東西可用。
+     設成空字串就不退，直接告訴學生等一下。 */
+  FALLBACK_MODEL: 'gemini-2.5-flash-lite'
 };
 
 /* ── 多把金鑰：分流、節流、冷卻 ─────────────────────
@@ -456,11 +463,11 @@ function buildPrompt_(item, answer) {
   ].join('\n');
 }
 
-function askGemini_(prompt, modelOverride) {
+function askGemini_(prompt, modelOverride, noFallback) {
   var all = keys_();
   if (!all.length) throw new Error('還沒設定 GEMINI_KEY（專案設定 → 指令碼屬性）。');
   var model = modelOverride || prop_('MODEL', DEFAULTS.MODEL);
-  var lastErr = '';
+  var lastErr = '', overloaded = false;
 
   /* 有幾把就最多試幾次。每一把只試一次 ——
      ★ 同一把重試沒有意義：429 是額度，不是網路抖動。
@@ -511,6 +518,23 @@ function askGemini_(prompt, modelOverride) {
          不冷卻 —— 換一把也一樣會錯，直接講清楚比較快。 */
       throw new Error('Gemini 回 400（' + model + '）：' + body.slice(0, 200));
     }
+    /* ★ 5xx：Google 那一端暫時有問題，不是你的設定。
+       2026-08-07 實際遇到 503「This model is currently experiencing high demand」。
+
+       ⚠️ 這一段本來沒寫，503 會掉進下面的 throw 直接死掉 ——
+          症狀是「有時候好、有時候壞」，而每次壞掉都會讓人去翻設定、翻部署、
+          翻參數。暫時性的錯誤一定要和「設定錯了」分開處理。
+
+       ★ 為什麼是 break 不是 continue，也不冷卻金鑰
+         503 說的是「這個**模型**現在人太多」，不是「這把金鑰有問題」。
+         換金鑰完全沒有幫助（同一個模型），冷卻金鑰更是冤枉它 ——
+         而且冷卻之後連退到備援模型都會被自己擋住。
+         正確的動作是換**模型**，那件事在迴圈外面做。 */
+    if (code >= 500) {
+      lastErr = 'HTTP ' + code + '（' + model + ' 過載，暫時的）';
+      overloaded = true;
+      break;
+    }
     if (code !== 200) throw new Error('Gemini 回了 HTTP ' + code + '：' + body.slice(0, 200));
 
     var j = JSON.parse(body);
@@ -528,11 +552,21 @@ function askGemini_(prompt, modelOverride) {
     return text;
   }
 
+  /* ★ 模型過載時退到備援模型再試一次。
+     和「額度用完」不一樣：額度用完換模型也沒用，過載換一個就有機會。
+     ⚠️ 只退一次（noFallback），不然過載時會無限換來換去。 */
+  var fb = prop_('FALLBACK_MODEL', DEFAULTS.FALLBACK_MODEL);
+  if (overloaded && !noFallback && fb && fb !== model) {
+    try { return askGemini_(prompt, fb, true); } catch (e3) { lastErr = e3.message; }
+  }
+
   /* 全部都不能用 → 讓前端等一下再試。
      這是「排隊」在 GAS 上唯一做得到的形式：不是我們排，是請對方晚點來。 */
-  var e = new Error('AI 現在很忙，等一下再問 —— 先自己想想看。' + (lastErr ? '（' + lastErr + '）' : ''));
+  var e = new Error((overloaded
+      ? 'AI 現在人太多（Google 那邊的模型過載），等一下再問 —— 先自己想想看。'
+      : 'AI 現在很忙，等一下再問 —— 先自己想想看。') + (lastErr ? '（' + lastErr + '）' : ''));
   e.busy = true;
-  e.retryAfter = 20;
+  e.retryAfter = overloaded ? 15 : 20;
   throw e;
 }
 
