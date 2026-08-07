@@ -552,6 +552,41 @@ def check_scratch_names():
 
 
 # ── 7.9 關卡答案要和老師的 Scratch 原始檔一致 ─────────────
+def check_wording():
+    """
+    關卡說明的用詞：同一個東西不能有三個名字。
+
+    ★ 為什麼要擋
+      課本（翰林 114 資科 2 下 4-2）叫「副程式」，
+      Scratch 官方繁中的分類叫「函式積木」。
+      學生同時看課本和網站，兩個名字已經是負擔；第三個「自訂積木」
+      是我自己發明的，課本沒有、Scratch 也沒有 —— 純粹是多出來的翻譯成本。
+
+    規則（也寫在 11502/content/blocks.js 檔頭）：
+      · 積木上、調色盤上的字 → Scratch 官方，一字不改
+      · 說明、提示裡講概念   → 課本的「副程式」
+
+    ⚠️ 只檢查「會被學生看到的字」，也就是引號裡的字串。
+       程式註解裡怎麼寫都行 —— 註解是寫給改程式的人看的，
+       強迫註解也統一，只會逼人為了過檢查而寫得不清楚。
+    """
+    bad = '自訂積木'
+    targets = ['11502/content/blocks.js', '11501/content/flowchart.js', 'shared/blocks.js']
+    for t in targets:
+        path = os.path.join(ROOT, *t.split('/'))
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding='utf-8') as f:
+            src = strip_comments(f.read())
+        for m in re.finditer(r"'([^'\n]*)'|\"([^\"\n]*)\"", src):
+            txt = m.group(1) or m.group(2) or ''
+            if bad in txt:
+                errors.append(
+                    f'{t} 第 {src[:m.start()].count(chr(10)) + 1} 行的顯示文字寫了「{bad}」：'
+                    f'課本叫「副程式」、Scratch 叫「函式積木」，不要有第三種講法'
+                    f'（規則寫在 11502/content/blocks.js 檔頭）')
+
+
 def check_sb3_levels():
     """
     把 11502/content/reference/*.sb3（老師課堂用的原始檔）直接解出來，
@@ -716,6 +751,7 @@ def main():
     check_term_start()
     check_scratch_names()
     check_sb3_levels()
+    check_wording()
 
     if warns:
         for w in warns:

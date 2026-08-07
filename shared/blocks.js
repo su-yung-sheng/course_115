@@ -443,7 +443,7 @@
     var defArea = null;
 
     if (hasDefine) {
-      midBox.appendChild(tag('函式區（定義自訂積木）'));
+      midBox.appendChild(tag('函式區（定義副程式）'));
       defArea = el('div', 'bk-script bk-defarea');
       midBox.appendChild(defArea);
       var gap = el('div');
