@@ -193,6 +193,18 @@ function handle_(e) {
 
     var answer = String(p.answer || '').slice(0, num_('MAX_ANSWER', DEFAULTS.MAX_ANSWER));
 
+    /* ── 先用關鍵概念判一次 ────────────────────────
+       ★ 全部講到了就不必問 AI
+         省額度、省學生等待，而且回饋是你寫的、每次都一樣。
+         「答出關鍵字就好，不見得整句都對」—— 這一段就是那句話的實作。
+       ⚠️ 這一次不計入配額（bump_），因為根本沒呼叫 Gemini。 */
+    var k = hitKeys_(answer, item.keys);
+    if (k.done) {
+      log_(sid, p.unit, p.qi, answer, '（關鍵概念全中，沒問 AI）', { ok: true, why: [] });
+      return json_({ ok: true, done: true, byKeys: true,
+                     reply: '你講到了：' + k.hit.join('、') + '。這一題想通了，往下做吧。' });
+    }
+
     var reply = askGemini_(buildPrompt_(item, answer));
     var v = checkReply_(reply, item.forbid);
 
@@ -232,10 +244,15 @@ function levels_() {
   Object.keys(src).forEach(function (id) {
     var a = src[id].analysis;
     if (!a) return;
+    /* task 是「這一關在做什麼」—— 沒有它，AI 不知道學生正在畫六個正方形，
+       問出來的問題會飄。這是 2026-08-07 補的，原本只給了單獨一問。 */
+    var task = strip_(src[id].task);
     var list = (a.qs || []).map(function (x) {
-      return { q: strip_(x.q), hint: strip_(x.hint), forbid: x.forbid || [] };
+      return { task: task, q: strip_(x.q), hint: strip_(x.hint),
+               forbid: x.forbid || [], keys: x.keys || [] };
     });
-    if (a.write) list.push({ q: strip_(a.write.q), hint: strip_(a.write.sample), forbid: a.write.forbid || [] });
+    if (a.write) list.push({ task: task, q: strip_(a.write.q), hint: strip_(a.write.sample),
+                             forbid: a.write.forbid || [], keys: a.write.keys || [] });
     out[id] = list;
   });
   cache.put('levels', JSON.stringify(out), 21600);
@@ -256,15 +273,72 @@ function strip_(s) {
   return String(s == null ? '' : s).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 }
 
+/* ── 關鍵概念：學生說到就算數 ───────────────────────
+   ★ 為什麼是「概念」不是「字串」
+     「答出關鍵字就好，不見得整句都對」—— 每個概念底下是一組同義說法。
+     學生寫「一直在重複」「每次都一樣」「做了六次」都該算命中。
+   ★ 兩個用途
+     ① 全部命中 → 根本不必問 AI（省額度、回饋固定）
+     ② 沒命中的那一個 → 就是這一輪要引導的東西。
+        不給的話，AI 只知道學生寫了什麼，不知道他還缺什麼，問題就沒方向。
+   ⚠️ 這一份和 shared/ai-guide.js 的 hitKeys 是同一套規則，兩邊都要改。 */
+function hitKeys_(answer, keys) {
+  var t = String(answer == null ? '' : answer);
+  var hit = [], miss = [];
+  (keys || []).forEach(function (grp) {
+    var words = [].concat(grp.any || grp);
+    var got = words.some(function (w) { return w && t.indexOf(w) >= 0; });
+    (got ? hit : miss).push(grp.name || words[0]);
+  });
+  return { hit: hit, miss: miss, done: (keys || []).length > 0 && miss.length === 0 };
+}
+
 /* ── 提示詞 ───────────────────────────────────────
    每一條規則都是為了一個具體的失守方式寫的，不是湊字數。
-   要改的話請連 checkReply_ 一起改，不然檢查會和要求對不起來。 */
+   要改的話請連 checkReply_ 一起改，不然檢查會和要求對不起來。
+
+   ★ 2026-08-07 補了三件本來缺的東西
+     · 情境：這一關在做什麼（沒有它，AI 不知道學生正在畫六個正方形）
+     · 目標：這一輪要引導出哪幾個關鍵概念、他已經講到哪些
+     · 開場：學生還沒寫字時，由 AI 起頭 ——
+       原本送「（什麼都沒寫）」，模型只能亂猜，那不是對話的開始，是無話可說。 */
 function buildPrompt_(item, answer) {
+  var ans = String(answer == null ? '' : answer).trim();
+  var k = hitKeys_(ans, item.keys);
+  var opening = !ans;
+
+  var job = opening
+    ? '學生還沒寫任何東西。請用一個問句「開場」，把他的注意力帶到' +
+      '【這一輪的目標】的第一項上。不要問「你覺得呢」這種沒有指向的空問句。'
+    : '用一句話引導學生自己想出來。不是講解，不是給答案。';
+
+  var list = (item.keys || []).map(function (g) { return '· ' + (g.name || g[0]); }).join('\n');
+  var goal;
+  if (!(item.keys || []).length) {
+    goal = '讓學生講出自己的想法就好，不必完整。';
+  } else if (opening) {
+    goal = '這一輪希望學生講到這幾件事（講到就算數，不必整句正確）：\n' + list;
+  } else {
+    goal = '這一輪希望學生講到（講到就算數，不必整句正確）：\n' + list +
+           '\n他已經講到：' + (k.hit.join('、') || '（還沒講到任何一項）') +
+           '\n★ 還缺：' + (k.miss.join('、') || '（都講到了）') +
+           '\n只針對「還缺」的第一項提問，不要再問他已經講過的。';
+  }
+
   return [
     '你是國中一年級資訊科技課的助教，正在陪學生想一個問題。',
     '',
-    '【你的唯一任務】',
-    '用一句話引導學生自己想出來。不是講解，不是給答案。',
+    '【情境：學生正在做什麼】',
+    strip_(item.task) || '（沒有提供）',
+    '',
+    '【現在卡住的是這一問】',
+    strip_(item.q) || '（沒有題目）',
+    '',
+    '【這一輪的目標】',
+    goal,
+    '',
+    '【你的任務】',
+    job,
     '',
     '【硬性規則，違反就是失敗】',
     '1. 只能回「一個問句」，不可以有第二句話，不可以條列。',
@@ -276,11 +350,6 @@ function buildPrompt_(item, answer) {
     '6. 只能用繁體中文（台灣用語）。',
     '7. 不要稱讚，不要說「很棒」「加油」這類話。直接問。',
     '',
-    '【學生已經看到的題目】',
-    /* 再 strip_ 一次。levels_() 已經清過了，這裡是防守 ——
-       模型看到 <b> 不但沒用，還可能學著輸出標籤給學生。 */
-    strip_(item.q) || '（沒有題目）',
-    '',
     '【課本的說法（可以參考，不可以照抄給學生）】',
     strip_(item.hint) || '（沒有提供）',
     '',
@@ -288,7 +357,7 @@ function buildPrompt_(item, answer) {
     (item.forbid || []).map(function (x) { return '· ' + x; }).join('\n') || '（無）',
     '',
     '【學生剛剛寫的】',
-    (answer || '').trim() || '（什麼都沒寫）',
+    ans || '（還沒寫，這是開場）',
     '',
     '現在，只回一個問句。'
   ].join('\n');

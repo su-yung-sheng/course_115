@@ -34,8 +34,17 @@
   var SYSTEM = [
     '你是國中一年級資訊科技課的助教，正在陪學生想一個問題。',
     '',
-    '【你的唯一任務】',
-    '用一句話引導學生自己想出來。不是講解，不是給答案。',
+    '【情境：學生正在做什麼】',
+    '{{TASK}}',
+    '',
+    '【現在卡住的是這一問】',
+    '{{Q}}',
+    '',
+    '【這一輪的目標】',
+    '{{GOAL}}',
+    '',
+    '【你的任務】',
+    '{{JOB}}',
     '',
     '【硬性規則，違反就是失敗】',
     '1. 只能回「一個問句」，不可以有第二句話，不可以條列。',
@@ -49,9 +58,6 @@
     '6. 只能用繁體中文（台灣用語）。',
     '7. 不要稱讚，不要說「很棒」「加油」這類話。直接問。',
     '',
-    '【學生已經看到的題目】',
-    '{{Q}}',
-    '',
     '【課本的說法（你可以參考，但不可以照抄給學生）】',
     '{{HINT}}',
     '',
@@ -64,13 +70,64 @@
     '現在，只回一個問句。'
   ].join('\n');
 
+  /* ── 關鍵概念：學生說到就算數 ─────────────────────
+     ★ 為什麼是「概念」不是「字串」
+       「答出關鍵字就好，不見得整句都對」—— 所以每個概念底下是一組同義說法。
+       學生寫「一直在重複」「每次都一樣」「做了六次」都該算命中。
+
+     ★ 為什麼一定要有這個
+       ① 全部命中就不必問 AI 了 —— 省額度，也省學生等待
+       ② 沒命中的那一個，就是這一輪要引導的東西。
+          不給的話，AI 只知道「學生寫了這句」，不知道「他還缺什麼」，
+          問出來的問題就沒有方向。 */
+  function hitKeys(answer, keys) {
+    var t = String(answer == null ? '' : answer);
+    var hit = [], miss = [];
+    (keys || []).forEach(function (grp) {
+      var words = [].concat(grp.any || grp);
+      var got = words.some(function (w) { return w && t.indexOf(w) >= 0; });
+      (got ? hit : miss).push(grp.name || words[0]);
+    });
+    return { hit: hit, miss: miss, done: (keys || []).length > 0 && miss.length === 0 };
+  }
+
   function buildPrompt(o) {
     o = o || {};
+    var ans = String(o.answer == null ? '' : o.answer).trim();
+    var k = hitKeys(ans, o.keys);
+    var opening = !ans;
+
+    /* ★ 對話要怎麼開始
+       學生按「問問看」的時候可能什麼都還沒寫。
+       原本這裡送的是「（什麼都沒寫）」，模型只能亂猜他卡在哪 ——
+       那不是對話的開始，是無話可說。
+       開場改由 AI 主動起頭：用情境把注意力帶到第一個重點上。 */
+    var job = opening
+      ? '學生還沒寫任何東西。請用一個問句「開場」，把他的注意力帶到' +
+        '【這一輪的目標】的第一項上。不要問「你覺得呢」這種沒有指向的空問句。'
+      : '用一句話引導學生自己想出來。不是講解，不是給答案。';
+
+    var list = (o.keys || []).map(function (g) { return '· ' + (g.name || g[0]); }).join('\n');
+    var goal;
+    if (!(o.keys || []).length) {
+      goal = '讓學生講出自己的想法就好，不必完整。';
+    } else if (opening) {
+      goal = '這一輪希望學生講到這幾件事（講到就算數，不必整句正確）：\n' + list;
+    } else {
+      goal = '這一輪希望學生講到（講到就算數，不必整句正確）：\n' + list +
+             '\n他已經講到：' + (k.hit.join('、') || '（還沒講到任何一項）') +
+             '\n★ 還缺：' + (k.miss.join('、') || '（都講到了）') +
+             '\n只針對「還缺」的第一項提問，不要再問他已經講過的。';
+    }
+
     return SYSTEM
+      .replace('{{TASK}}', strip(o.task) || '（沒有提供）')
       .replace('{{Q}}', strip(o.q) || '（沒有題目）')
+      .replace('{{GOAL}}', goal)
+      .replace('{{JOB}}', job)
       .replace('{{HINT}}', strip(o.hint) || '（沒有提供）')
       .replace('{{FORBID}}', (o.forbid || []).map(function (x) { return '· ' + x; }).join('\n') || '（無）')
-      .replace('{{ANSWER}}', String(o.answer == null ? '' : o.answer).trim() || '（什麼都沒寫）');
+      .replace('{{ANSWER}}', ans || '（還沒寫，這是開場）');
   }
 
   /** 題目裡的 HTML 標籤要拿掉 —— 模型不需要看 <b>，看了還可能學著輸出 */
@@ -172,6 +229,7 @@
     PROBES: PROBES,
     buildPrompt: buildPrompt,
     checkReply: checkReply,
+    hitKeys: hitKeys,
     _strip: strip
   };
 
