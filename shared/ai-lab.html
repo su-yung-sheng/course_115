@@ -147,7 +147,8 @@ function refreshRaw() {
        '&sid=lab&answer=' + encodeURIComponent('有一段一直重複'))
     : '#';
 }
-refreshRaw();
+/* refreshRaw() 的第一次呼叫搬到 QS 建好之後 —— 它要讀「目前選的那一問」，
+   在這裡叫會踩到 QS 還沒初始化。 */
 $('gasKey').addEventListener('input', refreshRaw);
 
 $('ping').onclick = async () => {
@@ -240,6 +241,7 @@ $('forbidNote').textContent =
   '這一欄改不了 —— 題目與 forbid 由 GAS 自己抓（讀 blocks.js），前端傳什麼都不算。';
 function syncForbid() { $('forbid').value = (QS[+$('q').value] || {}).forbid.join('\n'); }
 syncForbid();
+refreshRaw();   // ← 在這裡才叫得動（QS 已經建好）
 
 function cur() {
   const x = QS[+$('q').value] || {};
