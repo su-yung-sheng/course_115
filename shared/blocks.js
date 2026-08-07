@@ -341,8 +341,53 @@
   }
 
   /** 兩棵樹是否一致（順序、參數、巢狀都要對；名字只看對應關係） */
-  function same(a, b) {
-    return JSON.stringify(canon(a)) === JSON.stringify(canon(b));
+  /**
+   * 兩份程式是不是同一份。
+   *
+   * ★ loose：這些積木只看「有沒有」，不看裡面的數字。
+   *   來由是課本（翰林 114 資科 2 下 4-2，課本 p.136）的教學叮嚀：
+   *     「參考答案的『定位到 x:-140 y:-20』坐標數值不一定要一樣，
+   *       加上此積木的目的是定出畫圖的起始位置，避免圖形超出畫面。」
+   *   目的是「不要畫出畫面外」，不是那兩個特定數字。
+   *   照數字比的話，學生從 x:-150 開始畫，圖一模一樣卻被判錯 ——
+   *   而他其實完全懂了。
+   *
+   * ⚠️ 只有「位置不影響圖形長相」的關卡才寬鬆。
+   *    第 3 關三列圖形的座標是互相咬合的（換列要回到起點那一欄），
+   *    起點放寬會讓三列對不齊，所以那一關仍然照數字比。
+   */
+  function same(a, b, loose) {
+    return eqList(canon(a), canon(b), loose || []);
+  }
+  function eqList(g, w, loose) {
+    if (g.length !== w.length) return false;
+    for (var i = 0; i < g.length; i++) if (!eqOne(g[i], w[i], loose)) return false;
+    return true;
+  }
+  function eqOne(g, w, loose) {
+    if (!g || !w || g.id !== w.id) return false;
+    if (loose.indexOf(w.id) < 0) {
+      var ga = g.args || [], wa = w.args || [];
+      if (ga.length !== wa.length) return false;
+      for (var i = 0; i < wa.length; i++) {
+        var x = ga[i], y = wa[i];
+        if (y && typeof y === 'object') { if (!eqOne(x, y, loose)) return false; }
+        else if (x && typeof x === 'object') return false;
+        else if (String(x) !== String(y)) return false;
+      }
+    }
+    if (g.children || w.children) {
+      if (!eqList(g.children || [], w.children || [], loose)) return false;
+    }
+    return true;
+  }
+  /** 這份程式和目標對上了幾塊（只看最外層，用來挑「差在哪」要拿誰來比） */
+  function score(g, w, loose) {
+    var n = 0;
+    for (var i = 0; i < Math.min(g.length, w.length); i++) {
+      if (eqOne(g[i], w[i], loose)) n++;
+    }
+    return n;
   }
 
   /* ===== 主體 ===== */
@@ -1017,15 +1062,42 @@
       msg.textContent = t;
       msg.style.color = t ? (ok ? '#16a34a' : '#b45309') : '';
     }
+    /* 可以接受的答案：第一份是參考解答，後面是課本認可的其他解法。
+       ★ 為什麼要有這個
+         課本（p.135 教學叮嚀）明講：學生把下筆與停筆放在重複積木中，
+         「執行結果也正確」，並且「相同問題可以有不同的解法」。
+         判定只認一種寫法的話，那句話就是假的 ——
+         學生完全做對卻被說錯，比沒有回饋更糟。
+       ★ 但也不是「畫出來一樣就算過」
+         這一關要學的是模組化。六段一樣的積木也畫得出六個正方形，
+         那不能算過。所以是「幾份指定的正確寫法」，不是「畫得像就好」。 */
+    var targets = [{ goal: goal, note: '' }].concat(opts.alts || []);
+    var loose = opts.loose || [];
+
     function check() {
       var all = whole();
       if (!all.length) { say('程式區還是空的，先從左邊拖幾塊積木過來。'); return; }
-      if (same(all, goal)) {
-        say('✅ 組對了！' + (passed ? '' : ' 這一關通過。'), true);
-        if (!passed) { passed = true; if (opts.onPass) opts.onPass(plain(all)); }
-      } else {
-        say('❌ ' + diffHint(canon(all), canon(goal)));
+
+      var hit = null;
+      for (var i = 0; i < targets.length && !hit; i++) {
+        if (same(all, targets[i].goal, loose)) hit = targets[i];
       }
+      if (hit) {
+        say(hit.note
+              ? '✅ 這樣也對！' + hit.note
+              : ('✅ 組對了！' + (passed ? '' : ' 這一關通過。')),
+            true);
+        if (!passed) { passed = true; if (opts.onPass) opts.onPass(plain(all)); }
+        return;
+      }
+      /* 「差在哪」要拿最接近的那一份來比 —— 學生在拼另一種解法時，
+         硬拿參考解答去比，會指著一個他根本沒打算寫的地方叫他改。 */
+      var got = canon(all), best = canon(targets[0].goal), bs = -1;
+      targets.forEach(function (t) {
+        var w = canon(t.goal), s = score(got, w, loose);
+        if (s > bs) { bs = s; best = w; }
+      });
+      say('❌ ' + diffHint(got, best));
     }
     /** 給一句「差在哪」，不要只說錯 —— 學生看到「錯了」只會亂試。
         差別藏在 C 型積木裡面時要一路追進去講（「第 5 塊裡面的第 2 塊」）：
@@ -1037,7 +1109,9 @@
       for (var i = 0; i < want.length; i++) {
         var at = where + '第 ' + (i + 1) + ' 塊積木';
         if (got[i].id !== want[i].id) return at + '不對。';
-        if (JSON.stringify(got[i].args) !== JSON.stringify(want[i].args)) {
+        // 寬鬆的積木（例如定位座標）本來就不比數字，這裡也不能拿它來挑毛病
+        if (loose.indexOf(want[i].id) < 0 &&
+            JSON.stringify(got[i].args) !== JSON.stringify(want[i].args)) {
           /* 名字對不上要講清楚是「對不上」，不是「取錯字」——
              名字本來就可以自己取，說「文字要再改一下」會害學生
              回頭去猜參考答案到底叫什麼，那正是我們不想考的東西。 */
@@ -1051,7 +1125,7 @@
           }
           return at + '的數字或文字要再改一下。';
         }
-        if (want[i].children && JSON.stringify(got[i].children) !== JSON.stringify(want[i].children))
+        if (want[i].children && !eqList(got[i].children || [], want[i].children, loose))
           return diffHint(got[i].children, want[i].children, at + '裡面的');
       }
       return where ? where + '順序不太對。' : '順序好像不太對，再對照一次任務說明。';
@@ -1090,7 +1164,8 @@
     mount: mount,
     _plain: plain,
     _canon: canon,
-    _same: same
+    _same: same,
+    _score: score
   };
 
 })(window);

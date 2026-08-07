@@ -93,6 +93,8 @@ var LEVELS = Object.keys(window.BLOCK_LEVELS || {}).map(function (id) {
     palette: lv.palette,
     goal: lv.goal,
     analysis: lv.analysis,   // 課本的問題拆解
+    alts: lv.alts,           // 課本認可的其他解法
+    loose: lv.loose,         // 只看有沒有、不看數字的積木（例如定位座標）
     derive: lv.derive        // 有推導活動的關卡才有這一欄
   };
 });
@@ -150,6 +152,8 @@ function show(i) {
   BLOCKS.mount(document.getElementById('sim'), {
     palette: lv.palette,
     goal: lv.goal,
+    alts: lv.alts,
+    loose: lv.loose,
     hint: lv.task,
     onPass: function () { console.log('通過：' + lv.name); }
   });

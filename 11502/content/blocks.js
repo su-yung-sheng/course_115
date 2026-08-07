@@ -108,6 +108,40 @@ window.BLOCK_LEVELS = {
       'my.define', 'my.call',
       'pen.clear', 'pen.down', 'pen.up'
     ],
+    /* 定位座標不比數字 —— 課本 p.136 教學叮嚀：
+       「坐標數值不一定要一樣，加上此積木的目的是定出畫圖的起始位置，
+         避免執行時圖形超出畫面。」
+       目的是不要畫到畫面外，不是那兩個特定數字。 */
+    loose: ['motion.goto'],
+
+    /* 另一種正確解法（課本 p.135 教學叮嚀明確認可）：
+       下筆、停筆放在「重複 4 次」裡面，畫出來一模一樣。
+       ★ 這不是通融，是課本要教的東西：「相同問題可以有不同的解法」。
+         判定只認一種寫法，那句話就變成假的。 */
+    alts: [{
+      note: '你把下筆、停筆放在「重複 4 次」<b>裡面</b> —— 畫出來一模一樣。<br>' +
+            '差別在做幾次：放裡面每畫一條邊就放筆、收筆一次，四條邊做了 4 次；' +
+            '放在定義的頭尾只做 1 次。結果相同、效率不同，' +
+            '這就是課本說的「相同問題可以有不同的解法」。',
+      goal: [
+        { id: 'my.define', args: ['畫正方形'], children: [
+          { id: 'control.repeat', args: [4], children: [
+            { id: 'pen.down' },
+            { id: 'motion.move',      args: [30] },
+            { id: 'motion.turnright', args: [90] },
+            { id: 'pen.up' }
+          ]}
+        ]},
+        { id: 'events.whenflag' },
+        { id: 'pen.clear' },
+        { id: 'motion.goto', args: [-140, -20] },
+        { id: 'control.repeat', args: [6], children: [
+          { id: 'my.call',     args: ['畫正方形'] },
+          { id: 'motion.move', args: [60] }
+        ]}
+      ]
+    }],
+
     goal: [
       { id: 'my.define', args: ['畫正方形'], children: [
         { id: 'pen.down' },
@@ -208,6 +242,30 @@ window.BLOCK_LEVELS = {
       'arg.param',                    // ← 橢圓的參數積木，要自己拖進「移動 ( ) 點」
       'pen.clear', 'pen.down', 'pen.up'
     ],
+    loose: ['motion.goto'],      // 起點自己決定，只要四個放得下（課本 p.136）
+    alts: [{
+      note: '下筆、停筆放在「重複 4 次」裡面也畫得出來 —— ' +
+            '差別只在放筆、收筆做了 4 次還是 1 次。',
+      goal: [
+        { id: 'my.definep', args: ['畫正方形', '邊長'], children: [
+          { id: 'control.repeat', args: [4], children: [
+            { id: 'pen.down' },
+            { id: 'motion.move',      args: [{ id: 'arg.param', args: ['邊長'] }] },
+            { id: 'motion.turnright', args: [90] },
+            { id: 'control.wait',     args: [0.2] },
+            { id: 'pen.up' }
+          ]}
+        ]},
+        { id: 'events.whenflag' },
+        { id: 'pen.clear' },
+        { id: 'motion.goto', args: [-120, 80] },
+        { id: 'my.callp', args: ['畫正方形', 50] },
+        { id: 'my.callp', args: ['畫正方形', 100] },
+        { id: 'my.callp', args: ['畫正方形', 150] },
+        { id: 'my.callp', args: ['畫正方形', 200] }
+      ]
+    }],
+
     goal: [
       { id: 'my.definep', args: ['畫正方形', '邊長'], children: [
         { id: 'pen.down' },

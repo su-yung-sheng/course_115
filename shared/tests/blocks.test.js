@@ -314,6 +314,53 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   is(speed(3), 280, '三塊積木 → 每步 280ms，慢慢演給你看');
   is(speed(125) < 40, true, '一百多步 → 每步 < 40ms（整段約 3 秒，固定 280ms 要 35 秒）');
 
+
+  /* ═══ 六、相同問題可以有不同的解法 ═══
+     課本 p.135 教學叮嚀：學生把下筆停筆放在重複積木中「執行結果也正確」，
+     並且「相同問題可以有不同的解法」。
+     判定只認一種寫法的話，說明裡那句話就是假的 ——
+     學生完全做對卻被說錯，比沒有回饋更糟。 */
+  section('多種正確解法');
+  const l1 = L['2-1-1'], l2 = L['2-1-2'], l3 = L['2-1-3'];
+
+  is(!!(l1.alts && l1.alts.length), true, '第 1 關有登記另解');
+  is(B._same(l1.alts[0].goal, l1.alts[0].goal, l1.loose), true, '另解對得上自己');
+  is(B._same(l1.alts[0].goal, l1.goal), false, '★ 另解和參考解答結構真的不同（不是抄一份）');
+  is(/不同的解法|一模一樣/.test(l1.alts[0].note), true, '另解要說明「這樣也對」，不是默默放行');
+  is(/4 次|1 次/.test(l1.alts[0].note), true, '   並且講出差在哪（放筆收筆做幾次）');
+
+  /* 定位座標換個數字仍然算對 —— 課本 p.136：
+     「坐標數值不一定要一樣，目的是定出起始位置，避免圖形超出畫面。」 */
+  const moved = JSON.parse(JSON.stringify(l1.goal));
+  moved.find(n => n.id === 'motion.goto').args = [-150, -30];
+  is(B._same(moved, l1.goal, l1.loose), true, '★ 定位改成 -150,-30 仍然算對');
+  is(B._same(moved, l1.goal), false, '   （不給 loose 就會判錯 —— 確認 loose 真的有作用）');
+
+  /* 寬鬆只給定位，別的數字不能跟著鬆掉 */
+  const w1 = JSON.parse(JSON.stringify(l1.goal));
+  w1[w1.length - 1].args = [8];
+  is(B._same(w1, l1.goal, l1.loose), false, '重複 6 次改成 8 次還是判錯');
+  const w2 = JSON.parse(JSON.stringify(l1.goal));
+  w2[0].children[1].children[0].args = [40];
+  is(B._same(w2, l1.goal, l1.loose), false, '邊長 30 改成 40 還是判錯');
+  is(B._same(l1.goal.slice(0, -1), l1.goal, l1.loose), false, '少一塊還是判錯');
+  is(B._same(l1.goal.concat([{ id: 'pen.up' }]), l1.goal, l1.loose), false, '多一塊還是判錯');
+
+  is(!!(l2.alts && l2.alts.length), true, '第 2 關也有另解');
+  is(B._same(l2.alts[0].goal, l2.goal), false, '第 2 關的另解結構也不同');
+  is(/arg\.param/.test(JSON.stringify(l2.alts[0].goal)), true,
+     '★ 第 2 關的另解仍然要用參數（不能順手放行沒有參數的寫法）');
+
+  /* 第 3 關維持嚴格：三列的座標互相咬合，換列要回到起點那一欄，
+     起點放寬會讓三列對不齊。 */
+  is(!l3.loose, true, '★ 第 3 關不寬鬆（三列座標互相咬合）');
+
+  /* 拼到一半時，「差在哪」要拿最接近的那一份來比，
+     不然會指著學生根本沒打算寫的地方叫他改。 */
+  const half = B._canon(l1.alts[0].goal.slice(0, 3));
+  is(B._score(half, B._canon(l1.alts[0].goal), []) >= B._score(half, B._canon(l1.goal), []),
+     true, '拼另解拼到一半，比較像另解');
+
   console.log(`\n通過 ${pass}／失敗 ${fail}`);
   process.exit(fail ? 1 : 0);
 })();
