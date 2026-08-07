@@ -251,8 +251,14 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   /* ═══ 三、每一關的關卡資料要站得住 ═══════════════════ */
   section('關卡資料');
   const ids = Object.keys(L);
-  is(ids, ['2-1-1', '2-1-2', '2-1-3'], '目前三關');
-  ids.forEach(id => {
+  /* ⚠️ 不是每一關都有積木拼圖。
+     第 5 關「排隊比高矮」是排序的觀念導入（課本用圖解不是程式），
+     它有拆解和追蹤活動，但沒有 goal／palette ——
+     這裡只檢查有拼圖的關卡，否則會在 lv.palette 上炸掉。 */
+  const puzzles = ids.filter(id => L[id].goal);
+  is(puzzles, ['2-1-1', '2-1-2', '2-1-3'], '目前有拼圖的是這三關');
+  is(ids.filter(id => !L[id].goal), ['2-3-1'], '第 5 關有內容但沒有拼圖');
+  puzzles.forEach(id => {
     const lv = L[id], used = new Set();
     (function walk(l) { (l || []).forEach(n => { used.add(n.id); walk(n.children); }); })(lv.goal);
     is([...used].filter(x => !B.DEFS[x]), [], id + '　答案沒有不存在的積木');
