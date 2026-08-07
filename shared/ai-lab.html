@@ -357,9 +357,15 @@ function card(tag, sent, res, err) {
       <div class="text-sm text-rose-700 font-bold">✗ ${esc(err)}</div></div>`;
   }
   if (res.prompt) window.__lastPrompt = res.prompt;
-  /* 有偵錯碼時檢查「原始回覆」—— 檢查安全提示沒有意義，它一定是乾淨的。 */
-  const v = AIGUIDE.checkReply(res.raw || res.text, { forbid: res.forbid });
-  const box = v.ok ? 'border-emerald-300' : 'border-amber-400';
+  /* 有偵錯碼時檢查「原始回覆」—— 檢查安全提示沒有意義，它一定是乾淨的。
+     ★ 關鍵概念全中的那一則根本沒問 AI，回的是我們自己寫的成功訊息。
+       拿「模型回覆」的規則去檢查它，會判它「沒有問句 —— 變成在講解了」——
+       那是誤報。而誤報比不報更糟：紅字一旦會亂叫，你就會開始忽略它，
+       真正守不住的那一則也跟著被忽略。 */
+  const v = res.byKeys
+    ? { ok: true, issues: [], chars: (res.text || '').replace(/\s/g, '').length, skipped: true }
+    : AIGUIDE.checkReply(res.raw || res.text, { forbid: res.forbid });
+  const box = v.skipped ? 'border-slate-300' : (v.ok ? 'border-emerald-300' : 'border-amber-400');
   return `<div class="bg-white border-2 ${box} rounded-xl p-4 mb-3">
     <div class="flex items-baseline justify-between gap-3 mb-1">
       <div class="text-xs font-bold text-slate-400">${esc(tag)}</div>
@@ -389,7 +395,9 @@ function card(tag, sent, res, err) {
             : '<br>想看模型原本說了什麼，填上偵錯碼再送一次。')
         + '</div>'
       : ''}
-    ${v.ok
+    ${v.skipped
+      ? '<div class="text-xs font-bold text-slate-400">— 沒問 AI，沒有東西要檢查</div>'
+      : v.ok
       ? '<div class="text-xs font-bold text-emerald-600">✓ 這幾條規則沒抓到問題</div>'
       : '<div class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">'
         + v.issues.map(i => '⚠️ ' + esc(i.why)).join('<br>') + '</div>'}
@@ -405,7 +413,7 @@ $('one').onclick = async () => {
 $('all').onclick = async () => {
   const probes = AIGUIDE.PROBES;
   $('out').innerHTML = '';
-  let bad = 0;
+  let bad = 0, skipped = 0;
   const kx = (QS[+$('q').value] || {}).keys || [];
   for (let i = 0; i < probes.length; i++) {
     const p = Object.assign({}, probes[i]);
@@ -424,17 +432,23 @@ $('all').onclick = async () => {
     let html;
     try {
       const r = await ask(p.text);
-      if (!AIGUIDE.checkReply(r.text, { forbid: r.forbid }).ok) bad++;
+      if (r.byKeys) skipped++;      // 沒問 AI 的那一則不列入分母
+      else if (!AIGUIDE.checkReply(r.raw || r.text, { forbid: r.forbid }).ok) bad++;
       html = card(p.tag, p.text, r);
     } catch (e) { bad++; html = card(p.tag, p.text, null, e.message); }
     $('w' + i).outerHTML = html;
     // 一次十發會撞每分鐘上限 —— 這也是你要觀察的事情之一
     await new Promise(r => setTimeout(r, 1200));
   }
+  /* ★ 分母是「真的問了 AI 的題數」，不是 10。
+     把沒問 AI 的那一則算進去，數字就不是「AI 守不守得住」了。 */
+  const asked = probes.length - skipped;
   $('out').insertAdjacentHTML('afterbegin',
     `<div class="rounded-xl px-4 py-3 mb-3 font-bold ${bad ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'}">
-      ${bad ? '⚠️ 10 題裡有 ' + bad + ' 題守不住' : '✓ 10 題都沒被抓到問題'}
-      <span class="font-normal text-xs">　（抓不到不代表沒問題，只代表這幾條規則沒抓到）</span>
+      ${bad ? '⚠️ 問了 AI 的 ' + asked + ' 題裡，有 ' + bad + ' 題守不住'
+            : '✓ 問了 AI 的 ' + asked + ' 題都沒被抓到問題'}
+      ${skipped ? '<span class="font-normal text-xs">　（另外 ' + skipped + ' 題關鍵概念全中，沒問 AI）</span>' : ''}
+      <span class="font-normal text-xs block mt-1">抓不到不代表沒問題，只代表這幾條規則沒抓到。</span>
      </div>`);
 };
 </script>

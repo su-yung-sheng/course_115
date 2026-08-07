@@ -183,5 +183,23 @@ ok(!A.checkReply(H + '是不是要右轉 90 度呢？', { forbid: ['右轉 90'] 
 ok(!A.checkReply(H + '你要轉嗎？往哪轉？', { forbid: [] }).ok, '   也不能問兩個');
 ok(!A.checkReply(H + '很棒，那要往哪轉？', { forbid: [] }).ok, '   也不能稱讚');
 
+
+/* ── name 是給模型看的指示，不是標籤 ────────────────
+   實測：name 叫「走一段再轉」時，八成的回覆在問「怎麼畫出第一條邊」，
+   而學生答「往前走」不會命中 any（裡面全是「轉」的同義詞）—— 繞不出去。
+   ★ 判定標準在 any，引導方向在 name。兩個對不上，
+     AI 就會很努力地把學生帶去一個不算分的地方。 */
+const turn = L11.keys[0];
+ok(/轉/.test(turn.name), '★ 第一項的 name 要點出「轉」—— 那才是 any 認的東西');
+ok(!/^走一段再轉$/.test(turn.name), '   不可以退回舊的寫法');
+LV.BLOCK_LEVELS['2-1-1'].analysis.qs.forEach((q, i) => {
+  (q.keys || []).forEach(g => {
+    /* name 至少要和它自己的某一個同義詞沾得上邊，
+       否則模型讀 name、學生答 any，兩邊各說各話。 */
+    ok(g.any.some(w => g.name.indexOf(w) >= 0),
+       '第 ' + (i + 1) + ' 問「' + g.name + '」的 name 要含得住自己的同義詞');
+  });
+});
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

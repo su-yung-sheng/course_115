@@ -143,5 +143,13 @@ ok(/REFUSE_HEAD/.test(gs3), '★ GAS 也要有「拒絕的固定開頭」');
 ok(/t\.indexOf\(REFUSE_HEAD\) === 0/.test(gs3), '   而且 GAS 的字數檢查也要扣掉它（真正擋人的是這一份）');
 ok(/2026-08-07-refuse/.test(gs3) && /2026-08-07-refuse/.test(html), '版本兩邊一起改');
 
+/* 沒問 AI 的那一則不可以拿「模型回覆」的規則去檢查 —— 那是誤報，
+   而誤報比不報更糟：紅字會亂叫，你就開始忽略它。 */
+ok(/res\.byKeys\s*\n?\s*\?\s*\{ ok: true/.test(html) || /res\.byKeys[\s\S]{0,60}ok: true/.test(html),
+   '★ byKeys 那一則跳過檢查');
+ok(/沒問 AI，沒有東西要檢查/.test(html), '   畫面要說清楚是「沒東西要檢查」，不是「通過」');
+ok(/probes\.length - skipped/.test(html), '★ 分母是「真的問了 AI 的題數」，不是固定 10');
+ok(!/10 題裡有/.test(html), '   不可以再寫死 10');
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
