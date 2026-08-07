@@ -42,6 +42,12 @@
 
   <div class="tabs" id="tabs"></div>
 
+  <!-- 推導活動（拼積木之前）。沒有這一段資料的關卡整塊不出現。 -->
+  <div class="card" id="derive-card" style="display:none">
+    <p class="task">🧠 動手之前先想清楚</p>
+    <div id="derive"></div>
+  </div>
+
   <div class="card">
     <p class="task" id="task"></p>
     <div id="sim"></div>
@@ -65,6 +71,7 @@
 <script src="../11502/config.js"></script>
 <script src="../11502/content/blocks.js"></script>
 <script src="blocks.js"></script>
+<script src="derive.js"></script>
 <script>
 /* 直接讀下學期的真正關卡（11502/content/blocks.js）。
    ★ 不再自己寫一份示範題 —— 那會變成第二份題目來源，
@@ -78,7 +85,8 @@ var LEVELS = Object.keys(window.BLOCK_LEVELS || {}).map(function (id) {
     task: lv.task,
     tips: lv.tips || [],
     palette: lv.palette,
-    goal: lv.goal
+    goal: lv.goal,
+    derive: lv.derive        // 有推導活動的關卡才有這一欄
   };
 });
 
@@ -111,6 +119,21 @@ function show(i) {
     '🎯 ' + lv.task +
     (lv.tips.length ? '<div style="font-weight:400;font-size:13px;color:#64748b;margin-top:8px;line-height:1.9">'
       + lv.tips.map(function (t) { return '· ' + t; }).join('<br>') + '</div>' : '');
+  /* 推導活動：有資料才顯示。
+     ⚠️ 試玩頁刻意「不擋」—— 沒推導完也能直接玩下面的積木，
+        因為這一頁的用途是驗收，老師要能單獨試某一段。
+        學生的關卡頁要不要擋，是接進 scratch.html 時才決定的事。 */
+  var dc = document.getElementById('derive-card');
+  if (lv.derive) {
+    dc.style.display = '';
+    DERIVE.mount(document.getElementById('derive'), lv.derive, {
+      onPass: function () { console.log('推導完成：' + lv.name); }
+    });
+  } else {
+    dc.style.display = 'none';
+    document.getElementById('derive').innerHTML = '';
+  }
+
   document.getElementById('ans').textContent = pretty(lv.goal);
   document.getElementById('ansBox').open = false;
   BLOCKS.mount(document.getElementById('sim'), {
