@@ -83,7 +83,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-refuse';
+var VERSION = '2026-08-07-cap';
 
 var DEFAULTS = {
   MODEL: 'gemini-2.5-flash',
@@ -91,6 +91,11 @@ var DEFAULTS = {
   CONTENT_URL: 'https://su-yung-sheng.github.io/course_115/11502/content/blocks.js',
   DAILY_CAP: 600,      // 全部人加起來，一天最多幾次
   PER_SID_CAP: 30,     // 一個學生一天最多幾次
+  /* 帶了 DEBUG_KEY（只有老師有）時的每日上限。
+     ★ 為什麼要單獨一個：測試台一輪就 10 次，跑三輪就撞到學生的 30 次上限，
+       老師測到一半被鎖住，而且看到的是寫給學生的那句話。
+     ⚠️ 不是「無上限」—— 萬一偵錯碼外流，還有這道和 DAILY_CAP 擋著。 */
+  DEBUG_SID_CAP: 300,
   MAX_ANSWER: 300,     // 學生輸入的字數上限
   /* 每把金鑰每分鐘最多幾次。
      ★ 這是「我們自己的節流」，不是 Google 的上限 ——
@@ -242,6 +247,11 @@ function handle_(e) {
       return json_({ ok: true, version: VERSION,
                      model: prop_('MODEL', DEFAULTS.MODEL),
                      units: Object.keys(levels_()).length, used: usedToday_(),
+                     /* 測試台自己用的那個學號用了幾次、上限多少。
+                        ★ 為什麼要回報：不然老師是撞到牆才知道有牆，
+                          而且看到的還是寫給學生的那句「你今天問得夠多了」。 */
+                     usedLab: usedBySid_('lab'),
+                     labCap: num_('DEBUG_SID_CAP', DEFAULTS.DEBUG_SID_CAP),
                      keys: keyReport_(),
                      hasDebug: !!prop_('DEBUG_KEY', '') });
     }
@@ -283,19 +293,6 @@ function handle_(e) {
 
        舊的 sid 還是收 —— 萬一有地方沒改到，不要默默壞掉。 */
     var sid = String(p.student || p.sid || '').replace(/[^0-9A-Za-z]/g, '').slice(0, 12);
-    if (usedToday_() >= num_('DAILY_CAP', DEFAULTS.DAILY_CAP)) {
-      return json_({ ok: false, error: '今天的 AI 提示用完了，明天再來 —— 先自己想想看。' });
-    }
-    if (sid && usedBySid_(sid) >= num_('PER_SID_CAP', DEFAULTS.PER_SID_CAP)) {
-      return json_({ ok: false, error: '你今天問得夠多了，剩下的自己想想看。' });
-    }
-
-    /* ── 題目：由這支自己抓，不看前端送什麼 ───────── */
-    var item = pickQuestion_(p.unit, p.qi);
-    if (!item) return json_({ ok: false, error: '找不到這一問（' + p.unit + ' / ' + p.qi + '）。' });
-
-    var answer = String(p.answer || '').slice(0, num_('MAX_ANSWER', DEFAULTS.MAX_ANSWER));
-
     /* ── 偵錯模式（只有老師）──────────────────────
        ★ 為什麼要有
          擋下違規回覆是對的，但那讓「測試」變成瞎子 ——
@@ -303,9 +300,42 @@ function handle_(e) {
        ★ 為什麼要另一把碼
          QUERY_KEY 會出現在學生的頁面上（公開 repo）。
          用同一把的話，學生也看得到原始回覆，擋下就沒意義了。
-       ⚠️ DEBUG_KEY 沒設的時候，dbg 一定不成立 —— 不能讓空字串對上空字串。 */
+       ⚠️ DEBUG_KEY 沒設的時候，dbg 一定不成立 —— 不能讓空字串對上空字串。
+
+       ⚠️ 這一段一定要在「配額檢查」之前算。
+          原本放在後面，結果測試台跑了三輪那 10 題（30 次）就撞到
+          PER_SID_CAP，回「你今天問得夠多了」—— 測到一半被自己的規則鎖住，
+          而且那句話是寫給學生看的，老師看了只會以為程式壞了。 */
     var dk = prop_('DEBUG_KEY', '');
     var debug = !!dk && p.dbg === dk;
+
+    /* ── 配額 ──────────────────────────────────────
+       ★ 兩個上限的意義不一樣：
+         · DAILY_CAP  —— 顧荷包／顧額度，對誰都一樣，老師也不例外
+         · PER_SID_CAP —— 防一個學生把全班的份用光，是「公平」不是「安全」
+       所以帶了偵錯碼（只有老師有）的時候，只放寬後者。 */
+    var perCap = debug ? num_('DEBUG_SID_CAP', DEFAULTS.DEBUG_SID_CAP)
+                       : num_('PER_SID_CAP', DEFAULTS.PER_SID_CAP);
+
+    if (usedToday_() >= num_('DAILY_CAP', DEFAULTS.DAILY_CAP)) {
+      return json_({ ok: false, capped: 'daily', error: debug
+        ? '撞到 DAILY_CAP 了（今天共 ' + usedToday_() + ' 次）。' +
+          '這個上限對老師也一樣 —— 它顧的是額度不是公平。' +
+          '要繼續測就調高指令碼屬性 DAILY_CAP，或在編輯器執行 resetCaps。'
+        : '今天的 AI 提示用完了，明天再來 —— 先自己想想看。' });
+    }
+    if (sid && usedBySid_(sid) >= perCap) {
+      return json_({ ok: false, capped: 'sid', error: debug
+        ? '這個學號今天用了 ' + usedBySid_(sid) + ' 次，超過偵錯上限 ' + perCap + '。' +
+          '在編輯器執行 resetCaps 就歸零，或調高指令碼屬性 DEBUG_SID_CAP。'
+        : '你今天問得夠多了，剩下的自己想想看。' });
+    }
+
+    /* ── 題目：由這支自己抓，不看前端送什麼 ───────── */
+    var item = pickQuestion_(p.unit, p.qi);
+    if (!item) return json_({ ok: false, error: '找不到這一問（' + p.unit + ' / ' + p.qi + '）。' });
+
+    var answer = String(p.answer || '').slice(0, num_('MAX_ANSWER', DEFAULTS.MAX_ANSWER));
 
     /* ── 先用關鍵概念判一次 ────────────────────────
        ★ 全部講到了就不必問 AI
@@ -385,6 +415,17 @@ function levels_() {
 }
 
 function clearCache() { CacheService.getScriptCache().remove('levels'); }
+
+/* 把今天的用量歸零（在編輯器裡執行）。
+   ★ 什麼時候會用到：測試台測一測撞到上限，或者你想重跑一次完整的刁難題。
+   ⚠️ 這會把「今天全班用了幾次」一起清掉 —— 那個數字之後就對不上了。
+      正式上課時不要按，那是你判斷額度夠不夠的唯一依據。 */
+function resetCaps() {
+  PropertiesService.getScriptProperties().deleteProperty('cnt.' + today_());
+  CacheService.getScriptCache().remove('sid.' + today_() + '.lab');
+  Logger.log('已把今天（%s）的用量歸零。學生的個人計數存在快取裡，' +
+             '沒有列舉的方法，最多 6 小時後自己過期。', today_());
+}
 
 function pickQuestion_(unit, qi) {
   var all = levels_();

@@ -127,7 +127,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
      那件事現在由 DEBUG_KEY 做，而且更好：走的是真正的管線。 */
 /* 這一頁預期的 GAS 版本。改 aiguide.gs 的行為時，兩邊一起改。
    ⚠️ 這不是裝飾 —— 它是唯一能看出「部署的是不是最新版」的方法。 */
-const EXPECT_VERSION = '2026-08-07-refuse';
+const EXPECT_VERSION = '2026-08-07-cap';
 
 const GAS = ((window.CONFIG || {}).AIGUIDE || {}).GAS_URL || '';
 $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒填）';
@@ -172,6 +172,12 @@ $('ping').onclick = async () => {
     const cool = (j.keys || []).filter(k => k.cooling);
     $('pingOut').innerHTML = '<span class="text-emerald-600 font-bold">✓ 通了</span>' +
       '　模型 ' + esc(j.model) + '　題目 ' + j.units + ' 關　今天已用 ' + j.used + ' 次' +
+      /* ★ 這一頁自己的用量要看得見。
+         2026-08-07：跑了三輪那 10 題就撞到上限，回的是寫給學生的
+         「你今天問得夠多了」—— 老師看了只會以為程式壞了。
+         撞到才知道有牆，是最糟的介面。 */
+      (j.labCap ? '　<span class="' + (j.usedLab >= j.labCap * 0.8 ? 'text-amber-700 font-bold' : 'text-slate-400')
+                  + '">測試台 ' + j.usedLab + '/' + j.labCap + '</span>' : '') +
       ((j.keys || []).length ? '　金鑰 ' + j.keys.length + ' 把' : '') +
       (j.hasDebug ? '' : '　<span class="text-amber-700 font-bold">⚠️ 還沒設 DEBUG_KEY</span>') +
       (stale

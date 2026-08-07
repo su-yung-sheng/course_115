@@ -135,13 +135,10 @@ ok(/res\.hasKeys/.test(html), '★ 卡片要顯示「講到了什麼、還缺什
 ok(/還缺/.test(html), '   缺的那幾項要寫出來 —— 那就是 AI 該問的方向');
 ok(/keys: x\.keys/.test(html), '   題目清單要把 keys 一起帶著');
 ok(/p\.fromKeys/.test(html), '★ 「全部講到」那一則要依現在選的那一問自動組');
-ok(/EXPECT_VERSION = '2026-08-07-refuse'/.test(html), '版本字串跟著 GAS 一起改');
-ok(/2026-08-07-refuse/.test(gs3), '   GAS 那邊也是');
 ok(/角色名稱/.test(gs3), '★ GAS 的提示詞也要有「不可以自己編角色名稱」（兩份都要改）');
 
 ok(/REFUSE_HEAD/.test(gs3), '★ GAS 也要有「拒絕的固定開頭」');
 ok(/t\.indexOf\(REFUSE_HEAD\) === 0/.test(gs3), '   而且 GAS 的字數檢查也要扣掉它（真正擋人的是這一份）');
-ok(/2026-08-07-refuse/.test(gs3) && /2026-08-07-refuse/.test(html), '版本兩邊一起改');
 
 /* 沒問 AI 的那一則不可以拿「模型回覆」的規則去檢查 —— 那是誤報，
    而誤報比不報更糟：紅字會亂叫，你就開始忽略它。 */
@@ -150,6 +147,18 @@ ok(/res\.byKeys\s*\n?\s*\?\s*\{ ok: true/.test(html) || /res\.byKeys[\s\S]{0,60}
 ok(/沒問 AI，沒有東西要檢查/.test(html), '   畫面要說清楚是「沒東西要檢查」，不是「通過」');
 ok(/probes\.length - skipped/.test(html), '★ 分母是「真的問了 AI 的題數」，不是固定 10');
 ok(!/10 題裡有/.test(html), '   不可以再寫死 10');
+
+/* ★ 版本字串：釘「兩邊一致」，不要釘某個特定的字。
+   原本三處各寫死一次 '2026-08-07-xxx'，每改一次版本就要手動改三處測試 ——
+   而那三處測的其實是同一件事，而且釘的是「今天剛好是哪個字」，
+   不是真正的規則。真正的規則只有一條：**GAS 和測試台要對得上**。 */
+const gsVer  = (gs3.match(/var VERSION = '([^']+)'/) || [])[1];
+const labVer = (html.match(/EXPECT_VERSION = '([^']+)'/) || [])[1];
+ok(!!gsVer,  'GAS 有版本字串（ping 靠它分辨部署的是不是新版）');
+ok(!!labVer, '測試台有預期版本');
+ok(gsVer === labVer,
+   '★ 兩邊要一致（GAS ' + gsVer + ' ／ 測試台 ' + labVer + '）—— ' +
+   '改了 aiguide.gs 的行為就要把兩個字串一起改，否則 ping 永遠說「部署的是舊版」');
 
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

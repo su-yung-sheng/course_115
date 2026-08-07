@@ -12,7 +12,10 @@
      分不開的話，使用者會把時間花在檢查沒有壞掉的東西上。 */
 'use strict';
 const fs=require('fs');
-const src=fs.readFileSync('/sessions/practical-friendly-ride/mnt/course_115/shared/aiguide.gs','utf8');
+const path=require('path');
+/* ⚠️ 這裡原本寫死一條絕對路徑（開發時那台機器的），
+   在別台電腦上執行會直接找不到檔案。一律用 __dirname 相對定位。 */
+const src=fs.readFileSync(path.join(__dirname,'..','aiguide.gs'),'utf8');
 const props={}, cache={};
 let codes=[], calls=[];
 const env={
