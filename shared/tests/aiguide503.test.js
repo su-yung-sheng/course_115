@@ -123,4 +123,13 @@ ok(/lite/.test(cand.split('\n')[1] || ''), '★ lite 排前面 —— 一句 60 
 ok(/先用 %s 篩候選/.test(src), '先測最嚴的那一把，省額度');
 ok(/三把都能用/.test(src), '結論要講「三把都能用嗎」—— 不然分流沒有意義');
 
+/* ★ 2026-08-07：Google 不讓新專案用 gemini-2.5-flash（404）。
+   三把金鑰共用的模型只剩 gemini-3.1-flash-lite。 */
+ok(/MODEL: 'gemini-3\.1-flash-lite'/.test(src), '預設模型換成測出來能用的那個');
+ok(!/MODEL: 'gemini-2\.5-flash'/.test(src), '★ 不可以留著新專案叫不動的那個當預設');
+ok(/no longer available to new users/.test(src), '把 Google 的原話寫下來 —— 下次看到才認得出');
+ok(/function pickFallback/.test(src), '有找備援模型的工具');
+ok(/沒有驗證過/.test(src), '★ 沒驗過的預設值要老實說 —— 今天就是被沒驗過的模型名稱咬的');
+ok(/叫得動」和「守得住」是兩件事/.test(src), '★ 換模型要重跑刁難題：2.5-flash 的成績不能算在 lite 頭上');
+
 console.log('通過 '+pass+'／失敗 '+fail); process.exit(fail?1:0);

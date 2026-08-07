@@ -35,8 +35,9 @@
         GEMINI_KEY_3 （可省略）第三把 —— 同上
         RPM_PER_KEY  （可省略）每把金鑰每分鐘最多幾次，預設 10
         QUERY_KEY    自己想一組通行碼
-        MODEL        （可省略）預設 gemini-2.5-flash
-                     —— 想省額度可改 gemini-2.5-flash-lite，但先用測試台確認它守得住
+        MODEL        （可省略）預設 gemini-3.1-flash-lite
+                     ⚠️ 不要照抄網路上的模型名稱 —— 新專案已經不能用 gemini-2.5-flash。
+                        在編輯器執行 pickModel／pickFallback，它會真的打一次告訴你哪個能用。
         SHEET_ID     （可省略）要存對話紀錄的話，填 Google 試算表 ID
         DEBUG_KEY    （可省略）★ 只有你知道的偵錯碼，測試台用
                      帶了它才會回傳「模型原始的回覆」與「為什麼被擋」，
@@ -59,23 +60,32 @@
    ===================================================================== */
 
 /* ── 模型 ─────────────────────────────────────────
-   預設 gemini-2.5-flash。
+   預設 gemini-3.1-flash-lite。
 
-   ★ 為什麼不是更便宜的 flash-lite
-     這個用途最在意的是**指令遵循** —— 學生說「直接告訴我答案」，
-     模型忍不忍得住。Flash 在這件事上明顯比 Lite 穩，
-     而失守一次的代價是那個學生（和他旁邊的人）直接拿到答案。
+   ⚠️ 這個預設不是我挑的，是**測出來的**（2026-08-07）。
+      原本寫死 gemini-2.5-flash，理由是「指令遵循比 lite 穩」——
+      那個理由現在沒有意義了，因為：
 
-   ★ 代價有兩個，但只有一個是真的
-     · 成本：付費層 input $0.30／output $2.50 每 1M（Lite 是 $0.10／$0.40）。
-       一天 120 次大約從新台幣八毛變三塊 —— 不是重點。
-     · 額度：免費層 Flash 的每分鐘上限比 Lite 緊。
-       **這個才是重點** —— 尖峰（一班同時按）本來就是最脆弱的地方。
-       所以下面的 RPM_PER_KEY 給了保守值，而且吃到 429 會自動換下一把。
+        Google 已經不讓新專案使用 gemini-2.5-flash。
+        新申請的金鑰呼叫它會回 404
+        「This model is no longer available to new users」。
 
-   要換成 Lite 的話，設指令碼屬性 MODEL 就好，不必改程式。
-   **建議先用測試台（shared/ai-lab.html）兩個都跑一次那 10 種刁難** ——
-   如果 Lite 也守得住，用 Lite 換到更寬鬆的額度是划算的。 */
+      三把金鑰裡有一把是新的，於是三把能共用的模型只剩下面這幾個，
+      而 gemini-3.1-flash-lite 是候選裡第一個「三把都叫得動」的。
+
+   ★ 換模型之前一定要重跑那 10 種刁難（shared/ai-lab.html）
+     「叫得動」和「守得住」是兩件事。
+     2.5-flash 當時五則討答案全部守住 —— 那是那個模型的成績，
+     不能算在 3.1-flash-lite 頭上。
+
+   ★ 怎麼重新挑
+     在編輯器執行 pickModel（會真的打，不看清單 —— 清單會騙人）。
+     額度是「每專案每模型每天」算的，所以 FALLBACK_MODEL
+     要挑**另一個**模型，它有自己獨立的一份額度。
+
+   ⚠️ 免費層很小：實測錯誤訊息裡是 limit: 20。
+      一節課 30 個學生每人問一次就爆 ——
+      所以「關鍵概念全中就不問 AI」那條路才是主力，AI 是備援。 */
 /* ★ 版本字串。ping 會回報它。
    為什麼需要：selfTest 跑的是「編輯器裡的程式碼」，
    /exec 跑的是「部署的那個版本」—— 這兩個常常不一樣。
@@ -83,10 +93,10 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-pickmodel';
+var VERSION = '2026-08-07-lite';
 
 var DEFAULTS = {
-  MODEL: 'gemini-2.5-flash',
+  MODEL: 'gemini-3.1-flash-lite',
   // 題目從這裡抓 —— 和學生看到的是同一份，不會有兩套題目
   CONTENT_URL: 'https://su-yung-sheng.github.io/course_115/11502/content/blocks.js',
   DAILY_CAP: 600,      // 全部人加起來，一天最多幾次
@@ -105,12 +115,17 @@ var DEFAULTS = {
      10 是個保守值。三把就是每分鐘約 30 次，一班 30 人大致接得住。 */
   RPM_PER_KEY: 10,
   COOL_SEC: 60,        // 某把吃到 429／403 之後冷卻幾秒（過載不冷卻，見 askGemini_）
-  /* 模型過載（503）時退到哪一個。
-     ★ 2026-08-07 實際遇到：gemini-2.5-flash 回
-       「This model is currently experiencing high demand」——
-       和金鑰、額度、參數都無關，就是那個模型當下人太多。
-       Lite 的負載通常比較輕，退過去至少學生有東西可用。
-     設成空字串就不退，直接告訴學生等一下。 */
+  /* 主模型過載（503）或當天額度用完（429 PerDay）時退到哪一個。
+     ★ 為什麼有用：額度按「每專案每模型每天」算 ——
+       備援模型有自己獨立的一份。設成和 MODEL 同一個等於沒有備援。
+
+     ⚠️ **這個預設值沒有驗證過。**
+        pickModel 找到 gemini-3.1-flash-lite 就停了，後面的候選沒測。
+        而今天才學到的教訓正是「沒驗過的模型名稱會 404」——
+        所以請在編輯器執行 pickFallback，用它回報的名稱覆蓋掉這個值。
+     ⚠️ 退不成功不會壞掉：學生看到的就是原本那句「等一下再問」。
+        所以這一格填錯的代價，比 MODEL 填錯小得多。
+     設成空字串就不退。 */
   FALLBACK_MODEL: 'gemini-2.5-flash-lite'
 };
 
@@ -502,6 +517,35 @@ function pickModel() {
     ? '✅ 三把都能用 %s。把它設進指令碼屬性 MODEL，' +
       '另外挑一個當 FALLBACK_MODEL（額度是「每專案每模型每天」算的，備援模型有自己的一份）。'
     : '⚠️ %s 不是三把都能用 —— 那樣分流就沒有意義了。把上面的錯誤貼出來。', winner);
+}
+
+/* 找一個「三把都能用」而且和 MODEL 不同的備援模型。
+   ★ 為什麼要不同的：額度按「每專案每模型每天」算 ——
+     備援模型有自己獨立的一份，主模型見底時才真的救得到。
+     設成同一個等於沒有備援。 */
+function pickFallback() {
+  var cur = prop_('MODEL', DEFAULTS.MODEL);
+  var keys = ['GEMINI_KEY', 'GEMINI_KEY_2', 'GEMINI_KEY_3']
+    .map(function (n) { return { name: n, key: prop_(n, '').trim() }; })
+    .filter(function (x) { return x.key; });
+  Logger.log('目前的 MODEL 是 %s，找一個不一樣的備援', cur);
+
+  for (var i = 0; i < MODEL_CANDIDATES.length; i++) {
+    var m = MODEL_CANDIDATES[i];
+    if (m === cur) continue;
+    var okAll = true, note = '';
+    for (var j = 0; j < keys.length; j++) {
+      var r = tryModel_(keys[j].key, m);
+      if (r.code !== 200) { okAll = false; note = keys[j].name + ' → ' + r.code + ' ' + r.msg.slice(0, 70); break; }
+    }
+    Logger.log('  %s → %s', m, okAll ? '✅ 三把都能用' : '❌ ' + note);
+    if (okAll) {
+      Logger.log('把 %s 設進指令碼屬性 FALLBACK_MODEL。', m);
+      return;
+    }
+  }
+  Logger.log('⚠️ 找不到第二個三把都能用的模型 —— 那就沒有備援，' +
+             '主模型的額度見底時學生會直接看到「等一下再問」。');
 }
 
 /** 送一發最小的請求，只回 HTTP 代碼和訊息 */
