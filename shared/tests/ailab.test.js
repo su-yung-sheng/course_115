@@ -128,5 +128,16 @@ ok(/p\.student \|\| p\.sid/.test(gs3),
    'GAS 兩個都收 —— 舊網址不要默默壞掉（但新的一律用 student）');
 ok(/保留參數/.test(gs3), 'GAS 裡也寫下原因');
 
+
+/* 2026-08-07：十則測試全部顯示「沒抓到問題」，卻看不出
+   一次都沒走到「關鍵概念全中」那條路。畫面要說出來。 */
+ok(/res\.hasKeys/.test(html), '★ 卡片要顯示「講到了什麼、還缺什麼」');
+ok(/還缺/.test(html), '   缺的那幾項要寫出來 —— 那就是 AI 該問的方向');
+ok(/keys: x\.keys/.test(html), '   題目清單要把 keys 一起帶著');
+ok(/p\.fromKeys/.test(html), '★ 「全部講到」那一則要依現在選的那一問自動組');
+ok(/EXPECT_VERSION = '2026-08-07-role'/.test(html), '版本字串跟著 GAS 一起改');
+ok(/2026-08-07-role/.test(gs3), '   GAS 那邊也是');
+ok(/角色名稱/.test(gs3), '★ GAS 的提示詞也要有「不可以自己編角色名稱」（兩份都要改）');
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

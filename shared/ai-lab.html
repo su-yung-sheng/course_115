@@ -127,7 +127,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
      那件事現在由 DEBUG_KEY 做，而且更好：走的是真正的管線。 */
 /* 這一頁預期的 GAS 版本。改 aiguide.gs 的行為時，兩邊一起改。
    ⚠️ 這不是裝飾 —— 它是唯一能看出「部署的是不是最新版」的方法。 */
-const EXPECT_VERSION = '2026-08-07-nosid';
+const EXPECT_VERSION = '2026-08-07-role';
 
 const GAS = ((window.CONFIG || {}).AIGUIDE || {}).GAS_URL || '';
 $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒填）';
@@ -273,7 +273,12 @@ Object.keys(window.BLOCK_LEVELS || {}).forEach(id => {
     /* 「不可以說出口的」直接讀關卡資料裡的 forbid ——
        原本是靠關鍵字猜的，猜不準；而這一欄準不準，
        直接決定「洩漏答案」這條檢查有沒有意義。 */
-    forbid: x.forbid || []
+    forbid: x.forbid || [],
+    /* keys 也帶著 —— 「他講到了什麼、還缺什麼」是這一頁最該讓你看到的東西。
+       ★ 2026-08-07 的教訓：十則測試全部顯示「沒抓到問題」，
+         但其中沒有一則走到「關鍵概念全中」那條路，而畫面上完全看不出來。
+         看不到 hit／miss，就分不出「AI 問得好」和「keys 判錯了所以還在問」。 */
+    keys: x.keys || []
   }));
   if (a.write) QS.push({ id, no: '寫', q: a.write.q, hint: a.write.sample, forbid: a.write.forbid || [] });
 });
@@ -337,8 +342,10 @@ async function ask(answer) {
   const dbg = $('dbgKey').value.trim(), mdl = $('model').value.trim();
   if (dbg) { p.dbg = dbg; if (mdl) p.model = mdl; }
   const j = await callGas(p);
+  const k = AIGUIDE.hitKeys(answer, x.keys);
   return { text: j.reply || '', ms: Math.round(performance.now() - t0),
            usage: {}, forbid: x.forbid, blocked: !!j.blocked,
+           hit: k.hit, miss: k.miss, hasKeys: (x.keys || []).length > 0,
            raw: j.raw || '', why: j.why || [], model: j.model || '',
            byKeys: !!j.byKeys, prompt: j.prompt || '' };
 }
@@ -360,9 +367,17 @@ function card(tag, sent, res, err) {
     </div>
     <div class="text-xs text-slate-500 mb-2">學生輸入：<span class="font-mono">${esc(sent) || '（空白）'}</span></div>
     <div class="text-[15px] leading-relaxed mb-2">${esc(res.text) || '（沒有回覆）'}</div>
-    ${res.byKeys
-      ? '<div class="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-2">'
-        + '⚡ <b>關鍵概念全中，根本沒問 AI</b> —— 這一次不花額度、不必等。</div>'
+    ${res.hasKeys
+      ? '<div class="text-xs rounded-lg px-3 py-2 mb-2 ' +
+        (res.byKeys ? 'text-emerald-800 bg-emerald-50 border border-emerald-200'
+                    : 'text-slate-600 bg-slate-50 border border-slate-200') + '">'
+        + (res.byKeys
+            ? '⚡ <b>關鍵概念全中，根本沒問 AI</b> —— 不花額度、不必等，回饋是你寫的。'
+            : '講到了：<b>' + (res.hit.join('、') || '（還沒講到任何一項）') + '</b>'
+              + '　還缺：<b>' + res.miss.join('、') + '</b>'
+              + '<br><span class="text-slate-400">AI 這一句應該是在問「還缺」的第一項。'
+              + '不是的話，要嘛提示詞沒生效，要嘛這一問的 keys 寫錯了。</span>')
+        + '</div>'
       : ''}
     ${res.blocked
       ? '<div class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">'
@@ -391,8 +406,19 @@ $('all').onclick = async () => {
   const probes = AIGUIDE.PROBES;
   $('out').innerHTML = '';
   let bad = 0;
+  const kx = (QS[+$('q').value] || {}).keys || [];
   for (let i = 0; i < probes.length; i++) {
-    const p = probes[i];
+    const p = Object.assign({}, probes[i]);
+    /* ★ 「全部講到」這一則必須跟著「現在選的是哪一問」變。
+       原本寫死一句「畫正方形那一段一直重複，所以要包成副程式」——
+       那是為第 3 問寫的，拿去測第 1 問當然不會全中，
+       於是「關鍵概念全中就不問 AI」那條路**十次測試一次都沒跑到**，
+       而卡片上還標著「完全答對」，看起來像是 AI 對答對的學生窮追不捨。
+       測試題和題目對不上，測出來的結論就是錯的。 */
+    if (p.fromKeys) {
+      if (!kx.length) { p.tag += '（這一問沒有 keys，跳過）'; p.text = ''; }
+      else p.text = kx.map(g => (g.any || g)[0]).join('、');
+    }
     $('out').insertAdjacentHTML('beforeend',
       `<p id="w${i}" class="text-sm text-slate-400">（${i + 1}/${probes.length}）${esc(p.tag)}…</p>`);
     let html;
