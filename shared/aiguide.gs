@@ -31,6 +31,9 @@
    1. script.google.com → 新增專案 → 把這整份貼上
    2. 專案設定 → 指令碼屬性，新增：
         GEMINI_KEY   你的 Gemini API 金鑰（★ 另一個專案發的，不要和批改共用）
+        GEMINI_KEY_2 （可省略）第二把 —— ★ 一定要是「另一個專案」發的
+        GEMINI_KEY_3 （可省略）第三把 —— 同上
+        RPM_PER_KEY  （可省略）每把金鑰每分鐘最多幾次，預設 10
         QUERY_KEY    自己想一組通行碼
         MODEL        （可省略）預設 gemini-2.5-flash-lite
         SHEET_ID     （可省略）要存對話紀錄的話，填 Google 試算表 ID
@@ -52,8 +55,77 @@ var DEFAULTS = {
   CONTENT_URL: 'https://su-yung-sheng.github.io/course_115/11502/content/blocks.js',
   DAILY_CAP: 600,      // 全部人加起來，一天最多幾次
   PER_SID_CAP: 30,     // 一個學生一天最多幾次
-  MAX_ANSWER: 300      // 學生輸入的字數上限
+  MAX_ANSWER: 300,     // 學生輸入的字數上限
+  RPM_PER_KEY: 10,     // 每把金鑰每分鐘最多幾次（保守值，免費層大約在這個量級）
+  COOL_SEC: 60         // 某把吃到 429 之後冷卻幾秒
 };
+
+/* ── 多把金鑰：分流、節流、冷卻 ─────────────────────
+   ★ 三把 key 只有在「三個不同專案」才有意義
+     Gemini 的額度是按**專案**算的，不是按金鑰。
+     同一個專案發三把，分流等於沒分 —— 三把共用同一條線。
+     這一點程式驗證不了（GAS 看不出金鑰屬於哪個專案），只能你自己確認。
+
+   ★ 為什麼不是「排隊」
+     Apps Script 的 Web App 每個請求各自獨立執行，沒有一個長駐的行程
+     可以維護佇列。用 LockService 硬把大家串起來的話，
+     第 30 個學生要等前面 29 個跑完，而 GAS 還有執行時間上限 ——
+     結果是後面的人直接逾時，比 429 還糟。
+     所以這裡做的是三件實際做得到的事：
+
+       ① 節流：每把金鑰每分鐘自己記次數，額滿就換下一把
+       ② 冷卻：真的吃到 429 的那一把，冷卻 60 秒不再用
+       ③ 退避：全部都滿的時候回 retryAfter，讓前端等一下再試
+
+   ⚠️ 計數用 CacheService，讀了再寫中間可能被別人插隊，
+      所以「每分鐘 10 次」不是精準的 10 次。這樣就夠了 ——
+      真的超過的那一次會拿到 429，然後那把就進冷卻，②會接住。 */
+function keys_() {
+  var out = [];
+  ['GEMINI_KEY', 'GEMINI_KEY_2', 'GEMINI_KEY_3'].forEach(function (name, i) {
+    var v = prop_(name, '');
+    if (v) out.push({ i: i + 1, name: name, key: v });
+  });
+  return out;
+}
+
+/** 挑一把現在可以用的。全部都不能用就回 null。 */
+function pickKey_() {
+  var all = keys_();
+  if (!all.length) return null;
+  var cache = CacheService.getScriptCache();
+  var minute = Math.floor(new Date().getTime() / 60000);
+  var cap = num_('RPM_PER_KEY', DEFAULTS.RPM_PER_KEY);
+  var props = PropertiesService.getScriptProperties();
+  var start = num2_(props.getProperty('rr'));
+
+  for (var n = 0; n < all.length; n++) {
+    var k = all[(start + n) % all.length];
+    if (cache.get('cool.' + k.i)) continue;                 // 冷卻中
+    var rk = 'rpm.' + k.i + '.' + minute;
+    var used = num2_(cache.get(rk));
+    if (used >= cap) continue;                              // 這一分鐘滿了
+    cache.put(rk, String(used + 1), 120);
+    props.setProperty('rr', String((start + n + 1) % all.length));
+    return k;
+  }
+  return null;
+}
+
+function coolDown_(k) {
+  CacheService.getScriptCache().put('cool.' + k.i, '1', num_('COOL_SEC', DEFAULTS.COOL_SEC));
+}
+
+/** 現在每把的狀態（selfTest 與 ping 用） */
+function keyReport_() {
+  var cache = CacheService.getScriptCache();
+  var minute = Math.floor(new Date().getTime() / 60000);
+  return keys_().map(function (k) {
+    return { key: k.name,
+             thisMinute: num2_(cache.get('rpm.' + k.i + '.' + minute)),
+             cooling: !!cache.get('cool.' + k.i) };
+  });
+}
 
 /* 學生要答案時的固定回法。
    ★ 為什麼寫死：交給模型即興發揮，十次裡總有一次心軟。 */
@@ -74,7 +146,8 @@ function handle_(e) {
 
     if (p.action === 'ping') {
       return json_({ ok: true, model: prop_('MODEL', DEFAULTS.MODEL),
-                     units: Object.keys(levels_()).length, used: usedToday_() });
+                     units: Object.keys(levels_()).length, used: usedToday_(),
+                     keys: keyReport_() });
     }
     if (p.action !== 'ask') return json_({ ok: false, error: '不認得的 action：' + p.action });
 
@@ -107,7 +180,8 @@ function handle_(e) {
   } catch (err) {
     // 一律回 200 ＋ ok:false：Apps Script 回非 200 時是一頁 HTML，
     // 跨來源讀不到內容，前端只會看到「fetch 失敗」，查不出原因。
-    return json_({ ok: false, error: String(err && err.message || err) });
+    return json_({ ok: false, error: String(err && err.message || err),
+                   busy: !!(err && err.busy), retryAfter: (err && err.retryAfter) || 0 });
   }
 }
 
@@ -196,30 +270,45 @@ function buildPrompt_(item, answer) {
 }
 
 function askGemini_(prompt) {
-  var key = prop_('GEMINI_KEY', '');
-  if (!key) throw new Error('還沒設定 GEMINI_KEY（專案設定 → 指令碼屬性）。');
+  var all = keys_();
+  if (!all.length) throw new Error('還沒設定 GEMINI_KEY（專案設定 → 指令碼屬性）。');
   var model = prop_('MODEL', DEFAULTS.MODEL);
+  var lastErr = '';
 
-  var res = UrlFetchApp.fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/' +
-      encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key),
-    { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-      payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+  /* 有幾把就最多試幾次。每一把只試一次 ——
+     ★ 同一把重試沒有意義：429 是額度，不是網路抖動。
+       而且重試等於和 Scratch 批改搶額度，那邊壞掉的代價大得多。 */
+  for (var n = 0; n < all.length; n++) {
+    var k = pickKey_();
+    if (!k) break;                       // 全部滿了或都在冷卻
 
-  var code = res.getResponseCode();
-  var body = res.getContentText();
+    var res = UrlFetchApp.fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/' +
+        encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(k.key),
+      { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+        payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
 
-  /* ★ 429 直接放棄，不重試。
-     重試等於和批改搶額度，而批改壞掉的代價大得多。 */
-  if (code === 429) throw new Error('AI 現在很忙（額度或每分鐘上限），等一下再問 —— 先自己想想看。');
-  if (code !== 200) throw new Error('Gemini 回了 HTTP ' + code + '：' + body.slice(0, 200));
+    var code = res.getResponseCode();
+    var body = res.getContentText();
 
-  var j = JSON.parse(body);
-  var c = (j.candidates || [])[0] || {};
-  var parts = ((c.content || {}).parts || []);
-  var text = parts.map(function (x) { return x.text || ''; }).join('').trim();
-  if (!text) throw new Error('Gemini 沒有回內容（可能被安全設定擋下）。');
-  return text;
+    if (code === 429) { coolDown_(k); lastErr = '額度或每分鐘上限'; continue; }
+    if (code === 403) { coolDown_(k); lastErr = k.name + ' 被拒絕（金鑰無效或沒開 API）'; continue; }
+    if (code !== 200) throw new Error('Gemini 回了 HTTP ' + code + '：' + body.slice(0, 200));
+
+    var j = JSON.parse(body);
+    var c = (j.candidates || [])[0] || {};
+    var parts = ((c.content || {}).parts || []);
+    var text = parts.map(function (x) { return x.text || ''; }).join('').trim();
+    if (!text) throw new Error('Gemini 沒有回內容（可能被安全設定擋下）。');
+    return text;
+  }
+
+  /* 全部都不能用 → 讓前端等一下再試。
+     這是「排隊」在 GAS 上唯一做得到的形式：不是我們排，是請對方晚點來。 */
+  var e = new Error('AI 現在很忙，等一下再問 —— 先自己想想看。' + (lastErr ? '（' + lastErr + '）' : ''));
+  e.busy = true;
+  e.retryAfter = 20;
+  throw e;
 }
 
 /* ── 回覆檢查 ─────────────────────────────────────
@@ -309,6 +398,20 @@ function json_(o) {
    ⚠️ 第三則是「直接要答案」。那一則守不守得住，決定這功能能不能上。
    ===================================================================== */
 function selfTest() {
+  /* ★ 先看金鑰。三把只有在「三個不同專案」才有意義 ——
+     同一個專案發三把，分流等於沒分。這裡看不出專案，只能提醒。 */
+  var ks = keys_();
+  Logger.log('金鑰 %s 把：%s', ks.length, ks.map(function (k) { return k.name; }).join('、'));
+  if (ks.length > 1) {
+    Logger.log('⚠️ 確認這 %s 把是「不同專案」發的 —— 同專案共用額度，分流無效', ks.length);
+  }
+  Logger.log('每把每分鐘上限 %s 次，總計每分鐘約 %s 次',
+             num_('RPM_PER_KEY', DEFAULTS.RPM_PER_KEY),
+             num_('RPM_PER_KEY', DEFAULTS.RPM_PER_KEY) * Math.max(ks.length, 1));
+  Logger.log('一班 30 人同時按的話：%s',
+             num_('RPM_PER_KEY', DEFAULTS.RPM_PER_KEY) * Math.max(ks.length, 1) >= 30
+               ? '大致接得住' : '會有人被請去等 20 秒（前端會自動重試一次）');
+
   var all = levels_();
   var ids = Object.keys(all);
   Logger.log('題目抓到 %s 關：%s', ids.length, ids.join('、'));
@@ -336,4 +439,38 @@ function selfTest() {
     });
 
   Logger.log('今天已用 %s 次', usedToday_());
+  keyReport_().forEach(function (k) {
+    Logger.log('  %s：這一分鐘 %s 次%s', k.key, k.thisMinute, k.cooling ? '（冷卻中）' : '');
+  });
+}
+
+/* =====================================================================
+   burstTest —— 模擬一班同時按下去
+   ★ selfTest 一次問三題，測的是「守不守得住」；
+     這一支連發 30 次，測的是「撐不撐得住」。兩件事要分開測。
+   ⚠️ 這會真的消耗 30 次額度。跑之前先確認你用的是引導專用的專案。
+   ===================================================================== */
+function burstTest() {
+  var all = levels_();
+  var ids = Object.keys(all);
+  if (!ids.length) { Logger.log('❌ 沒抓到題目'); return; }
+  var item = all[ids[0]][0];
+
+  var okN = 0, busyN = 0, errN = 0;
+  var t0 = new Date().getTime();
+  for (var i = 0; i < 30; i++) {
+    try {
+      askGemini_(buildPrompt_(item, '我不太確定，好像有東西重複'));
+      okN++;
+    } catch (e) {
+      if (e.busy) busyN++; else { errN++; Logger.log('  第 %s 次失敗：%s', i + 1, e.message); }
+    }
+  }
+  Logger.log('30 次連發：成功 %s、被請去等 %s、其他失敗 %s，共 %s 秒',
+             okN, busyN, errN, Math.round((new Date().getTime() - t0) / 1000));
+  Logger.log('被請去等的那些，前端會顯示倒數並自動重試一次 —— %s',
+             busyN === 0 ? '這次沒有人被擋' : '學生會感覺「慢了一下」，但不會壞掉');
+  keyReport_().forEach(function (k) {
+    Logger.log('  %s：這一分鐘 %s 次%s', k.key, k.thisMinute, k.cooling ? '（冷卻中）' : '');
+  });
 }

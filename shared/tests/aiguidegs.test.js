@@ -1,0 +1,69 @@
+/* aiguide.gs 的金鑰分流：輪替、節流、冷卻
+   跑法：node shared/tests/aiguidegs.test.js
+
+   ★ 為什麼要能單獨測
+     這段邏輯只有在「一班 30 人同時按」的時候才會現形，
+     而那時候是上課中，出事就是全班卡在那裡。
+     這裡用假的 UrlFetchApp 把 GAS 的環境兜出來，在本機就跑得完。
+
+   ⚠️ 測的是分流邏輯，不是 Gemini。模型守不守得住要用
+      shared/ai-lab.html 或 GAS 編輯器裡的 selfTest。 */
+'use strict';
+let pass = 0, fail = 0;
+const ok = (c, l) => { c ? pass++ : fail++; console.log((c ? '  ✅ ' : '  ❌ ') + l); };
+const fs=require('fs');
+let src=fs.readFileSync('/sessions/practical-friendly-ride/mnt/course_115/shared/aiguide.gs','utf8');
+// 假的 GAS 環境
+const props={}, cache={};
+const env={
+  PropertiesService:{getScriptProperties:()=>({getProperty:k=>props[k]??null,setProperty:(k,v)=>{props[k]=v;}})},
+  CacheService:{getScriptCache:()=>({get:k=>cache[k]??null,put:(k,v)=>{cache[k]=v;},remove:k=>{delete cache[k];}})},
+  Utilities:{formatDate:()=>'2026-08-07',sleep:()=>{}},
+  Logger:{log:()=>{}},
+  UrlFetchApp:null,
+};
+props['GEMINI_KEY']='k1'; props['GEMINI_KEY_2']='k2'; props['GEMINI_KEY_3']='k3';
+props['RPM_PER_KEY']='2';
+let calls=[];
+env.UrlFetchApp={fetch:(url)=>{
+  const k=decodeURIComponent(url.split('key=')[1]);
+  calls.push(k);
+  const code = env.__force429 && env.__force429[k] ? 429 : 200;
+  return {getResponseCode:()=>code,
+    getContentText:()=>code===200?JSON.stringify({candidates:[{content:{parts:[{text:'那是哪一件事呢？'}]}}]}):'quota'};
+}};
+const box={};
+new Function('PropertiesService','CacheService','Utilities','Logger','UrlFetchApp','module',
+  src+'\nmodule.askGemini_=askGemini_;module.keyReport_=keyReport_;module.pickKey_=pickKey_;')(
+  env.PropertiesService,env.CacheService,env.Utilities,env.Logger,env.UrlFetchApp,box);
+
+// ① 輪替：連問 3 次應該用到三把不同的
+calls=[]; for(let i=0;i<3;i++) box.askGemini_('x');
+ok(new Set(calls).size===3,'三把輪流用到：'+calls.join(' → '));
+// ② 節流：每把上限 2，總共 6 次之後就該說忙
+calls=[]; let busy=0;
+for(let i=0;i<6;i++){ try{ box.askGemini_('x'); }catch(e){ if(e.busy) busy++; } }
+ok(busy>0,'每分鐘額滿之後會請學生等（'+busy+' 次被擋）');
+// ③ 冷卻：k1 固定回 429，之後不該再用到 k1
+Object.keys(cache).forEach(k=>{ if(k.startsWith('rpm.')||k.startsWith('cool.')) delete cache[k]; });
+env.__force429={k1:true};
+calls=[]; try{ box.askGemini_('x'); }catch(e){}
+ok(calls[0]==='k1'&&calls.length>1,'k1 吃到 429 會自動換下一把：'+calls.join(' → '));
+calls=[]; try{ box.askGemini_('x'); }catch(e){}
+ok(!calls.includes('k1'),'★ 之後 60 秒不再用 k1（冷卻）：'+calls.join(' → '));
+
+/* 只有一把金鑰時也要正常 —— 大部分人一開始只有一把 */
+Object.keys(props).forEach(k => { if (/GEMINI_KEY_/.test(k)) delete props[k]; });
+Object.keys(cache).forEach(k => { if (/^rpm\.|^cool\./.test(k)) delete cache[k]; });
+env.__force429 = null;
+calls = [];
+try { box.askGemini_('x'); ok(calls.join() === 'k1', '只有一把時照樣能用'); }
+catch (e) { ok(false, '只有一把時不該壞掉：' + e.message); }
+
+/* 一把都沒有 → 要講清楚，不是丟一個看不懂的錯 */
+delete props['GEMINI_KEY'];
+try { box.askGemini_('x'); ok(false, '沒有金鑰時應該報錯'); }
+catch (e) { ok(/GEMINI_KEY/.test(e.message), '沒有金鑰時的訊息要指名 GEMINI_KEY'); }
+
+console.log('通過 ' + pass + '／失敗 ' + fail);
+process.exit(fail ? 1 : 0);
