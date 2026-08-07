@@ -429,11 +429,33 @@ function askGemini_(prompt, modelOverride) {
     var k = pickKey_();
     if (!k) break;                       // 全部滿了或都在冷卻
 
+    /* ★ 關掉「思考」、限制輸出長度。
+       這一段不只是省錢，是這支能不能用的關鍵：
+
+       · gemini-2.5-flash 預設會先「思考」再回答。回一句 60 字的引導問句
+         本來不需要思考，但它可能先想十幾二十秒 ——
+         而 GAS 的網頁應用程式回應太久會被切斷，
+         被切斷的回應是一頁 HTML，跨來源讀不到，
+         瀏覽器只會說「Failed to fetch」，完全查不出原因。
+         （2026-08-07 實際踩到：ping 秒回，ask 一定失敗。）
+
+       · thinkingBudget: 0 —— 不思考，直接回。
+       · maxOutputTokens: 200 —— 我們只要 60 個字，給 200 個 token 綽綽有餘。
+         ⚠️ 不能設太小：思考關掉之後輸出才會全部用在回答上，
+            但中文一個字大約一個 token，設 80 會被砍在句子中間。
+       · temperature 低一點 —— 這裡要的是穩定守規矩，不是有創意。 */
     var res = UrlFetchApp.fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/' +
         encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(k.key),
       { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-        payload: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+        payload: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: 200,
+            thinkingConfig: { thinkingBudget: 0 }
+          }
+        }) });
 
     var code = res.getResponseCode();
     var body = res.getContentText();
@@ -446,7 +468,14 @@ function askGemini_(prompt, modelOverride) {
     var c = (j.candidates || [])[0] || {};
     var parts = ((c.content || {}).parts || []);
     var text = parts.map(function (x) { return x.text || ''; }).join('').trim();
-    if (!text) throw new Error('Gemini 沒有回內容（可能被安全設定擋下）。');
+    if (!text) {
+      /* 空回覆有好幾種原因，講清楚是哪一種 —— 不然只會看到「沒有回內容」。 */
+      var fr = c.finishReason || (j.promptFeedback && j.promptFeedback.blockReason) || '';
+      throw new Error('Gemini 沒有回內容' +
+        (fr === 'MAX_TOKENS' ? '（輸出長度不夠 —— 調高 maxOutputTokens）'
+         : fr ? '（原因：' + fr + '，可能被安全設定擋下）'
+         : '（沒有說原因）') + '。');
+    }
     return text;
   }
 

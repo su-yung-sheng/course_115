@@ -44,7 +44,11 @@
       <!-- ★ 連不上時，這個連結一秒分辨是「GAS 有問題」還是「瀏覽器擋掉」：
            新分頁開得出 JSON ＝ GAS 沒問題，問題在跨來源；開不出來 ＝ GAS 那邊。 -->
       <a id="openRaw" href="#" target="_blank" rel="noopener"
-         class="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline">在新分頁直接開這個網址</a>
+         class="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline">新分頁測連線</a>
+      <!-- ★ 這一個更有用：ping 秒回、ask 要等 Gemini。
+           兩者的失敗原因完全不同，所以要能分開試。 -->
+      <a id="openAsk" href="#" target="_blank" rel="noopener"
+         class="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline">新分頁直接送一題</a>
     </div>
     <span id="pingOut" class="text-xs"></span>
 
@@ -133,6 +137,15 @@ $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒�
 function refreshRaw() {
   const k = $('gasKey').value.trim();
   $('openRaw').href = GAS ? (GAS + '?action=ping&key=' + encodeURIComponent(k)) : '#';
+  /* ping 秒回，ask 要等 Gemini —— 失敗原因完全不同，所以要能分開試。
+     新分頁送得出答案、頁面裡卻 Failed to fetch，就是跨來源；
+     兩邊都卡住，就是 GAS 或 Gemini 那一端。 */
+  const x = QS[+($('q').value || 0)] || {};
+  $('openAsk').href = GAS
+    ? (GAS + '?action=ask&key=' + encodeURIComponent(k) +
+       '&unit=' + encodeURIComponent(x.id || '2-1-1') + '&qi=' + (x.qi || 0) +
+       '&sid=lab&answer=' + encodeURIComponent('有一段一直重複'))
+    : '#';
 }
 refreshRaw();
 $('gasKey').addEventListener('input', refreshRaw);
@@ -173,7 +186,11 @@ async function callGas(params) {
       '② 這一頁是用 file:// 直接開的 —— 本機檔案的來源是 null，瀏覽器會擋跨來源請求。' +
       '要從 https://su-yung-sheng.github.io/… 開這一頁。\n' +
       '③ 網址不是「部署」出來的那一個（結尾要是 /exec，不是編輯器網址）。\n' +
-      '→ 按右邊「在新分頁直接開這個網址」：開得出 JSON 就是 ①②，開不出來就是 ③ 或還沒部署。');
+      '④ GAS 跑太久被切斷 —— 如果「測連線」通、只有送題目失敗，就是這一種。' +
+      '模型思考太久（gemini-2.5-flash 預設會思考）。' +
+      '重貼最新的 aiguide.gs 並重新部署，它已經把思考關掉了。\n' +
+      '→ 上面兩個連結分開試：「新分頁測連線」通、「新分頁直接送一題」不通 → 是 ④；' +
+      '兩個都不通 → 是 ③ 或還沒部署；兩個都通但這裡不通 → 是 ①②。');
   }
   const t = await r.text();
   let j;
