@@ -23,20 +23,33 @@ new Function('window', fs.readFileSync(
 const ids = Object.keys(W.BLOCK_LEVELS);
 const units = ['2-1-1','2-1-2','2-1-3','2-2-1','2-3-1','2-3-2','2-3-3','2-4-1','2-4-2','2-4-3'];
 const missing = units.filter(u => ids.indexOf(u) < 0);
-ok(missing.length === 7, '目前 ' + missing.length + ' 關沒有題目（' + missing.join('、') + '）—— 這幾關一定要放行');
+ok(missing.length > 0 && missing.length <= units.length,
+   '目前 ' + missing.length + ' 關沒有題目（' + missing.join('、') + '）—— 這幾關一定要放行');
+/* ⚠️ 這個數字會隨著題目一關一關補上而變小，所以不寫死。
+   寫死的話，每補一關就會有一條測試無故變紅，久了就會有人把它註解掉。 */
 
 /* 步驟數要跟著關卡有什麼而變，不能寫死三步 */
 const steps = lv => {
   const out = [];
   if (lv.analysis) out.push('analysis');
   if (lv.derive) out.push('derive');
-  out.push('blocks');
+  if (lv.goal) out.push('blocks');       // ← 和頁面同一條規則
   return out;
 };
 const s1 = steps(W.BLOCK_LEVELS['2-1-1']);
 const s3 = steps(W.BLOCK_LEVELS['2-1-3']);
 ok(s1.join() === 'analysis,blocks', '第 1 關兩步：拆解 → 拼圖（沒有推導）');
 ok(s3.join() === 'derive,blocks', '第 3 關兩步：推導 → 拼圖（沒有拆解）');
+
+/* ★ 第 5 關有拆解也有追蹤，但沒有積木拼圖（課本用圖解不是程式）。
+   preSteps 若無條件加上 'blocks'，這一關會停在一個空的積木區，
+   而且永遠上傳不了 —— 和第 4～10 關那個坑是同一個。 */
+const l5 = W.BLOCK_LEVELS['2-3-1'];
+ok(!!l5 && !l5.goal, '第 5 關有內容但沒有 goal');
+ok(steps(l5).join() === 'analysis,derive', '★ 所以它的步驟裡沒有拼圖');
+ok(/if \(lv\.goal\)\s*out\.push\('blocks'\)/.test(html), '   程式裡確實是看有沒有 goal 才加');
+ok(/markDone/.test(html), '   沒有拼圖的關卡要有別的方式標記完成');
+ok(/!preSteps\(lv\)\.length/.test(html), '   一步都沒有時也不能變成空白擋住上傳');
 ok(!/out\.push\('analysis'\);\s*out\.push\('derive'\)/.test(html), '步驟不是寫死的');
 
 /* 一次只出現一步 —— 攤開的話後面的題目會洩漏前面的答案 */
@@ -48,7 +61,8 @@ ok(/preUnit !== u\.id.*preStage = 0/s.test(html), '換關卡要從第一步重�
    現在要圈對「哪一段一直重複」，而且要寫下自己的想法。 */
 ok(!/countdown\(foot, 20,/.test(html), '★ 拆解那一步不再用讀秒充數');
 ok(/renderAnalysis\(body, lv\.analysis, \{/.test(html), '   改成把關卡交給拆解本身');
-ok(/onDone:\s*function \(\) \{ preStage\+\+/.test(html), '   拆解自己說完成了才進下一步');
+ok(/onDone:[\s\S]{0,160}preStage \+\+|onDone:[\s\S]{0,160}preStage\+\+|onDone:[\s\S]{0,160}markDone/.test(html),
+   '   拆解自己說完成了才往下');
 ok(/onWrite:.*saveNote/.test(html), '   寫的內容會存起來');
 ok(/countdown\(foot, 0,/.test(html), '推導做完之後不必再等');
 

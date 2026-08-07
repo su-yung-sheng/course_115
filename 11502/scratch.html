@@ -233,12 +233,15 @@ function repaint(){ renderStages(); renderTotal(); paintGrader(); }
      才會出現上傳表單。順序是課本問題分析的順序（先想再做）。 */
 function levelOf(u){ return u ? (window.BLOCK_LEVELS || {})[u.id] : null; }
 
-/** 這一關的思考關卡有哪幾步（沒有拆解或沒有推導的關卡就少一步） */
+/** 這一關的思考關卡有哪幾步（有什麼就做什麼，不是固定三步）
+    ⚠️ 沒有 goal 的關卡不放拼圖 —— 例如第 5 關「排隊比高矮」是排序的
+       觀念導入，課本用的是圖解不是程式。硬塞一份程式進來，
+       學生只會以為排序就是背那幾塊積木。 */
 function preSteps(lv){
   const out = [];
   if (lv.analysis) out.push('analysis');
   if (lv.derive)   out.push('derive');
-  out.push('blocks');
+  if (lv.goal)     out.push('blocks');
   return out;
 }
 
@@ -268,6 +271,12 @@ function paintGrader(){
   }
 
   if (preUnit !== u.id) { preUnit = u.id; preStage = 0; }
+  // 完全沒有思考關卡可做（理論上不會發生，但別讓它變成一片空白擋住上傳）
+  if (!preSteps(lv).length) {
+    if (pre) { pre.classList.add('hidden'); pre.innerHTML = ''; }
+    showGrader(u);
+    return;
+  }
   if (preDone[u.id]) {
     // 做過了就收起來，但留一條路可以回去重看
     pre.classList.remove('hidden');
@@ -324,7 +333,9 @@ function renderPre(u, lv){
        寫的內容會存起來，下一節課老師拿得出來討論。 */
     DERIVE.renderAnalysis(body, lv.analysis, {
       onWrite: function (t) { if (window.saveNote) window.saveNote(u.id, t); },
-      onDone:  function () { preStage++; paintGrader(); }
+      onDone:  function () {
+        if (preStage === steps.length - 1) markDone(u); else { preStage++; paintGrader(); }
+      }
     });
     foot.innerHTML = '<p class="text-xs text-slate-400">' +
       '這裡沒有分數，寫錯也不會扣分 —— 先有自己的想法，等一下拼積木才不是照抄。</p>';
@@ -332,9 +343,12 @@ function renderPre(u, lv){
   }
 
   if (kind === 'derive') {
+    const last = preStage === steps.length - 1;   // 這一關沒有拼圖的話，推導就是最後一步
     DERIVE.mount(body, lv.derive, { onPass: function(){
       foot.innerHTML = '';
-      countdown(foot, 0, '推導完成，開始拼積木 →', function(){ preStage++; paintGrader(); });
+      countdown(foot, 0, last ? '完成，去上傳作品 →' : '推導完成，開始拼積木 →', function(){
+        if (last) { markDone(u); } else { preStage++; paintGrader(); }
+      });
     }});
     foot.innerHTML = '<p class="text-xs text-slate-400">把每一步做完，才會出現下一關。</p>';
     return;
@@ -344,14 +358,17 @@ function renderPre(u, lv){
   body.innerHTML = '<p class="text-sm font-bold mb-3">🎯 ' + lv.task + '</p><div id="pre-sim"></div>';
   BLOCKS.mount(document.getElementById('pre-sim'), {
     palette: lv.palette, goal: lv.goal, alts: lv.alts, loose: lv.loose, hint: lv.task,
-    onPass: function(){
-      preDone[u.id] = true;
-      if (window.savePre) window.savePre(u.id);
-      paintGrader();
-    }
+    onPass: function(){ markDone(u); }
   });
   foot.innerHTML = '<p class="text-xs text-slate-400">拼對了就會出現上傳表單。'
                  + '真正要交的還是 Scratch 做出來的作品。</p>';
+}
+
+/** 思考關卡整關完成。記在進度裡，下次不必重做。 */
+function markDone(u){
+  preDone[u.id] = true;
+  if (window.savePre) window.savePre(u.id);
+  paintGrader();
 }
 
 /** 按鈕（秒數 0 = 直接可按；讀秒的用法已經拿掉，留著是給推導完成用的） */

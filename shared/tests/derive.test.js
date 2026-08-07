@@ -121,5 +121,32 @@ const allText = JSON.stringify([L['2-1-1'], L['2-1-2'], L['2-1-3']]);
 ok(!/自訂積木/.test(allText), '沒有第三種講法「自訂積木」');
 ok(/副程式/.test(JSON.stringify(L['2-1-1'].analysis)), '第 1 關的拆解用課本的「副程式」');
 
+/* ── 追蹤每一輪（選擇排序）───────────────────────
+   排序的難處不是步驟順序（課本寫得清清楚楚），
+   是「跑完一輪之後資料變成什麼樣」。這一段就是為了那件事。 */
+eq(JSON.stringify(D._minAt([5, 2, 8, 1, 9])), '[3]', '找得出最小值的位置');
+eq(JSON.stringify(D._minAt([3, 1, 1, 4])), '[1,2]',
+   '★ 並列最小值兩個都算對 —— 只認第一個的話，選另一個的學生會被說錯');
+ok(D._pickMin([5, 2, 8], 1).ok, '點 2 → 對');
+ok(!D._pickMin([5, 2, 8], 0).ok, '點 5 → 錯');
+ok(/還有更小的/.test(D._pickMin([5, 2, 8], 0).msg), '★ 錯的時候說「還有更小的」');
+ok(!/第 \d|位置|索引/.test(D._pickMin([5, 2, 8], 0).msg),
+   '★ 但不洩漏正確位置 —— 直接給的話，學生下一輪照樣不會找');
+ok(/152/.test(D._pickMin([{ v: 152, t: '152' }, { v: 141, t: '141' }], 0).msg),
+   '身高那種帶標籤的資料，訊息要講得出他點的是哪一個');
+
+/* 第 5 關：排序的觀念導入，沒有積木拼圖 */
+const l5 = L['2-3-1'];
+ok(!!l5, '第 5 關（排隊比高矮）有資料');
+ok(!l5.goal, '★ 這一關沒有積木拼圖 —— 課本用的是圖解，不是程式');
+ok(!l5.palette, '   也沒有調色盤');
+eq(l5.derive.steps[0].kind, 'sort', '它的活動是「追蹤每一輪」');
+eq(l5.derive.steps[0].items.length, 5, '五個人');
+const hs = l5.derive.steps[0].items.map(x => x.v);
+ok(new Set(hs).size === hs.length, '五個身高不重複（並列會讓「最矮的是誰」有兩個答案，導入不該一開始就碰）');
+ok(hs.join() !== hs.slice().sort((a, b) => a - b).join(), '★ 一開始不能是排好的 —— 那就沒得排了');
+ok(l5.analysis.qs.some(q => q.pick), '也有圈選題');
+ok(!!l5.analysis.write, '也有先寫再對照');
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

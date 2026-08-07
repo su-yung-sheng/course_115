@@ -121,6 +121,43 @@
     return (Math.round(v * 100) / 100).toString();
   }
 
+  /* ── 追蹤每一輪（排序）─────────────────────────────
+     ★ 為什麼要有這一步
+       排序的難處從來不是「步驟順序」—— 課本把步驟寫得清清楚楚，
+       學生照著念也念得出來。難的是「跑完一輪，資料到底變成什麼樣」。
+       排流程圖完全碰不到這一點，念一遍步驟也碰不到。
+       這裡讓學生一輪一輪自己動手，資料在眼前變。
+
+     ★ 照課本的做法：兩個清單
+       課本（翰林 114 資科 2 下 6-2）的選擇排序法是
+       「從未排序找到最小值 → 加到已排序的最後一項 → 從未排序刪掉」，
+       不是在同一個清單裡對調。兩者都叫選擇排序，但積木完全不同 ——
+       這裡跟課本走，學生等一下拼的才是同一件事。 */
+
+  /** 未排序清單裡最小的那幾個位置（可能有並列） */
+  function minAt(list) {
+    var m = Math.min.apply(null, list.map(function (x) { return num(x); }));
+    var out = [];
+    list.forEach(function (x, i) { if (num(x) === m) out.push(i); });
+    return out;
+  }
+  function num(x) { return (x && typeof x === 'object') ? Number(x.v) : Number(x); }
+  function label(x) { return (x && typeof x === 'object') ? String(x.t) : String(x); }
+
+  /**
+   * 學生點了第 i 個，對不對？
+   * ★ 錯的時候要說「還有更小的」，不要說「答案是 3」——
+   *   直接給位置的話，學生下一輪照樣不會找。
+   */
+  function pickMin(list, i) {
+    if (!list.length) return { ok: false, msg: '沒有東西可以挑了。' };
+    var want = minAt(list);
+    if (want.indexOf(i) >= 0) return { ok: true, msg: '' };
+    var m = num(list[want[0]]);
+    return { ok: false, msg: '你選的是 ' + label(list[i]) + '，但還有更小的 —— 再看一次。' +
+                            (num(list[i]) < m ? '' : '') };
+  }
+
   /* ── 畫圖：一隻很小的烏龜 ──────────────────────────
      沒有用 blocks.js 的引擎 —— 這裡只要「走 n 條邊、每次轉 t 度」，
      為了這件事去組一份假的積木程式反而更難懂也更難改。
@@ -255,7 +292,18 @@
     '  border:2px solid #fde68a;border-radius:9px;font-family:inherit;font-size:13.5px;',
     '  line-height:1.8;resize:vertical}',
     '.dv-write textarea:focus{outline:none;border-color:#f59e0b}',
-    '.dv-write textarea:disabled{background:#fff;color:#78350f}'
+    '.dv-write textarea:disabled{background:#fff;color:#78350f}',
+    /* 追蹤每一輪：兩排資料，未排序的可以點 */
+    '.dv-round{font-size:12.5px;font-weight:900;color:#6366f1;margin:10px 0 6px}',
+    '.dv-row2{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}',
+    '.dv-tag{font-size:11px;font-weight:700;color:#64748b;min-width:52px}',
+    '.dv-chip{min-width:44px;padding:8px 12px;border:2px solid #cbd5e1;background:#fff;',
+    '  border-radius:10px;font-size:15px;font-weight:700;font-family:inherit;color:#334155}',
+    '.dv-chip.pickable{cursor:pointer}',
+    '.dv-chip.pickable:hover{border-color:#6366f1;background:#eef2ff}',
+    '.dv-chip.moved{border-color:#34d399;background:#dcfce7;color:#166534}',
+    '.dv-chip.wrong{border-color:#f59e0b;background:#fef3c7}',
+    '.dv-empty{font-size:12px;color:#cbd5e1}'
   ].join('');
 
   function ensureStyle() {
@@ -332,6 +380,8 @@
       if (st.kind === 'ask')     box.innerHTML = head + askHtml(st);
       else if (st.kind === 'draw')    box.innerHTML = head + drawHtml(st);
       else if (st.kind === 'formula') box.innerHTML = head + formulaHtml(st);
+      else if (st.kind === 'sort')    box.innerHTML = head + '<div class="dv-sort"></div>' +
+                                                      '<div class="dv-fb" style="display:none"></div>';
       wire(box, st, i);
       return box;
     }
@@ -410,6 +460,8 @@
         inp2.onkeydown = function (e) { if (e.key === 'Enter') go.click(); };
       }
 
+      if (st.kind === 'sort') { wireSort(box, st, i, say, pass); return; }
+
       if (st.kind === 'formula') {
         var L = box.querySelector('[data-l]'), R = box.querySelector('[data-r]');
         var tok = box.querySelector('[data-fill]');
@@ -424,6 +476,57 @@
             if (v.ok) { st._got = fmt(f.left) + ' ÷ ' + String(f.right).trim(); setTimeout(function () { pass(i); }, 900); }
           });
         };
+      }
+    }
+
+    /* 追蹤每一輪：學生從「未排序」點出最小的，看著它搬到「已排序」。 */
+    function wireSort(box, st, i, say, passFn) {
+      var left = (st.items || []).slice();      // 未排序
+      var right = [];                            // 已排序
+      var round = 0;
+      var wrap = box.querySelector('.dv-sort');
+
+      draw2();
+      function draw2() {
+        round++;
+        wrap.innerHTML =
+          '<div class="dv-round">第 ' + round + ' 回合</div>' +
+          row('未排序', left, true) +
+          row('已排序', right, false) +
+          (left.length ? '<p class="dv-unit" style="font-size:12.5px;margin-top:4px">' +
+             '點一下「未排序」裡<b>最小</b>的那一個。</p>' : '');
+        [].forEach.call(wrap.querySelectorAll('[data-i]'), function (b) {
+          b.onclick = function () { hit(Number(b.dataset.i), b); };
+        });
+      }
+      function row(tag, list, pickable) {
+        return '<div class="dv-row2"><span class="dv-tag">' + tag + '</span>' +
+          (list.length
+            ? list.map(function (x, k) {
+                return '<button class="dv-chip' + (pickable ? ' pickable' : ' moved') + '"' +
+                  (pickable ? ' data-i="' + k + '"' : '') + '>' + esc(label(x)) + '</button>';
+              }).join('')
+            : '<span class="dv-empty">（空的）</span>') + '</div>';
+      }
+      function hit(k, btn) {
+        var r = pickMin(left, k);
+        if (!r.ok) {
+          btn.classList.add('wrong');
+          say(false, r.msg);
+          setTimeout(function () { btn.classList.remove('wrong'); }, 700);
+          return;
+        }
+        right.push(left.splice(k, 1)[0]);
+        if (left.length) {
+          say(true, '找到最小值 ' + label(right[right.length - 1]) +
+                    '，加到「已排序」的最後一項，並且從「未排序」刪掉。');
+          draw2();
+        } else {
+          wrap.innerHTML = '<div class="dv-round">排好了</div>' + row('已排序', right, false);
+          say(true, st.finish || '這就是選擇排序法：每一回合挑出最小的，搬到已排序的最後面。');
+          st._got = right.map(label).join('、');
+          setTimeout(function () { passFn(i); }, 900);
+        }
       }
     }
 
@@ -584,7 +687,9 @@
     _laps: laps,
     _checkAngle: checkAngle,
     _verdict: verdict,
-    _polyPath: polyPath
+    _polyPath: polyPath,
+    _minAt: minAt,
+    _pickMin: pickMin
   };
 
 })(typeof window !== 'undefined' ? window : this);
