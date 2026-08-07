@@ -424,6 +424,26 @@ repaint();
     try {
       const snap = await getDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid));
       const mods = (snap.exists() && snap.data().modules) || {};
+
+      /* ── 第一次進來 → 先跑新手訓練（warmup.html）──────
+         這五關教的是「怎麼把卡住的地方講出來」。後面每一關的問題拆解、
+         AI 引導、找老師找同學，都要用到它。
+
+         ★ 為什麼是強制，不是放在首頁讓人自己點
+           自己點的話，最需要練的那些學生正好不會點。
+
+         ⚠️ 三道保險，一定要留著 —— 這一段擋到人的代價是「整站進不去」：
+           ① sessionStorage：Firestore 寫失敗時，這一節課不會鬼打牆一直被踢回去
+           ② 讀進度失敗（catch）不導向：連線不好已經只開第 1 關了，
+              不要再罰第二次
+           ③ 用 replace 不用 href：學生按上一頁不會又被彈回訓練頁 */
+      let ranThisSession = false;
+      // sessionStorage 在跨來源 iframe／無痕模式下會直接 throw，不是回 null
+      try { ranThisSession = sessionStorage.getItem('warmup' + window.CONFIG.TERM) === '1'; }
+      catch (e) { /* 拿不到就當沒跑過，靠 Firestore 那一份判斷 */ }
+      const doneWarmup = !!(mods.scratch && mods.scratch.warmup) || ranThisSession;
+      if (!doneWarmup) { location.replace('warmup.html'); return; }
+
       window.applyStars((mods.scratch && mods.scratch.unitStars) || {},
                         (mods.scratch && mods.scratch.pre) || {});
     } catch (e) {

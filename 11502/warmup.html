@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新手訓練：把話講清楚｜資訊科技 115-2</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+  html, body, button, input, select, textarea { font-family:'Noto Sans TC', system-ui, sans-serif; }
+  body{
+    background-color:#e7e5e4 !important;
+    background-image:
+      linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),
+      linear-gradient(90deg, rgba(120,113,108,.06) 1px,transparent 1px) !important;
+    background-size:26px 26px !important;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .pop{animation:pop .35s ease-out both}
+  @keyframes shake{10%,90%{transform:translateX(-2px)}30%,70%{transform:translateX(3px)}50%{transform:translateX(-1px)}}
+  .shake{animation:shake .4s}
+  .hl{background:linear-gradient(transparent 52%, rgba(250,204,21,.65) 52%);font-weight:800}
+  /* 題目原文：要看得出「這是題目給的字」，學生才知道什麼叫「抄」 */
+  .src{display:block;background:#f1f5f9;border-left:4px solid #94a3b8;
+       padding:.6rem .9rem;margin:.5rem 0;border-radius:.4rem;
+       font-size:.95rem;color:#475569;line-height:1.7}
+</style>
+
+<script src="config.js"></script>
+<script src="../shared/semester.js"></script>
+<script src="../shared/auth.js"></script>
+<script src="../shared/guard.js"></script>
+<script src="../shared/warmup.js"></script>
+<link rel="stylesheet" href="../shared/theme.css">
+</head>
+
+<body class="text-slate-800 min-h-screen pb-24">
+
+<a id="back-to-hub" href="hub.html" title="返回闖關基地"
+   class="fixed top-4 left-4 z-50 inline-flex items-center gap-1.5 bg-slate-800 text-white
+          font-bold text-sm px-3.5 py-2 rounded-full shadow-lg hover:bg-slate-700 transition">← 返回基地</a>
+<script>
+if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b.style.display='none';}
+</script>
+
+<main class="max-w-3xl mx-auto px-4 pt-20 sm:pt-8">
+
+  <header class="text-center mb-6">
+    <h1 class="text-2xl sm:text-4xl font-black tracking-tight">🎙️ 新手訓練：把話講清楚</h1>
+    <p class="text-slate-500 text-sm sm:text-base mt-3 leading-relaxed">
+      接下來的關卡裡，你會一直需要「講出自己卡在哪」——
+      跟 AI 助教講、跟老師講、跟同學講。<br class="hidden sm:block">
+      <b class="hl">講得清楚的人，拿到的幫助多好幾倍。</b>這五關就是在練這件事。
+    </p>
+  </header>
+
+  <!-- 進度條 -->
+  <div class="flex items-center gap-1.5 mb-6" id="bar"></div>
+
+  <div id="stage"></div>
+
+  <!-- 全部過關 -->
+  <section id="done" class="hidden pop">
+    <div class="bg-white rounded-2xl border-2 border-emerald-300 shadow-md p-6 text-center">
+      <div class="text-5xl mb-2">🏅</div>
+      <h2 class="text-2xl font-black text-emerald-700">五關全過</h2>
+      <p class="text-slate-500 text-sm mt-2">
+        這四條規則收進口袋，之後每一關都用得到。
+      </p>
+    </div>
+    <div id="rules" class="grid sm:grid-cols-2 gap-3 mt-4"></div>
+    <a href="scratch.html" id="go"
+       class="mt-5 block bg-indigo-600 hover:bg-indigo-700 text-white text-center font-black
+              text-lg rounded-2xl px-6 py-4 shadow-md transition">
+      開始闖關 →
+    </a>
+    <p id="saveWarn" class="hidden text-xs text-amber-700 bg-amber-50 border border-amber-200
+       rounded-lg px-3 py-2 mt-3 text-center"></p>
+  </section>
+
+</main>
+
+<script>
+const $  = id => document.getElementById(id);
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const STEPS = WARMUP.STEPS;
+let at = 0;                 // 現在第幾關
+let picked = false;         // 這一關的選擇題答對了沒
+
+/* ── 進度條 ─────────────────────────────────────── */
+function drawBar() {
+  $('bar').innerHTML = STEPS.map((s, i) =>
+    `<div class="flex-1 h-2.5 rounded-full ${
+      i < at ? 'bg-emerald-500' : i === at ? 'bg-indigo-500' : 'bg-slate-300'
+    }"></div>`).join('') +
+    `<span class="text-xs font-black text-slate-500 pl-2 whitespace-nowrap">${
+      Math.min(at + 1, STEPS.length)} / ${STEPS.length}</span>`;
+}
+
+/* ── 畫一關 ─────────────────────────────────────── */
+function draw() {
+  const s = STEPS[at];
+  picked = !s.pick;         // 沒有選擇題的關（第 5 關）直接算過
+  drawBar();
+
+  $('stage').innerHTML = `
+  <section class="bg-white rounded-2xl border border-slate-200 shadow-md p-5 sm:p-7 pop">
+    <div class="text-3xl mb-1">${s.badge}</div>
+    <h2 class="text-xl sm:text-2xl font-black mb-3">${s.title}</h2>
+    <p class="text-slate-600 leading-relaxed mb-4">${s.lead}</p>
+
+    ${s.compare ? `<div class="space-y-2 mb-4">${s.compare.map(c => `
+      <div class="rounded-xl border-2 px-4 py-3 ${c.bad
+        ? 'border-slate-200 bg-slate-50' : 'border-indigo-200 bg-indigo-50'}">
+        <div class="text-xs font-black text-slate-400 mb-0.5">${esc(c.who)}</div>
+        <div class="text-[15px] leading-relaxed">「${esc(c.say)}」</div>
+      </div>`).join('')}</div>` : ''}
+
+    ${s.steps ? `<ol class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-4
+        text-sm space-y-1 font-mono text-slate-700">${
+        s.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>` : ''}
+
+    ${s.pick ? `
+      <p class="font-black text-slate-700 mb-2">${s.pick.prompt}</p>
+      <div id="opts" class="space-y-2 mb-1">${s.pick.options.map((o, i) => `
+        <button data-i="${i}" class="opt w-full text-left border-2 border-slate-300 rounded-xl
+          px-4 py-3 text-[15px] hover:border-indigo-400 hover:bg-indigo-50 transition">
+          ${esc(o.t)}
+        </button>`).join('')}</div>
+      <div id="pickMsg" class="mb-4"></div>` : ''}
+
+    <!-- 寫作區：選擇題答對之前先鎖著。
+         ★ 為什麼要鎖：先做完判斷再動筆，寫出來的東西才有依據；
+           兩塊同時打開的話，多數人會跳過上面直接寫下面。 -->
+    <div id="writeBox" class="${s.pick ? 'opacity-40 pointer-events-none' : ''} border-t border-slate-200 pt-4">
+      <p class="font-black text-slate-700 mb-1">${s.write.prompt}</p>
+      <p class="text-xs text-slate-400 mb-2">💡 ${s.write.hint}</p>
+      <textarea id="ans" rows="3" placeholder="${esc(s.write.placeholder || '')}"
+        class="w-full border-2 border-slate-300 rounded-xl px-3.5 py-2.5 text-[15px]
+               focus:border-indigo-500 outline-none"></textarea>
+      <div class="flex items-center gap-3 mt-2 flex-wrap">
+        <button id="send" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black
+          px-6 py-2.5 rounded-xl shadow transition">送出</button>
+        <span id="count" class="text-xs text-slate-400"></span>
+      </div>
+      <div id="writeMsg" class="mt-3"></div>
+    </div>
+  </section>`;
+
+  if (s.pick) {
+    document.querySelectorAll('.opt').forEach(b => b.onclick = () => onPick(+b.dataset.i, b));
+  }
+  $('ans').oninput = () => {
+    $('count').textContent = $('ans').value.replace(/\s/g, '').length + ' 字';
+  };
+  $('send').onclick = onSend;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ── 選擇題 ─────────────────────────────────────── */
+function onPick(i, btn) {
+  const o = STEPS[at].pick.options[i];
+  /* ★ 選錯不鎖死、可以再選。
+     鎖死的話學生只會去問旁邊的人答案，而這一關的重點是「想一遍」，
+     不是「一次答對」。 */
+  document.querySelectorAll('.opt').forEach(b => {
+    b.className = b.className.replace(/border-(emerald|rose|indigo)-\d+/g, 'border-slate-300');
+  });
+  btn.className = btn.className.replace('border-slate-300',
+    o.ok ? 'border-emerald-500 bg-emerald-50' : 'border-rose-400 bg-rose-50');
+
+  $('pickMsg').innerHTML = `<div class="text-sm rounded-xl px-4 py-3 mt-2 leading-relaxed ${
+    o.ok ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+         : 'bg-amber-50 text-amber-900 border border-amber-200'}">
+    ${o.ok ? '✅ ' : '💭 '}${esc(o.msg)}</div>`;
+
+  if (o.ok && !picked) {
+    picked = true;
+    const w = $('writeBox');
+    w.className = w.className.replace('opacity-40 pointer-events-none', '');
+    w.classList.add('pop');
+  }
+}
+
+/* ── 寫作判定 ───────────────────────────────────── */
+function onSend() {
+  const s = STEPS[at];
+  const text = $('ans').value;
+  const r = s.write.check(text, { source: s.write.source });
+
+  if (!r.ok) {
+    /* ⚠️ 不通過的訊息只講「怎麼改」，不講「你錯了」。
+       這一頁沒有分數，重寫幾次都沒關係 —— 要讓人願意再改一次。 */
+    $('writeMsg').innerHTML =
+      `<div class="text-sm bg-amber-50 border border-amber-200 text-amber-900
+        rounded-xl px-4 py-3 leading-relaxed shake">✏️ ${esc(r.why)}</div>`;
+    $('ans').focus();
+    return;
+  }
+
+  $('writeMsg').innerHTML =
+    `<div class="text-sm bg-emerald-50 border border-emerald-200 text-emerald-900
+      rounded-xl px-4 py-3 leading-relaxed pop">
+      ✅ ${esc(s.write.ok)}
+      <div class="mt-2 pt-2 border-t border-emerald-200 text-emerald-800">
+        📌 <b>記住這一條：</b>${s.rule}
+      </div>
+      <button id="next" class="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white
+        font-black px-6 py-2.5 rounded-xl shadow transition">
+        ${at < STEPS.length - 1 ? '下一關 →' : '完成訓練 🏅'}
+      </button>
+    </div>`;
+  $('next').onclick = () => {
+    at++;
+    if (at < STEPS.length) draw();
+    else finish();
+  };
+}
+
+/* ── 全部完成 ───────────────────────────────────── */
+function finish() {
+  at = STEPS.length;
+  drawBar();
+  $('stage').innerHTML = '';
+  $('done').classList.remove('hidden');
+  $('rules').innerHTML = WARMUP.RULES.map(r => `
+    <div class="bg-white border border-slate-200 rounded-xl px-4 py-3">
+      <div class="font-black text-[15px]">${r.icon} ${esc(r.t)}</div>
+      <div class="text-xs text-slate-500 mt-1 leading-relaxed">${esc(r.d)}</div>
+    </div>`).join('');
+
+  /* ★ 就算存不進去，也要放人走。
+     這一頁不是成績，是提醒。因為連線問題把學生擋在關卡外面，
+     代價比「下次再跑一遍」大得多。 */
+  /* ⚠️ sessionStorage 會丟例外，不是「一定拿得到」的東西：
+     跨來源的 iframe、無痕模式、瀏覽器關掉網站資料時，讀寫都會直接 throw。
+     這一行如果炸掉，下面的 saveWarmup 就跑不到 ——
+     學生五關全做完了，卻什麼都沒存到，下次進來再做一遍。
+     ★ 這一頁的每一個「存」都只是省事，沒有一個值得擋住學生。 */
+  try { sessionStorage.setItem('warmup' + window.CONFIG.TERM, '1'); }
+  catch (e) { console.warn('sessionStorage 不能用，只靠 Firestore 記', e); }
+  if (window.saveWarmup) {
+    window.saveWarmup().catch(() => {
+      $('saveWarn').textContent =
+        '⚠️ 這次的完成紀錄沒存起來（可能是網路問題），下次進來可能會再跑一次。不影響闖關。';
+      $('saveWarn').classList.remove('hidden');
+    });
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+draw();
+</script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+  const app  = initializeApp(window.CONFIG.FIREBASE);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+  const sid  = sessionStorage.getItem('sid' + window.CONFIG.TERM);
+
+  /* 做完了 → 記在進度裡。
+     ★ 為什麼不能只存在瀏覽器
+       電腦教室有還原卡，關機就清空，而且學生下一節課可能換一台。
+       只存本機的話，每一節課都要重跑一次這五關 —— 那會讓人恨這個功能。
+     ★ 為什麼放在 modules.scratch 底下
+       安全規則不做欄位白名單（只看 totalStars 沒被調低），
+       用 merge 寫、不動 totalStars，規則自然過，不必重新發布規則。 */
+  window.saveWarmup = async function () {
+    if (!sid) throw new Error('沒有學號');
+    await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
+      { modules: { scratch: { warmup: true } } }, { merge: true });
+  };
+
+  AUTH.attachSession(auth, signInAnonymously, onAuthStateChanged);
+</script>
+</body>
+</html>
