@@ -121,6 +121,10 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
      中間少了 GAS 的攔截。
      它原本唯一的價值是「看得到模型原始的回覆」，
      那件事現在由 DEBUG_KEY 做，而且更好：走的是真正的管線。 */
+/* 這一頁預期的 GAS 版本。改 aiguide.gs 的行為時，兩邊一起改。
+   ⚠️ 這不是裝飾 —— 它是唯一能看出「部署的是不是最新版」的方法。 */
+const EXPECT_VERSION = '2026-08-07-nothink';
+
 const GAS = ((window.CONFIG || {}).AIGUIDE || {}).GAS_URL || '';
 $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒填）';
 
@@ -155,11 +159,29 @@ $('ping').onclick = async () => {
   $('pingOut').textContent = '測試中…';
   try {
     const j = await callGas({ action: 'ping' });
+    /* ★ 版本比對。
+       GAS 編輯器裡的程式碼和「部署的那個版本」是兩回事 ——
+       貼了新程式卻忘了重新部署，編輯器測起來一切正常，
+       /exec 卻還是舊行為，而且完全看不出來。這裡直接比給你看。 */
+    const stale = j.version !== EXPECT_VERSION;
+    const cool = (j.keys || []).filter(k => k.cooling);
     $('pingOut').innerHTML = '<span class="text-emerald-600 font-bold">✓ 通了</span>' +
       '　模型 ' + esc(j.model) + '　題目 ' + j.units + ' 關　今天已用 ' + j.used + ' 次' +
-      (j.keys && j.keys.length ? '　金鑰 ' + j.keys.length + ' 把' +
-        (j.keys.some(k => k.cooling) ? '（有在冷卻的）' : '') : '') +
-      (j.hasDebug ? '' : '　<span class="text-amber-700 font-bold">⚠️ 還沒設 DEBUG_KEY，看不到原始回覆</span>');
+      ((j.keys || []).length ? '　金鑰 ' + j.keys.length + ' 把' : '') +
+      (j.hasDebug ? '' : '　<span class="text-amber-700 font-bold">⚠️ 還沒設 DEBUG_KEY</span>') +
+      (stale
+        ? '<div class="text-amber-900 bg-amber-100 border border-amber-300 rounded-lg px-3 py-2 mt-2 leading-relaxed">'
+          + '⚠️ <b>部署的是舊版</b>：/exec 回報 <code>' + esc(j.version || '（沒有版本字串＝很舊）')
+          + '</code>，這一頁預期 <code>' + EXPECT_VERSION + '</code>。<br>'
+          + '在 Apps Script：<b>管理部署作業 → 編輯（鉛筆）→ 版本：新版本 → 部署</b>。'
+          + '按「新增部署作業」會給你另一個網址，那樣 config.js 就對不上了。</div>'
+        : '<div class="text-emerald-700 text-xs mt-1">版本 <code>' + esc(j.version) + '</code> —— 和這一頁預期的一致</div>') +
+      (cool.length
+        ? '<div class="text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2 leading-relaxed">'
+          + '⚠️ 有金鑰在冷卻：' + cool.map(k => esc(k.key) + '（' + esc(k.why || '沒記到原因') + '）').join('、')
+          + '<br><b>403</b> 是那把不能用（金鑰無效／Generative Language API 沒啟用），要去修；'
+          + '<b>429</b> 只是塞車，等一分鐘就好。</div>'
+        : '');
   } catch (e) {
     $('pingOut').innerHTML = '<div class="text-rose-700 bg-rose-50 border border-rose-200 rounded-lg ' +
       'px-3 py-2 mt-2 whitespace-pre-wrap leading-relaxed">✗ ' + esc(e.message) + '</div>';

@@ -65,5 +65,27 @@ ok(/誰可以存取.*任何人/.test(html), 'GAS 要求登入時，訊息要指�
 ok(/aiguide\.gs/.test(html), '★ 有提醒「提示詞真正的來源是 GAS 那一份」');
 ok(/__lastPrompt/.test(html), '   帶了偵錯碼時，直接顯示 GAS 實際送出的提示詞');
 
+/* ── 版本比對 ───────────────────────────────────────
+   ★ 為什麼這一條重要
+     GAS 編輯器裡的程式碼和「部署的那個版本」是兩回事。
+     貼了新程式卻忘了重新部署，selfTest 測起來一切正常，
+     /exec 卻還是舊行為 —— 而且完全看不出來。
+     2026-08-07 就是卡在這裡：模型 0.8 秒回得又快又好，
+     前端卻一直 Failed to fetch。 */
+const gs = fs.readFileSync(path.join(ROOT, 'shared', 'aiguide.gs'), 'utf8');
+const vLab = (html.match(/EXPECT_VERSION = '([^']+)'/) || [])[1];
+const vGas = (gs.match(/var VERSION = '([^']+)'/) || [])[1];
+ok(!!vGas, 'aiguide.gs 有版本字串');
+ok(!!vLab, '測試台知道自己預期哪一版');
+ok(vLab === vGas, '★ 兩邊的版本字串要一致（' + vLab + ' / ' + vGas + '）');
+ok(/version: VERSION/.test(gs), 'ping 會把版本回報出來');
+ok(/部署的是舊版/.test(html), '★ 版本不符時要明講「部署的是舊版」，並給重新部署的步驟');
+ok(/新增部署作業.*另一個網址|另一個網址/.test(html),
+   '   並且提醒不要按「新增部署作業」（會換網址）');
+
+/* 冷卻原因：403 和 429 意思完全不同 */
+ok(/why: \(c && c !== '1'\) \? c : ''/.test(gs), 'GAS 會記下冷卻的原因');
+ok(/403/.test(html) && /429/.test(html), '★ 測試台要分得出 403（要去修）和 429（等一下就好）');
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

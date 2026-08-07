@@ -72,6 +72,15 @@
    要換成 Lite 的話，設指令碼屬性 MODEL 就好，不必改程式。
    **建議先用測試台（shared/ai-lab.html）兩個都跑一次那 10 種刁難** ——
    如果 Lite 也守得住，用 Lite 換到更寬鬆的額度是划算的。 */
+/* ★ 版本字串。ping 會回報它。
+   為什麼需要：selfTest 跑的是「編輯器裡的程式碼」，
+   /exec 跑的是「部署的那個版本」—— 這兩個常常不一樣。
+   貼了新程式碼但忘了「管理部署作業 → 編輯 → 版本：新版本」，
+   編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
+   （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
+   ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
+var VERSION = '2026-08-07-nothink';
+
 var DEFAULTS = {
   MODEL: 'gemini-2.5-flash',
   // 題目從這裡抓 —— 和學生看到的是同一份，不會有兩套題目
@@ -141,8 +150,14 @@ function pickKey_() {
   return null;
 }
 
-function coolDown_(k) {
-  CacheService.getScriptCache().put('cool.' + k.i, '1', num_('COOL_SEC', DEFAULTS.COOL_SEC));
+/* 冷卻時把「為什麼」一起記下來。
+   ★ 429（額度／每分鐘上限）和 403（金鑰無效、API 沒開、專案沒啟用）
+     處理方式一樣（換下一把），但意思完全不同：
+       429 → 正常的塞車，等一下就好
+       403 → 那把根本不能用，要去修
+     不記原因的話，畫面上只看得到「冷卻中」，兩種分不出來。 */
+function coolDown_(k, why) {
+  CacheService.getScriptCache().put('cool.' + k.i, why || '1', num_('COOL_SEC', DEFAULTS.COOL_SEC));
 }
 
 /** 現在每把的狀態（selfTest 與 ping 用） */
@@ -150,9 +165,11 @@ function keyReport_() {
   var cache = CacheService.getScriptCache();
   var minute = Math.floor(new Date().getTime() / 60000);
   return keys_().map(function (k) {
+    var c = cache.get('cool.' + k.i);
     return { key: k.name,
              thisMinute: num2_(cache.get('rpm.' + k.i + '.' + minute)),
-             cooling: !!cache.get('cool.' + k.i) };
+             cooling: !!c,
+             why: (c && c !== '1') ? c : '' };
   });
 }
 
@@ -200,7 +217,8 @@ function handle_(e) {
     }
 
     if (p.action === 'ping') {
-      return json_({ ok: true, model: prop_('MODEL', DEFAULTS.MODEL),
+      return json_({ ok: true, version: VERSION,
+                     model: prop_('MODEL', DEFAULTS.MODEL),
                      units: Object.keys(levels_()).length, used: usedToday_(),
                      keys: keyReport_(),
                      hasDebug: !!prop_('DEBUG_KEY', '') });
@@ -460,8 +478,17 @@ function askGemini_(prompt, modelOverride) {
     var code = res.getResponseCode();
     var body = res.getContentText();
 
-    if (code === 429) { coolDown_(k); lastErr = '額度或每分鐘上限'; continue; }
-    if (code === 403) { coolDown_(k); lastErr = k.name + ' 被拒絕（金鑰無效或沒開 API）'; continue; }
+    if (code === 429) { coolDown_(k, '429 額度或每分鐘上限'); lastErr = '額度或每分鐘上限'; continue; }
+    if (code === 403) {
+      coolDown_(k, '403 金鑰無效或沒開 API');
+      lastErr = k.name + ' 被拒絕（金鑰無效、Generative Language API 沒啟用，或專案有問題）';
+      continue;
+    }
+    if (code === 400) {
+      /* 400 通常是模型名稱打錯，或這把金鑰的專案沒有那個模型。
+         不冷卻 —— 換一把也一樣會錯，直接講清楚比較快。 */
+      throw new Error('Gemini 回 400（' + model + '）：' + body.slice(0, 200));
+    }
     if (code !== 200) throw new Error('Gemini 回了 HTTP ' + code + '：' + body.slice(0, 200));
 
     var j = JSON.parse(body);
@@ -576,6 +603,7 @@ function json_(o) {
 function selfTest() {
   /* ★ 先看金鑰。三把只有在「三個不同專案」才有意義 ——
      同一個專案發三把，分流等於沒分。這裡看不出專案，只能提醒。 */
+  Logger.log('版本 %s（這是編輯器裡的程式碼）', VERSION);
   var ks = keys_();
   Logger.log('金鑰 %s 把：%s', ks.length, ks.map(function (k) { return k.name; }).join('、'));
   if (ks.length > 1) {
@@ -642,8 +670,14 @@ function selfTest() {
 
   Logger.log('今天已用 %s 次', usedToday_());
   keyReport_().forEach(function (k) {
-    Logger.log('  %s：這一分鐘 %s 次%s', k.key, k.thisMinute, k.cooling ? '（冷卻中）' : '');
+    Logger.log('  %s：這一分鐘 %s 次%s', k.key, k.thisMinute,
+               k.cooling ? '　⚠️ 冷卻中：' + (k.why || '（沒記到原因）') : '');
   });
+  Logger.log('');
+  Logger.log('★ 這是「編輯器裡的程式碼」跑出來的結果（版本 %s）。', VERSION);
+  Logger.log('  學生和測試台走的是 /exec，跑的是「部署的那個版本」—— 兩者可能不一樣。');
+  Logger.log('  在測試台按「測連線」，看它回報的版本是不是也是 %s；', VERSION);
+  Logger.log('  不一樣的話：管理部署作業 → 編輯（鉛筆）→ 版本：新版本。');
 }
 
 /* =====================================================================
