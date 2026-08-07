@@ -132,4 +132,13 @@ ok(/function pickFallback/.test(src), '有找備援模型的工具');
 ok(/沒有驗證過/.test(src), '★ 沒驗過的預設值要老實說 —— 今天就是被沒驗過的模型名稱咬的');
 ok(/叫得動」和「守得住」是兩件事/.test(src), '★ 換模型要重跑刁難題：2.5-flash 的成績不能算在 lite 頭上');
 
+/* 備援一定要和主模型不同 —— 額度按「每專案每模型每天」算，
+   同一個等於沒有備援。 */
+const mMain = (src.match(/MODEL: '([^']+)'/) || [])[1];
+const mFb   = (src.match(/FALLBACK_MODEL: '([^']*)'/) || [])[1];
+ok(!!mMain && !!mFb, '主模型和備援模型都有預設值');
+ok(mMain !== mFb, '★ 備援不可以和主模型同一個（' + mMain + ' vs ' + mFb + '）');
+ok(!/gemini-2\.5-flash-lite'/.test(src.slice(src.indexOf('FALLBACK_MODEL'), src.indexOf('FALLBACK_MODEL') + 40)),
+   '   換掉我沒驗過就填的那個值');
+
 console.log('通過 '+pass+'／失敗 '+fail); process.exit(fail?1:0);
