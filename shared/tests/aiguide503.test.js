@@ -86,4 +86,15 @@ ok(/perDay \? 1800 : 0/.test(src), '★ 每天用完就冷卻久一點 —— �
 ok(/function coolDown_\(k, why, secs\)/.test(src), '   冷卻秒數要能分開設');
 ok(/等一分鐘沒用/.test(src), '訊息要說得出「等沒有用」，不然老師會一直重試');
 
+/* ★ 2026-08-07 實測拿到的配額代號：
+   GenerateRequestsPerDayPerProjectPerModel-FreeTier
+   它自己就寫明了是「每專案、每模型、每天」——
+   所以 flash 今天用完，不代表今天不能用，只代表 flash 不能用。 */
+ok(/dayCapped/.test(src), '每日額度用完要記下來');
+ok(/\(overloaded \|\| dayCapped\)/.test(src), '★ 每日用完也要退到備援模型（換模型＝另一份額度）');
+ok(/每專案、每模型、每天/.test(src), '   而且要寫清楚為什麼換模型有用');
+/* 訊息不可以在最需要判斷的時候騙人 */
+ok(!/429 只是塞車/.test(src), '★ 不可以寫死「429 只是塞車」—— 每日用完時那句是錯的');
+ok(/403＝那把根本不能用/.test(src), '403 要講「等再久也沒用」');
+
 console.log('通過 '+pass+'／失敗 '+fail); process.exit(fail?1:0);

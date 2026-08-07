@@ -83,7 +83,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-quota';
+var VERSION = '2026-08-07-perday';
 
 var DEFAULTS = {
   MODEL: 'gemini-2.5-flash',
@@ -553,7 +553,7 @@ function askGemini_(prompt, modelOverride, noFallback) {
   var all = keys_();
   if (!all.length) throw new Error('還沒設定 GEMINI_KEY（專案設定 → 指令碼屬性）。');
   var model = modelOverride || prop_('MODEL', DEFAULTS.MODEL);
-  var lastErr = '', overloaded = false;
+  var lastErr = '', overloaded = false, dayCapped = false;
 
   /* 有幾把就最多試幾次。每一把只試一次 ——
      ★ 同一把重試沒有意義：429 是額度，不是網路抖動。
@@ -603,6 +603,12 @@ function askGemini_(prompt, modelOverride, noFallback) {
          ⚠️ 只認關鍵字，不解析完整結構：Google 的錯誤格式會變，
             認錯了頂多退回舊行為（當成每分鐘），不會壞掉。 */
       var perDay = /PerDay|per day|daily limit|RequestsPerDay/i.test(body);
+      /* ★ 這個配額是「每專案、每模型、每天」——
+         配額代號自己就寫明了：GenerateRequestsPerDayPerProjectPerModel。
+         也就是說**換一個模型就有另一份當天的額度**。
+         所以 flash 的今天用完時，退到 flash-lite 是有意義的
+         （和 503 過載退避是同一個機制，只是原因不同）。 */
+      if (perDay) dayCapped = true;
       var quota = (body.match(/"quotaId"\s*:\s*"([^"]+)"/) || [])[1] || '';
       coolDown_(k, '429 ' + (perDay ? '今天的份用完了' : '這一分鐘問太多次')
                  + (quota ? '（' + quota + '）' : ''),
@@ -658,9 +664,14 @@ function askGemini_(prompt, modelOverride, noFallback) {
 
   /* ★ 模型過載時退到備援模型再試一次。
      和「額度用完」不一樣：額度用完換模型也沒用，過載換一個就有機會。
-     ⚠️ 只退一次（noFallback），不然過載時會無限換來換去。 */
+     ⚠️ 只退一次（noFallback），不然過載時會無限換來換去。
+
+     ★ 每日額度用完（429 PerDay）也走這條路。
+       那個配額是「每專案、每模型、每天」，換模型就有另一份 ——
+       2026-08-07 實測：三把金鑰的 flash 當天都見底，
+       但那不代表今天不能用了，只代表 flash 不能用了。 */
   var fb = prop_('FALLBACK_MODEL', DEFAULTS.FALLBACK_MODEL);
-  if (overloaded && !noFallback && fb && fb !== model) {
+  if ((overloaded || dayCapped) && !noFallback && fb && fb !== model) {
     try { return askGemini_(prompt, fb, true); } catch (e3) { lastErr = e3.message; }
   }
 
@@ -681,7 +692,18 @@ function askGemini_(prompt, modelOverride, noFallback) {
          + '，每把每分鐘上限 ' + num_('RPM_PER_KEY', DEFAULTS.RPM_PER_KEY)
          + (cooling.length
              ? '。冷卻中：' + cooling.map(function (x) { return x.key + '（' + (x.why || '沒記到原因') + '）'; }).join('、')
-               + ' —— 403 是那把不能用（要去修），429 只是塞車（等一分鐘）'
+               /* ⚠️ 這句尾巴原本一律把 429 說成塞車 ——
+                  但 429 分成每分鐘和每天，寫死的話會在最需要判斷的時候騙人：
+                  明明是「今天用完了」，訊息卻叫你等一分鐘。
+                  現在照實際冷卻原因講。 */
+               + ' —— '
+               + (cooling.some(function (x) { return /403/.test(x.why || ''); })
+                   ? '403＝那把根本不能用（金鑰無效，或該專案沒啟用 Generative Language API），等再久也沒用，要去修。' : '')
+               + (cooling.some(function (x) { return /今天的份/.test(x.why || ''); })
+                   ? '「今天的份用完了」＝每專案每模型每天的免費額度見底，等一分鐘沒用；'
+                     + '換一個模型（MODEL 或 FALLBACK_MODEL）會有另一份額度，或等明天。' : '')
+               + (cooling.some(function (x) { return /這一分鐘/.test(x.why || ''); })
+                   ? '「這一分鐘問太多次」＝等一分鐘就好。' : '')
              : '。沒有金鑰在冷卻 —— 純粹是這一分鐘問太多次了');
   } catch (eD) { diag = '（取不到金鑰狀態：' + eD.message + '）'; }
 
