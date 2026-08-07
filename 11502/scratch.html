@@ -40,6 +40,13 @@
 <script src="../shared/auth.js"></script>
 <script src="../shared/guard.js"></script>
 <script src="../shared/grading.js"></script>
+<!-- 思考關卡：問題拆解、推導、積木拼圖。
+     ★ 只有「有積木關卡資料」的關才會用到（目前是第 1～3 關）。
+       第 4～10 關還沒有題目，那幾關維持原本的「直接上傳」——
+       無條件擋的話，那七關會變成永遠上傳不了。 -->
+<script src="../shared/blocks.js"></script>
+<script src="../shared/derive.js"></script>
+<script src="content/blocks.js"></script>
   <!-- 全站主題樣式（單一來源，見 shared/theme.css）-->
   <link rel="stylesheet" href="../shared/theme.css">
 </head>
@@ -96,6 +103,13 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
       在 Scratch 按「檔案 → 儲存到你的電腦」會得到一個 <code class="bg-slate-100 px-1 rounded">.sb3</code> 檔，
       選好關卡後上傳。<span class="hl">75 分以上才算通關</span>；分數比上次高才會覆蓋舊作品。
     </p>
+
+    <!-- 思考關卡：做完才會出現上傳。
+         ★ 為什麼要擋
+           這一章教的是「問題分析與模組化」，不是「把積木排對」。
+           先想清楚再開 Scratch，正是課本問題分析在教的事。
+         ⚠️ 只擋有題目的關卡；沒有題目的關卡這一塊整個不出現。 -->
+    <div id="pre-box" class="hidden mb-5"></div>
 
     <div id="grader-box">
       <div id="grader-locked" class="hidden bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-6 text-center">
@@ -157,6 +171,9 @@ function lockReason(no){ return GATE.reason(no, UNITS, true, null, unitStars); }
 
 /* ===================== 狀態 ===================== */
 let unitStars = {};   // { '2-1-1A': 3, ... }　由 AI 批改寫入 11502-progress
+let preDone   = {};   // { '2-1-1': true, ... }　思考關卡做完了沒（存在 modules.scratch.pre）
+let preStage  = 0;    // 目前在思考關卡的第幾步
+let preUnit   = '';   // 這幾步是屬於哪一關的（換關要從頭來）
 
 /* ===================== 畫面 ===================== */
 function blockChip(spec){
@@ -203,14 +220,6 @@ function renderTotal(){
   document.getElementById('total-star').textContent = '⭐ ' + t;
 }
 
-function renderTotal(){
-  // 星數一律走共用計分規則，不在這裡寫死門檻
-  const t = (window.GRADING && window.GRADING.scratchTotal)
-    ? window.GRADING.scratchTotal(unitStars).stars
-    : Object.values(unitStars).reduce((a,b)=>a+b,0);
-  document.getElementById('total-star').textContent = '⭐ ' + t;
-}
-
 /* ===================== 起始 ===================== */
 //   先用「全部 0 星」畫一次（等於只開第 1 關），讀到進度再重畫。
 //   刻意不是先全開再鎖：萬一讀取失敗，畫面停在「保守」而不是「全開」。
@@ -218,31 +227,160 @@ function repaint(){ renderStages(); renderTotal(); paintGrader(); }
 
 /* 評分區也要跟著依序開放。
    關卡卡片鎖了、上傳表單沒鎖，等於沒鎖 —— 所以直接把 iframe 的
-   ?unit= 固定成「目前該做的那一關」，學生沒得選別關。 */
+   ?unit= 固定成「目前該做的那一關」，學生沒得選別關。
+
+   ★ 2026-08-07 加上「思考關卡」：有題目的關卡要先做完拆解、推導、拼圖，
+     才會出現上傳表單。順序是課本問題分析的順序（先想再做）。 */
+function levelOf(u){ return u ? (window.BLOCK_LEVELS || {})[u.id] : null; }
+
+/** 這一關的思考關卡有哪幾步（沒有拆解或沒有推導的關卡就少一步） */
+function preSteps(lv){
+  const out = [];
+  if (lv.analysis) out.push('analysis');
+  if (lv.derive)   out.push('derive');
+  out.push('blocks');
+  return out;
+}
+
 function paintGrader(){
   const openTo = openUpTo();
   const u = UNITS[openTo - 1];
   const frame  = document.getElementById('grader-frame');
   const locked = document.getElementById('grader-locked');
+  const pre    = document.getElementById('pre-box');
   if(!frame || !locked) return;
 
   if(!u){
     frame.classList.add('hidden');
+    if (pre) pre.classList.add('hidden');
     locked.classList.remove('hidden');
     document.getElementById('grader-locked-msg').textContent = lockReason(1);
     return;
   }
   locked.classList.add('hidden');
+
+  const lv = levelOf(u);
+  // 沒有題目的關卡（第 4～10 關）→ 完全照舊，直接上傳
+  if (!lv) {
+    if (pre) { pre.classList.add('hidden'); pre.innerHTML = ''; }
+    showGrader(u);
+    return;
+  }
+
+  if (preUnit !== u.id) { preUnit = u.id; preStage = 0; }
+  if (preDone[u.id]) {
+    // 做過了就收起來，但留一條路可以回去重看
+    pre.classList.remove('hidden');
+    pre.innerHTML = '<button id="pre-again" class="w-full text-left bg-emerald-50 border border-emerald-200 '
+      + 'rounded-xl px-4 py-3 text-sm font-bold text-emerald-700 hover:bg-emerald-100 transition">'
+      + '✅ 這一關的思考關卡已完成 —— 想再看一次點這裡</button>';
+    document.getElementById('pre-again').onclick = function(){
+      preDone[u.id] = false; preStage = 0; paintGrader();
+    };
+    showGrader(u);
+    return;
+  }
+
+  // 還沒做完 → 藏起上傳表單，畫思考關卡
+  frame.classList.add('hidden');
+  pre.classList.remove('hidden');
+  renderPre(u, lv);
+}
+
+function showGrader(u){
+  const frame = document.getElementById('grader-frame');
   frame.classList.remove('hidden');
   const src = '../shared/grader.html?term=' + encodeURIComponent(window.CONFIG.TERM)
             + '&unit=' + encodeURIComponent(u.id);
   if(frame.getAttribute('src') !== src) frame.setAttribute('src', src);   // 避免每次重畫都重載
 }
 
+/* 思考關卡的畫面。三步共用一個容器，一次只出現一步 ——
+   ⚠️ 全部攤開的話，後面的題目會把前面的答案講出來
+     （「正六邊形每次轉 60 度」這種），先看到就不用想了。 */
+function renderPre(u, lv){
+  const steps = preSteps(lv);
+  const pre = document.getElementById('pre-box');
+  const kind = steps[preStage];
+  const nth = (preStage + 1) + ' / ' + steps.length;
+
+  pre.innerHTML = `
+    <div class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-5">
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <h3 class="font-black text-indigo-900">🧠 第 ${u.no} 關 · 動手之前　<span class="text-xs font-bold text-indigo-400">${nth}</span></h3>
+      </div>
+      <div id="pre-body"></div>
+      <div id="pre-foot" class="mt-4"></div>
+    </div>`;
+
+  const body = document.getElementById('pre-body');
+  const foot = document.getElementById('pre-foot');
+
+  if (kind === 'analysis') {
+    DERIVE.renderAnalysis(body, lv.analysis);
+    /* 讀秒按鈕：拆解沒有「答對」這種事，只能給時間。
+       ★ 為什麼要讀秒：不讀秒的話這一步等於一顆「下一步」按鈕，
+         學生會在零點五秒內按掉，那不如不要做。
+       ★ 為什麼只有 20 秒：這一步的目的是「讓人真的看一眼」，
+         不是罰站。太長會讓已經想清楚的學生開始討厭這一頁。 */
+    countdown(foot, 20, '我想過了，下一步 →', function(){ preStage++; paintGrader(); });
+    return;
+  }
+
+  if (kind === 'derive') {
+    DERIVE.mount(body, lv.derive, { onPass: function(){
+      foot.innerHTML = '';
+      countdown(foot, 0, '推導完成，開始拼積木 →', function(){ preStage++; paintGrader(); });
+    }});
+    foot.innerHTML = '<p class="text-xs text-slate-400">把每一步做完，才會出現下一關。</p>';
+    return;
+  }
+
+  // 積木拼圖
+  body.innerHTML = '<p class="text-sm font-bold mb-3">🎯 ' + lv.task + '</p><div id="pre-sim"></div>';
+  BLOCKS.mount(document.getElementById('pre-sim'), {
+    palette: lv.palette, goal: lv.goal, alts: lv.alts, loose: lv.loose, hint: lv.task,
+    onPass: function(){
+      preDone[u.id] = true;
+      if (window.savePre) window.savePre(u.id);
+      paintGrader();
+    }
+  });
+  foot.innerHTML = '<p class="text-xs text-slate-400">拼對了就會出現上傳表單。'
+                 + '真正要交的還是 Scratch 做出來的作品。</p>';
+}
+
+/** 讀秒按鈕（秒數 0 = 直接可按） */
+function countdown(host, sec, label, done){
+  const b = document.createElement('button');
+  b.className = 'w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white '
+              + 'font-bold py-2.5 rounded-xl transition';
+  host.innerHTML = '';
+  host.appendChild(b);
+  let left = sec;
+  function tick(){
+    if (left > 0) {
+      b.disabled = true;
+      b.textContent = '請先仔細看過…（還要 ' + left + ' 秒）';
+      left--;
+      setTimeout(tick, 1000);
+    } else {
+      b.disabled = false;
+      b.textContent = label;
+      b.onclick = done;
+    }
+  }
+  tick();
+}
+
 /* 讀完 Firestore 的那支 module script 用這個把星數交進來。
    刻意包成函式而不是直接改變數：跨 script 改別人的變數不好追，
    也讓「拿到新星數就一定重畫」變成沒辦法忘記的事。 */
-window.applyStars = function (obj) { unitStars = obj || {}; repaint(); };
+window.applyStars = function (obj, pre) {
+  unitStars = obj || {};
+  preDone = pre || {};
+  repaint();
+};
 
 repaint();
 </script>
@@ -251,7 +389,7 @@ repaint();
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
   import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
   const app  = initializeApp(window.CONFIG.FIREBASE);
   const auth = getAuth(app);
@@ -265,7 +403,8 @@ repaint();
     try {
       const snap = await getDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid));
       const mods = (snap.exists() && snap.data().modules) || {};
-      window.applyStars((mods.scratch && mods.scratch.unitStars) || {});
+      window.applyStars((mods.scratch && mods.scratch.unitStars) || {},
+                        (mods.scratch && mods.scratch.pre) || {});
     } catch (e) {
       console.error('讀進度失敗', e);
       /* 讀不到就維持「只開第 1 關」。寧可少開，也不要因為連線問題整批放行。
@@ -280,6 +419,25 @@ repaint();
       }
     }
   });
+  /* 思考關卡做完了 → 記在進度裡。
+     ★ 為什麼不存在瀏覽器就好
+       電腦教室有還原卡，關機就清空；而且學生下一節課可能換一台。
+       存在本機的話，每一節課都要重做一次拆解 —— 那會讓人恨這個功能。
+     ★ 為什麼寫進 modules.scratch.pre 而不是新開一個欄位
+       安全規則不做欄位白名單（只看 totalStars 沒被調低），
+       用 merge 寫、不動 totalStars，規則自然過，不必改規則重新發布。
+     ⚠️ 寫失敗不擋人：這一步只是「省得下次重做」，
+        不是成績。連不上就當這次沒存到，畫面照樣往下走。 */
+  window.savePre = async function (unitId) {
+    if (!sid || !unitId) return;
+    try {
+      await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
+        { modules: { scratch: { pre: { [unitId]: true } } } }, { merge: true });
+    } catch (e) {
+      console.warn('思考關卡完成紀錄沒存成功（不影響上傳）', e);
+    }
+  };
+
   // AUTH.attachSession()：已經有身分（例如剛在闖關基地用學校 Google 帳號登入）
   //    就不要再匿名登入，否則會把 Google 身分蓋掉，安全規則的 isOwner() 失效。
   AUTH.attachSession(auth, signInAnonymously, onAuthStateChanged);
