@@ -112,4 +112,15 @@ ok(/function listModels/.test(src), '有「這把金鑰能用哪些模型」的�
 ok(/no longer available to new users|不能用我們指定的模型/.test(src), '   而且寫下為什麼需要它');
 ok(/x-goog-api-key/.test(src.slice(src.indexOf('function listModels'))), '列模型用標頭送金鑰');
 
+/* ★ 清單列得出來 ≠ 叫得動。
+   2026-08-07：三把金鑰的模型清單一模一樣（都含 gemini-2.5-flash），
+   但其中一把真的呼叫時回 404「no longer available to new users」。 */
+ok(/function pickModel/.test(src), '有「挑一個三把都能用的模型」的工具');
+ok(/清單列得出來，不代表你叫得動/.test(src), '★ 把這個陷阱寫在程式裡，不要只留在對話');
+ok(/MODEL_CANDIDATES/.test(src), '候選模型是一份清單，不是寫死一個');
+const cand = src.slice(src.indexOf('var MODEL_CANDIDATES'), src.indexOf(']', src.indexOf('var MODEL_CANDIDATES')));
+ok(/lite/.test(cand.split('\n')[1] || ''), '★ lite 排前面 —— 一句 60 字的問句不需要大模型');
+ok(/先用 %s 篩候選/.test(src), '先測最嚴的那一把，省額度');
+ok(/三把都能用/.test(src), '結論要講「三把都能用嗎」—— 不然分流沒有意義');
+
 console.log('通過 '+pass+'／失敗 '+fail); process.exit(fail?1:0);

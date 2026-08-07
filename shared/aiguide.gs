@@ -83,7 +83,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-models';
+var VERSION = '2026-08-07-pickmodel';
 
 var DEFAULTS = {
   MODEL: 'gemini-2.5-flash',
@@ -433,6 +433,97 @@ function levels_() {
 
 function clearCache() { CacheService.getScriptCache().remove('levels'); }
 
+/* ── 挑一個「三把都能用」的模型（編輯器執行 pickModel）──
+   ★ 為什麼不能看 listModels 的清單決定
+     2026-08-07 實測：三把金鑰列出來的模型清單**一模一樣**（各 42 個，
+     都含 gemini-2.5-flash），但 GEMINI_KEY_2 真的去呼叫時回 404
+     「no longer available to new users」。
+     ⇒ **清單列得出來，不代表你叫得動。**
+       清單是「這個 API 有哪些模型」，不是「你這個專案可以用哪些」。
+       唯一可靠的方法是真的送一次請求。
+
+   ★ 為什麼先測最嚴的那一把
+     新專案能用的最少。先用它篩出候選，再去驗另外兩把 ——
+     這樣總共只花八九次請求。
+     免費層的上限是 20（實測訊息裡的 limit: 20），
+     測試本身把額度吃光的話就白測了。
+
+   ★ 候選順序：lite 排前面
+     我們要的只是「一句 60 字的引導問句」，不需要大模型。
+     lite 便宜、額度寬鬆，而且這個用途看的是守不守規矩，不是聰不聰明。
+     ⚠️ 但守規矩要另外驗 —— 用測試台跑那 10 種刁難，不要只看它會不會回。 */
+var MODEL_CANDIDATES = [
+  'gemini-flash-lite-latest',   // 別名：Google 自己指向當時的 lite
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-2.5-flash-lite',
+  'gemini-flash-latest',        // 別名：一般版
+  'gemini-3.5-flash',
+  'gemini-2.0-flash-lite'
+];
+
+function pickModel() {
+  var names = ['GEMINI_KEY', 'GEMINI_KEY_2', 'GEMINI_KEY_3'];
+  var keys = names.map(function (n) { return { name: n, key: prop_(n, '').trim() }; })
+                  .filter(function (x) { return x.key; });
+  if (!keys.length) { Logger.log('一把金鑰都沒設定。'); return; }
+
+  /* 最嚴的那一把＝能用的模型最少的那一把。
+     這裡直接用「最後設定的那把」當代表不保險，所以先各測一發 2.5-flash，
+     回 404 的就是新專案。 */
+  var strict = null;
+  keys.forEach(function (x) {
+    var r = tryModel_(x.key, 'gemini-2.5-flash');
+    if (r.code === 404) strict = strict || x;
+  });
+  var lead = strict || keys[0];
+  Logger.log('先用 %s 篩候選（它能用的最少）', lead.name);
+
+  var winner = '';
+  for (var i = 0; i < MODEL_CANDIDATES.length; i++) {
+    var m = MODEL_CANDIDATES[i];
+    var r = tryModel_(lead.key, m);
+    Logger.log('  %s → %s %s', m, r.code, r.code === 200 ? '✅' : r.msg.slice(0, 90));
+    if (r.code === 200) { winner = m; break; }
+    if (r.code === 429) { Logger.log('     （額度滿了，這一個測不準 —— 等一下重跑）'); }
+  }
+  if (!winner) { Logger.log('❌ 候選都不行。把上面的錯誤訊息貼出來。'); return; }
+
+  Logger.log('── 用 %s 驗另外兩把 ──', winner);
+  var allOk = true;
+  keys.forEach(function (x) {
+    if (x.name === lead.name) return;
+    var r = tryModel_(x.key, winner);
+    Logger.log('  %s → %s %s', x.name, r.code, r.code === 200 ? '✅' : r.msg.slice(0, 90));
+    if (r.code !== 200) allOk = false;
+  });
+
+  Logger.log(allOk
+    ? '✅ 三把都能用 %s。把它設進指令碼屬性 MODEL，' +
+      '另外挑一個當 FALLBACK_MODEL（額度是「每專案每模型每天」算的，備援模型有自己的一份）。'
+    : '⚠️ %s 不是三把都能用 —— 那樣分流就沒有意義了。把上面的錯誤貼出來。', winner);
+}
+
+/** 送一發最小的請求，只回 HTTP 代碼和訊息 */
+function tryModel_(key, model) {
+  try {
+    var res = UrlFetchApp.fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/' +
+        encodeURIComponent(model) + ':generateContent',
+      { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+        headers: { 'x-goog-api-key': key },
+        payload: JSON.stringify({
+          contents: [{ parts: [{ text: '回一個字：好' }] }],
+          generationConfig: { maxOutputTokens: 5, thinkingConfig: { thinkingBudget: 0 } }
+        }) });
+    var body = res.getContentText();
+    return { code: res.getResponseCode(),
+             msg: (body.match(/"message"\s*:\s*"([^"]+)"/) || [])[1] || body.slice(0, 120) };
+  } catch (e) {
+    return { code: 0, msg: '連不出去：' + e.message };
+  }
+}
+
 /* ── 這把金鑰有哪些模型可以用（編輯器執行 listModels）──
    ★ 為什麼需要
      2026-08-07 實測：新申請的金鑰（GEMINI_KEY_2）回
@@ -440,6 +531,12 @@ function clearCache() { CacheService.getScriptCache().remove('levels'); }
      也就是說 —— **那把金鑰是好的，它只是不能用我們指定的模型**。
      這種錯誤長得很像「金鑰壞了」，實際上完全是另一回事：
      舊專案還能用的模型，新專案已經不給了。
+
+   ⚠️ **清單列得出來，不代表你叫得動。**
+     2026-08-07 實測：三把金鑰的清單一模一樣（都含 gemini-2.5-flash），
+     但其中一把真的去呼叫時回 404「no longer available to new users」。
+     清單講的是「這個 API 有哪些模型」，不是「你這個專案可以用哪些」——
+     要知道能不能用，只能真的送一次請求（見 pickModel）。
 
    ★ 為什麼要用問的，不要我寫死一份清單
      模型名稱會下架、會改名，寫死的清單一定會過期，
