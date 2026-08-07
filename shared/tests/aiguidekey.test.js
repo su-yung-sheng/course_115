@@ -87,4 +87,31 @@ ok(/前後有空白/.test(src), '前後空白要當場點出來 —— 那用眼
 ok(/cache\.remove\('cool\.'/.test(src), '★ 測之前先清冷卻，不然剛換的金鑰會被上一次的 403 蓋住');
 ok(/來源限制/.test(src), '403 要列出常見原因，不能只說「不能用」');
 
+/* ── 用量：冷卻擋連點，每人上限擋總量 ─────────────
+   ★ 這兩件事很容易混在一起。
+     一節課 45 分鐘、10 秒冷卻，同一個人還是能問 270 次 ——
+     冷卻完全不管總量。真正控制總量的是 PER_SID_CAP。 */
+ok(/COOLDOWN_SEC/.test(src), '有同一問的冷卻');
+const iCd = src.indexOf('cd.\' + sid');
+ok(/CacheService/.test(src.slice(src.indexOf('var cdKey'), src.indexOf('var cdKey') + 400)),
+   '★ 冷卻做在伺服器端 —— 前端按鈕變灰，F12 一開就沒了');
+ok(/cooling: true/.test(src), '冷卻要回得出「是冷卻不是壞掉」');
+ok(/retryAfter: wait/.test(src), '   而且要講還剩幾秒');
+
+/* 冷卻不可以擋到「沒花額度」的那條路 */
+const iBump = src.indexOf('bump_(sid);');
+const iCdPut = src.indexOf('cache.put(cdKey') >= 0 ? src.indexOf('cache.put(cdKey') : src.indexOf('.put(cdKey');
+ok(iCdPut > iBump, '★ 冷卻在 bump_ 之後才記 —— 關鍵概念全中那條路不花額度，不該被冷卻');
+
+/* 數字要對得上實測的天花板：3 專案 × 20 × 2 個模型 ≈ 120 */
+const daily = parseInt((src.match(/DAILY_CAP: (\d+)/) || [])[1], 10);
+const per = parseInt((src.match(/PER_SID_CAP: (\d+)/) || [])[1], 10);
+ok(daily > 0 && daily <= 200, '★ 每日上限要貼近實際天花板（120 左右），不是隨手填的 600');
+ok(per <= 5, '★ 每人每天上限要夠小 —— 30 的話一個學生就吃掉全班四分之一');
+ok(/平均每人只有一次/.test(src), '把算式寫在程式裡，下次調整才知道依據');
+
+/* 用完時不可以只說「不准問了」 */
+ok(/同學|老師/.test(src.slice(src.indexOf('已經用完'), src.indexOf('已經用完') + 300)),
+   '★ 額度用完要給出路（問同學、找老師），不是把人丟在那裡');
+
 console.log('通過 '+pass+'／失敗 '+fail); process.exit(fail?1:0);

@@ -93,14 +93,36 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-lite';
+var VERSION = '2026-08-07-cooldown';
 
 var DEFAULTS = {
   MODEL: 'gemini-3.1-flash-lite',
   // 題目從這裡抓 —— 和學生看到的是同一份，不會有兩套題目
   CONTENT_URL: 'https://su-yung-sheng.github.io/course_115/11502/content/blocks.js',
-  DAILY_CAP: 600,      // 全部人加起來，一天最多幾次
-  PER_SID_CAP: 30,     // 一個學生一天最多幾次
+  /* ── 用量上限：這幾個數字是算出來的，不是隨手填的 ──
+     2026-08-07 實測，免費層一個模型一天 20 次（錯誤訊息裡的 limit: 20）：
+
+       gemini-3.1-flash-lite   3 個專案 × 20 ＝ 60 次／天
+       gemini-3.5-flash（備援） 3 × 20        ＝ 60 次／天
+       ─────────────────────────────────
+       一天的天花板              約 120 次
+
+     一天四節課 × 30 人 ＝ 120 人 —— **平均每人只有一次**。 */
+  DAILY_CAP: 130,      // 全部人加起來，一天最多幾次（略高於天花板，讓備援模型也用得到）
+  /* 一個學生一天最多幾次。
+     ★ 為什麼是 3 不是 30
+       30 的話，一個學生就能吃掉全班四分之一的份。
+       3 次夠一輪對話（問、答、再問），而真正卡住的人本來就不多。
+     ⚠️ 這個數字才是控制總量的那一個 —— 冷卻只擋連點。 */
+  PER_SID_CAP: 3,
+  /* 同一個學生、同一問，兩次之間至少隔幾秒。
+     ★ 它擋的是「連點」，不是總量：
+       一節課 45 分鐘、10 秒冷卻，同一個人還是能問 270 次。
+       會覺得冷卻能省額度，是把兩件事混在一起了。
+     ★ 那為什麼還要有
+       手滑連按、或按了沒反應又按一次，一次就吃掉兩份額度 ——
+       在每人只有 3 次的前提下，那是很痛的兩次。 */
+  COOLDOWN_SEC: 10,
   /* 帶了 DEBUG_KEY（只有老師有）時的每日上限。
      ★ 為什麼要單獨一個：測試台一輪就 10 次，跑三輪就撞到學生的 30 次上限，
        老師測到一半被鎖住，而且看到的是寫給學生的那句話。
@@ -369,11 +391,28 @@ function handle_(e) {
           '要繼續測就調高指令碼屬性 DAILY_CAP，或在編輯器執行 resetCaps。'
         : '今天的 AI 提示用完了，明天再來 —— 先自己想想看。' });
     }
+    /* ── 同一問的冷卻 ──────────────────────────────
+       ⚠️ 一定要做在伺服器端。前端按鈕變灰只是禮貌 ——
+          學生按 F12 就能把它打開，而那正是最會去按的那幾個學生。 */
+    var cdSec = num_('COOLDOWN_SEC', DEFAULTS.COOLDOWN_SEC);
+    var cdKey = 'cd.' + sid + '.' + String(p.unit || '') + '.' + String(p.qi || '');
+    if (sid && cdSec > 0) {
+      var last = num2_(CacheService.getScriptCache().get(cdKey));
+      var now = Math.floor(new Date().getTime() / 1000);
+      if (last && now - last < cdSec) {
+        var wait = cdSec - (now - last);
+        return json_({ ok: false, cooling: true, retryAfter: wait,
+          error: '剛剛才問過，等 ' + wait + ' 秒再問 —— 先看看上一個提示。' });
+      }
+    }
+
     if (sid && usedBySid_(sid) >= perCap) {
       return json_({ ok: false, capped: 'sid', error: debug
         ? '這個學號今天用了 ' + usedBySid_(sid) + ' 次，超過偵錯上限 ' + perCap + '。' +
           '在編輯器執行 resetCaps 就歸零，或調高指令碼屬性 DEBUG_SID_CAP。'
-        : '你今天問得夠多了，剩下的自己想想看。' });
+        : '今天的 AI 提示你已經用完 ' + perCap + ' 次了。' +
+          '剩下的自己想想看，或者問問旁邊的同學、舉手找老師 —— ' +
+          '把你卡住的地方講清楚，他們比 AI 更幫得上忙。' });
     }
 
     /* 偵錯模式可以指定模型 —— 這樣不必為了比較 Flash 與 Lite 重新部署。
@@ -384,6 +423,12 @@ function handle_(e) {
     var v = checkReply_(reply, item.forbid);
 
     bump_(sid);
+    /* 冷卻只在「真的問了 AI」之後才記 ——
+       關鍵概念全中那條路沒花額度，不該連帶被冷卻擋住。 */
+    if (sid && cdSec > 0) {
+      CacheService.getScriptCache().put(cdKey,
+        String(Math.floor(new Date().getTime() / 1000)), Math.max(cdSec * 2, 60));
+    }
     log_(sid, p.unit, p.qi, answer, reply, v);
 
     /* 違規的回覆不送出去。學生拿到的是安全的那一句。 */
