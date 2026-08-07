@@ -224,7 +224,22 @@
     '.dv-tok{background:#ff6680;color:#fff;border:0;border-radius:999px;padding:5px 13px;',
     '  font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}',
     '.dv-done{background:#dcfce7;border:2px solid #34d399;border-radius:14px;padding:14px 16px;',
-    '  font-size:14px;line-height:1.9;color:#166534}'
+    '  font-size:14px;line-height:1.9;color:#166534}',
+    /* 問題拆解：編號用橘色圓圈，和課本「問題拆解①②③」對得起來 */
+    '.dv-qs{list-style:none;counter-reset:dvq;margin:0;padding:0}',
+    '.dv-qs>li{counter-increment:dvq;position:relative;padding:0 0 0 34px;margin:0 0 12px}',
+    '.dv-qs>li::before{content:counter(dvq);position:absolute;left:0;top:1px;width:24px;height:24px;',
+    '  border-radius:999px;background:#f97316;color:#fff;font-size:13px;font-weight:900;',
+    '  display:flex;align-items:center;justify-content:center}',
+    '.dv-qt{font-size:15px;font-weight:700;line-height:1.75;padding-top:2px}',
+    '.dv-hint{margin-top:5px}',
+    '.dv-hint summary{cursor:pointer;font-size:12.5px;color:#94a3b8;font-weight:700;list-style:none}',
+    '.dv-hint summary::-webkit-details-marker{display:none}',
+    '.dv-hint summary::before{content:"▸ "}',
+    '.dv-hint[open] summary::before{content:"▾ "}',
+    '.dv-hint summary:hover{color:#6366f1}',
+    '.dv-hint>div{margin-top:5px;background:#f8fafc;border-left:3px solid #cbd5e1;',
+    '  border-radius:0 8px 8px 0;padding:8px 12px;font-size:13px;line-height:1.9;color:#475569}'
   ].join('');
 
   function ensureStyle() {
@@ -400,9 +415,39 @@
     return { destroy: function () { if (anim) anim.cancel(); host.innerHTML = ''; } };
   }
 
+  /* ── 問題拆解（課本的「問題分析」）─────────────────
+     把一個大題目切成幾個小問題，這是這一章真正在教的東西
+     （運算思維的「問題拆解」），不是拼積木的技巧。
+
+     ★ 為什麼照課本的拆解，不自己排
+       學生課堂上聽的、課本上印的就是這幾問。網站自己排一套順序，
+       學生要在兩套講法之間翻譯 —— 那是白白多出來的負擔。
+
+     ★ 為什麼提示要收起來
+       五個問題連答案一起攤開，就變成「照著抄」。
+       先讓學生自己想，想不出來才點開 ——
+       點開這個動作本身也讓學生知道自己卡在第幾問。 */
+  function renderAnalysis(host, data) {
+    ensureStyle();
+    if (!host) return;
+    if (!data || !(data.qs || []).length) { host.innerHTML = ''; host.style.display = 'none'; return; }
+    host.style.display = '';
+    host.className = 'dv';
+    host.innerHTML =
+      (data.intro ? '<div class="dv-intro">' + data.intro + '</div>' : '') +
+      '<ol class="dv-qs">' + data.qs.map(function (it) {
+        return '<li><div class="dv-qt">' + it.q + '</div>' +
+          (it.hint
+            ? '<details class="dv-hint"><summary>想不出來？點開看提示</summary><div>' +
+              it.hint + '</div></details>'
+            : '') + '</li>';
+      }).join('') + '</ol>';
+  }
+
   global.DERIVE = {
     VERSION: VERSION,
     mount: mount,
+    renderAnalysis: renderAnalysis,
     _turnFor: turnFor,
     _closes: closes,
     _laps: laps,

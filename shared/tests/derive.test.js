@@ -96,5 +96,30 @@ ok(!/36(?!0)/.test(noQ(dv.steps[2].q)), '第 3 步的題目沒有洩漏答案 36
 ok(!/360\s*[÷\/]\s*N/.test(dv.steps[3].q), '第 4 步的題目沒有直接寫出 360 ÷ N');
 ok(/360/.test(dv.done), '做完之後才把結論講明白');
 
+
+/* ── 問題拆解（課本的「問題分析」）───────────────── */
+const L = w2.BLOCK_LEVELS;
+eq(L['2-1-1'].analysis.qs.length, 5, '第 1 關照課本拆成五問');
+eq(L['2-1-2'].analysis.qs.length, 8, '第 2 關照課本拆成八問');
+ok(L['2-1-1'].analysis.qs.every(x => x.q && x.hint), '每一問都有問句和提示');
+
+/* ★ 第 2 關的重點全在第 6 問：先做出沒有參數的副程式，
+   發現畫不出四種大小，才知道參數是來解決什麼的。
+   少了這個轉折，學生只學會照抄「定義 畫正方形 (邊長)」。 */
+const q6 = L['2-1-2'].analysis.qs[5];
+ok(/卡住|畫得出/.test(q6.q), '★ 第 6 問是「沒有參數行不行」的轉折');
+ok(/畫不出來/.test(q6.hint), '   提示直接說畫不出來，不繞過去');
+ok(/參數/.test(q6.hint), '   並且點出參數是來解決這件事的');
+
+/* 提示不能把整份答案抄出來 —— 那就變成照著拼，拆解就白做了 */
+L['2-1-1'].analysis.qs.concat(L['2-1-2'].analysis.qs).forEach((x, i) => {
+  ok(String(x.hint).length < 260, '第 ' + (i + 1) + ' 問的提示不要長到變成答案');
+});
+
+/* 用詞：說明裡只能出現課本的「副程式」和 Scratch 的「函式積木」 */
+const allText = JSON.stringify([L['2-1-1'], L['2-1-2'], L['2-1-3']]);
+ok(!/自訂積木/.test(allText), '沒有第三種講法「自訂積木」');
+ok(/副程式/.test(JSON.stringify(L['2-1-1'].analysis)), '第 1 關的拆解用課本的「副程式」');
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
