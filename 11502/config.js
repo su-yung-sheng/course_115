@@ -53,6 +53,29 @@ window.CONFIG = {
     GAS_URL: 'https://script.google.com/macros/s/AKfycbzGQQWlGGUKmyBR6gETbbEluFl_jjyE4Rd7W24HgizSfYHP8LJ3thIF9kCtHb4TAYzf7A/exec'        // 例：https://script.google.com/macros/s/AKfy…/exec
   },
 
+  /* AI 引導（「動手之前」那一步的「問問看」，shared/aiguide.gs）
+     留空的話整個功能不出現 —— 圈選、先寫再對照、積木拼圖都照常。
+
+     ⚠️ 這裡的 KEY 和 CLASSROOM 那支不一樣，**必須**寫在這裡。
+        因為呼叫的人是學生，不可能叫每個學生自己輸入通行碼。
+        而這個 repo 是公開的 → 這組通行碼等於是公開的。
+
+     所以它擋不住有心人，真正的防線在 aiguide.gs 那邊：
+       · 題目與「不可以說出口的內容」由 GAS 自己抓，前端改不了
+       · 每天總量上限 DAILY_CAP ← ★ 這個才是總閘門
+       · 每個學生每天上限 PER_SID_CAP
+
+     ⚠️ PER_SID_CAP 擋不住有心人 —— sid 是前端送的，可以偽造。
+        它擋的是「同一個學生一直按」，不是攻擊。
+        真的被亂用的話：改掉 GAS 的 QUERY_KEY，再改這裡推一次就好。
+
+     ⚠️ GAS 重新部署時要選「管理部署作業 → 編輯 → 版本：新版本」。
+        按「新增部署作業」會產生**另一個網址**，這裡就對不上了。 */
+  AIGUIDE: {
+    GAS_URL: 'https://script.google.com/macros/s/AKfycbzK3CRfHHPgw8YbP5EBOtmxJQ4GbTt1NG5UqxqCsH17q0_gUvbP9kzNfSJc25J9PrrZBw/exec',
+    KEY: ''    // ← 填 GAS 指令碼屬性裡的 QUERY_KEY（留空 = 這個功能關閉）
+  },
+
   COLLECTIONS: {
     PROGRESS: '11502-progress',
     // ★ 2026-07-29 名冊已合併為跨學期共用的 roster（見 shared/docs/03）
