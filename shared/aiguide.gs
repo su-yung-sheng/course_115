@@ -83,7 +83,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-cap';
+var VERSION = '2026-08-07-freefirst';
 
 var DEFAULTS = {
   MODEL: 'gemini-2.5-flash',
@@ -279,9 +279,6 @@ function handle_(e) {
 
     if (p.action !== 'ask') return json_({ ok: false, error: '不認得的 action：' + p.action });
 
-    /* ── 配額 ──────────────────────────────────────
-       ★ 用完就直接回絕，不重試、不排隊。
-         引導是輔助功能，不該和批改搶額度。 */
     /* ★ 學號的參數名字叫 student，不叫 sid。
        ⚠️ 2026-08-07 花了一個下午才找到：**`sid` 是 Google 的保留參數**
           （session id）。網址帶著 sid= 時，請求在到達這支指令碼**之前**
@@ -293,6 +290,34 @@ function handle_(e) {
 
        舊的 sid 還是收 —— 萬一有地方沒改到，不要默默壞掉。 */
     var sid = String(p.student || p.sid || '').replace(/[^0-9A-Za-z]/g, '').slice(0, 12);
+
+    /* ── 題目：由這支自己抓，不看前端送什麼 ───────── */
+    var item = pickQuestion_(p.unit, p.qi);
+    if (!item) return json_({ ok: false, error: '找不到這一問（' + p.unit + ' / ' + p.qi + '）。' });
+
+    var answer = String(p.answer || '').slice(0, num_('MAX_ANSWER', DEFAULTS.MAX_ANSWER));
+
+    /* ── 先用關鍵概念判一次 ────────────────────────
+       ★ 全部講到了就不必問 AI
+         省額度、省學生等待，而且回饋是你寫的、每次都一樣。
+         「答出關鍵字就好，不見得整句都對」—— 這一段就是那句話的實作。
+       ⚠️ 這一次不計入配額（bump_），因為根本沒呼叫 Gemini。
+
+       ★ 為什麼這一段要排在「配額檢查」前面
+         它不花任何額度，卻曾經被額度上限擋下來 ——
+         學生把關鍵概念全講對了，系統卻回他「你今天問得夠多了」。
+         那是最糟的一種擋：他做對了事，卻拿到懲罰。
+         **不花錢的路，不該被為了省錢而設的規則擋住。** */
+    var k = hitKeys_(answer, item.keys);
+    if (k.done) {
+      log_(sid, p.unit, p.qi, answer, '（關鍵概念全中，沒問 AI）', { ok: true, why: [] });
+      return json_({ ok: true, done: true, byKeys: true,
+                     reply: '你講到了：' + k.hit.join('、') + '。這一題想通了，往下做吧。' });
+    }
+
+    /* ── 配額（只擋「真的要問 AI」的那一條路）──────
+       ★ 用完就直接回絕，不重試、不排隊。
+         引導是輔助功能，不該和批改搶額度。 */
     /* ── 偵錯模式（只有老師）──────────────────────
        ★ 為什麼要有
          擋下違規回覆是對的，但那讓「測試」變成瞎子 ——
@@ -309,7 +334,7 @@ function handle_(e) {
     var dk = prop_('DEBUG_KEY', '');
     var debug = !!dk && p.dbg === dk;
 
-    /* ── 配額 ──────────────────────────────────────
+    /* ── 配額（只擋「真的要問 AI」的那一條路）──────
        ★ 兩個上限的意義不一樣：
          · DAILY_CAP  —— 顧荷包／顧額度，對誰都一樣，老師也不例外
          · PER_SID_CAP —— 防一個學生把全班的份用光，是「公平」不是「安全」
@@ -329,24 +354,6 @@ function handle_(e) {
         ? '這個學號今天用了 ' + usedBySid_(sid) + ' 次，超過偵錯上限 ' + perCap + '。' +
           '在編輯器執行 resetCaps 就歸零，或調高指令碼屬性 DEBUG_SID_CAP。'
         : '你今天問得夠多了，剩下的自己想想看。' });
-    }
-
-    /* ── 題目：由這支自己抓，不看前端送什麼 ───────── */
-    var item = pickQuestion_(p.unit, p.qi);
-    if (!item) return json_({ ok: false, error: '找不到這一問（' + p.unit + ' / ' + p.qi + '）。' });
-
-    var answer = String(p.answer || '').slice(0, num_('MAX_ANSWER', DEFAULTS.MAX_ANSWER));
-
-    /* ── 先用關鍵概念判一次 ────────────────────────
-       ★ 全部講到了就不必問 AI
-         省額度、省學生等待，而且回饋是你寫的、每次都一樣。
-         「答出關鍵字就好，不見得整句都對」—— 這一段就是那句話的實作。
-       ⚠️ 這一次不計入配額（bump_），因為根本沒呼叫 Gemini。 */
-    var k = hitKeys_(answer, item.keys);
-    if (k.done) {
-      log_(sid, p.unit, p.qi, answer, '（關鍵概念全中，沒問 AI）', { ok: true, why: [] });
-      return json_({ ok: true, done: true, byKeys: true,
-                     reply: '你講到了：' + k.hit.join('、') + '。這一題想通了，往下做吧。' });
     }
 
     /* 偵錯模式可以指定模型 —— 這樣不必為了比較 Flash 與 Lite 重新部署。

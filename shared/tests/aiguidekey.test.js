@@ -68,4 +68,14 @@ ok(/資訊|測試台|resetCaps|調高/.test(src.slice(iCap, iCap + 900)),
 ok(/function resetCaps/.test(src), '有歸零的方法，不必等到明天');
 ok(/usedLab/.test(src) && /labCap/.test(src), '★ ping 要回報測試台自己的用量 —— 撞到才知道有牆是最糟的介面');
 
+/* ★ 不花額度的那一條路，不該被為了省錢而設的規則擋住。
+   實測發現的：關鍵概念全中那一則根本不呼叫 Gemini，
+   卻排在配額檢查後面 —— 學生全講對了，系統回他「你今天問得夠多了」。
+   做對了事卻拿到懲罰，是最糟的一種擋。 */
+const iDone = src.indexOf('if (k.done)');
+const iCap2 = src.indexOf("usedToday_() >= num_('DAILY_CAP'");
+ok(iDone > 0 && iDone < iCap2, '★ 「關鍵概念全中」要排在配額檢查之前');
+const iSid2 = src.indexOf('var sid = String(p.student');
+ok(iSid2 > 0 && iSid2 < iDone, '   而 sid 要更早 —— 不然那一則的紀錄會少掉學號');
+
 console.log('通過 '+pass+'／失敗 '+fail); process.exit(fail?1:0);
