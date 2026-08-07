@@ -170,8 +170,34 @@ function doPost(e) { return handle_(e); }
 function handle_(e) {
   var p = (e && e.parameter) || {};
   try {
-    if (p.key !== prop_('QUERY_KEY', '')) return json_({ ok: false, error: '通行碼不正確。' });
-    if (!prop_('QUERY_KEY', '')) return json_({ ok: false, error: '這支指令碼還沒設定 QUERY_KEY。' });
+    /* ── 通行碼 ────────────────────────────────────
+       ⚠️ 順序很重要。原本先比對再檢查「有沒有設定」，
+          結果「還沒設 QUERY_KEY」永遠回報成「通行碼不正確」——
+          你會跑去找一個根本不存在的屬性裡的錯字。
+
+       ★ 兩邊都 trim()
+         最常見的原因是「指令碼屬性的值尾端多了一個空白」（貼上時帶進去的），
+         那用眼睛看不出來。與其讓人查半天，不如直接容忍。
+
+       ★ 不符時回報字數
+         不講內容（那才是祕密），只講長度 —— 一眼看得出是
+         「尾端空白」「打錯」還是「網址列把 & 之後截掉了」。
+         這組碼本來就會出現在學生的頁面上，長度不算祕密。 */
+    var want = String(prop_('QUERY_KEY', '')).trim();
+    var got = String(p.key == null ? '' : p.key).trim();
+    if (!want) {
+      return json_({ ok: false, error:
+        '這支指令碼還沒設定 QUERY_KEY。到「專案設定 → 指令碼屬性」新增一列，' +
+        '名稱是 QUERY_KEY（大小寫要一樣），值自己想一組。' });
+    }
+    if (got !== want) {
+      return json_({ ok: false, error:
+        '通行碼不正確。伺服器的是 ' + want.length + ' 個字，你送來的是 ' + got.length + ' 個字。' +
+        (got.length === 0 ? '（完全沒收到 —— 網址少了 key= 那一段？）'
+         : got.length !== want.length
+           ? '（長度不同：指令碼屬性的值尾端有多的空白？還是通行碼裡有 & 或 # 被網址截掉了？）'
+           : '（長度一樣但內容不同 —— 有字打錯，或大小寫不一樣。）') });
+    }
 
     if (p.action === 'ping') {
       return json_({ ok: true, model: prop_('MODEL', DEFAULTS.MODEL),
