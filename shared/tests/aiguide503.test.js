@@ -49,8 +49,15 @@ catch(e){ ok(false,'不該失敗：'+e.message); }
 Object.keys(cache).forEach(k=>delete cache[k]);
 codes=[503,200]; calls=[];
 try{ box.askGemini_('x');
-  ok(calls.length===2 && /flash-lite/.test(calls[1]),
-     '★ 過載時換的是「模型」不是金鑰（'+calls.join(' → ')+'）');
+  /* ⚠️ 這裡原本檢查 calls[1] 含不含「flash-lite」——
+     那是把「今天備援剛好叫什麼名字」當成規則。
+     模型一換名字，測試就紅了，可是行為根本沒變。
+     真正的規則是：**第二次要用不一樣的模型，而且是設定的那一個**。 */
+  const fbWant = (src.match(/FALLBACK_MODEL: '([^']*)'/) || [])[1];
+  // calls 記的是「模型/金鑰」，這裡只比模型那一半
+  const mdl = c => String(c).split('/')[0];
+  ok(calls.length===2 && mdl(calls[0])!==mdl(calls[1]) && mdl(calls[1])===fbWant,
+     '★ 過載時換的是「模型」不是金鑰（'+calls.join(' → ')+'，預期備援 '+fbWant+'）');
   ok(!box.keyReport_().some(k=>k.cooling),'★ 而且不冤枉金鑰 —— 沒有任何一把被冷卻');
 }catch(e){ ok(false,'應該要退到備援：'+e.message); }
 
@@ -129,7 +136,12 @@ ok(/MODEL: 'gemini-3\.1-flash-lite'/.test(src), '預設模型換成測出來能�
 ok(!/MODEL: 'gemini-2\.5-flash'/.test(src), '★ 不可以留著新專案叫不動的那個當預設');
 ok(/no longer available to new users/.test(src), '把 Google 的原話寫下來 —— 下次看到才認得出');
 ok(/function pickFallback/.test(src), '有找備援模型的工具');
-ok(/沒有驗證過/.test(src), '★ 沒驗過的預設值要老實說 —— 今天就是被沒驗過的模型名稱咬的');
+/* ★ 原本這裡要求出現「沒有驗證過」四個字。
+   值換成實測過的之後那句話就不該存在了，硬留著等於要程式說謊。
+   真正該釘的是：**這一格的來歷要寫下來** —— 是實測的，還是猜的。 */
+const fbNote = src.slice(Math.max(0, src.indexOf('FALLBACK_MODEL:') - 900), src.indexOf('FALLBACK_MODEL:'));
+ok(/實測|沒有驗證過/.test(fbNote),
+   '★ 備援模型的來歷要寫清楚（實測過，還是沒驗過）—— 今天就是被沒驗過的模型名稱咬的');
 ok(/叫得動」和「守得住」是兩件事/.test(src), '★ 換模型要重跑刁難題：2.5-flash 的成績不能算在 lite 頭上');
 
 /* 備援一定要和主模型不同 —— 額度按「每專案每模型每天」算，

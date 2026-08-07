@@ -54,6 +54,52 @@ else
   echo "⚠️  找不到 shared/check.py，略過完整性檢查"
 fi
 
+# ── 測試 ───────────────────────────────────────────
+# ⚠️ 2026-08-07 加的。原本這個 hook 只跑 check.py，
+#    於是「測試紅燈」完全擋不住 —— 那天就這樣提交了一次帶著兩個
+#    失敗測試的變更，而且是自己過幾分鐘才發現。
+#    check.py 看的是「檔案有沒有一致」，測試看的是「行為對不對」，
+#    兩件事都會壞，只擋一種等於只有一半的保護。
+#
+# ★ 缺套件不算失敗
+#   blocks.test.js 需要 jsdom；沒裝的時候它會印一行提示並回非 0。
+#   那是「這台機器沒裝」，不是「程式壞了」——
+#   因為缺套件就擋住提交，只會讓人養成 --no-verify 的習慣，
+#   那比沒有 hook 更糟。
+if command -v node >/dev/null 2>&1; then
+  echo ""
+  echo "── 跑測試 ─────────────────────────────────"
+  FAILED=""
+  SKIPPED=""
+  for f in shared/tests/*.test.js; do
+    [ -f "$f" ] || continue
+    OUT=$(node "$f" 2>&1)
+    if [ $? -ne 0 ]; then
+      case "$OUT" in
+        *"npm install"*|*"Cannot find module"*) SKIPPED="$SKIPPED $(basename "$f")" ;;
+        *) FAILED="$FAILED $(basename "$f")"
+           echo ""
+           echo "❌ $(basename "$f")"
+           echo "$OUT" | grep -E "❌|✗|失敗" | head -8 ;;
+      esac
+    fi
+  done
+
+  [ -n "$SKIPPED" ] && echo "（略過：$SKIPPED —— 缺套件，不是失敗）"
+
+  if [ -n "$FAILED" ]; then
+    echo ""
+    echo "❌ 測試沒過，這次提交已取消：$FAILED"
+    echo "   單獨重跑看完整訊息，例如：node shared/tests/$(echo $FAILED | awk '{print $1}')"
+    echo "   真的急著提交可以用：git commit --no-verify"
+    exit 1
+  fi
+  echo "✅ 測試全過"
+else
+  echo "⚠️  找不到 node，略過測試"
+fi
+
+echo ""
 echo "── 檢查通過，繼續提交 ─────────────────────"
 echo ""
 exit 0
