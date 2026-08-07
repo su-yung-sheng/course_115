@@ -74,4 +74,16 @@ Object.keys(cache).forEach(k=>delete cache[k]);
 codes=[400]; calls=[];
 try{ box.askGemini_('x'); ok(false,'400 應該直接報錯'); }
 catch(e){ ok(calls.length===1 && /400/.test(e.message),'400 不浪費其他金鑰，直接講清楚'); }
+
+/* ── 429 有兩種，Google 自己就講了是哪一種 ──────────
+   2026-08-07：三把不同專案的金鑰，跑十題就全部進冷卻。
+   原因是三把在同一天被輪流用完（PerDay），
+   但程式把 Google 的回應內容整個丟掉，只留一句「額度或每分鐘上限」——
+   看起來像「一直很忙」，而真正該做的是「今天別再測了」。 */
+ok(/PerDay\|per day/.test(src), '★ 要分得出「每天」和「每分鐘」');
+ok(/quotaId/.test(src), '   把 Google 給的 quotaId 帶出來 —— 那是唯一說得準的證據');
+ok(/perDay \? 1800 : 0/.test(src), '★ 每天用完就冷卻久一點 —— 等 60 秒再撞只是浪費剩下的請求');
+ok(/function coolDown_\(k, why, secs\)/.test(src), '   冷卻秒數要能分開設');
+ok(/等一分鐘沒用/.test(src), '訊息要說得出「等沒有用」，不然老師會一直重試');
+
 console.log('通過 '+pass+'／失敗 '+fail); process.exit(fail?1:0);

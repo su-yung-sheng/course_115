@@ -83,7 +83,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-freefirst';
+var VERSION = '2026-08-07-quota';
 
 var DEFAULTS = {
   MODEL: 'gemini-2.5-flash',
@@ -172,8 +172,12 @@ function pickKey_() {
        429 → 正常的塞車，等一下就好
        403 → 那把根本不能用，要去修
      不記原因的話，畫面上只看得到「冷卻中」，兩種分不出來。 */
-function coolDown_(k, why) {
-  CacheService.getScriptCache().put('cool.' + k.i, why || '1', num_('COOL_SEC', DEFAULTS.COOL_SEC));
+function coolDown_(k, why, secs) {
+  /* secs 給 0／不給 = 用預設。
+     ★ 為什麼要能自訂：每分鐘上限等 60 秒就好，
+       但「今天的份用完了」等 60 秒再去撞，只是把剩下的請求也浪費掉。 */
+  var n = secs > 0 ? secs : num_('COOL_SEC', DEFAULTS.COOL_SEC);
+  CacheService.getScriptCache().put('cool.' + k.i, why || '1', Math.min(n, 21600));
 }
 
 /** 現在每把的狀態（selfTest 與 ping 用） */
@@ -379,8 +383,14 @@ function handle_(e) {
   } catch (err) {
     // 一律回 200 ＋ ok:false：Apps Script 回非 200 時是一頁 HTML，
     // 跨來源讀不到內容，前端只會看到「fetch 失敗」，查不出原因。
-    return json_({ ok: false, error: String(err && err.message || err),
-                   busy: !!(err && err.busy), retryAfter: (err && err.retryAfter) || 0 });
+    var out = { ok: false, error: String(err && err.message || err),
+                busy: !!(err && err.busy), retryAfter: (err && err.retryAfter) || 0 };
+    // 診斷只給老師 —— 學生看金鑰數量沒有意義
+    try {
+      var dk2 = prop_('DEBUG_KEY', '');
+      if (dk2 && (e && e.parameter || {}).dbg === dk2 && err && err.diag) out.diag = err.diag;
+    } catch (e4) {}
+    return json_(out);
   }
 }
 
@@ -583,7 +593,25 @@ function askGemini_(prompt, modelOverride, noFallback) {
     var code = res.getResponseCode();
     var body = res.getContentText();
 
-    if (code === 429) { coolDown_(k, '429 額度或每分鐘上限'); lastErr = '額度或每分鐘上限'; continue; }
+    if (code === 429) {
+      /* ★ 429 有兩種，處理方式完全不同，而 Google 在回應裡就講了是哪一種：
+           · PerMinute（每分鐘）→ 等一分鐘就好
+           · PerDay（每天）    → 等到明天，冷卻 60 秒再去撞是白撞
+         2026-08-07 之前這裡把 body 整個丟掉，只留「額度或每分鐘上限」——
+         於是三把金鑰同一天用完時，看起來就像「一直很忙」，
+         而真正該做的是「今天別再測了」或「換一把新的」。
+         ⚠️ 只認關鍵字，不解析完整結構：Google 的錯誤格式會變，
+            認錯了頂多退回舊行為（當成每分鐘），不會壞掉。 */
+      var perDay = /PerDay|per day|daily limit|RequestsPerDay/i.test(body);
+      var quota = (body.match(/"quotaId"\s*:\s*"([^"]+)"/) || [])[1] || '';
+      coolDown_(k, '429 ' + (perDay ? '今天的份用完了' : '這一分鐘問太多次')
+                 + (quota ? '（' + quota + '）' : ''),
+                perDay ? 1800 : 0);
+      lastErr = k.name + '：' + (perDay
+        ? '今天的額度用完了（' + (quota || 'PerDay') + '）—— 等一分鐘沒用，要換金鑰或等明天'
+        : '這一分鐘問太多次了（等一下就好）');
+      continue;
+    }
     if (code === 403) {
       coolDown_(k, '403 金鑰無效或沒開 API');
       lastErr = k.name + ' 被拒絕（金鑰無效、Generative Language API 沒啟用，或專案有問題）';
@@ -638,11 +666,31 @@ function askGemini_(prompt, modelOverride, noFallback) {
 
   /* 全部都不能用 → 讓前端等一下再試。
      這是「排隊」在 GAS 上唯一做得到的形式：不是我們排，是請對方晚點來。 */
+  /* ★ 「很忙」有兩種完全不同的原因，而它們要做的事相反：
+       · 每分鐘上限滿了 → 等一下就好，或者多加一把金鑰（要別的專案）
+       · 某把在冷卻     → 403 的話那把根本不能用，等再久也沒用，要去修
+     訊息裡分不出來的話，老師只能等 —— 而如果是 403，等到明天還是一樣。
+     ⚠️ 診斷只給老師（帶了 DEBUG_KEY）。學生看到金鑰數量沒有意義，
+        而且那是不必要的內部資訊。 */
+  var diag = '';
+  try {
+    var rep = keyReport_();
+    var cooling = rep.filter(function (x) { return x.cooling; });
+    diag = '金鑰 ' + rep.length + ' 把'
+         + (rep.length ? '（這一分鐘各用了 ' + rep.map(function (x) { return x.thisMinute; }).join('、') + '）' : '')
+         + '，每把每分鐘上限 ' + num_('RPM_PER_KEY', DEFAULTS.RPM_PER_KEY)
+         + (cooling.length
+             ? '。冷卻中：' + cooling.map(function (x) { return x.key + '（' + (x.why || '沒記到原因') + '）'; }).join('、')
+               + ' —— 403 是那把不能用（要去修），429 只是塞車（等一分鐘）'
+             : '。沒有金鑰在冷卻 —— 純粹是這一分鐘問太多次了');
+  } catch (eD) { diag = '（取不到金鑰狀態：' + eD.message + '）'; }
+
   var e = new Error((overloaded
       ? 'AI 現在人太多（Google 那邊的模型過載），等一下再問 —— 先自己想想看。'
       : 'AI 現在很忙，等一下再問 —— 先自己想想看。') + (lastErr ? '（' + lastErr + '）' : ''));
   e.busy = true;
   e.retryAfter = overloaded ? 15 : 20;
+  e.diag = diag;
   throw e;
 }
 

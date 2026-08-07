@@ -127,7 +127,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
      那件事現在由 DEBUG_KEY 做，而且更好：走的是真正的管線。 */
 /* 這一頁預期的 GAS 版本。改 aiguide.gs 的行為時，兩邊一起改。
    ⚠️ 這不是裝飾 —— 它是唯一能看出「部署的是不是最新版」的方法。 */
-const EXPECT_VERSION = '2026-08-07-freefirst';
+const EXPECT_VERSION = '2026-08-07-quota';
 
 const GAS = ((window.CONFIG || {}).AIGUIDE || {}).GAS_URL || '';
 $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒填）';
@@ -264,7 +264,13 @@ async function callGas(params) {
     throw new Error('GAS 回的不是資料' + (e1 ? '（GET 先失敗了：' + e1 + '）' : '') +
                     '：' + t.slice(0, 120));
   }
-  if (!j.ok) throw new Error(j.error || 'GAS 回報了不明的錯誤');
+  if (!j.ok) {
+    /* ★ 原本只把 j.error 包成 Error，busy／retryAfter／diag 全丟掉了 ——
+       於是「等一下就好」和「那把金鑰根本不能用」在畫面上長得一模一樣。 */
+    const err = new Error(j.error || 'GAS 回報了不明的錯誤');
+    err.busy = !!j.busy; err.retryAfter = j.retryAfter || 0; err.diag = j.diag || '';
+    throw err;
+  }
   return j;
 }
 
@@ -356,11 +362,19 @@ async function ask(answer) {
            byKeys: !!j.byKeys, prompt: j.prompt || '' };
 }
 
-function card(tag, sent, res, err) {
+function card(tag, sent, res, err, errObj) {
   if (err) {
-    return `<div class="bg-white border-2 border-rose-300 rounded-xl p-4 mb-3">
+    /* 「忙碌」和「壞掉」要長得不一樣 —— 一個是等一下就好，一個是要去修。 */
+    const busy = errObj && errObj.busy;
+    return `<div class="bg-white border-2 ${busy ? 'border-amber-300' : 'border-rose-300'} rounded-xl p-4 mb-3">
       <div class="text-xs font-bold text-slate-400 mb-1">${esc(tag)}</div>
-      <div class="text-sm text-rose-700 font-bold">✗ ${esc(err)}</div></div>`;
+      <div class="text-sm font-bold ${busy ? 'text-amber-700' : 'text-rose-700'}">
+        ${busy ? '⏳' : '✗'} ${esc(err)}</div>
+      ${errObj && errObj.diag
+        ? '<div class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 mt-2 leading-relaxed">'
+          + '🔎 ' + esc(errObj.diag) + '</div>'
+        : (busy ? '<div class="text-xs text-slate-400 mt-1">填上偵錯碼再跑一次，這裡會告訴你是「這一分鐘問太多」還是「某把金鑰不能用」。</div>' : '')}
+      </div>`;
   }
   if (res.prompt) window.__lastPrompt = res.prompt;
   /* 有偵錯碼時檢查「原始回覆」—— 檢查安全提示沒有意義，它一定是乾淨的。
@@ -410,16 +424,38 @@ function card(tag, sent, res, err) {
   </div>`;
 }
 
+/* 每把金鑰每分鐘的上限（ping 會回報實際值，這裡只是預設顯示用）*/
+let RPM_GUESS = 10;
+
+/* 忙碌就等一下再試一次。
+   ★ 為什麼要有：這一頁十題連著跑，一把金鑰每分鐘 10 次 ——
+     光是跑完就會撞到上限，於是「測 AI 守不守得住」永遠測不完整。
+     那不是 AI 的問題，卻會被算成 AI 的問題。
+   ⚠️ 只重試一次。無限重試會把額度全吃光，而且看不出是誰吃的。 */
+async function askWithWait(text, i) {
+  try { return await ask(text); }
+  catch (e) {
+    if (!e.busy) throw e;
+    const wait = Math.max(5, Math.min(30, e.retryAfter || 20));
+    const w = $('w' + i);
+    for (let t = wait; t > 0; t--) {
+      if (w) w.textContent = '（額度滿了，' + t + ' 秒後自動再試一次…）';
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    return await ask(text);
+  }
+}
+
 $('one').onclick = async () => {
   $('out').innerHTML = '<p class="text-sm text-slate-400">問了，等一下…</p>';
   try { const r = await ask($('ans').value); $('out').innerHTML = card('單句測試', $('ans').value, r); }
-  catch (e) { $('out').innerHTML = card('單句測試', $('ans').value, null, e.message); }
+  catch (e) { $('out').innerHTML = card('單句測試', $('ans').value, null, e.message, e); }
 };
 
 $('all').onclick = async () => {
   const probes = AIGUIDE.PROBES;
   $('out').innerHTML = '';
-  let bad = 0, skipped = 0;
+  let bad = 0, skipped = 0, busyN = 0;
   const kx = (QS[+$('q').value] || {}).keys || [];
   for (let i = 0; i < probes.length; i++) {
     const p = Object.assign({}, probes[i]);
@@ -437,11 +473,17 @@ $('all').onclick = async () => {
       `<p id="w${i}" class="text-sm text-slate-400">（${i + 1}/${probes.length}）${esc(p.tag)}…</p>`);
     let html;
     try {
-      const r = await ask(p.text);
+      const r = await askWithWait(p.text, i);
       if (r.byKeys) skipped++;      // 沒問 AI 的那一則不列入分母
       else if (!AIGUIDE.checkReply(r.raw || r.text, { forbid: r.forbid }).ok) bad++;
       html = card(p.tag, p.text, r);
-    } catch (e) { bad++; html = card(p.tag, p.text, null, e.message); }
+    } catch (e) {
+      /* ★ 「忙碌」不算「守不住」。
+         那是額度問題，不是 AI 的表現問題 —— 混進同一個數字裡，
+         你就分不出「10 題有 6 題守不住」到底是模型爛還是金鑰不夠。 */
+      if (e.busy) busyN++; else bad++;
+      html = card(p.tag, p.text, null, e.message, e);
+    }
     $('w' + i).outerHTML = html;
     // 一次十發會撞每分鐘上限 —— 這也是你要觀察的事情之一
     await new Promise(r => setTimeout(r, 1200));
@@ -454,6 +496,9 @@ $('all').onclick = async () => {
       ${bad ? '⚠️ 問了 AI 的 ' + asked + ' 題裡，有 ' + bad + ' 題守不住'
             : '✓ 問了 AI 的 ' + asked + ' 題都沒被抓到問題'}
       ${skipped ? '<span class="font-normal text-xs">　（另外 ' + skipped + ' 題關鍵概念全中，沒問 AI）</span>' : ''}
+      ${busyN ? '<div class="font-normal text-xs mt-1">⏳ 有 ' + busyN + ' 題是<b>額度不夠</b>沒測到（不是守不住）——'
+                + '每把金鑰每分鐘 ' + RPM_GUESS + ' 次，十題連著跑本來就會撞到。'
+                + '加金鑰（要不同專案）或調高 RPM_PER_KEY。</div>' : ''}
       <span class="font-normal text-xs block mt-1">抓不到不代表沒問題，只代表這幾條規則沒抓到。</span>
      </div>`);
 };
