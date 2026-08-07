@@ -87,5 +87,22 @@ ok(/新增部署作業.*另一個網址|另一個網址/.test(html),
 ok(/why: \(c && c !== '1'\) \? c : ''/.test(gs), 'GAS 會記下冷卻的原因');
 ok(/403/.test(html) && /429/.test(html), '★ 測試台要分得出 403（要去修）和 429（等一下就好）');
 
+/* ── 用 POST，不用 GET ───────────────────────────────
+   ★ 2026-08-07 實測：同一個 /exec，
+       ?action=ping&key=…                    → 正常回 JSON
+       ?action=ask&key=…&unit=…&answer=中文 → Google 雲端硬碟的錯誤頁，
+                                               「執行項目」裡完全沒有紀錄
+     編輯器裡跑同一段程式 1.2 秒回 906 字元，完全正常 ——
+     所以問題在「把這些參數放進網址」這件事，不在程式。 */
+ok(/method: 'POST'/.test(html), '★ 改用 POST，參數放內文不放網址');
+ok(/x-www-form-urlencoded/.test(html),
+   '★ 用 form 編碼 —— application/json 會觸發 CORS 預檢，而 GAS 不處理 OPTIONS');
+ok(!/'Content-Type': 'application\/json'/.test(html), '   確認沒有用 json 的 Content-Type');
+ok(/URLSearchParams/.test(html), '參數用 URLSearchParams 組');
+
+const gs2 = fs.readFileSync(path.join(ROOT, 'shared', 'aiguide.gs'), 'utf8');
+ok(/function doPost\(e\)\s*\{\s*return handle_\(e\);/.test(gs2),
+   '★ GAS 那邊不必改 —— doPost 收到的 e.parameter 和 doGet 一樣');
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

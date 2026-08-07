@@ -195,12 +195,33 @@ async function callGas(params) {
   if (!GAS) throw new Error('config.js 的 AIGUIDE.GAS_URL 還沒填');
   const k = $('gasKey').value.trim();
   if (!k) throw new Error('還沒填 GAS 的通行碼');
-  const qs = Object.keys(params).map(n =>
-    encodeURIComponent(n) + '=' + encodeURIComponent(params[n])).join('&');
-  const url = GAS + '?key=' + encodeURIComponent(k) + '&' + qs;
+  /* ★ 用 POST，參數放在內文，不放網址。
+     為什麼改：2026-08-07 實測 —— 同一個 /exec，
+       ?action=ping&key=…                     → 正常回 JSON
+       ?action=ask&key=…&unit=…&answer=中文  → Google 雲端硬碟的錯誤頁，
+                                                而且「執行項目」裡完全沒有紀錄
+     也就是說那個請求根本沒進到指令碼，在 Google 那一層就被擋掉了。
+     編輯器裡直接跑同一段程式（testAsk）1.2 秒就回 906 字元，完全正常。
+
+     ⚠️ Content-Type 一定要用 x-www-form-urlencoded。
+        用 application/json 會觸發 CORS 預檢（OPTIONS），
+        而 Apps Script 不處理 OPTIONS —— 那會換成另一種 fetch 失敗。
+     ⚠️ GAS 那邊不必改：doPost 收到的 e.parameter 和 doGet 一模一樣。
+
+     順帶一提，學生寫的東西本來就該用 POST 送 ——
+     那可能有幾百個字、含換行，塞在網址裡本來就不對。 */
+  const body = new URLSearchParams();
+  body.set('key', k);
+  Object.keys(params).forEach(n => body.set(n, params[n]));
+
   let r;
   try {
-    r = await fetch(url, { redirect: 'follow' });
+    r = await fetch(GAS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: body.toString(),
+      redirect: 'follow'
+    });
   } catch (e) {
     /* ★ 「Failed to fetch」是連線層的錯 —— 請求沒送到，或回應被瀏覽器擋掉。
        瀏覽器基於安全不會告訴你是哪一種，所以只能把可能性列出來。
@@ -212,11 +233,9 @@ async function callGas(params) {
       '② 這一頁是用 file:// 直接開的 —— 本機檔案的來源是 null，瀏覽器會擋跨來源請求。' +
       '要從 https://su-yung-sheng.github.io/… 開這一頁。\n' +
       '③ 網址不是「部署」出來的那一個（結尾要是 /exec，不是編輯器網址）。\n' +
-      '④ GAS 跑太久被切斷 —— 如果「測連線」通、只有送題目失敗，就是這一種。' +
-      '模型思考太久（gemini-2.5-flash 預設會思考）。' +
-      '重貼最新的 aiguide.gs 並重新部署，它已經把思考關掉了。\n' +
-      '→ 上面兩個連結分開試：「新分頁測連線」通、「新分頁直接送一題」不通 → 是 ④；' +
-      '兩個都不通 → 是 ③ 或還沒部署；兩個都通但這裡不通 → 是 ①②。');
+      '④ 部署的版本太舊 —— 按「測連線」，版本不符會直接告訴你。\n' +
+      '→ 旁邊三個連結是用 GET 開的（這一頁本身用 POST）。' +
+      '連結通、這裡不通 → 跨來源；連結也不通 → 部署那一層。');
   }
   const t = await r.text();
   let j;
