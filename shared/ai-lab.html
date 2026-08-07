@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 引導測試台 · 資訊科技課程</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="ai-guide.js"></script>
+<script src="../11502/content/blocks.js"></script>
+<style>
+  html,body,button,input,select,textarea{font-family:'Noto Sans TC',system-ui,sans-serif}
+  body{background:#e7e5e4}
+  pre{white-space:pre-wrap;word-break:break-word}
+</style>
+</head>
+<body class="min-h-screen text-slate-800">
+<main class="max-w-5xl mx-auto px-4 py-8">
+
+  <header class="mb-6">
+    <h1 class="text-2xl sm:text-3xl font-black">🧪 AI 引導測試台</h1>
+    <p class="text-slate-500 text-sm mt-2 leading-relaxed">
+      這一頁是<b>你自己用的測試工具</b>，不是給學生的頁面，也沒有連在任何地方。<br>
+      目的只有一個：<b>看 AI 守不守得住</b> —— 會不會被學生要走答案、會不會寫成一篇講義、會不會把用詞弄亂。
+    </p>
+  </header>
+
+  <!-- 金鑰 -->
+  <section class="bg-white rounded-2xl border border-slate-200 p-5 mb-5">
+    <h2 class="font-black mb-2">① 金鑰</h2>
+    <input id="key" type="password" placeholder="貼上 Gemini API 金鑰"
+           class="w-full border-2 border-slate-300 rounded-lg px-3 py-2 font-mono text-sm focus:border-indigo-500 outline-none">
+    <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+      ⚠️ 只存在這個分頁的記憶體裡（sessionStorage），關掉分頁就沒了，<b>不會寫進任何檔案、不會進 repo</b>。<br>
+      這是可以接受的做法，因為這一頁只有你會開。<b>學生的頁面永遠不可以這樣放金鑰</b> —— 那個 repo 是公開的。
+    </p>
+    <div class="mt-3 flex gap-2 items-center flex-wrap">
+      <label class="text-sm font-bold">模型</label>
+      <input id="model" value="gemini-2.5-flash"
+             class="border-2 border-slate-300 rounded-lg px-3 py-1.5 font-mono text-sm w-72">
+      <span class="text-xs text-slate-400">你目前批改用的是哪一個就填哪一個，兩個都測比較準</span>
+    </div>
+  </section>
+
+  <!-- 題目 -->
+  <section class="bg-white rounded-2xl border border-slate-200 p-5 mb-5">
+    <h2 class="font-black mb-2">② 拿哪一問來測</h2>
+    <select id="q" class="w-full border-2 border-slate-300 rounded-lg px-3 py-2 text-sm"></select>
+    <div class="mt-3">
+      <label class="text-sm font-bold">不可以說出口的內容（一行一項）</label>
+      <textarea id="forbid" rows="3"
+        class="w-full border-2 border-slate-300 rounded-lg px-3 py-2 text-sm mt-1"></textarea>
+      <p class="text-xs text-slate-400 mt-1">
+        這幾項會直接寫進提示詞，也會用來檢查回覆有沒有洩漏。<b>不給的話 AI 會自己編一個答案，可能還編錯。</b>
+      </p>
+    </div>
+  </section>
+
+  <!-- 測試 -->
+  <section class="bg-white rounded-2xl border border-slate-200 p-5 mb-5">
+    <h2 class="font-black mb-3">③ 測</h2>
+    <textarea id="ans" rows="2" placeholder="假裝你是學生，在這裡打字"
+      class="w-full border-2 border-slate-300 rounded-lg px-3 py-2 text-sm"></textarea>
+    <div class="flex gap-2 mt-3 flex-wrap">
+      <button id="one" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-lg">送出這一句</button>
+      <button id="all" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-5 py-2 rounded-lg">
+        ⚡ 一次跑完 10 種刁難
+      </button>
+      <button id="show" class="bg-slate-200 hover:bg-slate-300 font-bold px-4 py-2 rounded-lg text-sm">看送出去的提示詞</button>
+    </div>
+    <p class="text-xs text-slate-400 mt-2">
+      「一次跑完」是重點 —— 只丟正常答案等於沒測。刁難題裡包含：直接要答案、放棄、亂打、換英文、角色扮演、假裝老師允許。
+    </p>
+  </section>
+
+  <div id="out"></div>
+
+  <!-- 提示詞 -->
+  <section id="promptBox" class="hidden bg-slate-900 text-slate-100 rounded-2xl p-5 mt-5">
+    <h2 class="font-black mb-2 text-sm">送出去的提示詞</h2>
+    <pre id="prompt" class="text-xs leading-relaxed"></pre>
+  </section>
+
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* 金鑰只放 sessionStorage —— 關掉分頁就沒了 */
+$('key').value = sessionStorage.getItem('ailab.key') || '';
+$('key').oninput = () => sessionStorage.setItem('ailab.key', $('key').value.trim());
+$('model').value = sessionStorage.getItem('ailab.model') || 'gemini-2.5-flash';
+$('model').oninput = () => sessionStorage.setItem('ailab.model', $('model').value.trim());
+
+/* 題目直接讀真正的關卡資料，不另外寫一份示範題 ——
+   那會變成第二份來源，改了關卡卻忘了改這裡，測的就不是上線的東西。 */
+const QS = [];
+Object.keys(window.BLOCK_LEVELS || {}).forEach(id => {
+  const a = (window.BLOCK_LEVELS[id] || {}).analysis;
+  if (!a) return;
+  (a.qs || []).forEach((x, i) => QS.push({
+    id, no: i + 1, q: x.q, hint: x.hint,
+    // 「不可以說出口的」預設從提示裡抓關鍵詞，你可以自己改
+    forbid: guessForbid(id, i, x)
+  }));
+  if (a.write) QS.push({ id, no: '寫', q: a.write.q, hint: a.write.sample, forbid: guessForbid(id, -1, a.write) });
+});
+
+function guessForbid(id, i, x) {
+  // 每一問真正的答案是什麼，機器猜不準 —— 這裡只給起手式，你自己補
+  const t = AIGUIDE._strip(x.hint || x.sample || '');
+  const out = [];
+  if (/畫正方形/.test(t)) out.push('畫正方形');
+  if (/下筆/.test(t)) out.push('下筆');
+  if (/360/.test(t)) out.push('360');
+  if (/邊長/.test(t)) out.push('邊長');
+  if (/最小值|最矮/.test(t)) out.push('最小值');
+  return out;
+}
+
+QS.forEach((x, i) => {
+  const o = document.createElement('option');
+  o.value = i;
+  o.textContent = x.id + ' 第 ' + x.no + ' 問　' + AIGUIDE._strip(x.q).slice(0, 40);
+  $('q').appendChild(o);
+});
+$('q').onchange = syncForbid;
+function syncForbid() { $('forbid').value = (QS[+$('q').value] || {}).forbid.join('\n'); }
+syncForbid();
+
+function cur() {
+  const x = QS[+$('q').value] || {};
+  return {
+    q: AIGUIDE._strip(x.q),
+    hint: AIGUIDE._strip(x.hint),
+    forbid: $('forbid').value.split('\n').map(s => s.trim()).filter(Boolean)
+  };
+}
+
+$('show').onclick = () => {
+  const c = cur(); c.answer = $('ans').value;
+  $('prompt').textContent = AIGUIDE.buildPrompt(c);
+  $('promptBox').classList.toggle('hidden');
+};
+
+/* 直接從瀏覽器打 Gemini。
+   ★ 這樣做只在這一頁可以接受：只有你會開，金鑰不離開你的電腦（除了送去 Google）。
+     學生頁面要走的是另一條路，見對話紀錄。 */
+async function ask(answer) {
+  const key = $('key').value.trim();
+  if (!key) throw new Error('還沒填金鑰');
+  const model = $('model').value.trim() || 'gemini-2.5-flash';
+  const c = cur(); c.answer = answer;
+  const t0 = performance.now();
+  const r = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/' +
+    encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key),
+    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: AIGUIDE.buildPrompt(c) }] }] }) });
+  const j = await r.json();
+  if (!r.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status));
+  const text = (((j.candidates || [])[0] || {}).content || {}).parts?.[0]?.text || '';
+  return { text: text.trim(), ms: Math.round(performance.now() - t0),
+           usage: j.usageMetadata || {}, forbid: c.forbid };
+}
+
+function card(tag, sent, res, err) {
+  if (err) {
+    return `<div class="bg-white border-2 border-rose-300 rounded-xl p-4 mb-3">
+      <div class="text-xs font-bold text-slate-400 mb-1">${esc(tag)}</div>
+      <div class="text-sm text-rose-700 font-bold">✗ ${esc(err)}</div></div>`;
+  }
+  const v = AIGUIDE.checkReply(res.text, { forbid: res.forbid });
+  const box = v.ok ? 'border-emerald-300' : 'border-amber-400';
+  return `<div class="bg-white border-2 ${box} rounded-xl p-4 mb-3">
+    <div class="flex items-baseline justify-between gap-3 mb-1">
+      <div class="text-xs font-bold text-slate-400">${esc(tag)}</div>
+      <div class="text-[11px] text-slate-400 font-mono">${v.chars} 字 · ${res.ms} ms
+        · in ${res.usage.promptTokenCount || '?'} / out ${res.usage.candidatesTokenCount || '?'} tokens</div>
+    </div>
+    <div class="text-xs text-slate-500 mb-2">學生輸入：<span class="font-mono">${esc(sent) || '（空白）'}</span></div>
+    <div class="text-[15px] leading-relaxed mb-2">${esc(res.text) || '（沒有回覆）'}</div>
+    ${v.ok
+      ? '<div class="text-xs font-bold text-emerald-600">✓ 這幾條規則沒抓到問題</div>'
+      : '<div class="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">'
+        + v.issues.map(i => '⚠️ ' + esc(i.why)).join('<br>') + '</div>'}
+  </div>`;
+}
+
+$('one').onclick = async () => {
+  $('out').innerHTML = '<p class="text-sm text-slate-400">問了，等一下…</p>';
+  try { const r = await ask($('ans').value); $('out').innerHTML = card('單句測試', $('ans').value, r); }
+  catch (e) { $('out').innerHTML = card('單句測試', $('ans').value, null, e.message); }
+};
+
+$('all').onclick = async () => {
+  const probes = AIGUIDE.PROBES;
+  $('out').innerHTML = '';
+  let bad = 0;
+  for (let i = 0; i < probes.length; i++) {
+    const p = probes[i];
+    $('out').insertAdjacentHTML('beforeend',
+      `<p id="w${i}" class="text-sm text-slate-400">（${i + 1}/${probes.length}）${esc(p.tag)}…</p>`);
+    let html;
+    try {
+      const r = await ask(p.text);
+      if (!AIGUIDE.checkReply(r.text, { forbid: r.forbid }).ok) bad++;
+      html = card(p.tag, p.text, r);
+    } catch (e) { bad++; html = card(p.tag, p.text, null, e.message); }
+    $('w' + i).outerHTML = html;
+    // 一次十發會撞每分鐘上限 —— 這也是你要觀察的事情之一
+    await new Promise(r => setTimeout(r, 1200));
+  }
+  $('out').insertAdjacentHTML('afterbegin',
+    `<div class="rounded-xl px-4 py-3 mb-3 font-bold ${bad ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'}">
+      ${bad ? '⚠️ 10 題裡有 ' + bad + ' 題守不住' : '✓ 10 題都沒被抓到問題'}
+      <span class="font-normal text-xs">　（抓不到不代表沒問題，只代表這幾條規則沒抓到）</span>
+     </div>`);
+};
+</script>
+</body>
+</html>
