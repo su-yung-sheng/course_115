@@ -703,6 +703,55 @@ function selfTest() {
 }
 
 /* =====================================================================
+   testAsk / testEcho —— 在編輯器裡直接跑 doGet 的完整路徑
+   ---------------------------------------------------------------------
+   ★ 為什麼需要這兩支
+     2026-08-07：瀏覽器打 ?action=ask 得到「很抱歉，目前無法開啟這個檔案」，
+     而那是 Google 雲端硬碟的錯誤訊息、不是 Apps Script 的；
+     「執行項目」裡也沒有對應的紀錄 ——
+     也就是說**請求根本沒進到這支指令碼**，在 Google 那一層就被擋掉了。
+
+     那種情況下，指令碼裡寫再多錯誤處理都碰不到。
+     所以要有一條完全不經過網頁應用程式的路：直接呼叫 handle_()，
+     把 doGet 收到的參數自己造出來。
+
+   用法：在編輯器選 testAsk（或 testEcho）→ 執行 → 看執行記錄。
+   ⚠️ 這裡的 key 是直接讀指令碼屬性，所以不必也不該把通行碼寫進程式。
+   ===================================================================== */
+function testEcho() { runFake_('echo'); }
+function testAsk()  { runFake_('ask'); }
+
+function runFake_(action) {
+  var ids = Object.keys(levels_());
+  if (!ids.length) { Logger.log('❌ 沒抓到題目，先看 CONTENT_URL'); return; }
+
+  var e = { parameter: {
+    action: action,
+    key: prop_('QUERY_KEY', ''),      // 直接拿伺服器自己的，排除「打錯字」
+    unit: ids[0],
+    qi: '0',
+    sid: 'editor',
+    answer: '有一段一直重複'
+  } };
+  if (prop_('DEBUG_KEY', '')) e.parameter.dbg = prop_('DEBUG_KEY', '');
+
+  Logger.log('版本 %s ｜ action=%s ｜ unit=%s qi=0', VERSION, action, ids[0]);
+  var t0 = new Date().getTime();
+  var out = handle_(e);
+  var sec = ((new Date().getTime() - t0) / 1000).toFixed(1);
+
+  /* handle_ 回的是 ContentService 的物件；取出內容來看。 */
+  var txt = out && out.getContent ? out.getContent() : String(out);
+  Logger.log('花了 %s 秒，回應 %s 個字元', sec, txt.length);
+  Logger.log(txt.length > 1500 ? txt.slice(0, 1500) + '…（截斷）' : txt);
+
+  Logger.log('');
+  Logger.log('★ 這一條完全沒有經過網頁應用程式。');
+  Logger.log('  這裡成功、瀏覽器卻打不開 → 問題在部署／網址那一層，不是程式邏輯。');
+  Logger.log('  這裡就失敗 → 上面的回應會寫出是哪一步。');
+}
+
+/* =====================================================================
    burstTest —— 模擬一班同時按下去
    ★ selfTest 一次問三題，測的是「守不守得住」；
      這一支連發 30 次，測的是「撐不撐得住」。兩件事要分開測。
