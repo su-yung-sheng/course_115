@@ -94,7 +94,10 @@ ok(/403/.test(html) && /429/.test(html), '★ 測試台要分得出 403（要去
                                                「執行項目」裡完全沒有紀錄
      編輯器裡跑同一段程式 1.2 秒回 906 字元，完全正常 ——
      所以問題在「把這些參數放進網址」這件事，不在程式。 */
-ok(/method: 'POST'/.test(html), '★ 改用 POST，參數放內文不放網址');
+ok(/r = await fetch\(url, \{ redirect/.test(html), '★ 先用 GET（已知 ping 通的那一條）');
+ok(/method: 'POST'/.test(html), '   GET 失敗才換 POST 再試一次');
+ok(/　GET：/.test(html) && /　POST：/.test(html),
+   '★ 兩種送法的錯誤都要印出來 —— 只印一種等於下次還要再猜一輪');
 ok(/x-www-form-urlencoded/.test(html),
    '★ 用 form 編碼 —— application/json 會觸發 CORS 預檢，而 GAS 不處理 OPTIONS');
 ok(!/'Content-Type': 'application\/json'/.test(html), '   確認沒有用 json 的 Content-Type');

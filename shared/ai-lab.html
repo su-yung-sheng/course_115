@@ -195,48 +195,56 @@ async function callGas(params) {
   if (!GAS) throw new Error('config.js 的 AIGUIDE.GAS_URL 還沒填');
   const k = $('gasKey').value.trim();
   if (!k) throw new Error('還沒填 GAS 的通行碼');
-  /* ★ 用 POST，參數放在內文，不放網址。
-     為什麼改：2026-08-07 實測 —— 同一個 /exec，
-       ?action=ping&key=…                     → 正常回 JSON
-       ?action=ask&key=…&unit=…&answer=中文  → Google 雲端硬碟的錯誤頁，
-                                                而且「執行項目」裡完全沒有紀錄
-     也就是說那個請求根本沒進到指令碼，在 Google 那一層就被擋掉了。
-     編輯器裡直接跑同一段程式（testAsk）1.2 秒就回 906 字元，完全正常。
 
-     ⚠️ Content-Type 一定要用 x-www-form-urlencoded。
-        用 application/json 會觸發 CORS 預檢（OPTIONS），
-        而 Apps Script 不處理 OPTIONS —— 那會換成另一種 fetch 失敗。
-     ⚠️ GAS 那邊不必改：doPost 收到的 e.parameter 和 doGet 一模一樣。
+  /* ── GET 為主、POST 為備援 ─────────────────────────
+     ★ 為什麼不是「選一個就好」
+       2026-08-07 實測，兩種各有各的死法：
+         GET  ?action=ping…             ✅ 正常回 JSON
+         GET  ?action=ask…&answer=中文  ❌ Google 雲端硬碟的錯誤頁，
+                                           而且「執行項目」裡完全沒有紀錄
+                                           （＝請求根本沒進到指令碼）
+         POST（連 ping 都是）            ❌ Failed to fetch
+                                           （/exec 會 302 轉址，
+                                             轉址後的回應沒帶 CORS 標頭）
+       而編輯器裡直接跑同一段程式：1.2 秒、906 字元，完全正常。
 
-     順帶一提，學生寫的東西本來就該用 POST 送 ——
-     那可能有幾百個字、含換行，塞在網址裡本來就不對。 */
-  const body = new URLSearchParams();
-  body.set('key', k);
-  Object.keys(params).forEach(n => body.set(n, params[n]));
+       我先猜「模型太慢」、再猜「部署版本舊」、又猜「換 POST 就好」，
+       三次都錯。既然兩條路各自在不同情況下會動，就兩條都留，
+       先 GET、失敗才 POST —— 並且把兩邊的錯誤都印出來，
+       下次不必再猜。 */
+  const qs = Object.keys(params).map(n =>
+    encodeURIComponent(n) + '=' + encodeURIComponent(params[n])).join('&');
+  const url = GAS + '?key=' + encodeURIComponent(k) + '&' + qs;
 
-  let r;
+  let r, e1 = '';
   try {
-    r = await fetch(GAS, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-      body: body.toString(),
-      redirect: 'follow'
-    });
-  } catch (e) {
-    /* ★ 「Failed to fetch」是連線層的錯 —— 請求沒送到，或回應被瀏覽器擋掉。
-       瀏覽器基於安全不會告訴你是哪一種，所以只能把可能性列出來。
-       ⚠️ 這則訊息本身就是除錯工具：沒有它，看到「Failed to fetch」
-          完全不知道要從哪裡開始查。 */
-    throw new Error(
-      '連不上（Failed to fetch）。這是連線層的問題，不是 GAS 回了錯誤。三個常見原因：\n' +
-      '① 部署時「誰可以存取」沒選「任何人」—— 最常見。改完要重新部署（版本選「新版本」）。\n' +
-      '② 這一頁是用 file:// 直接開的 —— 本機檔案的來源是 null，瀏覽器會擋跨來源請求。' +
-      '要從 https://su-yung-sheng.github.io/… 開這一頁。\n' +
-      '③ 網址不是「部署」出來的那一個（結尾要是 /exec，不是編輯器網址）。\n' +
-      '④ 部署的版本太舊 —— 按「測連線」，版本不符會直接告訴你。\n' +
-      '→ 旁邊三個連結是用 GET 開的（這一頁本身用 POST）。' +
-      '連結通、這裡不通 → 跨來源；連結也不通 → 部署那一層。');
+    r = await fetch(url, { redirect: 'follow' });
+  } catch (err1) {
+    e1 = err1.message;
+    /* ⚠️ POST 一定要用 x-www-form-urlencoded：
+       application/json 會觸發 CORS 預檢（OPTIONS），而 GAS 不處理 OPTIONS。 */
+    const body = new URLSearchParams();
+    body.set('key', k);
+    Object.keys(params).forEach(n => body.set(n, params[n]));
+    try {
+      r = await fetch(GAS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: body.toString(),
+        redirect: 'follow'
+      });
+    } catch (err2) {
+      throw new Error(
+        '兩種送法都連不上。這是連線層的問題，不是 GAS 回了錯誤。\n' +
+        '　GET：' + e1 + '\n' +
+        '　POST：' + err2.message + '\n\n' +
+        '① 這一頁是不是用 file:// 開的？本機檔案的來源是 null，瀏覽器會擋跨來源請求。\n' +
+        '　 要從 https://su-yung-sheng.github.io/course_115/shared/ai-lab.html 開。\n' +
+        '② 部署時「誰可以存取」有沒有選「任何人」？改完要重新部署（版本選「新版本」）。\n' +
+        '③ 旁邊三個 GET 連結能不能開？能開 → 問題在跨來源；不能開 → 問題在部署。');
+    }
   }
+
   const t = await r.text();
   let j;
   try { j = JSON.parse(t); }
@@ -245,7 +253,8 @@ async function callGas(params) {
     if (/accounts\.google\.com|Sign in|登入/i.test(t)) {
       throw new Error('GAS 要求登入 —— 部署時「誰可以存取」要選「任何人」，改完要重新部署。');
     }
-    throw new Error('GAS 回的不是資料：' + t.slice(0, 120));
+    throw new Error('GAS 回的不是資料' + (e1 ? '（GET 先失敗了：' + e1 + '）' : '') +
+                    '：' + t.slice(0, 120));
   }
   if (!j.ok) throw new Error(j.error || 'GAS 回報了不明的錯誤');
   return j;
