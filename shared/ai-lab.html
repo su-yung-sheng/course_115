@@ -127,7 +127,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
      那件事現在由 DEBUG_KEY 做，而且更好：走的是真正的管線。 */
 /* 這一頁預期的 GAS 版本。改 aiguide.gs 的行為時，兩邊一起改。
    ⚠️ 這不是裝飾 —— 它是唯一能看出「部署的是不是最新版」的方法。 */
-const EXPECT_VERSION = '2026-08-07-503';
+const EXPECT_VERSION = '2026-08-07-nosid';
 
 const GAS = ((window.CONFIG || {}).AIGUIDE || {}).GAS_URL || '';
 $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒填）';
@@ -150,7 +150,9 @@ function refreshRaw() {
      兩邊都卡住，就是 GAS 或 Gemini 那一端。 */
   const x = QS[+($('q').value || 0)] || {};
   const tail = '&unit=' + encodeURIComponent(x.id || '2-1-1') + '&qi=' + (x.qi || 0) +
-               '&sid=lab&answer=' + encodeURIComponent('有一段一直重複');
+               /* ⚠️ 參數不能叫 sid —— 那是 Google 的保留參數，
+                  帶著它的網址根本到不了指令碼（雲端硬碟會回「無法開啟這個檔案」）。 */
+               '&student=lab&answer=' + encodeURIComponent('有一段一直重複');
   $('openAsk').href  = GAS ? (GAS + '?action=ask&key='  + encodeURIComponent(k) + tail) : '#';
   $('openEcho').href = GAS ? (GAS + '?action=echo&key=' + encodeURIComponent(k) + tail) : '#';
 }
@@ -331,7 +333,7 @@ $('show').onclick = () => {
 async function ask(answer) {
   const x = QS[+$('q').value] || {};
   const t0 = performance.now();
-  const p = { action: 'ask', unit: x.id, qi: x.qi, answer: answer, sid: 'lab' };
+  const p = { action: 'ask', unit: x.id, qi: x.qi, answer: answer, student: 'lab' };
   const dbg = $('dbgKey').value.trim(), mdl = $('model').value.trim();
   if (dbg) { p.dbg = dbg; if (mdl) p.model = mdl; }
   const j = await callGas(p);

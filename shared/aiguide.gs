@@ -46,6 +46,10 @@
    4. 部署 → 網頁應用程式：執行身分「我自己」、誰可以存取「任何人」
    5. 把 /exec 網址填進 config.js 的 AIGUIDE.GAS_URL
 
+   ⚠️ **網址參數不要叫 sid**。那是 Google 的保留參數，
+      帶著它的請求根本進不到指令碼（詳見 handle_ 裡的說明）。
+      學號用 student=。
+
    ⚠️ 通行碼會出現在學生的頁面上（那個 repo 是公開的），
       所以它擋不住有心人。真正的防線是下面三道：
         · 題目與 forbid 由這支決定，前端改不了
@@ -79,7 +83,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-503';
+var VERSION = '2026-08-07-nosid';
 
 var DEFAULTS = {
   MODEL: 'gemini-2.5-flash',
@@ -257,7 +261,17 @@ function handle_(e) {
     /* ── 配額 ──────────────────────────────────────
        ★ 用完就直接回絕，不重試、不排隊。
          引導是輔助功能，不該和批改搶額度。 */
-    var sid = String(p.sid || '').replace(/[^0-9A-Za-z]/g, '').slice(0, 12);
+    /* ★ 學號的參數名字叫 student，不叫 sid。
+       ⚠️ 2026-08-07 花了一個下午才找到：**`sid` 是 Google 的保留參數**
+          （session id）。網址帶著 sid= 時，請求在到達這支指令碼**之前**
+          就被 Google 的路由層處理掉了 ——
+            · 瀏覽器看到的是雲端硬碟的「很抱歉，目前無法開啟這個檔案」
+            · 「執行項目」裡完全沒有紀錄
+            · 指令碼裡的 try/catch 一點忙都幫不上
+          同一個網址把 &sid=lab 拿掉就正常。
+
+       舊的 sid 還是收 —— 萬一有地方沒改到，不要默默壞掉。 */
+    var sid = String(p.student || p.sid || '').replace(/[^0-9A-Za-z]/g, '').slice(0, 12);
     if (usedToday_() >= num_('DAILY_CAP', DEFAULTS.DAILY_CAP)) {
       return json_({ ok: false, error: '今天的 AI 提示用完了，明天再來 —— 先自己想想看。' });
     }

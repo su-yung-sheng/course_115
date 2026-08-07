@@ -107,5 +107,26 @@ const gs2 = fs.readFileSync(path.join(ROOT, 'shared', 'aiguide.gs'), 'utf8');
 ok(/function doPost\(e\)\s*\{\s*return handle_\(e\);/.test(gs2),
    '★ GAS 那邊不必改 —— doPost 收到的 e.parameter 和 doGet 一樣');
 
+/* ── sid 是 Google 的保留參數 ────────────────────────
+   ★ 2026-08-07 花了一個下午才找到。
+     網址帶著 sid= 時，請求在到達 Apps Script **之前** 就被
+     Google 的路由層處理掉：
+       · 瀏覽器看到雲端硬碟的「很抱歉，目前無法開啟這個檔案」
+       · Apps Script 的「執行項目」裡完全沒有紀錄
+       · 指令碼裡的 try/catch 一點忙都幫不上
+     同一個網址把 &sid=lab 拿掉就正常。
+
+   ⚠️ 這種「請求根本沒進到程式」的錯誤，從程式裡看不見任何東西 ——
+      所以要靠測試把它釘住，不要有人日後又順手改回 sid。 */
+ok(!/[?&]sid=/.test(html), '★ 前端的網址不可以有 sid=');
+ok(!/sid: '/.test(html), '★ 送出去的參數也不可以叫 sid');
+ok(/student/.test(html), '學號改用 student');
+ok(/保留參數/.test(html), '畫面或註解要寫下原因，不然日後有人會改回去');
+
+const gs3 = fs.readFileSync(path.join(ROOT, 'shared', 'aiguide.gs'), 'utf8');
+ok(/p\.student \|\| p\.sid/.test(gs3),
+   'GAS 兩個都收 —— 舊網址不要默默壞掉（但新的一律用 student）');
+ok(/保留參數/.test(gs3), 'GAS 裡也寫下原因');
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
