@@ -219,22 +219,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                 <h2 class="text-2xl font-bold text-center mb-1 text-amber-600 drop-shadow-md">🏕️ 勇者訓練營：手動挑戰</h2>
                 <p class="text-center text-fuchsia-700 mb-4 text-sm">系統已同步您的技能選擇，請遵守規則手動完成排列！</p>
                 
-                <!-- 對話框風格提示 -->
-                <div class="bg-black/50 border-2 border-fuchsia-400 p-4 mb-6 max-w-3xl mx-auto rounded-xl relative shadow-lg">
-                    <!-- 對話框小尾巴 -->
-                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[10px] border-b-fuchsia-400"></div>
-                    
-                    <h4 class="font-bold text-amber-600 mb-2 flex items-center text-sm md:text-base border-b border-fuchsia-500/50 pb-1">
-                        <span id="manualTipTitle">💡 導師的指導</span>
-                    </h4>
-                    <p id="manualTipDesc" class="text-sm text-fuchsia-800 ml-2 leading-relaxed mt-2"></p>
-                </div>
-
-                <div class="flex justify-center gap-4 mb-6">
-                    <button id="manualGenerateBtn" class="game-btn bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2">
-                        <span>🎲</span> 召喚新挑戰
-                    </button>
-                </div>
+                <!-- 說明由 shared/sortlab.js 畫（規則、原理、日常比喻都在那裡，只有一份） -->
 
                 <!-- 訊息提示框 (遊戲系統提示) -->
                 <div id="manualMessage" class="hidden text-center font-bold text-lg mb-4 rounded-lg p-3 transition-all border-2"></div>
@@ -248,6 +233,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
 
     </div>
 
+    <script src="../shared/sortlab.js"></script>
     <script>
         // DOM 元素選取
         const container = document.getElementById('bars-container');
@@ -262,18 +248,11 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
         const orderBtns = document.getElementsByName('order');
 
         // 手動區變數與 DOM 元素
-        let manualArray = [];
-        let selectedManualIndex = null;
         const manualContainer = document.getElementById('manual-container');
         const manualGenerateBtn = document.getElementById('manualGenerateBtn');
         const manualMessage = document.getElementById('manualMessage');
         
         // 手動區狀態追蹤
-        let manualMode = 'bubble';
-        let manualOrder = 'asc';
-        let selectionBoundary = 0; 
-        let insertionTarget = 1;   
-        let insertionCurrent = 1;  
 
         // 計時器變數
         let timerInterval = null;
@@ -460,46 +439,46 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
             bars[0].style.backgroundColor = COLOR_SORTED;
         }
 
+        /* 選擇排序法 —— 照課本（翰林 114 資科 2 下 6-2）的兩個清單版本。
+           ★ 原本這裡是「和邊界那一格對調」（原地交換）。
+             課本教的是「從未排序找到最小值 → 加到已排序的最後一項 →
+             從未排序刪掉」，寫成 Scratch 積木完全是另一回事。
+             學生在這一頁玩的、課本寫的、程式關卡要拼的必須是同一件事，
+             否則他不會覺得是兩種寫法，只會覺得自己記錯。
+
+           畫面上的做法：已排好的留在原位不再動，
+           未排序的那一段每搬走一個就整段往左遞補 ——
+           看起來就是「從未排序拿走，接到已排序後面」。 */
         async function selectionSort(order) {
-            let bars = document.getElementsByClassName('bar');
             let len = array.length;
             for (let i = 0; i < len; i++) {
                 if (!isSorting) return;
 
-                // 根據原理設定：目標位置與搜尋範圍
-                let target_pos = order === 'asc' ? i : len - 1 - i;
-                let search_start = order === 'asc' ? i : 0;
-                let search_end = order === 'asc' ? len : len - i;
-
-                let min_idx = search_start;
-                bars[target_pos].style.backgroundColor = COLOR_MIN;
-
-                // 在未排序數列中找出最小值
-                for (let j = search_start; j < search_end; j++) {
+                let bars = document.getElementsByClassName('bar');
+                // 未排序的範圍是 [i, len)；已排好的 [0, i) 不再動
+                let best = i;
+                bars[i].style.backgroundColor = COLOR_MIN;
+                for (let j = i; j < len; j++) {
                     if (!isSorting) return;
-                    
-                    if (j !== target_pos) bars[j].style.backgroundColor = COLOR_COMPARE;
+                    if (j !== best) bars[j].style.backgroundColor = COLOR_COMPARE;
                     await sleep(delay);
-
-                    if (array[j] < array[min_idx]) {
-                        if (min_idx !== target_pos && min_idx !== j) bars[min_idx].style.backgroundColor = COLOR_DEFAULT;
-                        min_idx = j;
-                        if (min_idx !== target_pos) bars[min_idx].style.backgroundColor = COLOR_MIN;
-                    } else {
-                        if (j !== target_pos && j !== min_idx) bars[j].style.backgroundColor = COLOR_DEFAULT;
+                    const better = order === 'asc' ? array[j] < array[best] : array[j] > array[best];
+                    if (better) {
+                        if (best !== j) bars[best].style.backgroundColor = COLOR_DEFAULT;
+                        best = j;
+                        bars[best].style.backgroundColor = COLOR_MIN;
+                    } else if (j !== best) {
+                        bars[j].style.backgroundColor = COLOR_DEFAULT;
                     }
                 }
 
-                // 交換目標位置與最小值
-                if (min_idx !== target_pos) {
-                    let temp = array[target_pos];
-                    array[target_pos] = array[min_idx];
-                    array[min_idx] = temp;
-                    bars[target_pos].style.height = `${array[target_pos]}%`;
-                    bars[min_idx].style.height = `${array[min_idx]}%`;
-                    bars[min_idx].style.backgroundColor = COLOR_DEFAULT;
-                }
-                bars[target_pos].style.backgroundColor = COLOR_SORTED;
+                // 從未排序「刪掉」，接到已排序的最後一項
+                const v = array.splice(best, 1)[0];
+                array.splice(i, 0, v);
+                for (let k = i; k < len; k++) bars[k].style.height = `${array[k]}%`;
+                for (let k = i + 1; k < len; k++) bars[k].style.backgroundColor = COLOR_DEFAULT;
+                bars[i].style.backgroundColor = COLOR_SORTED;
+                await sleep(delay);
             }
         }
 
@@ -532,283 +511,29 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
         /* -----------------------------------------------------
            手動體驗區邏輯
         ----------------------------------------------------- */
-        function initManual() {
-            radioBtns.forEach(btn => btn.addEventListener('change', generateManualArray));
-            orderBtns.forEach(btn => btn.addEventListener('change', generateManualArray));
-            manualGenerateBtn.addEventListener('click', generateManualArray);
-            generateManualArray();
-        }
-
-        function updateManualTips() {
-            const titleEl = document.getElementById('manualTipTitle');
-            const descEl = document.getElementById('manualTipDesc');
-            const orderText = manualOrder === 'asc' ? '由小排到大' : '由大排到小';
-
-            if (manualMode === 'bubble') {
-                titleEl.innerHTML = '🫧 技能：氣泡連擊 (Bubble Sort) 的試煉';
-                descEl.innerHTML = `<strong>【施法限制】</strong> 只能點擊交換<strong class="text-amber-600">「相鄰」</strong>的兩個方塊。<br>
-                【任務目標】 請將魔物數字 <strong class="text-amber-600">${orderText}</strong> 淨化。
-                <div class="mt-3 p-3 bg-fuchsia-900/40 rounded border border-fuchsia-500/50 text-sm shadow-inner leading-relaxed">
-                    <span class="block text-fuchsia-700">📖 奧義：較極端的數字會像氣泡一樣，透過不斷相鄰交換「浮」到邊緣。</span>
-                    <span class="block text-amber-700 mt-2">📝 原理：氣泡排序法(Bubble Sort)又稱交換排序法，原理是從第一筆資料開始，逐一比較相鄰兩筆資料，如果兩筆大小順序有誤則做交換，反之則不動，接著再進行下一筆資料比較，所有資料比較完第1回合後，可以確保最後一筆資料是正確的位置。</span>
-                    <span class="block text-fuchsia-700 mt-2">🎒 日常：體育課排隊，老師說「看旁邊的同學，比較高的往後站」，大家兩兩互換。</span>
-                </div>`;
-            } else if (manualMode === 'selection') {
-                titleEl.innerHTML = '🎯 技能：精準選擇 (Selection Sort) 的試煉';
-                let targetLoc = manualOrder === 'asc' ? '前端' : '末端';
-                descEl.innerHTML = `<strong>【施法限制】</strong> 找出未淨化區的<strong class="text-amber-600">「最小值」</strong>，並將它與未淨化區的<strong class="text-violet-600">「${targetLoc} (紫框標示處)」</strong>交換。<br>
-                【任務目標】 每次挑出最小值放好，將陣列 <strong class="text-amber-600">${orderText}</strong> 淨化。
-                <div class="mt-3 p-3 bg-fuchsia-900/40 rounded border border-fuchsia-500/50 text-sm shadow-inner leading-relaxed">
-                    <span class="block text-fuchsia-700">📖 奧義：用眼睛掃描剩餘區域，鎖定目標後，直接「瞬移」交換一次到位。</span>
-                    <span class="block text-amber-700 mt-2">📝 原理：反覆從未排序數列中找出「最小值」，將它與特定的邊界做交換。由大到小排序時，將最小值放到末端；若由小到大排序時，則將最小值放到前端。</span>
-                    <span class="block text-fuchsia-700 mt-2">🎒 日常：整理很重的書箱，先找出最輕的搬到目標位置，每次只搬對的書。</span>
-                </div>`;
-            } else if (manualMode === 'insertion') {
-                titleEl.innerHTML = '🃏 技能：卡牌插入 (Insertion Sort) 的試煉';
-                descEl.innerHTML = `<strong>【施法限制】</strong> 點選<strong class="text-orange-600">「橘框標示的新卡牌」</strong>，並直接點選左側結界中<strong class="text-amber-600">「正確的插入位置」</strong>。<br>
-                【任務目標】 評估左側已排好的數字，將新數字精準安插，將陣列 <strong class="text-amber-600">${orderText}</strong> 淨化。
-                <div class="mt-3 p-3 bg-fuchsia-900/40 rounded border border-fuchsia-500/50 text-sm shadow-inner leading-relaxed">
-                    <span class="block text-fuchsia-700">📖 奧義：將未排序的新元素，逐一「安插」到左側已經排好順序的結界中。</span>
-                    <span class="block text-amber-700 mt-2">📝 原理：逐一將原始資料加入已排序好的資料中，並逐一與已排序好的資料作比較，找到對的位置插入。例如：已有2筆排序好資料，將第3筆資料與前面已排序好的2筆作比較插入，再將第4筆與前面已排序好的3筆作比較插入，以此類推。</span>
-                    <span class="block text-fuchsia-700 mt-2">🎒 日常：玩撲克牌，抽一張新牌後，直接把它插進手中已排好順序的牌堆裡。</span>
-                </div>`;
-            }
-        }
-
-        function generateManualArray() {
-            manualArray = [];
+        /* 手動挑戰 —— 規則與畫面都在 shared/sortlab.js。
+           ★ 為什麼搬出去
+             第 6、7 關也要同一個挑戰。複製一份就會有兩套規則，
+             而規則一旦不一致，學生在這一頁玩熟的做法到了關卡頁會被判錯 ——
+             他不會覺得是兩份程式不同，只會覺得自己記錯。
+           ★ 選擇排序法已經改成課本的兩清單版（見 sortlab.js 開頭）。 */
+        function initManual() { mountManual(); }
+        function mountManual() {
+            const mode  = document.querySelector('input[name="algorithm"]:checked').value;
+            const order = document.querySelector('input[name="order"]:checked').value;
             manualMessage.classList.add('hidden');
-            selectedManualIndex = null;
-            
-            manualMode = document.querySelector('input[name="algorithm"]:checked').value;
-            manualOrder = document.querySelector('input[name="order"]:checked').value;
-            
-            selectionBoundary = 0;
-            insertionTarget = 1;
-            insertionCurrent = 1;
-
-            const size = 5 + Math.floor(Math.random() * 3); 
-            for (let i = 0; i < size; i++) {
-                manualArray.push(Math.floor(Math.random() * 90) + 10);
-            }
-            
-            updateManualTips();
-            updateManualStates(); 
-            renderManualArray();
-        }
-
-        function updateManualStates() {
-            if (manualMode === 'selection') {
-                while (selectionBoundary < manualArray.length - 1) {
-                    let targetPos = manualOrder === 'asc' ? selectionBoundary : manualArray.length - 1 - selectionBoundary;
-                    let searchStart = manualOrder === 'asc' ? selectionBoundary : 0;
-                    let searchEnd = manualOrder === 'asc' ? manualArray.length : manualArray.length - selectionBoundary;
-                    
-                    let minIdx = searchStart;
-                    for (let i = searchStart + 1; i < searchEnd; i++) {
-                        if (manualArray[i] < manualArray[minIdx]) minIdx = i;
-                    }
-                    
-                    if (minIdx === targetPos) {
-                        selectionBoundary++;
-                    } else {
-                        break;
-                    }
+            SORTLAB.mount(manualContainer, {
+                mode: mode, order: order, size: 6, newRound: false,
+                onPass: function () {
+                    manualMessage.innerHTML = '✨ 任務完成！您已成功淨化所有魔物！ ✨';
+                    manualMessage.className = 'text-center font-bold text-lg mb-4 rounded-lg p-3 ' +
+                        'bg-fuchsia-900/80 text-fuchsia-600 border-2 border-fuchsia-400 block ' +
+                        'shadow-[0_0_15px_rgba(74,222,128,0.5)] animate-pulse';
+                    manualMessage.classList.remove('hidden');
                 }
-            } else if (manualMode === 'insertion') {
-                while (insertionTarget < manualArray.length) {
-                    let needsToMoveLeft = false;
-                    if (insertionCurrent > 0) {
-                        needsToMoveLeft = manualOrder === 'asc' ?
-                            manualArray[insertionCurrent] < manualArray[insertionCurrent - 1] :
-                            manualArray[insertionCurrent] > manualArray[insertionCurrent - 1];
-                    }
-
-                    if (!needsToMoveLeft) {
-                        insertionTarget++;
-                        insertionCurrent = insertionTarget;
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
-
-        function renderManualArray() {
-            manualContainer.innerHTML = '';
-            manualArray.forEach((value, index) => {
-                const block = document.createElement('div');
-                let baseClasses = 'manual-block flex items-center justify-center w-14 h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 text-xl md:text-3xl font-bold text-slate-800 rounded-xl cursor-pointer transition-all duration-200 select-none relative ';
-                
-                let colorClasses = '';
-                let ringClasses = '';
-                let transformClasses = '';
-
-                if (selectedManualIndex === index) {
-                    colorClasses = 'bg-yellow-500 ';
-                    transformClasses = 'scale-110 -translate-y-2 z-10 ';
-                } else {
-                    transformClasses = 'hover:-translate-y-1 ';
-                    
-                    let isSorted = false;
-                    if (manualMode === 'selection') {
-                        // 判斷是否為已淨化區域
-                        if (manualOrder === 'asc' && index < selectionBoundary) isSorted = true;
-                        if (manualOrder === 'desc' && index >= manualArray.length - selectionBoundary) isSorted = true;
-                    } else if (manualMode === 'insertion') {
-                        if (index < insertionTarget && index !== insertionCurrent) isSorted = true;
-                    }
-
-                    if (isSorted && manualMode === 'selection') {
-                        colorClasses = 'bg-fuchsia-600 hover:bg-fuchsia-500 ';
-                    } else if (isSorted && manualMode === 'insertion') {
-                        colorClasses = 'bg-teal-600 hover:bg-teal-500 ';
-                    } else {
-                        colorClasses = 'bg-fuchsia-600 hover:bg-fuchsia-500 ';
-                    }
-                }
-
-                let targetPos = -1;
-                if (manualMode === 'selection') {
-                    targetPos = manualOrder === 'asc' ? selectionBoundary : manualArray.length - 1 - selectionBoundary;
-                }
-
-                if (manualMode === 'selection' && index === targetPos && selectedManualIndex !== index) {
-                    ringClasses = 'ring-4 ring-purple-400 ring-offset-2 ring-offset-fuchsia-900 ';
-                } else if (manualMode === 'insertion' && index === insertionCurrent && selectedManualIndex !== index) {
-                    ringClasses = 'ring-4 ring-orange-400 ring-offset-2 ring-offset-fuchsia-900 ';
-                }
-
-                block.className = baseClasses + colorClasses + ringClasses + transformClasses;
-                block.textContent = value;
-                block.addEventListener('click', () => handleManualClick(index));
-                manualContainer.appendChild(block);
             });
         }
 
-        function showManualError(msg) {
-            manualMessage.innerHTML = msg;
-            manualMessage.className = 'text-center font-bold text-sm md:text-lg mb-4 rounded-lg p-3 bg-red-900/80 text-red-100 border-2 border-red-400 block shadow-[0_0_15px_rgba(239,68,68,0.5)]';
-            manualMessage.classList.remove('hidden');
-        }
-
-        function handleManualClick(index) {
-            manualMessage.classList.add('hidden'); 
-            
-            if (selectedManualIndex === null) {
-                selectedManualIndex = index;
-                renderManualArray();
-                return;
-            } 
-            if (selectedManualIndex === index) {
-                selectedManualIndex = null;
-                renderManualArray();
-                return;
-            }
-
-            let idx1 = selectedManualIndex;
-            let idx2 = index;
-
-            /* ===== 嚴格規則判定 ===== */
-            if (manualMode === 'bubble') {
-                if (Math.abs(idx1 - idx2) !== 1) {
-                    showManualError('❌ 施法失敗！氣泡術只能交換「相鄰」的兩顆方塊！');
-                    selectedManualIndex = null;
-                    renderManualArray();
-                    return;
-                }
-            } 
-            else if (manualMode === 'selection') {
-                // 原理：反覆尋找「最小值」，並根據方向放到前端或末端
-                let targetPos = manualOrder === 'asc' ? selectionBoundary : manualArray.length - 1 - selectionBoundary;
-                let searchStart = manualOrder === 'asc' ? selectionBoundary : 0;
-                let searchEnd = manualOrder === 'asc' ? manualArray.length : manualArray.length - selectionBoundary;
-
-                let minIdx = searchStart;
-                for (let i = searchStart + 1; i < searchEnd; i++) {
-                    if (manualArray[i] < manualArray[minIdx]) minIdx = i;
-                }
-
-                let isValidSwap = (idx1 === targetPos && idx2 === minIdx) || 
-                                  (idx1 === minIdx && idx2 === targetPos);
-
-                if (!isValidSwap) {
-                    let dirText = manualOrder === 'asc' ? '前端' : '末端';
-                    showManualError(`❌ 鎖定錯誤！請將未淨化區的「最小值」與未排序區的「${dirText} (紫框處)」對調！`);
-                    selectedManualIndex = null;
-                    renderManualArray();
-                    return;
-                }
-            }
-            else if (manualMode === 'insertion') {
-                // 依據原理：找出橘框卡牌在左側已排序區域中「正確的落點」
-                let expectedDestIdx = insertionCurrent;
-                for (let i = 0; i < insertionCurrent; i++) {
-                    if (manualOrder === 'asc' ? manualArray[insertionCurrent] < manualArray[i] : manualArray[insertionCurrent] > manualArray[i]) {
-                        expectedDestIdx = i;
-                        break;
-                    }
-                }
-
-                let isValidInsertion = (idx1 === insertionCurrent && idx2 === expectedDestIdx) ||
-                                       (idx1 === expectedDestIdx && idx2 === insertionCurrent);
-
-                if (!isValidInsertion) {
-                    showManualError(`❌ 插入失敗！請比較左側已排序卡牌，將橘框卡牌放入正確的順序位置！`);
-                    selectedManualIndex = null;
-                    renderManualArray();
-                    return;
-                }
-            }
-
-            // 執行陣列操作
-            if (manualMode === 'insertion') {
-                // 插入排序：使用陣列裁切(splice)將元素移出，並安插到新位置
-                let destIdx = (idx1 === insertionCurrent) ? idx2 : idx1;
-                let targetCard = manualArray.splice(insertionCurrent, 1)[0];
-                manualArray.splice(destIdx, 0, targetCard);
-                
-                // 完成一張牌的插入，推進到下一張
-                insertionTarget++;
-                insertionCurrent = insertionTarget;
-            } else {
-                // 氣泡與選擇排序：傳統的位置互換
-                let temp = manualArray[idx1];
-                manualArray[idx1] = manualArray[idx2];
-                manualArray[idx2] = temp;
-                
-                if (manualMode === 'selection') {
-                    selectionBoundary++;
-                }
-            }
-
-            selectedManualIndex = null;
-
-            updateManualStates();
-            renderManualArray(); 
-            checkManualSort(); 
-        }
-
-        function checkManualSort() {
-            let isSorted = true;
-            for (let i = 0; i < manualArray.length - 1; i++) {
-                if (manualOrder === 'asc' ? manualArray[i] > manualArray[i+1] : manualArray[i] < manualArray[i+1]) {
-                    isSorted = false;
-                    break;
-                }
-            }
-
-            if (isSorted) {
-                manualMessage.classList.remove('hidden');
-                manualMessage.innerHTML = '✨ 任務完成！您已成功淨化所有魔物！ ✨';
-                manualMessage.className = 'text-center font-bold text-lg mb-4 rounded-lg p-3 bg-fuchsia-900/80 text-fuchsia-600 border-2 border-fuchsia-400 block shadow-[0_0_15px_rgba(74,222,128,0.5)] animate-pulse';
-                
-                const blocks = manualContainer.children;
-                for(let i = 0; i < blocks.length; i++){
-                    blocks[i].className = 'manual-block flex items-center justify-center w-14 h-14 md:w-16 md:h-16 lg:w-20 lg:h-20 text-xl md:text-3xl font-bold text-slate-800 rounded-xl shadow-md select-none bg-fuchsia-500 transition-colors duration-300 z-0';
-                }
-            }
-        }
 
         init();
     </script>
