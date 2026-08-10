@@ -80,6 +80,23 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
     </p>
   </header>
 
+  <!-- ★ 進度摘要放最上面（照 11501 flowchart.html 的做法）。
+       原本擺在整頁最下面 —— 學生要捲到底才知道自己拿了幾顆星，
+       而那正是他一進來最想知道的一件事。
+       ⚠️ 這一塊只顯示，不做判斷；依序開放的規則在 shared/grading.js。 -->
+  <section class="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-8 pop">
+    <div class="tape"></div>
+    <h2 class="text-lg sm:text-xl font-black leading-relaxed text-center">
+      <span class="text-orange-600">🐱 程式設計完成 <span id="done-count">0</span> / <span id="unit-count">10</span> 關</span>
+      <span class="text-slate-300 mx-2 hidden sm:inline">|</span>
+      <span class="block sm:inline">共 <span id="total-star" class="text-amber-500 text-2xl font-black">0</span>⭐</span>
+    </h2>
+    <p class="text-slate-500 text-xs sm:text-sm mt-2 text-center leading-relaxed">
+      關卡<b class="text-orange-600">依序開放</b>：上傳作品拿到 <b>2⭐</b> 以上才會開下一關。
+      滿星 30 顆（10 關 × 3 星）。
+    </p>
+  </section>
+
   <!-- 學習目標 -->
   <section class="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8 pop">
     <div class="tape"></div>
@@ -111,14 +128,6 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
       走完<span class="hl">情境解說 → 問題分析 → 確認理解 → 程式拼圖 → 實作測試</span>，
       最後一步就是上傳。
     </p>
-  </section>
-
-  <!-- 星星結算 -->
-  <section class="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-6 text-center">
-    <div class="tape"></div>
-    <p class="text-sm font-bold text-slate-500">本模組累積</p>
-    <p id="total-star" class="text-4xl font-black text-amber-500 mt-1">⭐ 0</p>
-    <p class="text-xs text-slate-400 mt-2">滿星 30 顆（10 關 × 3 星）</p>
   </section>
 
 </main>
@@ -215,7 +224,12 @@ function renderTotal(){
   const t = (window.GRADING && window.GRADING.scratchTotal)
     ? window.GRADING.scratchTotal(unitStars).stars
     : Object.values(unitStars).reduce((a,b)=>a+b,0);
-  document.getElementById('total-star').textContent = '⭐ ' + t;
+  document.getElementById('total-star').textContent = t;
+  /* 「完成幾關」和「幾顆星」是兩件事：拿 1 星不算通關（門檻 2 星），
+     所以不能用 Object.keys(unitStars).length 充數。 */
+  const done = UNITS.filter(u => (unitStars[u.id] || 0) >= 2).length;
+  document.getElementById('done-count').textContent = done;
+  document.getElementById('unit-count').textContent = UNITS.length;
 }
 
 /* ===================== 起始 ===================== */
