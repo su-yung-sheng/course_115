@@ -115,14 +115,33 @@
   var active = current();
   if (mine === active) return;                     // 正是當學期，放行
 
+  /* ── 還不知道你是誰的時候，不要擋 ────────────────
+     ⚠️ 2026-08-10 實際踩到：測試帳號被自己的學期鎖擋在門外。
+
+     原因是**順序**：
+       config.js → semester.js（這支，同步執行）→ auth.js（非同步登入）
+     這一段跑的時候，sessionStorage 裡還沒有 sid ——
+     登入根本還沒開始。於是 isTestAccount(null) 永遠是 false，
+     「測試帳號豁免」這個出口實際上打不開。
+
+     ⇒ 沒有 sid ＝ 還沒登入 ＝ 現在擋他沒有意義（他還不是任何人，
+       也還沒有進度可以記錯學期）。
+       等 auth.js 把 sid 寫進去，下一次頁面載入這道鎖才有判斷的依據。
+
+     ★ 這樣會不會放水？不會，因為要記錯進度得先登入：
+       · 沒登入 → guard.js 會把他送去登入
+       · 登入後 → sid 有了，這道鎖照常擋
+       · 而真正的防線本來就在 firestore.rules（用伺服器時間），
+         那一層改前端繞不過去。 */
+  var sid = null;
+  try { sid = sessionStorage.getItem('sid' + mine); } catch (e) {}
+  if (!sid) return;                                // 還沒登入，等下一次
+
   // 測試帳號豁免：開學前要驗下學期、學期中要回頭驗上學期，都需要這個出口
-  try {
-    var sid = sessionStorage.getItem('sid' + mine);
-    if (isTestAccount(sid)) {
-      console.warn('[SEMESTER] 測試帳號 ' + sid + '：略過學期鎖（現在是' + name(active) + '）');
-      return;
-    }
-  } catch (e) {}
+  if (isTestAccount(sid)) {
+    console.warn('[SEMESTER] 測試帳號 ' + sid + '：略過學期鎖（現在是' + name(active) + '）');
+    return;
+  }
 
   // 走到這裡＝學生開錯學期了。擋下來並指路，不要讓他在這裡累積進度。
   document.addEventListener('DOMContentLoaded', function () {
