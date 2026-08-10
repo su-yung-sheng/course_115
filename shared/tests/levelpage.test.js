@@ -176,6 +176,21 @@ ok(/onFail:[\s\S]{0,300}held = \{\}/.test(levelSrc),
      '★ 程式拼圖不加停留 —— 它本來就要拼對才過得去');
 }
 
+section('📐 版面：步驟多了也不可以被切掉');
+{
+  /* ⚠️ 步驟從五個長到七個之後，原本的 max-w-3xl 放不下 ——
+     而且步驟列是 overflow-x:auto，最後一個會被切掉一半。
+     ★ 捲動比「切掉」更糟的地方在於：沒有捲軸提示，
+       學生不會知道右邊還有東西，他看到的只是一個壞掉的畫面。 */
+  ok(/flex-wrap:wrap/.test(levelSrc.slice(levelSrc.indexOf('.steps{'), levelSrc.indexOf('.stp{'))),
+     '★ 步驟列會換行，不靠橫向捲動');
+  ok(!/\.steps\{[^}]*overflow-x:auto/.test(levelSrc), '   不要再用捲動的版本');
+  ok(/max-w-5xl/.test(levelSrc), '★ 內容加寬到 5xl（步驟和解說是同一個容器，一起變寬）');
+  ok(!/max-w-3xl/.test(levelSrc), '   舊的 3xl 已經換掉');
+  ok(/@media \(max-width:520px\)/.test(levelSrc),
+     '   手機上縮小字和內距 —— 一列塞得下比較多個');
+}
+
 section('🍔 套餐工廠只掛在第 1 關');
 {
   const s2 = stepsOf(level('2-1-2', { '2-1-1': 3 }));

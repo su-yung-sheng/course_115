@@ -22,11 +22,19 @@
   .hl{background:linear-gradient(transparent 52%, rgba(250,204,21,.65) 52%);font-weight:800}
   @keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   .pop{animation:pop .35s ease-out both}
-  /* 步驟列：手機上要能橫向捲，不要擠成三行 */
-  .steps{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
-  .steps::-webkit-scrollbar{height:0}
+  /* 步驟列。
+     ★ 改成「換行」而不是「橫向捲」：
+       捲動的版本在寬度不夠時，最後一個步驟會被切掉一半 ——
+       而學生不會知道右邊還有東西（沒有捲軸提示），
+       他看到的只是一個壞掉的畫面。
+       換行永遠不會切掉，最多就是排成兩列。
+     ⚠️ 手機上再縮小一點字和內距，讓一列塞得下更多個。 */
+  .steps{display:flex;flex-wrap:wrap;gap:6px}
   .stp{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;
        font-size:13px;font-weight:800;border:2px solid transparent;white-space:nowrap;cursor:pointer}
+  @media (max-width:520px){
+    .stp{padding:6px 9px;font-size:12px;gap:4px}
+  }
   .stp-now {background:#4f46e5;color:#fff}
   .stp-done{background:#ecfdf5;color:#047857;border-color:#6ee7b7}
   .stp-todo{background:#fff;color:#94a3b8;border-color:#e2e8f0;cursor:not-allowed}
@@ -56,7 +64,10 @@
    class="fixed top-4 left-4 z-50 inline-flex items-center gap-1.5 bg-slate-800 text-white
           font-bold text-sm px-3.5 py-2 rounded-full shadow-lg hover:bg-slate-700 transition">← 闖關地圖</a>
 
-<main class="max-w-3xl mx-auto px-4 pt-20 sm:pt-8">
+<!-- ★ 加寬到 5xl：步驟變成六～七個之後，3xl 放不下，最後一個會被切掉。
+     ⚠️ 只加寬步驟列沒有用 —— 那樣步驟會比底下的內容寬，看起來像跑版。
+     內容一起加寬，投影出來也比較好讀。 -->
+<main class="max-w-5xl mx-auto px-4 pt-20 sm:pt-8">
   <div id="app"></div>
 </main>
 
