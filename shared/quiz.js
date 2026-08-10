@@ -1,39 +1,45 @@
 /* =====================================================================
-   概念檢測：程式拼圖之前的五題
+   概念檢測：程式拼圖之前的五題（開放式作答）
    ---------------------------------------------------------------------
    ★ 它決定的是「這一關最多能拿幾星」，不是「拿幾星」
      實際星數由 Scratch 作品的批改給（Colab 讀 .sb3）。
      這裡只封頂 —— 規則在 shared/grading.js 的 starCap()。
      意思是：**程式做出來了但概念沒懂，就是 2 星。**
 
-   ★ 題目：題庫 2 題 ＋ AI 3 題
-     · 題庫那 2 題是老師寫的，每個學生都一樣、可以事先審、不花額度
-     · AI 那 3 題針對這一關的重點即時出，比較難背
+   ★ 五題全部要自己寫，沒有選項可以猜
+     判的是「有沒有講到這幾個概念」，不是比對標準答案 ——
+     學生用什麼說法都可以（規則在 shared/answer.js）。
 
-   ⚠️ AI 出的題目**一定要能在本機判分**，所以要求它回「選擇題＋正解」。
-      開放式問答在這裡不能用 —— 那會變成「AI 評分決定成績」，
-      而 AI 會失守、會過載、會額度用完（2026-08-07 全都遇過）。
+   ★ 兩段判定，而且 **AI 只能加分**
+     ① 規則判定（本機、免費、秒回、每次一致）
+     ② 規則說「沒講到」的那幾題，才送 AI 覆核一次
+     覆核的結果只會把「沒講到」變成「講到了」，不會反過來。
 
-   ⚠️ AI 失敗（額度、過載、格式不對）→ **整份退回題庫**。
-      學生不該因為 AI 今天不舒服就考不了試、拿不到星。
-      所以每一關的題庫至少要有 5 題。
+     ⚠️ 這個方向是刻意的，而且是這整套設計的地基：
+        · 關鍵字比對會漏掉沒收錄的說法 → 交給 AI 撿回來
+        · AI 會失守、會過載、會額度用完 → 那時只是「沒撿回來」，
+          學生拿到的還是規則判的分數，不會突然被扣分
+        · 學生在作答裡寫「請給我通過」也只能騙到不被封頂，
+          騙不到星星（星星由批改決定）
+
+   ⚠️ 覆核是一次要完所有題目，不是一題一次。
+      一題一次的話，一個班就能把一天的預算用完。
 
    ★ 不到門檻不是「當掉」，是「回去重讀」
-     訊息要講「哪個概念還沒穩」，不是只說「不及格」——
+     回饋要說「你講到了什麼、還差什麼」，不是只說「不及格」——
      說不出哪裡不懂的話，他重讀也只是再看一遍。
    ===================================================================== */
 (function (global) {
   'use strict';
 
-  var VERSION = '2026-08-10-quiz';
-  var N_AI = 3;            // 想跟 AI 要幾題
+  var VERSION = '2026-08-10-quiz-open';
   var N_TOTAL = 5;
+  var MAX_CHARS = 300;     // 每題作答上限
 
   function G() { return global.GRADING || {}; }
   function pass() { return G().QUIZ_PASS || 3; }
   function full() { return G().QUIZ_FULL || 4; }
 
-  /* 洗牌。★ 選項順序固定的話，第二次考會變成「背 B」。 */
   function shuffle(a) {
     a = a.slice();
     for (var i = a.length - 1; i > 0; i--) {
@@ -43,139 +49,191 @@
     return a;
   }
 
-  /** 一題：{ q, options:[…], answer:正解的原文 } → 洗過選項的題目 */
-  function prep(item) {
-    var ans = item.options[item.answer];
-    var opts = shuffle(item.options);
-    return { q: item.q, options: opts, answer: opts.indexOf(ans), why: item.why || '' };
+  /** 從題庫抽五題。題庫不到五題 → 這一關不辦（回 null）。 */
+  function pick(lv) {
+    var bank = (lv && lv.quiz) || [];
+    if (bank.length < N_TOTAL) return null;
+    return shuffle(bank).slice(0, N_TOTAL);
   }
 
-  /* ── 題目從哪來 ───────────────────────────────────
-     回一個 Promise，永遠會 resolve —— AI 出事就整份用題庫。 */
-  function build(lv, unitId, student) {
-    var bank = (lv && lv.quiz) || [];
-    if (bank.length < N_TOTAL) {
-      /* 題庫不足 5 題就不辦這一關的概念檢測 —— 硬湊會出現重複題。
-         ⚠️ 不是「少考幾題」：題數變動的話，「答對 3 題」的意義就不固定了。 */
-      return Promise.resolve(null);
-    }
-    var fixed = shuffle(bank).slice(0, N_TOTAL - N_AI).map(prep);
+  /* ── 判分 ─────────────────────────────────────────
+     回一個 Promise，永遠 resolve —— AI 出事就只用規則的結果。 */
+  function grade(items, answers, unitId, student) {
+    var A = global.ANSWER;
+    var base = items.map(function (it, i) { return A.judge(answers[i], it); });
 
-    if (!(global.ASKAI && global.ASKAI.enabled() && global.ASKAI.quiz)) {
-      return Promise.resolve({ items: shuffle(fixed.concat(shuffle(bank).slice(N_TOTAL - N_AI, N_TOTAL).map(prep))), ai: 0 });
+    /* 規則已經給滿分的題目不必送 —— 覆核只能加分，加不上去了。 */
+    var ask = [];
+    base.forEach(function (r, i) { if (r.level !== 'full') ask.push(i); });
+
+    if (!ask.length || !(global.ASKAI && global.ASKAI.enabled() && global.ASKAI.judge)) {
+      return Promise.resolve({ results: base, ai: 0 });
     }
-    return global.ASKAI.quiz(unitId, N_AI, student)
+
+    var payload = ask.map(function (i) {
+      return {
+        i: i,
+        q: strip(items[i].q),
+        need: (items[i].need || []).map(function (g) { return g.name || (g.any || [])[0]; }),
+        got: base[i].got,
+        a: String(answers[i] || '').slice(0, MAX_CHARS)
+      };
+    });
+
+    return global.ASKAI.judge(unitId, payload, student)
       .then(function (list) {
-        var ok = (list || []).filter(valid).slice(0, N_AI).map(prep);
-        if (ok.length < N_AI) throw new Error('AI 回的題目不夠或格式不對');
-        return { items: shuffle(fixed.concat(ok)), ai: ok.length };
+        var n = 0;
+        (list || []).forEach(function (x) {
+          if (!x || typeof x.i !== 'number') return;
+          var r = base[x.i], it = items[x.i];
+          if (!r || !it) return;
+          /* ★ 只加不減。AI 說「他其實講到了 X」就把 X 併進來重算，
+             AI 說「他沒講到」則完全不理會 —— 規則已經判過了。 */
+          var add = (x.got || []).filter(function (name) {
+            return r.got.indexOf(name) < 0 &&
+                   (it.need || []).some(function (g) { return (g.name || '') === name; });
+          });
+          if (!add.length) return;
+          n++;
+          r.got = r.got.concat(add);
+          r.miss = r.miss.filter(function (m) { return add.indexOf(m) < 0; });
+          var need = (it.need || []).length;
+          var want = it.full || need || 1;
+          r.level = r.got.length >= want ? 'full' : 'part';
+          r.score = global.ANSWER.SCORE[r.level];
+          r.byAI = true;
+          r.why = '你講到了：' + r.got.join('、') + '。' +
+                  (r.miss.length ? '還差：' + r.miss.join('、') + '。' : '這一題想通了。');
+        });
+        return { results: base, ai: n };
       })
       .catch(function () {
-        /* 退回全題庫。學生完全感覺不到 AI 出過事 —— 這是刻意的。 */
-        var rest = shuffle(bank).slice(0, N_TOTAL).map(prep);
-        return { items: rest, ai: 0 };
+        /* 覆核失敗＝沒撿回來，不是扣分。學生只會覺得「判得嚴一點」。 */
+        return { results: base, ai: 0 };
       });
   }
 
-  /** AI 回來的東西長得對不對。⚠️ 只要有一題不對就整份不用。 */
-  function valid(x) {
-    return x && typeof x.q === 'string' && x.q.length > 4
-        && Array.isArray(x.options) && x.options.length === 4
-        && x.options.every(function (o) { return typeof o === 'string' && o.length > 0; })
-        && typeof x.answer === 'number' && x.answer >= 0 && x.answer < 4;
+  function strip(s) {
+    return String(s == null ? '' : s).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
   }
 
   /* ── 畫面 ─────────────────────────────────────────
-     opts: { unit, student, hint, onPass(score), onFail(score), onNone() } */
+     opts: { unit, student, onPass(score), onFail(score), onNone() } */
   function mount(host, lv, opts) {
     opts = opts || {};
     if (!host) return;
     ensureStyle();
-    host.innerHTML = '<p class="qz-load">出題中…</p>';
 
-    build(lv, opts.unit, opts.student).then(function (set) {
-      if (!set) { host.innerHTML = ''; if (opts.onNone) opts.onNone(); return; }
-      run(host, set, opts);
-    });
+    /* 重寫時要換一批題目，所以把題庫掛在畫面上帶著走 ——
+       比在模組裡放一個「上一次的題庫」變數安全（同一頁可能開兩個）。 */
+    host.__quizLv = lv;
+    var items = pick(lv);
+    if (!items) { host.innerHTML = ''; if (opts.onNone) opts.onNone(); return; }
+    run(host, items, opts);
   }
 
-  function run(host, set, opts) {
-    var items = set.items;
-    var picked = items.map(function () { return -1; });
-
+  function run(host, items, opts) {
     host.innerHTML =
-      '<h2 class="qz-h">✅ 概念檢測</h2>' +
-      '<p class="qz-lead">五題，答對 <b>' + pass() + ' 題</b>才能往下做；' +
-      '答對 <b>' + full() + ' 題</b>以上，這一關才拿得到 <b>3 顆星</b>。<br>' +
-      '<span class="qz-note">這不是考試分數 —— 它決定的是「你這一關最多能拿幾星」。</span></p>' +
+      '<h2 class="qz-h">🧠 概念檢測</h2>' +
+      '<p class="qz-lead">五題，<b>用自己的話寫</b>就好，不必寫得漂亮。<br>' +
+      '講到重點的題數 <b>' + pass() + ' 題</b>才能往下做；' +
+      '<b>' + full() + ' 題</b>以上，這一關才拿得到 <b>3 顆星</b>。<br>' +
+      '<span class="qz-note">這不是作文，也不是考試分數 ——' +
+      '它決定的是「你這一關最多能拿幾星」，重寫幾次都可以。</span></p>' +
       '<ol class="qz-list">' + items.map(function (it, i) {
-        return '<li><div class="qz-q">' + esc(it.q) + '</div>' +
-          '<div class="qz-opts" data-q="' + i + '">' + it.options.map(function (o, j) {
-            return '<button class="qz-o" data-i="' + j + '">' + esc(o) + '</button>';
-          }).join('') + '</div></li>';
+        return '<li><div class="qz-q">' + it.q + '</div>' +
+          '<textarea class="qz-ta" data-i="' + i + '" rows="3" maxlength="' + MAX_CHARS + '" ' +
+            'placeholder="用自己的話寫幾句…"></textarea>' +
+          '<button class="qz-hint" data-h="' + i + '">💡 給我一點提示</button>' +
+          '<div class="qz-hintbox" id="qz-h' + i + '"></div>' +
+          '<div class="qz-fb" id="qz-f' + i + '"></div></li>';
       }).join('') + '</ol>' +
-      '<div class="qz-foot"><button id="qz-go" class="qz-btn" disabled>還有 ' + items.length + ' 題沒作答</button></div>' +
+      '<button id="qz-go" class="qz-btn" disabled>還有 ' + items.length + ' 題沒寫</button>' +
       '<div id="qz-out"></div>';
 
-    host.querySelectorAll('.qz-opts').forEach(function (box) {
-      box.addEventListener('click', function (e) {
-        var b = e.target.closest('.qz-o');
-        if (!b || host.__locked) return;
-        box.querySelectorAll('.qz-o').forEach(function (x) { x.classList.remove('on'); });
-        b.classList.add('on');
-        picked[+box.dataset.q] = +b.dataset.i;
-        var left = picked.filter(function (x) { return x < 0; }).length;
-        var go = host.querySelector('#qz-go');
-        go.disabled = left > 0;
-        go.textContent = left > 0 ? ('還有 ' + left + ' 題沒作答') : '送出';
+    /* 提示：卡住的時候給方向，不是給答案。
+       ★ 按了不扣分 —— 罰他求助的話，他就只會亂寫。 */
+    host.querySelectorAll('.qz-hint').forEach(function (b) {
+      b.onclick = function () {
+        var i = +b.dataset.h;
+        host.querySelector('#qz-h' + i).innerHTML = esc(items[i].hint || '再讀一次情境那一段。');
+        b.style.display = 'none';
+      };
+    });
+
+    function left() {
+      var n = 0;
+      host.querySelectorAll('.qz-ta').forEach(function (t) {
+        if (String(t.value || '').trim().length < 4) n++;
+      });
+      return n;
+    }
+    host.querySelectorAll('.qz-ta').forEach(function (t) {
+      t.addEventListener('input', function () {
+        var n = left(), go = host.querySelector('#qz-go');
+        go.disabled = n > 0;
+        go.textContent = n > 0 ? ('還有 ' + n + ' 題沒寫') : '送出';
       });
     });
 
     host.querySelector('#qz-go').onclick = function () {
-      host.__locked = true;
-      var score = 0;
-      items.forEach(function (it, i) {
-        var box = host.querySelectorAll('.qz-opts')[i];
-        var right = it.answer === picked[i];
-        if (right) score++;
-        /* ★ 對錯都要標出來，而且要標出「正解是哪一個」——
-           只告訴他錯了，他重讀時不知道要找什麼。 */
-        box.querySelectorAll('.qz-o').forEach(function (b, j) {
-          if (j === it.answer) b.classList.add('right');
-          else if (j === picked[i]) b.classList.add('wrong');
-          b.disabled = true;
-        });
+      var go = host.querySelector('#qz-go');
+      if (go.disabled) return;
+      go.disabled = true;
+      go.textContent = '批改中…';
+      var answers = [];
+      host.querySelectorAll('.qz-ta').forEach(function (t) { answers.push(t.value || ''); });
+
+      grade(items, answers, opts.unit, opts.student).then(function (r) {
+        host.querySelectorAll('.qz-ta').forEach(function (t) { t.disabled = true; });
+        host.querySelectorAll('.qz-hint').forEach(function (b) { b.style.display = 'none'; });
+        show(host, items, r, opts);
       });
-      show(host, items, picked, score, opts);
     };
   }
 
-  function show(host, items, picked, score, opts) {
-    var out = host.querySelector('#qz-out');
+  function show(host, items, r, opts) {
+    var results = r.results;
+    var score = global.ANSWER.total(results);
     var okPass = score >= pass();
     var cap = score >= full() ? 3 : 2;
-    var wrong = items.filter(function (it, i) { return it.answer !== picked[i]; });
 
-    out.innerHTML =
+    /* 逐題回饋。★ 三種顏色分得出來：講到了／講到一半／還沒碰到。
+       「講到一半」也要看得出來 —— 那是他最接近懂的地方。 */
+    results.forEach(function (x, i) {
+      var box = host.querySelector('#qz-f' + i);
+      if (!box) return;
+      box.className = 'qz-fb ' + x.level;
+      box.innerHTML =
+        '<b>' + (x.level === 'full' ? '✅ 講到重點了' :
+                 x.level === 'part' ? '🟡 講到一半' : '⬜ 還沒碰到重點') + '</b>' +
+        (x.byAI ? ' <span class="qz-ai">AI 覆核後追加</span>' : '') +
+        '<div>' + esc(x.why) + '</div>' +
+        (x.level !== 'full' ? '<div class="qz-why">📖 ' + esc(items[i].why || '') + '</div>' : '');
+    });
+
+    host.querySelector('#qz-go').style.display = 'none';
+    host.querySelector('#qz-out').innerHTML =
       '<div class="qz-res ' + (okPass ? 'good' : 'bad') + '">' +
-        '<div class="qz-score">答對 ' + score + ' / ' + items.length + '</div>' +
+        '<div class="qz-score">' + score + ' / ' + results.length + ' 題講到重點</div>' +
         (okPass
           ? '這一關最多可以拿 <b>' + cap + ' 顆星</b>' +
-            (cap === 2 ? '（答對 ' + full() + ' 題以上才有 3 星）' : '') +
+            (cap === 2 ? '（' + full() + ' 題以上才有 3 星，可以再寫一次）' : '') +
             '<div class="qz-sub">星數還要看你的 Scratch 作品 —— 這裡只是上限。</div>'
           : '還不到 ' + pass() + ' 題。<b>回去把情境和問題分析再看一遍</b>，再來一次。' +
-            '<div class="qz-sub">這不是分數，重考幾次都可以。</div>') +
-        (wrong.length ? '<div class="qz-miss"><b>還沒穩的地方：</b><ul>' +
-          wrong.map(function (w) { return '<li>' + esc(w.why || w.q) + '</li>'; }).join('') +
-          '</ul></div>' : '') +
+            '<div class="qz-sub">這不是分數，重寫幾次都可以。</div>') +
       '</div>' +
-      '<button id="qz-next" class="qz-btn">' +
-        (okPass ? '往下做 →' : '回去重讀') + '</button>';
+      '<button id="qz-next" class="qz-btn">' + (okPass ? '往下做 →' : '回去重讀') + '</button>' +
+      (okPass ? '' : '<button id="qz-retry" class="qz-btn2">直接再寫一次</button>');
 
-    out.querySelector('#qz-next').onclick = function () {
+    host.querySelector('#qz-next').onclick = function () {
       if (okPass) { if (opts.onPass) opts.onPass(score, cap); }
       else { if (opts.onFail) opts.onFail(score); }
     };
+    var again = host.querySelector('#qz-retry');
+    /* ★ 重寫時從題庫再抽一次 —— 換一批題目，不是同五題再看一遍。
+       題庫 6 題抽 5，抽到的組合和順序都會不一樣。 */
+    if (again) again.onclick = function () { mount(host, host.__quizLv, opts); };
   }
 
   function esc(t) {
@@ -192,29 +250,33 @@
       '.qz-h{font-size:20px;font-weight:900;margin:0 0 8px}',
       '.qz-lead{font-size:14px;line-height:1.9;color:#475569;margin:0 0 16px}',
       '.qz-note{font-size:12.5px;color:#64748b}',
-      '.qz-load{color:#94a3b8;font-size:14px}',
       '.qz-list{padding-left:20px;margin:0}',
-      '.qz-list > li{margin-bottom:18px}',
+      '.qz-list > li{margin-bottom:20px}',
       '.qz-q{font-weight:800;font-size:15px;line-height:1.8;margin-bottom:8px}',
-      '.qz-opts{display:grid;gap:7px}',
-      '.qz-o{text-align:left;padding:9px 13px;border:2px solid #e2e8f0;border-radius:11px;',
-      '  background:#fff;font-family:inherit;font-size:14px;line-height:1.7;cursor:pointer}',
-      '.qz-o:hover:not(:disabled){border-color:#a5b4fc}',
-      '.qz-o.on{border-color:#6366f1;background:#eef2ff}',
-      '.qz-o.right{border-color:#10b981;background:#ecfdf5}',
-      '.qz-o.wrong{border-color:#f43f5e;background:#fff1f2}',
-      '.qz-o:disabled{cursor:default}',
-      '.qz-foot{margin-top:6px}',
+      '.qz-ta{width:100%;border:2px solid #e2e8f0;border-radius:12px;padding:10px 12px;',
+      '  font-family:inherit;font-size:14px;line-height:1.8;resize:vertical}',
+      '.qz-ta:focus{outline:0;border-color:#6366f1}',
+      '.qz-ta:disabled{background:#f8fafc;color:#475569}',
+      '.qz-hint{margin-top:6px;background:none;border:0;color:#6366f1;font-family:inherit;',
+      '  font-size:12.5px;font-weight:800;cursor:pointer;padding:2px 0}',
+      '.qz-hintbox:not(:empty){margin-top:6px;background:#eef2ff;border:1px solid #c7d2fe;',
+      '  border-radius:10px;padding:8px 11px;font-size:13px;line-height:1.8;color:#3730a3}',
+      '.qz-fb:not(:empty){margin-top:8px;border-radius:11px;padding:9px 12px;font-size:13px;line-height:1.85}',
+      '.qz-fb.full{background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46}',
+      '.qz-fb.part{background:#fefce8;border:1px solid #fde047;color:#713f12}',
+      '.qz-fb.none{background:#fff1f2;border:1px solid #fecdd3;color:#881337}',
+      '.qz-why{margin-top:5px;padding-top:5px;border-top:1px solid rgba(0,0,0,.08);opacity:.9}',
+      '.qz-ai{font-size:11px;background:#e0e7ff;color:#3730a3;border-radius:6px;padding:1px 6px}',
       '.qz-btn{width:100%;padding:13px;border:0;border-radius:14px;background:#4f46e5;color:#fff;',
-      '  font-weight:900;font-size:16px;cursor:pointer;font-family:inherit;margin-top:10px}',
+      '  font-weight:900;font-size:16px;cursor:pointer;font-family:inherit;margin-top:12px}',
       '.qz-btn:disabled{background:#cbd5e1;cursor:not-allowed}',
+      '.qz-btn2{width:100%;padding:11px;border:2px solid #c7d2fe;border-radius:14px;background:#fff;',
+      '  color:#4338ca;font-weight:900;font-size:15px;cursor:pointer;font-family:inherit;margin-top:8px}',
       '.qz-res{margin-top:14px;padding:14px 16px;border-radius:13px;font-size:14px;line-height:1.9}',
       '.qz-res.good{background:#ecfdf5;border:2px solid #6ee7b7;color:#065f46}',
       '.qz-res.bad{background:#fff7ed;border:2px solid #fdba74;color:#7c2d12}',
       '.qz-score{font-size:19px;font-weight:900;margin-bottom:4px}',
-      '.qz-sub{font-size:12.5px;opacity:.85;margin-top:4px}',
-      '.qz-miss{margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,.1);font-size:13px}',
-      '.qz-miss ul{margin:4px 0 0;padding-left:20px}'
+      '.qz-sub{font-size:12.5px;opacity:.85;margin-top:4px}'
     ].join('\n');
     var el = document.createElement('style');
     el.textContent = css;
@@ -224,11 +286,10 @@
   global.QUIZ = {
     VERSION: VERSION,
     N_TOTAL: N_TOTAL,
-    N_AI: N_AI,
+    MAX_CHARS: MAX_CHARS,
     mount: mount,
-    _build: build,
-    _valid: valid,
-    _prep: prep
+    _pick: pick,
+    _grade: grade
   };
 
 })(typeof window !== 'undefined' ? window : this);

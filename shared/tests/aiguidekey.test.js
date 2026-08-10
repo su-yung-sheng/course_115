@@ -51,8 +51,13 @@ ok(!/c115-ai/.test(JSON.stringify([call(''),call('x'),call('c115')])),
    2026-08-07 實際發生：測試台跑了三輪那 10 題（30 次）就撞到 PER_SID_CAP，
    回「你今天問得夠多了」—— 測到一半被自己的規則鎖住，
    而且那句話是寫給學生看的，老師看了只會以為程式壞了。 */
-const iDbg = src.indexOf('var debug = !!dk');
-const iCap = src.indexOf("usedToday_() >= num_('DAILY_CAP'");
+/* ⚠️ 一律在「ask 那條路」裡面找位置，不要在整份檔案裡找。
+   2026-08-10 新增 action=judge 之後，它自己也有一行 DAILY_CAP 檢查，
+   而且排在前面 —— indexOf 找到的是它，三條順序測試同時變成紅字，
+   但程式其實沒問題。**位置測試要先框出範圍，否則新增功能就會誤報。** */
+const ASK = src.slice(src.indexOf("if (p.action !== 'ask')"));
+const iDbg = ASK.indexOf('var debug = !!dk');
+const iCap = ASK.indexOf("usedToday_() >= num_('DAILY_CAP'");
 ok(iDbg > 0 && iCap > 0 && iDbg < iCap,
    '★ 偵錯判定要在配額檢查「之前」—— 順序錯了，放寬就永遠不會生效');
 ok(/DEBUG_SID_CAP/.test(src), '偵錯模式有自己的每日上限');
@@ -60,10 +65,10 @@ ok(/debug \? num_\('DEBUG_SID_CAP'/.test(src), '   帶了偵錯碼才放寬');
 
 /* ★ 放寬的只有「公平」那一條，不是「額度」那一條。
    DAILY_CAP 顧的是荷包，對誰都一樣 —— 偵錯碼萬一外流，這道還在。 */
-const dailyLine = src.slice(iCap - 200, iCap + 200);
+const dailyLine = ASK.slice(iCap - 200, iCap + 200);
 ok(!/debug \?/.test(dailyLine.slice(0, 220)) || !/DEBUG_DAILY/.test(src),
    '★ DAILY_CAP 不放寬 —— 那是額度上限，不是公平問題');
-ok(/資訊|測試台|resetCaps|調高/.test(src.slice(iCap, iCap + 900)),
+ok(/資訊|測試台|resetCaps|調高/.test(ASK.slice(iCap, iCap + 900)),
    '撞到上限時，老師看到的訊息要說得出「怎麼繼續」');
 ok(/function resetCaps/.test(src), '有歸零的方法，不必等到明天');
 ok(/usedLab/.test(src) && /labCap/.test(src), '★ ping 要回報測試台自己的用量 —— 撞到才知道有牆是最糟的介面');
@@ -72,10 +77,10 @@ ok(/usedLab/.test(src) && /labCap/.test(src), '★ ping 要回報測試台自己
    實測發現的：關鍵概念全中那一則根本不呼叫 Gemini，
    卻排在配額檢查後面 —— 學生全講對了，系統回他「你今天問得夠多了」。
    做對了事卻拿到懲罰，是最糟的一種擋。 */
-const iDone = src.indexOf('if (k.done)');
-const iCap2 = src.indexOf("usedToday_() >= num_('DAILY_CAP'");
+const iDone = ASK.indexOf('if (k.done)');
+const iCap2 = ASK.indexOf("usedToday_() >= num_('DAILY_CAP'");
 ok(iDone > 0 && iDone < iCap2, '★ 「關鍵概念全中」要排在配額檢查之前');
-const iSid2 = src.indexOf('var sid = String(p.student');
+const iSid2 = ASK.indexOf('var sid = String(p.student');
 ok(iSid2 > 0 && iSid2 < iDone, '   而 sid 要更早 —— 不然那一則的紀錄會少掉學號');
 
 /* ★ 三把金鑰混在輪替裡，壞的那把會被好的掩蓋掉。
@@ -99,8 +104,8 @@ ok(/cooling: true/.test(src), '冷卻要回得出「是冷卻不是壞掉」');
 ok(/retryAfter: wait/.test(src), '   而且要講還剩幾秒');
 
 /* 冷卻不可以擋到「沒花額度」的那條路 */
-const iBump = src.indexOf('bump_(sid);');
-const iCdPut = src.indexOf('cache.put(cdKey') >= 0 ? src.indexOf('cache.put(cdKey') : src.indexOf('.put(cdKey');
+const iBump = ASK.indexOf('bump_(sid);');
+const iCdPut = ASK.indexOf('cache.put(cdKey') >= 0 ? ASK.indexOf('cache.put(cdKey') : ASK.indexOf('.put(cdKey');
 ok(iCdPut > iBump, '★ 冷卻在 bump_ 之後才記 —— 關鍵概念全中那條路不花額度，不該被冷卻');
 
 /* 數字要對得上實測的天花板：3 專案 × 20 × 2 個模型 ≈ 120 */

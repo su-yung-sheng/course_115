@@ -70,36 +70,52 @@
     return hit(url);
   }
 
-  /* 概念檢測要 n 題選擇題（程式拼圖之前那一關）。
-     ⚠️ **一次要完三題，不是問三次**。
-        一題一次的話，一個學生一關就吃掉 3 次呼叫；
-        30 人 × 10 關 = 900 次，一個班就能把一天的付費預算用完。
-     ⚠️ 回來的東西一定要能在瀏覽器裡自己判分（選擇題＋正解索引）。
-        改成開放式問答的話，就變成「AI 說了算」—— 而 AI 會失守、會過載。
-     ⚠️ 這裡不做備援：失敗就 throw，由 quiz.js 整份退回題庫。 */
-  function quiz(unit, n, student) {
+  /* 概念檢測的「覆核」（程式拼圖之前那一關）。
+     規則判定說「這幾題沒講到」，送過來看看是不是漏抓了。
+
+     ★ AI 在這裡**只能加分**：它回「他其實講到了 X」我們才加，
+       回「他沒講到」一律不理（規則已經判過了）。
+       所以這一支失敗＝沒撿回來，不會有人因為 AI 出事被扣分。
+
+     ⚠️ **一次送完所有沒過的題目，不是一題一次**。
+        一題一次的話，一個學生一關最多 5 次呼叫；
+        30 人 × 10 關 = 1500 次，一個班就能把一天的預算用完。
+
+     ⚠️ 用 POST。學生的作答可能到 300 字 × 5 題，塞進網址會超過長度上限，
+        而超過的時候不會報錯，是**默默被截斷** —— 判分就會跟著不對。
+        （其他呼叫一律 GET 的理由見上面那一段；這一支是唯一的例外，
+          所以 GAS 那邊 doPost 和 doGet 走的是同一個 handle_。） */
+  function judge(unit, items, student) {
     var c = cfg();
-    var url = c.GAS_URL + '?action=quiz'
+    var url = c.GAS_URL + '?action=judge'
             + '&key=' + encodeURIComponent(c.KEY)
             + '&unit=' + encodeURIComponent(unit)
-            + '&n=' + encodeURIComponent(n || 3)
             + '&student=' + encodeURIComponent(student || '');
-    return hit(url).then(function (j) { return j.items || []; });
+    /* text/plain 才不會觸發預檢（OPTIONS）—— GAS 不處理預檢。
+       送的內容還是 JSON，只是不宣告成 application/json。 */
+    return hit(url, {
+      method: 'post',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ items: items || [] })
+    }).then(function (j) { return j.results || []; });
   }
 
   /** 送出去、收回來、把「不是 JSON」和「逾時」都翻成人看得懂的錯誤 */
-  function hit(url) {
+  function hit(url, init) {
     /* AbortController 才切得斷 fetch。沒有它的話，逾時只是「不再理它」，
        請求還在跑、額度還是會被算走。 */
     var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var timer = setTimeout(function () { if (ctl) ctl.abort(); }, TIMEOUT_MS);
+    var o = {};
+    if (init) { Object.keys(init).forEach(function (k) { o[k] = init[k]; }); }
+    if (ctl) o.signal = ctl.signal;
 
     /* ★ 用 global.fetch 不用裸的 fetch。
        global 就是 window，兩者在瀏覽器裡是同一個東西 ——
        但寫成裸的 fetch 就沒辦法在測試裡替換掉它，
        於是「AI 不回應」「回來不是 JSON」「逾時」這幾條路一條都測不到。
        而那幾條路正是這一支存在的理由。 */
-    return global.fetch(url, ctl ? { signal: ctl.signal } : {})
+    return global.fetch(url, o)
       .then(function (r) { return r.text(); })
       .then(function (t) {
         clearTimeout(timer);
@@ -275,7 +291,7 @@
     TIMEOUT_MS: TIMEOUT_MS,
     enabled: enabled,
     mount: mount,
-    quiz: quiz,
+    judge: judge,
     _ask: ask
   };
 

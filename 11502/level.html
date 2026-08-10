@@ -43,6 +43,8 @@
 <script src="../shared/derive.js"></script>
 <script src="../shared/ai-guide.js"></script>
 <script src="../shared/askai.js"></script>
+<script src="../shared/combo.js"></script>
+<script src="../shared/answer.js"></script>
 <script src="../shared/quiz.js"></script>
 <script src="content/blocks.js"></script>
 <link rel="stylesheet" href="../shared/theme.css">
@@ -99,6 +101,9 @@ function unitOpen(no) {
      沒有資料的步驟直接不出現，不要留一個空殼。 */
 function steps() {
   const out = [{ key:'scene', icon:'🎬', name:'情境解說' }];
+  /* 抽象概念先用生活裡的東西玩一次，再回來看程式。
+     ⚠️ 只有宣告 combo 的關卡有 —— 每一關都放的話它就變成點擊過場。 */
+  if (lv && lv.combo && window.COMBO) out.push({ key:'combo', icon:'🍔', name:'套餐工廠' });
   if (lv && lv.analysis) {
     out.push({ key:'analysis', icon:'🔍', name:'問題分析' });
     if (lv.analysis.qs.some(q => q.pick) || lv.analysis.write) {
@@ -197,6 +202,25 @@ function draw(s) {
                 <div class="text-sm leading-relaxed">${t}</div></div>`).join('')}</div></div>` : ''}
       ${sc && sc.pre ? `<p class="mt-4 text-xs text-slate-500 leading-relaxed">📚 ${sc.pre}</p>` : ''}`;
     nextBtn('看懂了，開始分析');
+    return;
+  }
+
+  if (s.key === 'combo') {
+    /* 速食店的套餐：主餐 ＋ 配餐 ＋ 飲料，主餐裡面還能再拆開。
+       ★ 為什麼放在情境和分析中間
+         「把重複的那一段包起來」對還沒寫過幾行程式的學生太抽象，
+         但套餐他每個人都點過 —— 這一段是把他已經有的直覺搬過來，
+         不是教他新東西。 */
+    body.innerHTML = '<h2 class="text-xl font-black mb-1">🍔 先玩一個東西：套餐工廠</h2>' +
+      '<p class="text-sm text-slate-600 leading-relaxed mb-4">' +
+      '等一下要把「畫正方形」包成一塊積木。在那之前，先看看速食店怎麼組套餐。</p>' +
+      '<div id="combo-host"></div>';
+    window.COMBO.mount($('combo-host'), {
+      onDone: () => { ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+    });
+    /* ⚠️ 也給一顆「先跳過」——體驗卡住不該讓人進不了關卡。
+       它不算分，所以跳過沒有代價。 */
+    nextBtn('先跳過，直接開始分析');
     return;
   }
 

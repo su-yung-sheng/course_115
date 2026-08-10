@@ -34,7 +34,7 @@ function level(unitId, stars) {
   global.document = w.document; global.window = w; global.location = w.location;
   global.sessionStorage = w.sessionStorage; global.URLSearchParams = w.URLSearchParams;
   w.CONFIG = { TERM: '11502', UNITS: UNITS, AIGUIDE: { GAS_URL: 'x', KEY: '' }, COLLECTIONS: {} };
-  ['grading.js','blocks.js','derive.js','ai-guide.js','askai.js']
+  ['grading.js','blocks.js','derive.js','ai-guide.js','askai.js','combo.js','answer.js','quiz.js']
     .forEach(f => new Function('window', fs.readFileSync(path.join(root, 'shared', f), 'utf8'))(w));
   new Function('window', fs.readFileSync(path.join(root, '11502', 'content', 'blocks.js'), 'utf8'))(w);
   const code = html.match(/<script>\n(const \$[\s\S]*?)<\/script>/)[1];
@@ -74,8 +74,10 @@ section('步驟的順序');
        概念檢測一定要在程式拼圖**之前** ——
        排在後面的話，拼對了就沒有人會回頭讀。 */
   const s = stepsOf(level('2-1-1'));
-  const want = ['情境解說','問題分析','確認理解','概念檢測','程式拼圖','實作測試'];
-  ok(s.length === want.length, '第 1 關有六步（' + s.join(' ') + '）');
+  /* ⚠️ 2026-08-10 第 1 關又多了「套餐工廠」（模組化的生活體驗），變成七步。
+     ★ 但套餐只有第 1 關有 —— 每一關都放的話它就變成點擊過場。 */
+  const want = ['情境解說','套餐工廠','問題分析','確認理解','概念檢測','程式拼圖','實作測試'];
+  ok(s.length === want.length, '第 1 關有七步（' + s.join(' ') + '）');
   want.forEach((n, i) => ok((s[i] || '').indexOf(n) >= 0, '   第 ' + (i + 1) + ' 步是「' + n + '」'));
 }
 {
@@ -126,5 +128,12 @@ ok(/window\.applyProgress/.test(levelSrc) && /applyProgress = function/.test(lev
    '★ applyProgress 要有定義 —— 只呼叫不定義的話，每一關都會停在「只開第 1 關」');
 ok(/只有 ① 的話等於沒鎖/.test(mapSrc), '   註解要講明「不畫連結」不是鎖');
 
-console.log('\n通過 ' + pass + '／失敗 ' + fail);
+section('🍔 套餐工廠只掛在第 1 關');
+{
+  const s2 = stepsOf(level('2-1-2', { '2-1-1': 3 }));
+  ok(s2.every(x => x.indexOf('套餐工廠') < 0),
+     '★ 第 2 關沒有套餐（' + s2.join(' ') + '）—— 它教的是參數，再玩一次同樣的東西只是過場');
+}
+
+console.log('\n（含套餐）通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
