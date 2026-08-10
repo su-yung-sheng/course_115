@@ -1460,10 +1460,14 @@ function log_(sid, unit, qi, answer, reply, v) {
      而且用到舊名字時會在 ping 回報，提醒你去改。
      等你確定都改完了，這張表可以整個刪掉。 */
 var RENAMED = {
-  GEMINI_MODEL:          'MODEL',
-  GEMINI_FALLBACK_MODEL: 'FALLBACK_MODEL',
-  GEMINI_RPM_PER_KEY:    'RPM_PER_KEY',
-  GEMINI_COOL_SEC:       'COOL_SEC'
+  GEMINI_MODEL:          'MODEL',            // 部署說明有列，你多半設過
+  GEMINI_FALLBACK_MODEL: 'FALLBACK_MODEL',   // 同上
+  GEMINI_RPM_PER_KEY:    'RPM_PER_KEY'       // 說明裡標「可省略」，可能有人設過
+  /* ⚠️ COOL_SEC 不列在這裡 —— 它從來沒有出現在任何說明或文件裡，
+     只存在於這份程式碼的預設值中，不可能有人設過它。
+     為它做相容是多餘的：多一列就多一件「以後要記得清掉」的事，
+     而且會讓這張表看起來比實際嚴重。
+     ⇒ 相容只做給「真的可能有人設過」的名字。 */
 };
 
 /** 讀屬性：先看新名字，沒有就看舊名字 */

@@ -61,7 +61,7 @@ PRICE_OUT_PER_M   （可省略）同上
 | `GEMINI_` | `GEMINI_KEY`、`GEMINI_MODEL`、`GEMINI_FALLBACK_MODEL`、`GEMINI_RPM_PER_KEY` |
 | 不分家 | `PROVIDER`、`QUERY_KEY`、`DEBUG_KEY`、`DAILY_CAP`、`PER_SID_CAP`、`COOLDOWN_SEC`、`DAILY_TOKEN_CAP` |
 
-> 📛 **舊名稱 `MODEL` / `FALLBACK_MODEL` / `RPM_PER_KEY` / `COOL_SEC` 還讀得到**,
+> 📛 **舊名稱 `MODEL` / `FALLBACK_MODEL` / `RPM_PER_KEY` 還讀得到**,
 > 但測連線會提醒你改。加了 Claude 之後,「MODEL」是誰的 MODEL 講不清楚。
 >
 > ⚠️ 之所以不直接把舊名字拿掉:那樣現有設定會**沒有任何徵兆地**退回程式預設值。
@@ -133,7 +133,7 @@ PROVIDER          gemini
    而 `listModels` **列得出來的不代表叫得動**
 5. **執行 `pickFallback`** —— 再找一個**不同的**模型設進 `FALLBACK_MODEL`
    (額度按「專案 × 模型 × 天」算,備援模型有自己獨立的一份)
-6. 把上限調回免費層的數字:`PER_SID_CAP=3`、`DAILY_CAP=130`、`RPM_PER_KEY=10`
+6. 把上限調回免費層的數字:`PER_SID_CAP=3`、`DAILY_CAP=130`、`GEMINI_RPM_PER_KEY=10`
 
 > 免費版可用狀態的封存點:**`git tag free-tier-2026-08-07`**
 > (`git checkout free-tier-2026-08-07` 就回得去)

@@ -130,6 +130,11 @@ ok(/var RENAMED = \{/.test(src), '有新舊名稱的對照表');
 ok(/GEMINI_MODEL:\s*'MODEL'/.test(src), '   MODEL → GEMINI_MODEL');
 ok(/GEMINI_FALLBACK_MODEL:\s*'FALLBACK_MODEL'/.test(src), '   FALLBACK_MODEL → GEMINI_FALLBACK_MODEL');
 ok(/function prop2_/.test(src), '★ 新名字優先、舊名字還收');
+/* ★ 相容只做給「真的可能有人設過」的名字。
+   COOL_SEC 從來沒出現在任何說明或文件裡 —— 為它做相容是多餘的，
+   多一列就多一件「以後要記得清掉」的事。 */
+ok(!/GEMINI_COOL_SEC:\s*'COOL_SEC'/.test(src),
+   '★ COOL_SEC 不做相容（它沒被文件寫過，不可能有人設）');
 ok(/function legacyProps_/.test(src), '★ 而且要說得出「你還在用舊名字」');
 ok(/legacy: legacyProps_\(\)/.test(src), '   ping 回報');
 ok(/j\.legacy/.test(html), '   測試台顯示');
