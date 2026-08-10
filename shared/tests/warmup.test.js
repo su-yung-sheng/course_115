@@ -142,7 +142,14 @@ const scr  = fs.readFileSync(path.join(__dirname, '..', '..', '11502', 'scratch.
 
 ok(/warmup\.js/.test(page), '教程頁載入引擎（判定只有一份）');
 ok(!/gemini|GAS_URL|AIGUIDE/i.test(page), '★ 這一頁完全不碰 AI —— 不花額度、每個人看到的一樣');
-ok(/modules: \{ scratch: \{ warmup: true \} \}/.test(page), '完成紀錄寫進 modules.scratch.warmup');
+ok(/warmup: true/.test(page) && /modules: \{ scratch: \{/.test(page),
+   '完成紀錄寫進 modules.scratch.warmup');
+/* ★ 學生寫的句子也要存 —— 那是「要不要為這一關接 AI」唯一的判斷依據。
+   規則擋不住關鍵詞堆砌，而那種句子有多少，只能看真的資料。 */
+ok(/warmupSaid/.test(page), '★ 五關寫的內容一起存（warmupSaid）');
+ok(/slice\(0, 300\)/.test(page), '   每一則上限 300 字 —— 這是樣本，不是聊天紀錄');
+ok(/if \(r\.ok\) said\[s\.id\]/.test(page),
+   '   只留「通過的那一句」，不是每一次嘗試');
 ok(/merge: true/.test(page), '   用 merge 寫 —— 不動 totalStars，安全規則自然過');
 ok(/sessionStorage\.setItem\('warmup'/.test(page), '★ 同時記在 sessionStorage');
 ok(/saveWarn|沒存起來/.test(page), '   存不進去要告訴學生，但不可以擋著他');

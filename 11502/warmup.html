@@ -189,10 +189,20 @@ function onPick(i, btn) {
 }
 
 /* ── 寫作判定 ───────────────────────────────────── */
+/* ★ 學生每一關寫了什麼，記在這裡，最後一起存。
+   ⚠️ 為什麼要存：規則判定擋得住「太短、空話、抄題目、一次問兩件、
+      指不出位置」，但擋不住**關鍵詞堆砌**（每個詞都對、合起來不是人話）。
+      要不要為了那種句子接 AI，得先看實際上有多少人這樣寫 ——
+      沒有資料就只能用猜的，而猜錯的成本是「全班卡在整站的入口」。
+   ⚠️ 只留最後一次通過的那一句，而且上限 300 字。
+      這是課後回頭看的樣本，不是聊天紀錄。 */
+const said = {};
+
 function onSend() {
   const s = STEPS[at];
   const text = $('ans').value;
   const r = s.write.check(text, { source: s.write.source });
+  if (r.ok) said[s.id] = String(text || '').trim().slice(0, 300);
 
   if (!r.ok) {
     /* ⚠️ 不通過的訊息只講「怎麼改」，不講「你錯了」。
@@ -246,7 +256,7 @@ function finish() {
   try { sessionStorage.setItem('warmup' + window.CONFIG.TERM, '1'); }
   catch (e) { console.warn('sessionStorage 不能用，只靠 Firestore 記', e); }
   if (window.saveWarmup) {
-    window.saveWarmup().catch(() => {
+    window.saveWarmup(said).catch(() => {
       $('saveWarn').textContent =
         '⚠️ 這次的完成紀錄沒存起來（可能是網路問題），下次進來可能會再跑一次。不影響闖關。';
       $('saveWarn').classList.remove('hidden');
@@ -275,10 +285,19 @@ draw();
      ★ 為什麼放在 modules.scratch 底下
        安全規則不做欄位白名單（只看 totalStars 沒被調低），
        用 merge 寫、不動 totalStars，規則自然過，不必重新發布規則。 */
-  window.saveWarmup = async function () {
+  window.saveWarmup = async function (said) {
     if (!sid) throw new Error('沒有學號');
+    /* ★ 連學生寫的句子一起存。
+       這是「要不要為這一關接 AI」唯一的判斷依據 ——
+       規則擋不住關鍵詞堆砌，而那種句子有多少，只能看真的資料。
+       ⚠️ 存的是**通過的那一句**（每一關最後一次），不是每一次嘗試。
+          全部留下來的話，這一份會變成聊天紀錄，而不是樣本。 */
     await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
-      { modules: { scratch: { warmup: true } } }, { merge: true });
+      { modules: { scratch: {
+        warmup: true,
+        warmupSaid: said || {},
+        warmupAt: new Date().toISOString().slice(0, 16)
+      } } }, { merge: true });
   };
 
   AUTH.attachSession(auth, signInAnonymously, onAuthStateChanged);
