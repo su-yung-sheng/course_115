@@ -116,10 +116,27 @@ ok(/modelFromProp/.test(src), 'ping 要講模型名稱是屬性來的還是程�
 ok(/j\.modelFromProp === false/.test(html), '★ 用預設值時測試台要提醒');
 ok(/程式預設/.test(html), '   而且要講清楚該去哪裡設');
 /* 所有可調的東西都要能用屬性覆蓋，不必改程式 */
-['PROVIDER','CLAUDE_MODEL','MODEL','FALLBACK_MODEL','DAILY_TOKEN_CAP',
- 'PER_SID_CAP','DAILY_CAP','COOLDOWN_SEC','RPM_PER_KEY'].forEach(k => {
-  ok(new RegExp("(prop_|num_)\\('" + k + "'").test(src), '   ' + k + ' 可以用指令碼屬性覆蓋');
+['PROVIDER','CLAUDE_MODEL','GEMINI_MODEL','GEMINI_FALLBACK_MODEL','DAILY_TOKEN_CAP',
+ 'PER_SID_CAP','DAILY_CAP','COOLDOWN_SEC','GEMINI_RPM_PER_KEY'].forEach(k => {
+  ok(new RegExp("(prop_|num_|prop2_|num2p_)\\('" + k + "'").test(src),
+     '   ' + k + ' 可以用指令碼屬性覆蓋');
 });
+
+section('屬性改名：不可以靜靜地失效');
+/* ★ 加入 Claude 之後 MODEL／FALLBACK_MODEL 有了歧義（誰的 MODEL？）。
+   但直接改掉舊名字的話，現有設定會**沒有任何徵兆地**退回程式預設值 ——
+   那正是今天已經吃過兩次的虧（部署版本、模型標籤）。 */
+ok(/var RENAMED = \{/.test(src), '有新舊名稱的對照表');
+ok(/GEMINI_MODEL:\s*'MODEL'/.test(src), '   MODEL → GEMINI_MODEL');
+ok(/GEMINI_FALLBACK_MODEL:\s*'FALLBACK_MODEL'/.test(src), '   FALLBACK_MODEL → GEMINI_FALLBACK_MODEL');
+ok(/function prop2_/.test(src), '★ 新名字優先、舊名字還收');
+ok(/function legacyProps_/.test(src), '★ 而且要說得出「你還在用舊名字」');
+ok(/legacy: legacyProps_\(\)/.test(src), '   ping 回報');
+ok(/j\.legacy/.test(html), '   測試台顯示');
+ok(/靜靜地失效/.test(src), '   註解要講明為什麼不直接改掉舊名字');
+/* Gemini 專用的設定要有 GEMINI_ 前綴，和 CLAUDE_ 對稱 */
+['GEMINI_MODEL','GEMINI_FALLBACK_MODEL','GEMINI_RPM_PER_KEY','GEMINI_COOL_SEC']
+  .forEach(k => ok(new RegExp(k).test(src), '   ' + k + ' 有前綴（和 CLAUDE_ 對稱）'));
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

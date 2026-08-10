@@ -53,6 +53,19 @@ PRICE_IN_PER_M    （可省略）到 Anthropic 價目頁抄，填了 costReport 
 PRICE_OUT_PER_M   （可省略）同上
 ```
 
+**屬性命名:誰的設定就掛誰的前綴**
+
+| 前綴 | 例子 |
+|---|---|
+| `CLAUDE_` | `CLAUDE_KEY`、`CLAUDE_MODEL` |
+| `GEMINI_` | `GEMINI_KEY`、`GEMINI_MODEL`、`GEMINI_FALLBACK_MODEL`、`GEMINI_RPM_PER_KEY` |
+| 不分家 | `PROVIDER`、`QUERY_KEY`、`DEBUG_KEY`、`DAILY_CAP`、`PER_SID_CAP`、`COOLDOWN_SEC`、`DAILY_TOKEN_CAP` |
+
+> 📛 **舊名稱 `MODEL` / `FALLBACK_MODEL` / `RPM_PER_KEY` / `COOL_SEC` 還讀得到**,
+> 但測連線會提醒你改。加了 Claude 之後,「MODEL」是誰的 MODEL 講不清楚。
+>
+> ⚠️ 之所以不直接把舊名字拿掉:那樣現有設定會**沒有任何徵兆地**退回程式預設值。
+
 ⚠️ **金鑰不要進 `config.js`** —— 那個 repo 是公開的。金鑰只在指令碼屬性裡。
 
 ### 模型要選哪一個、以後怎麼升級

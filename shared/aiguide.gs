@@ -33,9 +33,9 @@
         GEMINI_KEY   你的 Gemini API 金鑰（★ 另一個專案發的，不要和批改共用）
         GEMINI_KEY_2 （可省略）第二把 —— ★ 一定要是「另一個專案」發的
         GEMINI_KEY_3 （可省略）第三把 —— 同上
-        RPM_PER_KEY  （可省略）每把金鑰每分鐘最多幾次，預設 10
+        GEMINI_RPM_PER_KEY （可省略）每把金鑰每分鐘最多幾次，預設 10
         QUERY_KEY    自己想一組通行碼
-        MODEL        （可省略）預設 gemini-3.1-flash-lite
+        GEMINI_MODEL （可省略）預設 gemini-3.1-flash-lite
                      ⚠️ 不要照抄網路上的模型名稱 —— 新專案已經不能用 gemini-2.5-flash。
                         在編輯器執行 pickModel／pickFallback，它會真的打一次告訴你哪個能用。
         SHEET_ID     （可省略）要存對話紀錄的話，填 Google 試算表 ID
@@ -93,7 +93,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-modelsrc';
+var VERSION = '2026-08-07-rename';
 
 var DEFAULTS = {
   /* 用哪一家：'gemini'（免費層）或 'claude'（付費）。
@@ -134,7 +134,7 @@ var DEFAULTS = {
      設 0 ＝ 不擋（⚠️ 不建議）。 */
   DAILY_TOKEN_CAP: 300000,
 
-  MODEL: 'gemini-3.1-flash-lite',
+  GEMINI_MODEL: 'gemini-3.1-flash-lite',
   // 題目從這裡抓 —— 和學生看到的是同一份，不會有兩套題目
   CONTENT_URL: 'https://su-yung-sheng.github.io/course_115/11502/content/blocks.js',
   /* ── 用量上限：這幾個數字是算出來的，不是隨手填的 ──
@@ -173,8 +173,8 @@ var DEFAULTS = {
        而不是送出去吃 429 再處理。
      免費層的實際數字 Google 已經不公布了（要看 AI Studio 自己的頁面），
      10 是個保守值。三把就是每分鐘約 30 次，一班 30 人大致接得住。 */
-  RPM_PER_KEY: 10,
-  COOL_SEC: 60,        // 某把吃到 429／403 之後冷卻幾秒（過載不冷卻，見 askGemini_）
+  GEMINI_RPM_PER_KEY: 10,
+  GEMINI_COOL_SEC: 60,        // 某把吃到 429／403 之後冷卻幾秒（過載不冷卻，見 askGemini_）
   /* 主模型過載（503）或當天額度用完（429 PerDay）時退到哪一個。
      ★ 為什麼有用：額度按「每專案每模型每天」算 ——
        備援模型有自己獨立的一份。設成和 MODEL 同一個等於沒有備援。
@@ -187,7 +187,7 @@ var DEFAULTS = {
      ⚠️ 退不成功不會壞掉：學生看到的就是原本那句「等一下再問」。
         所以這一格填錯的代價，比 MODEL 填錯小得多。
      設成空字串就不退。 */
-  FALLBACK_MODEL: 'gemini-3.5-flash'
+  GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash'
 };
 
 /* ── 多把金鑰：分流、節流、冷卻 ─────────────────────
@@ -225,7 +225,7 @@ function pickKey_() {
   if (!all.length) return null;
   var cache = CacheService.getScriptCache();
   var minute = Math.floor(new Date().getTime() / 60000);
-  var cap = num_('RPM_PER_KEY', DEFAULTS.RPM_PER_KEY);
+  var cap = num2p_('GEMINI_RPM_PER_KEY', DEFAULTS.GEMINI_RPM_PER_KEY);
   var props = PropertiesService.getScriptProperties();
   var start = num2_(props.getProperty('rr'));
 
@@ -252,7 +252,7 @@ function coolDown_(k, why, secs) {
   /* secs 給 0／不給 = 用預設。
      ★ 為什麼要能自訂：每分鐘上限等 60 秒就好，
        但「今天的份用完了」等 60 秒再去撞，只是把剩下的請求也浪費掉。 */
-  var n = secs > 0 ? secs : num_('COOL_SEC', DEFAULTS.COOL_SEC);
+  var n = secs > 0 ? secs : num2p_('GEMINI_COOL_SEC', DEFAULTS.GEMINI_COOL_SEC);
   CacheService.getScriptCache().put('cool.' + k.i, why || '1', Math.min(n, 21600));
 }
 
@@ -330,16 +330,18 @@ function handle_(e) {
                           帳單月底才看得到 —— 唯一的即時回饋就是這裡。 */
                      provider: provider_(),
                      model: provider_() === 'claude'
-                              ? prop_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
-                              : prop_('MODEL', DEFAULTS.MODEL),
+                              ? prop2_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
+                              : prop2_('GEMINI_MODEL', DEFAULTS.GEMINI_MODEL),
                      /* 這個模型名稱是「你設的」還是「程式的預設值」。
                         ★ 為什麼要分
                           DEFAULTS 只是沒設定時的退路，但它看起來和真正的設定
                           一模一樣 —— 而程式裡的預設值會過期（那個名字是憑
                           記憶填的）。分不出來的話，你會以為自己設好了，
                           其實跑的是我猜的那一個。 */
-                     modelFromProp: !!String(prop_(
-                       provider_() === 'claude' ? 'CLAUDE_MODEL' : 'MODEL', '')).trim(),
+                     modelFromProp: !!prop2_(
+                       provider_() === 'claude' ? 'CLAUDE_MODEL' : 'GEMINI_MODEL', ''),
+                     /* 還在用舊屬性名的清單（改名之後的過渡期） */
+                     legacy: legacyProps_(),
                      tokens: tokensToday_(),
                      tokenCap: num_('DAILY_TOKEN_CAP', DEFAULTS.DAILY_TOKEN_CAP),
                      /* 設定的模型還在不在。null ＝ 沒查到（不是壞掉）。
@@ -513,8 +515,8 @@ function handle_(e) {
          ⇒ 凡是「現在用的是哪一個」這種回報，都要走同一個來源。 */
       out.provider = provider_();
       out.model = model || (provider_() === 'claude'
-                             ? prop_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
-                             : prop_('MODEL', DEFAULTS.MODEL));
+                             ? prop2_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
+                             : prop2_('GEMINI_MODEL', DEFAULTS.GEMINI_MODEL));
       out.prompt = buildPrompt_(item, answer);
     }
     return json_(out);
@@ -648,7 +650,7 @@ function pickModel() {
      備援模型有自己獨立的一份，主模型見底時才真的救得到。
      設成同一個等於沒有備援。 */
 function pickFallback() {
-  var cur = prop_('MODEL', DEFAULTS.MODEL);
+  var cur = prop2_('GEMINI_MODEL', DEFAULTS.GEMINI_MODEL);
   var keys = ['GEMINI_KEY', 'GEMINI_KEY_2', 'GEMINI_KEY_3']
     .map(function (n) { return { name: n, key: prop_(n, '').trim() }; })
     .filter(function (x) { return x.key; });
@@ -758,7 +760,7 @@ function listModels() {
       額度見底的時候跑，看到的會是 429 而不是真正的問題。 */
 function testKeys() {
   var names = ['GEMINI_KEY', 'GEMINI_KEY_2', 'GEMINI_KEY_3'];
-  var model = prop_('MODEL', DEFAULTS.MODEL);
+  var model = prop2_('GEMINI_MODEL', DEFAULTS.GEMINI_MODEL);
   var cache = CacheService.getScriptCache();
 
   Logger.log('模型：%s', model);
@@ -978,7 +980,7 @@ function askClaude_(prompt, modelOverride) {
     throw e0;
   }
 
-  var model = modelOverride || prop_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL);
+  var model = modelOverride || prop2_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL);
   var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
     method: 'post',
     contentType: 'application/json',
@@ -1084,8 +1086,8 @@ function bumpTokens_(inTok, outTok) {
 function modelListed_() {
   var cache = CacheService.getScriptCache();
   var want = provider_() === 'claude'
-    ? prop_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
-    : prop_('MODEL', DEFAULTS.MODEL);
+    ? prop2_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
+    : prop2_('GEMINI_MODEL', DEFAULTS.GEMINI_MODEL);
   var ck = 'mdl.' + provider_() + '.' + want;
   var hit = cache.get(ck);
   if (hit) return { model: want, found: hit === '1', checked: true };
@@ -1140,8 +1142,8 @@ function costReport() {
   var cap = num_('DAILY_TOKEN_CAP', DEFAULTS.DAILY_TOKEN_CAP);
 
   Logger.log('日期：%s　供應商：%s　模型：%s', d, provider_(),
-             provider_() === 'claude' ? prop_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
-                                      : prop_('MODEL', DEFAULTS.MODEL));
+             provider_() === 'claude' ? prop2_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
+                                      : prop2_('GEMINI_MODEL', DEFAULTS.GEMINI_MODEL));
   Logger.log('輸入 %s tokens／輸出 %s tokens　合計 %s（上限 %s）', i, o, i + o, cap || '沒設');
   Logger.log('問了 AI %s 次（今天）', usedToday_());
   if (pin || pout) {
@@ -1189,7 +1191,7 @@ function listClaudeModels() {
 function askGemini_(prompt, modelOverride, noFallback) {
   var all = keys_();
   if (!all.length) throw new Error('還沒設定 GEMINI_KEY（專案設定 → 指令碼屬性）。');
-  var model = modelOverride || prop_('MODEL', DEFAULTS.MODEL);
+  var model = modelOverride || prop2_('GEMINI_MODEL', DEFAULTS.GEMINI_MODEL);
   var lastErr = '', overloaded = false, dayCapped = false;
 
   /* 有幾把就最多試幾次。每一把只試一次 ——
@@ -1323,7 +1325,7 @@ function askGemini_(prompt, modelOverride, noFallback) {
        那個配額是「每專案、每模型、每天」，換模型就有另一份 ——
        2026-08-07 實測：三把金鑰的 flash 當天都見底，
        但那不代表今天不能用了，只代表 flash 不能用了。 */
-  var fb = prop_('FALLBACK_MODEL', DEFAULTS.FALLBACK_MODEL);
+  var fb = prop2_('GEMINI_FALLBACK_MODEL', DEFAULTS.GEMINI_FALLBACK_MODEL);
   if ((overloaded || dayCapped) && !noFallback && fb && fb !== model) {
     try { return askGemini_(prompt, fb, true); } catch (e3) { lastErr = e3.message; }
   }
@@ -1342,7 +1344,7 @@ function askGemini_(prompt, modelOverride, noFallback) {
     var cooling = rep.filter(function (x) { return x.cooling; });
     diag = '金鑰 ' + rep.length + ' 把'
          + (rep.length ? '（這一分鐘各用了 ' + rep.map(function (x) { return x.thisMinute; }).join('、') + '）' : '')
-         + '，每把每分鐘上限 ' + num_('RPM_PER_KEY', DEFAULTS.RPM_PER_KEY)
+         + '，每把每分鐘上限 ' + num2p_('GEMINI_RPM_PER_KEY', DEFAULTS.GEMINI_RPM_PER_KEY)
          + (cooling.length
              ? '。冷卻中：' + cooling.map(function (x) { return x.key + '（' + (x.why || '沒記到原因') + '）'; }).join('、')
                /* ⚠️ 這句尾巴原本一律把 429 說成塞車 ——
@@ -1443,6 +1445,51 @@ function log_(sid, unit, qi, answer, reply, v) {
 }
 
 /* ── 小工具 ───────────────────────────────────────── */
+/* ── 屬性改名：新名字優先，舊名字還收 ─────────────
+   2026-08-07 加入 Claude 之後，MODEL／FALLBACK_MODEL 這幾個名字
+   突然變得有歧義 —— 旁邊站著 CLAUDE_MODEL，任誰都會以為
+   MODEL 是「通用的那一個」，其實它只管 Gemini。
+
+   ★ 為什麼不直接改掉舊名字
+     改掉的話，現有設定會**靜靜地失效**：
+     沒有人讀 MODEL 了，於是退回程式裡的預設值，
+     而畫面上不會有任何異狀 —— 直到你發現跑的模型不是你設的那個。
+     那正是今天已經吃過兩次的虧（部署版本、模型標籤）。
+
+   ★ 所以：新名字優先 → 舊名字 → 程式預設，
+     而且用到舊名字時會在 ping 回報，提醒你去改。
+     等你確定都改完了，這張表可以整個刪掉。 */
+var RENAMED = {
+  GEMINI_MODEL:          'MODEL',
+  GEMINI_FALLBACK_MODEL: 'FALLBACK_MODEL',
+  GEMINI_RPM_PER_KEY:    'RPM_PER_KEY',
+  GEMINI_COOL_SEC:       'COOL_SEC'
+};
+
+/** 讀屬性：先看新名字，沒有就看舊名字 */
+function prop2_(name, d) {
+  var v = String(prop_(name, '')).trim();
+  if (v) return v;
+  var old = RENAMED[name];
+  if (old) {
+    var o = String(prop_(old, '')).trim();
+    if (o) return o;
+  }
+  return d;
+}
+function num2p_(name, d) { var n = parseInt(prop2_(name, ''), 10); return isNaN(n) ? d : n; }
+
+/** 還在用舊名字的有哪些（ping 會回報） */
+function legacyProps_() {
+  var out = [];
+  Object.keys(RENAMED).forEach(function (k) {
+    if (!String(prop_(k, '')).trim() && String(prop_(RENAMED[k], '')).trim()) {
+      out.push(RENAMED[k] + ' → ' + k);
+    }
+  });
+  return out;
+}
+
 function prop_(k, d) {
   var v = PropertiesService.getScriptProperties().getProperty(k);
   return (v == null || v === '') ? d : v;
@@ -1469,10 +1516,10 @@ function selfTest() {
     Logger.log('⚠️ 確認這 %s 把是「不同專案」發的 —— 同專案共用額度，分流無效', ks.length);
   }
   Logger.log('每把每分鐘上限 %s 次，總計每分鐘約 %s 次',
-             num_('RPM_PER_KEY', DEFAULTS.RPM_PER_KEY),
-             num_('RPM_PER_KEY', DEFAULTS.RPM_PER_KEY) * Math.max(ks.length, 1));
+             num2p_('GEMINI_RPM_PER_KEY', DEFAULTS.GEMINI_RPM_PER_KEY),
+             num2p_('GEMINI_RPM_PER_KEY', DEFAULTS.GEMINI_RPM_PER_KEY) * Math.max(ks.length, 1));
   Logger.log('一班 30 人同時按的話：%s',
-             num_('RPM_PER_KEY', DEFAULTS.RPM_PER_KEY) * Math.max(ks.length, 1) >= 30
+             num2p_('GEMINI_RPM_PER_KEY', DEFAULTS.GEMINI_RPM_PER_KEY) * Math.max(ks.length, 1) >= 30
                ? '大致接得住' : '會有人被請去等 20 秒（前端會自動重試一次）');
 
   var all = levels_();
