@@ -69,5 +69,27 @@ ok(/Claude（付費）/.test(html) && /Gemini（免費層）/.test(html), '兩�
 ok(/j\.tokenCap/.test(html), '付費時看得到 token 用量（帳單月底才來，這是唯一的即時回饋）');
 ok(/provider: provider_\(\)/.test(src), 'GAS 那邊有回報');
 
+section('模型名稱：釘死 vs 別名');
+/* ★ 這是一個刻意的取捨，不是懶得處理。
+   別名（claude-haiku-4-5）會自動指向最新快照 —— 方便，但危險：
+   我們對模型的要求是「守不守得住」，而那是對某一個特定版本測出來的。
+   別名讓模型可以在學期中間被換掉，而且不會有人通知你。 */
+ok(/CLAUDE_MODEL: 'claude-[a-z0-9-]*\d{8}'/.test(src),
+   '★ 預設用帶日期的快照，不用會自動跳版的別名');
+ok(/學期中間被換掉/.test(src), '   而且要寫清楚為什麼（不然下一個人會「順手」改成別名）');
+
+section('釘死之後怎麼知道該升級了');
+ok(/function modelListed_/.test(src), '有「設定的模型還在不在」的檢查');
+ok(/function checkModel/.test(src), '編輯器可以手動查');
+ok(/modelListed: modelListed_\(\)\.found/.test(src), 'ping 會回報');
+ok(/j\.modelListed === false/.test(html), '★ 測試台要跳紅字 —— 在學生遇到之前');
+/* ⚠️ 只能講「找不到」，不能宣稱「沒問題」——
+   同一天學到的：三把金鑰列出來的清單一模一樣，其中一把呼叫就是 404。 */
+ok(/不代表叫得動/.test(src.slice(src.indexOf('function modelListed_') - 1200, src.indexOf('function modelListed_'))),
+   '★ 註解要講明「在清單裡」不等於「叫得動」');
+ok(/found: null/.test(src), '查不到要和「不存在」分開 —— 連不出去不是模型的錯');
+ok(/21600/.test(src.slice(src.indexOf('function modelListed_'), src.indexOf('function checkModel'))),
+   '有快取（背景檢查不值得每次 ping 都問一次）');
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

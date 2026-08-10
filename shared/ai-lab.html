@@ -127,7 +127,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
      那件事現在由 DEBUG_KEY 做，而且更好：走的是真正的管線。 */
 /* 這一頁預期的 GAS 版本。改 aiguide.gs 的行為時，兩邊一起改。
    ⚠️ 這不是裝飾 —— 它是唯一能看出「部署的是不是最新版」的方法。 */
-const EXPECT_VERSION = '2026-08-07-provider';
+const EXPECT_VERSION = '2026-08-07-modelcheck';
 
 const GAS = ((window.CONFIG || {}).AIGUIDE || {}).GAS_URL || '';
 $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒填）';
@@ -188,6 +188,15 @@ $('ping').onclick = async () => {
                   + '">測試台 ' + j.usedLab + '/' + j.labCap + '</span>' : '') +
       ((j.keys || []).length ? '　金鑰 ' + j.keys.length + ' 把' : '') +
       (j.hasDebug ? '' : '　<span class="text-amber-700 font-bold">⚠️ 還沒設 DEBUG_KEY</span>') +
+      /* ★ 模型下架要在「學生遇到之前」知道。
+         2026-08-07 的事故就是這個形狀：程式裡寫著一個已經不給新專案用的
+         模型，而我們是學生按下去失敗才發現的。 */
+      (j.modelListed === false
+        ? '<div class="text-rose-900 bg-rose-100 border border-rose-300 rounded-lg px-3 py-2 mt-2 leading-relaxed">'
+          + '❌ <b>設定的模型已經不在清單裡了</b>（<code>' + esc(j.model) + '</code>）——'
+          + '八成已下架或改名。趕快換掉：編輯器執行 <code>listClaudeModels</code>（付費）'
+          + '或 <code>pickModel</code>（免費）。</div>'
+        : '') +
       (stale
         ? '<div class="text-amber-900 bg-amber-100 border border-amber-300 rounded-lg px-3 py-2 mt-2 leading-relaxed">'
           + '⚠️ <b>部署的是舊版</b>：/exec 回報 <code>' + esc(j.version || '（沒有版本字串＝很舊）')

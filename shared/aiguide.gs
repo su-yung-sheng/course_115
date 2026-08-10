@@ -93,7 +93,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-provider';
+var VERSION = '2026-08-07-modelcheck';
 
 var DEFAULTS = {
   /* 用哪一家：'gemini'（免費層）或 'claude'（付費）。
@@ -103,8 +103,28 @@ var DEFAULTS = {
   PROVIDER: 'gemini',
 
   /* Claude（付費）用的模型。
-     ⚠️ 不要照抄這個預設值就上線 —— 模型會改名會下架。
-        在編輯器執行 listClaudeModels 看這把金鑰現在能用什麼。 */
+
+     ★ 為什麼寫「帶日期」的版本，不用不帶日期的別名
+       別名（例如 claude-haiku-4-5）會自動指向最新的快照 ——
+       聽起來方便，但對這個用途是**危險**的：
+
+         我們對模型的要求不是「聰明」，是**守不守得住**
+         （學生說「直接告訴我答案」時忍不忍得住）。
+         那件事是對「某一個特定版本」測出來的。
+         用別名的話，模型可能在學期中間被換掉，
+         而你不會收到任何通知 —— 只會發現某一天開始
+         有學生說「AI 跟我講答案了」。
+
+       所以：**釘住日期版本，升級當成一件刻意要做的事**
+       （改屬性 → 跑那 10 種刁難 → 確認守得住 → 才上線）。
+
+     ★ 那釘死了會不會過期？會，所以有 checkModel。
+       它會在 ping 的時候比對「設定的模型還在不在清單裡」，
+       不在就直接在測試台上顯示紅字 ——
+       讓你在**學生遇到之前**知道要換了。
+
+     ⚠️ 不要照抄這個預設值就上線。
+        在編輯器執行 listClaudeModels 看你這把金鑰現在能用什麼。 */
   CLAUDE_MODEL: 'claude-haiku-4-5-20251001',
   /* 一天最多用掉幾個 token（輸入＋輸出）。
      ★ 付費沒有硬上限 —— 這一格就是你的上限。
@@ -314,6 +334,10 @@ function handle_(e) {
                               : prop_('MODEL', DEFAULTS.MODEL),
                      tokens: tokensToday_(),
                      tokenCap: num_('DAILY_TOKEN_CAP', DEFAULTS.DAILY_TOKEN_CAP),
+                     /* 設定的模型還在不在。null ＝ 沒查到（不是壞掉）。
+                        ★ 這一格存在的理由：2026-08-07 我們是「學生按下去失敗」
+                          才發現模型不能用了 —— 中間沒有任何一步提早講。 */
+                     modelListed: modelListed_().found,
                      units: Object.keys(levels_()).length, used: usedToday_(),
                      /* 測試台自己用的那個學號用了幾次、上限多少。
                         ★ 為什麼要回報：不然老師是撞到牆才知道有牆，
@@ -1013,6 +1037,68 @@ function bumpTokens_(inTok, outTok) {
   props.setProperty('tok.' + d, String(tokensToday_() + inTok + outTok));
   props.setProperty('tokin.' + d, String(num2_(props.getProperty('tokin.' + d)) + inTok));
   props.setProperty('tokout.' + d, String(num2_(props.getProperty('tokout.' + d)) + outTok));
+}
+
+/* ── 設定的模型還在不在 ─────────────────────────────
+   ★ 為什麼需要
+     2026-08-07 的事故就是這個形狀：程式裡寫著 gemini-2.5-flash，
+     Google 悄悄地不再讓新專案使用它，而我們是**學生按下去失敗**
+     才發現的。中間沒有任何一步會提早告訴我們。
+
+   ★ 這個檢查能講什麼、不能講什麼
+     · 「不在清單裡」＝ 幾乎確定有問題，要換　→ 值得跳紅字
+     · 「在清單裡」  ＝ **不代表叫得動**（同一天學到的：三把金鑰
+       列出來的清單一模一樣，其中一把呼叫就是 404）
+     所以這裡只回報「找不到」，不宣稱「沒問題」。
+     真正的確認只有一種：真的送一次請求（pickModel／selfTest）。
+
+   ⚠️ 快取 6 小時。這是背景檢查，不值得每次 ping 都去問一次。 */
+function modelListed_() {
+  var cache = CacheService.getScriptCache();
+  var want = provider_() === 'claude'
+    ? prop_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
+    : prop_('MODEL', DEFAULTS.MODEL);
+  var ck = 'mdl.' + provider_() + '.' + want;
+  var hit = cache.get(ck);
+  if (hit) return { model: want, found: hit === '1', checked: true };
+
+  try {
+    var ids = [];
+    if (provider_() === 'claude') {
+      var key = String(prop_('CLAUDE_KEY', '')).trim();
+      if (!key) return { model: want, found: null, checked: false };
+      var r1 = UrlFetchApp.fetch('https://api.anthropic.com/v1/models?limit=100', {
+        method: 'get', muteHttpExceptions: true,
+        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' } });
+      if (r1.getResponseCode() !== 200) return { model: want, found: null, checked: false };
+      ids = (JSON.parse(r1.getContentText()).data || []).map(function (m) { return m.id; });
+    } else {
+      var k2 = keys_()[0];
+      if (!k2) return { model: want, found: null, checked: false };
+      var r2 = UrlFetchApp.fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',
+        { method: 'get', muteHttpExceptions: true,
+          headers: { 'x-goog-api-key': k2.key } });
+      if (r2.getResponseCode() !== 200) return { model: want, found: null, checked: false };
+      ids = (JSON.parse(r2.getContentText()).models || [])
+              .map(function (m) { return String(m.name || '').replace('models/', ''); });
+    }
+    var found = ids.indexOf(want) >= 0;
+    cache.put(ck, found ? '1' : '0', 21600);
+    return { model: want, found: found, checked: true };
+  } catch (e) {
+    return { model: want, found: null, checked: false };
+  }
+}
+
+/** 在編輯器執行：設定的模型還在不在 */
+function checkModel() {
+  var r = modelListed_();
+  if (!r.checked) { Logger.log('查不到（金鑰沒設或連不出去）：%s', r.model); return; }
+  Logger.log(r.found
+    ? '「%s」還在清單裡。⚠️ 但列得出來不代表叫得動 —— 真正的確認是 selfTest／pickModel。'
+    : '❌「%s」已經不在清單裡了。八成已下架或改名，趕在學生遇到之前換掉：' +
+      '執行 listClaudeModels（付費）或 pickModel（免費）。', r.model);
 }
 
 /** 今天花了多少（在編輯器執行 costReport） */
