@@ -185,6 +185,28 @@ section('★ 2-1-1 是範本：欄位要齊');
   ok(a.qs.every(q => (q.asks || []).every(k => k.options.length === 4 && k.why)),
      '   每題判斷題四個選項，而且說得出「為什麼是它」');
 
+  /* ★ 選項的**長度**不可以出賣答案。
+     ⚠️ 第一版每一題的正解都是描述最詳細、字最多的那一個 ——
+        學生用「選最長的」就能過關，那和瞎猜沒差多少，
+        而且他學到的是「猜題技巧」不是這一關的概念。
+     ⇒ 兩條：四個選項字數差 ≤ 4；正解不可以比別人長 2 字以上。
+     ⚠️ 這只擋得住「最明顯的那種洩題」。真正要靠的還是
+        「錯的選項要是像樣的誤解」—— 那沒辦法自動測，只能自己念一遍。 */
+  {
+    const len = t => String(t).replace(/[\s，。、？！]/g, '').length;
+    const bad = [];
+    a.qs.forEach((q, i) => (q.asks || []).forEach((k, j) => {
+      const L = k.options.map(len);
+      const spread = Math.max(...L) - Math.min(...L);
+      const lead = L[k.answer] - Math.max(...L.filter((_, x) => x !== k.answer));
+      if (spread > 4) bad.push('第' + (i + 1) + '問第' + (j + 1) + '題 字數差 ' + spread);
+      if (lead >= 2) bad.push('第' + (i + 1) + '問第' + (j + 1) + '題 正解長 ' + lead + ' 字');
+    }));
+    ok(bad.length === 0,
+       '★ 選項長度不出賣答案（字數差 ≤4、正解沒有明顯較長）' +
+       (bad.length ? '：' + bad.join('、') : ''));
+  }
+
   ok(a.write && a.write.keys && a.write.hintText && a.write.sample,
      '★ 收尾的寫作題有 keys／hintText／sample');
   /* ⚠️ hintText 只能講方向，不可以把 keys 的名稱寫進去 —— 那就是答案。 */
