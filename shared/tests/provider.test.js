@@ -108,5 +108,18 @@ ok(/provider_\(\) === 'claude'/.test(dbgOut),
 ok(/out\.provider = provider_\(\)/.test(src), '每一則回應也要標出是哪一家');
 ok(/res\.provider/.test(html), '   卡片上看得到（不必回頭看 ping）');
 
+section('看得出「這個值是誰設的」');
+/* ★ DEFAULTS 只是「沒設定時的退路」，但它看起來和真正的設定一模一樣。
+   而程式裡的預設值會過期（模型名稱是憑記憶填的）——
+   分不出來的話，你會以為自己設好了，其實跑的是預設值。 */
+ok(/modelFromProp/.test(src), 'ping 要講模型名稱是屬性來的還是程式預設');
+ok(/j\.modelFromProp === false/.test(html), '★ 用預設值時測試台要提醒');
+ok(/程式預設/.test(html), '   而且要講清楚該去哪裡設');
+/* 所有可調的東西都要能用屬性覆蓋，不必改程式 */
+['PROVIDER','CLAUDE_MODEL','MODEL','FALLBACK_MODEL','DAILY_TOKEN_CAP',
+ 'PER_SID_CAP','DAILY_CAP','COOLDOWN_SEC','RPM_PER_KEY'].forEach(k => {
+  ok(new RegExp("(prop_|num_)\\('" + k + "'").test(src), '   ' + k + ' 可以用指令碼屬性覆蓋');
+});
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

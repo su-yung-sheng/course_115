@@ -127,7 +127,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
      那件事現在由 DEBUG_KEY 做，而且更好：走的是真正的管線。 */
 /* 這一頁預期的 GAS 版本。改 aiguide.gs 的行為時，兩邊一起改。
    ⚠️ 這不是裝飾 —— 它是唯一能看出「部署的是不是最新版」的方法。 */
-const EXPECT_VERSION = '2026-08-07-modellabel';
+const EXPECT_VERSION = '2026-08-07-modelsrc';
 
 const GAS = ((window.CONFIG || {}).AIGUIDE || {}).GAS_URL || '';
 $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒填）';
@@ -176,7 +176,16 @@ $('ping').onclick = async () => {
          然後測了半天，測的是另一家。 */
       '　<b class="' + (j.provider === 'claude' ? 'text-violet-700' : 'text-sky-700') + '">'
         + (j.provider === 'claude' ? '💳 Claude（付費）' : '🆓 Gemini（免費層）') + '</b>' +
-      '　模型 ' + esc(j.model) + '　題目 ' + j.units + ' 關　今天已用 ' + j.used + ' 次' +
+      '　模型 ' + esc(j.model) +
+      /* ★ 這個值從哪來。
+         程式裡的預設值會過期（那個模型名稱是憑記憶填的），
+         而它看起來和真正的設定一模一樣 ——
+         分不出來的話，你會以為自己設好了，其實跑的是預設。 */
+      (j.modelFromProp === false
+        ? '<span class="text-amber-700 font-bold" title="這是程式碼裡的預設值，不是你設的">'
+          + '（程式預設，建議設進指令碼屬性）</span>'
+        : '') +
+      '　題目 ' + j.units + ' 關　今天已用 ' + j.used + ' 次' +
       /* 付費版沒有人幫你擋，這個數字是唯一的即時回饋 */
       (j.tokenCap ? '　<span class="' + (j.tokens >= j.tokenCap * 0.8 ? 'text-rose-700 font-bold' : 'text-slate-400')
                     + '">token ' + j.tokens + '/' + j.tokenCap + '</span>' : '') +

@@ -93,7 +93,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-modellabel';
+var VERSION = '2026-08-07-modelsrc';
 
 var DEFAULTS = {
   /* 用哪一家：'gemini'（免費層）或 'claude'（付費）。
@@ -332,6 +332,14 @@ function handle_(e) {
                      model: provider_() === 'claude'
                               ? prop_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
                               : prop_('MODEL', DEFAULTS.MODEL),
+                     /* 這個模型名稱是「你設的」還是「程式的預設值」。
+                        ★ 為什麼要分
+                          DEFAULTS 只是沒設定時的退路，但它看起來和真正的設定
+                          一模一樣 —— 而程式裡的預設值會過期（那個名字是憑
+                          記憶填的）。分不出來的話，你會以為自己設好了，
+                          其實跑的是我猜的那一個。 */
+                     modelFromProp: !!String(prop_(
+                       provider_() === 'claude' ? 'CLAUDE_MODEL' : 'MODEL', '')).trim(),
                      tokens: tokensToday_(),
                      tokenCap: num_('DAILY_TOKEN_CAP', DEFAULTS.DAILY_TOKEN_CAP),
                      /* 設定的模型還在不在。null ＝ 沒查到（不是壞掉）。
