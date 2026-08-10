@@ -265,7 +265,10 @@ ok(/combo: true/.test(fs.readFileSync(path.join(root, '11502', 'content', 'block
   ok((b.match(/combo: true/g) || []).length === 1,
      '★ 只有一關有 —— 每一關都放的話它就變成點擊過場');
 }
-ok(/先跳過/.test(L), '★ 體驗要有「先跳過」—— 它不算分，卡住不該讓人進不了關卡');
+/* ⚠️ 2026-08-10：「先跳過」改成「停留夠久才走得掉」——
+   使用者要求每個步驟都不能跳過，但也不能把人鎖死（萬一互動壞了）。 */
+ok(/玩不動的話/.test(L) && !/先跳過/.test(L),
+   '★ 套餐不能無條件跳過，但要留一條「等一下就走得掉」的路（不能鎖死人）');
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

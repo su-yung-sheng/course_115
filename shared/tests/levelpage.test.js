@@ -25,8 +25,8 @@ const UNITS = [['2-1-1','平行的正方形'],['2-1-2','愈畫愈大的正方形
                ['2-1-3','畫圖形'],['2-2-1','小鳥吃蟲'],['2-3-1','排隊比高矮']];
 
 /** 開一次 level.html，stars 是已經拿到的星數 */
-function level(unitId, stars) {
-  const html = levelSrc
+function level(unitId, stars, tweak) {
+  const html = (tweak ? tweak(levelSrc) : levelSrc)
     .replace(/<script src="[^"]*"><\/script>/g, '')
     .replace(/<script type="module">[\s\S]*?<\/script>/g, '');
   const dom = new JSDOM(html, { url: 'https://x/course_115/11502/level.html?unit=' + unitId });
@@ -118,6 +118,12 @@ section('情境解說的內容');
   const s1 = x.BLOCK_LEVELS['2-1-1'].scene;
   ok(!/右轉 90|重複 4 次|移動 30/.test(JSON.stringify(s1)),
      '★ 第 1 關的情境沒有洩漏積木答案');
+  /* ★ 文字說明和互動體驗要講同一個比喻 ——
+     兩邊講不一樣的東西，等於要學生學兩次。 */
+  ok(/套餐|點餐|主餐/.test(s1.why),
+     '★ 「為什麼要學這個」也用速食店套餐開場（和套餐工廠同一個比喻）');
+  ok(s1.why.indexOf('套餐') < s1.why.indexOf('校務行政'),
+     '   而且排在校務行政系統前面 —— 從他最熟的東西開始');
 }
 
 section('闖關地圖那一頁');
@@ -128,6 +134,40 @@ ok(/window\.applyProgress/.test(levelSrc) && /applyProgress = function/.test(lev
    '★ applyProgress 要有定義 —— 只呼叫不定義的話，每一關都會停在「只開第 1 關」');
 ok(/只有 ① 的話等於沒鎖/.test(mapSrc), '   註解要講明「不畫連結」不是鎖');
 
+section('⏱️ 純閱讀的步驟要停留 30 秒');
+{
+  const w = level('2-1-1');
+  const go = w.document.getElementById('go');
+  ok(!!go, '情境解說有「往下走」的按鈕');
+  ok(go.disabled === true, '★ 一進來按鈕是鎖著的 —— 沒有判定條件的步驟，按一下就過去等於沒讀');
+  ok(/秒/.test(go.textContent), '   而且按鈕上看得到還要等幾秒（' + go.textContent.trim() + '）');
+  const msg = w.document.getElementById('holdmsg');
+  ok(msg && /離開|分頁|倒數/.test(msg.textContent),
+     '★ 要先講清楚「切走會停下來」—— 規則沒說在前面，學生只會覺得被整');
+  /* ★ 按不下去就是按不下去：把 disabled 的按鈕點下去不可以前進。 */
+  go.dispatchEvent(new w.Event('click'));
+  ok(w.document.querySelectorAll('.stp')[0].className.indexOf('stp-now') >= 0,
+     '★ 硬按也不會跳到下一步');
+}
+ok(/HOLD_SEC = 30/.test(levelSrc), '停留 30 秒');
+ok(/document\.hidden/.test(levelSrc),
+   '★ 分頁不在前面就不扣秒 —— 這就是「不能離開頁面」那條規則的實作');
+{
+  const hold = levelSrc.slice(levelSrc.indexOf('function nextBtn'), levelSrc.indexOf('function draw'));
+  ok(/暫停/.test(hold) && !/重新計時|歸零|重來/.test(hold),
+     '★ 離開是「暫停」不是「重來」—— 重來的話被罰的通常是最乖的那一個');
+}
+ok(/function render\(\) \{\s*\n?\s*stopHold\(\)/.test(levelSrc),
+   '★ render 一開始就清掉計時器 —— 不清的話倒數會愈跳愈快，而且看不出原因');
+ok(/onFail:[\s\S]{0,300}held = \{\}/.test(levelSrc),
+   '★ 概念檢測沒過退回第 1 步時，停留要重新算 —— 按一下就滑過去等於沒有退回');
+{
+  /* 有判定條件的步驟不必再加時間 —— 那是雙重處罰。 */
+  const draw = levelSrc.slice(levelSrc.indexOf('function draw'));
+  ok(!/BLOCKS\.mount[\s\S]{0,400}nextBtn\([^)]*true/.test(draw),
+     '★ 程式拼圖不加停留 —— 它本來就要拼對才過得去');
+}
+
 section('🍔 套餐工廠只掛在第 1 關');
 {
   const s2 = stepsOf(level('2-1-2', { '2-1-1': 3 }));
@@ -135,5 +175,33 @@ section('🍔 套餐工廠只掛在第 1 關');
      '★ 第 2 關沒有套餐（' + s2.join(' ') + '）—— 它教的是參數，再玩一次同樣的東西只是過場');
 }
 
-console.log('\n（含套餐）通過 ' + pass + '／失敗 ' + fail);
-process.exit(fail ? 1 : 0);
+/* ★ 真的讓時間走一次。
+   前面那些都是「有沒有寫這段程式」，這一條測的是「它會不會動」——
+   而 2026-08-10 的教訓正是：倒數看起來寫好了，實際上一秒都沒走
+   （判 document.hidden，而 jsdom 的 visibilityState 預設是 'prerender'）。
+   ⚠️ 症狀是「還要 30 秒」停在畫面上不動，沒有任何錯誤訊息，
+      學生就永遠進不了下一步。**結構測試抓不到這種 bug。** */
+(async () => {
+  section('⏱️ 倒數真的會走（把 30 秒換成 2 秒跑一次）');
+  const w = level('2-1-1', null, src => src.replace('HOLD_SEC = 30', 'HOLD_SEC = 2'));
+  const go = () => w.document.getElementById('go');
+  ok(go().disabled === true, '一開始鎖著');
+  await new Promise(r => setTimeout(r, 1200));
+  ok(/還要 1 秒/.test(go().textContent), '★ 一秒之後真的少一秒（' + go().textContent.trim() + '）');
+  await new Promise(r => setTimeout(r, 1500));
+  ok(go().disabled === false, '★ 時間到就解鎖');
+  ok(!/秒/.test(go().textContent), '   而且按鈕文字要變回正常（' + go().textContent.trim() + '）');
+  go().dispatchEvent(new w.Event('click'));
+  const nowStep = [...w.document.querySelectorAll('.stp')]
+    .find(b => b.className.indexOf('stp-now') >= 0).textContent.replace(/\s+/g, '');
+  ok(nowStep.indexOf('情境解說') < 0, '★ 解鎖之後按下去真的會前進（現在在「' + nowStep + '」）');
+
+  ok(/visibilityState === 'hidden'/.test(levelSrc),
+     '★ 判 visibilityState === hidden，不要判 document.hidden ——' +
+     '「沒說看得到就停」會把 prerender 這種沒預期的狀態也算成離開');
+  ok(/deadline/.test(levelSrc),
+     '★ 要有保險絲：不管發生什麼事最久都會解鎖 —— 擋錯人的代價遠大於少讀 30 秒');
+
+  console.log('\n（含套餐與倒數）通過 ' + pass + '／失敗 ' + fail);
+  process.exit(fail ? 1 : 0);
+})();

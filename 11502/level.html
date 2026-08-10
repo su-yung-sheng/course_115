@@ -131,6 +131,7 @@ function stepDone(i) {
 function canGo(i) { return i <= at || stepDone(i - 1); }
 
 function render() {
+  stopHold();               // ⚠️ 見 nextBtn：不清的話計時器會愈疊愈多
   if (!unit) {
     $('app').innerHTML = card('❓ 找不到這一關',
       '網址裡的 <code>unit</code> 不在課程清單裡。回<a class="underline font-bold" href="scratch.html">闖關地圖</a>重選一關。');
@@ -174,10 +175,87 @@ function card(title, html) {
     <p class="text-slate-600 leading-relaxed">${html}</p></div>`;
 }
 
-function nextBtn(label) {
-  $('foot').innerHTML = `<button id="go" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white
-    font-black text-lg rounded-2xl px-6 py-4 shadow-md transition">${label} →</button>`;
-  $('go').onclick = () => { ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); };
+/* ── 純閱讀的步驟要停留久一點 ─────────────────────
+   ★ 為什麼要有
+     情境解說和問題分析沒有任何判定條件 —— 按一下就過去了。
+     結果是：最需要讀的那幾個學生，兩秒就滑到程式拼圖，
+     然後在那裡卡住，再回頭問「這題到底要幹嘛」。
+     這 30 秒不是懲罰，是**把「讀完」變成一件真的發生過的事**。
+
+   ★ 離開頁面就暫停，不是重來
+     學生會被老師叫、會切去看投影、會不小心按到別的視窗。
+     重來一次的話，他學到的是「不要離開」，而不是「要讀」——
+     而且被罰第二次的通常是最乖的那一個。
+     ⇒ 時間只在「這一頁在眼前」的時候才走。想早點過關，就專心讀完。
+
+   ⚠️ 計時器一定要在 render() 裡清掉。
+      不清的話，每重畫一次就多一個計時器在跑，
+      倒數會愈跳愈快 —— 而且畫面上看不出原因。 */
+const HOLD_SEC = 30;
+let held = {};          // 這一步的停留時間已經滿了沒
+let holdTimer = null;
+
+function stopHold() { if (holdTimer) { clearInterval(holdTimer); holdTimer = null; } }
+
+function nextBtn(label, hold) {
+  const step = at;
+  const needHold = hold && !held[step];
+  $('foot').innerHTML = `<button id="go" ${needHold ? 'disabled' : ''}
+    class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white
+    font-black text-lg rounded-2xl px-6 py-4 shadow-md transition">${label} →</button>
+    <p id="holdmsg" class="text-center text-xs text-slate-500 mt-2 leading-relaxed"></p>`;
+
+  const btn = $('go');
+  btn.onclick = () => {
+    if (btn.disabled) return;
+    stopHold();
+    ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'});
+  };
+  if (!needHold) return;
+
+  let left = HOLD_SEC;
+  const msg = $('holdmsg');
+  /* 保險絲：不管發生什麼事，最久 HOLD_SEC × 3 一定解鎖。
+     ★ 為什麼需要
+       這個倒數是靠 visibilityState 決定要不要扣秒的。
+       只要有任何一個瀏覽器（或內嵌瀏覽器、或某個外掛）
+       把狀態一直報成非 visible，學生就會**永遠卡在這一步**，
+       而且畫面上只會看到「還要 30 秒」停著不動 —— 沒有任何錯誤訊息。
+       ⚠️ 實際踩過：jsdom 預設的 visibilityState 是 'prerender'，
+          用 document.hidden 判斷的話一秒都不會走。
+          瀏覽器不會這樣，但「我以為不會」正是這種 bug 的形狀。
+     ⇒ 擋錯人的代價遠大於少讀 30 秒，所以一定要有出口。 */
+  const deadline = Date.now() + HOLD_SEC * 3000;
+  paint();
+  stopHold();
+  holdTimer = setInterval(() => {
+    /* ★ 分頁不在前面就不扣秒 —— 這就是「不能離開頁面」那條規則的實作。
+       ⚠️ 判 visibilityState === 'hidden'，不要判 document.hidden。
+          後者是「只要不是 visible 就算躲起來」，包含 prerender 這種
+          我們沒預期的狀態；判斷要「明確說躲起來了才停」，
+          不是「沒說看得到就停」。 */
+    const hidden = document.visibilityState === 'hidden';
+    if (hidden && Date.now() < deadline) { paint(true); return; }
+    left--;
+    if (left > 0) { paint(); return; }
+    done();
+  }, 1000);
+
+  function done() {
+    stopHold();
+    held[step] = true;
+    btn.disabled = false;
+    btn.textContent = label + ' →';
+    msg.textContent = '讀完了，可以往下走。';
+  }
+
+  function paint(paused) {
+    btn.textContent = `${label}（還要 ${left} 秒）`;
+    msg.innerHTML = paused
+      ? '⏸️ 你離開了這一頁，時間暫停了 —— 回到這一頁才會繼續倒數。'
+      : '這一段沒有題目，所以請至少讀 ' + HOLD_SEC + ' 秒。'
+        + '<br>切到別的分頁或視窗，倒數會停下來。';
+  }
 }
 
 function draw(s) {
@@ -201,7 +279,7 @@ function draw(s) {
           `<div><div class="text-xs font-black text-slate-400 mb-1">${i + 1}</div>
                 <div class="text-sm leading-relaxed">${t}</div></div>`).join('')}</div></div>` : ''}
       ${sc && sc.pre ? `<p class="mt-4 text-xs text-slate-500 leading-relaxed">📚 ${sc.pre}</p>` : ''}`;
-    nextBtn('看懂了，開始分析');
+    nextBtn('看懂了，開始分析', true);
     return;
   }
 
@@ -218,9 +296,10 @@ function draw(s) {
     window.COMBO.mount($('combo-host'), {
       onDone: () => { ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); }
     });
-    /* ⚠️ 也給一顆「先跳過」——體驗卡住不該讓人進不了關卡。
-       它不算分，所以跳過沒有代價。 */
-    nextBtn('先跳過，直接開始分析');
+    /* ⚠️ 這裡不給「無條件跳過」——三關都是點一下就走得完的東西，
+       跳過等於整個體驗白做。但也不能鎖死（萬一互動壞了、萬一他就是卡住），
+       所以留一條「停留夠久就走得掉」的路。 */
+    nextBtn('玩不動的話，等一下也可以往下', true);
     return;
   }
 
@@ -235,7 +314,7 @@ function draw(s) {
     });
     /* 「問題分析」那一步沒有判定條件（讀完就好），自己補一顆按鈕。
        ⚠️ 「確認理解」那一步的按鈕由 renderAnalysis 自己畫（要答對才亮）。 */
-    if (s.key === 'analysis') nextBtn('分析完了，往下走');
+    if (s.key === 'analysis') nextBtn('分析完了，往下走', true);
     return;
   }
 
@@ -279,6 +358,9 @@ function draw(s) {
          「回去重讀」要真的帶他回去 —— 不然他只會一直按重考、亂猜到過為止。 */
       onFail: (score) => {
         if (window.saveQuiz) window.saveQuiz(unit.id, score);
+        /* ★ 停留時間要重新算一次。
+           「回去重讀」如果按一下就滑過去，那和沒有退回是一樣的。 */
+        held = {};
         at = 0; render(); window.scrollTo({top:0,behavior:'smooth'});
       }
     });
