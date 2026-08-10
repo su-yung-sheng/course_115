@@ -38,11 +38,15 @@
       { id: 'sesame', name: '芝麻麵包', icon: '🍞' },
       { id: 'muffin', name: '滿福堡',   icon: '🥞' }
     ] },
+    /* ★ 主料決定這份主餐叫什麼（as / asIcon）。
+       換掉裡面的肉排，外面看到的名字就跟著變 ——
+       那正是「模組換掉，外面的行為就不一樣」最直接的樣子，
+       而且學生會自己看到，不必用講的。 */
     patty: { name: '主料', items: [
-      { id: 'beef',    name: '牛肉排',  icon: '🥩' },
-      { id: 'chicken', name: '炸雞腿',  icon: '🍗' },
-      { id: 'fish',    name: '魚排',    icon: '🐟' },
-      { id: 'veggie',  name: '素肉排',  icon: '🫘' }
+      { id: 'beef',    name: '牛肉排', icon: '🥩', as: '牛肉漢堡', asIcon: '🍔' },
+      { id: 'chicken', name: '炸雞腿', icon: '🍗', as: '雞腿堡',   asIcon: '🍗' },
+      { id: 'fish',    name: '魚排',   icon: '🐟', as: '鱈魚堡',   asIcon: '🐟' },
+      { id: 'veggie',  name: '素肉排', icon: '🫘', as: '蔬食堡',   asIcon: '🥬' }
     ] },
     veg:   { name: '蔬菜', items: [
       { id: 'lettuce', name: '生菜',   icon: '🥬' },
@@ -86,26 +90,39 @@
     { key: 'drink', name: '飲料',  items: DRINK }
   ];
 
-  /* ── 訂單題庫 ─────────────────────────────────────
-     ★ 為什麼是「照訂單組」不是「自己隨便組」
-       自由組的話，學生點三下就過了，腦袋沒有動 ——
-       而且他不會發現「每一張訂單用的都是同樣三個位置」。
-       照單組才會逼他在同一組材料裡找出對應的那一個。
+  /* ── 訂單 ─────────────────────────────────────────
+     ★ 不寫死題庫，直接列出**所有** 3×3×3 = 27 種組合。
+       手寫十張的問題是「看起來都差不多」——
+       十張裡有四張主餐都是漢堡，學生只覺得系統在跳針。
 
-     ★ 10 張抽 3
-       隔壁同學拿到的不一樣，也不必為了變化寫一百張。 */
-  var ORDERS = [
-    { main: 'burger',  side: 'fries',  drink: 'cola' },
-    { main: 'chicken', side: 'nugget', drink: 'tea'  },
-    { main: 'fish',    side: 'salad',  drink: 'milk' },
-    { main: 'burger',  side: 'nugget', drink: 'tea'  },
-    { main: 'chicken', side: 'salad',  drink: 'cola' },
-    { main: 'fish',    side: 'fries',  drink: 'tea'  },
-    { main: 'burger',  side: 'salad',  drink: 'milk' },
-    { main: 'chicken', side: 'fries',  drink: 'milk' },
-    { main: 'fish',    side: 'nugget', drink: 'cola' },
-    { main: 'burger',  side: 'fries',  drink: 'tea'  }
-  ];
+     ★ 抽出來的三張要**兩兩至少差兩格**。
+       只差一格的兩張擺在一起，看起來就是同一張 ——
+       而這一關要他看到的正好相反：同樣三個位置，內容可以差很多。 */
+  function allOrders() {
+    var out = [];
+    MAIN.forEach(function (m) {
+      SIDE.forEach(function (s) {
+        DRINK.forEach(function (d) {
+          out.push({ main: m.id, side: s.id, drink: d.id });
+        });
+      });
+    });
+    return out;
+  }
+  function diff(a, b) {
+    return (a.main !== b.main ? 1 : 0) + (a.side !== b.side ? 1 : 0) + (a.drink !== b.drink ? 1 : 0);
+  }
+  /** 抽 n 張，兩兩至少差 minDiff 格 */
+  function pickOrders(n, minDiff) {
+    var pool = shuffle(allOrders()), out = [];
+    pool.forEach(function (o) {
+      if (out.length >= n) return;
+      if (out.every(function (x) { return diff(x, o) >= minDiff; })) out.push(o);
+    });
+    /* 挑不滿就放寬 —— 卡在這裡比看到相似的訂單糟得多。 */
+    while (out.length < n) out.push(pool[out.length]);
+    return out;
+  }
   var N_ORDER = 3;          // 一個學生要組幾張
 
   /* ── 三個關卡 ─────────────────────────────────── */
@@ -121,7 +138,8 @@
     { title: '③ 打開主餐，換掉裡面一樣東西',
       ask: '點一下托盤上的主餐把它打開，然後<b>換掉裡面任何一個零件</b>。',
       done: '主餐自己也是拼出來的：麵包 ＋ 主料 ＋ 蔬菜 ＋ 醬料，' +
-            '而且你只換了其中一格，其他三格沒動。<br>' +
+            '而且你只換了其中一格，其他三格沒動。' +
+            '換掉主料的話，連<b>外面看到的名字都跟著變</b>了。<br>' +
             '<b>模組裡面還可以有模組</b> —— 等一下你會看到，' +
             '副程式裡面也可以再呼叫另一個副程式。' }
   ];
@@ -140,6 +158,12 @@
   function slotList(key) {
     return SLOTS.filter(function (x) { return x.key === key; })[0].items;
   }
+  /** 這一份主餐現在叫什麼（由主料決定） */
+  function mainNameOf(inner) {
+    var p = find(PARTS.patty.items, inner.patty);
+    return { name: (p && p.as) || '主餐', icon: (p && p.asIcon) || '🍔' };
+  }
+
   function orderText(o) {
     return SLOTS.map(function (sl) {
       var it = find(sl.items, o[sl.key]);
@@ -154,7 +178,7 @@
     ensureStyle();
 
     var st = 0;
-    var orders = shuffle(ORDERS).slice(0, N_ORDER);   // 這一次要組的三張
+    var orders = pickOrders(N_ORDER, 2);   // 這一次要組的三張（兩兩至少差兩格）
     var oi = 0;                                       // 現在第幾張
     var pick = { main: null, side: null, drink: null };
     var swapWant = null;      // 第 2 關要換成哪一種飲料
@@ -177,10 +201,17 @@
         orderCard() +
         '<div class="cb-tray">' + SLOTS.map(function (sl) {
           var got = pick[sl.key];
+          /* ★ 主餐打開之後，托盤上的名字要跟著裡面的主料變 ——
+             不然學生換了炸雞腿，托盤還寫「牛肉漢堡」，那才是真的看不懂。 */
+          var show = got;
+          if (got && sl.key === 'main' && opened) {
+            var nm = mainNameOf(inner);
+            show = { icon: nm.icon, name: nm.name };
+          }
           return '<div class="cb-slot' + (got ? ' has' : '') + '" data-slot="' + sl.key + '">' +
             '<div class="cb-slot-h">' + sl.name + '</div>' +
-            '<div class="cb-slot-b">' + (got ? '<span class="cb-ic">' + got.icon + '</span>' +
-              '<span class="cb-nm">' + got.name + '</span>' : '<span class="cb-empty">還沒選</span>') +
+            '<div class="cb-slot-b">' + (show ? '<span class="cb-ic">' + show.icon + '</span>' +
+              '<span class="cb-nm">' + show.name + '</span>' : '<span class="cb-empty">還沒選</span>') +
             '</div></div>';
         }).join('') + '</div>' +
         '<div class="cb-picks">' + SLOTS.map(function (sl) {
@@ -282,16 +313,21 @@
     function swapPart(key, id) {
       if (!opened) return;
       inner[key] = id;
+      draw();            // 托盤上的名字也要跟著換
       showParts();
       /* 只要和原本不一樣就算完成 —— 換哪一格都可以。 */
       if (JSON.stringify(inner) !== innerBase) finish();
     }
 
     function showParts() {
-      var m = pick.main;
+      var nm = mainNameOf(inner);
+      var renamed = nm.name !== pick.main.name;
       host.querySelector('#cb-open').innerHTML =
         '<div class="cb-open">' +
-          '<div class="cb-open-h">' + m.icon + ' ' + m.name + ' 打開來看：</div>' +
+          '<div class="cb-open-h">' + nm.icon + ' ' + nm.name + ' 打開來看：' +
+            (renamed ? '<span class="cb-renamed">名字變了！本來是 ' +
+                       pick.main.icon + ' ' + pick.main.name + '</span>' : '') +
+          '</div>' +
           '<div class="cb-parts">' + PART_KEYS.map(function (k) {
             var it = find(PARTS[k].items, inner[k]);
             return '<span class="cb-part">' + it.icon + ' ' + it.name + '</span>';
@@ -375,6 +411,7 @@
       '.cb-log-i{font-size:13px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;',
       '  padding:5px 10px;margin-bottom:4px}',
       '.cb-open{margin-top:10px;background:#eff6ff;border:2px solid #bfdbfe;border-radius:13px;padding:11px 13px}',
+      '.cb-renamed{display:block;font-size:11.5px;font-weight:800;color:#b45309;margin-top:2px}',
       '.cb-inner{margin-top:10px;padding-top:9px;border-top:1px dashed #bfdbfe}',
       '.cb-chip.small{padding:4px 9px;font-size:12px}',
       '.cb-open-h{font-size:13.5px;font-weight:900;color:#1e3a8a;margin-bottom:6px}',
@@ -396,7 +433,9 @@
     VERSION: VERSION,
     STAGES: STAGES,
     MAIN: MAIN, SIDE: SIDE, DRINK: DRINK,
-    PARTS: PARTS, PART_KEYS: PART_KEYS, ORDERS: ORDERS,
+    PARTS: PARTS, PART_KEYS: PART_KEYS,
+    _allOrders: allOrders, _pickOrders: pickOrders, _diff: diff,
+    _mainNameOf: mainNameOf,
     mount: mount
   };
 

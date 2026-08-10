@@ -233,6 +233,19 @@
     '.dv-dot.now{background:#4f46e5}.dv-dot.ok{background:#10b981}',
     '.dv-num{font-size:11.5px;font-weight:900;color:#94a3b8;margin-bottom:4px}',
     '.dv-next{margin-top:12px}',
+    '.dv-ask{margin-top:10px}',
+    '.dv-ask-q{font-size:14px;font-weight:800;line-height:1.85;margin-bottom:8px}',
+    '.dv-opt{display:block;width:100%;text-align:left;margin-bottom:6px;padding:9px 13px;',
+    '  border:2px solid #e2e8f0;border-radius:11px;background:#fff;font-family:inherit;',
+    '  font-size:14px;line-height:1.7;cursor:pointer}',
+    '.dv-opt:hover:not(:disabled){border-color:#a5b4fc}',
+    '.dv-opt.right{border-color:#10b981;background:#ecfdf5}',
+    '.dv-opt.wrong{border-color:#f43f5e;background:#fff1f2;opacity:.7}',
+    '.dv-opt:disabled{cursor:default}',
+    /* ★ 提示不給滑鼠選取 —— 提高「複製貼上」的摩擦。
+       ⚠️ 這不是安全機制（F12 一開就繞過了），
+          它擋的是「順手反白貼上」那個動作，而那才是多數學生會做的事。 */
+    '.dv-hint div{user-select:none;-webkit-user-select:none}',
     '.dv-say textarea{width:100%;border:2px solid #e2e8f0;border-radius:12px;padding:9px 11px;',
     '  font-family:inherit;font-size:14px;line-height:1.8;resize:vertical;margin-top:8px}',
     '.dv-say textarea:focus{outline:0;border-color:#6366f1}',
@@ -603,13 +616,14 @@
       box.innerHTML =
         '<div class="dv-num">第 ' + (at + 1) + ' 題 / 共 ' + qs.length + '</div>' +
         '<div class="dv-qt">' + it.q + '</div>' +
-        (it.pick ? pickHtml(it.pick, at) : sayHtml(at)) +
+        (it.pick ? pickHtml(it.pick, at) : askHtml(it, at)) +
         (it.hint ? '<details class="dv-hint"><summary>想不出來？點開看提示</summary><div>' +
                    it.hint + '</div></details>' : '') +
         ((it.keys || []).length ? '<div data-ai="' + at + '"></div>' : '') +
         '<div class="dv-next"></div>';
 
       if (it.pick) wirePick(host, it.pick, at);
+      else if (chosen[at]) wireAsk1(host, at);
       else wireSay(host, it, at);
       wireAsk(host, it, at, opts);
       nextBar();
@@ -626,6 +640,70 @@
 
        ⇒ 折衷：一定要動手寫，但寫什麼都算數；
          有 keys 的話再給一句正向回饋（「你講到了…」），沒講到也不擋。 */
+    /* ── 每一問的小判斷題（asks，3 題抽 1）─────────────
+       ★ 為什麼從「寫一句」改成選擇題
+         寫一句擋不住「把提示貼上來」—— 而提示裡本來就有想聽到的說法。
+         選擇題貼不了，答錯還有具體的回饋。
+
+       ★ 為什麼是 3 題抽 1
+         隔壁同學拿到的不一樣，也不必為了變化寫一百題。
+
+       ⚠️ 選項要洗牌 —— 正解固定在第一個的話，第二次就變成「背 A」。
+       ⚠️ 沒有寫 asks 的問（例如 2-1-2 還沒補）就退回「寫一句」，
+          而那條路一樣要擋抄襲（見 wireSay）。 */
+    var chosen = {};                 // 這一問抽到哪一題、選項怎麼排
+    function askHtml(it, i) {
+      var bank = it.asks || [];
+      if (!bank.length) return sayHtml(i);
+      if (!chosen[i]) {
+        var pickOne = bank[Math.floor(Math.random() * bank.length)];
+        var right = pickOne.options[pickOne.answer];
+        var opts = shuffleArr(pickOne.options);
+        chosen[i] = { q: pickOne.q, options: opts, answer: opts.indexOf(right), why: pickOne.why || '' };
+      }
+      var a = chosen[i];
+      return '<div class="dv-ask" data-ask="' + i + '">' +
+        '<div class="dv-ask-q">' + a.q + '</div>' +
+        a.options.map(function (o, k) {
+          return '<button class="dv-opt" data-o="' + k + '">' + o + '</button>';
+        }).join('') +
+        '<div class="dv-fb" id="dv-askfb' + i + '" style="display:none"></div></div>';
+    }
+    function wireAsk1(root, i) {
+      var wrap = root.querySelector('[data-ask="' + i + '"]');
+      if (!wrap) return;
+      var fb = root.querySelector('#dv-askfb' + i);
+      wrap.addEventListener('click', function (e) {
+        var b = e.target.closest('.dv-opt');
+        if (!b || passed[i]) return;
+        var k = +b.dataset.o, a = chosen[i];
+        fb.style.display = '';
+        if (k === a.answer) {
+          passed[i] = true;
+          b.classList.add('right');
+          fb.className = 'dv-fb good';
+          fb.innerHTML = '✓ ' + (a.why || '對了。');
+          wrap.querySelectorAll('.dv-opt').forEach(function (x) { x.disabled = true; });
+          prog(); nextBar();
+        } else {
+          /* ★ 答錯不鎖死，可以再選 —— 這一段是「想一想」不是考試。
+             但要說出「為什麼不是這個」，不然他只是隨機再點一個。 */
+          b.classList.add('wrong');
+          b.disabled = true;
+          fb.className = 'dv-fb bad';
+          fb.innerHTML = '✗ 再想一次。' + (a.why ? '（提示：' + a.why + '）' : '');
+        }
+      });
+    }
+    function shuffleArr(a) {
+      a = a.slice();
+      for (var i = a.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+      return a;
+    }
+
     var SAY_MIN = 6;
     function sayHtml(i) {
       return '<div class="dv-say">' +
@@ -633,13 +711,25 @@
         'placeholder="先寫下你現在的想法（至少 ' + SAY_MIN + ' 個字，寫不完整也沒關係）"></textarea>' +
         '<div class="dv-fb" id="dv-sayfb' + i + '" style="display:none"></div></div>';
     }
+    function strip(x) { return String(x || '').replace(/<[^>]*>/g, ''); }
     function wireSay(root, it, i) {
       var ta = root.querySelector('#dv-say' + i);
       if (!ta) return;
       if (said[i]) { ta.value = said[i]; }
       ta.addEventListener('input', function () {
-        var okLen = ta.value.trim().length >= SAY_MIN;
-        said[i] = okLen ? ta.value.trim() : '';
+        var t = ta.value.trim();
+        /* ⚠️ 這條路一樣要擋抄襲 —— 不擋的話，學生會把提示貼進來。
+           （2026-08-10：抄襲判定原本只做在概念檢測，這裡漏掉了。） */
+        var isCopy = (typeof window !== 'undefined' && window.ANSWER)
+          ? window.ANSWER._copied(t, [strip(it.q), strip(it.hint)]) : false;
+        said[i] = (t.length >= SAY_MIN && !isCopy) ? t : '';
+        var fb = root.querySelector('#dv-sayfb' + i);
+        if (fb && isCopy) {
+          fb.style.display = ''; fb.className = 'dv-fb bad';
+          fb.innerHTML = '這一段和題目／提示幾乎一樣。用你自己的話說說看。';
+        } else if (fb && fb.className.indexOf('bad') >= 0) {
+          fb.style.display = 'none';
+        }
         nextBar();
       });
       ta.addEventListener('blur', function () {
@@ -670,13 +760,14 @@
       var bar = host.querySelector('.dv-next');
       if (!bar) return;
       var it = qs[at];
-      if (it.pick && !passed[at]) { bar.innerHTML = ''; return; }
       /* ⚠️ 沒有寫東西就不給「下一題」——
          這是「不能一路按下去」的實作，也是這一步唯一的門檻。 */
-      var ready = it.pick ? passed[at] : !!said[at];
+      var hasAsk = !it.pick && (it.asks || []).length > 0;
+      var ready = (it.pick || hasAsk) ? passed[at] : !!said[at];
       bar.innerHTML = '<button class="dv-btn" style="width:100%;padding:10px" id="dv-nx"' +
         (ready ? '' : ' disabled') + '>' +
         (ready ? (at === qs.length - 1 ? '五題都想過了 →' : '下一題 →')
+               : hasAsk ? '先選出正確的那一個'
                : '先寫下你的想法（至少 ' + SAY_MIN + ' 個字）') + '</button>';
       bar.querySelector('#dv-nx').onclick = function () {
         if (bar.querySelector('#dv-nx').disabled) return;

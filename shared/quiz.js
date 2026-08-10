@@ -179,8 +179,10 @@
       '它算的是 🧠 概念星，和作品的 🧩 星星分開。重寫幾次都可以。</span></p>' +
       '<ol class="qz-list">' + items.map(function (it, i) {
         return '<li><div class="qz-q">' + it.q + '</div>' +
+          /* ★ 最少字數要寫在框裡。
+             學生按了送出才被告知「至少 N 個字」，等於罰他不知道規則。 */
           '<textarea class="qz-ta" data-i="' + i + '" rows="3" maxlength="' + MAX_CHARS + '" ' +
-            'placeholder="用自己的話寫幾句…"></textarea>' +
+            'placeholder="用自己的話寫幾句（至少 ' + (it.min || 8) + ' 個字）…"></textarea>' +
           /* ★ 按鈕上要講明它會給什麼。
              只寫「提示」的話，學生不知道值不值得按 ——
              而這一顆給的是「問題分析那一步已經講過的東西」，
@@ -305,6 +307,11 @@
       '  font-size:12.5px;font-weight:800;cursor:pointer;padding:2px 0}',
       '.qz-hintbox:not(:empty){margin-top:6px;background:#eef2ff;border:1px solid #c7d2fe;',
       '  border-radius:10px;padding:8px 11px;font-size:13px;line-height:1.8;color:#3730a3}',
+      /* ★ 提示不給滑鼠選取 —— 提高「複製貼上」的摩擦。
+         ⚠️ 這不是安全機制（F12 一開就繞過了）；真正擋抄的是
+            shared/answer.js 的連續字串比對。這一行擋的是
+            「順手反白貼上」那個動作，而那才是多數學生會做的事。 */
+      '.qz-hintbox,.qz-ref{user-select:none;-webkit-user-select:none}',
       '.qz-ref{margin-top:8px;padding-top:8px;border-top:1px dashed #c7d2fe;font-size:12.5px;line-height:1.85}',
       '.qz-fb:not(:empty){margin-top:8px;border-radius:11px;padding:9px 12px;font-size:13px;line-height:1.85}',
       '.qz-fb.full{background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46}',

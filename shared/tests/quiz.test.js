@@ -345,6 +345,26 @@ ok(C.SIDE.every(s => !s.inner) && C.DRINK.every(d => !d.inner),
 }
 ok(/換掉裡面/.test(C.STAGES[2].ask),
    '★ 第 3 關要「換掉裡面一個零件」，不是只打開來看 —— 看圖說故事學不到東西');
+{
+  /* ★ 換掉主料，外面看到的名字要跟著變 ——
+     那正是「模組換掉，外面的行為就不一樣」，而且學生自己看得到。 */
+  const nm = p => C._mainNameOf({ bun: 'plain', patty: p, veg: 'lettuce', sauce: 'ketchup' }).name;
+  ok(nm('beef') === '牛肉漢堡' && nm('chicken') === '雞腿堡' && nm('fish') === '鱈魚堡',
+     '★ 主料決定主餐的名字（換成炸雞腿就變雞腿堡）');
+  ok(C.PARTS.patty.items.every(x => x.as && x.asIcon), '   每一種主料都說得出它會變成什麼');
+}
+{
+  /* ★ 訂單不可以「看起來都一樣」。
+     ⚠️ 原本手寫十張，十張裡四張主餐都是漢堡 —— 學生只覺得系統在跳針。
+        改成列出全部 27 種組合，抽 3 張且兩兩至少差兩格。 */
+  ok(C._allOrders().length === 27, '訂單是全部 3×3×3 種組合（' + C._allOrders().length + '）');
+  let same = 0;
+  for (let i = 0; i < 200; i++) {
+    const o = C._pickOrders(3, 2);
+    if (C._diff(o[0], o[1]) < 2 || C._diff(o[0], o[2]) < 2 || C._diff(o[1], o[2]) < 2) same++;
+  }
+  ok(same === 0, '★ 抽 200 次，抽出來的三張永遠兩兩至少差兩格（相似的張數：' + same + '）');
+}
 ok(C.MAIN.length >= 3 && C.SIDE.length >= 3 && C.DRINK.length >= 3,
    '每一格至少三種選擇（組得出三份不一樣的套餐）');
 /* ⚠️ 用「有沒有真的呼叫」判，不要用關鍵字掃全檔 ——
