@@ -153,11 +153,29 @@
   }
 
   /* 綜合檢查（第 5 關用）。
-     ★ 順序有意義：先講「沒內容」，再講「太多件」。
-       兩個一起丟出來，學生不知道要先改哪一個。 */
+     ★ 順序有意義：先講「沒內容」，再講「指不出位置」，最後才講「太多件」。
+       全部一起丟出來，學生不知道要先改哪一個。
+
+     ⚠️ 2026-08-10 修：這一關的標題是「四條規則一起用」，
+        但這裡原本只用了三條 —— **第 ② 條（說出卡在哪一步）漏掉了**。
+        結果是：只要字夠多、不是純空話、沒有兩個問號，就過得了關。
+        「我剛剛做了很多事情然後發現有一個地方好像怪怪的…」這種
+        完全沒有具體資訊的句子照樣通過 ——
+        而這一關要教的正好是「講得出你在哪裡卡住」。
+
+     ★ 第 ② 條要收得寬一點（stepNames 給得多）：
+       這一關的情境是圖形黏在一起，學生可能講「間隔」「距離」「第二個」，
+       也可能講「移動」「往右」—— 都算指得出位置。
+       ⚠️ 寧可放過，不可錯殺 —— 這一頁的誤判成本比漏抓高得多。 */
+  var STEP_NAMES_5 = [
+    '下筆', '停筆', '重複', '移動', '右轉', '起點', '轉彎',
+    '間隔', '距離', '空隙', '往右', '旁邊', '邊長',
+    '第一個', '第二個', '畫完', '畫第'
+  ];
   function checkAll(text, o) {
     o = o || {};
     var r = checkConcrete(text);           if (!r.ok) return r;
+    r = checkStep(text, o.names || STEP_NAMES_5); if (!r.ok) return r;
     if (o.source) { r = checkOwnWords(text, o.source); if (!r.ok) return r; }
     r = checkOneThing(text);               if (!r.ok) return r;
     return { ok: true };
@@ -330,6 +348,7 @@
     RULES: RULES,
     checkConcrete: checkConcrete,
     checkStep: checkStep,
+    _STEP_NAMES_5: STEP_NAMES_5,
     checkOwnWords: checkOwnWords,
     checkOneThing: checkOneThing,
     checkAll: checkAll,
