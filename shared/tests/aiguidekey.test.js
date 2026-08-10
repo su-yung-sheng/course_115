@@ -119,8 +119,8 @@ ok(/同學|老師/.test(src.slice(src.indexOf('已經用完'), src.indexOf('已�
    而「一次跑完 10 種刁難」本來就是同一問連問十次。 */
 ok(/var cdSec = debug \? 0 :/.test(src), '★ 帶了偵錯碼就不冷卻');
 const iDbg2 = src.indexOf('var debug = !!dk');
-const iCd = src.indexOf('var cdSec = debug');
-ok(iDbg2 > 0 && iDbg2 < iCd, '   而且 debug 要先算出來（順序錯了等於沒寫）');
+const iCool = src.indexOf('var cdSec = debug');
+ok(iDbg2 > 0 && iDbg2 < iCool, '   而且 debug 要先算出來（順序錯了等於沒寫）');
 ok(/老師的測試台會不會被它擋住/.test(src),
    '★ 把這個教訓寫進程式 —— 下次再加限制時會看到');
 
