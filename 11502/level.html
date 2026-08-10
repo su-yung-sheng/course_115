@@ -64,10 +64,12 @@
    class="fixed top-4 left-4 z-50 inline-flex items-center gap-1.5 bg-slate-800 text-white
           font-bold text-sm px-3.5 py-2 rounded-full shadow-lg hover:bg-slate-700 transition">← 闖關地圖</a>
 
-<!-- ★ 加寬到 5xl：步驟變成六～七個之後，3xl 放不下，最後一個會被切掉。
-     ⚠️ 只加寬步驟列沒有用 —— 那樣步驟會比底下的內容寬，看起來像跑版。
-     內容一起加寬，投影出來也比較好讀。 -->
-<main class="max-w-5xl mx-auto px-4 pt-20 sm:pt-8">
+<!-- ★ 寬度和闖關地圖（scratch.html）一樣，都是 4xl。
+     ⚠️ 一度改成 5xl 想讓步驟列放得下，結果內容比標題寬一大截，
+        而且從地圖點進來會「跳一下」—— 兩頁不同寬，看起來像兩個網站。
+     ⇒ 步驟列改成會換行（見上面的 .steps）就不必靠加寬解決，
+        寬度回到和地圖一致。**版面一致比多幾十像素重要。** -->
+<main class="max-w-4xl mx-auto px-4 pt-20 sm:pt-8">
   <div id="app"></div>
 </main>
 

@@ -185,8 +185,11 @@ section('📐 版面：步驟多了也不可以被切掉');
   ok(/flex-wrap:wrap/.test(levelSrc.slice(levelSrc.indexOf('.steps{'), levelSrc.indexOf('.stp{'))),
      '★ 步驟列會換行，不靠橫向捲動');
   ok(!/\.steps\{[^}]*overflow-x:auto/.test(levelSrc), '   不要再用捲動的版本');
-  ok(/max-w-5xl/.test(levelSrc), '★ 內容加寬到 5xl（步驟和解說是同一個容器，一起變寬）');
-  ok(!/max-w-3xl/.test(levelSrc), '   舊的 3xl 已經換掉');
+  /* ★ 釘的是「兩頁同寬」，不是「一定要某個數字」——
+     從地圖點進關卡會「跳一下」的話，看起來像兩個網站。 */
+  const wOf = src => (src.match(/<main class="(max-w-\w+)/) || [])[1];
+  ok(wOf(levelSrc) && wOf(levelSrc) === wOf(mapSrc),
+     '★ 關卡頁和闖關地圖同寬（都是 ' + wOf(levelSrc) + '）—— 不同寬會像兩個網站');
   ok(/@media \(max-width:520px\)/.test(levelSrc),
      '   手機上縮小字和內距 —— 一列塞得下比較多個');
 }

@@ -130,10 +130,37 @@
     host.__quizLv = lv;
     var items = pick(lv);
     if (!items) { host.innerHTML = ''; if (opts.onNone) opts.onNone(); return; }
-    run(host, items, opts);
+    run(host, items, opts, lv);
   }
 
-  function run(host, items, opts) {
+  /* ── 提示：把「問題分析」那一步的說明搬過來 ─────────
+     ★ 概念檢測問的東西，本來就是問題分析想過的東西。
+       兩邊各講各的話，學生會覺得這是兩件事、要各背一次。
+       所以每一題可以標一個 ref，指回它對應的那一問：
+         數字     → analysis.qs[n] 的提示
+         'write'  → analysis.write（那一段的收尾）
+         'scene'  → 情境解說的「為什麼要學這個」
+     ⚠️ 這不是給答案 —— 引的是那一問的**提示**，不是正解。
+        引錯來源（例如把 pick 的答案端出來）會直接毀掉這一題。 */
+  function refBox(lv, ref) {
+    if (ref === undefined || ref === null || !lv) return '';
+    var a = lv.analysis || {};
+    var label = '', body = '';
+    if (ref === 'scene') {
+      label = '🎬 情境解說裡說過';
+      body = (lv.scene || {}).why || '';
+    } else if (ref === 'write') {
+      label = '🔍 問題分析最後那一題';
+      body = (a.write || {}).q || '';
+    } else if (typeof ref === 'number' && (a.qs || [])[ref]) {
+      label = '🔍 問題分析第 ' + (ref + 1) + ' 題';
+      body = (a.qs[ref].q || '') + (a.qs[ref].hint ? '<br>' + a.qs[ref].hint : '');
+    }
+    if (!body) return '';
+    return '<div class="qz-ref"><b>' + label + '：</b><br>' + body + '</div>';
+  }
+
+  function run(host, items, opts, lv) {
     host.innerHTML =
       '<h2 class="qz-h">🧠 概念檢測</h2>' +
       '<p class="qz-lead">五題，<b>用自己的話寫</b>就好，不必寫得漂亮。<br>' +
@@ -145,7 +172,11 @@
         return '<li><div class="qz-q">' + it.q + '</div>' +
           '<textarea class="qz-ta" data-i="' + i + '" rows="3" maxlength="' + MAX_CHARS + '" ' +
             'placeholder="用自己的話寫幾句…"></textarea>' +
-          '<button class="qz-hint" data-h="' + i + '">💡 給我一點提示</button>' +
+          /* ★ 按鈕上要講明它會給什麼。
+             只寫「提示」的話，學生不知道值不值得按 ——
+             而這一顆給的是「問題分析那一步已經講過的東西」，
+             那正是他現在需要的。 */
+          '<button class="qz-hint" data-h="' + i + '">💡 提示（回頭看問題分析）</button>' +
           '<div class="qz-hintbox" id="qz-h' + i + '"></div>' +
           '<div class="qz-fb" id="qz-f' + i + '"></div></li>';
       }).join('') + '</ol>' +
@@ -157,7 +188,8 @@
     host.querySelectorAll('.qz-hint').forEach(function (b) {
       b.onclick = function () {
         var i = +b.dataset.h;
-        host.querySelector('#qz-h' + i).innerHTML = esc(items[i].hint || '再讀一次情境那一段。');
+        host.querySelector('#qz-h' + i).innerHTML =
+          esc(items[i].hint || '再讀一次情境那一段。') + refBox(lv, items[i].ref);
         b.style.display = 'none';
       };
     });
@@ -264,6 +296,7 @@
       '  font-size:12.5px;font-weight:800;cursor:pointer;padding:2px 0}',
       '.qz-hintbox:not(:empty){margin-top:6px;background:#eef2ff;border:1px solid #c7d2fe;',
       '  border-radius:10px;padding:8px 11px;font-size:13px;line-height:1.8;color:#3730a3}',
+      '.qz-ref{margin-top:8px;padding-top:8px;border-top:1px dashed #c7d2fe;font-size:12.5px;line-height:1.85}',
       '.qz-fb:not(:empty){margin-top:8px;border-radius:11px;padding:9px 12px;font-size:13px;line-height:1.85}',
       '.qz-fb.full{background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46}',
       '.qz-fb.part{background:#fefce8;border:1px solid #fde047;color:#713f12}',
@@ -292,6 +325,7 @@
     MAX_CHARS: MAX_CHARS,
     mount: mount,
     _pick: pick,
+    _refBox: refBox,
     _grade: grade
   };
 

@@ -189,6 +189,50 @@ section('★ AI 覆核只能加分');
      '★ 完全沒接 AI 也考得成 —— 這是預設狀態，不是壞掉');
 }
 
+/* ── 提示要接回問題分析 ─────────────────────────
+   ★ 概念檢測問的，本來就是問題分析想過的 ——
+     兩邊各講各的話，學生會覺得那是兩件事、要各背一次。
+   ⚠️ 但引的是那一問的**提示**，不是正解。
+     引錯來源（例如把圈選題的答案端出來）會直接毀掉這一題。 */
+section('💡 提示回頭引問題分析');
+{
+  const lv = W.BLOCK_LEVELS['2-1-1'];
+  const box = r => W.QUIZ._refBox(lv, r);
+  ok(/問題分析第 4 題/.test(box(3)), '數字 → 指到 analysis.qs 的那一問');
+  ok(/副程式要怎麼設定/.test(box(3)), '   而且帶出那一問的題目與提示');
+  ok(/問題分析最後那一題/.test(box('write')), "'write' → 指到那一段的收尾");
+  ok(/情境解說/.test(box('scene')) && /套餐/.test(box('scene')), "'scene' → 指回情境解說");
+  ok(box(99) === '' && box(undefined) === '', '★ 指不到的就不顯示 —— 不要留一塊空的提示框');
+
+  /* ★ 引用不可以把積木答案端出來。 */
+  let leak = [];
+  ['2-1-1', '2-1-2'].forEach(id => {
+    const L2 = W.BLOCK_LEVELS[id];
+    (L2.quiz || []).forEach((q, i) => {
+      const html = W.QUIZ._refBox(L2, q.ref);
+      ['右轉 90', '重複 4 次', '移動 30 點', '移動 60 點'].forEach(k => {
+        if (html.indexOf(k) >= 0) leak.push(id + ' 第' + (i + 1) + '題 ←「' + k + '」');
+      });
+    });
+  });
+  ok(leak.length === 0, '★ 引用出來的內容沒有洩漏積木答案' +
+     (leak.length ? '（' + leak.join('、') + '）' : ''));
+
+  /* 2-1-1／2-1-2 每一題都該指得到來源；2-1-3 沒有 analysis（它走推導），所以不強求。 */
+  ['2-1-1', '2-1-2'].forEach(id => {
+    const L2 = W.BLOCK_LEVELS[id];
+    ok((L2.quiz || []).every(q => W.QUIZ._refBox(L2, q.ref) !== ''),
+       '   ' + id + ' 每一題都指得回問題分析或情境');
+  });
+  ok(!W.BLOCK_LEVELS['2-1-3'].analysis,
+     '   2-1-3 沒有 analysis（它走推導）—— 所以那一關的題目沒有 ref 是對的');
+}
+{
+  const L3 = fs.readFileSync(path.join(root, 'shared', 'quiz.js'), 'utf8');
+  ok(/回頭看問題分析/.test(L3),
+     '★ 按鈕上要講明它會給什麼 —— 只寫「提示」的話，學生不知道值不值得按');
+}
+
 section('抽題');
 {
   const lv = W.BLOCK_LEVELS['2-1-1'];
