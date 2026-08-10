@@ -67,6 +67,19 @@ section('學生寫的想法');
   is(/esc\(s\.note\)/.test(h), true, '★ 學生打的字要跳脫 —— 不然打 <script> 就出事了');
 }
 
+
+section('學生和 AI 的對話（教師端看得到）');
+/* ★ 為什麼比「他寫的想法」更值得看
+   想法是寫給老師看的、會修飾；跟 AI 講的是卡住當下的原話。
+   那才看得出他到底哪裡不懂，也看得出他會不會描述問題 ——
+   而「會不會描述問題」正是新手訓練那五關教的東西。 */
+is(/\.asks \|\| \{\}/.test(s), true, '教師端讀得到 modules.scratch.asks');
+is(/他問了 AI/.test(s), true, '卡片上看得到問了幾次');
+is(/esc\(a\.q\)/.test(s) && /esc\(a\.a\)/.test(s), true,
+   '★ 學生寫的和 AI 回的都要跳脫 —— 那是使用者輸入，直接塞進 HTML 會出事');
+is(/不是成績/.test(s.slice(Math.max(0, s.indexOf('const asks') - 500), s.indexOf('const asks'))), true,
+   '註解要講明這不是成績（免得日後有人在旁邊加上加分按鈕）');
+
 console.log(`\n通過 ${pass}／失敗 ${fail}`);
 process.exit(fail ? 1 : 0);
 

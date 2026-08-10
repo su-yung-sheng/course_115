@@ -378,10 +378,19 @@ function students() {
       const note = noteUnit
         ? String((((p.modules || {}).scratch || {}).notes || {})[noteUnit] || '')
         : '';
+      /* 他和 AI 助教說了什麼。
+         ★ 為什麼比「他寫的想法」更值得看
+           「想法」是寫給老師看的，會修飾；跟 AI 講的是卡住當下的原話。
+           那才看得出他到底哪裡不懂 —— 也看得出他會不會描述問題
+           （新手訓練那五關教的就是這件事）。
+         ⚠️ 一樣不是成績，沒有加分按鈕。 */
+      const asks = noteUnit
+        ? ((((p.modules || {}).scratch || {}).asks || {})[noteUnit] || [])
+        : [];
       return {
         sid, name: r.name || '', cls: clsOf(sid, r), no: noOf(sid, r),
         stars: GRADING.starsWithBonus(p),
-        sub, per, note,
+        sub, per, note, asks,
         // 看不出類型的附件單獨列出來，不要默默藏起來
         other: sub ? (sub.attachments || []).filter(a => CLASSROOM.guessKind(a) === 'unknown') : []
       };
@@ -483,6 +492,18 @@ function card(s) {
           <summary class="text-[11px] font-bold text-amber-800 cursor-pointer">
             ✍️ 他寫的想法（${s.note.length} 字）</summary>
           <p class="mt-1.5 text-xs text-amber-900 leading-relaxed whitespace-pre-wrap">${esc(s.note)}</p>
+        </details>` : ''}
+      ${(s.asks || []).length ? `
+        <details class="mt-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+          <summary class="text-[11px] font-bold text-indigo-800 cursor-pointer">
+            💬 他問了 AI ${s.asks.length} 次</summary>
+          <div class="mt-1.5 space-y-2">
+            ${s.asks.map(a => `
+              <div class="text-xs leading-relaxed">
+                <div class="text-indigo-900"><b>他說：</b>${esc(a.q)}</div>
+                <div class="text-indigo-600 mt-0.5"><b>AI 回：</b>${esc(a.a)}</div>
+              </div>`).join('')}
+          </div>
         </details>` : ''}
     </div>`;
 }

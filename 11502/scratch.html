@@ -46,6 +46,13 @@
        無條件擋的話，那七關會變成永遠上傳不了。 -->
 <script src="../shared/blocks.js"></script>
 <script src="../shared/derive.js"></script>
+<!-- AI 助教：問題拆解的每一問底下多一個「問問看」。
+     ★ 這一支只做前端那一半 —— 提示詞、題目、不可以說出口的內容、
+       回覆檢查全部在 GAS，學生按 F12 也改不到。
+     ★ config.js 的 AIGUIDE.KEY 留空 ＝ 整塊不出現，
+       所以就算哪天 GAS 掛了，這一頁照樣能用。 -->
+<script src="../shared/ai-guide.js"></script>
+<script src="../shared/askai.js"></script>
 <script src="content/blocks.js"></script>
   <!-- 全站主題樣式（單一來源，見 shared/theme.css）-->
   <link rel="stylesheet" href="../shared/theme.css">
@@ -332,6 +339,17 @@ function renderPre(u, lv){
        現在要做兩件真的事：圈出這一關真正的判斷、寫下自己的想法。
        寫的內容會存起來，下一節課老師拿得出來討論。 */
     DERIVE.renderAnalysis(body, lv.analysis, {
+      /* ── AI 助教（可以整個不存在）──────────────────
+         unit／student 是給 GAS 用的：它靠 unit＋qi 自己去抓題目，
+         前端傳什麼題目都不算 —— 那正是它擋得住學生改前端的原因。
+         ⚠️ config.js 的 AIGUIDE.KEY 留空時整塊不會出現，
+            所以這幾行在 AI 沒設定好的時候也不會出事。 */
+      unit: u.id,
+      student: sessionStorage.getItem('sid' + window.CONFIG.TERM) || '',
+      /* 學生和 AI 的對話存起來 —— 這是全班唯一一份
+         「他們卡在哪、怎麼描述」的紀錄，比事後問有用得多。
+         ⚠️ 和 saveNote 一樣：存失敗不擋人。 */
+      onAsked: function (q, a) { if (window.saveAsk) window.saveAsk(u.id, q, a); },
       onWrite: function (t) { if (window.saveNote) window.saveNote(u.id, t); },
       onDone:  function () {
         if (preStage === steps.length - 1) markDone(u); else { preStage++; paintGrader(); }
@@ -476,6 +494,29 @@ repaint();
         { modules: { scratch: { pre: { [unitId]: true } } } }, { merge: true });
     } catch (e) {
       console.warn('思考關卡完成紀錄沒存成功（不影響上傳）', e);
+    }
+  };
+
+  /* 學生和 AI 助教的對話。
+     ★ 為什麼值得存
+       這是全班唯一一份「他們卡在哪、怎麼描述自己卡住」的紀錄。
+       下一節課挑兩三則出來討論，比事後問「你們哪裡不懂」有用得多。
+       也是你判斷「AI 到底有沒有幫上忙」的唯一證據。
+     ★ 為什麼用陣列而不是覆蓋
+       一個學生一天可以問 3 次，只留最後一次會看不出「他有沒有進步」。
+     ⚠️ 存失敗不擋人 —— 這不是成績。 */
+  window.saveAsk = async function (unitId, q, a) {
+    if (!sid || !unitId) return;
+    try {
+      const ref = doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid);
+      const snap = await getDoc(ref);
+      const cur = (((snap.exists() && snap.data().modules) || {}).scratch || {}).asks || {};
+      const list = (cur[unitId] || []).slice(-4);   // 最多留 5 則，不要無限長
+      list.push({ q: String(q || '').slice(0, 300), a: String(a || '').slice(0, 300),
+                  t: new Date().toISOString().slice(0, 16) });
+      await setDoc(ref, { modules: { scratch: { asks: { [unitId]: list } } } }, { merge: true });
+    } catch (e) {
+      console.warn('對話沒存成功（不影響闖關）', e);
     }
   };
 

@@ -570,12 +570,18 @@
           (it.hint
             ? '<details class="dv-hint"><summary>想不出來？點開看提示</summary><div>' +
               it.hint + '</div></details>'
-            : '') + '</li>';
+            : '') +
+          /* 有 keys 的那幾問才掛 AI ——
+             keys 是「這一輪希望學生講到什麼」，沒有它，
+             AI 只知道學生寫了什麼、不知道他還缺什麼，問出來會飄。 */
+          ((it.keys || []).length ? '<div data-ai="' + i + '"></div>' : '') +
+          '</li>';
       }).join('') + '</ol>' +
       (data.write ? writeHtml(data.write) : '') +
       (opts.onDone ? '<div id="dv-go"></div>' : '');
 
     data.qs.forEach(function (it, i) { if (it.pick) wirePick(host, it.pick, i); });
+    wireAsk(host, data, opts);
     if (data.write) wireWrite(host, data.write, opts);
     refreshGo();
 
@@ -593,6 +599,29 @@
       b.style.opacity = ready ? '' : '.5';
       b.style.cursor = ready ? 'pointer' : 'not-allowed';
       if (ready) b.onclick = function () { opts.onDone(host.__wrote || ''); };
+    }
+
+    /* 把「問問看」掛上去。
+       ★ 為什麼要判 window.ASKAI 在不在
+         這一頁在測試裡是單獨載入的（沒有 askai.js、沒有 CONFIG），
+         直接呼叫會炸掉 —— 而問題拆解本身不該依賴 AI 才能用。
+         AI 是加上去的東西，不是這個功能的前提。
+       ★ 為什麼要判 enabled()
+         config.js 的 AIGUIDE.KEY 留空 ＝ 這個功能關閉。
+         關掉時整塊不出現，而不是出現一個按了會壞的按鈕。 */
+    function wireAsk(root, d, o) {
+      if (typeof window === 'undefined' || !window.ASKAI || !window.ASKAI.enabled()) return;
+      if (!o.unit) return;              // 不知道是哪一關就問不了（GAS 靠它抓題目）
+      d.qs.forEach(function (it, i) {
+        if (!(it.keys || []).length) return;
+        var box = root.querySelector('[data-ai="' + i + '"]');
+        if (!box) return;
+        window.ASKAI.mount(box, {
+          unit: o.unit, qi: i, keys: it.keys, hint: it.hint,
+          student: o.student || '',
+          onAsked: o.onAsked || null
+        });
+      });
     }
 
     function wirePick(root, p, i) {
