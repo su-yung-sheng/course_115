@@ -59,9 +59,16 @@
 
   /* ── 判分 ─────────────────────────────────────────
      回一個 Promise，永遠 resolve —— AI 出事就只用規則的結果。 */
-  function grade(items, answers, unitId, student) {
+  function grade(items, answers, unitId, student, lv) {
     var A = global.ANSWER;
-    var base = items.map(function (it, i) { return A.judge(answers[i], it); });
+    /* ★ 把「這一題看得到的提示」一起交給判定當**抄襲來源**。
+       提示裡本來就含有想聽到的說法 —— 不比對的話，
+       整個流程會變成「按提示 → 複製 → 貼上 → 通過」。 */
+    var base = items.map(function (it, i) {
+      return A.judge(answers[i], Object.assign({}, it, {
+        src: [strip(it.q), strip(it.hint), strip(refBox(lv, it.ref))]
+      }));
+    });
 
     /* 規則已經給滿分的題目不必送 —— 覆核只能加分，加不上去了。 */
     var ask = [];
@@ -103,8 +110,10 @@
           r.level = r.got.length >= want ? 'full' : 'part';
           r.score = global.ANSWER.SCORE[r.level];
           r.byAI = true;
+          /* ⚠️ 一樣不可以把「還差什麼」的名稱講出來（見 answer.js 的 whyOf）——
+             那是這一題的答案，講出來學生貼上去就過了。 */
           r.why = '你講到了：' + r.got.join('、') + '。' +
-                  (r.miss.length ? '還差：' + r.miss.join('、') + '。' : '這一題想通了。');
+                  (r.miss.length ? '還有 ' + r.miss.length + ' 個重點沒講到。' : '這一題想通了。');
         });
         return { results: base, ai: n };
       })
@@ -217,7 +226,7 @@
       var answers = [];
       host.querySelectorAll('.qz-ta').forEach(function (t) { answers.push(t.value || ''); });
 
-      grade(items, answers, opts.unit, opts.student).then(function (r) {
+      grade(items, answers, opts.unit, opts.student, lv).then(function (r) {
         host.querySelectorAll('.qz-ta').forEach(function (t) { t.disabled = true; });
         host.querySelectorAll('.qz-hint').forEach(function (b) { b.style.display = 'none'; });
         show(host, items, r, opts);

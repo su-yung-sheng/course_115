@@ -326,14 +326,27 @@ const cb = fs.readFileSync(path.join(root, 'shared', 'combo.js'), 'utf8');
 new Function('window', cb)(W);
 const C = W.COMBO;
 ok(C.STAGES.length === 3, '三關：組套餐 → 換一格 → 打開主餐');
-ok(C.MAIN.every(m => (m.parts || []).length >= 3),
-   '★ 主餐都能再拆開 —— 這一層就是「副程式裡可以再呼叫副程式」');
-ok(C.SIDE.every(s => !s.parts) && C.DRINK.every(d => !d.parts),
-   '   配餐和飲料沒有 parts（不對稱是刻意的：有些模組裡面還有模組）');
+ok(C.MAIN.every(m => C.PART_KEYS.every(k => m.inner && m.inner[k])),
+   '★ 每個主餐都由四個零件插槽組成 —— 這一層就是「副程式裡可以再呼叫副程式」');
+ok(C.PART_KEYS.every(k => (C.PARTS[k].items || []).length >= 3),
+   '★ 每個插槽至少三個選項 —— 換不了東西的話，第 3 關就只是看圖');
+ok(C.SIDE.every(s => !s.inner) && C.DRINK.every(d => !d.inner),
+   '   配餐和飲料沒有內層（不對稱是刻意的：有些模組裡面還有模組）');
+{
+  /* ★ 三種主餐要共用一些零件 —— 那正是「重複的部分可以共用」最直接的樣子。 */
+  const used = {};
+  C.MAIN.forEach(m => C.PART_KEYS.forEach(k => {
+    const key = k + ':' + m.inner[k];
+    used[key] = (used[key] || 0) + 1;
+  }));
+  ok(Object.keys(used).some(k => used[k] > 1),
+     '★ 不同主餐共用同一種零件（' +
+     Object.keys(used).filter(k => used[k] > 1).join('、') + '）');
+}
+ok(/換掉裡面/.test(C.STAGES[2].ask),
+   '★ 第 3 關要「換掉裡面一個零件」，不是只打開來看 —— 看圖說故事學不到東西');
 ok(C.MAIN.length >= 3 && C.SIDE.length >= 3 && C.DRINK.length >= 3,
    '每一格至少三種選擇（組得出三份不一樣的套餐）');
-ok(C.MAIN.filter(m => m.parts.some(p => p.name === '麵包')).length >= 2,
-   '★ 不同主餐共用同一種零件 —— 那正是「重複的部分可以共用」');
 /* ⚠️ 用「有沒有真的呼叫」判，不要用關鍵字掃全檔 ——
    註解裡寫「不碰 Firestore」也會被掃到，那是把說明當成違規。 */
 ok(!/fetch\(|setDoc\(|getDoc\(|AIGUIDE\.|GAS_URL|ASKAI\./.test(cb),

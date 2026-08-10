@@ -233,6 +233,10 @@
     '.dv-dot.now{background:#4f46e5}.dv-dot.ok{background:#10b981}',
     '.dv-num{font-size:11.5px;font-weight:900;color:#94a3b8;margin-bottom:4px}',
     '.dv-next{margin-top:12px}',
+    '.dv-say textarea{width:100%;border:2px solid #e2e8f0;border-radius:12px;padding:9px 11px;',
+    '  font-family:inherit;font-size:14px;line-height:1.8;resize:vertical;margin-top:8px}',
+    '.dv-say textarea:focus{outline:0;border-color:#6366f1}',
+    '.dv-btn:disabled{background:#cbd5e1;cursor:not-allowed;opacity:.9}',
     '.dv-intro{background:#eef2ff;border:1px solid #c7d2fe;border-radius:14px;',
     '  padding:12px 14px;font-size:14px;line-height:1.9;margin-bottom:14px}',
     '.dv-step{background:#fff;border:2px solid #e2e8f0;border-radius:14px;padding:14px 16px;margin-bottom:10px}',
@@ -579,6 +583,7 @@
     var qs = data.qs;
     var at = 0;                 // 現在看到第幾問
     var passed = {};            // 這一問過了沒
+    var said = {};              // 沒有圈選題的那幾問，學生寫了什麼
 
     host.innerHTML =
       (data.intro ? '<div class="dv-intro">' + data.intro + '</div>' : '') +
@@ -598,15 +603,58 @@
       box.innerHTML =
         '<div class="dv-num">第 ' + (at + 1) + ' 題 / 共 ' + qs.length + '</div>' +
         '<div class="dv-qt">' + it.q + '</div>' +
-        (it.pick ? pickHtml(it.pick, at) : '') +
+        (it.pick ? pickHtml(it.pick, at) : sayHtml(at)) +
         (it.hint ? '<details class="dv-hint"><summary>想不出來？點開看提示</summary><div>' +
                    it.hint + '</div></details>' : '') +
         ((it.keys || []).length ? '<div data-ai="' + at + '"></div>' : '') +
         '<div class="dv-next"></div>';
 
       if (it.pick) wirePick(host, it.pick, at);
+      else wireSay(host, it, at);
       wireAsk(host, it, at, opts);
       nextBar();
+    }
+
+    /* ── 沒有圈選題的那幾問：要寫一句 ─────────────────
+       ★ 為什麼不能只放一顆「下一題」
+         那樣學生一路按下去，五問完全沒看 —— 這一步就沒有意義了。
+         而課本的五個問題本來就是要「想」的。
+
+       ★ 但這裡**不判對錯**，寫了就能往下。
+         這一段是「想一想」，不是關卡（真正的門檻在概念檢測）。
+         判對錯的話學生會開始猜系統要什麼字，那正好毀掉這一步。
+
+       ⇒ 折衷：一定要動手寫，但寫什麼都算數；
+         有 keys 的話再給一句正向回饋（「你講到了…」），沒講到也不擋。 */
+    var SAY_MIN = 6;
+    function sayHtml(i) {
+      return '<div class="dv-say">' +
+        '<textarea id="dv-say' + i + '" rows="2" ' +
+        'placeholder="先寫下你現在的想法（至少 ' + SAY_MIN + ' 個字，寫不完整也沒關係）"></textarea>' +
+        '<div class="dv-fb" id="dv-sayfb' + i + '" style="display:none"></div></div>';
+    }
+    function wireSay(root, it, i) {
+      var ta = root.querySelector('#dv-say' + i);
+      if (!ta) return;
+      if (said[i]) { ta.value = said[i]; }
+      ta.addEventListener('input', function () {
+        var okLen = ta.value.trim().length >= SAY_MIN;
+        said[i] = okLen ? ta.value.trim() : '';
+        nextBar();
+      });
+      ta.addEventListener('blur', function () {
+        var fb = root.querySelector('#dv-sayfb' + i);
+        if (!fb || !said[i] || !(it.keys || []).length) return;
+        /* ★ 只給正向回饋，不給否定的。
+           「你還沒講到 X」在這裡沒有用 —— 他還沒開始學，
+           而且那句話會直接把答案講出去。 */
+        var k = (typeof window !== 'undefined' && window.AIGUIDE)
+          ? window.AIGUIDE.hitKeys(said[i], it.keys) : { hit: [] };
+        if (!k.hit.length) { fb.style.display = 'none'; return; }
+        fb.style.display = '';
+        fb.className = 'dv-fb good';
+        fb.innerHTML = '✓ 你講到了：' + esc(k.hit.join('、'));
+      });
     }
 
     function prog() {
@@ -623,9 +671,15 @@
       if (!bar) return;
       var it = qs[at];
       if (it.pick && !passed[at]) { bar.innerHTML = ''; return; }
-      bar.innerHTML = '<button class="dv-btn" style="width:100%;padding:10px" id="dv-nx">' +
-        (at === qs.length - 1 ? '五題都想過了 →' : '下一題 →') + '</button>';
+      /* ⚠️ 沒有寫東西就不給「下一題」——
+         這是「不能一路按下去」的實作，也是這一步唯一的門檻。 */
+      var ready = it.pick ? passed[at] : !!said[at];
+      bar.innerHTML = '<button class="dv-btn" style="width:100%;padding:10px" id="dv-nx"' +
+        (ready ? '' : ' disabled') + '>' +
+        (ready ? (at === qs.length - 1 ? '五題都想過了 →' : '下一題 →')
+               : '先寫下你的想法（至少 ' + SAY_MIN + ' 個字）') + '</button>';
       bar.querySelector('#dv-nx').onclick = function () {
+        if (bar.querySelector('#dv-nx').disabled) return;
         passed[at] = true; at++; draw();
         if (host.scrollIntoView) host.scrollIntoView({ block: 'start', behavior: 'smooth' });
       };
@@ -744,8 +798,12 @@
   function judgeWrite(text, w) {
     var t = String(text || '').trim();
     if (typeof window !== 'undefined' && window.ANSWER && (w.keys || []).length) {
-      var r = window.ANSWER.judge(t, { need: w.keys, full: 1, min: w.min || 12 });
-      return r;
+      /* ⚠️ 題目本身也要當抄襲來源 —— 把題目倒著抄一遍不算「自己的話」。
+         課本的說法（sample）寫完才會出現，所以不必比對。 */
+      return window.ANSWER.judge(t, {
+        need: w.keys, full: 1, min: w.min || 12,
+        src: [String(w.q || '').replace(/<[^>]*>/g, '')]
+      });
     }
     return t.length >= (w.min || 12)
       ? { level: 'full', why: '你寫的：' + t }

@@ -190,5 +190,69 @@ ok(!!l5.analysis.write, '也有先寫再對照');
   global.window = undefined;
 }
 
+/* ── ★ 抄提示不算「自己的話」 ─────────────────────
+   提示（以及「回頭看問題分析」引出來的那一段）裡面，本來就含有
+   這一題想聽到的說法 —— 不擋的話整個流程會變成
+   「按提示 → 複製 → 貼上 → 通過」，這一題就沒有意義了。
+   ⚠️ 但門檻要夠寬：學生用到題目裡的詞是正常的
+      （「副程式」「正方形」本來就只有那個講法）。 */
+{
+  const w4 = { window: {} };
+  ['ai-guide.js', 'answer.js'].forEach(f =>
+    new Function('window', fs.readFileSync(path.join(__dirname, '..', f), 'utf8'))(w4.window));
+  const A = w4.window.ANSWER;
+  const HINT = '六個正方形，「畫一個正方形」那一段做了六次 —— 一直重複的那一段就是模組。';
+  const SPEC = {
+    need: [{ name: '會重複做', any: ['重複', '一直', '很多次', '六次'] }],
+    full: 1, min: 8, src: [HINT]
+  };
+  ok(A.judge(HINT, SPEC).level === 'none', '★ 整句抄提示 → 不算');
+  ok(A.judge('嗯我覺得' + HINT + '就這樣', SPEC).level === 'none',
+     '★ 加了頭尾、中間還是原文 → 一樣不算');
+  ok(/用你自己的話/.test(A.judge(HINT, SPEC).why), '   而且要說清楚為什麼，不是只說「錯」');
+  /* ↓ 這幾句都用到了提示裡的詞。用到不等於抄 —— 一句都不可以誤判。 */
+  ok(A.judge('因為那一段會做六次，包起來比較好用', SPEC).level === 'full',
+     '★ 用到「六次」但不是抄 → 要算過');
+  ok(A.judge('同樣的積木一直重複拼很麻煩', SPEC).level === 'full',
+     '★ 用到「一直重複」但不是抄 → 要算過');
+  ok(A._COPY_RUN >= 12, '★ 抄題門檻不可以調低到會誤傷正常說法');
+  ok(A._longestRun('完全不一樣的一句話', HINT) < 6, '沒重疊時算出來就是很短');
+}
+
+/* ── ★ 回饋不可以把答案講出來 ───────────────────── */
+{
+  const w5 = { window: {} };
+  ['ai-guide.js', 'answer.js'].forEach(f =>
+    new Function('window', fs.readFileSync(path.join(__dirname, '..', f), 'utf8'))(w5.window));
+  const A = w5.window.ANSWER;
+  const SPEC = {
+    need: [
+      { name: '不用重複寫', any: ['不用', '重複'] },
+      { name: '改起來比較快', any: ['改', '維護'] }
+    ]
+  };
+  const r = A.judge('因為不用一直重複寫同樣的積木', SPEC);
+  ok(r.level === 'part', '講到一個概念 → 一半');
+  ok(!/改起來比較快/.test(r.why),
+     '★ 回饋不可以寫出「還差：改起來比較快」—— 那六個字就是答案，貼上去就過了');
+  ok(/還有 1 個重點/.test(r.why), '   只講「還有幾個沒講到」');
+  ok(/不用重複寫/.test(r.why), '   但「你已經講到的」可以講 —— 那是他自己說的');
+  const r0 = A.judge('這題我完全沒有想法欸怎麼辦才好', SPEC);
+  ok(!/不用重複寫|改起來比較快/.test(r0.why), '★ 完全沒講到時也不可以順便把答案說出來');
+}
+
+/* ── 問題分析：不能一路按下一步 ───────────────────── */
+{
+  const src = fs.readFileSync(path.join(__dirname, '..', 'derive.js'), 'utf8');
+  ok(/SAY_MIN/.test(src) && /先寫下你的想法/.test(src),
+     '★ 沒有圈選題的那幾問要先寫一句才給「下一題」——' +
+     '不然學生一路按下去，五問完全沒看');
+  ok(/不判對錯|寫了就能往下/.test(src),
+     '   但**不判對錯** —— 判的話學生會開始猜系統要什麼字，那正好毀掉這一步');
+  ok(/只給正向回饋/.test(src),
+     '★ 寫完只給「你講到了…」，不給「你還沒講到 X」——' +
+     '後者會直接把答案講出去');
+}
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

@@ -28,31 +28,47 @@
   var VERSION = '2026-08-10-combo';
 
   /* ── 材料 ─────────────────────────────────────────
-     ★ 主餐要能再拆開，所以它有 parts；配餐和飲料沒有。
-       這個不對稱是刻意的 —— 學生要看到「有些模組裡面還有模組」。 */
+     ★ 主餐自己也是拼出來的，所以它有四個**零件插槽**；配餐和飲料沒有。
+       這個不對稱是刻意的 —— 學生要看到「有些模組裡面還有模組」。
+       第 3 關會讓他打開主餐、換掉裡面的一個零件，
+       那就是「副程式裡面再呼叫另一個副程式」的樣子。 */
+  var PARTS = {
+    bun:   { name: '麵包', items: [
+      { id: 'plain',  name: '原味麵包', icon: '🥯' },
+      { id: 'sesame', name: '芝麻麵包', icon: '🍞' },
+      { id: 'muffin', name: '滿福堡',   icon: '🥞' }
+    ] },
+    patty: { name: '主料', items: [
+      { id: 'beef',    name: '牛肉排',  icon: '🥩' },
+      { id: 'chicken', name: '炸雞腿',  icon: '🍗' },
+      { id: 'fish',    name: '魚排',    icon: '🐟' },
+      { id: 'veggie',  name: '素肉排',  icon: '🫘' }
+    ] },
+    veg:   { name: '蔬菜', items: [
+      { id: 'lettuce', name: '生菜',   icon: '🥬' },
+      { id: 'tomato',  name: '蕃茄',   icon: '🍅' },
+      { id: 'onion',   name: '洋蔥',   icon: '🧅' },
+      { id: 'none',    name: '不加菜', icon: '🚫' }
+    ] },
+    sauce: { name: '醬料', items: [
+      { id: 'ketchup', name: '蕃茄醬',   icon: '🍅' },
+      { id: 'mayo',    name: '美乃滋',   icon: '🥄' },
+      { id: 'cheese',  name: '起司醬',   icon: '🧀' }
+    ] }
+  };
+  var PART_KEYS = ['bun', 'patty', 'veg', 'sauce'];
+
+  /* 主餐＝一組預設的零件。★ 三種主餐共用同一批零件 ——
+     那正是「重複的部分可以共用」最直接的樣子。 */
   var MAIN = [
-    { id: 'burger', name: '牛肉漢堡', icon: '🍔',
-      parts: [
-        { name: '麵包', icon: '🥯' },
-        { name: '牛肉排', icon: '🥩' },
-        { name: '生菜', icon: '🥬' },
-        { name: '醬', icon: '🧴' }
-      ] },
-    { id: 'chicken', name: '雞腿堡', icon: '🍗',
-      parts: [
-        { name: '麵包', icon: '🥯' },
-        { name: '炸雞腿', icon: '🍗' },
-        { name: '生菜', icon: '🥬' },
-        { name: '醬', icon: '🧴' }
-      ] },
-    { id: 'fish', name: '鱈魚堡', icon: '🐟',
-      parts: [
-        { name: '麵包', icon: '🥯' },
-        { name: '魚排', icon: '🐟' },
-        { name: '起司', icon: '🧀' },
-        { name: '醬', icon: '🧴' }
-      ] }
+    { id: 'burger',  name: '牛肉漢堡', icon: '🍔',
+      inner: { bun: 'plain',  patty: 'beef',    veg: 'lettuce', sauce: 'ketchup' } },
+    { id: 'chicken', name: '雞腿堡',   icon: '🍗',
+      inner: { bun: 'sesame', patty: 'chicken', veg: 'lettuce', sauce: 'mayo' } },
+    { id: 'fish',    name: '鱈魚堡',   icon: '🐟',
+      inner: { bun: 'plain',  patty: 'fish',    veg: 'tomato',  sauce: 'cheese' } }
   ];
+
   var SIDE = [
     { id: 'fries', name: '薯條', icon: '🍟' },
     { id: 'nugget', name: '雞塊', icon: '🍤' },
@@ -102,9 +118,10 @@
       ask: '客人臨時改單：<b>只換飲料</b>，主餐和配餐不要動。',
       done: '你只動了一格，其他兩格完全沒碰。<br>' +
             '<b>這就是模組化最實際的好處：改一個地方，其他都不用動。</b>' },
-    { title: '③ 打開主餐看看',
-      ask: '點一下托盤上的主餐，看看它裡面是什麼。',
-      done: '主餐自己也是拼出來的：麵包 ＋ 肉 ＋ 配料 ＋ 醬。<br>' +
+    { title: '③ 打開主餐，換掉裡面一樣東西',
+      ask: '點一下托盤上的主餐把它打開，然後<b>換掉裡面任何一個零件</b>。',
+      done: '主餐自己也是拼出來的：麵包 ＋ 主料 ＋ 蔬菜 ＋ 醬料，' +
+            '而且你只換了其中一格，其他三格沒動。<br>' +
             '<b>模組裡面還可以有模組</b> —— 等一下你會看到，' +
             '副程式裡面也可以再呼叫另一個副程式。' }
   ];
@@ -142,6 +159,8 @@
     var pick = { main: null, side: null, drink: null };
     var swapWant = null;      // 第 2 關要換成哪一種飲料
     var opened = false;
+    var inner = {};           // 第 3 關：主餐裡面現在裝了什麼
+    var innerBase = '';       // 打開時的原樣（用來判斷「換過了沒」）
 
     draw();
 
@@ -250,20 +269,45 @@
 
     function openMain() {
       if (!pick.main) { note('bad', '先選一個主餐，才有東西可以打開。'); return; }
-      opened = true;
+      if (!opened) {
+        opened = true;
+        inner = {};
+        PART_KEYS.forEach(function (k) { inner[k] = pick.main.inner[k]; });
+        innerBase = JSON.stringify(inner);
+      }
       showParts();
-      finish();
+    }
+
+    /** 換掉主餐裡面的一個零件 */
+    function swapPart(key, id) {
+      if (!opened) return;
+      inner[key] = id;
+      showParts();
+      /* 只要和原本不一樣就算完成 —— 換哪一格都可以。 */
+      if (JSON.stringify(inner) !== innerBase) finish();
     }
 
     function showParts() {
       var m = pick.main;
       host.querySelector('#cb-open').innerHTML =
         '<div class="cb-open">' +
-          '<div class="cb-open-h">' + m.icon + ' ' + m.name + ' 裡面是：</div>' +
-          '<div class="cb-parts">' + m.parts.map(function (p) {
-            return '<span class="cb-part">' + p.icon + ' ' + p.name + '</span>';
+          '<div class="cb-open-h">' + m.icon + ' ' + m.name + ' 打開來看：</div>' +
+          '<div class="cb-parts">' + PART_KEYS.map(function (k) {
+            var it = find(PARTS[k].items, inner[k]);
+            return '<span class="cb-part">' + it.icon + ' ' + it.name + '</span>';
           }).join('<span class="cb-plus">＋</span>') + '</div>' +
+          '<div class="cb-inner">' + PART_KEYS.map(function (k) {
+            return '<div class="cb-row"><div class="cb-row-h">' + PARTS[k].name + '</div>' +
+              '<div class="cb-row-b">' + PARTS[k].items.map(function (it) {
+                return '<button class="cb-chip small' + (inner[k] === it.id ? ' on' : '') +
+                  '" data-pk="' + k + '" data-pi="' + it.id + '">' +
+                  it.icon + ' ' + it.name + '</button>';
+              }).join('') + '</div></div>';
+          }).join('') + '</div>' +
         '</div>';
+      host.querySelectorAll('[data-pk]').forEach(function (b) {
+        b.onclick = function () { swapPart(b.dataset.pk, b.dataset.pi); };
+      });
     }
 
     function note(kind, html) {
@@ -331,6 +375,8 @@
       '.cb-log-i{font-size:13px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;',
       '  padding:5px 10px;margin-bottom:4px}',
       '.cb-open{margin-top:10px;background:#eff6ff;border:2px solid #bfdbfe;border-radius:13px;padding:11px 13px}',
+      '.cb-inner{margin-top:10px;padding-top:9px;border-top:1px dashed #bfdbfe}',
+      '.cb-chip.small{padding:4px 9px;font-size:12px}',
       '.cb-open-h{font-size:13.5px;font-weight:900;color:#1e3a8a;margin-bottom:6px}',
       '.cb-parts{display:flex;flex-wrap:wrap;align-items:center;gap:4px}',
       '.cb-part{background:#fff;border:1px solid #bfdbfe;border-radius:9px;padding:4px 9px;font-size:13px;font-weight:700}',
@@ -350,6 +396,7 @@
     VERSION: VERSION,
     STAGES: STAGES,
     MAIN: MAIN, SIDE: SIDE, DRINK: DRINK,
+    PARTS: PARTS, PART_KEYS: PART_KEYS, ORDERS: ORDERS,
     mount: mount
   };
 

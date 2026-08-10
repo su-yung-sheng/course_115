@@ -42,6 +42,43 @@
       .replace(FILLER, '').length;
   }
 
+  /* ── 抄來的不算 ─────────────────────────────────
+     ★ 為什麼一定要有
+       提示（以及「回頭看問題分析」引出來的那一段）裡面，本來就含有
+       這一題想聽到的說法 —— 學生把它複製貼上，關鍵字當然全中。
+       那等於「看提示 → 貼上 → 通過」，這一題就沒有意義了。
+
+     ⚠️ 但也不能太敏感。學生用到題目裡的詞是正常的
+       （「副程式」「正方形」本來就只有那個講法），
+       所以看的是**連續 COPY_RUN 個字一模一樣**，不是「有沒有用到那些字」。
+       這個門檻和 shared/warmup.js 的抄題判定是同一個數字，理由也一樣。 */
+  var COPY_RUN = 12;
+
+  /** a 和 b 最長有幾個字連續相同 */
+  function longestRun(a, b) {
+    a = String(a || '').replace(/[\s，。、？！?!.,;:「」『』（）()~～\-—<>]/g, '');
+    b = String(b || '').replace(/<[^>]*>/g, '')
+                       .replace(/[\s，。、？！?!.,;:「」『』（）()~～\-—<>]/g, '');
+    if (!a || !b) return 0;
+    var best = 0, prev = [], cur;
+    for (var i = 0; i < a.length; i++) {
+      cur = [];
+      for (var j = 0; j < b.length; j++) {
+        cur[j] = a[i] === b[j] ? (i && j ? (prev[j - 1] || 0) : 0) + 1 : 0;
+        if (cur[j] > best) best = cur[j];
+      }
+      prev = cur;
+    }
+    return best;
+  }
+
+  /** 這段話是不是從提示／題目抄來的 */
+  function copied(text, sources) {
+    return (sources || []).some(function (src) {
+      return longestRun(text, src) >= COPY_RUN;
+    });
+  }
+
   /** 關鍵概念比對。★ 一律走 AIGUIDE.hitKeys，不在這裡另寫一套。 */
   function hit(text, groups) {
     if (global.AIGUIDE && global.AIGUIDE.hitKeys) {
@@ -76,6 +113,15 @@
 
     if (!t) {
       return out('none', [], need.map(nameOf), [], '還沒寫。用自己的話寫幾句，寫不完整也沒關係。');
+    }
+
+    /* ★ 抄提示的不算。
+       ⚠️ 判在關鍵字比對**之前** —— 抄來的當然全中，
+          先比對的話這一條永遠不會生效。 */
+    if (copied(t, spec.src)) {
+      return out('none', [], need.map(nameOf), [],
+                 '這一段和提示幾乎一樣。**用你自己的話再說一次** —— ' +
+                 '講得沒那麼漂亮沒關係，重點是那是你想的。');
     }
 
     /* ★ 先比對概念，再看長度 —— 順序不可以反過來。
@@ -116,7 +162,17 @@
 
   function nameOf(g) { return g.name || [].concat(g.any || g)[0]; }
 
+  /* ── 回饋要怎麼寫 ─────────────────────────────────
+     ★ **「還差什麼」不可以把名稱講出來。**
+       need 的 name 就是這一題的答案（例如「不用重複寫」）——
+       回饋裡寫「還差：不用重複寫」，學生只要把那六個字貼進去就過了。
+       那等於系統自己把答案送給他，而且他還學不到東西。
+       ⇒ 只講「還有幾個重點沒講到」，方向靠提示按鈕給。
+
+     ★ 反過來，「你講到了什麼」可以講 —— 那是**他自己說出來的**，
+       講出來是確認，不是洩題。 */
   function whyOf(level, k, warn) {
+    var left = k.miss.length;
     if (level === 'full') {
       return warn.length
         ? '重點都講到了。不過「' + warn[0].name + '」那個想法要再想一下 ——' +
@@ -124,16 +180,17 @@
         : '你講到了：' + k.hit.join('、') + '。這一題想通了。';
     }
     if (level === 'part') {
-      return '你講到了：' + k.hit.join('、') + '。還差：' + k.miss.join('、') + '。' +
+      return '你講到了：' + k.hit.join('、') + '。' +
+             '還有 ' + left + ' 個重點沒講到 —— 卡住的話按「提示」。' +
              (warn.length && warn[0].why ? '（另外，' + warn[0].why + '）' : '');
     }
-    /* ★ 完全沒講到、但踩到了常見誤解 —— 這是最該把話講明白的時候。
-       只說「沒碰到重點」的話，他重寫一次還是會寫一樣的東西。 */
+    /* 完全沒講到、但踩到了常見誤解 —— 這是最該把話講明白的時候。
+       誤解可以指名道姓（那是他寫的），但不要順便把正解說出來。 */
     if (warn.length) {
       return '你的想法是「' + warn[0].name + '」。' + (warn[0].why || '') +
-             '再想想「' + (k.miss[0] || '') + '」這個方向。';
+             '換一個方向想想看，卡住的話按「提示」。';
     }
-    return '這幾句還沒碰到重點。回去看情境那一段，想想「' + (k.miss[0] || '') + '」。';
+    return '這幾句還沒碰到重點。回去看情境那一段，或按「提示」。';
   }
 
   function out(level, got, miss, warn, why) {
@@ -160,7 +217,10 @@
     SCORE: SCORE,
     _len: len,
     _meat: meat,
-    _hit: hit
+    _hit: hit,
+    _copied: copied,
+    _longestRun: longestRun,
+    _COPY_RUN: COPY_RUN
   };
 
 })(typeof window !== 'undefined' ? window : this);
