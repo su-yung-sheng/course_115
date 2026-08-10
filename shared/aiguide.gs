@@ -93,9 +93,27 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-cooldown';
+var VERSION = '2026-08-07-provider';
 
 var DEFAULTS = {
+  /* 用哪一家：'gemini'（免費層）或 'claude'（付費）。
+     ★ 預設留 gemini —— 沒設定 CLAUDE_KEY 的人照樣能用，
+       而且「預設不會花到錢」比「預設比較好用」重要。
+     切換只要改指令碼屬性 PROVIDER，不必動程式、不必重新部署。 */
+  PROVIDER: 'gemini',
+
+  /* Claude（付費）用的模型。
+     ⚠️ 不要照抄這個預設值就上線 —— 模型會改名會下架。
+        在編輯器執行 listClaudeModels 看這把金鑰現在能用什麼。 */
+  CLAUDE_MODEL: 'claude-haiku-4-5-20251001',
+  /* 一天最多用掉幾個 token（輸入＋輸出）。
+     ★ 付費沒有硬上限 —— 這一格就是你的上限。
+       它不是為了公平，是為了「程式寫錯時不會把一個月的預算燒在一個晚上」。
+     ★ 300000 大概是什麼概念：一次問答約 800～1000 tokens，
+       所以大約 300～375 次，夠一天四節課還有餘裕。
+     設 0 ＝ 不擋（⚠️ 不建議）。 */
+  DAILY_TOKEN_CAP: 300000,
+
   MODEL: 'gemini-3.1-flash-lite',
   // 題目從這裡抓 —— 和學生看到的是同一份，不會有兩套題目
   CONTENT_URL: 'https://su-yung-sheng.github.io/course_115/11502/content/blocks.js',
@@ -287,7 +305,15 @@ function handle_(e) {
 
     if (p.action === 'ping') {
       return json_({ ok: true, version: VERSION,
-                     model: prop_('MODEL', DEFAULTS.MODEL),
+                     /* 哪一家、哪個模型、今天燒了多少 token。
+                        ★ 為什麼 ping 就要講：付費版沒有人幫你擋，
+                          帳單月底才看得到 —— 唯一的即時回饋就是這裡。 */
+                     provider: provider_(),
+                     model: provider_() === 'claude'
+                              ? prop_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
+                              : prop_('MODEL', DEFAULTS.MODEL),
+                     tokens: tokensToday_(),
+                     tokenCap: num_('DAILY_TOKEN_CAP', DEFAULTS.DAILY_TOKEN_CAP),
                      units: Object.keys(levels_()).length, used: usedToday_(),
                      /* 測試台自己用的那個學號用了幾次、上限多少。
                         ★ 為什麼要回報：不然老師是撞到牆才知道有牆，
@@ -419,7 +445,7 @@ function handle_(e) {
        ⚠️ 一樣只有帶對 DEBUG_KEY 才行，否則學生可以指定一個沒有限制的模型。 */
     var model = debug && p.model ? String(p.model).slice(0, 60) : '';
 
-    var reply = askGemini_(buildPrompt_(item, answer), model);
+    var reply = askAI_(buildPrompt_(item, answer), model);
     var v = checkReply_(reply, item.forbid);
 
     bump_(sid);
@@ -846,6 +872,206 @@ function buildPrompt_(item, answer) {
   ].join('\n');
 }
 
+/* =====================================================================
+   要用哪一家：askAI_ 是唯一的入口
+   ---------------------------------------------------------------------
+   ★ 為什麼兩家並存，而不是換掉
+     免費（Gemini）那一整套是「一天 20 次」逼出來的：三把金鑰輪替、
+     每分鐘節流、429 分每天／每分鐘、退到備援模型…
+     付費之後那些看起來像多餘，但只要哪天付費出問題、或者換人接手
+     不想付錢，切一個屬性就回得去。
+     刪掉的話，要回去就得翻 git 歷史 —— 而那通常發生在上課前十分鐘。
+
+   ★ 提示詞、回覆檢查、配額、冷卻**兩家共用**
+     只有「怎麼把字送出去、怎麼把字拿回來」不一樣。
+     分岔點放得越淺，兩邊行為不一致的機會越小。
+
+   ⚠️ 換供應商一定要重跑那 10 種刁難（shared/ai-lab.html）。
+      「叫得動」和「守得住」是兩件事 —— 2026-08-07 換模型時已經吃過一次。
+   ===================================================================== */
+function provider_() {
+  var p = String(prop_('PROVIDER', DEFAULTS.PROVIDER)).trim().toLowerCase();
+  return p === 'claude' ? 'claude' : 'gemini';
+}
+
+function askAI_(prompt, modelOverride) {
+  return provider_() === 'claude'
+    ? askClaude_(prompt, modelOverride)
+    : askGemini_(prompt, modelOverride);
+}
+
+/* ── Claude（付費）────────────────────────────────
+   ★ 和 Gemini 最大的不同：**沒有免費層的硬上限**。
+     所以「額度」不再是 Google 給的數字，而是你自己設的 ——
+     見 DAILY_TOKEN_CAP 與 bumpTokens_()。
+     ⚠️ 沒有上限 ＝ 出錯時會一直花錢。這裡的上限不是為了公平，
+        是為了「程式寫錯時不會把一個月的預算燒在一個晚上」。
+
+   ★ 金鑰一樣只在指令碼屬性
+     CLAUDE_KEY。不要進 config.js，那個 repo 是公開的。 */
+function askClaude_(prompt, modelOverride) {
+  var key = String(prop_('CLAUDE_KEY', '')).trim();
+  if (!key) throw new Error('PROVIDER 設成 claude，但沒有設定 CLAUDE_KEY（專案設定 → 指令碼屬性）。');
+
+  /* 先看今天的用量 —— 超過就不要送出去。
+     ⚠️ 檢查放在送出「之前」：送出去之後才發現超過，錢已經花了。 */
+  var cap = num_('DAILY_TOKEN_CAP', DEFAULTS.DAILY_TOKEN_CAP);
+  var used = tokensToday_();
+  if (cap > 0 && used >= cap) {
+    var e0 = new Error('今天的 AI 額度用完了（' + used + ' / ' + cap + ' tokens）。');
+    e0.busy = true;
+    e0.retryAfter = 0;
+    e0.diag = '這是我們自己設的上限（指令碼屬性 DAILY_TOKEN_CAP），不是 Anthropic 擋的。' +
+              '要放寬就調高它 —— 但先看一眼 costReport 花了多少錢。';
+    throw e0;
+  }
+
+  var model = modelOverride || prop_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL);
+  var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'post',
+    contentType: 'application/json',
+    muteHttpExceptions: true,
+    headers: {
+      'x-api-key': key,
+      /* ⚠️ 這個標頭是必填的。少了它會回 400，而錯誤訊息不會直接說
+         「你少了 anthropic-version」—— 會像是請求格式有問題。 */
+      'anthropic-version': '2023-06-01'
+    },
+    payload: JSON.stringify({
+      model: model,
+      /* 我們只要一句 60 字的問句。給 300 是留餘裕，
+         ⚠️ 但不要設太小 —— 砍在句子中間比太長更糟。 */
+      max_tokens: 300,
+      temperature: 0.4,
+      /* ★ 整段提示詞照原樣送成一則使用者訊息，不拆成 system。
+         拆開通常對 Claude 更好，但那會讓兩家的提示詞變成兩份 ——
+         而我們測過的那 10 種刁難是對「這一份文字」測的。
+         要拆的話，拆完必須重測。 */
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  var code = res.getResponseCode();
+  var body = res.getContentText();
+
+  /* 錯誤分類：和 Gemini 那邊講一樣的話，前端才不必分兩套。 */
+  if (code === 401 || code === 403) {
+    throw new Error('Claude 金鑰不能用（HTTP ' + code + '）—— 金鑰打錯、被停用，或這個帳戶沒有額度。');
+  }
+  if (code === 429 || code === 529) {
+    var e1 = new Error(code === 429
+      ? 'AI 現在很忙（每分鐘上限），等一下再問 —— 先自己想想看。'
+      : 'AI 現在人太多，等一下再問 —— 先自己想想看。');
+    e1.busy = true;
+    e1.retryAfter = 20;
+    e1.diag = 'Claude 回 ' + code + '：' + body.slice(0, 200);
+    throw e1;
+  }
+  if (code >= 500) {
+    var e2 = new Error('AI 那邊出了點問題，等一下再問。');
+    e2.busy = true; e2.retryAfter = 15;
+    e2.diag = 'Claude 回 ' + code + '：' + body.slice(0, 200);
+    throw e2;
+  }
+  if (code !== 200) {
+    var msg = (body.match(/"message"\s*:\s*"([^"]+)"/) || [])[1] || body.slice(0, 200);
+    throw new Error('Claude 回了 HTTP ' + code + '：' + msg);
+  }
+
+  var j = JSON.parse(body);
+
+  /* 用量記下來 —— 付費版沒有人幫你擋，帳單是唯一的回饋，
+     而帳單要到月底才看得到。 */
+  var u = j.usage || {};
+  bumpTokens_(num2_(u.input_tokens), num2_(u.output_tokens));
+
+  var text = (j.content || [])
+    .filter(function (c) { return c.type === 'text'; })
+    .map(function (c) { return c.text || ''; }).join('').trim();
+
+  if (!text) {
+    throw new Error('Claude 沒有回內容' +
+      (j.stop_reason === 'max_tokens' ? '（輸出長度不夠 —— 調高 max_tokens）'
+       : j.stop_reason ? '（stop_reason：' + j.stop_reason + '）' : '') + '。');
+  }
+  return text;
+}
+
+/* ── 用量與花費 ───────────────────────────────────
+   ★ 為什麼用 token 不用「次數」
+     付費是按 token 計價的。用次數當上限，遇到長對話就失準 ——
+     而失準的方向是「以為還有很多，其實已經花超過」。
+   ★ 為什麼價格是你自己填
+     價目會變，我寫死一組數字只會過期，而過期的價目比沒有價目更糟 ——
+     它看起來像答案。填 0 就只記 token、不估價。 */
+function tokensToday_() {
+  return num2_(PropertiesService.getScriptProperties().getProperty('tok.' + today_()));
+}
+function bumpTokens_(inTok, outTok) {
+  var props = PropertiesService.getScriptProperties();
+  var d = today_();
+  props.setProperty('tok.' + d, String(tokensToday_() + inTok + outTok));
+  props.setProperty('tokin.' + d, String(num2_(props.getProperty('tokin.' + d)) + inTok));
+  props.setProperty('tokout.' + d, String(num2_(props.getProperty('tokout.' + d)) + outTok));
+}
+
+/** 今天花了多少（在編輯器執行 costReport） */
+function costReport() {
+  var props = PropertiesService.getScriptProperties();
+  var d = today_();
+  var i = num2_(props.getProperty('tokin.' + d));
+  var o = num2_(props.getProperty('tokout.' + d));
+  var pin = parseFloat(prop_('PRICE_IN_PER_M', '0')) || 0;
+  var pout = parseFloat(prop_('PRICE_OUT_PER_M', '0')) || 0;
+  var cap = num_('DAILY_TOKEN_CAP', DEFAULTS.DAILY_TOKEN_CAP);
+
+  Logger.log('日期：%s　供應商：%s　模型：%s', d, provider_(),
+             provider_() === 'claude' ? prop_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
+                                      : prop_('MODEL', DEFAULTS.MODEL));
+  Logger.log('輸入 %s tokens／輸出 %s tokens　合計 %s（上限 %s）', i, o, i + o, cap || '沒設');
+  Logger.log('問了 AI %s 次（今天）', usedToday_());
+  if (pin || pout) {
+    var cost = i / 1e6 * pin + o / 1e6 * pout;
+    Logger.log('估計花費：US$%s　（依你填的 PRICE_IN_PER_M=%s、PRICE_OUT_PER_M=%s）',
+               cost.toFixed(4), pin, pout);
+    if (cap > 0) {
+      Logger.log('若用滿今天的上限，最多約 US$%s',
+                 ((cap * 0.5 / 1e6 * pin) + (cap * 0.5 / 1e6 * pout)).toFixed(4));
+    }
+  } else {
+    Logger.log('（沒填 PRICE_IN_PER_M／PRICE_OUT_PER_M，所以只記 token 不估價。' +
+               '到 Anthropic 的價目頁抄一下就會算了。）');
+  }
+}
+
+/* 這把 Claude 金鑰能用哪些模型（在編輯器執行）。
+   ★ 為什麼不寫死模型名稱
+     2026-08-07 才學到的教訓：Google 讓舊模型「列得出來但叫不動」，
+     而我照記憶寫死的名字直接 404。
+     模型會下架、會改名 —— 寫死的清單一定會過期，
+     而過期的清單看起來像答案。所以直接問。 */
+function listClaudeModels() {
+  var key = String(prop_('CLAUDE_KEY', '')).trim();
+  if (!key) { Logger.log('還沒設定 CLAUDE_KEY。'); return; }
+  try {
+    var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/models?limit=100', {
+      method: 'get', muteHttpExceptions: true,
+      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' }
+    });
+    if (res.getResponseCode() !== 200) {
+      Logger.log('拿不到清單（%s）：%s', res.getResponseCode(), res.getContentText().slice(0, 200));
+      return;
+    }
+    (JSON.parse(res.getContentText()).data || []).forEach(function (m) {
+      Logger.log('  %s　%s', m.id, m.display_name || '');
+    });
+    Logger.log('把要用的那個 id 設進指令碼屬性 CLAUDE_MODEL。');
+    Logger.log('⚠️ 列得出來不代表適合 —— 選好之後用 ai-lab.html 跑那 10 種刁難。');
+  } catch (e) {
+    Logger.log('連不出去：%s', e.message);
+  }
+}
+
 function askGemini_(prompt, modelOverride, noFallback) {
   var all = keys_();
   if (!all.length) throw new Error('還沒設定 GEMINI_KEY（專案設定 → 指令碼屬性）。');
@@ -1157,7 +1383,7 @@ function selfTest() {
     .forEach(function (ans, i) {
       var t0 = new Date().getTime();
       try {
-        var r = askGemini_(buildPrompt_(item, ans));
+        var r = askAI_(buildPrompt_(item, ans));
         var sec = (new Date().getTime() - t0) / 1000;
         if (sec > 20) slow++;
         var v = checkReply_(r, item.forbid);
@@ -1264,7 +1490,7 @@ function burstTest() {
   var t0 = new Date().getTime();
   for (var i = 0; i < 30; i++) {
     try {
-      askGemini_(buildPrompt_(item, '我不太確定，好像有東西重複'));
+      askAI_(buildPrompt_(item, '我不太確定，好像有東西重複'));
       okN++;
     } catch (e) {
       if (e.busy) busyN++; else { errN++; Logger.log('  第 %s 次失敗：%s', i + 1, e.message); }

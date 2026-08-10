@@ -127,7 +127,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
      那件事現在由 DEBUG_KEY 做，而且更好：走的是真正的管線。 */
 /* 這一頁預期的 GAS 版本。改 aiguide.gs 的行為時，兩邊一起改。
    ⚠️ 這不是裝飾 —— 它是唯一能看出「部署的是不是最新版」的方法。 */
-const EXPECT_VERSION = '2026-08-07-cooldown';
+const EXPECT_VERSION = '2026-08-07-provider';
 
 const GAS = ((window.CONFIG || {}).AIGUIDE || {}).GAS_URL || '';
 $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒填）';
@@ -171,7 +171,15 @@ $('ping').onclick = async () => {
     const stale = j.version !== EXPECT_VERSION;
     const cool = (j.keys || []).filter(k => k.cooling);
     $('pingOut').innerHTML = '<span class="text-emerald-600 font-bold">✓ 通了</span>' +
+      /* ★ 供應商要一眼看得到。
+         兩家並存的時候，最容易發生的誤會是「我以為切過去了」——
+         然後測了半天，測的是另一家。 */
+      '　<b class="' + (j.provider === 'claude' ? 'text-violet-700' : 'text-sky-700') + '">'
+        + (j.provider === 'claude' ? '💳 Claude（付費）' : '🆓 Gemini（免費層）') + '</b>' +
       '　模型 ' + esc(j.model) + '　題目 ' + j.units + ' 關　今天已用 ' + j.used + ' 次' +
+      /* 付費版沒有人幫你擋，這個數字是唯一的即時回饋 */
+      (j.tokenCap ? '　<span class="' + (j.tokens >= j.tokenCap * 0.8 ? 'text-rose-700 font-bold' : 'text-slate-400')
+                    + '">token ' + j.tokens + '/' + j.tokenCap + '</span>' : '') +
       /* ★ 這一頁自己的用量要看得見。
          2026-08-07：跑了三輪那 10 題就撞到上限，回的是寫給學生的
          「你今天問得夠多了」—— 老師看了只會以為程式壞了。
