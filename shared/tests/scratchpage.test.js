@@ -8,14 +8,21 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '..', '..');
 const html = fs.readFileSync(path.join(ROOT, '11502', 'scratch.html'), 'utf8');
+/* ★ 2026-08-10：思考關卡（拆解／推導／拼圖／上傳）搬到 level.html —— 一關一頁。
+   這一份原本有一半在測那些流程，它們的**意圖仍然成立**，只是換了地方，
+   所以改成讀 level.html，不是把測試刪掉。
+   ⚠️ 「功能搬家了就把測試刪掉」是最容易失去保護的方式 ——
+      刪掉的那一刻沒有人會發現，直到那個行為壞掉。 */
+const lvHtml = fs.readFileSync(path.join(ROOT, '11502', 'level.html'), 'utf8');
 
 let pass = 0, fail = 0;
 const ok = (c, l) => { c ? pass++ : (fail++, console.log('  ✗ ' + l)); };
 
 /* ★ 最重要的一條：第 4～10 關還沒有積木題目。
    無條件擋的話那七關會永遠上傳不了 —— 開學就炸。 */
-ok(/if \(!lv\) \{/.test(html), '★ 沒有積木題目的關卡要直接放行');
-ok(/showGrader\(u\);\s*\n\s*return;/.test(html), '   而且是直接顯示上傳表單，不是留空白');
+ok(/lv && lv\.analysis/.test(lvHtml) && /lv && lv\.goal/.test(lvHtml),
+   '★ 沒有題目的關卡要直接放行（步驟依資料有無決定）');
+   ok(/實作測試/.test(lvHtml), '   而且最後一定有實作測試那一步');
 
 const W = { CONFIG: {}, BLOCK_LEVELS: {} };
 new Function('window', fs.readFileSync(
@@ -47,24 +54,24 @@ ok(s3.join() === 'derive,blocks', '第 3 關兩步：推導 → 拼圖（沒有�
 const l5 = W.BLOCK_LEVELS['2-3-1'];
 ok(!!l5 && !l5.goal, '第 5 關有內容但沒有 goal');
 ok(steps(l5).join() === 'analysis,derive', '★ 所以它的步驟裡沒有拼圖');
-ok(/if \(lv\.goal\)\s*out\.push\('blocks'\)/.test(html), '   程式裡確實是看有沒有 goal 才加');
-ok(/markDone/.test(html), '   沒有拼圖的關卡要有別的方式標記完成');
-ok(/!preSteps\(lv\)\.length/.test(html), '   一步都沒有時也不能變成空白擋住上傳');
+   ok(/if \(lv && lv\.goal\)   out\.push/.test(lvHtml), '   程式裡確實是看有沒有 goal 才加拼圖');
+   ok(/markPre\(\)/.test(lvHtml), '   沒有拼圖的關卡也要標記得了完成（markPre）');
+   ok(/out\.push\(\{ key:'test'/.test(lvHtml), '   一步都沒有時也還有實作測試，不會變空白');
 ok(!/out\.push\('analysis'\);\s*out\.push\('derive'\)/.test(html), '步驟不是寫死的');
 
 /* 一次只出現一步 —— 攤開的話後面的題目會洩漏前面的答案 */
-ok(/const kind = steps\[preStage\]/.test(html), '一次只畫目前這一步');
-ok(/preUnit !== u\.id.*preStage = 0/s.test(html), '換關卡要從第一步重來');
+   ok(/const s = S\[at\];/.test(lvHtml), '一次只畫目前這一步');
+   ok(/get\('unit'\)/.test(lvHtml), '換關卡＝換網址，天然從第一步重來');
 
 /* ★ 拆解那一步的關卡是「真的做了兩件事」，不是讀秒。
    讀秒等於承認這一步沒東西可判 —— 學生乾等 20 秒再按下一步，什麼也沒發生。
    現在要圈對「哪一段一直重複」，而且要寫下自己的想法。 */
 ok(!/countdown\(foot, 20,/.test(html), '★ 拆解那一步不再用讀秒充數');
-ok(/renderAnalysis\(body, lv\.analysis, \{/.test(html), '   改成把關卡交給拆解本身');
-ok(/onDone:[\s\S]{0,160}preStage \+\+|onDone:[\s\S]{0,160}preStage\+\+|onDone:[\s\S]{0,160}markDone/.test(html),
-   '   拆解自己說完成了才往下');
-ok(/onWrite:.*saveNote/.test(html), '   寫的內容會存起來');
-ok(/countdown\(foot, 0,/.test(html), '推導做完之後不必再等');
+   ok(/onDone: \(\) => \{ ready\[at\] = true/.test(lvHtml), '   往下一步由那一步自己決定');
+ok(/only: s\.key === 'analysis' \? 'qs' : 'check'/.test(lvHtml),
+   '   拆解自己說完成了才往下（確認理解那一步要答對，renderAnalysis 自己畫按鈕）');
+   ok(/window\.saveNote/.test(lvHtml), '   寫的內容會存起來');
+   ok(/DERIVE\.mount\(body, lv\.derive/.test(lvHtml), '推導做完就往下，不必再等');
 
 /* 每一關的拆解裡，那個「值得動手圈」的題目要真的有 */
 ['2-1-1', '2-1-2'].forEach(id => {
@@ -89,7 +96,7 @@ ok(/modules: \{ scratch: \{ pre: \{ \[unitId\]: true \} \} \}/.test(html),
 ok(/\{ merge: true \}/.test(html), '用 merge 寫，不會蓋掉星數');
 ok(/catch \(e\) \{[\s\S]{0,200}不影響上傳/.test(html),
    '★ 存檔失敗不能擋人 —— 那只是「省得下次重做」，不是成績');
-ok(/pre-again/.test(html), '做完之後還能回去重看');
+   ok(/canGo\(i\)/.test(lvHtml), '做完之後還能點回去重看');
 
 /* 這一頁載入了模擬器需要的東西 */
 ['../shared/blocks.js', '../shared/derive.js', 'content/blocks.js'].forEach(f => {

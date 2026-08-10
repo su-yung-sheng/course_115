@@ -562,33 +562,51 @@
          第 1 關是「哪一段一直重複」，第 2 關是「哪個數字每次都不一樣」。 */
     var picksLeft = data.qs.filter(function (x) { return x.pick; }).length;
 
+    /* ── 只畫其中一段（一關一頁的五步驟用）────────────
+       opts.only:
+         'qs'    問題分析 —— 五問、提示、問問看（不含判斷題）
+         'check' 確認理解 —— 圈選 ＋ 先寫再對照
+         不給    全部（原本的行為，試玩頁與舊版都靠它）
+
+       ★ 為什麼是「切開」不是「拆成兩支」
+         題目資料只有一份（blocks.js 的 analysis），
+         拆成兩支就會有兩個地方讀同一份資料 ——
+         哪天欄位改了，一定有一邊忘記跟上。 */
+    var only = opts.only || '';
+    var showQs    = !only || only === 'qs';
+    var showCheck = !only || only === 'check';
+
     host.innerHTML =
       (data.intro ? '<div class="dv-intro">' + data.intro + '</div>' : '') +
       '<ol class="dv-qs">' + data.qs.map(function (it, i) {
+        /* 「確認理解」那一步只列有判斷題的那幾問 —— 其他的在上一步看過了 */
+        if (only === 'check' && !it.pick) return '';
         return '<li><div class="dv-qt">' + it.q + '</div>' +
-          (it.pick ? pickHtml(it.pick, i) : '') +
-          (it.hint
+          (showCheck && it.pick ? pickHtml(it.pick, i) : '') +
+          (showQs && it.hint
             ? '<details class="dv-hint"><summary>想不出來？點開看提示</summary><div>' +
               it.hint + '</div></details>'
             : '') +
           /* 有 keys 的那幾問才掛 AI ——
              keys 是「這一輪希望學生講到什麼」，沒有它，
              AI 只知道學生寫了什麼、不知道他還缺什麼，問出來會飄。 */
-          ((it.keys || []).length ? '<div data-ai="' + i + '"></div>' : '') +
+          ((showQs && (it.keys || []).length) ? '<div data-ai="' + i + '"></div>' : '') +
           '</li>';
       }).join('') + '</ol>' +
-      (data.write ? writeHtml(data.write) : '') +
+      ((showCheck && data.write) ? writeHtml(data.write) : '') +
       (opts.onDone ? '<div id="dv-go"></div>' : '');
 
-    data.qs.forEach(function (it, i) { if (it.pick) wirePick(host, it.pick, i); });
-    wireAsk(host, data, opts);
-    if (data.write) wireWrite(host, data.write, opts);
+    if (showCheck) data.qs.forEach(function (it, i) { if (it.pick) wirePick(host, it.pick, i); });
+    if (showQs) wireAsk(host, data, opts);
+    if (showCheck && data.write) wireWrite(host, data.write, opts);
+    /* 沒畫出來的東西不能算在「還沒答對」裡，否則按鈕永遠亮不起來 */
+    if (!showCheck) picksLeft = 0;
     refreshGo();
 
     function refreshGo() {
       var box = host.querySelector('#dv-go');
       if (!box || !opts.onDone) return;
-      var wroteOk = !data.write || (host.__wrote || '').trim().length >= (data.write.min || 12);
+      var wroteOk = !showCheck || !data.write || (host.__wrote || '').trim().length >= (data.write.min || 12);
       var ready = picksLeft === 0 && wroteOk;
       box.innerHTML = '<button class="dv-btn" style="width:100%;padding:11px" ' +
         (ready ? '' : 'disabled ') + 'id="dv-godo">' +

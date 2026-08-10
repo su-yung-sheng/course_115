@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>關卡｜Scratch 程式設計 115-2</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+  html, body, button, input, select, textarea { font-family:'Noto Sans TC', system-ui, sans-serif; }
+  body{
+    background-color:#e7e5e4 !important;
+    background-image:
+      linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),
+      linear-gradient(90deg, rgba(120,113,108,.06) 1px,transparent 1px) !important;
+    background-size:26px 26px !important;
+  }
+  .hl{background:linear-gradient(transparent 52%, rgba(250,204,21,.65) 52%);font-weight:800}
+  @keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .pop{animation:pop .35s ease-out both}
+  /* 步驟列：手機上要能橫向捲，不要擠成三行 */
+  .steps{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .steps::-webkit-scrollbar{height:0}
+  .stp{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;
+       font-size:13px;font-weight:800;border:2px solid transparent;white-space:nowrap;cursor:pointer}
+  .stp-now {background:#4f46e5;color:#fff}
+  .stp-done{background:#ecfdf5;color:#047857;border-color:#6ee7b7}
+  .stp-todo{background:#fff;color:#94a3b8;border-color:#e2e8f0;cursor:not-allowed}
+  .scene-shot{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .scene-shot > div{flex:1 1 200px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px}
+</style>
+
+<script src="config.js"></script>
+<script src="../shared/semester.js"></script>
+<script src="../shared/auth.js"></script>
+<script src="../shared/guard.js"></script>
+<script src="../shared/grading.js"></script>
+<script src="../shared/blocks.js"></script>
+<script src="../shared/derive.js"></script>
+<script src="../shared/ai-guide.js"></script>
+<script src="../shared/askai.js"></script>
+<script src="content/blocks.js"></script>
+<link rel="stylesheet" href="../shared/theme.css">
+</head>
+
+<body class="text-slate-800 min-h-screen pb-24">
+
+<a href="scratch.html"
+   class="fixed top-4 left-4 z-50 inline-flex items-center gap-1.5 bg-slate-800 text-white
+          font-bold text-sm px-3.5 py-2 rounded-full shadow-lg hover:bg-slate-700 transition">← 闖關地圖</a>
+
+<main class="max-w-3xl mx-auto px-4 pt-20 sm:pt-8">
+  <div id="app"></div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ── 這一頁在做哪一關 ─────────────────────────────
+   ⚠️ 網址帶得進來，就代表學生改得掉 ——
+      所以「這一關開了沒」一定要在**這一頁自己再判一次**。
+      只靠上一頁不畫連結，等於沒有鎖。 */
+const UNITS = (window.CONFIG.UNITS || []).map((u, i) => ({ no: i + 1, id: u[0], name: u[1] }));
+const wantId = new URLSearchParams(location.search).get('unit') || '';
+const unit = UNITS.filter(u => u.id === wantId)[0] || null;
+const lv = unit ? (window.BLOCK_LEVELS || {})[unit.id] : null;
+
+let unitStars = {};      // AI 批改寫進來的星數
+let preDone = {};        // 思考關卡做完了沒
+let at = 0;              // 現在第幾步
+let ready = { 1:false, 2:false, 3:false };   // 各步驟完成了沒（步驟 0、4 不必判定）
+
+const GATE = (window.GRADING && window.GRADING.GATE) || null;
+function unitOpen(no) {
+  return GATE ? GATE.isOpen(no, UNITS, true, null, unitStars) : (no === 1);
+}
+
+/* ── 五個步驟 ─────────────────────────────────────
+   ★ 為什麼是這五個而不是「拆解 → 拼圖 → 上傳」
+     原本的三段沒有名字，學生看不出自己在整件事的哪個位置。
+     課本的順序本來就是「先看範例 → 問題分析 → 問題拆解 → 組裝 → 執行」，
+     照那個順序命名，學生在課本和網站上看到的是同一件事。
+
+   ⚠️ 有些關卡沒有某一步（例如第 5 關沒有拼圖，課本用的是圖解）——
+     沒有資料的步驟直接不出現，不要留一個空殼。 */
+function steps() {
+  const out = [{ key:'scene', icon:'🎬', name:'情境解說' }];
+  if (lv && lv.analysis) {
+    out.push({ key:'analysis', icon:'🔍', name:'問題分析' });
+    if (lv.analysis.qs.some(q => q.pick) || lv.analysis.write) {
+      out.push({ key:'check', icon:'✅', name:'確認理解' });
+    }
+  }
+  if (lv && lv.derive) out.push({ key:'derive', icon:'📐', name:'推導' });
+  if (lv && lv.goal)   out.push({ key:'blocks', icon:'🧩', name:'程式拼圖' });
+  out.push({ key:'test', icon:'🚀', name:'實作測試' });
+  return out;
+}
+
+/* 這一步做完了沒。沒有判定條件的步驟（情境、推導）看過就算。 */
+function stepDone(i) {
+  const S = steps();
+  if (i >= S.length - 1) return false;             // 最後一步不標完成
+  return ready[i] === true || i < at;
+}
+function canGo(i) { return i <= at || stepDone(i - 1); }
+
+function render() {
+  if (!unit) {
+    $('app').innerHTML = card('❓ 找不到這一關',
+      '網址裡的 <code>unit</code> 不在課程清單裡。回<a class="underline font-bold" href="scratch.html">闖關地圖</a>重選一關。');
+    return;
+  }
+  if (!unitOpen(unit.no)) {
+    /* ★ 這一段是拆成兩頁之後最容易破的地方。
+       上一頁不畫連結只是「不方便」，這裡才是真的擋。 */
+    $('app').innerHTML = card('🔒 這一關還沒開',
+      `要先完成<b>第 ${unit.no - 1} 關</b>才會開啟第 ${unit.no} 關。` +
+      '<br>回<a class="underline font-bold" href="scratch.html">闖關地圖</a>看看目前該做哪一關。');
+    return;
+  }
+
+  const S = steps();
+  const s = S[at];
+  $('app').innerHTML = `
+    <header class="mb-4">
+      <span class="text-xs font-bold px-2.5 py-1 rounded-full border border-orange-300 bg-orange-50 text-orange-700">
+        🐱 第 ${String(unit.no).padStart(2,'0')} 關
+      </span>
+      <h1 class="text-2xl sm:text-3xl font-black mt-2">${esc(unit.name)}</h1>
+    </header>
+    <div class="steps mb-5">${S.map((x, i) => `
+      <button class="stp ${i === at ? 'stp-now' : stepDone(i) ? 'stp-done' : canGo(i) ? 'stp-done' : 'stp-todo'}"
+              data-step="${i}" ${canGo(i) ? '' : 'disabled'}>
+        <span>${x.icon}</span><span>${i + 1}. ${x.name}</span>
+      </button>`).join('')}</div>
+    <section id="body" class="bg-white rounded-2xl border border-slate-200 shadow-md p-5 sm:p-7 pop"></section>
+    <div id="foot" class="mt-4"></div>`;
+
+  document.querySelectorAll('[data-step]').forEach(b => {
+    b.onclick = () => { if (canGo(+b.dataset.step)) { at = +b.dataset.step; render(); window.scrollTo({top:0,behavior:'smooth'}); } };
+  });
+  draw(s);
+}
+
+function card(title, html) {
+  return `<div class="bg-white rounded-2xl border border-slate-200 shadow-md p-7 text-center">
+    <h1 class="text-xl font-black mb-2">${title}</h1>
+    <p class="text-slate-600 leading-relaxed">${html}</p></div>`;
+}
+
+function nextBtn(label) {
+  $('foot').innerHTML = `<button id="go" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white
+    font-black text-lg rounded-2xl px-6 py-4 shadow-md transition">${label} →</button>`;
+  $('go').onclick = () => { ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); };
+}
+
+function draw(s) {
+  const body = $('body');
+  $('foot').innerHTML = '';
+
+  if (s.key === 'scene') {
+    /* 情境解說：先看懂「要做出什麼」，才有東西可以分析。
+       ★ 課本的順序就是「先執行範例、看畫面，再進問題分析」——
+         少了這一步，學生是在對一段不知道要幹嘛的程式做拆解。 */
+    const sc = (lv && lv.scene) || null;
+    body.innerHTML = `
+      <h2 class="text-xl font-black mb-3">🎬 這一關要做出什麼</h2>
+      <p class="text-slate-700 leading-relaxed">${(lv && lv.task) || '（尚未撰寫）'}</p>
+      ${sc && sc.why ? `<div class="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+        <div class="font-black text-amber-900 text-sm mb-1">💡 為什麼要學這個</div>
+        <div class="text-sm text-amber-900 leading-relaxed">${sc.why}</div></div>` : ''}
+      ${sc && sc.shots ? `<div class="mt-4">
+        <div class="font-black text-sm text-slate-700">按下綠旗之後會看到：</div>
+        <div class="scene-shot">${sc.shots.map((t, i) =>
+          `<div><div class="text-xs font-black text-slate-400 mb-1">${i + 1}</div>
+                <div class="text-sm leading-relaxed">${t}</div></div>`).join('')}</div></div>` : ''}
+      ${sc && sc.pre ? `<p class="mt-4 text-xs text-slate-500 leading-relaxed">📚 ${sc.pre}</p>` : ''}`;
+    nextBtn('看懂了，開始分析');
+    return;
+  }
+
+  if (s.key === 'analysis' || s.key === 'check') {
+    DERIVE.renderAnalysis(body, lv.analysis, {
+      only: s.key === 'analysis' ? 'qs' : 'check',
+      unit: unit.id,
+      student: sid(),
+      onAsked: (q, a) => { if (window.saveAsk) window.saveAsk(unit.id, q, a); },
+      onWrite: t => { if (window.saveNote) window.saveNote(unit.id, t); },
+      onDone: () => { ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+    });
+    /* 「問題分析」那一步沒有判定條件（讀完就好），自己補一顆按鈕。
+       ⚠️ 「確認理解」那一步的按鈕由 renderAnalysis 自己畫（要答對才亮）。 */
+    if (s.key === 'analysis') nextBtn('分析完了，往下走');
+    return;
+  }
+
+  if (s.key === 'derive') {
+    DERIVE.mount(body, lv.derive, {
+      onDone: () => { ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+    });
+    return;
+  }
+
+  if (s.key === 'blocks') {
+    /* ⚠️ BLOCKS.mount 收的是「攤平的選項」，不是整個關卡物件。
+       傳 lv 進去的話 palette／goal 都讀不到，畫面會是一個空的拼圖區 ——
+       而且不會報錯，只會安靜地沒東西可拼。 */
+    BLOCKS.mount(body, {
+      palette: lv.palette, goal: lv.goal, alts: lv.alts, loose: lv.loose, hint: lv.task,
+      onPass: () => { markPre(); ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+    });
+    return;
+  }
+
+  // 實作測試：共用的自評站
+  markPre();
+  body.innerHTML = `
+    <h2 class="text-xl font-black mb-2">🚀 動手做，然後上傳</h2>
+    <p class="text-sm text-slate-600 leading-relaxed mb-4">
+      在 Scratch 做出來，「檔案 → 儲存到你的電腦」會得到 <code class="bg-slate-100 px-1 rounded">.sb3</code>，
+      上傳給 AI 助教批改。<span class="hl">75 分以上才算通關</span>。
+    </p>
+    <iframe id="gf" class="w-full block bg-white rounded-xl border border-slate-200"
+            style="height:560px;border:0;overflow:hidden" scrolling="no" title="Scratch 作品評分"></iframe>`;
+  const f = $('gf');
+  const want = '../shared/grader.html?term=' + encodeURIComponent(window.CONFIG.TERM) +
+               '&unit=' + encodeURIComponent(unit.id);
+  if (f.getAttribute('src') !== want) f.setAttribute('src', want);
+}
+
+/* ★ 讀進度之後把星數套進來，並重畫。
+   ⚠️ 這個函式一度只有「被呼叫」沒有「被定義」——
+      module 那一段照樣跑，只是靜靜地丟一個 ReferenceError 到主控台，
+      而畫面上的結果是：**每一關都停在「只開第 1 關」**。
+      沒有紅字、沒有錯誤頁，只是永遠開不了第 2 關。
+   ⚠️ 重畫時要保留學生走到第幾步（at），不然讀進度回來會把他踢回第 1 步。 */
+window.applyProgress = function (stars, pre) {
+  unitStars = stars || {};
+  preDone = pre || {};
+  render();
+};
+
+function sid() {
+  try { return sessionStorage.getItem('sid' + window.CONFIG.TERM) || ''; } catch (e) { return ''; }
+}
+/* 思考關卡做完 → 記起來，下次不必重做（存失敗不擋人） */
+let preSaved = false;
+function markPre() {
+  if (preSaved) return;
+  preSaved = true;
+  if (window.savePre) window.savePre(unit.id);
+}
+
+render();
+</script>
+
+<!-- 讀進度：星數決定「這一關開了沒」 -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+  const app  = initializeApp(window.CONFIG.FIREBASE);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+  const sid  = sessionStorage.getItem('sid' + window.CONFIG.TERM);
+
+  onAuthStateChanged(auth, async user => {
+    if (!user || !sid) return;
+    try {
+      const snap = await getDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid));
+      const mods = (snap.exists() && snap.data().modules) || {};
+      window.applyProgress((mods.scratch && mods.scratch.unitStars) || {},
+                           (mods.scratch && mods.scratch.pre) || {});
+    } catch (e) {
+      /* 讀不到就維持「只開第 1 關」。寧可少開，也不要因為連線問題整批放行。 */
+      console.error('讀進度失敗', e);
+    }
+  });
+
+  window.savePre = async function (unitId) {
+    if (!sid || !unitId) return;
+    try {
+      await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
+        { modules: { scratch: { pre: { [unitId]: true } } } }, { merge: true });
+    } catch (e) { console.warn('思考關卡紀錄沒存成功（不影響闖關）', e); }
+  };
+  window.saveNote = async function (unitId, text) {
+    if (!sid || !unitId) return;
+    try {
+      await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
+        { modules: { scratch: { notes: { [unitId]: String(text || '').slice(0, 500) } } } }, { merge: true });
+    } catch (e) { console.warn('想法沒存成功（不影響闖關）', e); }
+  };
+  window.saveAsk = async function (unitId, q, a) {
+    if (!sid || !unitId) return;
+    try {
+      const ref = doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid);
+      const snap = await getDoc(ref);
+      const cur = (((snap.exists() && snap.data().modules) || {}).scratch || {}).asks || {};
+      const list = (cur[unitId] || []).slice(-4);
+      list.push({ q: String(q || '').slice(0, 300), a: String(a || '').slice(0, 300),
+                  t: new Date().toISOString().slice(0, 16) });
+      await setDoc(ref, { modules: { scratch: { asks: { [unitId]: list } } } }, { merge: true });
+    } catch (e) { console.warn('對話沒存成功（不影響闖關）', e); }
+  };
+
+  AUTH.attachSession(auth, signInAnonymously, onAuthStateChanged);
+</script>
+</body>
+</html>

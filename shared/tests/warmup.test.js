@@ -139,8 +139,12 @@ const catchBlock = scr.slice(scr.indexOf('} catch (e) {', scr.indexOf('getDoc'))
 ok(!/warmup\.html/.test(catchBlock.slice(0, 900)),
    '★ 讀進度失敗時不導向 —— 連線問題不該讓人整站進不去');
 
-/* 第 4～10 關沒有拆解資料，那條路不可以被這次改動弄壞 */
-ok(/if \(!lv\)/.test(scr), '第 4～10 關「沒有關卡資料就直接上傳」那條路還在');
+/* 第 4～10 關沒有拆解資料，那條路不可以被任何改動弄壞。
+   ⚠️ 2026-08-10 思考關卡搬到 level.html（一關一頁），所以改讀那一份 ——
+      功能搬家了就把測試刪掉，是最容易在沒人發現的情況下失去保護的方式。 */
+const lvPage = fs.readFileSync(path.join(__dirname, '..', '..', '11502', 'level.html'), 'utf8');
+ok(/out\.push\(\{ key:'test'/.test(lvPage),
+   '第 4～10 關「沒有關卡資料也走得到實作測試」那條路還在');
 
 /* ★ sessionStorage 不是「一定拿得到」—— 跨來源 iframe、無痕模式下讀寫都會 throw。
    教程頁那一行若炸掉，saveWarmup 就跑不到：五關全做完卻什麼都沒存。 */

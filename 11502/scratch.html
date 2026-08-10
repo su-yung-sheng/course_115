@@ -101,31 +101,16 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
     <div id="stage-grid" class="grid gap-4 sm:grid-cols-2"></div>
   </section>
 
-  <!-- 作品上傳與 AI 批改：嵌入共用的自評站 shared/grader.html
-       ★ 與上學期用的是同一份檔案，靠 ?term= 決定讀哪個學期的批改標準。
-         下學期原本只有一段「開發中」的提示，按送出什麼也不會發生。 -->
-  <section class="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
-    <h2 class="font-black text-lg mb-2">📤 上傳作品給 AI 助教批改</h2>
-    <p class="text-sm text-slate-500 mb-4">
-      在 Scratch 按「檔案 → 儲存到你的電腦」會得到一個 <code class="bg-slate-100 px-1 rounded">.sb3</code> 檔，
-      選好關卡後上傳。<span class="hl">75 分以上才算通關</span>；分數比上次高才會覆蓋舊作品。
+  <!-- ★ 2026-08-10：上傳與思考關卡搬到 level.html（一關一頁）。
+       原本擠在這一頁最下面，而且只服務「目前該做的那一關」——
+       學生看到的是一長條清單，真正在做的事在最底下、沒有名字、沒有進度感。
+       現在點卡片進去，一關一頁走五個步驟。 -->
+  <section class="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8 text-center">
+    <p class="text-sm text-slate-600 leading-relaxed">
+      📤 <b>作品上傳在關卡裡面</b> —— 點上面的卡片進去，
+      走完<span class="hl">情境解說 → 問題分析 → 確認理解 → 程式拼圖 → 實作測試</span>，
+      最後一步就是上傳。
     </p>
-
-    <!-- 思考關卡：做完才會出現上傳。
-         ★ 為什麼要擋
-           這一章教的是「問題分析與模組化」，不是「把積木排對」。
-           先想清楚再開 Scratch，正是課本問題分析在教的事。
-         ⚠️ 只擋有題目的關卡；沒有題目的關卡這一塊整個不出現。 -->
-    <div id="pre-box" class="hidden mb-5"></div>
-
-    <div id="grader-box">
-      <div id="grader-locked" class="hidden bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-6 text-center">
-        <div class="text-3xl mb-2">🔒</div>
-        <p class="text-sm font-bold text-slate-500" id="grader-locked-msg"></p>
-      </div>
-      <iframe id="grader-frame" class="w-full block bg-white rounded-xl border border-slate-200"
-              style="height:560px;border:0;overflow:hidden" scrolling="no" title="Scratch 作品評分"></iframe>
-    </div>
   </section>
 
   <!-- 星星結算 -->
@@ -194,11 +179,17 @@ function renderStages(){
     const s = unitStars[u.id] || 0;
     const done = s > 0;
     const open = u.no <= openTo;
+    /* ★ 開放的關卡＝可以點進去的連結；沒開的維持一張不能點的卡。
+       ⚠️ 「不畫連結」只是不方便，不是鎖 ——
+          真正的鎖在 level.html 自己那一段 unitOpen() 檢查，
+          以及 firestore.rules。學生把網址打進去，那兩層才擋得住。 */
+    const tag = open ? 'a' : 'article';
+    const href = open ? ` href="level.html?unit=${encodeURIComponent(u.id)}"` : '';
     return `
-      <article class="relative rounded-2xl border shadow-sm p-5 pop
+      <${tag}${href} class="relative block rounded-2xl border shadow-sm p-5 pop
                       ${!open ? 'bg-slate-100 border-slate-200 opacity-70'
-                              : done ? 'bg-white border-emerald-300 ring-2 ring-emerald-200'
-                                     : 'bg-white border-slate-200'}">
+                              : done ? 'bg-white border-emerald-300 ring-2 ring-emerald-200 hover:shadow-lg hover:-translate-y-0.5 transition'
+                                     : 'bg-white border-slate-200 hover:border-orange-300 hover:shadow-lg hover:-translate-y-0.5 transition'}">
         <div class="flex items-start justify-between gap-3">
           <div>
             <span class="text-xs font-bold px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50 text-slate-500">
@@ -212,10 +203,10 @@ function renderStages(){
         </div>
         <p class="mt-2 text-slate-600 text-sm leading-relaxed">${open ? u.desc : '完成前一關才會開啟'}</p>
         ${(open && u.blocks.length) ? `<div class="mt-3 flex flex-wrap gap-2">${u.blocks.map(blockChip).join('')}</div>` : ''}
-        <p class="mt-3 text-xs font-bold ${done ? 'text-emerald-600' : 'text-slate-400'}">
-          ${done ? '✅ 已通關' : open ? '尚未上傳作品' : '尚未開啟'}
+        <p class="mt-3 text-xs font-bold ${done ? 'text-emerald-600' : open ? 'text-orange-600' : 'text-slate-400'}">
+          ${done ? '✅ 已通關　點進去可以重做' : open ? '👉 點進去開始這一關' : '🔒 尚未開啟'}
         </p>
-      </article>`;
+      </${tag}>`;
   }).join('');
 }
 
@@ -230,164 +221,19 @@ function renderTotal(){
 /* ===================== 起始 ===================== */
 //   先用「全部 0 星」畫一次（等於只開第 1 關），讀到進度再重畫。
 //   刻意不是先全開再鎖：萬一讀取失敗，畫面停在「保守」而不是「全開」。
-function repaint(){ renderStages(); renderTotal(); paintGrader(); }
+function repaint(){ renderStages(); renderTotal(); }
 
-/* 評分區也要跟著依序開放。
-   關卡卡片鎖了、上傳表單沒鎖，等於沒鎖 —— 所以直接把 iframe 的
-   ?unit= 固定成「目前該做的那一關」，學生沒得選別關。
+/* ★ 依序開放現在有兩層，而且第二層才是真的：
+     ① 這一頁：沒開的關卡不畫成連結（只是不方便）
+     ② level.html：自己再判一次 unitOpen()（網址打進去也擋得住）
+     ③ firestore.rules：寫進度時用伺服器時間檢查（改前端繞不過）
+   ⚠️ 只有 ① 的話等於沒鎖 —— 學生把網址改一個字就進去了。 */
 
-   ★ 2026-08-07 加上「思考關卡」：有題目的關卡要先做完拆解、推導、拼圖，
-     才會出現上傳表單。順序是課本問題分析的順序（先想再做）。 */
-function levelOf(u){ return u ? (window.BLOCK_LEVELS || {})[u.id] : null; }
 
-/** 這一關的思考關卡有哪幾步（有什麼就做什麼，不是固定三步）
-    ⚠️ 沒有 goal 的關卡不放拼圖 —— 例如第 5 關「排隊比高矮」是排序的
-       觀念導入，課本用的是圖解不是程式。硬塞一份程式進來，
-       學生只會以為排序就是背那幾塊積木。 */
-function preSteps(lv){
-  const out = [];
-  if (lv.analysis) out.push('analysis');
-  if (lv.derive)   out.push('derive');
-  if (lv.goal)     out.push('blocks');
-  return out;
-}
 
-function paintGrader(){
-  const openTo = openUpTo();
-  const u = UNITS[openTo - 1];
-  const frame  = document.getElementById('grader-frame');
-  const locked = document.getElementById('grader-locked');
-  const pre    = document.getElementById('pre-box');
-  if(!frame || !locked) return;
-
-  if(!u){
-    frame.classList.add('hidden');
-    if (pre) pre.classList.add('hidden');
-    locked.classList.remove('hidden');
-    document.getElementById('grader-locked-msg').textContent = lockReason(1);
-    return;
-  }
-  locked.classList.add('hidden');
-
-  const lv = levelOf(u);
-  // 沒有題目的關卡（第 4～10 關）→ 完全照舊，直接上傳
-  if (!lv) {
-    if (pre) { pre.classList.add('hidden'); pre.innerHTML = ''; }
-    showGrader(u);
-    return;
-  }
-
-  if (preUnit !== u.id) { preUnit = u.id; preStage = 0; }
-  // 完全沒有思考關卡可做（理論上不會發生，但別讓它變成一片空白擋住上傳）
-  if (!preSteps(lv).length) {
-    if (pre) { pre.classList.add('hidden'); pre.innerHTML = ''; }
-    showGrader(u);
-    return;
-  }
-  if (preDone[u.id]) {
-    // 做過了就收起來，但留一條路可以回去重看
-    pre.classList.remove('hidden');
-    pre.innerHTML = '<button id="pre-again" class="w-full text-left bg-emerald-50 border border-emerald-200 '
-      + 'rounded-xl px-4 py-3 text-sm font-bold text-emerald-700 hover:bg-emerald-100 transition">'
-      + '✅ 這一關的思考關卡已完成 —— 想再看一次點這裡</button>';
-    document.getElementById('pre-again').onclick = function(){
-      preDone[u.id] = false; preStage = 0; paintGrader();
-    };
-    showGrader(u);
-    return;
-  }
-
-  // 還沒做完 → 藏起上傳表單，畫思考關卡
-  frame.classList.add('hidden');
-  pre.classList.remove('hidden');
-  renderPre(u, lv);
-}
-
-function showGrader(u){
-  const frame = document.getElementById('grader-frame');
-  frame.classList.remove('hidden');
-  const src = '../shared/grader.html?term=' + encodeURIComponent(window.CONFIG.TERM)
-            + '&unit=' + encodeURIComponent(u.id);
-  if(frame.getAttribute('src') !== src) frame.setAttribute('src', src);   // 避免每次重畫都重載
-}
-
-/* 思考關卡的畫面。三步共用一個容器，一次只出現一步 ——
-   ⚠️ 全部攤開的話，後面的題目會把前面的答案講出來
-     （「正六邊形每次轉 60 度」這種），先看到就不用想了。 */
-function renderPre(u, lv){
-  const steps = preSteps(lv);
-  const pre = document.getElementById('pre-box');
-  const kind = steps[preStage];
-  const nth = (preStage + 1) + ' / ' + steps.length;
-
-  pre.innerHTML = `
-    <div class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-5">
-      <div class="flex items-center justify-between gap-3 mb-3">
-        <h3 class="font-black text-indigo-900">🧠 第 ${u.no} 關 · 動手之前　<span class="text-xs font-bold text-indigo-400">${nth}</span></h3>
-      </div>
-      <div id="pre-body"></div>
-      <div id="pre-foot" class="mt-4"></div>
-    </div>`;
-
-  const body = document.getElementById('pre-body');
-  const foot = document.getElementById('pre-foot');
-
-  if (kind === 'analysis') {
-    /* 這一步原本是「點開提示 ＋ 讀秒 20 秒」。
-       ★ 為什麼換掉：讀秒是假的關卡 —— 它等於承認這一步沒東西可判，
-         學生就是乾等 20 秒再按下一步，什麼也沒發生。
-       現在要做兩件真的事：圈出這一關真正的判斷、寫下自己的想法。
-       寫的內容會存起來，下一節課老師拿得出來討論。 */
-    DERIVE.renderAnalysis(body, lv.analysis, {
-      /* ── AI 助教（可以整個不存在）──────────────────
-         unit／student 是給 GAS 用的：它靠 unit＋qi 自己去抓題目，
-         前端傳什麼題目都不算 —— 那正是它擋得住學生改前端的原因。
-         ⚠️ config.js 的 AIGUIDE.KEY 留空時整塊不會出現，
-            所以這幾行在 AI 沒設定好的時候也不會出事。 */
-      unit: u.id,
-      student: sessionStorage.getItem('sid' + window.CONFIG.TERM) || '',
-      /* 學生和 AI 的對話存起來 —— 這是全班唯一一份
-         「他們卡在哪、怎麼描述」的紀錄，比事後問有用得多。
-         ⚠️ 和 saveNote 一樣：存失敗不擋人。 */
-      onAsked: function (q, a) { if (window.saveAsk) window.saveAsk(u.id, q, a); },
-      onWrite: function (t) { if (window.saveNote) window.saveNote(u.id, t); },
-      onDone:  function () {
-        if (preStage === steps.length - 1) markDone(u); else { preStage++; paintGrader(); }
-      }
-    });
-    foot.innerHTML = '<p class="text-xs text-slate-400">' +
-      '這裡沒有分數，寫錯也不會扣分 —— 先有自己的想法，等一下拼積木才不是照抄。</p>';
-    return;
-  }
-
-  if (kind === 'derive') {
-    const last = preStage === steps.length - 1;   // 這一關沒有拼圖的話，推導就是最後一步
-    DERIVE.mount(body, lv.derive, { onPass: function(){
-      foot.innerHTML = '';
-      countdown(foot, 0, last ? '完成，去上傳作品 →' : '推導完成，開始拼積木 →', function(){
-        if (last) { markDone(u); } else { preStage++; paintGrader(); }
-      });
-    }});
-    foot.innerHTML = '<p class="text-xs text-slate-400">把每一步做完，才會出現下一關。</p>';
-    return;
-  }
-
-  // 積木拼圖
-  body.innerHTML = '<p class="text-sm font-bold mb-3">🎯 ' + lv.task + '</p><div id="pre-sim"></div>';
-  BLOCKS.mount(document.getElementById('pre-sim'), {
-    palette: lv.palette, goal: lv.goal, alts: lv.alts, loose: lv.loose, hint: lv.task,
-    onPass: function(){ markDone(u); }
-  });
-  foot.innerHTML = '<p class="text-xs text-slate-400">拼對了就會出現上傳表單。'
-                 + '真正要交的還是 Scratch 做出來的作品。</p>';
-}
-
-/** 思考關卡整關完成。記在進度裡，下次不必重做。 */
-function markDone(u){
-  preDone[u.id] = true;
-  if (window.savePre) window.savePre(u.id);
-  paintGrader();
-}
+/* ★ 思考關卡（拆解／推導／拼圖）已經搬到 level.html —— 一關一頁。
+   這一頁現在只做一件事：畫闖關地圖，讓學生知道自己走到哪、下一關是哪一關。
+   ⚠️ 別再把「正在做的事」塞回這一頁 —— 它一長，重點就沉到最底下。 */
 
 /** 按鈕（秒數 0 = 直接可按；讀秒的用法已經拿掉，留著是給推導完成用的） */
 function countdown(host, sec, label, done){

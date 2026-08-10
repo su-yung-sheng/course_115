@@ -162,10 +162,11 @@ console.log('\n── 冷卻要看得出剩幾秒 ──────────
 
 console.log('\n── 接進關卡頁的方式 ──────────────────────');
 {
-  const scr = fs.readFileSync(path.join(__dirname, '..', '..', '11502', 'scratch.html'), 'utf8');
+  /* ★ 2026-08-10：思考關卡搬到 level.html（一關一頁），所以這裡改讀那一份。 */
+  const scr = fs.readFileSync(path.join(__dirname, '..', '..', '11502', 'level.html'), 'utf8');
   const drv = fs.readFileSync(path.join(__dirname, '..', 'derive.js'), 'utf8');
   ok(/askai\.js/.test(scr) && /ai-guide\.js/.test(scr), '關卡頁載入了這兩支');
-  ok(/unit: u\.id/.test(scr), 'unit 傳進去（GAS 靠它抓題目）');
+  ok(/unit: unit\.id/.test(scr), 'unit 傳進去（GAS 靠它抓題目）');
   ok(/window\.saveAsk/.test(scr), '對話存得起來 —— 那是唯一一份「學生怎麼描述自己卡住」的紀錄');
   /* 釘「有做這個判斷」，不釘「判斷寫成什麼形狀」——
      寫成 if (!A || !A.enabled()) return 還是 if (A && A.enabled()) 都對。 */
