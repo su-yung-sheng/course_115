@@ -118,7 +118,7 @@ service cloud.firestore {
        ⚠️ 這份清單在 shared/semester.js 裡有一份**一模一樣**的複製
           （安全規則沒辦法載入 JS）。改一邊就要改另一邊。 */
     function isTestAccount(sid) {
-      return sid in ['1400000'];        // ← 換成你自己的測試學號
+      return sid in ['1410905'];        // ← 和 shared/semester.js 的 TEST_IDS 一模一樣
     }
 
     /* ===== 已刪除：進度文件的「動作幅度」防呆 =====
