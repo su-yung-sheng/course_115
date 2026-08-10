@@ -93,7 +93,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-nocdwhendebug';
+var VERSION = '2026-08-07-modellabel';
 
 var DEFAULTS = {
   /* 用哪一家：'gemini'（免費層）或 'claude'（付費）。
@@ -497,7 +497,16 @@ function handle_(e) {
     if (debug) {
       out.raw = reply;                 // 模型原本說了什麼
       out.why = v.why;                 // 為什麼被擋
-      out.model = model || prop_('MODEL', DEFAULTS.MODEL);
+      /* ⚠️ 這一行原本一律讀 MODEL（Gemini 那一格），
+         於是切到 Claude 之後，每張卡片還是印 gemini-… ——
+         而那正是「你以為切過去了，其實沒有」的相反面：
+         **明明切過去了，畫面卻說沒有**。
+         結果是我看著自己印錯的字，斷定使用者設定有問題。
+         ⇒ 凡是「現在用的是哪一個」這種回報，都要走同一個來源。 */
+      out.provider = provider_();
+      out.model = model || (provider_() === 'claude'
+                             ? prop_('CLAUDE_MODEL', DEFAULTS.CLAUDE_MODEL)
+                             : prop_('MODEL', DEFAULTS.MODEL));
       out.prompt = buildPrompt_(item, answer);
     }
     return json_(out);

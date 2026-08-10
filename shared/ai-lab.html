@@ -127,7 +127,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
      那件事現在由 DEBUG_KEY 做，而且更好：走的是真正的管線。 */
 /* 這一頁預期的 GAS 版本。改 aiguide.gs 的行為時，兩邊一起改。
    ⚠️ 這不是裝飾 —— 它是唯一能看出「部署的是不是最新版」的方法。 */
-const EXPECT_VERSION = '2026-08-07-nocdwhendebug';
+const EXPECT_VERSION = '2026-08-07-modellabel';
 
 const GAS = ((window.CONFIG || {}).AIGUIDE || {}).GAS_URL || '';
 $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒填）';
@@ -381,6 +381,7 @@ async function ask(answer) {
            usage: {}, forbid: x.forbid, blocked: !!j.blocked,
            hit: k.hit, miss: k.miss, hasKeys: (x.keys || []).length > 0,
            raw: j.raw || '', why: j.why || [], model: j.model || '',
+           provider: j.provider || '',
            byKeys: !!j.byKeys, prompt: j.prompt || '' };
 }
 
@@ -411,7 +412,7 @@ function card(tag, sent, res, err, errObj) {
   return `<div class="bg-white border-2 ${box} rounded-xl p-4 mb-3">
     <div class="flex items-baseline justify-between gap-3 mb-1">
       <div class="text-xs font-bold text-slate-400">${esc(tag)}</div>
-      <div class="text-[11px] text-slate-400 font-mono">${v.chars} 字 · ${res.ms} ms${res.model ? ' · ' + esc(res.model) : ''}</div>
+      <div class="text-[11px] text-slate-400 font-mono">${v.chars} 字 · ${res.ms} ms${res.provider ? ' · ' + (res.provider === 'claude' ? '💳' : '🆓') : ''}${res.model ? ' ' + esc(res.model) : ''}</div>
     </div>
     <div class="text-xs text-slate-500 mb-2">學生輸入：<span class="font-mono">${esc(sent) || '（空白）'}</span></div>
     <div class="text-[15px] leading-relaxed mb-2">${esc(res.text) || '（沒有回覆）'}</div>

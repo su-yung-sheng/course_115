@@ -97,5 +97,16 @@ ok(/err\.busy = !!j\.busy \|\| !!j\.cooling/.test(html),
 ok(/剛剛才問過.*冷卻擋的/.test(html.replace(/\s+/g, ' ')),
    '   而且要告訴老師「填偵錯碼就不會冷卻」');
 
+section('「現在用的是哪一個」只能有一個來源');
+/* ★ 2026-08-07：偵錯回傳的 model 一律讀 MODEL（Gemini 那一格），
+   於是切到 Claude 之後每張卡片還是印 gemini-…
+   ——「明明切過去了，畫面卻說沒有」。
+   我看著自己印錯的字，斷定使用者的設定有問題。 */
+const dbgOut = src.slice(src.indexOf('out.raw = reply'), src.indexOf('out.prompt ='));
+ok(/provider_\(\) === 'claude'/.test(dbgOut),
+   '★ 偵錯回傳的模型名稱要跟著 provider 走，不可以寫死讀 MODEL');
+ok(/out\.provider = provider_\(\)/.test(src), '每一則回應也要標出是哪一家');
+ok(/res\.provider/.test(html), '   卡片上看得到（不必回頭看 ping）');
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
