@@ -156,7 +156,23 @@
         if(state.status==='loading'){
           const saved = sessionStorage.getItem(SAVED_KEY);
           if(saved && /^14\d{5}$/.test(saved)){ startSession(saved); }  // SSO：已驗證過，直接登入
-          else { state.status='login'; render(); }
+          else {
+            /* ★ 這個分頁沒有本學期的學號，但 Firebase 可能早就登入了。
+               ⚠️ 2026-08-10 實際踩到：sessionStorage 的學號是**按學期分開存**的
+                  （sid11501／sid11502）。所以從另一個學期過來、或按上一頁，
+                  saved 一定是空的 —— 於是這裡直接畫出登入畫面，
+                  使用者看到的是「怎麼又要登入一次」，即使他根本沒登出。
+
+               身分的來源本來就是 Firebase 的 email，不是 sessionStorage；
+               sessionStorage 只是「這個分頁現在是誰」的快取。
+               既然 email 已經是學校帳號，就直接用它，不必再問一次。
+
+               ⚠️ 匿名登入或老師帳號取不出學號 → 回到登入畫面（原本的行為）。 */
+            const fromEmail = (window.AUTH && AUTH.sidFromEmail)
+              ? AUTH.sidFromEmail(user.email || '') : '';
+            if (fromEmail) { startSession(fromEmail); }
+            else { state.status='login'; render(); }
+          }
         }
       }
     });
