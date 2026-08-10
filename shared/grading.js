@@ -184,50 +184,45 @@ window.GRADING = {
   },
 
   // 由「各單元最佳星數」的物件算出總星數與已通關單元數（0 星不算通關）
-/* ── 概念檢測封頂 ────────────────────────────────
-     ★ 為什麼要有「上限」這個概念，而不是讓概念檢測直接給星數
+/* ── 概念檢測：自己一組星星 ──────────────────────
+     ★ 兩組星星，各自算各自的
+         🧩 作品星（unitStars）—— Scratch 作品的批改給，Colab 寫入
+         🧠 概念星（由 quiz 的分數算出來）—— 五題開放式作答
 
-       星數有兩個來源就一定會打架：
-         · Scratch 批改（Colab 讀 .sb3）寫進 unitStars
-         · 概念檢測（五題）也想寫進去
-       而**依序開放看的就是 unitStars** —— 兩邊搶同一格的話，
-       「哪一個說了算」會變成一個沒有答案的問題，
-       而且答錯的代價是學生的成績。
+       這和 11501 的「流程圖星星 ＋ Scratch 星星」是同一個做法：
+       兩件不同的能力，就給兩個看得見的成果。
 
-     ⇒ 所以分工是：
-         概念檢測 → 決定「這一關最多能拿幾星」（封頂）
-         Scratch 批改 → 決定「實際做到幾星」
-         最後取小的。
+     ⚠️ **依序開放只看作品星**，不看概念星。
+        概念檢測可以一直重寫到過為止 —— 拿它當開關的鑰匙等於沒有鎖。
+        所以概念星是「成就」，不是「通行證」。
 
-       意思很清楚：**程式做出來了但概念沒懂，就是 2 星。**
-       而 unitStars 仍然只有一個寫入者，依序開放也只看一個地方。
+     ⚠️ 概念星不寫進 unitStars。
+        unitStars 只有一個寫入者（批改），這條規則沒有例外 ——
+        兩個地方都能改星數的話，之後沒有人說得出這一顆星是誰給的。
+        概念星是**每次讀進度時從 quiz 的分數現算的**，
+        沒有第二份資料，也就沒有兩份會不一致的問題。 */
+  QUIZ_PASS: 3,          // 五題講到幾題才能往下走
+  QUIZ_FULL: 4,          // 講到幾題才拿得到第 2 顆概念星
 
-     ⚠️ 沒做過概念檢測 → 不封頂（回 3）。
-        不可以因為「還沒考」就把人壓在 2 星 ——
-        那會讓舊資料、或概念檢測掛掉的時候，全班莫名其妙掉星。 */
-  QUIZ_PASS: 3,          // 五題答對幾題才能往下走
-  QUIZ_FULL: 4,          // 答對幾題才拿得到 3 星
-
-  /** 這一關的星數上限（沒考過就是不封頂） */
-  starCap: function (quiz, unitId) {
+  /** 這一關的概念星（0～3）。沒考過就是 0 —— 那不是懲罰，是還沒做。 */
+  quizStars: function (quiz, unitId) {
     var q = (quiz || {})[unitId];
-    if (!q || typeof q.score !== 'number') return 3;
-    return q.score >= this.QUIZ_FULL ? 3 : 2;
+    var n = q && typeof q.score === 'number' ? q.score : -1;
+    if (n < 0) return 0;
+    if (n >= 5) return 3;                 // 五題全講到
+    if (n >= this.QUIZ_FULL) return 2;    // 4 題
+    if (n >= this.QUIZ_PASS) return 1;    // 3 題（剛好過門檻）
+    return 0;                             // 沒過門檻，本來也走不下去
   },
 
-  /** 實際算數的星數＝批改給的，但不超過概念檢測的上限 */
-  effectiveStars: function (unitStars, quiz, unitId) {
-    var raw = Number((unitStars || {})[unitId]) || 0;
-    return Math.min(raw, this.starCap(quiz, unitId));
-  },
-
-  /** 整份進度套上封頂之後的 unitStars（給依序開放與統計用） */
-  cappedStars: function (unitStars, quiz) {
-    var out = {}, self = this;
-    Object.keys(unitStars || {}).forEach(function (k) {
-      out[k] = self.effectiveStars(unitStars, quiz, k);
+  /** 概念星的總數與已完成關數 */
+  quizTotal: function (quiz) {
+    var total = 0, done = 0, self = this;
+    Object.keys(quiz || {}).forEach(function (k) {
+      var s = self.quizStars(quiz, k);
+      if (s > 0) { total += s; done++; }
     });
-    return out;
+    return { stars: total, done: done };
   },
 
   scratchTotal: function (unitStars) {

@@ -74,13 +74,11 @@ const wantId = new URLSearchParams(location.search).get('unit') || '';
 const unit = UNITS.filter(u => u.id === wantId)[0] || null;
 const lv = unit ? (window.BLOCK_LEVELS || {})[unit.id] : null;
 
-/* ★ 這個 unitStars 已經是「封頂之後」的星數。
-   概念檢測只考 3 題對的話，就算作品拿 3 星，這裡也只有 2 ——
-   封頂在寫進來的那一刻就做完（applyProgress），
-   底下所有讀它的地方（依序開放、星數統計）自然都吃到同一個規則。
-   ⚠️ 不要在別處再封一次，也不要留一份沒封頂的在旁邊 ——
-      「哪一份才算數」是這種資料最容易出錯的地方。 */
-let unitStars = {};      // 批改星數 ∩ 概念檢測上限
+/* ★ 兩組星星，各自算各自的（和 11501 的流程圖／Scratch 一樣）：
+     🧩 作品星 unitStars —— Colab 批改寫入，**依序開放只看它**
+     🧠 概念星         —— 由 quizDone 的分數現算，是成就不是通行證
+   ⚠️ 概念檢測可以一直重寫到過為止，拿它當鑰匙等於沒有鎖。 */
+let unitStars = {};      // 作品星（批改給的）
 let quizDone = {};       // { '2-1-1': { score: 4 } }
 let preDone = {};        // 思考關卡做完了沒
 let at = 0;              // 現在第幾步
@@ -104,12 +102,12 @@ function steps() {
   /* 抽象概念先用生活裡的東西玩一次，再回來看程式。
      ⚠️ 只有宣告 combo 的關卡有 —— 每一關都放的話它就變成點擊過場。 */
   if (lv && lv.combo && window.COMBO) out.push({ key:'combo', icon:'🍔', name:'套餐工廠' });
-  if (lv && lv.analysis) {
-    out.push({ key:'analysis', icon:'🔍', name:'問題分析' });
-    if (lv.analysis.qs.some(q => q.pick) || lv.analysis.write) {
-      out.push({ key:'check', icon:'✅', name:'確認理解' });
-    }
-  }
+  /* ⚠️ 「確認理解」不再是獨立的一步。
+     圈選題本來就是某一問的判斷，寫作題本來就是整段的收尾 ——
+     搬到另一頁等於把同一件事切成兩半，
+     學生還要重新想起「剛剛那一題在問什麼」。
+     現在問題分析自己一題一題走完，最後一題就是寫作題。 */
+  if (lv && lv.analysis) out.push({ key:'analysis', icon:'🔍', name:'問題分析' });
   if (lv && lv.derive) out.push({ key:'derive', icon:'📐', name:'推導' });
   /* 概念檢測排在程式拼圖**之前**：
      先確定他懂了，再讓他動手拼 —— 反過來的話，拼對了就沒有人會回頭讀。
@@ -202,8 +200,7 @@ function nextBtn(label, hold) {
   const needHold = hold && !held[step];
   $('foot').innerHTML = `<button id="go" ${needHold ? 'disabled' : ''}
     class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white
-    font-black text-lg rounded-2xl px-6 py-4 shadow-md transition">${label} →</button>
-    <p id="holdmsg" class="text-center text-xs text-slate-500 mt-2 leading-relaxed"></p>`;
+    font-black text-lg rounded-2xl px-6 py-4 shadow-md transition">${label} →</button>`;
 
   const btn = $('go');
   btn.onclick = () => {
@@ -214,7 +211,6 @@ function nextBtn(label, hold) {
   if (!needHold) return;
 
   let left = HOLD_SEC;
-  const msg = $('holdmsg');
   /* 保險絲：不管發生什麼事，最久 HOLD_SEC × 3 一定解鎖。
      ★ 為什麼需要
        這個倒數是靠 visibilityState 決定要不要扣秒的。
@@ -246,15 +242,14 @@ function nextBtn(label, hold) {
     held[step] = true;
     btn.disabled = false;
     btn.textContent = label + ' →';
-    msg.textContent = '讀完了，可以往下走。';
   }
 
+  /* ★ 只顯示秒數，不解釋規則。
+     「這一段沒有題目所以請讀 30 秒」那種話，讀起來像在說
+     「我知道你不會讀」—— 而且它本身就佔掉了要讀的注意力。
+     暫停時只換一個字，學生看得出來狀態變了就夠。 */
   function paint(paused) {
-    btn.textContent = `${label}（還要 ${left} 秒）`;
-    msg.innerHTML = paused
-      ? '⏸️ 你離開了這一頁，時間暫停了 —— 回到這一頁才會繼續倒數。'
-      : '這一段沒有題目，所以請至少讀 ' + HOLD_SEC + ' 秒。'
-        + '<br>切到別的分頁或視窗，倒數會停下來。';
+    btn.textContent = paused ? `${label}（暫停）` : `${label}（${left}）`;
   }
 }
 
@@ -296,25 +291,23 @@ function draw(s) {
     window.COMBO.mount($('combo-host'), {
       onDone: () => { ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); }
     });
-    /* ⚠️ 這裡不給「無條件跳過」——三關都是點一下就走得完的東西，
-       跳過等於整個體驗白做。但也不能鎖死（萬一互動壞了、萬一他就是卡住），
-       所以留一條「停留夠久就走得掉」的路。 */
-    nextBtn('玩不動的話，等一下也可以往下', true);
+    /* ⚠️ 這裡不設時間也不給跳過 —— 三關本來就要動手才過得去，
+       再加倒數是雙重處罰。 */
     return;
   }
 
-  if (s.key === 'analysis' || s.key === 'check') {
+  if (s.key === 'analysis') {
     DERIVE.renderAnalysis(body, lv.analysis, {
-      only: s.key === 'analysis' ? 'qs' : 'check',
       unit: unit.id,
       student: sid(),
       onAsked: (q, a) => { if (window.saveAsk) window.saveAsk(unit.id, q, a); },
       onWrite: t => { if (window.saveNote) window.saveNote(unit.id, t); },
       onDone: () => { ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); }
     });
-    /* 「問題分析」那一步沒有判定條件（讀完就好），自己補一顆按鈕。
-       ⚠️ 「確認理解」那一步的按鈕由 renderAnalysis 自己畫（要答對才亮）。 */
-    if (s.key === 'analysis') nextBtn('分析完了，往下走', true);
+    /* ⚠️ 這裡**不要**再補一顆按鈕。
+       renderAnalysis 自己會畫「想清楚了，開始動手 →」，
+       兩邊各畫一顆的話，畫面上會同時出現兩個功能一樣的按鈕，
+       學生只會想「這兩個有什麼不同」。 */
     return;
   }
 
@@ -330,13 +323,13 @@ function draw(s) {
     /* 考過了就不必再考一次 —— 但要讓他看得到「上限幾星」，
        而且要留一顆重考鍵：拿 2 星上限的人應該有機會回頭拿 3 星。 */
     if (prev && prev.score >= window.GRADING.QUIZ_PASS) {
-      const cap = window.GRADING.starCap(quizDone, unit.id);
+      const cap = window.GRADING.quizStars(quizDone, unit.id);
       body.innerHTML = `
         <h2 class="text-xl font-black mb-2">🧠 概念檢測</h2>
         <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl px-4 py-3 text-emerald-900">
           <div class="font-black text-lg">上次答對 ${prev.score} / ${window.QUIZ.N_TOTAL}</div>
-          這一關最多可以拿 <b>${cap} 顆星</b>${cap === 2
-            ? `（答對 ${window.GRADING.QUIZ_FULL} 題以上才有 3 星，可以再考一次）` : ''}
+          這一關拿到 <b>🧠 ${cap} 顆概念星</b>${cap < 3
+            ? '（五題全講到就是 3 顆，可以再寫一次）' : ''}
         </div>
         <button id="again" class="mt-3 w-full border-2 border-indigo-200 text-indigo-700 font-black
           rounded-xl px-4 py-3">🔁 再考一次</button>`;
@@ -402,10 +395,7 @@ function draw(s) {
    ⚠️ 重畫時要保留學生走到第幾步（at），不然讀進度回來會把他踢回第 1 步。 */
 window.applyProgress = function (stars, pre, quiz) {
   quizDone = quiz || {};
-  /* ★ 封頂就做在這一行。上面那個變數之後代表的都是「算數的星數」。 */
-  unitStars = (window.GRADING && window.GRADING.cappedStars)
-    ? window.GRADING.cappedStars(stars || {}, quizDone)
-    : (stars || {});
+  unitStars = stars || {};
   preDone = pre || {};
   render();
 };

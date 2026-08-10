@@ -227,6 +227,12 @@
 
   var CSS = [
     '.dv{font-family:"Noto Sans TC",system-ui,sans-serif;color:#1e293b}',
+    /* 一題一題的進度點與題號 */
+    '.dv-prog{display:flex;gap:5px;margin:12px 0 10px}',
+    '.dv-dot{width:22px;height:5px;border-radius:99px;background:#e2e8f0}',
+    '.dv-dot.now{background:#4f46e5}.dv-dot.ok{background:#10b981}',
+    '.dv-num{font-size:11.5px;font-weight:900;color:#94a3b8;margin-bottom:4px}',
+    '.dv-next{margin-top:12px}',
     '.dv-intro{background:#eef2ff;border:1px solid #c7d2fe;border-radius:14px;',
     '  padding:12px 14px;font-size:14px;line-height:1.9;margin-bottom:14px}',
     '.dv-step{background:#fff;border:2px solid #e2e8f0;border-radius:14px;padding:14px 16px;margin-bottom:10px}',
@@ -546,6 +552,22 @@
        五個問題連答案一起攤開，就變成「照著抄」。
        先讓學生自己想，想不出來才點開 ——
        點開這個動作本身也讓學生知道自己卡在第幾問。 */
+  /* ── 問題分析：一題一題來 ─────────────────────────
+     ★ 為什麼改成「一次只看一題」
+       五問一次全部攤開的時候，學生做的事是「捲到底、找有按鈕的那一個」。
+       課本的拆解本來就是有順序的推理 —— 先知道怎麼畫一個，
+       才輪得到「六個怎麼排」，最後才問「哪一段重複」。
+       一次一題，那個順序才會真的發生。
+
+     ★ 為什麼「確認理解」不再是獨立的一步
+       圈選題本來就是某一問的判斷，寫作題本來就是整段的收尾 ——
+       把它們搬到另一頁，等於把同一件事切成兩半，
+       學生還要重新想起「剛剛那一題在問什麼」。
+
+     ⚠️ 只能有一顆「往下走」的按鈕。
+        原本這裡自己畫一顆、關卡頁又補一顆，畫面上同時出現
+        「想清楚了，開始動手」和「分析完了，往下走」——
+        兩顆功能一樣的按鈕，學生只會想「這兩個有什麼不同」。 */
   function renderAnalysis(host, data, opts) {
     ensureStyle();
     opts = opts || {};
@@ -554,96 +576,107 @@
     host.style.display = '';
     host.className = 'dv';
 
-    /* 每一問底下可以掛一個小互動：
-         pick  —— 圈出重複的那一段（有標準答案，判得出來）
-         沒有掛的就只有問句和提示。
-       ★ 為什麼不是每一問都掛
-         五問全部要作答會變成問卷。只有「這一關真正的判斷」值得問 ——
-         第 1 關是「哪一段一直重複」，第 2 關是「哪個數字每次都不一樣」。 */
-    var picksLeft = data.qs.filter(function (x) { return x.pick; }).length;
-
-    /* ── 只畫其中一段（一關一頁的五步驟用）────────────
-       opts.only:
-         'qs'    問題分析 —— 五問、提示、問問看（不含判斷題）
-         'check' 確認理解 —— 圈選 ＋ 先寫再對照
-         不給    全部（原本的行為，試玩頁與舊版都靠它）
-
-       ★ 為什麼是「切開」不是「拆成兩支」
-         題目資料只有一份（blocks.js 的 analysis），
-         拆成兩支就會有兩個地方讀同一份資料 ——
-         哪天欄位改了，一定有一邊忘記跟上。 */
-    var only = opts.only || '';
-    var showQs    = !only || only === 'qs';
-    var showCheck = !only || only === 'check';
+    var qs = data.qs;
+    var at = 0;                 // 現在看到第幾問
+    var passed = {};            // 這一問過了沒
 
     host.innerHTML =
       (data.intro ? '<div class="dv-intro">' + data.intro + '</div>' : '') +
-      '<ol class="dv-qs">' + data.qs.map(function (it, i) {
-        /* 「確認理解」那一步只列有判斷題的那幾問 —— 其他的在上一步看過了 */
-        if (only === 'check' && !it.pick) return '';
-        return '<li><div class="dv-qt">' + it.q + '</div>' +
-          (showCheck && it.pick ? pickHtml(it.pick, i) : '') +
-          (showQs && it.hint
-            ? '<details class="dv-hint"><summary>想不出來？點開看提示</summary><div>' +
-              it.hint + '</div></details>'
-            : '') +
-          /* 有 keys 的那幾問才掛 AI ——
-             keys 是「這一輪希望學生講到什麼」，沒有它，
-             AI 只知道學生寫了什麼、不知道他還缺什麼，問出來會飄。 */
-          ((showQs && (it.keys || []).length) ? '<div data-ai="' + i + '"></div>' : '') +
-          '</li>';
-      }).join('') + '</ol>' +
-      ((showCheck && data.write) ? writeHtml(data.write) : '') +
-      (opts.onDone ? '<div id="dv-go"></div>' : '');
+      '<div class="dv-prog"></div>' +
+      '<div class="dv-one"></div>' +
+      '<div class="dv-write-box"></div>' +
+      '<div id="dv-go"></div>';
 
-    if (showCheck) data.qs.forEach(function (it, i) { if (it.pick) wirePick(host, it.pick, i); });
-    if (showQs) wireAsk(host, data, opts);
-    if (showCheck && data.write) wireWrite(host, data.write, opts);
-    /* 沒畫出來的東西不能算在「還沒答對」裡，否則按鈕永遠亮不起來 */
-    if (!showCheck) picksLeft = 0;
-    refreshGo();
+    draw();
+
+    function draw() {
+      prog();
+      var box = host.querySelector('.dv-one');
+      if (at >= qs.length) { box.innerHTML = ''; writeStage(); return; }
+
+      var it = qs[at];
+      box.innerHTML =
+        '<div class="dv-num">第 ' + (at + 1) + ' 題 / 共 ' + qs.length + '</div>' +
+        '<div class="dv-qt">' + it.q + '</div>' +
+        (it.pick ? pickHtml(it.pick, at) : '') +
+        (it.hint ? '<details class="dv-hint"><summary>想不出來？點開看提示</summary><div>' +
+                   it.hint + '</div></details>' : '') +
+        ((it.keys || []).length ? '<div data-ai="' + at + '"></div>' : '') +
+        '<div class="dv-next"></div>';
+
+      if (it.pick) wirePick(host, it.pick, at);
+      wireAsk(host, it, at, opts);
+      nextBar();
+    }
+
+    function prog() {
+      host.querySelector('.dv-prog').innerHTML = qs.map(function (x, i) {
+        return '<span class="dv-dot ' + (passed[i] ? 'ok' : i === at ? 'now' : '') + '"></span>';
+      }).join('');
+    }
+
+    /* 沒有圈選題的那幾問，看完自己按「下一題」。
+       ★ 這裡不設判定也不設時間 —— 它們是「想一想」，不是考題。
+         擋在這裡只會讓學生開始猜系統要什麼。 */
+    function nextBar() {
+      var bar = host.querySelector('.dv-next');
+      if (!bar) return;
+      var it = qs[at];
+      if (it.pick && !passed[at]) { bar.innerHTML = ''; return; }
+      bar.innerHTML = '<button class="dv-btn" style="width:100%;padding:10px" id="dv-nx">' +
+        (at === qs.length - 1 ? '五題都想過了 →' : '下一題 →') + '</button>';
+      bar.querySelector('#dv-nx').onclick = function () {
+        passed[at] = true; at++; draw();
+        if (host.scrollIntoView) host.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      };
+    }
+
+    /* ── 最後的寫作題 ─────────────────────────────
+       ★ 判的是「有沒有講到概念」，不是字數。
+         只看字數的話，亂打十五個字也會過 —— 那等於沒有這一題。
+       ⚠️ 但回饋要說得出「還差什麼」，而且提示要拿得到。
+         擋住卻不告訴他方向，他只會亂試到過為止。 */
+    function writeStage() {
+      var w = data.write;
+      var box = host.querySelector('.dv-write-box');
+      if (!w) { box.innerHTML = ''; refreshGo(); return; }
+      if (host.__wrote) { refreshGo(); return; }
+      box.innerHTML = writeHtml(w);
+      wireWrite(host, w, opts);
+      refreshGo();
+    }
 
     function refreshGo() {
       var box = host.querySelector('#dv-go');
       if (!box || !opts.onDone) return;
-      var wroteOk = !showCheck || !data.write || (host.__wrote || '').trim().length >= (data.write.min || 12);
-      var ready = picksLeft === 0 && wroteOk;
-      box.innerHTML = '<button class="dv-btn" style="width:100%;padding:11px" ' +
-        (ready ? '' : 'disabled ') + 'id="dv-godo">' +
-        (ready ? '想清楚了，開始動手 →'
-               : (picksLeft > 0 ? '上面還有 ' + picksLeft + ' 題沒答對' : '先寫下你的想法'))
-        + '</button>';
-      var b = box.querySelector('#dv-godo');
-      b.style.opacity = ready ? '' : '.5';
-      b.style.cursor = ready ? 'pointer' : 'not-allowed';
-      if (ready) b.onclick = function () { opts.onDone(host.__wrote || ''); };
+      var need = data.write ? !!host.__wrote : at >= qs.length;
+      if (!need) { box.innerHTML = ''; return; }
+      box.innerHTML = '<button class="dv-btn" style="width:100%;padding:12px" id="dv-godo">' +
+        '想清楚了，開始動手 →</button>';
+      box.querySelector('#dv-godo').onclick = function () { opts.onDone(host.__wrote || ''); };
     }
 
-    /* 把「問問看」掛上去。
+    /* 把「問問看」掛上去（只有這一問有 keys 才掛）。
        ★ 為什麼要判 window.ASKAI 在不在
          這一頁在測試裡是單獨載入的（沒有 askai.js、沒有 CONFIG），
          直接呼叫會炸掉 —— 而問題拆解本身不該依賴 AI 才能用。
-         AI 是加上去的東西，不是這個功能的前提。
        ★ 為什麼要判 enabled()
-         config.js 的 AIGUIDE.KEY 留空 ＝ 這個功能關閉。
-         關掉時整塊不出現，而不是出現一個按了會壞的按鈕。 */
-    function wireAsk(root, d, o) {
+         config.js 的 AIGUIDE.KEY 留空 ＝ 這個功能關閉。 */
+    function wireAsk(root, it, i, o) {
       if (typeof window === 'undefined' || !window.ASKAI || !window.ASKAI.enabled()) return;
-      if (!o.unit) return;              // 不知道是哪一關就問不了（GAS 靠它抓題目）
-      d.qs.forEach(function (it, i) {
-        if (!(it.keys || []).length) return;
-        var box = root.querySelector('[data-ai="' + i + '"]');
-        if (!box) return;
-        window.ASKAI.mount(box, {
-          unit: o.unit, qi: i, keys: it.keys, hint: it.hint,
-          student: o.student || '',
-          onAsked: o.onAsked || null
-        });
+      if (!o.unit) return;
+      if (!(it.keys || []).length) return;
+      var box = root.querySelector('[data-ai="' + i + '"]');
+      if (!box) return;
+      window.ASKAI.mount(box, {
+        unit: o.unit, qi: i, keys: it.keys, hint: it.hint,
+        student: o.student || '', onAsked: o.onAsked || null
       });
     }
 
     function wirePick(root, p, i) {
       var wrap = root.querySelector('[data-pick="' + i + '"]');
+      if (!wrap) return;
       var fb = wrap.querySelector('.dv-fb');
       var done = false;
       wrap.addEventListener('click', function (e) {
@@ -655,11 +688,12 @@
         var want = (p.answer || []).slice().sort();
         fb.style.display = '';
         if (got.join() === want.join()) {
-          done = true; picksLeft--;
+          done = true; passed[i] = true;
           fb.className = 'dv-fb good';
           fb.innerHTML = '✓ ' + (p.ok || '對了。');
-          wrap.querySelector('[data-check]').remove();
-          refreshGo();
+          var cb = wrap.querySelector('[data-check]');
+          if (cb) cb.remove();
+          prog(); nextBar();
         } else {
           fb.className = 'dv-fb bad';
           fb.innerHTML = '✗ ' + missMsg(p, got, want);
@@ -671,28 +705,51 @@
       var ta = root.querySelector('#dv-write');
       var btn = root.querySelector('#dv-wbtn');
       var out = root.querySelector('#dv-wout');
+      var tries = 0;
       btn.onclick = function () {
         var t = ta.value.trim();
-        if (t.length < (w.min || 12)) {
-          out.style.display = '';
+        var r = judgeWrite(t, w);
+        out.style.display = '';
+        if (r.level === 'none') {
+          tries++;
           out.className = 'dv-fb bad';
-          out.textContent = '再多寫一點 —— 至少 ' + (w.min || 12) + ' 個字。（現在 ' + t.length + ' 個字）';
+          out.innerHTML = esc(r.why) +
+            /* ★ 試兩次還不過就直接把提示端出來。
+               這一題是「想一想」的收尾，不是關卡 ——
+               卡在這裡的代價是他連課本的說法都看不到。 */
+            (tries >= 2 && w.hintText
+              ? '<div style="margin-top:6px">💡 ' + w.hintText + '</div>' : '');
           return;
         }
         host.__wrote = t;
         ta.disabled = true; btn.remove();
-        out.style.display = '';
         out.className = 'dv-fb good';
         /* ★ 寫完才顯示課本的說法。
-             先給答案的話，學生會照抄；而這一步的重點是「先有自己的想法」，
-             寫得對不對反而是其次 —— 所以不判分，只讓他自己比對。 */
-        out.innerHTML = '<b>你寫的：</b>' + esc(t) + '<div style="margin-top:8px">' +
-          '<b>課本是這樣說的：</b>' + w.sample + '</div>' +
-          '<div style="margin-top:6px;font-size:12px;opacity:.75">兩邊不一樣沒關係 —— 講得出自己的理由才是重點。</div>';
+             先給答案的話，學生會照抄；而這一步的重點是「先有自己的想法」。 */
+        out.innerHTML = '<b>' + esc(r.why) + '</b>' +
+          '<div style="margin-top:8px"><b>課本是這樣說的：</b>' + w.sample + '</div>' +
+          '<div style="margin-top:6px;font-size:12px;opacity:.75">' +
+          '兩邊不一樣沒關係 —— 講得出自己的理由才是重點。</div>';
         if (o.onWrite) o.onWrite(t);
         refreshGo();
       };
     }
+  }
+
+  /* 寫作題的判定。
+     ★ 一律走 shared/answer.js —— 站上「有沒有講到這幾個概念」只能有一套規則。
+     ⚠️ answer.js 沒載到時**放行**，不要擋人。
+        這一題不是關卡的鎖（真正的門檻在概念檢測），
+        少載一支 js 就讓所有人卡在這裡，是最不划算的擋法。 */
+  function judgeWrite(text, w) {
+    var t = String(text || '').trim();
+    if (typeof window !== 'undefined' && window.ANSWER && (w.keys || []).length) {
+      var r = window.ANSWER.judge(t, { need: w.keys, full: 1, min: w.min || 12 });
+      return r;
+    }
+    return t.length >= (w.min || 12)
+      ? { level: 'full', why: '你寫的：' + t }
+      : { level: 'none', why: '再多寫一點 —— 至少 ' + (w.min || 12) + ' 個字。' };
   }
 
   /** 圈選題：哪幾行是一直重複的 */
@@ -729,6 +786,7 @@
     VERSION: VERSION,
     mount: mount,
     renderAnalysis: renderAnalysis,
+    _judgeWrite: judgeWrite,
     _turnFor: turnFor,
     _closes: closes,
     _laps: laps,

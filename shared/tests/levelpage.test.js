@@ -74,10 +74,10 @@ section('步驟的順序');
        概念檢測一定要在程式拼圖**之前** ——
        排在後面的話，拼對了就沒有人會回頭讀。 */
   const s = stepsOf(level('2-1-1'));
-  /* ⚠️ 2026-08-10 第 1 關又多了「套餐工廠」（模組化的生活體驗），變成七步。
-     ★ 但套餐只有第 1 關有 —— 每一關都放的話它就變成點擊過場。 */
-  const want = ['情境解說','套餐工廠','問題分析','確認理解','概念檢測','程式拼圖','實作測試'];
-  ok(s.length === want.length, '第 1 關有七步（' + s.join(' ') + '）');
+  /* ⚠️ 2026-08-10 第 1 關多了「套餐工廠」，同一天「確認理解」併回問題分析
+     （圈選題和寫作題本來就是那一段的一部分，搬到另一頁等於把一件事切兩半）。 */
+  const want = ['情境解說','套餐工廠','問題分析','概念檢測','程式拼圖','實作測試'];
+  ok(s.length === want.length, '第 1 關有六步（' + s.join(' ') + '）');
   want.forEach((n, i) => ok((s[i] || '').indexOf(n) >= 0, '   第 ' + (i + 1) + ' 步是「' + n + '」'));
 }
 {
@@ -140,10 +140,18 @@ section('⏱️ 純閱讀的步驟要停留 30 秒');
   const go = w.document.getElementById('go');
   ok(!!go, '情境解說有「往下走」的按鈕');
   ok(go.disabled === true, '★ 一進來按鈕是鎖著的 —— 沒有判定條件的步驟，按一下就過去等於沒讀');
-  ok(/秒/.test(go.textContent), '   而且按鈕上看得到還要等幾秒（' + go.textContent.trim() + '）');
-  const msg = w.document.getElementById('holdmsg');
-  ok(msg && /離開|分頁|倒數/.test(msg.textContent),
-     '★ 要先講清楚「切走會停下來」—— 規則沒說在前面，學生只會覺得被整');
+  ok(/\（\d+\）/.test(go.textContent),
+     '   按鈕上看得到秒數（' + go.textContent.trim() + '）');
+  /* ★ 只給數字，不要解釋規則。
+     「這一段沒有題目所以請讀 30 秒」讀起來像在說「我知道你不會讀」，
+     而且那句話本身就佔掉了要讀的注意力。 */
+  ok(!w.document.getElementById('holdmsg'),
+     '★ 不對學生解釋「為什麼要等」—— 只顯示秒數');
+  /* ⚠️ 釘「畫面上沒有」，不是「原始碼裡不准提」——
+     註解正是在說明為什麼不給學生看，把註解也一起禁掉是搞錯對象。 */
+  ok(!/至少讀 |切到別的分頁或視窗，倒數會停下來/.test(
+       levelSrc.replace(/\/\*[\s\S]*?\*\//g, '')),
+     '   而且註解以外的地方（真的會顯示的字串）也沒有那種說明');
   /* ★ 按不下去就是按不下去：把 disabled 的按鈕點下去不可以前進。 */
   go.dispatchEvent(new w.Event('click'));
   ok(w.document.querySelectorAll('.stp')[0].className.indexOf('stp-now') >= 0,
@@ -187,10 +195,11 @@ section('🍔 套餐工廠只掛在第 1 關');
   const go = () => w.document.getElementById('go');
   ok(go().disabled === true, '一開始鎖著');
   await new Promise(r => setTimeout(r, 1200));
-  ok(/還要 1 秒/.test(go().textContent), '★ 一秒之後真的少一秒（' + go().textContent.trim() + '）');
+  ok(/（1）/.test(go().textContent), '★ 一秒之後真的少一秒（' + go().textContent.trim() + '）');
   await new Promise(r => setTimeout(r, 1500));
   ok(go().disabled === false, '★ 時間到就解鎖');
-  ok(!/秒/.test(go().textContent), '   而且按鈕文字要變回正常（' + go().textContent.trim() + '）');
+  ok(!/（\d+）|暫停/.test(go().textContent),
+     '   而且按鈕文字要變回正常（' + go().textContent.trim() + '）');
   go().dispatchEvent(new w.Event('click'));
   const nowStep = [...w.document.querySelectorAll('.stp')]
     .find(b => b.className.indexOf('stp-now') >= 0).textContent.replace(/\s+/g, '');

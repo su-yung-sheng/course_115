@@ -13,8 +13,9 @@
         覆核失敗、覆核亂回、覆核被學生的作答帶著走 ——
         三種情況學生拿到的分數都不可以比規則判的低。
 
-     ③ 星數只有一個寫入者
-        概念檢測封頂，不發星。
+     ③ 兩組星星，各自算各自的
+        作品星只有一個寫入者（Colab 批改）；
+        概念星是每次從 quiz 的分數現算的，不另外存一份。
 
      ④ 不到門檻要真的帶他回去讀 */
 'use strict';
@@ -85,6 +86,31 @@ section('★ 不可以錯殺：同一個意思的各種說法');
   yes(q, '60度，因為360除以6', '算式');
   yes(q, '轉六十度 一整圈三百六十 分給六個角', '★ 國字數字也要認得');
   yes(q, '360/6=60', '★ 只寫式子也算 —— 他確實會算');
+}
+
+/* ── ★ 另一個方向的誤判：空話不可以被判成「講到重點」──
+   前面那一段測的是「不可以錯殺」，這一段測的是它的反面。
+   ⚠️ 這幾條是真的抓到過東西的：
+     · 「知道」當同義詞 → 學生寫「我不知道」就命中了「一看就知道在做什麼」
+     · 「不」當同義詞   → 幾乎每一句中文都有「不」
+     · 「別的」        → 被「特別的」命中
+   單獨一個字的同義詞最容易出這種事，加新題目時要特別小心。 */
+section('★ 空話不可以被判成「講到重點」');
+{
+  const JUNK = [
+    '我覺得應該就是這樣吧我不知道啦',
+    '不知道耶老師這個好難喔我不會',
+    '這個東西真的很難我都不懂啦怎麼辦',
+    '隨便啦反正就是那樣子沒什麼特別的',
+    '哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈'
+  ];
+  let bad = [];
+  ['2-1-1', '2-1-2', '2-1-3'].forEach(id => Q(id).forEach((q, i) => JUNK.forEach(t => {
+    const r = A.judge(t, q);
+    if (r.level !== 'none') bad.push(id + ' 第' + (i + 1) + '題 ← 「' + t + '」命中「' + r.got.join('、') + '」');
+  })));
+  ok(bad.length === 0, '★ 五種空話 × 所有題目，一個都不可以過' +
+     (bad.length ? '（' + bad[0] + ' 等 ' + bad.length + ' 個）' : ''));
 }
 
 section('常見誤解：只降一級，不歸零');
@@ -180,15 +206,25 @@ section('抽題');
 }
 function ok0(c, l) { if (!c) { fail++; console.log('  ❌ ' + l); } }
 
-section('門檻與封頂（shared/grading.js）');
+section('🧠 概念星（shared/grading.js）');
 const G = W.GRADING;
-ok(G.QUIZ_PASS === 3 && G.QUIZ_FULL === 4, '五題：3 題過關、4 題才有 3 星');
-ok(G.starCap({}, '2-1-1') === 3, '★ 還沒考 → 不封頂（不要因為還沒考就先罰他）');
-ok(G.starCap({ '2-1-1': { score: 4 } }, '2-1-1') === 3, '4 題 → 上限 3 星');
-ok(G.starCap({ '2-1-1': { score: 3 } }, '2-1-1') === 2, '★ 3 題 → 上限 2 星（做出來了但概念沒懂）');
-ok(G.effectiveStars({ '2-1-1': 3 }, { '2-1-1': { score: 3 } }, '2-1-1') === 2, '封頂把 3 星壓成 2');
-ok(G.effectiveStars({ '2-1-1': 1 }, { '2-1-1': { score: 5 } }, '2-1-1') === 1,
-   '★ 封頂只會往下 —— 考試考得好不能取代作品');
+ok(G.QUIZ_PASS === 3 && G.QUIZ_FULL === 4, '五題：3 題過門檻、4 題拿第 2 顆星');
+ok(G.quizStars({ '2-1-1': { score: 5 } }, '2-1-1') === 3, '五題全講到 → 3 顆概念星');
+ok(G.quizStars({ '2-1-1': { score: 4 } }, '2-1-1') === 2, '4 題 → 2 顆');
+ok(G.quizStars({ '2-1-1': { score: 3 } }, '2-1-1') === 1, '3 題（剛好過門檻）→ 1 顆');
+ok(G.quizStars({ '2-1-1': { score: 2 } }, '2-1-1') === 0, '沒過門檻 → 0 顆（他本來也走不下去）');
+ok(G.quizStars({}, '2-1-1') === 0, '還沒寫 → 0 顆（那不是懲罰，是還沒做）');
+ok(G.quizTotal({ a: { score: 5 }, b: { score: 3 } }).stars === 4, '總數會加起來');
+/* ★ 概念星是「現算」的，不另外存一份。
+   存第二份的話，兩份遲早會不一致，而且不會有人發現是哪一天開始的。 */
+ok(!G.cappedStars && !G.starCap && !G.effectiveStars,
+   '★ 封頂那一套已經拆掉 —— 改成兩組星星之後它就是死程式碼');
+{
+  const gs = fs.readFileSync(path.join(root, 'shared', 'grading.js'), 'utf8');
+  ok(/依序開放只看作品星|依序開放\*\*只看作品星/.test(gs),
+     '★ 程式裡要寫明「依序開放只看作品星」—— 概念檢測可以重寫到過為止，' +
+     '拿它當鑰匙等於沒有鎖');
+}
 
 section('接進關卡頁');
 const L = fs.readFileSync(path.join(root, '11502', 'level.html'), 'utf8');
@@ -205,11 +241,13 @@ ok(/window\.saveQuiz/.test(L) && /saveQuiz = async/.test(L), '★ saveQuiz 有�
   const save = L.slice(L.indexOf('window.saveQuiz'), L.indexOf('window.saveNote'));
   ok(!/unitStars/.test(save), '★ 存成績時完全不碰 unitStars —— 星數只有批改那一個寫入者');
 }
-ok(/window\.GRADING\.cappedStars/.test(L), 'applyProgress 進來就封頂');
+ok(!/cappedStars/.test(L), '★ 關卡頁不再封頂（兩組星星各自算）');
+ok(/window\.GRADING\.quizStars/.test(L), '   重寫畫面顯示的是概念星');
 ok(!/[^.\w]GRADING\./.test(L.replace(/window\.GRADING\./g, 'window_G.')),
    '★ 跨檔案的全域一律寫 window.GRADING（裸的全域在測試環境直接 ReferenceError，咬過四次）');
 const S = fs.readFileSync(path.join(root, '11502', 'scratch.html'), 'utf8');
-ok(/GRADING\.cappedStars/.test(S), '★ 闖關地圖用同一份封頂後的星數');
+ok(!/cappedStars/.test(S) && /quizTotal/.test(S),
+   '★ 闖關地圖分開顯示兩組星星（🧩 作品 · 🧠 概念），不要加成一個數字');
 
 section('伺服器端覆核（shared/aiguide.gs）');
 const gs = fs.readFileSync(path.join(root, 'shared', 'aiguide.gs'), 'utf8');
@@ -265,10 +303,13 @@ ok(/combo: true/.test(fs.readFileSync(path.join(root, '11502', 'content', 'block
   ok((b.match(/combo: true/g) || []).length === 1,
      '★ 只有一關有 —— 每一關都放的話它就變成點擊過場');
 }
-/* ⚠️ 2026-08-10：「先跳過」改成「停留夠久才走得掉」——
-   使用者要求每個步驟都不能跳過，但也不能把人鎖死（萬一互動壞了）。 */
-ok(/玩不動的話/.test(L) && !/先跳過/.test(L),
-   '★ 套餐不能無條件跳過，但要留一條「等一下就走得掉」的路（不能鎖死人）');
+/* ⚠️ 2026-08-10：套餐既不給跳過，也不加倒數 ——
+   三關本來就要動手才過得去，再加時間是雙重處罰。 */
+{
+  const combo = L.slice(L.indexOf("s.key === 'combo'"), L.indexOf("s.key === 'analysis'"));
+  ok(!/先跳過|nextBtn/.test(combo),
+     '★ 套餐那一步沒有跳過鍵、也沒有倒數 —— 它本來就要動手才過得去');
+}
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

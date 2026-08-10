@@ -70,33 +70,65 @@
     { key: 'drink', name: '飲料',  items: DRINK }
   ];
 
-  /* ── 三個關卡 ───────────────────────────────────── */
+  /* ── 訂單題庫 ─────────────────────────────────────
+     ★ 為什麼是「照訂單組」不是「自己隨便組」
+       自由組的話，學生點三下就過了，腦袋沒有動 ——
+       而且他不會發現「每一張訂單用的都是同樣三個位置」。
+       照單組才會逼他在同一組材料裡找出對應的那一個。
+
+     ★ 10 張抽 3
+       隔壁同學拿到的不一樣，也不必為了變化寫一百張。 */
+  var ORDERS = [
+    { main: 'burger',  side: 'fries',  drink: 'cola' },
+    { main: 'chicken', side: 'nugget', drink: 'tea'  },
+    { main: 'fish',    side: 'salad',  drink: 'milk' },
+    { main: 'burger',  side: 'nugget', drink: 'tea'  },
+    { main: 'chicken', side: 'salad',  drink: 'cola' },
+    { main: 'fish',    side: 'fries',  drink: 'tea'  },
+    { main: 'burger',  side: 'salad',  drink: 'milk' },
+    { main: 'chicken', side: 'fries',  drink: 'milk' },
+    { main: 'fish',    side: 'nugget', drink: 'cola' },
+    { main: 'burger',  side: 'fries',  drink: 'tea'  }
+  ];
+  var N_ORDER = 3;          // 一個學生要組幾張
+
+  /* ── 三個關卡 ─────────────────────────────────── */
   var STAGES = [
-    {
-      title: '① 組一份套餐',
-      ask: '三個位置各挑一個，組成一份套餐。',
-      /* ★ 目標是 3 份「不一樣的」套餐。
-         組出三份之後，他會自己發現：換的只是其中一格。 */
-      goal: 3,
-      done: '你組了 3 份不一樣的套餐 —— 但每一份都是<b>同樣三個位置</b>：主餐、配餐、飲料。' +
-            '<br>店員不必為每一種組合重學一次，因為<b>套餐的「架構」只有一種</b>。'
-    },
-    {
-      title: '② 換掉一個模組',
-      ask: '把飲料換成別的，主餐和配餐<b>不要動</b>。',
-      goal: 2,
+    { title: '① 照訂單組套餐',
+      ask: '客人點了這一份，三個位置各選對一個。',
+      done: '三張訂單都組好了 —— 但每一張都是<b>同樣三個位置</b>：主餐、配餐、飲料。' +
+            '<br>店員不必為每一種組合重學一次，因為<b>套餐的「架構」只有一種</b>。' },
+    { title: '② 換掉一個模組',
+      ask: '客人臨時改單：<b>只換飲料</b>，主餐和配餐不要動。',
       done: '你只動了一格，其他兩格完全沒碰。<br>' +
-            '<b>這就是模組化最實際的好處：改一個地方，其他都不用動。</b>'
-    },
-    {
-      title: '③ 打開主餐看看',
-      ask: '點一下你的主餐，看看它裡面是什麼。',
-      goal: 1,
+            '<b>這就是模組化最實際的好處：改一個地方，其他都不用動。</b>' },
+    { title: '③ 打開主餐看看',
+      ask: '點一下托盤上的主餐，看看它裡面是什麼。',
       done: '主餐自己也是拼出來的：麵包 ＋ 肉 ＋ 配料 ＋ 醬。<br>' +
             '<b>模組裡面還可以有模組</b> —— 等一下你會看到，' +
-            '副程式裡面也可以再呼叫另一個副程式。'
-    }
+            '副程式裡面也可以再呼叫另一個副程式。' }
   ];
+
+  function shuffle(a) {
+    a = a.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function find(list, id) {
+    return list.filter(function (x) { return x.id === id; })[0] || null;
+  }
+  function slotList(key) {
+    return SLOTS.filter(function (x) { return x.key === key; })[0].items;
+  }
+  function orderText(o) {
+    return SLOTS.map(function (sl) {
+      var it = find(sl.items, o[sl.key]);
+      return '<b>' + it.icon + ' ' + it.name + '</b>';
+    }).join(' ＋ ');
+  }
 
   /* ── 畫面 ───────────────────────────────────────── */
   function mount(host, opts) {
@@ -104,12 +136,12 @@
     if (!host) return;
     ensureStyle();
 
-    var st = 0;                        // 現在第幾關
+    var st = 0;
+    var orders = shuffle(ORDERS).slice(0, N_ORDER);   // 這一次要組的三張
+    var oi = 0;                                       // 現在第幾張
     var pick = { main: null, side: null, drink: null };
-    var made = [];                     // 組過哪些套餐（用 id 串起來比對）
-    var swaps = 0;                     // 第 2 關換過幾次飲料
-    var opened = false;                // 第 3 關打開過主餐沒
-    var doneAll = false;
+    var swapWant = null;      // 第 2 關要換成哪一種飲料
+    var opened = false;
 
     draw();
 
@@ -123,6 +155,7 @@
           '<h3 class="cb-title">🍔 ' + s.title + '</h3>' +
           '<p class="cb-ask">' + s.ask + '</p>' +
         '</div>' +
+        orderCard() +
         '<div class="cb-tray">' + SLOTS.map(function (sl) {
           var got = pick[sl.key];
           return '<div class="cb-slot' + (got ? ' has' : '') + '" data-slot="' + sl.key + '">' +
@@ -140,49 +173,79 @@
             }).join('') + '</div></div>';
         }).join('') + '</div>' +
         '<div id="cb-open"></div>' +
-        '<div id="cb-log" class="cb-log"></div>' +
         '<div id="cb-msg"></div>';
 
       host.querySelectorAll('.cb-chip').forEach(function (b) {
         b.onclick = function () { choose(b.dataset.k, b.dataset.id); };
       });
-      /* 第 3 關：點托盤上的主餐就會展開它的零件。 */
       var mainSlot = host.querySelector('[data-slot="main"]');
       if (mainSlot && st === 2) {
         mainSlot.classList.add('clickable');
         mainSlot.onclick = openMain;
       }
-      paintLog();
       if (st === 2 && opened) showParts();
     }
 
-    function choose(key, id) {
-      var sl = SLOTS.filter(function (x) { return x.key === key; })[0];
-      var it = sl.items.filter(function (x) { return x.id === id; })[0];
-      var was = pick[key];
-      pick[key] = it;
-
-      if (st === 1 && key === 'drink' && was && was.id !== it.id) swaps++;
-      /* ⚠️ 第 2 關動到主餐或配餐 → 不算數，而且要說出來為什麼。
-         只是不加分的話，他不知道自己違反了什麼。 */
-      if (st === 1 && key !== 'drink') {
-        note('bad', '這一關只換<b>飲料</b>喔 —— 主餐和配餐請保持原樣。' +
-                    '（模組化的重點就是「動一格，其他不動」）');
+    /** 訂單卡：學生要照著組的那一份 */
+    function orderCard() {
+      if (st === 0) {
+        return '<div class="cb-order"><div class="cb-order-h">📋 訂單 ' +
+          (oi + 1) + ' / ' + orders.length + '</div>' + orderText(orders[oi]) + '</div>';
       }
-      draw();
-      check();
+      if (st === 1) {
+        if (!swapWant) swapWant = pickSwap();
+        return '<div class="cb-order change"><div class="cb-order-h">🔁 改單</div>' +
+          '飲料換成 <b>' + swapWant.icon + ' ' + swapWant.name + '</b>' +
+          '<div class="cb-order-note">主餐和配餐維持原樣。</div></div>';
+      }
+      return '';
     }
 
-    function full() { return pick.main && pick.side && pick.drink; }
-    function sig() { return full() ? pick.main.id + '+' + pick.side.id + '+' + pick.drink.id : ''; }
+    /** 第 2 關要換成哪一種：一定和現在這杯不一樣 */
+    function pickSwap() {
+      var now = pick.drink ? pick.drink.id : '';
+      var others = slotList('drink').filter(function (x) { return x.id !== now; });
+      return shuffle(others)[0];
+    }
 
-    function check() {
-      if (st === 0) {
-        var k = sig();
-        if (k && made.indexOf(k) < 0) { made.push(k); paintLog(); }
-        if (made.length >= STAGES[0].goal) return finish();
+    function choose(key, id) {
+      var it = find(slotList(key), id);
+      var was = pick[key];
+
+      /* ⚠️ 第 2 關動到主餐或配餐 → 擋下來，而且要說出為什麼。
+         只是「不算數」的話，他不知道自己違反了什麼。 */
+      if (st === 1 && key !== 'drink') {
+        note('bad', '這一關只換<b>飲料</b> —— 主餐和配餐請保持原樣。' +
+                    '（模組化的重點就是「動一格，其他不動」）');
+        return;
       }
-      if (st === 1 && swaps >= STAGES[1].goal) return finish();
+      pick[key] = it;
+      draw();
+      check(key, was);
+    }
+
+    function check(key, was) {
+      if (st === 0) {
+        var o = orders[oi];
+        var okAll = SLOTS.every(function (sl) {
+          return pick[sl.key] && pick[sl.key].id === o[sl.key];
+        });
+        if (!okAll) { note('', ''); return; }
+        if (oi < orders.length - 1) {
+          oi++;
+          /* ★ 下一張訂單保留上一份的選擇 ——
+             這樣他自己會看到「只要改動不一樣的那幾格」。 */
+          note('good2', '✅ 訂單 ' + oi + ' 完成！接著是下一張。');
+          draw();
+          return;
+        }
+        finish();
+        return;
+      }
+      if (st === 1 && key === 'drink' && swapWant && pick.drink.id === swapWant.id
+          && (!was || was.id !== pick.drink.id)) {
+        finish();
+      }
     }
 
     function openMain() {
@@ -203,25 +266,10 @@
         '</div>';
     }
 
-    function paintLog() {
-      var box = host.querySelector('#cb-log');
-      if (!box) return;
-      if (st !== 0 || !made.length) { box.innerHTML = ''; return; }
-      box.innerHTML = '<div class="cb-log-h">你組過的套餐（' + made.length + ' / ' +
-        STAGES[0].goal + '）</div>' + made.map(function (k) {
-          var p = k.split('+');
-          return '<div class="cb-log-i">' + icon(MAIN, p[0]) + ' ＋ ' + icon(SIDE, p[1]) +
-                 ' ＋ ' + icon(DRINK, p[2]) + '</div>';
-        }).join('');
-    }
-    function icon(list, id) {
-      var x = list.filter(function (y) { return y.id === id; })[0];
-      return x ? x.icon + ' ' + x.name : id;
-    }
-
     function note(kind, html) {
       var box = host.querySelector('#cb-msg');
-      if (box) box.innerHTML = '<div class="cb-note ' + kind + '">' + html + '</div>';
+      if (!box) return;
+      box.innerHTML = html ? '<div class="cb-note ' + (kind === 'good2' ? 'good' : kind) + '">' + html + '</div>' : '';
     }
 
     function finish() {
@@ -231,20 +279,16 @@
       var b = host.querySelector('#cb-next');
       if (!b) return;
       b.onclick = function () {
-        if (st < STAGES.length - 1) {
-          st++;
-          if (st === 1) swaps = 0;
-          draw();
-          return;
-        }
-        doneAll = true;
+        if (st < STAGES.length - 1) { st++; draw(); return; }
         if (opts.onDone) opts.onDone();
       };
     }
 
     /* 給測試用：不必模擬點擊也走得完 */
     host.__combo = {
-      state: function () { return { st: st, made: made.slice(), swaps: swaps, opened: opened, done: doneAll }; },
+      state: function () {
+        return { st: st, oi: oi, orders: orders, pick: pick, swapWant: swapWant, opened: opened };
+      },
       choose: choose,
       openMain: openMain
     };
@@ -277,6 +321,11 @@
       '  font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}',
       '.cb-chip:hover{border-color:#fbbf24}',
       '.cb-chip.on{border-color:#f59e0b;background:#fef3c7}',
+      '.cb-order{margin:0 0 12px;border:2px solid #fbbf24;border-radius:14px;background:#fffbeb;',
+      '  padding:11px 13px;font-size:15px;color:#78350f}',
+      '.cb-order.change{border-color:#60a5fa;background:#eff6ff;color:#1e3a8a}',
+      '.cb-order-h{font-size:11.5px;font-weight:900;opacity:.75;margin-bottom:3px}',
+      '.cb-order-note{font-size:12px;opacity:.8;margin-top:3px}',
       '.cb-log{margin-top:10px}',
       '.cb-log-h{font-size:11.5px;font-weight:900;color:#64748b;margin-bottom:4px}',
       '.cb-log-i{font-size:13px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;',

@@ -88,8 +88,16 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
     <div class="tape"></div>
     <h2 class="text-lg sm:text-xl font-black leading-relaxed text-center">
       <span class="text-orange-600">🐱 程式設計完成 <span id="done-count">0</span> / <span id="unit-count">10</span> 關</span>
-      <span class="text-slate-300 mx-2 hidden sm:inline">|</span>
-      <span class="block sm:inline">共 <span id="total-star" class="text-amber-500 text-2xl font-black">0</span>⭐</span>
+      <!-- ★ 兩組星星，各自算各自的（照 11501「流程圖 ＋ Scratch」的做法）：
+             🧩 作品星 —— Scratch 作品的批改給，**依序開放只看它**
+             🧠 概念星 —— 概念檢測五題現算出來的，是成就不是通行證
+           ⚠️ 不要把兩組加成一個數字。加起來之後，
+              「我到底是哪一種還沒做」就看不出來了 —— 而那才是他需要知道的。 -->
+      <span class="block sm:inline mt-1 sm:mt-0 sm:ml-3">
+        🧩 作品 <span id="total-star" class="text-amber-500 text-2xl font-black">0</span>⭐
+        <span class="text-slate-300 mx-1">·</span>
+        🧠 概念 <span id="quiz-star" class="text-indigo-500 text-2xl font-black">0</span>⭐
+      </span>
     </h2>
     <p class="text-slate-500 text-xs sm:text-sm mt-2 text-center leading-relaxed">
       關卡<b class="text-orange-600">依序開放</b>：上傳作品拿到 <b>2⭐</b> 以上才會開下一關。
@@ -171,7 +179,8 @@ function unitOpen(no){ return GATE.isOpen(no, UNITS, true, null, unitStars); }
 function lockReason(no){ return GATE.reason(no, UNITS, true, null, unitStars); }
 
 /* ===================== 狀態 ===================== */
-let unitStars = {};   // { '2-1-1A': 3, ... }　由 AI 批改寫入 11502-progress
+let unitStars = {};   // 作品星：{ '2-1-1A': 3, … }　由 AI 批改寫入 11502-progress
+let quizDone  = {};   // 概念檢測成績：{ '2-1-1': { score: 4 } }　概念星由它現算
 let preDone   = {};   // { '2-1-1': true, ... }　思考關卡做完了沒（存在 modules.scratch.pre）
 let preStage  = 0;    // 目前在思考關卡的第幾步
 let preUnit   = '';   // 這幾步是屬於哪一關的（換關要從頭來）
@@ -225,6 +234,11 @@ function renderTotal(){
     ? window.GRADING.scratchTotal(unitStars).stars
     : Object.values(unitStars).reduce((a,b)=>a+b,0);
   document.getElementById('total-star').textContent = t;
+  /* 概念星是「現算」的 —— 只有 quiz 的分數是資料，星數不另外存。
+     沒有第二份資料，也就沒有兩份會不一致的問題。 */
+  const q = (window.GRADING && window.GRADING.quizTotal)
+    ? window.GRADING.quizTotal(quizDone).stars : 0;
+  document.getElementById('quiz-star').textContent = q;
   /* 「完成幾關」和「幾顆星」是兩件事：拿 1 星不算通關（門檻 2 星），
      所以不能用 Object.keys(unitStars).length 充數。 */
   const done = UNITS.filter(u => (unitStars[u.id] || 0) >= 2).length;
@@ -276,14 +290,11 @@ function countdown(host, sec, label, done){
    刻意包成函式而不是直接改變數：跨 script 改別人的變數不好追，
    也讓「拿到新星數就一定重畫」變成沒辦法忘記的事。 */
 window.applyStars = function (obj, pre, quiz) {
-  /* ★ 星數在進來的這一刻就被概念檢測封頂。
-     概念只考 3 題對的話，作品拿 3 星也只算 2 ——
-     底下的依序開放、星數統計讀的都是封頂後的值，不必各自再判一次。
-     ⚠️ 封頂只做這一處。兩個地方都能改星數的話，
-        之後沒有人說得出「這一顆星到底是誰給的」。 */
-  unitStars = (window.GRADING && GRADING.cappedStars)
-    ? GRADING.cappedStars(obj || {}, quiz || {})
-    : (obj || {});
+  /* ⚠️ 作品星和概念星分開放，不要合成一個數字。
+     依序開放只看 unitStars（作品星）—— 概念檢測可以一直重寫到過為止，
+     拿它當開關的鑰匙等於沒有鎖。 */
+  unitStars = obj || {};
+  quizDone = quiz || {};
   preDone = pre || {};
   repaint();
 };

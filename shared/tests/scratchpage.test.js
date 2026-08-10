@@ -68,8 +68,13 @@ ok(!/out\.push\('analysis'\);\s*out\.push\('derive'\)/.test(html), '步驟不是
    現在要圈對「哪一段一直重複」，而且要寫下自己的想法。 */
 ok(!/countdown\(foot, 20,/.test(html), '★ 拆解那一步不再用讀秒充數');
    ok(/onDone: \(\) => \{ ready\[at\] = true/.test(lvHtml), '   往下一步由那一步自己決定');
-ok(/only: s\.key === 'analysis' \? 'qs' : 'check'/.test(lvHtml),
-   '   拆解自己說完成了才往下（確認理解那一步要答對，renderAnalysis 自己畫按鈕）');
+/* ⚠️ 2026-08-10：「確認理解」併回問題分析，改成一題一題走。
+   ★ 這裡要釘的是「只能有一顆往下走的按鈕」——
+     原本 renderAnalysis 自己畫一顆、關卡頁又補一顆，
+     畫面上同時出現「想清楚了，開始動手」和「分析完了，往下走」。 */
+ok(!/only:/.test(lvHtml), '★ 不再把分析切成兩頁（只傳 unit，不傳 only）');
+ok(!/nextBtn\('分析完了/.test(lvHtml),
+   '★ 分析那一步不補按鈕 —— 兩顆功能一樣的按鈕，學生只會想「這兩個有什麼不同」');
    ok(/window\.saveNote/.test(lvHtml), '   寫的內容會存起來');
    ok(/DERIVE\.mount\(body, lv\.derive/.test(lvHtml), '推導做完就往下，不必再等');
 

@@ -148,5 +148,47 @@ ok(hs.join() !== hs.slice().sort((a, b) => a - b).join(), '★ 一開始不能�
 ok(l5.analysis.qs.some(q => q.pick), '也有圈選題');
 ok(!!l5.analysis.write, '也有先寫再對照');
 
+/* ── 問題分析最後那一題：亂打不可以過 ────────────
+   ★ 原本只看字數（至少 15 個字）—— 亂打十五個字也會過，
+     那等於沒有這一題，而且學生第一次發現的時候就再也不會認真寫了。
+   ⇒ 改成用 shared/answer.js 判「有沒有講到概念」。
+
+   ⚠️ 但這一題不是關卡的鎖（真正的門檻在概念檢測），
+      所以：講到任何一個概念就算過（full: 1），
+      而且 answer.js 沒載到時要**放行** —— 少載一支 js
+      就讓所有人卡在這裡，是最不划算的擋法。 */
+{
+  const w2 = { window: {} };
+  ['ai-guide.js', 'answer.js', 'derive.js'].forEach(f =>
+    new Function('window', fs.readFileSync(path.join(__dirname, '..', f), 'utf8'))(w2.window));
+  const D2 = w2.window.DERIVE;
+  global.window = w2.window;          // judgeWrite 讀的是 window.ANSWER
+
+  const W = {
+    min: 15,
+    keys: [
+      { name: '不用重複寫', any: ['不用', '不必', '重複', '一直寫', '很多次', '省'] },
+      { name: '改起來比較快', any: ['改', '修改', '除錯', '出錯', '有錯', '維護', '好修'] }
+    ]
+  };
+  const lv = t => D2._judgeWrite(t, W).level;
+
+  ok(lv('ㄅㄅㄅㄅㄅㄅㄅㄅㄅㄅㄅㄅㄅㄅㄅㄅ') === 'none', '★ 亂打十六個字不會過');
+  ok(lv('阿阿阿阿阿阿阿阿阿阿阿阿阿阿阿阿阿') === 'none', '★ 同一個字灌長度也不會過');
+  ok(lv('我覺得應該就是這樣沒錯吧我不知道啦') === 'none', '★ 全是空話也不會過');
+  /* ↓ 這幾句都要放行。這一題的目的是「講出自己的理由」，不是寫作文。 */
+  ok(lv('不用一直重複寫同樣的積木') === 'full', '講到重點就過（短也沒關係）');
+  ok(lv('之後要改的時候只要改一個地方') === 'full', '★ 講到另一個概念也算過（full: 1）');
+  ok(lv('省事啊') === 'full', '★ 三個字但講到了 —— 字數限制不套用在講到重點的人身上');
+
+  /* answer.js 不在的時候要放行（只看字數的舊行為） */
+  const w3 = { window: {} };
+  new Function('window', fs.readFileSync(path.join(__dirname, '..', 'derive.js'), 'utf8'))(w3.window);
+  global.window = w3.window;
+  ok(w3.window.DERIVE._judgeWrite('隨便寫一段十五個字以上的話看看會不會過關', W).level === 'full',
+     '★ answer.js 沒載到時放行 —— 這一題不是關卡的鎖，不該因為少一支 js 卡住全班');
+  global.window = undefined;
+}
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
