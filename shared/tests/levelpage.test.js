@@ -126,6 +126,38 @@ section('情境解說的內容');
      '   而且排在校務行政系統前面 —— 從他最熟的東西開始');
 }
 
+/* ── 🖍️ 情境解說的螢光筆 ─────────────────────────
+   ★ 為什麼要畫
+     情境是一段純文字，而學生讀純文字時眼睛是滑過去的。
+     畫起來的那一句，是「這一關真正在講的事」。
+   ⚠️ 一段最多兩三處。畫太多等於沒畫 ——
+      學生會直接略過所有黃色的東西。
+   ⚠️ 不可以畫在答案上（例如「右轉 90 度」），那等於把解法圈給他看。 */
+section('🖍️ 情境解說的重點提示');
+{
+  const x = {};
+  new Function('window', fs.readFileSync(path.join(root, '11502', 'content', 'blocks.js'), 'utf8'))(x);
+  const count = t => (String(t).match(/class="hl"/g) || []).length;
+  ['2-1-1','2-1-2','2-1-3'].forEach(id => {
+    const sc = x.BLOCK_LEVELS[id].scene;
+    const n = count(sc.why) + count(JSON.stringify(sc.shots || []));
+    ok(n >= 1, id + ' 的情境有畫重點（' + n + ' 處）');
+    ok(n <= 4, '   ' + id + ' 沒有畫太多（' + n + ' 處）—— 畫太多等於沒畫');
+    /* 螢光筆裡面不可以是積木答案 */
+    const marked = (sc.why + JSON.stringify(sc.shots || []))
+      .match(/class="hl">([^<]*)</g) || [];
+    ok(!marked.some(m => /右轉 90|重複 4 次|移動 30 點|移動 60 點/.test(m)),
+       '   ★ ' + id + ' 沒有把積木答案圈起來');
+  });
+}
+{
+  /* ★ 樣式只能有一份。兩份會慢慢長得不一樣，而且沒有人會發現是哪一天開始的。 */
+  const theme = fs.readFileSync(path.join(root, 'shared', 'theme.css'), 'utf8');
+  ok(/\.hl\s*\{/.test(theme), '螢光筆的樣式在 shared/theme.css');
+  ok(!/^\s*\.hl\{/m.test(levelSrc), '★ 關卡頁不要再自己寫一份 .hl');
+  ok(/theme\.css/.test(levelSrc), '   而且關卡頁真的載了 theme.css');
+}
+
 section('闖關地圖那一頁');
 ok(/level\.html\?unit=/.test(mapSrc), '卡片連到 level.html');
 ok(!/grader-frame|pre-box/.test(mapSrc), '★ 上傳區與思考關卡已經搬走，不要兩邊各一份');

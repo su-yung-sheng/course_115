@@ -19,7 +19,8 @@
       linear-gradient(90deg, rgba(120,113,108,.06) 1px,transparent 1px) !important;
     background-size:26px 26px !important;
   }
-  .hl{background:linear-gradient(transparent 52%, rgba(250,204,21,.65) 52%);font-weight:800}
+  /* ⚠️ 螢光筆（.hl）的定義在 shared/theme.css，這裡不要再寫一份 ——
+     兩份會慢慢長得不一樣，而且沒有人會發現是哪一天開始的。 */
   @keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   .pop{animation:pop .35s ease-out both}
   /* 步驟列。
