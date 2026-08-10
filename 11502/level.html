@@ -30,7 +30,13 @@
        他看到的只是一個壞掉的畫面。
        換行永遠不會切掉，最多就是排成兩列。
      ⚠️ 手機上再縮小一點字和內距，讓一列塞得下更多個。 */
-  .steps{display:flex;flex-wrap:wrap;gap:6px}
+  /* ★ 步驟列包成一張滿版的卡片。
+     ⚠️ 原本只是一排 chip，寬度跟著內容走 ——
+        底下的白色卡片是滿版的，兩者一比就變成「上面短、下面長」，
+        看起來像跑版。**同一欄的東西要對齊同一條邊。** */
+  .steps-bar{display:flex;flex-wrap:wrap;gap:6px;
+             background:#fff;border:1px solid #e2e8f0;border-radius:16px;
+             padding:8px 10px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
   .stp{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;
        font-size:13px;font-weight:800;border:2px solid transparent;white-space:nowrap;cursor:pointer}
   @media (max-width:520px){
@@ -167,7 +173,7 @@ function render() {
       </span>
       <h1 class="text-2xl sm:text-3xl font-black mt-2">${esc(unit.name)}</h1>
     </header>
-    <div class="steps mb-5">${S.map((x, i) => `
+    <div class="steps-bar mb-5">${S.map((x, i) => `
       <button class="stp ${i === at ? 'stp-now' : stepDone(i) ? 'stp-done' : canGo(i) ? 'stp-done' : 'stp-todo'}"
               data-step="${i}" ${canGo(i) ? '' : 'disabled'}>
         <span>${x.icon}</span><span>${i + 1}. ${x.name}</span>

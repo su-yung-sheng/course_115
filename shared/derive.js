@@ -597,6 +597,12 @@
     var at = 0;                 // 現在看到第幾問
     var passed = {};            // 這一問過了沒
     var said = {};              // 沒有圈選題的那幾問，學生寫了什麼
+    /* ⚠️ 這一行本來寫在底下 askHtml 的旁邊 —— 而 draw() 在那之前就被呼叫了，
+       於是第一次畫的時候 chosen 還是 undefined，整個問題分析變成**一片空白**。
+       ★ var 會被提升，但**指派不會** —— 少掉的東西不會報「未定義」，
+         而是安靜地變成 undefined，然後在別的地方炸。
+       ⇒ 狀態變數一律和其他狀態放在一起，放在第一次 draw() 之前。 */
+    var chosen = {};            // 每一問抽到哪一題、選項怎麼排
 
     host.innerHTML =
       (data.intro ? '<div class="dv-intro">' + data.intro + '</div>' : '') +
@@ -651,7 +657,6 @@
        ⚠️ 選項要洗牌 —— 正解固定在第一個的話，第二次就變成「背 A」。
        ⚠️ 沒有寫 asks 的問（例如 2-1-2 還沒補）就退回「寫一句」，
           而那條路一樣要擋抄襲（見 wireSay）。 */
-    var chosen = {};                 // 這一問抽到哪一題、選項怎麼排
     function askHtml(it, i) {
       var bank = it.asks || [];
       if (!bank.length) return sayHtml(i);

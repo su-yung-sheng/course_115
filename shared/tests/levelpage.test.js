@@ -158,6 +158,50 @@ section('🖍️ 情境解說的重點提示');
   ok(/theme\.css/.test(levelSrc), '   而且關卡頁真的載了 theme.css');
 }
 
+/* ── ★ 2-1-1 是範本 ─────────────────────────────
+   後面每一關照它的樣子做（見 shared/docs/08_關卡製作範本.md）。
+   這一段是範本的守門員：**範本自己缺欄位的話，先在這裡紅字**，
+   不然後面十關會照著一個壞掉的樣子做。 */
+section('★ 2-1-1 是範本：欄位要齊');
+{
+  const x = {};
+  new Function('window', fs.readFileSync(path.join(root, '11502', 'content', 'blocks.js'), 'utf8'))(x);
+  const lv = x.BLOCK_LEVELS['2-1-1'];
+  const a = lv.analysis;
+
+  ok(!!lv.task && !!lv.scene && !!lv.analysis && !!lv.quiz && !!lv.goal,
+     '七個步驟的資料都在（task／scene／analysis／quiz／goal）');
+  ok(lv.combo === true, '第 1 關開著套餐工廠');
+
+  /* ★ 每一問都要有 keys —— 沒有的話「問問看」掛不上去，
+     因為 AI 不知道要往哪個方向引導。 */
+  ok(a.qs.every(q => (q.keys || []).length >= 1),
+     '★ 五問都有 keys（沒有的話 AI 引導掛不上去）');
+  ok(a.qs.every(q => q.hint && q.hint.length > 10), '   五問都有提示');
+  ok(a.qs.every(q => q.pick || (q.asks || []).length >= 3),
+     '★ 每一問要嘛有圈選題，要嘛有 3 題以上可以抽 —— 都沒有就退回「寫一句」，而那擋不住貼提示');
+  ok(a.qs.filter(q => q.pick).length === 1,
+     '★ 一整關只放一題圈選 —— 五問全部要作答會變成問卷');
+  ok(a.qs.every(q => (q.asks || []).every(k => k.options.length === 4 && k.why)),
+     '   每題判斷題四個選項，而且說得出「為什麼是它」');
+
+  ok(a.write && a.write.keys && a.write.hintText && a.write.sample,
+     '★ 收尾的寫作題有 keys／hintText／sample');
+  /* ⚠️ hintText 只能講方向，不可以把 keys 的名稱寫進去 —— 那就是答案。 */
+  ok(!(a.write.keys || []).some(g => a.write.hintText.indexOf(g.name) >= 0),
+     '★ hintText 沒有把 keys 的名稱寫出來（那就是答案，貼上去就過了）');
+
+  ok((lv.quiz || []).length >= 6, '概念檢測題庫 ' + lv.quiz.length + ' 題（抽 5，建議 6 題以上）');
+  ok(lv.quiz.every(q => q.ref !== undefined), '★ 每一題都指得回問題分析或情境（ref）');
+  ok((lv.tips || []).length >= 3, '有給老師的提示（tips）');
+
+  const doc = fs.readFileSync(path.join(root, 'shared', 'docs', '08_關卡製作範本.md'), 'utf8');
+  ok(/2-1-1/.test(doc) && /檢查清單/.test(doc),
+     '★ 範本文件存在，而且指名 2-1-1 是那個範本');
+  ok(/亂按、亂貼、貼提示/.test(doc),
+     '   最後一條是「自己扮演一次想混過去的學生」—— 前幾輪的洞全是這樣發現的');
+}
+
 section('闖關地圖那一頁');
 ok(/level\.html\?unit=/.test(mapSrc), '卡片連到 level.html');
 ok(!/grader-frame|pre-box/.test(mapSrc), '★ 上傳區與思考關卡已經搬走，不要兩邊各一份');
@@ -214,9 +258,15 @@ section('📐 版面：步驟多了也不可以被切掉');
      而且步驟列是 overflow-x:auto，最後一個會被切掉一半。
      ★ 捲動比「切掉」更糟的地方在於：沒有捲軸提示，
        學生不會知道右邊還有東西，他看到的只是一個壞掉的畫面。 */
-  ok(/flex-wrap:wrap/.test(levelSrc.slice(levelSrc.indexOf('.steps{'), levelSrc.indexOf('.stp{'))),
+  ok(/flex-wrap:wrap/.test(levelSrc.slice(levelSrc.indexOf('.steps-bar{'), levelSrc.indexOf('.stp{'))),
      '★ 步驟列會換行，不靠橫向捲動');
-  ok(!/\.steps\{[^}]*overflow-x:auto/.test(levelSrc), '   不要再用捲動的版本');
+  ok(!/overflow-x:auto/.test(levelSrc), '   不要再用捲動的版本');
+  /* ★ 步驟列要包成一張滿版卡片。
+     只是一排 chip 的話寬度跟著內容走，和底下滿版的白卡一比
+     就變成「上面短、下面長」，看起來像跑版。 */
+  ok(/\.steps-bar\{[^}]*background:#fff/.test(levelSrc.replace(/\s+/g, '')) ||
+     /steps-bar\{[\s\S]{0,200}background:#fff/.test(levelSrc),
+     '★ 步驟列是一張滿版卡片 —— 和底下的內容對齊同一條邊');
   /* ★ 釘的是「兩頁同寬」，不是「一定要某個數字」——
      從地圖點進關卡會「跳一下」的話，看起來像兩個網站。 */
   const wOf = src => (src.match(/<main class="(max-w-\w+)/) || [])[1];

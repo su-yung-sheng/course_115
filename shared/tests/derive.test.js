@@ -279,5 +279,58 @@ ok(!!l5.analysis.write, '也有先寫再對照');
   });
 }
 
+/* ── ★ 真的把問題分析畫出來一次 ─────────────────────
+   ⚠️ 2026-08-10 的教訓：改成「一題一題」之後，整段變成**一片空白**，
+      而 derive／levelpage／quiz 三份測試全綠。
+      原因是 `var chosen = {}` 寫在 draw() 呼叫**之後** ——
+      var 會提升但**指派不會**，所以第一次畫的時候它是 undefined，
+      askHtml 一讀就炸，然後 innerHTML 停在半路。
+
+   ★ 前面那些測試測的都是「有沒有寫這段程式」。
+     這一條測的是「畫出來到底有沒有東西」——
+     而那正是學生第一眼看到的唯一一件事。 */
+{
+  let JSDOM2;
+  try { ({ JSDOM: JSDOM2 } = require('jsdom')); } catch (e) { JSDOM2 = null; }
+  if (!JSDOM2) {
+    console.log('  （需要 jsdom 才能畫，跳過這一段）');
+  } else {
+    const dom = new JSDOM2('<div id="h"></div>');
+    const w6 = dom.window;
+    global.window = w6; global.document = w6.document;
+    ['ai-guide.js', 'answer.js', 'derive.js'].forEach(f =>
+      new Function('window', fs.readFileSync(path.join(__dirname, '..', f), 'utf8'))(w6));
+    new Function('window', fs.readFileSync(
+      path.join(__dirname, '..', '..', '11502', 'content', 'blocks.js'), 'utf8'))(w6);
+
+    const host = w6.document.getElementById('h');
+    let crashed = '';
+    try {
+      w6.DERIVE.renderAnalysis(host, w6.BLOCK_LEVELS['2-1-1'].analysis,
+        { unit: '2-1-1', onDone: function () {} });
+    } catch (e) { crashed = e.message; }
+
+    ok(!crashed, '★ 畫得出來，不會炸（' + (crashed || '沒有例外') + '）');
+    const text = host.textContent.replace(/\s+/g, ' ').trim();
+    ok(text.length > 60, '★ **畫面上真的有東西**（' + text.length + ' 個字）—— 空白是最糟的壞法');
+    ok(/第 1 題/.test(text), '   看得到「第 1 題 / 共 5」');
+    ok(host.querySelectorAll('.dv-opt').length === 4, '   第一問有四個選項');
+    ok(!!host.querySelector('#dv-nx'), '   有「下一題」的按鈕');
+    ok(host.querySelector('#dv-nx').disabled === true, '★ 還沒答對之前按不下去');
+
+    /* 答對之後才解鎖 —— 走真正的點擊路徑，不要偷改內部狀態。 */
+    const opts = [...host.querySelectorAll('.dv-opt')];
+    /* 正解是哪一個：選項洗過牌，所以逐一試，錯的會被 disabled。 */
+    for (const b of opts) {
+      if (b.disabled) continue;
+      b.dispatchEvent(new w6.window.Event('click', { bubbles: true }));
+      if (host.querySelector('#dv-nx') && !host.querySelector('#dv-nx').disabled) break;
+    }
+    ok(host.querySelector('#dv-nx') && host.querySelector('#dv-nx').disabled === false,
+       '★ 答對之後「下一題」才亮起來');
+    global.window = undefined; global.document = undefined;
+  }
+}
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
