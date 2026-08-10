@@ -91,5 +91,11 @@ ok(/found: null/.test(src), '查不到要和「不存在」分開 —— 連不�
 ok(/21600/.test(src.slice(src.indexOf('function modelListed_'), src.indexOf('function checkModel'))),
    '有快取（背景檢查不值得每次 ping 都問一次）');
 
+section('冷卻不算「守不住」');
+ok(/err\.busy = !!j\.busy \|\| !!j\.cooling/.test(html),
+   '★ 測試台要把 cooling 當成 busy —— 兩者都是「等一下就好」，不是模型表現');
+ok(/剛剛才問過.*冷卻擋的/.test(html.replace(/\s+/g, ' ')),
+   '   而且要告訴老師「填偵錯碼就不會冷卻」');
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

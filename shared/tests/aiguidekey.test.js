@@ -114,4 +114,14 @@ ok(/平均每人只有一次/.test(src), '把算式寫在程式裡，下次調�
 ok(/同學|老師/.test(src.slice(src.indexOf('已經用完'), src.indexOf('已經用完') + 300)),
    '★ 額度用完要給出路（問同學、找老師），不是把人丟在那裡');
 
+/* ★ 同一個錯犯第二次：為學生寫的規則把老師的測試台鎖住。
+   第一次是 PER_SID_CAP，這次是冷卻 ——
+   而「一次跑完 10 種刁難」本來就是同一問連問十次。 */
+ok(/var cdSec = debug \? 0 :/.test(src), '★ 帶了偵錯碼就不冷卻');
+const iDbg2 = src.indexOf('var debug = !!dk');
+const iCd = src.indexOf('var cdSec = debug');
+ok(iDbg2 > 0 && iDbg2 < iCd, '   而且 debug 要先算出來（順序錯了等於沒寫）');
+ok(/老師的測試台會不會被它擋住/.test(src),
+   '★ 把這個教訓寫進程式 —— 下次再加限制時會看到');
+
 console.log('通過 '+pass+'／失敗 '+fail); process.exit(fail?1:0);

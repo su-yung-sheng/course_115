@@ -93,7 +93,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-modelcheck';
+var VERSION = '2026-08-07-nocdwhendebug';
 
 var DEFAULTS = {
   /* 用哪一家：'gemini'（免費層）或 'claude'（付費）。
@@ -443,8 +443,19 @@ function handle_(e) {
     }
     /* ── 同一問的冷卻 ──────────────────────────────
        ⚠️ 一定要做在伺服器端。前端按鈕變灰只是禮貌 ——
-          學生按 F12 就能把它打開，而那正是最會去按的那幾個學生。 */
-    var cdSec = num_('COOLDOWN_SEC', DEFAULTS.COOLDOWN_SEC);
+          學生按 F12 就能把它打開，而那正是最會去按的那幾個學生。
+
+       ★ 帶了偵錯碼（只有老師）就不冷卻。
+         ⚠️ 這是同一個錯犯第二次。第一次是 PER_SID_CAP 把測試台鎖住，
+            這次是冷卻 —— 而測試台的「一次跑完 10 種刁難」本來就是
+            **同一個學號、同一問、40 秒內連問十次**，
+            那正好是冷卻設計來擋的行為。
+
+         ⇒ 教訓：每寫一條「限制學生」的規則，都要再問一次
+            「老師的測試台會不會被它擋住」。
+            擋住的話，老師就測不到真正要測的東西 ——
+            而那條規則本來就不是為他寫的。 */
+    var cdSec = debug ? 0 : num_('COOLDOWN_SEC', DEFAULTS.COOLDOWN_SEC);
     var cdKey = 'cd.' + sid + '.' + String(p.unit || '') + '.' + String(p.qi || '');
     if (sid && cdSec > 0) {
       var last = num2_(CacheService.getScriptCache().get(cdKey));

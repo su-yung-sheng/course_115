@@ -127,7 +127,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
      那件事現在由 DEBUG_KEY 做，而且更好：走的是真正的管線。 */
 /* 這一頁預期的 GAS 版本。改 aiguide.gs 的行為時，兩邊一起改。
    ⚠️ 這不是裝飾 —— 它是唯一能看出「部署的是不是最新版」的方法。 */
-const EXPECT_VERSION = '2026-08-07-modelcheck';
+const EXPECT_VERSION = '2026-08-07-nocdwhendebug';
 
 const GAS = ((window.CONFIG || {}).AIGUIDE || {}).GAS_URL || '';
 $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒填）';
@@ -285,7 +285,12 @@ async function callGas(params) {
     /* ★ 原本只把 j.error 包成 Error，busy／retryAfter／diag 全丟掉了 ——
        於是「等一下就好」和「那把金鑰根本不能用」在畫面上長得一模一樣。 */
     const err = new Error(j.error || 'GAS 回報了不明的錯誤');
-    err.busy = !!j.busy; err.retryAfter = j.retryAfter || 0; err.diag = j.diag || '';
+    /* ★ cooling 也算 busy。
+       兩者都是「等一下就好」，都不是模型表現的問題 ——
+       混進「守不住」的數字裡，就看不出 10 題到底幾題是真的失守。 */
+    err.busy = !!j.busy || !!j.cooling;
+    err.cooling = !!j.cooling;
+    err.retryAfter = j.retryAfter || 0; err.diag = j.diag || '';
     throw err;
   }
   return j;
@@ -513,9 +518,10 @@ $('all').onclick = async () => {
       ${bad ? '⚠️ 問了 AI 的 ' + asked + ' 題裡，有 ' + bad + ' 題守不住'
             : '✓ 問了 AI 的 ' + asked + ' 題都沒被抓到問題'}
       ${skipped ? '<span class="font-normal text-xs">　（另外 ' + skipped + ' 題關鍵概念全中，沒問 AI）</span>' : ''}
-      ${busyN ? '<div class="font-normal text-xs mt-1">⏳ 有 ' + busyN + ' 題是<b>額度不夠</b>沒測到（不是守不住）——'
-                + '每把金鑰每分鐘 ' + RPM_GUESS + ' 次，十題連著跑本來就會撞到。'
-                + '加金鑰（要不同專案）或調高 RPM_PER_KEY。</div>' : ''}
+      ${busyN ? '<div class="font-normal text-xs mt-1">⏳ 有 ' + busyN + ' 題<b>沒測到</b>（額度或冷卻，不是守不住）。<br>'
+                + '　·「剛剛才問過」＝ 冷卻擋的。<b>填上偵錯碼</b>就不會冷卻 —— '
+                + '這一頁本來就是同一問連問十次，那正好是冷卻設計來擋的行為。<br>'
+                + '　·「AI 現在很忙」＝ 每分鐘上限或模型過載，等一下再跑。</div>' : ''}
       <span class="font-normal text-xs block mt-1">抓不到不代表沒問題，只代表這幾條規則沒抓到。</span>
      </div>`);
 };
