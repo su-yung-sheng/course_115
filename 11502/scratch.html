@@ -275,8 +275,15 @@ function countdown(host, sec, label, done){
 /* 讀完 Firestore 的那支 module script 用這個把星數交進來。
    刻意包成函式而不是直接改變數：跨 script 改別人的變數不好追，
    也讓「拿到新星數就一定重畫」變成沒辦法忘記的事。 */
-window.applyStars = function (obj, pre) {
-  unitStars = obj || {};
+window.applyStars = function (obj, pre, quiz) {
+  /* ★ 星數在進來的這一刻就被概念檢測封頂。
+     概念只考 3 題對的話，作品拿 3 星也只算 2 ——
+     底下的依序開放、星數統計讀的都是封頂後的值，不必各自再判一次。
+     ⚠️ 封頂只做這一處。兩個地方都能改星數的話，
+        之後沒有人說得出「這一顆星到底是誰給的」。 */
+  unitStars = (window.GRADING && GRADING.cappedStars)
+    ? GRADING.cappedStars(obj || {}, quiz || {})
+    : (obj || {});
   preDone = pre || {};
   repaint();
 };
@@ -323,7 +330,8 @@ repaint();
       if (!doneWarmup) { location.replace('warmup.html'); return; }
 
       window.applyStars((mods.scratch && mods.scratch.unitStars) || {},
-                        (mods.scratch && mods.scratch.pre) || {});
+                        (mods.scratch && mods.scratch.pre) || {},
+                        (mods.scratch && mods.scratch.quiz) || {});
     } catch (e) {
       console.error('讀進度失敗', e);
       /* 讀不到就維持「只開第 1 關」。寧可少開，也不要因為連線問題整批放行。

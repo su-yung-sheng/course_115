@@ -93,7 +93,7 @@
    編輯器測起來一切正常，學生端卻還是舊行為，而且完全看不出來。
    （這個專案已經為了同一類問題吃過好幾次虧，見 shared/classroom.js 的 VERSION。）
    ⚠️ 改這支程式的行為時，記得把這個字串一起改。 */
-var VERSION = '2026-08-07-rename';
+var VERSION = '2026-08-10-quiz';
 
 var DEFAULTS = {
   /* 用哪一家：'gemini'（免費層）或 'claude'（付費）。
@@ -379,6 +379,34 @@ function handle_(e) {
                      promptChars: buildPrompt_(it, ans).length });
     }
 
+    /* ── 概念檢測出題（程式拼圖之前那一關）────────
+       前端要 n 題選擇題，本機自己判分。
+
+       ★ 為什麼不是「一個學生問一次」
+         一關 3 題、30 人一班、10 關 —— 一個班就 900 次呼叫，
+         付費版的一天預算一個班就沒了。
+         所以這裡出的是**一整個題池**（POOL_N 題），快取 QUIZ_TTL 秒，
+         每個學生從池子裡隨機抽 n 題、順序也不一樣。
+         ⇒ 一個單元一天大概只呼叫一兩次 AI。
+
+       ★ 為什麼題池仍然比「純題庫」好
+         題目是照著這一關的重點即時寫的，而且每隔幾小時就換一批；
+         去年的答案、隔壁班的答案都不能直接抄。
+
+       ⚠️ 出的一定要是選擇題＋正解索引。
+          開放式問答的話就變成「AI 決定成績」——
+          而 AI 會失守、會過載、會額度用完（2026-08-07 三種都遇過）。
+
+       ⚠️ 形狀不對就整份不回。前端收不到就整份退回老師的題庫，
+          學生完全感覺不到 AI 出過事 —— 這是刻意的。 */
+    if (p.action === 'quiz') {
+      var qUnit = String(p.unit || '');
+      var want = Math.max(1, Math.min(5, num2_(p.n) || 3));
+      var pool = quizPool_(qUnit);
+      if (!pool.length) return json_({ ok: false, error: '這一關沒有出題資料。' });
+      return json_({ ok: true, items: sample_(pool, want), pooled: pool.length });
+    }
+
     if (p.action !== 'ask') return json_({ ok: false, error: '不認得的 action：' + p.action });
 
     /* ★ 學號的參數名字叫 student，不叫 sid。
@@ -572,7 +600,123 @@ function levels_() {
   return out;
 }
 
-function clearCache() { CacheService.getScriptCache().remove('levels'); }
+function clearCache() {
+  var c = CacheService.getScriptCache();
+  c.remove('levels');
+  c.remove('briefs');
+  /* 題池也一起清 —— 改了教材卻還在出舊重點的題目，比沒出題更糟。 */
+  Object.keys(levels_()).forEach(function (id) { c.remove('qpool.' + id); });
+}
+
+/* ── 概念檢測的題池 ───────────────────────────────
+   一個單元一份，快取 QUIZ_TTL 秒。學生從池子裡抽。 */
+var POOL_N = 6;          // 一次跟 AI 要幾題（抽 3 用，多要幾題才抽得出變化）
+var QUIZ_TTL = 21600;    // 6 小時
+
+function quizPool_(unitId) {
+  var cache = CacheService.getScriptCache();
+  var key = 'qpool.' + unitId;
+  var hit = cache.get(key);
+  if (hit) return JSON.parse(hit);
+
+  var b = unitBrief_(unitId);
+  if (!b) return [];
+
+  /* ⚠️ 出題也要吃配額。它不像「問問看」有每人 3 次的上限
+     （學生重考幾次都應該可以），擋它的是題池快取 ＋ DAILY_CAP。 */
+  if (usedToday_() >= num_('DAILY_CAP', DEFAULTS.DAILY_CAP)) return [];
+
+  var raw;
+  try { raw = askAI_(quizPrompt_(b)); }
+  catch (e) { return []; }              // AI 出事 → 空的 → 前端整份用題庫
+  bump_('quiz');
+
+  var items = parseQuiz_(raw);
+  if (items.length < 3) return [];      // 湊不出 3 題就不要半套
+  cache.put(key, JSON.stringify(items), QUIZ_TTL);
+  return items;
+}
+
+/** 這一關在教什麼（給出題用）。和 levels_ 分開快取，因為要的欄位不一樣。 */
+function unitBrief_(unitId) {
+  var cache = CacheService.getScriptCache();
+  var hit = cache.get('briefs');
+  var all;
+  if (hit) { all = JSON.parse(hit); }
+  else {
+    var url = prop_('CONTENT_URL', DEFAULTS.CONTENT_URL);
+    var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) return null;
+    var w = {};
+    new Function('window', res.getContentText())(w);
+    var src = w.BLOCK_LEVELS || {};
+    all = {};
+    Object.keys(src).forEach(function (id) {
+      var lv = src[id], sc = lv.scene || {};
+      all[id] = {
+        task: strip_(lv.task),
+        why: strip_(sc.why),
+        /* 老師題庫的題目原文 —— 拿來當「不要出重複的」。
+           ⚠️ 不送正解過去。萬一提示詞被看到，也看不出答案。 */
+        bank: (lv.quiz || []).map(function (q) { return strip_(q.q); })
+      };
+    });
+    cache.put('briefs', JSON.stringify(all), 21600);
+  }
+  return all[unitId] || null;
+}
+
+function quizPrompt_(b) {
+  return [
+    '你是國中資訊科技老師，正在幫一個 13～15 歲的學生做「概念檢測」。',
+    '',
+    '這一關的任務：' + b.task,
+    '為什麼要學：' + b.why,
+    '',
+    '請出 ' + POOL_N + ' 題**四選一的選擇題**，檢查他懂不懂上面的觀念。',
+    '',
+    '規則：',
+    '1. 考觀念，不要考「這個積木叫什麼名字」這種記憶題。',
+    '2. 題目和選項都用國中生看得懂的話，每個選項 20 字以內。',
+    '3. 四個選項只有一個對，錯的三個要是「學生真的會犯的誤解」，不要一看就知道是亂寫的。',
+    '4. 不要出和下面這些重複的題目：' + (b.bank || []).join('｜'),
+    '5. 不要直接把積木的答案寫在題目裡（例如「右轉 90 度」這種數字）。',
+    '',
+    '只輸出 JSON 陣列，不要有任何其他文字、不要用 ``` 包起來。格式：',
+    '[{"q":"題目","options":["A","B","C","D"],"answer":0,"why":"答錯的人還沒懂什麼"}]',
+    'answer 是正解在 options 裡的索引（0～3）。'
+  ].join('\n');
+}
+
+/** 把模型回來的東西剖成題目。⚠️ 形狀不對的整題丟掉，不要猜。 */
+function parseQuiz_(raw) {
+  var t = String(raw || '').trim();
+  t = t.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();   // 有些模型硬要包
+  var i = t.indexOf('['), j = t.lastIndexOf(']');
+  if (i < 0 || j <= i) return [];
+  var arr;
+  try { arr = JSON.parse(t.slice(i, j + 1)); } catch (e) { return []; }
+  if (!Array.isArray(arr)) return [];
+  return arr.filter(function (x) {
+    return x && typeof x.q === 'string' && x.q.length > 4
+        && Object.prototype.toString.call(x.options) === '[object Array]'
+        && x.options.length === 4
+        && x.options.every(function (o) { return typeof o === 'string' && o.length > 0; })
+        && typeof x.answer === 'number' && x.answer >= 0 && x.answer <= 3;
+  }).map(function (x) {
+    return { q: x.q, options: x.options, answer: x.answer, why: String(x.why || '') };
+  });
+}
+
+/** 從陣列隨機抽 n 個（不重複） */
+function sample_(arr, n) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a.slice(0, n);
+}
 
 /* ── 挑一個「三把都能用」的模型（編輯器執行 pickModel）──
    ★ 為什麼不能看 listModels 的清單決定

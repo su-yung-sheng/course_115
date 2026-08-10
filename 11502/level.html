@@ -43,6 +43,7 @@
 <script src="../shared/derive.js"></script>
 <script src="../shared/ai-guide.js"></script>
 <script src="../shared/askai.js"></script>
+<script src="../shared/quiz.js"></script>
 <script src="content/blocks.js"></script>
 <link rel="stylesheet" href="../shared/theme.css">
 </head>
@@ -71,7 +72,14 @@ const wantId = new URLSearchParams(location.search).get('unit') || '';
 const unit = UNITS.filter(u => u.id === wantId)[0] || null;
 const lv = unit ? (window.BLOCK_LEVELS || {})[unit.id] : null;
 
-let unitStars = {};      // AI 批改寫進來的星數
+/* ★ 這個 unitStars 已經是「封頂之後」的星數。
+   概念檢測只考 3 題對的話，就算作品拿 3 星，這裡也只有 2 ——
+   封頂在寫進來的那一刻就做完（applyProgress），
+   底下所有讀它的地方（依序開放、星數統計）自然都吃到同一個規則。
+   ⚠️ 不要在別處再封一次，也不要留一份沒封頂的在旁邊 ——
+      「哪一份才算數」是這種資料最容易出錯的地方。 */
+let unitStars = {};      // 批改星數 ∩ 概念檢測上限
+let quizDone = {};       // { '2-1-1': { score: 4 } }
 let preDone = {};        // 思考關卡做完了沒
 let at = 0;              // 現在第幾步
 let ready = { 1:false, 2:false, 3:false };   // 各步驟完成了沒（步驟 0、4 不必判定）
@@ -98,6 +106,12 @@ function steps() {
     }
   }
   if (lv && lv.derive) out.push({ key:'derive', icon:'📐', name:'推導' });
+  /* 概念檢測排在程式拼圖**之前**：
+     先確定他懂了，再讓他動手拼 —— 反過來的話，拼對了就沒有人會回頭讀。
+     ⚠️ 題庫不到 5 題的關卡就不辦（AI 出事時要退得回題庫）。 */
+  if (lv && (lv.quiz || []).length >= (window.QUIZ ? window.QUIZ.N_TOTAL : 5)) {
+    out.push({ key:'quiz', icon:'🧠', name:'概念檢測' });
+  }
   if (lv && lv.goal)   out.push({ key:'blocks', icon:'🧩', name:'程式拼圖' });
   out.push({ key:'test', icon:'🚀', name:'實作測試' });
   return out;
@@ -208,6 +222,45 @@ function draw(s) {
     return;
   }
 
+  if (s.key === 'quiz') {
+    const prev = quizDone[unit.id];
+    /* 考過了就不必再考一次 —— 但要讓他看得到「上限幾星」，
+       而且要留一顆重考鍵：拿 2 星上限的人應該有機會回頭拿 3 星。 */
+    if (prev && prev.score >= window.GRADING.QUIZ_PASS) {
+      const cap = window.GRADING.starCap(quizDone, unit.id);
+      body.innerHTML = `
+        <h2 class="text-xl font-black mb-2">🧠 概念檢測</h2>
+        <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl px-4 py-3 text-emerald-900">
+          <div class="font-black text-lg">上次答對 ${prev.score} / ${window.QUIZ.N_TOTAL}</div>
+          這一關最多可以拿 <b>${cap} 顆星</b>${cap === 2
+            ? `（答對 ${window.GRADING.QUIZ_FULL} 題以上才有 3 星，可以再考一次）` : ''}
+        </div>
+        <button id="again" class="mt-3 w-full border-2 border-indigo-200 text-indigo-700 font-black
+          rounded-xl px-4 py-3">🔁 再考一次</button>`;
+      $('again').onclick = () => { quizDone = Object.assign({}, quizDone); delete quizDone[unit.id]; render(); };
+      nextBtn('往下做');
+      return;
+    }
+    window.QUIZ.mount(body, lv, {
+      unit: unit.id,
+      student: sid(),
+      /* 沒有題庫就整步跳過 —— 不要讓學生看到一個空的檢測。 */
+      onNone: () => { ready[at] = true; at++; render(); },
+      onPass: (score) => {
+        quizDone = Object.assign({}, quizDone, { [unit.id]: { score: score } });
+        if (window.saveQuiz) window.saveQuiz(unit.id, score);
+        ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'});
+      },
+      /* ★ 不到門檻就送回情境解說，不是把他丟在原地。
+         「回去重讀」要真的帶他回去 —— 不然他只會一直按重考、亂猜到過為止。 */
+      onFail: (score) => {
+        if (window.saveQuiz) window.saveQuiz(unit.id, score);
+        at = 0; render(); window.scrollTo({top:0,behavior:'smooth'});
+      }
+    });
+    return;
+  }
+
   if (s.key === 'blocks') {
     /* ⚠️ BLOCKS.mount 收的是「攤平的選項」，不是整個關卡物件。
        傳 lv 進去的話 palette／goal 都讀不到，畫面會是一個空的拼圖區 ——
@@ -241,8 +294,12 @@ function draw(s) {
       而畫面上的結果是：**每一關都停在「只開第 1 關」**。
       沒有紅字、沒有錯誤頁，只是永遠開不了第 2 關。
    ⚠️ 重畫時要保留學生走到第幾步（at），不然讀進度回來會把他踢回第 1 步。 */
-window.applyProgress = function (stars, pre) {
-  unitStars = stars || {};
+window.applyProgress = function (stars, pre, quiz) {
+  quizDone = quiz || {};
+  /* ★ 封頂就做在這一行。上面那個變數之後代表的都是「算數的星數」。 */
+  unitStars = (window.GRADING && window.GRADING.cappedStars)
+    ? window.GRADING.cappedStars(stars || {}, quizDone)
+    : (stars || {});
   preDone = pre || {};
   render();
 };
@@ -278,7 +335,8 @@ render();
       const snap = await getDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid));
       const mods = (snap.exists() && snap.data().modules) || {};
       window.applyProgress((mods.scratch && mods.scratch.unitStars) || {},
-                           (mods.scratch && mods.scratch.pre) || {});
+                           (mods.scratch && mods.scratch.pre) || {},
+                           (mods.scratch && mods.scratch.quiz) || {});
     } catch (e) {
       /* 讀不到就維持「只開第 1 關」。寧可少開，也不要因為連線問題整批放行。 */
       console.error('讀進度失敗', e);
@@ -291,6 +349,19 @@ render();
       await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
         { modules: { scratch: { pre: { [unitId]: true } } } }, { merge: true });
     } catch (e) { console.warn('思考關卡紀錄沒存成功（不影響闖關）', e); }
+  };
+  /* 概念檢測的成績。
+     ⚠️ 只寫 modules.scratch.quiz，不碰 unitStars ——
+        星數只有一個寫入者（Colab 的批改），這裡寫的是「上限的依據」。
+        兩個地方都能改星數的話，之後沒有人說得出「到底是誰給的」。 */
+  window.saveQuiz = async function (unitId, score) {
+    if (!sid || !unitId) return;
+    try {
+      await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
+        { modules: { scratch: { quiz: { [unitId]:
+          { score: Number(score) || 0, at: new Date().toISOString().slice(0, 16) } } } } },
+        { merge: true });
+    } catch (e) { console.warn('概念檢測成績沒存成功（不影響闖關）', e); }
   };
   window.saveNote = async function (unitId, text) {
     if (!sid || !unitId) return;

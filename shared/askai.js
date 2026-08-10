@@ -67,7 +67,28 @@
             + '&qi=' + encodeURIComponent(qi)
             + '&student=' + encodeURIComponent(student || '')
             + '&answer=' + encodeURIComponent(answer);
+    return hit(url);
+  }
 
+  /* 概念檢測要 n 題選擇題（程式拼圖之前那一關）。
+     ⚠️ **一次要完三題，不是問三次**。
+        一題一次的話，一個學生一關就吃掉 3 次呼叫；
+        30 人 × 10 關 = 900 次，一個班就能把一天的付費預算用完。
+     ⚠️ 回來的東西一定要能在瀏覽器裡自己判分（選擇題＋正解索引）。
+        改成開放式問答的話，就變成「AI 說了算」—— 而 AI 會失守、會過載。
+     ⚠️ 這裡不做備援：失敗就 throw，由 quiz.js 整份退回題庫。 */
+  function quiz(unit, n, student) {
+    var c = cfg();
+    var url = c.GAS_URL + '?action=quiz'
+            + '&key=' + encodeURIComponent(c.KEY)
+            + '&unit=' + encodeURIComponent(unit)
+            + '&n=' + encodeURIComponent(n || 3)
+            + '&student=' + encodeURIComponent(student || '');
+    return hit(url).then(function (j) { return j.items || []; });
+  }
+
+  /** 送出去、收回來、把「不是 JSON」和「逾時」都翻成人看得懂的錯誤 */
+  function hit(url) {
     /* AbortController 才切得斷 fetch。沒有它的話，逾時只是「不再理它」，
        請求還在跑、額度還是會被算走。 */
     var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -254,6 +275,7 @@
     TIMEOUT_MS: TIMEOUT_MS,
     enabled: enabled,
     mount: mount,
+    quiz: quiz,
     _ask: ask
   };
 

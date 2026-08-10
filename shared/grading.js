@@ -184,6 +184,52 @@ window.GRADING = {
   },
 
   // 由「各單元最佳星數」的物件算出總星數與已通關單元數（0 星不算通關）
+/* ── 概念檢測封頂 ────────────────────────────────
+     ★ 為什麼要有「上限」這個概念，而不是讓概念檢測直接給星數
+
+       星數有兩個來源就一定會打架：
+         · Scratch 批改（Colab 讀 .sb3）寫進 unitStars
+         · 概念檢測（五題）也想寫進去
+       而**依序開放看的就是 unitStars** —— 兩邊搶同一格的話，
+       「哪一個說了算」會變成一個沒有答案的問題，
+       而且答錯的代價是學生的成績。
+
+     ⇒ 所以分工是：
+         概念檢測 → 決定「這一關最多能拿幾星」（封頂）
+         Scratch 批改 → 決定「實際做到幾星」
+         最後取小的。
+
+       意思很清楚：**程式做出來了但概念沒懂，就是 2 星。**
+       而 unitStars 仍然只有一個寫入者，依序開放也只看一個地方。
+
+     ⚠️ 沒做過概念檢測 → 不封頂（回 3）。
+        不可以因為「還沒考」就把人壓在 2 星 ——
+        那會讓舊資料、或概念檢測掛掉的時候，全班莫名其妙掉星。 */
+  QUIZ_PASS: 3,          // 五題答對幾題才能往下走
+  QUIZ_FULL: 4,          // 答對幾題才拿得到 3 星
+
+  /** 這一關的星數上限（沒考過就是不封頂） */
+  starCap: function (quiz, unitId) {
+    var q = (quiz || {})[unitId];
+    if (!q || typeof q.score !== 'number') return 3;
+    return q.score >= this.QUIZ_FULL ? 3 : 2;
+  },
+
+  /** 實際算數的星數＝批改給的，但不超過概念檢測的上限 */
+  effectiveStars: function (unitStars, quiz, unitId) {
+    var raw = Number((unitStars || {})[unitId]) || 0;
+    return Math.min(raw, this.starCap(quiz, unitId));
+  },
+
+  /** 整份進度套上封頂之後的 unitStars（給依序開放與統計用） */
+  cappedStars: function (unitStars, quiz) {
+    var out = {}, self = this;
+    Object.keys(unitStars || {}).forEach(function (k) {
+      out[k] = self.effectiveStars(unitStars, quiz, k);
+    });
+    return out;
+  },
+
   scratchTotal: function (unitStars) {
     var total = 0, done = 0;
     for (var k in (unitStars || {})) {
