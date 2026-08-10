@@ -83,7 +83,21 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 6px rgba(185, 28, 28, 0.3);
         }
-    </style>
+    
+    /* ★ 小節按鈕：編號自己一行，標題自己一行。
+       ⚠️ 字放大之後，「3-2 電腦與網路犯罪概述」會被瀏覽器斷成
+          「3-2 電腦與網路 / 犯罪概述」—— 斷在詞的中間，讀起來卡卡的。
+       ⇒ 編號拆成獨立的一行，標題就整句留在下面；
+         真的還是放不下時，text-wrap:balance 會把兩行切得長度接近，
+         不會出現「上面一長串、下面剩兩個字」。 */
+    .sec-btn { line-height: 1.5; text-wrap: balance; }
+    /* ⚠️ 九個字以上的標題（例如「電腦與網路犯罪概述」）在三欄裡放不下，
+       瀏覽器會斷在「電腦與網路 / 犯罪概述」—— 斷在詞的中間。
+       字小一階就整句放得下，比斷錯地方好看得多。 */
+    .sec-long { font-size: 15px; letter-spacing: -.01em; }
+    .sec-no  { display: block; font-size: 11px; font-weight: 800;
+               opacity: .6; letter-spacing: .05em; margin-bottom: 2px; }
+</style>
 
 <!-- 身分守門：未從闖關基地登入者導回入口 -->
 <script src="config.js"></script>
@@ -154,11 +168,11 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                     </div>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    <button onclick="showStudyNotes('5-1')" class="py-3 px-2 bg-pink-50 text-pink-700 rounded-xl font-bold text-base hover:bg-pink-600 hover:text-white transition">5-1 媒體與資訊科技</button>
-                    <button onclick="showStudyNotes('5-2')" class="py-3 px-2 bg-pink-50 text-pink-700 rounded-xl font-bold text-base hover:bg-pink-600 hover:text-white transition">5-2 資訊失序</button>
-                    <button onclick="showStudyNotes('5-3')" class="py-3 px-2 bg-pink-50 text-pink-700 rounded-xl font-bold text-base hover:bg-pink-600 hover:text-white transition">5-3 言論自由</button>
-                    <button onclick="showStudyNotes('5-4')" class="py-3 px-2 bg-pink-50 text-pink-700 rounded-xl font-bold text-base hover:bg-pink-600 hover:text-white transition">5-4 網路霸凌</button>
-                    <button onclick="showStudyNotes('5-5')" class="py-3 px-2 bg-pink-50 text-pink-700 rounded-xl font-bold text-base hover:bg-pink-600 hover:text-white transition">5-5 網路成癮</button>
+                    <button onclick="showStudyNotes('5-1')" class="sec-btn py-3 px-2 bg-pink-50 text-pink-700 rounded-xl font-bold text-base hover:bg-pink-600 hover:text-white transition"><span class="sec-no">5-1</span>媒體與資訊科技</button>
+                    <button onclick="showStudyNotes('5-2')" class="sec-btn py-3 px-2 bg-pink-50 text-pink-700 rounded-xl font-bold text-base hover:bg-pink-600 hover:text-white transition"><span class="sec-no">5-2</span>資訊失序</button>
+                    <button onclick="showStudyNotes('5-3')" class="sec-btn py-3 px-2 bg-pink-50 text-pink-700 rounded-xl font-bold text-base hover:bg-pink-600 hover:text-white transition"><span class="sec-no">5-3</span>言論自由</button>
+                    <button onclick="showStudyNotes('5-4')" class="sec-btn py-3 px-2 bg-pink-50 text-pink-700 rounded-xl font-bold text-base hover:bg-pink-600 hover:text-white transition"><span class="sec-no">5-4</span>網路霸凌</button>
+                    <button onclick="showStudyNotes('5-5')" class="sec-btn py-3 px-2 bg-pink-50 text-pink-700 rounded-xl font-bold text-base hover:bg-pink-600 hover:text-white transition"><span class="sec-no">5-5</span>網路成癮</button>
                 </div>
             </div>
 
@@ -173,9 +187,9 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                     </div>
                 </div>
                 <div class="grid grid-cols-3 gap-3">
-                    <button onclick="showStudyNotes('6-1')" class="py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition">6-1 演算法概念與原理</button>
-                    <button onclick="showStudyNotes('6-2')" class="py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition">6-2 排序的原理與範例</button>
-                    <button onclick="showStudyNotes('6-3')" class="py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition">6-3 搜尋的原理與範例</button>
+                    <button onclick="showStudyNotes('6-1')" class="sec-btn py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition"><span class="sec-no">6-1</span>演算法概念與原理</button>
+                    <button onclick="showStudyNotes('6-2')" class="sec-btn py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition"><span class="sec-no">6-2</span>排序的原理與範例</button>
+                    <button onclick="showStudyNotes('6-3')" class="sec-btn py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition"><span class="sec-no">6-3</span>搜尋的原理與範例</button>
                 </div>
             </div>
         </div>

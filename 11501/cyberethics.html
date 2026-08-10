@@ -89,6 +89,20 @@
 body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(120,113,108,.06) 1px,transparent 1px) !important; background-size:26px 26px !important; }
 .tape{position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(-3deg);width:76px;height:26px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.08);background:rgba(250,204,21,.3);z-index:5}
 .underline-doodle{background:linear-gradient(transparent 62%, rgba(250,204,21,.55) 62%)}
+
+    /* ★ 小節按鈕：編號自己一行，標題自己一行。
+       ⚠️ 字放大之後，「3-2 電腦與網路犯罪概述」會被瀏覽器斷成
+          「3-2 電腦與網路 / 犯罪概述」—— 斷在詞的中間，讀起來卡卡的。
+       ⇒ 編號拆成獨立的一行，標題就整句留在下面；
+         真的還是放不下時，text-wrap:balance 會把兩行切得長度接近，
+         不會出現「上面一長串、下面剩兩個字」。 */
+    .sec-btn { line-height: 1.5; text-wrap: balance; }
+    /* ⚠️ 九個字以上的標題（例如「電腦與網路犯罪概述」）在三欄裡放不下，
+       瀏覽器會斷在「電腦與網路 / 犯罪概述」—— 斷在詞的中間。
+       字小一階就整句放得下，比斷錯地方好看得多。 */
+    .sec-long { font-size: 15px; letter-spacing: -.01em; }
+    .sec-no  { display: block; font-size: 11px; font-weight: 800;
+               opacity: .6; letter-spacing: .05em; margin-bottom: 2px; }
 </style>
   <!-- 全站共用設定（要在 guard 之前載入）-->
   <script src="config.js"></script>
@@ -158,10 +172,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         </div>
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <button onclick="showStudyNotes('1-1')" data-ch="1-1" class="py-3 px-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-base hover:bg-blue-600 hover:text-white transition">1-1 資訊倫理的意涵</button>
-                        <button onclick="showStudyNotes('1-2')" data-ch="1-2" class="py-3 px-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-base hover:bg-blue-600 hover:text-white transition">1-2 網路禮儀與規範</button>
-                        <button onclick="showStudyNotes('1-3')" data-ch="1-3" class="py-3 px-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-base hover:bg-blue-600 hover:text-white transition">1-3 PAPA 理論</button>
-                        <button onclick="showStudyNotes('1-4')" data-ch="1-4" class="py-3 px-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-base hover:bg-blue-600 hover:text-white transition">1-4 數位落差的意義</button>
+                        <button onclick="showStudyNotes('1-1')" data-ch="1-1" class="sec-btn py-3 px-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-base hover:bg-blue-600 hover:text-white transition"><span class="sec-no">1-1</span>資訊倫理的意涵</button>
+                        <button onclick="showStudyNotes('1-2')" data-ch="1-2" class="sec-btn py-3 px-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-base hover:bg-blue-600 hover:text-white transition"><span class="sec-no">1-2</span>網路禮儀與規範</button>
+                        <button onclick="showStudyNotes('1-3')" data-ch="1-3" class="sec-btn py-3 px-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-base hover:bg-blue-600 hover:text-white transition"><span class="sec-no">1-3</span>PAPA 理論</button>
+                        <button onclick="showStudyNotes('1-4')" data-ch="1-4" class="sec-btn py-3 px-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-base hover:bg-blue-600 hover:text-white transition"><span class="sec-no">1-4</span>數位落差的意義</button>
                     </div>
                 </div>
 
@@ -177,9 +191,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         </div>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
-                        <button onclick="showStudyNotes('3-1')" data-ch="3-1" class="py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition">3-1 資訊與法律</button>
-                        <button onclick="showStudyNotes('3-2')" data-ch="3-2" class="py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition">3-2 電腦與網路犯罪概述</button>
-                        <button onclick="showStudyNotes('3-3')" data-ch="3-3" class="py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition">3-3 著作權法及個資法罰則</button>
+                        <button onclick="showStudyNotes('3-1')" data-ch="3-1" class="sec-btn py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition"><span class="sec-no">3-1</span>資訊與法律</button>
+                        <button onclick="showStudyNotes('3-2')" data-ch="3-2" class="sec-btn sec-long py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition"><span class="sec-no">3-2</span>電腦與網路犯罪概述</button>
+                        <button onclick="showStudyNotes('3-3')" data-ch="3-3" class="sec-btn sec-long py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition"><span class="sec-no">3-3</span>著作權法及個資法罰則</button>
                     </div>
                 </div>
 
