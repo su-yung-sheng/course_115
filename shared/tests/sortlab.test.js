@@ -139,7 +139,8 @@ if (!JSDOM) {
   {
     const lv = L['6-2-1'];
     ok(!!lv, '關卡存在');
-    eq(lv.lab, { kind: 'sort', mode: 'selection', order: 'asc' }, '★ 掛的是選擇排序的手動挑戰');
+    eq(lv.lab, { kind: 'sort', mode: 'selection', order: 'asc', trace: true },
+       '★ 掛的是選擇排序的手動挑戰，而且開著變數追蹤');
     ok(!!S.INFO[lv.lab.mode], '   lab.mode 在 SORTLAB.INFO 裡查得到');
     ok((lv.quiz || []).length >= 6, '概念檢測 ' + lv.quiz.length + ' 題');
     ok(lv.quiz.every(q => q.ref !== undefined), '每一題都指得回來源');
@@ -274,13 +275,81 @@ if (!JSDOM) {
     host.remove();
   }
 
-  console.log('\n── ★ sort.html 已經刪掉了 ──');
+  console.log('\n── ★ 變數追蹤：電腦怎麼找出最小值 ──');
+  {
+    /* ⚠️ 玩法取自 search.html（逐步執行＋程式碼行高亮＋變數面板），
+       但內容換成課本備課用書 p.193 的「找出最小值位置」——
+       那一頁追的是「找最大值」，和課本對不上。
+       ⇒ 下面這幾條要釘住「走出來的過程和課本那張表一模一樣」。 */
+    const r = S._traceMin([8, 5, 10, 1, 7], 'asc');
+    eq(r.compares, 5, '★ 五筆資料比 5 次（課本 p.193 的第一次～第五次）');
+    eq(r.at, 4, '★ 最小值在第 4 項');
+    eq(r.value, 1, '★ 數字是 1');
+    ok(r.steps[0].dp === 1 && r.steps[1].mp === 1,
+       '★ 兩個變數一開始都是 1（課本 p.198 步驟 4 的參考答案）');
+    /* 課本的四個轉折：第 2 項換人、第 3 項不換、第 4 項換人、第 5 項不換 */
+    const ups = r.steps.filter(x => x.line === 5).map(x => x.mp);
+    eq(ups, [2, 4], '★ 只有第 2 項和第 4 項換過人（10 和 7 都沒有更小）');
+    ok(r.steps.every(x => x.line >= 0 && x.line < S.TRACE_CODE.length),
+       '每一步都指得到程式的某一行（高亮才有東西可亮）');
+    ok(S.TRACE_CODE.some(l => /找出最小值位置/.test(l)) &&
+       S.TRACE_CODE.some(l => /資料位置/.test(l)) &&
+       S.TRACE_CODE.some(l => /最小值位置/.test(l)),
+       '★ 程式碼用課本的詞（找出最小值位置／資料位置／最小值位置）');
+    /* 由大到小：同一支程式反過來找最大 */
+    const d = S._traceMin([8, 5, 10, 1, 7], 'desc');
+    eq(d.value, 10, '由大到小時找出來的是 10');
+  }
+
+  console.log('\n── ★ 變數追蹤掛得起來 ──');
+  {
+    const host = dom.window.document.createElement('div');
+    dom.window.document.body.appendChild(host);
+    const sim = S.mount(host, { mode: 'selection', order: 'asc', trace: true });
+    ok(!host.querySelector('.sl-code'), '★ 還沒排完之前看不到追蹤區');
+    let guard = 0;
+    while (guard++ < 40) {
+      const cells = [...host.querySelectorAll('[data-i]')];
+      if (!cells.length) break;
+      const vals = cells.map(c => Number(c.textContent));
+      cells[vals.indexOf(Math.min(...vals))].onclick();
+    }
+    ok(!!host.querySelector('.sl-code'), '★ 排完之後才出現');
+    eq(host.querySelectorAll('.sl-code div').length, S.TRACE_CODE.length,
+       '程式碼每一行都畫出來了');
+    ok(!!host.querySelector('.sl-code div.now'), '★ 有一行是高亮的（不然看不出跑到哪）');
+    ok(/資料位置/.test(host.textContent) && /最小值位置/.test(host.textContent),
+       '兩個變數的值看得到');
+    host.querySelector('[data-tall]').onclick();
+    ok(/第 4 項/.test(host.querySelector('.sl-note').textContent),
+       '★ 一路跑完 → 講出最小的在第 4 項');
+    ok(!!host.querySelector('[data-treset]'), '   跑完了給「再看一次」');
+    /* ⚠️ 追蹤和自動播放要同時在（順序：手動 → 追蹤 → 自動）。 */
+    ok(!!host.querySelector('.sl-bars'), '   自動播放區也在');
+    const html = host.innerHTML;
+    ok(html.indexOf('sl-code') < html.indexOf('sl-bars'),
+       '★ 追蹤排在自動播放前面 —— 先看電腦怎麼挑，再看 30 筆跑');
+    sim.destroy(); host.remove();
+  }
+
+  console.log('\n── ★ 只有第 6 關開追蹤 ──');
+  {
+    ok(L['6-2-1'].lab.trace === true, '★ 第 6 關開著（它要拼的正是這段程式）');
+    ok(!L['6-2-2'].lab.trace,
+       '★ 第 7 關沒開 —— 插入排序不挑最小值，開了會教錯');
+  }
+
+  console.log('\n── ★ sort.html 與 search.html 已經刪掉了 ──');
   {
     /* ⚠️ 改寫整合的最後一步就是刪原檔。
        留著的話同一件事有兩個入口、兩套規則 ——
        改一邊忘一邊，而學生只會覺得自己記錯。 */
     ok(!fs.existsSync(path.join(ROOT, '11502', 'sort.html')),
-       '★ 11502/sort.html 已刪（內容都在這一支裡了）');
+       '★ 11502/sort.html 已刪（自動排序動畫在這一支裡了）');
+    ok(!fs.existsSync(path.join(ROOT, '11502', 'search.html')),
+       '★ 11502/search.html 已刪（逐步變數追蹤的玩法在這一支裡了）');
+    ok(!/search\.html/.test(JSON.stringify(L['6-2-1'])),
+       '   第 6 關不再掛 search.html 當補充教材');
     const lv7 = JSON.stringify(L['6-2-2']);
     ok(!/sort\.html/.test(lv7), '   第 7 關不再掛 sort.html 當補充教材');
     const hub = fs.readFileSync(path.join(ROOT, '11502', 'hub.html'), 'utf8');

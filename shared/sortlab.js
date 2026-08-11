@@ -189,6 +189,68 @@
     return { frames: frames, compares: cmp };
   }
 
+  /* ── 變數追蹤：電腦怎麼找出最小值 ───────────────────
+     ★ 玩法來自 11502/search.html（逐步執行＋程式碼行高亮＋變數面板）。
+       但那一頁追的是「找最大值」，和課本對不上 ——
+       ⇒ 玩法留下來，內容換成課本備課用書 p.193／p.198 的
+         「找出最小值位置」副程式（資料位置／最小值位置）。
+       課本那張「第一次～第五次」的比對表，這裡是一步一步走出來的。
+
+     ★ 為什麼第 6 關特別需要這個
+       手動挑戰時學生是「用眼睛挑最小的」——
+       他做得到，但那不是電腦做的事。
+       這一段把同一件事拆成電腦的動作：兩個變數、一次比一個。
+       ⇒ 接下來的拼圖要拼的正是這段程式。
+
+     一步（step）：
+       line  這一步在跑程式的第幾行（畫面上高亮那一行）
+       dp    資料位置
+       mp    最小值位置
+       note  這一步發生了什麼（課本用詞）
+       cmp   這一步有沒有做比較（拿來數比較次數） */
+  var TRACE_CODE = [
+    '定義 找出最小值位置',
+    '　變數 資料位置 設為 1',
+    '　變數 最小值位置 設為 1',
+    '　重複 清單 原始資料 的長度 次',
+    '　　如果 第(資料位置)項 < 第(最小值位置)項 那麼',
+    '　　　變數 最小值位置 設為 資料位置',
+    '　　變數 資料位置 改變 1'
+  ];
+
+  function traceMin(items, order) {
+    var a = items.map(Number), n = a.length, steps = [], cmp = 0;
+    var better = function (x, y) { return order === 'desc' ? x > y : x < y; };
+    var word = (order === 'desc') ? '大' : '小';
+
+    steps.push({ line: 1, dp: 1, mp: null, cmp: false,
+                 note: '資料位置設為 1 —— 從第 1 項開始看。' });
+    steps.push({ line: 2, dp: 1, mp: 1, cmp: false,
+                 note: '最小值位置也設為 1 —— 先假設第 1 項最' + word + '。' });
+    for (var i = 1, mp = 1; i <= n; i++) {
+      cmp++;
+      var hit = (i !== mp) && better(a[i - 1], a[mp - 1]);
+      steps.push({ line: 4, dp: i, mp: mp, cmp: true,
+                   note: '第 ' + i + ' 項是 ' + a[i - 1] + '，目前最' + word +
+                         '的是第 ' + mp + ' 項（' + a[mp - 1] + '）—— ' +
+                         (i === mp ? '就是它自己，不必比。'
+                                   : (hit ? '比較' + word + '，換人。'
+                                          : '沒有比較' + word + '，維持不變。')) });
+      if (hit) {
+        mp = i;
+        steps.push({ line: 5, dp: i, mp: mp, cmp: false,
+                     note: '最小值位置改成第 ' + mp + ' 項。' });
+      }
+      steps.push({ line: 6, dp: i + 1, mp: mp, cmp: false,
+                   note: '資料位置往下一格 → 第 ' + (i + 1) + ' 項。' });
+    }
+    var last = steps[steps.length - 1];
+    steps.push({ line: 3, dp: last.dp, mp: last.mp, cmp: false, done: true,
+                 note: '每一項都看過了。最' + word + '的在第 ' + last.mp +
+                       ' 項，數字是 ' + a[last.mp - 1] + '。' });
+    return { steps: steps, compares: cmp, at: last.mp, value: a[last.mp - 1] };
+  }
+
   /* ── 三種排序法的說明（沿用 sort.html 原本的文案）───── */
   var INFO = {
     selection: {
@@ -259,7 +321,23 @@
     '.sl-ctrl button:hover{border-color:#6366f1;background:#eef2ff}',
     '.sl-ctrl button.on{border-color:#6366f1;background:#e0e7ff;color:#4338ca}',
     '.sl-ctrl .num{font-size:12.5px;color:#4338ca;font-weight:900;margin-left:auto}',
-    '.sl-ctrl .num b{font-size:16px}'
+    '.sl-ctrl .num b{font-size:16px}',
+    /* 變數追蹤（玩法沿用 search.html：程式碼行高亮＋變數面板＋逐步執行） */
+    '.sl-tr{margin-top:16px;border-top:1px dashed #cbd5e1;padding-top:14px}',
+    '.sl-tr h4{font-size:14px;font-weight:900;color:#0f766e;margin:0 0 4px}',
+    '.sl-tr .lead{font-size:12.5px;color:#64748b;line-height:1.8;margin-bottom:10px}',
+    '.sl-var{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:9px}',
+    '.sl-var span{background:#f0fdfa;border:2px solid #5eead4;border-radius:9px;',
+    '  padding:5px 12px;font-size:13px;font-weight:700;color:#0f766e}',
+    '.sl-var span b{font-size:16px;color:#0d9488}',
+    '.sl-code{background:#0f172a;border-radius:10px;padding:9px 4px;margin:9px 0;',
+    '  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.85}',
+    '.sl-code div{color:#94a3b8;padding:1px 10px;white-space:pre-wrap;border-radius:4px}',
+    '.sl-code div.now{background:#134e4a;color:#5eead4;font-weight:700}',
+    '.sl-cell.dp{border-color:#0d9488;background:#ccfbf1;color:#0f766e}',
+    '.sl-cell.mp{border-color:#ef4444;background:#fee2e2;color:#991b1b}',
+    '.sl-note{font-size:12.5px;line-height:1.8;padding:8px 11px;border-radius:9px;',
+    '  background:#f0fdfa;color:#0f766e;margin-top:8px}'
   ].join('');
 
   function ensureStyle() {
@@ -301,8 +379,10 @@
         '<div id="sl-body"></div>' +
         '<div id="sl-msg"></div>' +
         (opts.newRound !== false ? '<button class="sl-btn" id="sl-new">🎲 換一題</button>' : '') +
+        '<div id="sl-trace"></div>' +
         '<div id="sl-auto"></div>';
       body();
+      trace();
       auto();
       var nb = host.querySelector('#sl-new');
       if (nb) nb.onclick = function () {
@@ -373,7 +453,7 @@
       if (passed) return;
       passed = true;
       say(true, '排好了！' + info.why);
-      auto();                      // ★ 通關才出現自動播放區，這裡要重畫一次
+      trace(); auto();             // ★ 通關才出現這兩區，這裡要重畫一次
       if (opts.onPass) opts.onPass();
     }
 
@@ -417,6 +497,54 @@
       body();
       if (boundary >= arr.length) finish();
       else say(true, '插好了。換下一張新牌。');
+    }
+
+    /* ── 變數追蹤區（只有第 6 關開）─────────────────
+       ★ 位置在「手動」和「自動」中間，順序是刻意的：
+         你剛才用眼睛挑最小的 → 電腦怎麼挑 → 30 筆跑一遍。
+       ⚠️ 一樣要通關才出現。還沒自己挑過就先看程式，
+          他看到的只是一段沒有來由的積木。 */
+    var tr = null, tAt = 0;
+
+    function trace() {
+      var box = host.querySelector('#sl-trace');
+      if (!box) return;
+      if (!opts.trace || !passed) { box.innerHTML = ''; return; }
+      /* 用課本的那一組（8、5、10、1、7）—— 學生對得回課本 p.193 的表。 */
+      if (!tr) { tr = traceMin(opts.traceItems || [8, 5, 10, 1, 7], order); tAt = 0; }
+      var s = tr.steps[tAt], vals = opts.traceItems || [8, 5, 10, 1, 7];
+      var last = tAt >= tr.steps.length - 1;
+
+      box.className = 'sl-tr';
+      box.innerHTML =
+        '<h4>🔬 電腦是怎麼「看出」最小的那一個？</h4>' +
+        '<div class="lead">你剛剛是<b>一眼</b>就挑出來的。電腦沒有眼睛 ——' +
+        '它只能一次比一個，而且要用<b>兩個變數</b>記著。一步一步看下去。</div>' +
+        '<div class="sl-row">' + vals.map(function (v, i) {
+          var cls = 'sl-cell';
+          if (s.mp === i + 1) cls += ' mp';
+          else if (s.dp === i + 1) cls += ' dp';
+          return '<span class="' + cls + '">' + esc(v) + '</span>';
+        }).join('') + '</div>' +
+        '<div class="sl-var">' +
+        '<span>資料位置 <b>' + (s.dp > vals.length ? '—' : s.dp) + '</b></span>' +
+        '<span>最小值位置 <b>' + (s.mp || '—') + '</b></span>' +
+        '<span>比較次數 <b>' + tr.steps.slice(0, tAt + 1).filter(function (x) { return x.cmp; }).length + '</b></span>' +
+        '</div>' +
+        '<div class="sl-code">' + TRACE_CODE.map(function (t, i) {
+          return '<div' + (i === s.line ? ' class="now"' : '') + '>' + esc(t) + '</div>';
+        }).join('') + '</div>' +
+        '<div class="sl-note">' + s.note + '</div>' +
+        '<div class="sl-ctrl">' +
+        (last ? '<button data-treset="1">↺ 再看一次</button>'
+              : '<button data-tstep="1">▶ 下一步</button>' +
+                '<button data-tall="1">⏭ 一路跑完</button>') +
+        '</div>';
+      var b1 = box.querySelector('[data-tstep]'), b2 = box.querySelector('[data-tall]'),
+          b3 = box.querySelector('[data-treset]');
+      if (b1) b1.onclick = function () { tAt++; trace(); };
+      if (b2) b2.onclick = function () { tAt = tr.steps.length - 1; trace(); };
+      if (b3) b3.onclick = function () { tr = null; trace(); };
     }
 
     /* ── 自動播放區 ────────────────────────────────
@@ -484,7 +612,8 @@
 
     return { destroy: function () { stop(); host.innerHTML = ''; },
              _auto: function () { return { algo: algo, at: at, frames: pl && pl.frames.length,
-                                           compares: pl && pl.compares, playing: !!timer }; } };
+                                           compares: pl && pl.compares, playing: !!timer,
+                                           tAt: tAt, tSteps: tr && tr.steps.length }; } };
   }
 
   global.SORTLAB = {
@@ -492,6 +621,8 @@
     INFO: INFO,
     mount: mount,
     _plan: plan,
+    _traceMin: traceMin,
+    TRACE_CODE: TRACE_CODE,
     _bestOf: bestOf,
     _checkSelection: checkSelection,
     _checkBubble: checkBubble,
