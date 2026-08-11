@@ -111,8 +111,12 @@ section('★ 題庫只能有一份（沒有頁面自己內嵌）');
       }
       if (!/\.html$/.test(e.name)) return;
       const src = fs.readFileSync(p, 'utf8');
-      /* { q: "…", options: [ … ], correct: N } —— 題庫的形狀 */
-      const n = (src.match(/\{\s*q:\s*["'][\s\S]{0,200}?options:\s*\[/g) || []).length;
+      /* 題庫的形狀：{ q: "…", options:[…] } 或 { question: "…", options:[…] }。
+         ⚠️ 2026-08-11：原本只認 `q:`，於是漏掉 11502/flowchart.html ——
+            那一頁用的是 `question:`，25 題就這樣躲過整個檢查。
+            這條規則的重點是「題庫只能有一份」，不是「某個欄位名」——
+            只認一種寫法的話，換個欄位名就繞過去了。 */
+      const n = (src.match(/\{\s*(?:q|question):\s*["'][\s\S]{0,300}?options:\s*\[/g) || []).length;
       if (n >= 3) hit.push(path.relative(root, p).replace(/\\/g, '/') + '（' + n + ' 題）');
     });
   };
