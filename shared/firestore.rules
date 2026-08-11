@@ -4,7 +4,7 @@ rules_version = '2';
 //  Firestore 安全規則 — 專案 suyungsheng-5f948
 //  涵蓋：115 學年【上學期 11501】＋【下學期 11502】
 //  貼上位置：Firebase Console → Firestore Database → 規則 → 發佈
-//  最後更新：2026-08-04
+//  最後更新：2026-08-11
 // ---------------------------------------------------------------------
 //  ⚠️ 一個 Firebase 專案只有「一份」規則，發佈時整份覆蓋。
 //     這份是 _shared/ 的產物，改請改 _shared/firestore.rules 再執行 sync_shared.py。
@@ -46,6 +46,14 @@ rules_version = '2';
 //    老師 = 學校 Google 帳號 suyungsheng@mail.qfm.kh.edu.tw（白名單）
 //    學生 = 學校 Google 帳號 qfm{學號}@mail.qfm.kh.edu.tw
 //           （舊的匿名登入＋驗證碼只在 config/auth 開關打開時有效）
+//
+//    ⑩ 2026-08-11：補上 bonusEmpty() / bonusUnchanged() 的**函式本體**。
+//       08-06 的改版只加了呼叫，沒寫定義 —— 規則有未定義的函式時，
+//       「發布」那一步會整份編譯失敗，所以那之後這份規則一次都沒上線過。
+//       線上跑的還是 08-06 以前的舊版（沒有 isTestAccount），
+//       學生端看到的只有一行 permission-denied。
+//       ⚠️ 這一份改完請**真的按一次發布**，看到「已發佈」再收工。
+//       shared/tests/rules.test.js 現在會擋掉同樣的錯。
 //
 //    ⑨ 2026-08-04：匿名登入與 email/密碼登入都已在 Firebase 停用，
 //       驗證碼備援整套移除（legacyAllowed／secret／session／hasCode）。
@@ -127,6 +135,46 @@ service cloud.firestore {
        一次不能加太多」。2026-08-04 全面改用學校 Google 帳號之後，
        isOwner(sid) 已經做到「只有本人能寫自己的」，這些近似條件沒有必要，
        留著只會讓人誤以為還有第二道防線。 */
+
+    /* ===== 老師給的加分星：學生寫不動 =====
+       modules.flowchart.imgUnits（交流程圖圖片 +1★）
+       modules.scratch.vidUnits  （交程式錄影   +1★）
+       這兩格由 shared/review.html 以老師身分寫入，內容是 { 關卡: { at, by } }。
+
+       ★ 為什麼一定要寫在規則裡
+         學生本來就有權寫「自己的整份進度文件」（他每通一關就 merge 一次）。
+         不擋的話，按 F12 就能把 imgUnits 塞滿十關 ——
+         白送 10 顆「老師確認過」的星，而且比自動算出來的更難事後分辨。
+         前端把按鈕藏起來完全沒有用。
+
+       ⚠️ 2026-08-11：這兩支在 2026-08-06 就被 allow 條件呼叫了，
+          但**函式本體從來沒寫**。Firestore 規則有未定義的函式會在
+          「發布」那一步整份編譯失敗 —— 也就是說那天之後這份規則
+          一次都沒有真的上線過，線上跑的還是 08-06 以前的舊版
+          （沒有 isTestAccount，所以連測試帳號都寫不進 11502）。
+          症狀只有一行 permission-denied，看起來像網路問題。
+          `rules.test.js` 現在會檢查「呼叫到的函式都有定義」。
+
+       ★ 用 get(欄位, 預設值) 串起來讀，不用 request.resource.data.modules.…：
+         學生端是 merge 寫入，沒帶到的那幾層在 request.resource.data 裡
+         **確實存在**（合併後的完整文件），但第一次建立時整棵都不在，
+         直接點下去會噴錯誤而不是判 false。 */
+    function imgUnitsOf(d) {
+      return d.get('modules', {}).get('flowchart', {}).get('imgUnits', {});
+    }
+    function vidUnitsOf(d) {
+      return d.get('modules', {}).get('scratch', {}).get('vidUnits', {});
+    }
+    /** 建立文件時：不可以夾帶加分（新生的第一筆本來就不該有） */
+    function bonusEmpty() {
+      return imgUnitsOf(request.resource.data).size() == 0
+          && vidUnitsOf(request.resource.data).size() == 0;
+    }
+    /** 更新文件時：加分那兩格前後必須一模一樣（不能加、不能改、不能刪） */
+    function bonusUnchanged() {
+      return imgUnitsOf(request.resource.data) == imgUnitsOf(resource.data)
+          && vidUnitsOf(request.resource.data) == vidUnitsOf(resource.data);
+    }
 
     // ###################################################################
     // ##  A. 跨學期共用
