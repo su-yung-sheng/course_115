@@ -192,11 +192,24 @@
        形狀不一樣，但「可以拖進另一塊的空格裡」這個行為是對的。 */
     'sensing.touchcolor':{ cat:'sensing', shape:'reporter', label:'碰到顏色 %s ?', args:['紅'] }, // SENSING_TOUCHINGCOLOR
     'sensing.mousedown': { cat:'sensing', shape:'reporter', label:'滑鼠鍵被按下?' },              // SENSING_MOUSEDOWN
+    /* ★ 下面兩塊是「看起來也行，其實不對」的誘餌 ——
+       課本備課用書把它們明列在「不須使用的積木」裡（p.157、p.158），
+       因為學生真的會拿錯：
+         碰到 蟲?      → 整隻鳥碰到就算吃到，翅膀擦過也算（要的是**嘴巴的顏色**）
+         空白 鍵被按下? → 這一關是用滑鼠玩的
+       ⚠️ 調色盤上沒有誘餌的話，「選對積木」就不是一個選擇，
+          學生只是把唯一剩下的那塊拖進去。 */
+    'sensing.touching':  { cat:'sensing', shape:'reporter', label:'碰到 %s ?', args:['蟲'] },     // SENSING_TOUCHINGOBJECT
+    'sensing.keydown':   { cat:'sensing', shape:'reporter', label:'%s 鍵被按下?', args:['空白'] },// SENSING_KEYPRESSED
 
     /* ── 運算 ───────────────────────────────────── */
     /* 「且」要能把兩顆判斷積木串起來 —— 這正是第 4 關（和邏輯實驗室）
        要學生看懂的東西：碰到蟲**而且**按下滑鼠，兩件事同時成立才算吃到。 */
-    'op.and':           { cat:'operator', shape:'reporter', label:'%s 且 %s', args:['', ''] }   // OPERATORS_AND
+    'op.and':           { cat:'operator', shape:'reporter', label:'%s 且 %s', args:['', ''] },  // OPERATORS_AND
+    /* ★ 「或」也是課本點名的誘餌。兩塊長得幾乎一樣，差一個字，
+       但拿錯的話：滑鼠一按就吃掉全場的蟲（沒碰到也算）。
+       這一關要學生分的就是這個。 */
+    'op.or':            { cat:'operator', shape:'reporter', label:'%s 或 %s', args:['', ''] }   // OPERATORS_OR
   };
 
   /* ===== 小工具 ===== */

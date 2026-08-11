@@ -2110,7 +2110,8 @@
 
         <div>
           <label class="block text-sm font-bold text-slate-700 mb-1">作業主題（學生會看到）</label>
-          <input id="gdTheme" type="text" placeholder="例：用清單做出「演奏小星星」，能依序播放整首曲子"
+          <!-- 例子要用**下學期**的關卡（原本寫的是上學期的「演奏小星星」）。 -->
+          <input id="gdTheme" type="text" placeholder="例：用副程式做出「小鳥吃蟲」，碰到蟲且按下滑鼠才算吃到"
                  class="w-full p-2.5 border border-slate-300 rounded-lg text-sm">
         </div>
 
@@ -2290,13 +2291,14 @@
   </div>
 
   <script>
-    // 10 個程式設計單元（與流程圖／程式設計頁、自評站一致）
-    const GD_UNITS = [
-      ['2-1-1A','第 1 關 班級置物櫃'],['2-1-1B','第 2 關 集合點名'],['2-1-2','第 3 關 演奏小星星'],
-      ['2-1-3','第 4 關 計算成績'],['2-1-4','第 5 關 抽號碼'],['2-1-5','第 6 關 撲克發牌'],
-      ['2-2-1','第 7 關 動物點點名'],['2-2-2','第 8 關 戰車王'],['2-3-1','第 9 關 分身小貓'],
-      ['2-3-2','第 10 關 螞蟻搬乳酪']
-    ];
+    /* 10 個程式設計單元 —— 直接跟 config.js 拿，不要在這裡抄一份。
+       ⚠️ 2026-08-11 抓到：這裡原本硬寫著**上學期**的十關
+          （班級置物櫃／集合點名／演奏小星星…），代號還是 2-1-1A／2-1-1B／2-1-4 ——
+          那三個鍵值在下學期根本不存在。
+          於是老師在這頁設的評分標準，會存到學生永遠讀不到的鍵值上，
+          而畫面上不會有任何錯誤 —— 只是「設了卻沒作用」。
+       ★ 單元清單只有一份：CONFIG.unitOptions()。 */
+    const GD_UNITS = CONFIG.unitOptions();
     const GD_COL = '11502-grader', GD_DOC = 'criteria';
     let _gdCache = null;        // { theme, rules, units:{unitId:{theme,rules}} }
 

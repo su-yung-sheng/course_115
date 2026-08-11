@@ -280,7 +280,7 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
      它有拆解和追蹤活動，但沒有 goal／palette ——
      這裡只檢查有拼圖的關卡，否則會在 lv.palette 上炸掉。 */
   const puzzles = ids.filter(id => L[id].goal);
-  is(puzzles, ['2-1-1', '2-1-2', '2-1-3'], '目前有拼圖的是這三關');
+  is(puzzles, ['2-1-1', '2-1-2', '2-1-3', '2-2-1'], '目前有拼圖的是這四關');
   is(ids.filter(id => !L[id].goal), ['2-3-1'], '第 5 關有內容但沒有拼圖');
   puzzles.forEach(id => {
     const lv = L[id], used = new Set();
@@ -550,6 +550,82 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
     is(/否則/.test(host.querySelector('.bk-script').textContent), true,
        '   畫面上看得到「否則」兩個字');
     host.remove();
+  }
+
+  /* ── ★ 第 4 關：兩支程式合在同一個工作區 ──────────────
+     ⚠️ 前三關的 goal 是「一支程式」，這一關是**四塊各自獨立**的程式
+        （蟲的定義／蟲的綠旗／當分身產生／小鳥的綠旗）。
+        所以要驗的不只是判定，還有「拆成四塊也算對」。
+
+     這一關考的三件事，每一件都要有一條會判錯的測試 ——
+     不然「拼對才過」只是句話：
+       1 那麼／否則放對　2 用「且」不用「或」　3 碰到顏色不是碰到蟲 */
+  section('★ 第 4 關 小鳥吃蟲（代號 2-2-1）：整關拼一次');
+  {
+    const lv = L['2-2-1'];
+    const got = build(lv.goal);
+    is(B._same(got, lv.goal, lv.loose || []), true, '★ 照答案拼出來 → 判對');
+
+    /* ① 那麼／否則放反 —— 按下滑鼠反而站直 */
+    const a = JSON.parse(JSON.stringify(got));
+    const ie = a[a.length - 1].children[1];
+    const t = ie.children; ie.children = ie.children2; ie.children2 = t;
+    is(B._same(a, lv.goal, lv.loose || []), false,
+       '★ ① 兩個造型放反（那麼／否則對調）→ 判錯');
+
+    /* ② 「且」換成「或」—— 滑鼠一按就吃光全場 */
+    const b = JSON.parse(JSON.stringify(got));
+    (function find(l) { (l || []).forEach(n => {
+      if (n.id === 'op.and') n.id = 'op.or';
+      (n.args || []).forEach(x => { if (x && typeof x === 'object') find([x]); });
+      find(n.children); find(n.children2);
+    }); })(b);
+    is(B._same(b, lv.goal, lv.loose || []), false,
+       '★ ② 「且」換成「或」→ 判錯（一個成立就吃到，等於亂按就贏）');
+
+    /* ③ 碰到顏色換成碰到蟲 —— 翅膀擦過也算吃到 */
+    const c = JSON.parse(JSON.stringify(got));
+    (function find(l) { (l || []).forEach(n => {
+      if (n.id === 'sensing.touchcolor') { n.id = 'sensing.touching'; n.args = ['蟲']; }
+      (n.args || []).forEach(x => { if (x && typeof x === 'object') find([x]); });
+      find(n.children); find(n.children2);
+    }); })(c);
+    is(B._same(c, lv.goal, lv.loose || []), false,
+       '★ ③ 「碰到顏色」換成「碰到 蟲」→ 判錯（整隻鳥都算，翅膀擦過也吃得到）');
+
+    /* ④ 建立「自己」的分身換成別的：分身就不能再生 */
+    const d = JSON.parse(JSON.stringify(got));
+    d[0].children[1].id = 'control.delclone';
+    is(B._same(d, lv.goal, lv.loose || []), false, '   ④ 建立分身換成刪除分身 → 判錯');
+
+    /* ⑤ 定位和建立分身對調 —— 十隻蟲會疊在同一點。
+       ⚠️ 這一條畫面上看不出來（積木都在、都對），只有順序錯。 */
+    const e = JSON.parse(JSON.stringify(got));
+    e[0].children.reverse();
+    is(B._same(e, lv.goal, lv.loose || []), false,
+       '★ ⑤ 先建立分身再定位 → 判錯（十隻蟲會疊在同一個點）');
+
+    /* ⑥ 少了本尊的「隱藏」 */
+    const f = got.filter(n => n.id !== 'looks.hide');
+    is(B._same(f, lv.goal, lv.loose || []), false, '   ⑥ 少了本尊的「隱藏」→ 判錯');
+
+    /* ★ 誘餌要真的在調色盤上。
+       ⚠️ 沒有誘餌的話，「選對積木」不是一個選擇 ——
+          學生只是把唯一剩下的那塊拖進去，①②③ 三件事一件都沒考到。 */
+    ['sensing.touching', 'sensing.keydown', 'op.or'].forEach(id => {
+      is(lv.palette.indexOf(id) >= 0, true, '★ 調色盤上有誘餌 ' + id);
+    });
+    /* 誘餌不可以真的出現在答案裡（那就不是誘餌，是漏拼的正解）。 */
+    const used = new Set();
+    (function w(l) { (l || []).forEach(n => { used.add(n.id);
+      (n.args || []).forEach(x => { if (x && typeof x === 'object') w([x]); });
+      w(n.children); w(n.children2); }); })(lv.goal);
+    ['sensing.touching', 'sensing.keydown', 'op.or'].forEach(id => {
+      is(used.has(id), false, '   誘餌 ' + id + ' 沒有混進答案裡');
+    });
+    /* 反過來：答案用到的每一塊都要拿得到。 */
+    is([...used].filter(id => lv.palette.indexOf(id) < 0).length, 0,
+       '★ 答案用到的積木調色盤上都拿得到');
   }
 
   console.log('\n── ★ 拼圖要的數字都有交代 ──');
