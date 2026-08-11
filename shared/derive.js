@@ -630,6 +630,7 @@
        ⇒ 狀態變數一律和其他狀態放在一起，放在第一次 draw() 之前。 */
     var chosen = {};            // 每一問抽到哪一題、選項怎麼排
     var wrongN = {};            // 這一問已經選錯幾次（見 penalty()）
+    var usedAsk = {};           // 這一問已經抽過哪幾題（見 pickAsk()）
 
     host.innerHTML =
       (data.intro ? '<div class="dv-intro">' + data.intro + '</div>' : '') +
@@ -727,15 +728,35 @@
        ⚠️ 選項要洗牌 —— 正解固定在第一個的話，第二次就變成「背 A」。
        ⚠️ 沒有寫 asks 的問（例如 2-1-2 還沒補）就退回「寫一句」，
           而那條路一樣要擋抄襲（見 wireSay）。 */
+    /**
+     * 抽一題出來問。
+     *
+     * ★ 答錯之後要**換一題**（2026-08-11），不是把錯的選項劃掉重選。
+     *   劃掉重選的話：四選一 → 三選一 → 二選一，
+     *   一個完全不懂的學生也保證能過，而他學到的是刪去法。
+     *   換一題就沒有這個問題 —— 每一次都是重新的四選一。
+     *
+     * ⚠️ 三題都用過之後回頭再用（reuse），但選項會重新洗牌。
+     *    「用完就放行」等於答錯三次自動過關；
+     *    「用完就卡死」則是把不懂的人關在門外 ——
+     *    而他真正需要的是提示，那個由 penalty() 負責（錯兩次強制讀）。
+     */
+    function pickAsk(it, i) {
+      var bank = it.asks || [];
+      var used = usedAsk[i] || (usedAsk[i] = []);
+      var left = bank.filter(function (_, k) { return used.indexOf(k) < 0; });
+      if (!left.length) { used.length = 0; left = bank; }   // 一輪用完，重新來過
+      var one = left[Math.floor(Math.random() * left.length)];
+      used.push(bank.indexOf(one));
+      var right = one.options[one.answer];
+      var opts = shuffleArr(one.options);
+      return { q: one.q, options: opts, answer: opts.indexOf(right), why: one.why || '' };
+    }
+
     function askHtml(it, i) {
       var bank = it.asks || [];
       if (!bank.length) return sayHtml(i);
-      if (!chosen[i]) {
-        var pickOne = bank[Math.floor(Math.random() * bank.length)];
-        var right = pickOne.options[pickOne.answer];
-        var opts = shuffleArr(pickOne.options);
-        chosen[i] = { q: pickOne.q, options: opts, answer: opts.indexOf(right), why: pickOne.why || '' };
-      }
+      if (!chosen[i]) chosen[i] = pickAsk(it, i);
       var a = chosen[i];
       return '<div class="dv-ask" data-ask="' + i + '">' +
         '<div class="dv-ask-q">' + a.q + '</div>' +
@@ -766,16 +787,33 @@
                 a.why 講的是**正解**為什麼對 —— 端在錯誤回饋裡，
                 等於錯一次就把答案送給他，剩下三選一變成直接勾。 */
           b.classList.add('wrong');
-          b.disabled = true;
           wrongN[i] = (wrongN[i] || 0) + 1;
           fb.className = 'dv-fb bad';
-          fb.innerHTML = '✗ 這個不是。再看一次剩下的選項。';
           /* ★ 錯兩次 → 強制讀提示（2026-08-11）。
              錯兩次通常不是手滑，是真的不懂 —— 而提示就是寫給這種情況的。
              他自己不會點（點提示像認輸），所以由系統打開。 */
-          if (wrongN[i] >= PENALTY_WRONG && qs[i].hint) penalty(wrap, qs[i].hint);
+          var punish = wrongN[i] >= PENALTY_WRONG && qs[i].hint;
+          if (punish) {
+            wrap.querySelectorAll('.dv-opt').forEach(function (x) { x.disabled = true; });
+            fb.innerHTML = '✗ 這個不是。先看一下提示，等一下換一題再問你。';
+            penalty(wrap, qs[i].hint, function () { swapAsk(i); });
+            return;
+          }
+          /* ★ 換一題，不是把錯的選項劃掉讓他再選。
+             劃掉重選是四選一 → 三選一 → 二選一，
+             完全不懂的人也保證會過，而他學到的是刪去法。 */
+          fb.innerHTML = '✗ 這個不是。<b>換一題再想想。</b>';
+          wrap.querySelectorAll('.dv-opt').forEach(function (x) { x.disabled = true; });
+          setTimeout(function () { swapAsk(i); }, 900);
         }
       });
+    }
+
+    /** 換下一題（答錯之後）。只重畫這一問，不動整頁。 */
+    function swapAsk(i) {
+      if (i !== at || passed[i]) return;      // 已經走掉或已經答對了就不要再插手
+      chosen[i] = pickAsk(qs[i], i);
+      draw();
     }
 
     /* ── 錯兩次的罰讀 ─────────────────────────────────
@@ -787,13 +825,8 @@
          切到別的視窗會暫停，離開太久會重算 —— 和情境解說完全一樣。
        ⚠️ 沒載到 READHOLD 就只開提示、不鎖 —— 少罰一次，
           總比把學生鎖在一個永遠不會動的視窗裡好。 */
-    function penalty(wrap, hint) {
-      var opts2 = [].slice.call(wrap.querySelectorAll('.dv-opt'));
-      var was = opts2.map(function (x) { return x.disabled; });
-      opts2.forEach(function (x) { x.disabled = true; });
-      var free = function () {
-        opts2.forEach(function (x, n) { x.disabled = was[n]; });
-      };
+    function penalty(wrap, hint, then) {
+      var free = function () { if (then) then(); };
       if (!global.READHOLD) { openTip(hint); free(); return; }
       var m = openTip(hint, PENALTY_SEC);
       global.READHOLD.start({
@@ -806,7 +839,7 @@
         },
         onDone: function () {
           m.ok.disabled = false;
-          m.ok.textContent = '讀完了，再選一次';
+          m.ok.textContent = '讀完了，換一題';
           m.ok.onclick = function () { m.close(); free(); };
         }
       });

@@ -289,7 +289,11 @@ ok(!!l5.analysis.write, '也有先寫再對照');
    ★ 前面那些測試測的都是「有沒有寫這段程式」。
      這一條測的是「畫出來到底有沒有東西」——
      而那正是學生第一眼看到的唯一一件事。 */
-{
+/* ⚠️ 這一段要 await（等換題的 0.9 秒），所以包成 async 立即函式。
+   直接在最外層寫 await 的話，Node 會把整支檔案當成 ES module，
+   然後 require 整個掛掉 —— 錯誤訊息是 ERR_AMBIGUOUS_MODULE_SYNTAX，
+   完全看不出和「我加了一行 await」有關。 */
+(async function () {
   let JSDOM2;
   try { ({ JSDOM: JSDOM2 } = require('jsdom')); } catch (e) { JSDOM2 = null; }
   if (!JSDOM2) {
@@ -318,15 +322,52 @@ ok(!!l5.analysis.write, '也有先寫再對照');
     ok(!!host.querySelector('#dv-nx'), '   有「下一題」的按鈕');
     ok(host.querySelector('#dv-nx').disabled === true, '★ 還沒答對之前按不下去');
 
-    /* 答對之後才解鎖 —— 走真正的點擊路徑，不要偷改內部狀態。 */
-    const opts = [...host.querySelectorAll('.dv-opt')];
-    /* 正解是哪一個：選項洗過牌，所以逐一試，錯的會被 disabled。 */
-    for (const b of opts) {
-      if (b.disabled) continue;
+    /* ── ★ 答錯要換一題，不是把錯的劃掉讓他再選 ──────────
+       ⚠️ 劃掉重選是四選一 → 三選一 → 二選一，
+          完全不懂的人也保證會過，而他學到的是刪去法。
+       ⇒ 答錯之後：整組選項鎖住、回饋說「換一題」，
+         約 0.9 秒後換上另一題，而且又是完整的四個選項。 */
+    const qOf = () => host.querySelector('.dv-ask-q').textContent;
+    const optsNow = () => [...host.querySelectorAll('.dv-opt')];
+    const nx = () => host.querySelector('#dv-nx');
+    const before = qOf();
+    let sawWrong = false;
+    for (const b of optsNow()) {
       b.dispatchEvent(new w6.window.Event('click', { bubbles: true }));
-      if (host.querySelector('#dv-nx') && !host.querySelector('#dv-nx').disabled) break;
+      const fb = host.querySelector('.dv-fb');
+      if (fb && /✗/.test(fb.textContent)) { sawWrong = true; break; }
+      if (nx() && !nx().disabled) break;                 // 第一下就對了
     }
-    ok(host.querySelector('#dv-nx') && host.querySelector('#dv-nx').disabled === false,
+    if (sawWrong) {
+      ok(optsNow().every(b => b.disabled),
+         '★ 答錯之後整組選項鎖住 —— 不讓他在剩下三個裡面挑');
+      ok(/換一題/.test(host.querySelector('.dv-fb').textContent),
+         '   而且說清楚接下來會換一題');
+      await new Promise(r => setTimeout(r, 1200));
+      ok(qOf() !== before, '★ 真的換了一題（' + qOf().slice(0, 18) + '…）');
+      ok(optsNow().length === 4 && optsNow().every(b => !b.disabled),
+         '★ 新的一題又是完整的四選一 —— 刪去法沒有累積效果');
+    } else {
+      ok(true, '（這一次第一下就答對，換題的路徑由下一輪測）');
+    }
+
+    /* 答對之後才解鎖 —— 走真正的點擊路徑，不要偷改內部狀態。
+       ⚠️ 不要用「一個一個試到對為止」。答錯現在會換一題，
+          所以那個寫法變成隨機亂點，四選一 ——
+          它**大部分時候會過，偶爾紅一次**，而那種測試最糟：
+          紅的時候沒有人相信是真的壞了，久了就變成按重跑。
+       ⇒ 從關卡資料查出正解的文字，直接點那一顆。
+         這樣測的還是真的點擊路徑，但結果是確定的。 */
+    const bank = w6.BLOCK_LEVELS['2-1-1'].analysis.qs[0].asks || [];
+    const one = bank.filter(a => a.q === qOf())[0];
+    ok(!!one, '畫面上這一題找得回題庫裡的那一筆（' + qOf().slice(0, 16) + '…）');
+    if (one) {
+      const want = one.options[one.answer];
+      const right = optsNow().filter(b => b.textContent === want)[0];
+      ok(!!right, '   四個選項裡有正解');
+      if (right) right.dispatchEvent(new w6.window.Event('click', { bubbles: true }));
+    }
+    ok(nx() && nx().disabled === false,
        '★ 答對之後「下一題」才亮起來');
 
     /* ── ★ 2-1-2 也要真的畫一次 ──────────────────────
@@ -351,7 +392,7 @@ ok(!!l5.analysis.write, '也有先寫再對照');
 
     global.window = undefined; global.document = undefined;
   }
-}
 
-console.log('通過 ' + pass + '／失敗 ' + fail);
-process.exit(fail ? 1 : 0);
+  console.log('通過 ' + pass + '／失敗 ' + fail);
+  process.exit(fail ? 1 : 0);
+})();

@@ -367,6 +367,59 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   is(B._score(half, B._canon(l1.alts[0].goal), []) >= B._score(half, B._canon(l1.goal), []),
      true, '拼另解拼到一半，比較像另解');
 
+  /* ── ★ 拼圖要的每一個數字，都要有交代 ────────────────
+     ⚠️ 2026-08-11 實際踩到：
+        第 1 關的 goal 要學生產出 4、30、90、6、60 五個數字，
+        但畫面上只寫過「邊長 30」和「六個」——
+        **間隔 60 從頭到尾沒有人告訴他**。
+        拼圖是照 goal 的參數逐一比對的，所以那一關其實只能靠猜。
+        更糟的是第 3 關：loose 是空的（三列座標互相咬合），
+        -180 / 120 / -80 / 60 / 30 / 40 全都要精準，而一個都沒說。
+
+     ★ 一個數字只有兩種身分，二選一：
+         規格 —— 我出的題目（大小、間隔、位置、秒數）→ 一定要寫在 task/build 裡
+         演算法 —— 他要學的東西（幾條邊、轉幾度、重複幾次）→ 列進 mustDerive[]
+       兩種都不是的話，那就是漏了。
+
+     ⚠️ mustDerive 不是白名單（★ 不要叫 derive —— 那個名字已經被「推導」那一步用掉了），是**回答**。每加一個數字進去，
+        等於在說「這個我刻意不講，要他自己想出來」——
+        寫不出這句話的數字，就是該寫進 build 的。 */
+  console.log('\n── ★ 拼圖要的數字都有交代 ──');
+  ['2-1-1', '2-1-2', '2-1-3'].forEach(id => {
+    const lv = L[id];
+    if (!lv || !lv.goal) return;
+    const loose = lv.loose || [];
+    const need = new Set();
+    (function walk(list) {
+      (list || []).forEach(b => {
+        /* 寬鬆的積木（例如可以自己決定起點的定位）不必比數字，也就不必交代 */
+        if (loose.indexOf(b.id) < 0) {
+          (b.args || []).forEach(a => {
+            if (typeof a === 'number') need.add(a);
+            else if (a && typeof a === 'object') walk([a]);
+          });
+        }
+        walk(b.children);
+      });
+    })(lv.goal);
+
+    /* 說過的話：題目 ＋ 拼圖說明。去掉標籤只留文字。 */
+    const said = ((lv.task || '') + ' ' + (lv.build || []).join(' ')).replace(/<[^>]*>/g, '');
+    const told = n => new RegExp('(^|[^\\d.-])' + String(n).replace('-', '-?') + '($|[^\\d])')
+      .test(said.replace(/−/g, '-'));
+    const derive = new Set(lv.mustDerive || []);
+    const miss = [...need].filter(n => !derive.has(n) && !told(n));
+    is(miss.length === 0, true,
+       `★ ${id} 的每個數字都有交代（規格寫在說明裡、演算法列進 mustDerive）` +
+       (miss.length ? `　←　沒交代：${miss.join('、')}` : ''));
+
+    /* derive 裡不該出現「其實已經寫在說明裡」的數字 ——
+       那表示我一邊說了、一邊又宣稱要他自己想，自相矛盾。 */
+    const both = [...derive].filter(n => told(n));
+    is(both.length === 0, true,
+       `   ${id} 的 mustDerive 沒有和說明打架` + (both.length ? `　←　${both.join('、')}` : ''));
+  });
+
   console.log(`\n通過 ${pass}／失敗 ${fail}`);
   process.exit(fail ? 1 : 0);
 })();
