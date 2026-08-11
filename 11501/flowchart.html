@@ -607,7 +607,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       state.readLeft=readSecondsFor(u); state.hintUsed=false;   // 每關重新計時、提示機會重置
       render();
     }
-    function beginSelect(){ if(readTimer){clearInterval(readTimer);readTimer=null;} const u=state.unit; state.candidates=buildCandidates(u); state.selected={}; state.selMsg=''; state.status='select'; render(); }
+    /* ⚠️ 2026-08-11：這一行本來是 `if(readTimer){clearInterval(readTimer);…}`。
+       改用 READHOLD 之後 readTimer 這個變數已經不存在了，而這裡漏改 ——
+       於是按下「我讀完了，開始闖關」的**第一行就丟 ReferenceError**，
+       後面的 render() 根本跑不到。
+       畫面上的症狀是「按了完全沒反應」：沒有錯誤、沒有動靜，
+       只有 F12 主控台裡一行紅字。
+       ★ 停計時器一律走 clearTimers()，不要在各處自己動內部變數 ——
+         漏改的那一處不會有任何徵兆。 */
+    function beginSelect(){ clearTimers(); const u=state.unit; state.candidates=buildCandidates(u); state.selected={}; state.selMsg=''; state.status='select'; render(); }
     function toggleSelect(step){ state.selected[step]=!state.selected[step]; state.selMsg=''; render(); }
     function confirmSelect(){
       const chosen = Object.keys(state.selected).filter(s=>state.selected[s]);

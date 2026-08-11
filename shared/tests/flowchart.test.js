@@ -103,6 +103,45 @@ is(/第\s*\$\{|正確答案|下一步是/.test(nudgeSrc), false, '沒有直接�
 /* ── 閱讀停留 ───────────────────────────────────────
    規則本身在 shared/readhold.js（readhold.test.js 顧），
    這裡只釘 11501 自己的兩件事：接上去了、以及「已通關免等」還在。 */
+/* ── ★ 計時器變數不可以有「用了卻不存在」的 ──────────
+   ⚠️ 2026-08-11 實際發生：
+     把 readTimer 改成 readHold（改用 READHOLD）之後，
+     beginSelect() 裡漏了一個 `if(readTimer){clearInterval(readTimer);…}`。
+     那是函式的**第一行**，所以按下「我讀完了，開始闖關 →」
+     會直接丟 ReferenceError，後面的 render() 根本跑不到。
+
+     畫面上的症狀是「按了完全沒反應」——
+     沒有錯誤訊息、沒有動靜，只有 F12 主控台裡一行紅字。
+     而這一頁的邏輯全在 <script type="module"> 裡（有 firebase import），
+     沒辦法用 jsdom 直接跑起來點一遍，所以這種錯完全沒有東西擋。
+
+   ⇒ 這一條專門盯「名字裡有 Timer／Hold 的變數」：
+     用到了就一定要有 let／const／var 宣告它。
+     ★ 它抓不到所有的打錯字，但抓得到**改名漏改**——
+       而這一頁的計時器已經改過兩次名了。 */
+{
+  const m = s.match(/<script type="module">([\s\S]*?)<\/script>/);
+  const js = (m ? m[1] : '')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/^\s*\/\/[^\n]*/gm, ' ');
+  const used = new Set();
+  let x;
+  const re = /(^|[^.\w$])([A-Za-z_$][\w$]*(?:Timer|Hold))\b/g;
+  while ((x = re.exec(js))) used.add(x[2]);
+  const miss = [...used].filter(n =>
+    !new RegExp('(?:let|const|var)[^;\\n]*\\b' + n + '\\b').test(js));
+  is(miss.length, 0,
+     '★ 用到的計時器變數都有宣告' +
+     (miss.length ? `　←　${miss.join('、')} 用了但沒有宣告（改名漏改？）` : ''));
+  is([...used].length > 0, true, '   （確認真的有掃到東西：' + [...used].join('、') + '）');
+
+  /* 停計時器一律走 clearTimers()，不要在各處自己動內部變數 ——
+     漏改的那一處不會有任何徵兆。 */
+  const outside = js.replace(/function clearTimers\(\)[\s\S]*?\n    \}/, ' ');
+  is(/clearInterval\(\s*read/.test(outside), false,
+     '★ clearTimers() 以外的地方不直接停閱讀計時器（漏改就是這樣來的）');
+}
+
 console.log('\n── 閱讀停留：接的是共用規則，而且已通關的關卡免等 ──');
 /* ⚠️ 「不可以再出現」這一類的檢查一定要**先去掉註解**。
    註解裡正好會引用舊寫法來說明為什麼不要它 ——
