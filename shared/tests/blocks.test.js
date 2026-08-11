@@ -282,9 +282,11 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   const puzzles = ids.filter(id => L[id].goal);
   /* ⚠️ 順序照 BLOCK_LEVELS 裡的宣告順序，不是關卡編號 ——
      6-1-1（第 5 關）是先寫的，所以排在 4-2-2 前面。 */
-  is(puzzles.slice().sort(), ['4-2-1', '4-2-2', '4-2-3', '4-3-1', '6-3-1', '6-3-2', '6-3-3'],
-     '目前有拼圖的是這七關（第 8～10 關的是縮小版：互動為主）');
-  is(ids.filter(id => !L[id].goal), ['6-1-1'], '第 5 關有內容但沒有拼圖');
+  is(puzzles.slice().sort(),
+     ['4-2-1', '4-2-2', '4-2-3', '4-3-1', '6-2-1', '6-2-2', '6-3-1', '6-3-2', '6-3-3'],
+     '★ 十關裡有九關有拼圖（第 6 章那五關是縮小版：互動為主）');
+  is(ids.filter(id => !L[id].goal), ['6-1-1'],
+     '★ 只有第 5 關沒有拼圖 —— 課本用圖解，它是排序的觀念導入');
   puzzles.forEach(id => {
     const lv = L[id], used = new Set();
     (function walk(l) { (l || []).forEach(n => { used.add(n.id); walk(n.children); }); })(lv.goal);

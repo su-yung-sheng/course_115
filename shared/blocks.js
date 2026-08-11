@@ -161,6 +161,19 @@
     'control.untilfound':{cat:'control', shape:'c',     label:'重複直到 找到目標 或 位置 > 數列 的長度' },                                     // ★自訂
     'control.iffound':  { cat:'control', shape:'c2',    label:'如果 數列 的第 位置 項 = 目標資料 那麼' },                                      // ★自訂
     'looks.sayfound':   { cat:'looks',   shape:'stack', label:'說出「找到了，位於第（位置）個數字」' },                                        // ★自訂
+    /* 第 6 關 選擇排序（課本 6-2-1、備課用書 p.198 的「找出最小值位置」副程式）。
+       ★ 課本把「找最小值」單獨包成一個函式積木，理由寫在 p.198：
+         那是每一回合都要做的同一件事 —— 正是副程式存在的意義。 */
+    'control.ifsmaller':{ cat:'control', shape:'c',     label:'如果 數列 的第 資料位置 項 < 數列 的第 最小值位置 項 那麼' },                   // ★自訂
+    'list.setmin':      { cat:'list',    shape:'stack', label:'變數 最小值位置 設為 資料位置' },                                               // ★自訂
+    /* 第 7 關 插入排序（課本 6-2-2）。
+       ★ 課本的規則：「遇到大於自己的元素就插入此元素之前；
+         否則插入在已排序數列的最後一項」—— 所以停止條件有兩個，
+         和第 10 關循序搜尋是同一個道理。 */
+    'control.untilempty':{cat:'control', shape:'c',     label:'重複直到 原始資料 是空的' },                                                    // ★自訂
+    'list.takenext':    { cat:'list',    shape:'stack', label:'取出 原始資料 的第 1 項當作 新牌（並從原始資料刪掉）' },                        // ★自訂
+    'control.untilspot':{ cat:'control', shape:'c',     label:'重複直到 已排序 的第 插入位置 項 > 新牌 或 插入位置 > 已排序 的長度' },         // ★自訂
+    'list.insertcard':  { cat:'list',    shape:'stack', label:'把 新牌 插入 已排序 的第 插入位置 項' },                                        // ★自訂
     'control.until':    { cat:'control', shape:'c',     label:'重複直到 找到目標' },                           // ★自訂
 
     /* ===================================================================

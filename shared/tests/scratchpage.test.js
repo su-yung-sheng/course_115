@@ -30,16 +30,26 @@ new Function('window', fs.readFileSync(
 const ids = Object.keys(W.BLOCK_LEVELS);
 const units = ['4-2-1','4-2-2','4-2-3','4-3-1','6-1-1','6-2-1','6-2-2','6-3-1','6-3-2','6-3-3'];
 const missing = units.filter(u => ids.indexOf(u) < 0);
-ok(missing.length > 0 && missing.length <= units.length,
-   '目前 ' + missing.length + ' 關沒有題目（' + missing.join('、') + '）—— 這幾關一定要放行');
-/* ⚠️ 這個數字會隨著題目一關一關補上而變小，所以不寫死。
-   寫死的話，每補一關就會有一條測試無故變紅，久了就會有人把它註解掉。 */
+ok(missing.length === 0,
+   '★ 十關都有關卡資料了' + (missing.length ? '（還缺：' + missing.join('、') + '）' : ''));
+/* ⚠️ 2026-08-12：這一條原本寫的是「目前有幾關**沒有**題目」，
+      因為那時候第 4～10 關還是空的，無條件擋的話那七關會永遠上傳不了。
+      現在十關都補完了，那個前提不存在了 —— 所以改成反過來釘：
+      少掉任何一關就變紅。
+
+   ★ 但「沒有資料的步驟不出現」這條規則**沒有跟著消失**，
+     而且比以前更重要：現在每一關都有資料，卻不是每一關都有每一步
+     （第 5 關沒有拼圖、第 3 關沒有拆解、第 6 章那五關才有實驗室）。
+     下面那幾條就是在釘這件事。 */
+ok(ids.every(id => units.indexOf(id) >= 0),
+   '★ 沒有多出 config.js 以外的關卡代號（多出來的學生永遠走不到）');
 
 /* 步驟數要跟著關卡有什麼而變，不能寫死三步 */
 const steps = lv => {
   const out = [];
   if (lv.analysis) out.push('analysis');
   if (lv.derive) out.push('derive');
+  if (lv.lab) out.push('lab');           // ← 第 6 章那幾關的互動實驗室
   if (lv.goal) out.push('blocks');       // ← 和頁面同一條規則
   return out;
 };
@@ -57,6 +67,20 @@ ok(steps(l5).join() === 'analysis,derive', '★ 所以它的步驟裡沒有拼�
    ok(/if \(lv && lv\.goal\)   out\.push/.test(lvHtml), '   程式裡確實是看有沒有 goal 才加拼圖');
    ok(/markPre\(\)/.test(lvHtml), '   沒有拼圖的關卡也要標記得了完成（markPre）');
    ok(/out\.push\(\{ key:'test'/.test(lvHtml), '   一步都沒有時也還有實作測試，不會變空白');
+
+/* ★ 第 6 章那五關（6-2-1／6-2-2／6-3-1／6-3-2／6-3-3）才有互動實驗室。
+   ⚠️ 第 4 章那四關**不可以**有 —— 它們的主角是程式拼圖。
+      每一關都掛實驗室的話，它就從「這一關的重點」變成點擊過場。 */
+const withLab = ids.filter(id => W.BLOCK_LEVELS[id].lab).sort();
+ok(withLab.join() === '6-2-1,6-2-2,6-3-1,6-3-2,6-3-3',
+   '★ 只有第 6 章那五關有互動實驗室（實得：' + withLab.join('、') + '）');
+ok(withLab.every(id => (W.BLOCK_LEVELS[id].lab.kind === 'sort' ||
+                        W.BLOCK_LEVELS[id].lab.kind === 'search')),
+   '   每一個 lab 都指定得出要掛哪一支模組（sort／search）');
+/* 第 5 關是排序的觀念導入，用的是 derive 裡的手動追蹤，不是 lab。
+   ⚠️ 兩個都放的話，學生會連續做兩次一模一樣的事。 */
+ok(!l5.lab && (l5.derive.steps || []).some(s => s.kind === 'sort'),
+   '★ 第 5 關用 derive 裡的手動排序，不另外掛 lab（不然會連做兩次同一件事）');
 ok(!/out\.push\('analysis'\);\s*out\.push\('derive'\)/.test(html), '步驟不是寫死的');
 
 /* ── ★ 卡片上的說明只能有一個來源 ─────────────────
