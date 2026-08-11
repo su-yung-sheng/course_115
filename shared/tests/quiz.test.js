@@ -49,7 +49,7 @@ const no = (spec, t, label) =>
 (async () => {
 
 section('題庫本身');
-['2-1-1', '2-1-2', '2-1-3'].forEach(id => {
+['4-2-1', '4-2-2', '4-2-3'].forEach(id => {
   const bank = Q(id);
   ok(bank.length >= W.QUIZ.N_TOTAL,
      id + ' 至少 ' + W.QUIZ.N_TOTAL + ' 題（' + bank.length + '）—— 抽 5 題還要留得下變化');
@@ -62,11 +62,11 @@ section('題庫本身');
      '   ' + id + ' 的 full 沒有超過概念數（那會變成永遠拿不到滿分）');
   ok(bank.every(x => (x.min || 8) <= 14), '   ' + id + ' 沒有把最少字數設得太長');
 });
-ok(!W.BLOCK_LEVELS['2-3-1'].quiz, '★ 沒寫題庫的關卡就是沒有（寧可不辦，也不要湊題目）');
+ok(!W.BLOCK_LEVELS['6-1-1'].quiz, '★ 沒寫題庫的關卡就是沒有（寧可不辦，也不要湊題目）');
 
 section('★ 不可以錯殺：同一個意思的各種說法');
 {
-  const q1 = Q('2-1-1')[0];   // 為什麼不包成副程式不好
+  const q1 = Q('4-2-1')[0];   // 為什麼不包成副程式不好
   yes(q1, '因為六個正方形都一樣，同一段要拼六遍太麻煩了', '標準說法');
   yes(q1, '不然一樣的積木要一直拼，之後要改也很煩', '★ 完全沒用到題目的字');
   yes(q1, '同樣的東西複製好幾次，想改的時候每個都要動', '★ 用「複製」「每個都要動」');
@@ -76,13 +76,13 @@ section('★ 不可以錯殺：同一個意思的各種說法');
   no(q1, '我覺得應該就是這樣吧', '★ 字數夠了，但拿掉空話什麼都不剩');
 }
 {
-  const q = Q('2-1-2')[1];    // 參數是什麼
+  const q = Q('4-2-2')[1];    // 參數是什麼
   yes(q, '就是呼叫的時候才決定的數字，每次可以不一樣', '標準說法');
   yes(q, '外面傳進來的值，可以換成別的大小', '★ 換一組完全不同的詞');
   half(q, '你要填一個數字進去', '講到一半');
 }
 {
-  const q = Q('2-1-3')[0];    // 正六邊形轉幾度
+  const q = Q('4-2-3')[0];    // 正六邊形轉幾度
   yes(q, '60度，因為360除以6', '算式');
   yes(q, '轉六十度 一整圈三百六十 分給六個角', '★ 國字數字也要認得');
   yes(q, '360/6=60', '★ 只寫式子也算 —— 他確實會算');
@@ -105,7 +105,7 @@ section('★ 空話不可以被判成「講到重點」');
     '哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈'
   ];
   let bad = [];
-  ['2-1-1', '2-1-2', '2-1-3'].forEach(id => Q(id).forEach((q, i) => JUNK.forEach(t => {
+  ['4-2-1', '4-2-2', '4-2-3'].forEach(id => Q(id).forEach((q, i) => JUNK.forEach(t => {
     const r = A.judge(t, q);
     if (r.level !== 'none') bad.push(id + ' 第' + (i + 1) + '題 ← 「' + t + '」命中「' + r.got.join('、') + '」');
   })));
@@ -115,7 +115,7 @@ section('★ 空話不可以被判成「講到重點」');
 
 section('常見誤解：只降一級，不歸零');
 {
-  const q1 = Q('2-1-1')[0];
+  const q1 = Q('4-2-1')[0];
   const r = A.judge('因為程式碼太長了，看起來很亂', q1);
   ok(r.level === 'none' && r.warn.length === 1, '只講誤解 → 沒講到重點，而且抓得出是哪個誤解');
   ok(/長度不是重點/.test(r.why), '   ★ 回饋要講明那個誤解錯在哪，不是只說「沒碰到重點」');
@@ -127,7 +127,7 @@ section('常見誤解：只降一級，不歸零');
 
 section('太短與空白');
 {
-  const q = Q('2-1-1')[2];    // min: 8
+  const q = Q('4-2-1')[2];    // min: 8
   const r = A.judge('好', q);
   ok(r.level === 'none' && /至少 8 個字/.test(r.why), '太短要說清楚為什麼，不是說他答錯');
   ok(/還沒寫/.test(A.judge('', q).why), '空白有自己的說法');
@@ -144,32 +144,32 @@ ok(A.total([]) === 0, '什麼都沒有就是 0');
 section('★ AI 覆核只能加分');
 {
   const w = win();
-  const items = Q('2-1-1').slice(0, 5);
+  const items = Q('4-2-1').slice(0, 5);
   const ans = items.map(() => '我覺得就是把一直重複的那一段收起來');
-  const base = await w.QUIZ._grade(items, ans, '2-1-1', 'x');
+  const base = await w.QUIZ._grade(items, ans, '4-2-1', 'x');
   const baseScore = w.ANSWER.total(base.results);
 
   // ① AI 亂造一個不存在的概念名稱
   w.ASKAI = { enabled: () => true, judge: (u, p) => Promise.resolve(p.map(x => ({ i: x.i, got: ['亂造的概念'] }))) };
-  const r1 = await w.QUIZ._grade(items, ans, '2-1-1', 'x');
+  const r1 = await w.QUIZ._grade(items, ans, '4-2-1', 'x');
   ok(r1.ai === 0 && w.ANSWER.total(r1.results) === baseScore,
      '★ AI 回一個題目裡沒有的概念 → 完全不採用');
 
   // ② AI 說「他什麼都沒講到」
   w.ASKAI = { enabled: () => true, judge: (u, p) => Promise.resolve(p.map(x => ({ i: x.i, got: [] }))) };
-  const r2 = await w.QUIZ._grade(items, ans, '2-1-1', 'x');
+  const r2 = await w.QUIZ._grade(items, ans, '4-2-1', 'x');
   ok(w.ANSWER.total(r2.results) === baseScore, '★ AI 說沒講到 → 不理它（規則已經判過了，只能加不能減）');
 
   // ③ AI 整個掛掉
   w.ASKAI = { enabled: () => true, judge: () => Promise.reject(new Error('額度用完了')) };
-  const r3 = await w.QUIZ._grade(items, ans, '2-1-1', 'x');
+  const r3 = await w.QUIZ._grade(items, ans, '4-2-1', 'x');
   ok(w.ANSWER.total(r3.results) === baseScore, '★ AI 掛掉 → 分數和純規則一樣，不是零分');
 
   // ④ AI 撿回一個規則漏掉的說法
   const target = items.map((it, i) => ({ it, i })).filter(x => x.it.need.length >= 2)[0];
   const nm = target.it.need[0].name;
   w.ASKAI = { enabled: () => true, judge: (u, p) => Promise.resolve([{ i: target.i, got: [nm] }]) };
-  const r4 = await w.QUIZ._grade(items, ans, '2-1-1', 'x');
+  const r4 = await w.QUIZ._grade(items, ans, '4-2-1', 'x');
   ok(w.ANSWER.total(r4.results) >= baseScore, '★ 撿回來只會讓分數變高或不變');
   const t4 = r4.results[target.i];
   ok(t4.got.indexOf(nm) >= 0, '   撿回來的概念要進到 got 裡');
@@ -179,12 +179,12 @@ section('★ AI 覆核只能加分');
   let sent = null;
   w.ASKAI = { enabled: () => true, judge: (u, p) => { sent = p; return Promise.resolve([]); } };
   const good = items.map((it) => (it.need || []).map(g => (g.any || [])[0]).join('，') + '，就是這樣沒錯');
-  await w.QUIZ._grade(items, good, '2-1-1', 'x');
+  await w.QUIZ._grade(items, good, '4-2-1', 'x');
   ok(!sent || sent.length < items.length, '★ 規則已經給滿分的題目不送 AI —— 加不上去了，送出去是白花錢');
 
   // ⑥ 沒接 AI
   const w2 = win();
-  const r6 = await w2.QUIZ._grade(items, ans, '2-1-1', 'x');
+  const r6 = await w2.QUIZ._grade(items, ans, '4-2-1', 'x');
   ok(r6.ai === 0 && w2.ANSWER.total(r6.results) === baseScore,
      '★ 完全沒接 AI 也考得成 —— 這是預設狀態，不是壞掉');
 }
@@ -202,16 +202,16 @@ section('★ AI 覆核只能加分');
 section('★ 太短又什麼都沒講到 → 不送 AI（省額度）');
 {
   const w = win();
-  const items = Q('2-1-1').slice(0, 5);
+  const items = Q('4-2-1').slice(0, 5);
   let sent = null;
   w.ASKAI = { enabled: () => true, judge: (u, p) => { sent = p; return Promise.resolve([]); } };
 
   sent = null;
-  await w.QUIZ._grade(items, items.map(() => '不會'), '2-1-1', 'x');
+  await w.QUIZ._grade(items, items.map(() => '不會'), '4-2-1', 'x');
   ok(!sent || sent.length === 0, '★ 五題都只寫「不會」→ 一題都不送');
 
   sent = null;
-  await w.QUIZ._grade(items, items.map(() => '因為同一段要拼很多遍，之後要改也很麻煩'), '2-1-1', 'x');
+  await w.QUIZ._grade(items, items.map(() => '因為同一段要拼很多遍，之後要改也很麻煩'), '4-2-1', 'x');
   ok(sent && sent.length > 0, '   認真寫但沒拿滿分 → 照送（那才是覆核要救的人）');
 
   /* 短、但沾到概念 → 一定要送。
@@ -226,7 +226,7 @@ section('★ 太短又什麼都沒講到 → 不送 AI（省額度）');
     hint: '無', why: '無'
   };
   sent = null;
-  await w.QUIZ._grade([it], ['甲甲甲'], '2-1-1', 'x');
+  await w.QUIZ._grade([it], ['甲甲甲'], '4-2-1', 'x');
   ok(sent && sent.length === 1,
      '★ 只有三個字（min 是 20）但沾到一個概念 → 還是要送 —— ' +
      '講到概念就不套用字數限制，這裡不可以自己另立一套');
@@ -239,7 +239,7 @@ section('★ 太短又什麼都沒講到 → 不送 AI（省額度）');
      引錯來源（例如把圈選題的答案端出來）會直接毀掉這一題。 */
 section('💡 提示回頭引問題分析');
 {
-  const lv = W.BLOCK_LEVELS['2-1-1'];
+  const lv = W.BLOCK_LEVELS['4-2-1'];
   const box = r => W.QUIZ._refBox(lv, r);
   ok(/問題分析第 4 題/.test(box(3)), '數字 → 指到 analysis.qs 的那一問');
   ok(/副程式要怎麼設定/.test(box(3)), '   而且帶出那一問的題目與提示');
@@ -249,7 +249,7 @@ section('💡 提示回頭引問題分析');
 
   /* ★ 引用不可以把積木答案端出來。 */
   let leak = [];
-  ['2-1-1', '2-1-2'].forEach(id => {
+  ['4-2-1', '4-2-2'].forEach(id => {
     const L2 = W.BLOCK_LEVELS[id];
     (L2.quiz || []).forEach((q, i) => {
       const html = W.QUIZ._refBox(L2, q.ref);
@@ -261,14 +261,14 @@ section('💡 提示回頭引問題分析');
   ok(leak.length === 0, '★ 引用出來的內容沒有洩漏積木答案' +
      (leak.length ? '（' + leak.join('、') + '）' : ''));
 
-  /* 2-1-1／2-1-2 每一題都該指得到來源；2-1-3 沒有 analysis（它走推導），所以不強求。 */
-  ['2-1-1', '2-1-2'].forEach(id => {
+  /* 4-2-1／4-2-2 每一題都該指得到來源；4-2-3 沒有 analysis（它走推導），所以不強求。 */
+  ['4-2-1', '4-2-2'].forEach(id => {
     const L2 = W.BLOCK_LEVELS[id];
     ok((L2.quiz || []).every(q => W.QUIZ._refBox(L2, q.ref) !== ''),
        '   ' + id + ' 每一題都指得回問題分析或情境');
   });
-  ok(!W.BLOCK_LEVELS['2-1-3'].analysis,
-     '   2-1-3 沒有 analysis（它走推導）—— 所以那一關的題目沒有 ref 是對的');
+  ok(!W.BLOCK_LEVELS['4-2-3'].analysis,
+     '   4-2-3 沒有 analysis（它走推導）—— 所以那一關的題目沒有 ref 是對的');
 }
 {
   const L3 = fs.readFileSync(path.join(root, 'shared', 'quiz.js'), 'utf8');
@@ -278,7 +278,7 @@ section('💡 提示回頭引問題分析');
 
 section('抽題');
 {
-  const lv = W.BLOCK_LEVELS['2-1-1'];
+  const lv = W.BLOCK_LEVELS['4-2-1'];
   const seen = {};
   for (let i = 0; i < 60; i++) {
     const s = W.QUIZ._pick(lv);
@@ -296,11 +296,11 @@ function ok0(c, l) { if (!c) { fail++; console.log('  ❌ ' + l); } }
 section('🧠 概念星（shared/grading.js）');
 const G = W.GRADING;
 ok(G.QUIZ_PASS === 3 && G.QUIZ_FULL === 4, '五題：3 題過門檻、4 題拿第 2 顆星');
-ok(G.quizStars({ '2-1-1': { score: 5 } }, '2-1-1') === 3, '五題全講到 → 3 顆概念星');
-ok(G.quizStars({ '2-1-1': { score: 4 } }, '2-1-1') === 2, '4 題 → 2 顆');
-ok(G.quizStars({ '2-1-1': { score: 3 } }, '2-1-1') === 1, '3 題（剛好過門檻）→ 1 顆');
-ok(G.quizStars({ '2-1-1': { score: 2 } }, '2-1-1') === 0, '沒過門檻 → 0 顆（他本來也走不下去）');
-ok(G.quizStars({}, '2-1-1') === 0, '還沒寫 → 0 顆（那不是懲罰，是還沒做）');
+ok(G.quizStars({ '4-2-1': { score: 5 } }, '4-2-1') === 3, '五題全講到 → 3 顆概念星');
+ok(G.quizStars({ '4-2-1': { score: 4 } }, '4-2-1') === 2, '4 題 → 2 顆');
+ok(G.quizStars({ '4-2-1': { score: 3 } }, '4-2-1') === 1, '3 題（剛好過門檻）→ 1 顆');
+ok(G.quizStars({ '4-2-1': { score: 2 } }, '4-2-1') === 0, '沒過門檻 → 0 顆（他本來也走不下去）');
+ok(G.quizStars({}, '4-2-1') === 0, '還沒寫 → 0 顆（那不是懲罰，是還沒做）');
 ok(G.quizTotal({ a: { score: 5 }, b: { score: 3 } }).stars === 4, '總數會加起來');
 /* ★ 概念星是「現算」的，不另外存一份。
    存第二份的話，兩份遲早會不一致，而且不會有人發現是哪一天開始的。 */
@@ -417,7 +417,7 @@ ok(!/fetch\(|setDoc\(|getDoc\(|AIGUIDE\.|GAS_URL|ASKAI\./.test(cb),
 ok(/不算分|不算成績|體驗，不是考試/.test(cb), '   程式裡要寫明「不算分」的理由');
 ok(/只換|保持原樣|不要動/.test(cb), '★ 第 2 關動到別格要講清楚為什麼不算');
 ok(/combo: true/.test(fs.readFileSync(path.join(root, '11502', 'content', 'blocks.js'), 'utf8')),
-   '2-1-1 打開了套餐工廠');
+   '4-2-1 打開了套餐工廠');
 {
   const b = fs.readFileSync(path.join(root, '11502', 'content', 'blocks.js'), 'utf8');
   ok((b.match(/combo: true/g) || []).length === 1,

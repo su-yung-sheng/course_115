@@ -4,7 +4,7 @@
    ★ 這一份最重要的一條是「依序開放不能被繞過」。
 
      拆成兩頁之後，闖關地圖不畫連結只是**不方便**：
-     學生把 level.html?unit=2-1-3 打進網址列就繞過去了。
+     學生把 level.html?unit=4-2-3 打進網址列就繞過去了。
      真正的鎖必須長在 level.html 自己身上（以及 firestore.rules）。 */
 'use strict';
 const fs = require('fs');
@@ -21,8 +21,8 @@ let pass = 0, fail = 0;
 const ok = (c, l) => { c ? pass++ : fail++; console.log((c ? '  ✅ ' : '  ❌ ') + l); };
 const section = t => console.log('\n── ' + t + ' ──');
 
-const UNITS = [['2-1-1','平行的正方形'],['2-1-2','愈畫愈大的正方形'],
-               ['2-1-3','畫圖形'],['2-2-1','小鳥吃蟲'],['2-3-1','排隊比高矮']];
+const UNITS = [['4-2-1','平行的正方形'],['4-2-2','愈畫愈大的正方形'],
+               ['4-2-3','畫圖形'],['4-3-1','小鳥吃蟲'],['6-1-1','排隊比高矮']];
 
 /** 開一次 level.html，stars 是已經拿到的星數 */
 function level(unitId, stars, tweak, moreCfg) {
@@ -51,16 +51,16 @@ section('★ 依序開放：直接打網址也要擋得住');
 ok(/function unitOpen/.test(levelSrc), 'level.html 自己有 unitOpen()');
 ok(/GRADING/.test(levelSrc), '   而且用的是共用的 GRADING 規則，不是自己另寫一套');
 {
-  const w = level('2-1-3');   // 第 3 關，前面都沒過
+  const w = level('4-2-3');   // 第 3 關，前面都沒過
   ok(/這一關還沒開/.test(text(w)), '★ 沒過前一關 → 擋下（這是拆成兩頁之後最容易破的地方）');
   ok(stepsOf(w).length === 0, '   而且不畫出任何步驟');
 }
 {
-  const w = level('2-1-1');
+  const w = level('4-2-1');
   ok(!/這一關還沒開/.test(text(w)), '第 1 關本來就開著');
 }
 {
-  const w = level('2-1-2', { '2-1-1': 3 });
+  const w = level('4-2-2', { '4-2-1': 3 });
   ok(!/這一關還沒開/.test(text(w)), '★ 前一關拿到星數之後，第 2 關就開了');
 }
 {
@@ -72,7 +72,7 @@ ok(/GRADING/.test(levelSrc), '   而且用的是共用的 GRADING 規則，不�
       所以就算真的 config 開著，它們仍然在驗真正的鎖 —— 這是刻意的。
       旗標本身的可見性（橘色橫幅、11501 不可以開）由 openall.test.js 顧。 */
 {
-  const w = level('2-1-3', null, src => src, { OPEN_ALL_UNITS: true });
+  const w = level('4-2-3', null, src => src, { OPEN_ALL_UNITS: true });
   ok(!/這一關還沒開/.test(text(w)),
      '★ 備課模式開著 → 第 3 關直接進得去（改內容時不必先通關前兩關）');
   ok(/備課模式/.test(text(w)),
@@ -86,7 +86,7 @@ section('步驟的順序');
        看懂 → 分析 → 確認 → **考觀念** → 動手拼 → 實作。
        概念檢測一定要在程式拼圖**之前** ——
        排在後面的話，拼對了就沒有人會回頭讀。 */
-  const s = stepsOf(level('2-1-1'));
+  const s = stepsOf(level('4-2-1'));
   /* ⚠️ 2026-08-10 第 1 關多了「套餐工廠」，同一天「確認理解」併回問題分析
      （圈選題和寫作題本來就是那一段的一部分，搬到另一頁等於把一件事切兩半）。 */
   const want = ['情境解說','套餐工廠','問題分析','概念檢測','程式拼圖','實作測試'];
@@ -96,19 +96,19 @@ section('步驟的順序');
 {
   /* ⚠️ 沒有資料的步驟要直接不出現，不要留一個空殼 ——
      第 5 關（排隊比高矮）課本用的是圖解，本來就沒有拼圖。 */
-  const s = stepsOf(level('2-3-1', { '2-1-1':3,'2-1-2':3,'2-1-3':3,'2-2-1':3 }));
+  const s = stepsOf(level('6-1-1', { '4-2-1':3,'4-2-2':3,'4-2-3':3,'4-3-1':3 }));
   ok(s.every(x => x.indexOf('程式拼圖') < 0), '★ 沒有 goal 的關卡不放拼圖那一步');
   ok(s.some(x => x.indexOf('實作測試') >= 0), '   但實作測試一定有');
 }
 {
   /* 沒有任何思考關卡資料的關（第 4 關）不能變成一片空白 */
-  const s = stepsOf(level('2-2-1', { '2-1-1':3,'2-1-2':3,'2-1-3':3 }));
+  const s = stepsOf(level('4-3-1', { '4-2-1':3,'4-2-2':3,'4-2-3':3 }));
   ok(s.length >= 2, '★ 沒有題目的關卡至少要有「情境 → 實作測試」（' + s.join(' ') + '）');
 }
 
 section('步驟之間不能亂跳');
 {
-  const w = level('2-1-1');
+  const w = level('4-2-1');
   const btns = [...w.document.querySelectorAll('.stp')];
   ok(btns[0].className.indexOf('stp-now') >= 0, '一進來停在第 1 步');
   ok(btns[2].disabled === true, '★ 還沒走到的步驟按不下去 —— 不然學生會跳過分析直接拼');
@@ -121,14 +121,14 @@ section('情境解說的內容');
 {
   const x = {};
   new Function('window', fs.readFileSync(path.join(root, '11502', 'content', 'blocks.js'), 'utf8'))(x);
-  ['2-1-1','2-1-2','2-1-3'].forEach(id => {
+  ['4-2-1','4-2-2','4-2-3'].forEach(id => {
     const sc = x.BLOCK_LEVELS[id].scene;
     ok(!!sc, id + ' 有情境');
     ok(sc && sc.why && sc.why.length > 40, '   ' + id + ' 講得出「為什麼要學這個」');
     ok(sc && (sc.shots || []).length >= 3, '   ' + id + ' 有畫面描述（先看懂目標再分析）');
   });
   /* ⚠️ 情境不可以把答案講出來 —— 它要讓人看懂目標，不是看到解法。 */
-  const s1 = x.BLOCK_LEVELS['2-1-1'].scene;
+  const s1 = x.BLOCK_LEVELS['4-2-1'].scene;
   ok(!/右轉 90|重複 4 次|移動 30/.test(JSON.stringify(s1)),
      '★ 第 1 關的情境沒有洩漏積木答案');
   /* ★ 文字說明和互動體驗要講同一個比喻 ——
@@ -151,7 +151,7 @@ section('🖍️ 情境解說的重點提示');
   const x = {};
   new Function('window', fs.readFileSync(path.join(root, '11502', 'content', 'blocks.js'), 'utf8'))(x);
   const count = t => (String(t).match(/class="hl"/g) || []).length;
-  ['2-1-1','2-1-2','2-1-3'].forEach(id => {
+  ['4-2-1','4-2-2','4-2-3'].forEach(id => {
     const sc = x.BLOCK_LEVELS[id].scene;
     const n = count(sc.why) + count(JSON.stringify(sc.shots || []));
     ok(n >= 1, id + ' 的情境有畫重點（' + n + ' 處）');
@@ -174,8 +174,8 @@ section('🖍️ 情境解說的重點提示');
 /* ── ★ 08 範本的規矩，每一關都要守 ─────────────────
    （見 shared/docs/08_關卡製作範本.md）
 
-   ⚠️ 2026-08-11 之前這一段只檢查 2-1-1。
-      結果是：2-1-2 的八問裡有七問沒有選擇題（貼提示就通關）、
+   ⚠️ 2026-08-11 之前這一段只檢查 4-2-1。
+      結果是：4-2-2 的八問裡有七問沒有選擇題（貼提示就通關）、
       六問連 keys 都沒有（AI 引導掛不上去）、
       收尾的寫作題沒有 keys（只剩字數，亂打十五個字就過）——
       **測試全綠**，因為它只看範本那一關。
@@ -184,7 +184,7 @@ section('🖍️ 情境解說的重點提示');
    ★ 「上線中」的定義：有 scene ＋ quiz ＋ goal 三樣。
      這不是名單，是資料自己說了算 —— 新關卡一寫完就自動被納入檢查，
      不必記得回來加名字（會忘的那一步就是漏洞會長出來的地方）。
-     還在寫的關卡（例如 2-3-1 只有 analysis）印一行提醒，不算失敗。 */
+     還在寫的關卡（例如 6-1-1 只有 analysis）印一行提醒，不算失敗。 */
 section('★ 08 範本的規矩：每一關都要守');
 {
   const x = {};
@@ -193,18 +193,18 @@ section('★ 08 範本的規矩：每一關都要守');
   const live = Object.keys(ALL).filter(id => ALL[id].scene && ALL[id].quiz && ALL[id].goal);
   const wip = Object.keys(ALL).filter(id => live.indexOf(id) < 0);
 
-  ok(live.indexOf('2-1-1') >= 0 && live.indexOf('2-1-2') >= 0,
+  ok(live.indexOf('4-2-1') >= 0 && live.indexOf('4-2-2') >= 0,
      '上線中的關卡：' + live.join('、'));
   if (wip.length) console.log('     （還在寫，先不檢查：' + wip.join('、') + '）');
 
-  ok(ALL['2-1-1'].combo === true, '第 1 關開著套餐工廠');
+  ok(ALL['4-2-1'].combo === true, '第 1 關開著套餐工廠');
 
   const len = t => String(t).replace(/[\s，。、？！]/g, '').length;
   const bad = { keys: [], hint: [], ask: [], pick: [], opt: [], len: [] };
 
   live.forEach(id => {
     const a = ALL[id].analysis;
-    if (!a) return;                       // 2-1-3 課本用推導，本來就沒有問題分析
+    if (!a) return;                       // 4-2-3 課本用推導，本來就沒有問題分析
     a.qs.forEach((q, i) => {
       const at = id + ' 第' + (i + 1) + '問';
       /* ★ 每一問都要有 keys —— 沒有的話「問問看」掛不上去，
@@ -254,18 +254,18 @@ section('★ 08 範本的規矩：每一關都要守');
        '   ' + id + ' 的 hintText 沒有把 keys 的名稱寫出來（那就是答案，貼上去就過了）');
   });
 
-  const lv = ALL['2-1-1'];
+  const lv = ALL['4-2-1'];
   const a = lv.analysis;
   ok(!!lv.task && !!lv.scene && !!lv.analysis && !!lv.quiz && !!lv.goal,
-     '範本 2-1-1 七個步驟的資料都在（task／scene／analysis／quiz／goal）');
+     '範本 4-2-1 七個步驟的資料都在（task／scene／analysis／quiz／goal）');
 
   ok((lv.quiz || []).length >= 6, '概念檢測題庫 ' + lv.quiz.length + ' 題（抽 5，建議 6 題以上）');
   ok(lv.quiz.every(q => q.ref !== undefined), '★ 每一題都指得回問題分析或情境（ref）');
   ok((lv.tips || []).length >= 3, '有給老師的提示（tips）');
 
   const doc = fs.readFileSync(path.join(root, 'shared', 'docs', '08_關卡製作範本.md'), 'utf8');
-  ok(/2-1-1/.test(doc) && /檢查清單/.test(doc),
-     '★ 範本文件存在，而且指名 2-1-1 是那個範本');
+  ok(/4-2-1/.test(doc) && /檢查清單/.test(doc),
+     '★ 範本文件存在，而且指名 4-2-1 是那個範本');
   ok(/亂按、亂貼、貼提示/.test(doc),
      '   最後一條是「自己扮演一次想混過去的學生」—— 前幾輪的洞全是這樣發現的');
 }
@@ -280,7 +280,7 @@ ok(/只有 ① 的話等於沒鎖/.test(mapSrc), '   註解要講明「不畫連
 
 section('⏱️ 純閱讀的步驟要停留 30 秒');
 {
-  const w = level('2-1-1');
+  const w = level('4-2-1');
   const go = w.document.getElementById('go');
   ok(!!go, '情境解說有「往下走」的按鈕');
   ok(go.disabled === true, '★ 一進來按鈕是鎖著的 —— 沒有判定條件的步驟，按一下就過去等於沒讀');
@@ -328,7 +328,7 @@ ok(/HOLD_SEC = 30/.test(levelSrc), '停留 30 秒');
   /* ★ 已經通關的關卡回來查資料，不該再被鎖 30 秒。
      強制停留是為了「第一次別亂點」，不是懲罰。
      這一條原本只有 11501 有（readSecondsFor），11502 漏掉。 */
-  const w = level('2-1-1', { '2-1-1': 3 });
+  const w = level('4-2-1', { '4-2-1': 3 });
   const go = w.document.getElementById('go');
   ok(go && go.disabled === false,
      '★ 已經拿到作品星的關卡 → 不必再等（回來查資料被鎖 30 秒只會讓人覺得在找麻煩）');
@@ -356,9 +356,9 @@ ok(/onFail:[\s\S]{0,300}held = \{\}/.test(levelSrc),
       那時候學生照樣要走得完這一關。 */
 section('📍 記錄點：重進來可以接回上次那一步');
 {
-  const w = level('2-1-1');
+  const w = level('4-2-1');
   /* 第 4 個參數就是記錄點。走真正的入口，不要偷改內部變數。 */
-  w.applyProgress({}, {}, {}, { '2-1-1': 3 });
+  w.applyProgress({}, {}, {}, { '4-2-1': 3 });
   const now = [...w.document.querySelectorAll('.stp')]
     .findIndex(b => b.className.indexOf('stp-now') >= 0);
   ok(now === 3, '★ 上次做完 3 步 → 這次從第 4 步開始（現在在第 ' + (now + 1) + ' 步）');
@@ -375,7 +375,7 @@ section('📍 記錄點：重進來可以接回上次那一步');
      '   回去之後那句提示就收起來，不要一直掛著');
 }
 {
-  const w = level('2-1-1');
+  const w = level('4-2-1');
   w.applyProgress({}, {}, {}, {});
   ok(!/上次做到/.test(w.document.getElementById('app').textContent),
      '第一次進來不顯示記錄點的提示');
@@ -420,7 +420,7 @@ section('📐 版面：步驟多了也不可以被切掉');
 
 section('🍔 套餐工廠只掛在第 1 關');
 {
-  const s2 = stepsOf(level('2-1-2', { '2-1-1': 3 }));
+  const s2 = stepsOf(level('4-2-2', { '4-2-1': 3 }));
   ok(s2.every(x => x.indexOf('套餐工廠') < 0),
      '★ 第 2 關沒有套餐（' + s2.join(' ') + '）—— 它教的是參數，再玩一次同樣的東西只是過場');
 }
@@ -433,7 +433,7 @@ section('🍔 套餐工廠只掛在第 1 關');
       學生就永遠進不了下一步。**結構測試抓不到這種 bug。** */
 (async () => {
   section('⏱️ 倒數真的會走（把 30 秒換成 2 秒跑一次）');
-  const w = level('2-1-1', null, src => src.replace('HOLD_SEC = 30', 'HOLD_SEC = 2'));
+  const w = level('4-2-1', null, src => src.replace('HOLD_SEC = 30', 'HOLD_SEC = 2'));
   const go = () => w.document.getElementById('go');
   ok(go().disabled === true, '一開始鎖著');
   await new Promise(r => setTimeout(r, 1200));
@@ -459,7 +459,7 @@ section('🍔 套餐工廠只掛在第 1 關');
         這裡只確認「這一頁真的把規則接上了」。 */
   section('🪟 並列視窗：焦點跑掉這一頁也停得下來');
   {
-    const w2 = level('2-1-1', null, src => src.replace('HOLD_SEC = 30', 'HOLD_SEC = 20'));
+    const w2 = level('4-2-1', null, src => src.replace('HOLD_SEC = 30', 'HOLD_SEC = 20'));
     const b = () => w2.document.getElementById('go').textContent;
     let focus = true;
     w2.document.hasFocus = () => focus;      // 這一下讓 sawFocus 閂起來

@@ -216,7 +216,7 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   is(B.DEFS['data.var'].idNs, ['var'], '變數屬於 var 命名空間');
 
   section('兩個參數要靠名字分辨，不是靠順序');
-  const g3 = L['2-1-3'].goal;
+  const g3 = L['4-2-3'].goal;
   is(B._same(build(g3), g3), true, '照參考答案 → 通過');
   is(B._same(build(g3, { N: '邊數', 邊長: 's', 畫圖形: 'poly' }), g3), true,
     '積木名和兩個參數名全部改掉 → 一樣通過');
@@ -228,7 +228,7 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
 
   section('調色盤跟著「定義」上打的參數名走');
   document.getElementById('sim').innerHTML = '';
-  const simP = B.mount(document.getElementById('sim'), { palette: L['2-1-3'].palette, goal: g3 });
+  const simP = B.mount(document.getElementById('sim'), { palette: L['4-2-3'].palette, goal: g3 });
   const ovals = () => [...document.querySelectorAll('.bk-pal .bk-rep')]
     .filter(n => n.dataset.id === 'arg.param').map(n => n.querySelector('input').value);
   is(ovals(), [], '函式區還是空的 → 沒有參數橢圓');
@@ -261,7 +261,7 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
 
   /* ═══ 二、名字由學生自訂，只看對應關係 ═══════════════ */
   section('名字自己取（考的是程式，不是背名字）');
-  const g1 = L['2-1-1'].goal;
+  const g1 = L['4-2-1'].goal;
   is(B._same(build(g1), g1), true, '照參考答案取名 → 通過');
   is(B._same(build(g1, { 畫正方形: 'square' }), g1), true, '改叫 square → 一樣通過');
   const mism = build(g1);
@@ -280,8 +280,8 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
      它有拆解和追蹤活動，但沒有 goal／palette ——
      這裡只檢查有拼圖的關卡，否則會在 lv.palette 上炸掉。 */
   const puzzles = ids.filter(id => L[id].goal);
-  is(puzzles, ['2-1-1', '2-1-2', '2-1-3', '2-2-1'], '目前有拼圖的是這四關');
-  is(ids.filter(id => !L[id].goal), ['2-3-1'], '第 5 關有內容但沒有拼圖');
+  is(puzzles, ['4-2-1', '4-2-2', '4-2-3', '4-3-1'], '目前有拼圖的是這四關');
+  is(ids.filter(id => !L[id].goal), ['6-1-1'], '第 5 關有內容但沒有拼圖');
   puzzles.forEach(id => {
     const lv = L[id], used = new Set();
     (function walk(l) { (l || []).forEach(n => { used.add(n.id); walk(n.children); }); })(lv.goal);
@@ -295,14 +295,14 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
 
   /* ═══ 四、真的畫出來對不對 ═══════════════════════════ */
   section('第 1 關：六個並排的正方形（來自老師的 .sb3）');
-  let sq = shapes(await draw('2-1-1', 24), [4, 4, 4, 4, 4, 4]);
+  let sq = shapes(await draw('4-2-1', 24), [4, 4, 4, 4, 4, 4]);
   is(sq.filter(Boolean).length, 6, '畫出六個');
   is(sq.map(s => Math.round(s.x1 - s.x0)), [30, 30, 30, 30, 30, 30], '六個都是邊長 30');
   is(sq.map(s => Math.round(s.x0)), [100, 160, 220, 280, 340, 400], '間隔 60，從 x:-140（畫面 100）開始');
   is(sq.every(onStage), true, '六個都在舞台內');
 
   section('第 2 關：四個愈來愈大的正方形（來自老師的 .sb3）');
-  let gr = shapes(await draw('2-1-2', 16), [4, 4, 4, 4]);
+  let gr = shapes(await draw('4-2-2', 16), [4, 4, 4, 4]);
   is(gr.map(s => Math.round(s.x1 - s.x0)), [50, 100, 150, 200], '邊長 50／100／150／200');
   const c0 = gr.map(s => [Math.round(s.x0), Math.round(s.y1)]);
   is(c0.every(c => c[0] === c0[0][0]), true, '四個從同一個角落畫起（一個包一個）');
@@ -311,7 +311,7 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   section('第 3 關：畫圖形 (邊數) (邊長)，三列（來自老師的參考程式）');
   const SIDES = [].concat(
     Array(6).fill(4), Array(6).fill(6), Array(6).fill(10));   // 4×6 + 6×6 + 10×6 = 120 段
-  let pg = shapes(await draw('2-1-3', 120), SIDES);
+  let pg = shapes(await draw('4-2-3', 120), SIDES);
   is(pg.filter(Boolean).length, 18, '畫出十八個（三列各 6 個）');
   is(pg.map(s => s.n), SIDES, '邊數 4／6／10 —— 同一塊自訂積木畫出三種形狀');
   is(pg.map(s => s.len), [].concat(Array(6).fill(30), Array(6).fill(40), Array(6).fill(40)),
@@ -327,16 +327,16 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
     '第三列相鄰有交疊（老師的設計就是要疊出花紋，不是版面沒算好）');
 
   section('空格裡打數字就過不了（這一關的重點）');
-  const lv3 = L['2-1-3'];
+  const lv3 = L['4-2-3'];
   const fixedN = build(lv3.goal);
   fixedN.find(n => n.id === 'my.definep2').children[1].args[0] = '4';   // 重複 4 次
   is(B._same(fixedN, lv3.goal), false, '重複的空格打死 4 → 判錯');
   const fixedT = build(lv3.goal);
   fixedT.find(n => n.id === 'my.definep2').children[1].children[1].args[0] = '90';
   is(B._same(fixedT, lv3.goal), false, '右轉的空格打死 90 → 判錯');
-  const fixed2 = build(L['2-1-2'].goal);
+  const fixed2 = build(L['4-2-2'].goal);
   fixed2.find(n => n.id === 'my.definep').children[1].children[0].args[0] = '50';
-  is(B._same(fixed2, L['2-1-2'].goal), false, '第 2 關「移動」的空格打死 50 → 判錯');
+  is(B._same(fixed2, L['4-2-2'].goal), false, '第 2 關「移動」的空格打死 50 → 判錯');
 
   /* ═══ 五、長程式要快轉，不然學生等到不想按第二次 ═══ */
   section('執行速度');
@@ -351,7 +351,7 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
      判定只認一種寫法的話，說明裡那句話就是假的 ——
      學生完全做對卻被說錯，比沒有回饋更糟。 */
   section('多種正確解法');
-  const l1 = L['2-1-1'], l2 = L['2-1-2'], l3 = L['2-1-3'];
+  const l1 = L['4-2-1'], l2 = L['4-2-2'], l3 = L['4-2-3'];
 
   is(!!(l1.alts && l1.alts.length), true, '第 1 關有登記另解');
   is(B._same(l1.alts[0].goal, l1.alts[0].goal, l1.loose), true, '另解對得上自己');
@@ -426,7 +426,7 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   section('空格寬度：短的維持小巧，長的要塞得下');
   {
     document.getElementById('sim').innerHTML = '';
-    const lv = L['2-1-3'];      // 這一關有 -180 / 120 / -80 這種四位數字
+    const lv = L['4-2-3'];      // 這一關有 -180 / 120 / -80 這種四位數字
     const sim = B.mount(document.getElementById('sim'),
       { palette: lv.palette, goal: lv.goal, stepMs: 0 });
     sim.load(build(lv.goal));
@@ -560,9 +560,9 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
      這一關考的三件事，每一件都要有一條會判錯的測試 ——
      不然「拼對才過」只是句話：
        1 那麼／否則放對　2 用「且」不用「或」　3 碰到顏色不是碰到蟲 */
-  section('★ 第 4 關 小鳥吃蟲（代號 2-2-1）：整關拼一次');
+  section('★ 第 4 關 小鳥吃蟲（代號 4-3-1）：整關拼一次');
   {
-    const lv = L['2-2-1'];
+    const lv = L['4-3-1'];
     const got = build(lv.goal);
     is(B._same(got, lv.goal, lv.loose || []), true, '★ 照答案拼出來 → 判對');
 
@@ -629,7 +629,7 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   }
 
   console.log('\n── ★ 拼圖要的數字都有交代 ──');
-  ['2-1-1', '2-1-2', '2-1-3'].forEach(id => {
+  ['4-2-1', '4-2-2', '4-2-3'].forEach(id => {
     const lv = L[id];
     if (!lv || !lv.goal) return;
     const loose = lv.loose || [];

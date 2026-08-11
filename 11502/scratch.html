@@ -204,9 +204,9 @@ function unitOpen(no){ return OPEN_ALL ? true : GATE.isOpen(no, UNITS, true, nul
 function lockReason(no){ return OPEN_ALL ? '' : GATE.reason(no, UNITS, true, null, unitStars); }
 
 /* ===================== 狀態 ===================== */
-let unitStars = {};   // 作品星：{ '2-1-1A': 3, … }　由 AI 批改寫入 11502-progress
-let quizDone  = {};   // 概念檢測成績：{ '2-1-1': { score: 4 } }　概念星由它現算
-let preDone   = {};   // { '2-1-1': true, ... }　思考關卡做完了沒（存在 modules.scratch.pre）
+let unitStars = {};   // 作品星：{ '4-2-1': 3, … }　由 AI 批改寫入 11502-progress
+let quizDone  = {};   // 概念檢測成績：{ '4-2-1': { score: 4 } }　概念星由它現算
+let preDone   = {};   // { '4-2-1': true, ... }　思考關卡做完了沒（存在 modules.scratch.pre）
 let preStage  = 0;    // 目前在思考關卡的第幾步
 let preUnit   = '';   // 這幾步是屬於哪一關的（換關要從頭來）
 

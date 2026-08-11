@@ -115,7 +115,7 @@ ok(A.hitKeys('重複', KEYS).hit.length === 1, '算得出命中幾個');
 const LV = {};
 new Function('window', fs.readFileSync(
   path.join(__dirname, '..', '..', '11502', 'content', 'blocks.js'), 'utf8'))(LV);
-const q3 = LV.BLOCK_LEVELS['2-1-1'].analysis.qs[2];
+const q3 = LV.BLOCK_LEVELS['4-2-1'].analysis.qs[2];
 ok((q3.keys || []).length >= 2, '第 1 關第 3 問設了關鍵概念');
 ok(A.hitKeys('畫正方形那段一直重複', q3.keys).done, '   學生答對就判得出來');
 ok(!A.hitKeys('我不知道', q3.keys).done, '   答不出來不會誤放');
@@ -133,7 +133,7 @@ ok(!A.hitKeys('我不知道', q3.keys).done, '   答不出來不會誤放');
    放進第 1 問的「做四次」的話，學生寫「有一段一直重複」
    會被判成講到了「一條邊要畫四次」—— 他根本沒講到。
    判錯的代價是 AI 不會再往那個方向問，學生帶著誤解過關。 */
-const L11 = LV.BLOCK_LEVELS['2-1-1'].analysis.qs[0];
+const L11 = LV.BLOCK_LEVELS['4-2-1'].analysis.qs[0];
 const four = L11.keys.find(k => k.name === '做四次');
 ok(!!four, '第 1 問有「做四次」這個關鍵概念');
 ok(!four.any.includes('重複'), '★ 「做四次」不可以把「重複」當同義詞');
@@ -143,7 +143,7 @@ ok(!A.hitKeys('有一段一直重複', L11.keys).hit.includes('做四次'),
 ok(A.hitKeys('走一段就轉，做四次', L11.keys).done,
    '   真的講到才算 —— 這一句要全中');
 /* 而同一句話在第 3 問要算中 —— 那一問問的就是重複 */
-ok(A.hitKeys('有一段一直重複', LV.BLOCK_LEVELS['2-1-1'].analysis.qs[2].keys)
+ok(A.hitKeys('有一段一直重複', LV.BLOCK_LEVELS['4-2-1'].analysis.qs[2].keys)
      .hit.includes('察覺有東西重複'),
    '   同一句在第 3 問要算中（同義詞跟著那一問走）');
 
@@ -192,7 +192,7 @@ ok(!A.checkReply(H + '很棒，那要往哪轉？', { forbid: [] }).ok, '   也�
 const turn = L11.keys[0];
 ok(/轉/.test(turn.name), '★ 第一項的 name 要點出「轉」—— 那才是 any 認的東西');
 ok(!/^走一段再轉$/.test(turn.name), '   不可以退回舊的寫法');
-LV.BLOCK_LEVELS['2-1-1'].analysis.qs.forEach((q, i) => {
+LV.BLOCK_LEVELS['4-2-1'].analysis.qs.forEach((q, i) => {
   (q.keys || []).forEach(g => {
     /* name 至少要和它自己的某一個同義詞沾得上邊，
        否則模型讀 name、學生答 any，兩邊各說各話。 */

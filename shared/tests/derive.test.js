@@ -78,8 +78,8 @@ ok(cw[2][1] < -0.001, '右轉 90 度之後往下走（順時針，和 Scratch �
 const w2 = {};
 new Function('window', fs.readFileSync(
   path.join(__dirname, '..', '..', '11502', 'content', 'blocks.js'), 'utf8'))(w2);
-const dv = w2.BLOCK_LEVELS['2-1-3'].derive;
-ok(!!dv, '2-1-3 有推導活動');
+const dv = w2.BLOCK_LEVELS['4-2-3'].derive;
+ok(!!dv, '4-2-3 有推導活動');
 eq(dv.steps.length, 4, '四個步驟');
 eq(dv.steps[0].answer, 360, '第一步問的是 360 度');
 ok(dv.steps.filter(s => s.kind === 'draw').length === 2, '有兩步是「填了真的畫」');
@@ -99,27 +99,27 @@ ok(/360/.test(dv.done), '做完之後才把結論講明白');
 
 /* ── 問題拆解（課本的「問題分析」）───────────────── */
 const L = w2.BLOCK_LEVELS;
-eq(L['2-1-1'].analysis.qs.length, 5, '第 1 關照課本拆成五問');
-eq(L['2-1-2'].analysis.qs.length, 8, '第 2 關照課本拆成八問');
-ok(L['2-1-1'].analysis.qs.every(x => x.q && x.hint), '每一問都有問句和提示');
+eq(L['4-2-1'].analysis.qs.length, 5, '第 1 關照課本拆成五問');
+eq(L['4-2-2'].analysis.qs.length, 8, '第 2 關照課本拆成八問');
+ok(L['4-2-1'].analysis.qs.every(x => x.q && x.hint), '每一問都有問句和提示');
 
 /* ★ 第 2 關的重點全在第 6 問：先做出沒有參數的副程式，
    發現畫不出四種大小，才知道參數是來解決什麼的。
    少了這個轉折，學生只學會照抄「定義 畫正方形 (邊長)」。 */
-const q6 = L['2-1-2'].analysis.qs[5];
+const q6 = L['4-2-2'].analysis.qs[5];
 ok(/卡住|畫得出/.test(q6.q), '★ 第 6 問是「沒有參數行不行」的轉折');
 ok(/畫不出來/.test(q6.hint), '   提示直接說畫不出來，不繞過去');
 ok(/參數/.test(q6.hint), '   並且點出參數是來解決這件事的');
 
 /* 提示不能把整份答案抄出來 —— 那就變成照著拼，拆解就白做了 */
-L['2-1-1'].analysis.qs.concat(L['2-1-2'].analysis.qs).forEach((x, i) => {
+L['4-2-1'].analysis.qs.concat(L['4-2-2'].analysis.qs).forEach((x, i) => {
   ok(String(x.hint).length < 260, '第 ' + (i + 1) + ' 問的提示不要長到變成答案');
 });
 
 /* 用詞：說明裡只能出現課本的「副程式」和 Scratch 的「函式積木」 */
-const allText = JSON.stringify([L['2-1-1'], L['2-1-2'], L['2-1-3']]);
+const allText = JSON.stringify([L['4-2-1'], L['4-2-2'], L['4-2-3']]);
 ok(!/自訂積木/.test(allText), '沒有第三種講法「自訂積木」');
-ok(/副程式/.test(JSON.stringify(L['2-1-1'].analysis)), '第 1 關的拆解用課本的「副程式」');
+ok(/副程式/.test(JSON.stringify(L['4-2-1'].analysis)), '第 1 關的拆解用課本的「副程式」');
 
 /* ── 追蹤每一輪（選擇排序）───────────────────────
    排序的難處不是步驟順序（課本寫得清清楚楚），
@@ -136,7 +136,7 @@ ok(/152/.test(D._pickMin([{ v: 152, t: '152' }, { v: 141, t: '141' }], 0).msg),
    '身高那種帶標籤的資料，訊息要講得出他點的是哪一個');
 
 /* 第 5 關：排序的觀念導入，沒有積木拼圖 */
-const l5 = L['2-3-1'];
+const l5 = L['6-1-1'];
 ok(!!l5, '第 5 關（排隊比高矮）有資料');
 ok(!l5.goal, '★ 這一關沒有積木拼圖 —— 課本用的是圖解，不是程式');
 ok(!l5.palette, '   也沒有調色盤');
@@ -264,16 +264,16 @@ ok(!!l5.analysis.write, '也有先寫再對照');
   ok(/不是安全機制/.test(src), '   而且要寫明它不是安全機制（F12 一開就繞過了）');
 }
 
-/* 2-1-1 的每一問都要有題庫（沒有 pick 的那幾問） */
+/* 4-2-1 的每一問都要有題庫（沒有 pick 的那幾問） */
 {
   const x = {};
   new Function('window', fs.readFileSync(
     path.join(__dirname, '..', '..', '11502', 'content', 'blocks.js'), 'utf8'))(x.window = {});
-  const qs = x.window.BLOCK_LEVELS['2-1-1'].analysis.qs;
+  const qs = x.window.BLOCK_LEVELS['4-2-1'].analysis.qs;
   qs.forEach((q, i) => {
-    if (q.pick) { ok(true, '2-1-1 第 ' + (i + 1) + ' 問是圈選題'); return; }
+    if (q.pick) { ok(true, '4-2-1 第 ' + (i + 1) + ' 問是圈選題'); return; }
     ok((q.asks || []).length >= 3,
-       '2-1-1 第 ' + (i + 1) + ' 問有 ' + ((q.asks || []).length) + ' 題可以抽（至少 3）');
+       '4-2-1 第 ' + (i + 1) + ' 問有 ' + ((q.asks || []).length) + ' 題可以抽（至少 3）');
     ok((q.asks || []).every(a => a.options.length === 4 && a.why),
        '   每題四個選項，而且答對時說得出「為什麼是它」');
   });
@@ -310,8 +310,8 @@ ok(!!l5.analysis.write, '也有先寫再對照');
     const host = w6.document.getElementById('h');
     let crashed = '';
     try {
-      w6.DERIVE.renderAnalysis(host, w6.BLOCK_LEVELS['2-1-1'].analysis,
-        { unit: '2-1-1', onDone: function () {} });
+      w6.DERIVE.renderAnalysis(host, w6.BLOCK_LEVELS['4-2-1'].analysis,
+        { unit: '4-2-1', onDone: function () {} });
     } catch (e) { crashed = e.message; }
 
     ok(!crashed, '★ 畫得出來，不會炸（' + (crashed || '沒有例外') + '）');
@@ -358,7 +358,7 @@ ok(!!l5.analysis.write, '也有先寫再對照');
           紅的時候沒有人相信是真的壞了，久了就變成按重跑。
        ⇒ 從關卡資料查出正解的文字，直接點那一顆。
          這樣測的還是真的點擊路徑，但結果是確定的。 */
-    const bank = w6.BLOCK_LEVELS['2-1-1'].analysis.qs[0].asks || [];
+    const bank = w6.BLOCK_LEVELS['4-2-1'].analysis.qs[0].asks || [];
     const one = bank.filter(a => a.q === qOf())[0];
     ok(!!one, '畫面上這一題找得回題庫裡的那一筆（' + qOf().slice(0, 16) + '…）');
     if (one) {
@@ -370,25 +370,25 @@ ok(!!l5.analysis.write, '也有先寫再對照');
     ok(nx() && nx().disabled === false,
        '★ 答對之後「下一題」才亮起來');
 
-    /* ── ★ 2-1-2 也要真的畫一次 ──────────────────────
-       它和 2-1-1 不一樣：八問、圈選題在第 2 問（不是第 1 問）。
+    /* ── ★ 4-2-2 也要真的畫一次 ──────────────────────
+       它和 4-2-1 不一樣：八問、圈選題在第 2 問（不是第 1 問）。
        ⚠️ 只畫範本那一關的話，等於只驗證了一種形狀 ——
-          而 2026-08-11 補完 2-1-2 之前，它有七問是「寫一句」，
+          而 2026-08-11 補完 4-2-2 之前，它有七問是「寫一句」，
           畫出來完全是另一條路徑。 */
     const host2 = w6.document.createElement('div');
     w6.document.body.appendChild(host2);
     let crash2 = '';
     try {
-      w6.DERIVE.renderAnalysis(host2, w6.BLOCK_LEVELS['2-1-2'].analysis,
-        { unit: '2-1-2', onDone: function () {} });
+      w6.DERIVE.renderAnalysis(host2, w6.BLOCK_LEVELS['4-2-2'].analysis,
+        { unit: '4-2-2', onDone: function () {} });
     } catch (e) { crash2 = e.message; }
-    ok(!crash2, '★ 2-1-2 也畫得出來（' + (crash2 || '沒有例外') + '）');
+    ok(!crash2, '★ 4-2-2 也畫得出來（' + (crash2 || '沒有例外') + '）');
     const t2 = host2.textContent.replace(/\s+/g, ' ').trim();
-    ok(t2.length > 60, '★ 2-1-2 畫面上真的有東西（' + t2.length + ' 個字）');
+    ok(t2.length > 60, '★ 4-2-2 畫面上真的有東西（' + t2.length + ' 個字）');
     ok(/共 8/.test(t2), '   八問都算進去了（' + (t2.match(/第 \d+ 題[^日]{0,8}/) || [''])[0].trim() + '）');
     ok(host2.querySelectorAll('.dv-opt').length === 4, '   第一問有四個選項');
     ok(host2.querySelector('#dv-nx') && host2.querySelector('#dv-nx').disabled === true,
-       '★ 2-1-2 第一問也是答對才放行 —— 一路按下一步不可以整段跳過');
+       '★ 4-2-2 第一問也是答對才放行 —— 一路按下一步不可以整段跳過');
 
     global.window = undefined; global.document = undefined;
   }

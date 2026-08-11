@@ -108,7 +108,7 @@ const lv = unit ? (window.BLOCK_LEVELS || {})[unit.id] : null;
      🧠 概念星         —— 由 quizDone 的分數現算，是成就不是通行證
    ⚠️ 概念檢測可以一直重寫到過為止，拿它當鑰匙等於沒有鎖。 */
 let unitStars = {};      // 作品星（批改給的）
-let quizDone = {};       // { '2-1-1': { score: 4 } }
+let quizDone = {};       // { '4-2-1': { score: 4 } }
 let preDone = {};        // 思考關卡做完了沒
 let at = 0;              // 現在第幾步
 let ready = { 1:false, 2:false, 3:false };   // 各步驟完成了沒（步驟 0、4 不必判定）

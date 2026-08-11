@@ -44,7 +44,7 @@ const KEYS = [
 
 function mount(w, o) {
   const host = w.document.getElementById('h');
-  w.ASKAI.mount(host, Object.assign({ unit: '2-1-1', qi: 0, keys: KEYS, hint: '課本說：走一條邊、轉一次角。' }, o || {}));
+  w.ASKAI.mount(host, Object.assign({ unit: '4-2-1', qi: 0, keys: KEYS, hint: '課本說：走一條邊、轉一次角。' }, o || {}));
   return host;
 }
 const send = (host, text) => {
@@ -72,7 +72,7 @@ console.log('\n── 順利的那條路 ─────────────
   await wait(40);
   ok(/畫完一條邊/.test(out(host)), 'AI 的問句顯示出來');
   const url = w.__urls[0];
-  ok(/action=ask/.test(url) && /unit=2-1-1/.test(url) && /qi=0/.test(url), '送出哪一關、第幾問');
+  ok(/action=ask/.test(url) && /unit=4-2-1/.test(url) && /qi=0/.test(url), '送出哪一關、第幾問');
   ok(!/[?&]sid=/.test(url), '★ 參數不可以叫 sid（Google 的保留字，請求會到不了指令碼）');
   ok(/student=/.test(url), '   學號用 student');
   ok(!/forbid=|hint=|prompt=/.test(url), '★ 不送題目也不送 forbid —— 那些由 GAS 自己抓，前端改不到');
