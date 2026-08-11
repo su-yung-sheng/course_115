@@ -153,6 +153,17 @@ ok(/if \(r\.ok\) said\[s\.id\]/.test(page),
 ok(/merge: true/.test(page), '   用 merge 寫 —— 不動 totalStars，安全規則自然過');
 ok(/sessionStorage\.setItem\('warmup'/.test(page), '★ 同時記在 sessionStorage');
 ok(/saveWarn|沒存起來/.test(page), '   存不進去要告訴學生，但不可以擋著他');
+/* ⚠️ 2026-08-11：那個 catch 原本把錯誤整個吞掉，只寫「可能是網路問題」——
+   而實際最常見的是**權限被安全規則擋下**（學期鎖或規則沒發布）。
+   講「網路」會讓人往完全錯的方向查。
+   ★ 學生看到的仍然是「不影響闖關」；原因那一行是給老師看的。 */
+ok(/permission-denied/.test(page),
+   '★ 權限被擋要和連線問題分開講 —— 兩者要查的地方完全不同');
+ok(/2027-02-01/.test(page),
+   '   而且要點出「11502 的進度要下學期才開放學生寫」這個原因');
+ok(/console\.warn\('\[warmup\] 存進度失敗'/.test(page),
+   '★ 錯誤要留在主控台 —— 吞掉的話連老師也查不出是哪一種');
+ok(/不影響闖關/.test(page), '   但學生看到的還是「不影響闖關」');
 
 /* ★ 這一段是整份最危險的地方：擋錯人＝整站進不去。 */
 ok(/location\.replace\('warmup\.html'\)/.test(scr), '沒做過就導去新手訓練');
