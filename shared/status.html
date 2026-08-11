@@ -113,6 +113,21 @@ if (!window.CONFIG) {
         <dt class="font-bold text-slate-800">批改標準未設定</dt>
         <dd>到教師端「Scratch AI 批改標準」設定各關卡的主題與規則並存檔。</dd>
       </div>
+      <div>
+        <dt class="font-bold text-slate-800">Apps Script 版本不對</dt>
+        <dd>改了程式碼卻沒有重新部署。Apps Script → 部署 → 管理部署 → ✏️ 編輯 →
+            版本選「<b>新版本</b>」→ 部署。
+            <span class="text-slate-400">（貼了新程式碼但沿用舊版本的話，
+            編輯器裡測起來一切正常，/exec 卻還是舊行為。）</span></dd>
+      </div>
+      <div>
+        <dt class="font-bold text-slate-800">安全規則到底有沒有發布成功</dt>
+        <dd>這一頁<b>看不出來</b> —— 它只驗得到「有規則在擋整批下載」，而舊版規則也會擋。
+            要看 Firebase Console → Firestore → 規則的<b>最後發布時間</b>，
+            以及按發布時有沒有紅字。
+            <span class="text-slate-400">（規則裡只要有一個未定義的函式，整份都不會上線，
+            而學生端只會看到一行 permission-denied。）</span></dd>
+      </div>
     </dl>
   </section>
 
@@ -349,22 +364,79 @@ if (!window.CONFIG) {
     return Promise.resolve();
   }
 
-  // ── 檢查 4：安全規則是否擋住整批下載 ─────────────────
+  /* ── 檢查 4：安全規則 ───────────────────────────────
+     ⚠️ 2026-08-11 修掉一個**假綠燈**。
+
+     這張卡本來只做一件事：未登入去撈名冊，被擋就顯示「已生效」。
+     問題是那件事在**舊規則裡本來就成立** ——
+     2026-08-06 的改版有兩支函式忘了寫（bonusEmpty／bonusUnchanged），
+     Firestore 規則只要有未定義的函式就**整份編譯失敗**，
+     所以那之後五天規則一次都沒真的上線過，
+     而這張卡從頭到尾都是綠的。
+
+     ⇒ 這張卡現在只敢說「整批下載擋住了」，
+       並且明講它**證明不了**你最後那一次有沒有發布成功。
+       真正要看的是 Console 上的「最後發布時間」。
+       一句誠實的「我不知道」，比一個漂亮的綠勾有用。 */
   function checkRules(el) {
     // 未登入直接列出名冊：正確設定下應該被拒絕
     var url = fsBase() + '/' + C.TERM + '-roster?key=' + FB.apiKey + '&pageSize=1';
+    var note =
+      '<div class="mt-2 text-slate-500">學生的姓名無法被整批撈走。</div>' +
+      '<div class="mt-2 text-amber-700 leading-relaxed">' +
+      '⚠️ 這一條<b>只證明「有規則在擋」，不證明「你最後改的那一版有發布成功」</b>。' +
+      '舊版規則一樣會擋整批下載 —— 2026-08 就發生過規則五天沒上線，而這裡一直是綠的。<br>' +
+      '要確認：Firebase Console → Firestore → 規則，看<b>最後發布時間</b>是不是比你上次改規則還新；' +
+      '貼上去按發布時<b>有沒有紅字</b>（有未定義的函式會整份失敗）。</div>';
     return fetch(url, { cache: 'no-store' }).then(function (r) {
       if (r.status === 403 || r.status === 401) {
-        set(el, 'ok', '已生效', row('測試', '未登入嘗試下載名冊 → 被拒絕（' + r.status + '）') +
-                                '<div class="mt-2 text-slate-500">學生的姓名與驗證碼無法被整批撈走。</div>');
+        set(el, 'ok', '整批下載擋住了',
+            row('測試', '未登入嘗試下載名冊 → 被拒絕（' + r.status + '）') + note);
       } else if (r.ok) {
         set(el, 'bad', '沒有生效', row('測試', '未登入竟然可以讀取名冊') +
-            '<div class="mt-2 text-red-700">全班姓名與驗證碼可被任何人下載。請到 Firebase Console → Firestore → 規則，貼上 firestore.rules 並發佈。</div>');
+            '<div class="mt-2 text-red-700">全班姓名可被任何人下載。請到 Firebase Console → Firestore → 規則，貼上 firestore.rules 並發佈。</div>');
       } else {
         set(el, 'warn', '無法判斷', row('回應', 'HTTP ' + r.status));
       }
     }).catch(function (e) {
       set(el, 'warn', '無法判斷', row('原因', esc(e.message)));
+    });
+  }
+
+  /* ── 檢查 6：AI 引導的 Apps Script ─────────────────
+     ★ 為什麼要有
+       GAS 編輯器裡的程式碼和「部署出去的那個版本」是兩回事。
+       貼了新程式卻忘了重新部署，編輯器測起來一切正常，
+       /exec 卻還是舊的 —— 而且完全看不出來。
+       這裡直接把它回報的版本印出來比對。
+     ⚠️ 沒設定 GAS_URL 不算失敗：AI 引導本來就可以不接
+       （學生端沒接就是少一顆「問問看」，關卡照樣走得完）。 */
+  function checkGas(el) {
+    var g = (C.AIGUIDE || {});
+    if (!g.GAS_URL) {
+      set(el, 'warn', '沒有設定',
+          row('狀態', 'config.js 的 AIGUIDE.GAS_URL 是空的') +
+          '<div class="mt-2 text-slate-500">AI 引導不會出現，其餘功能不受影響。</div>');
+      return Promise.resolve();
+    }
+    var u = g.GAS_URL + (g.GAS_URL.indexOf('?') < 0 ? '?' : '&') +
+            'action=ping&key=' + encodeURIComponent(g.KEY || '');
+    return fetch(u, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
+      if (!j || !j.ok) {
+        set(el, 'bad', '回應不正常', row('回應', esc(JSON.stringify(j).slice(0, 200))));
+        return;
+      }
+      var d = row('版本', '<span class="font-mono">' + esc(j.version || '不明') + '</span>') +
+              row('供應商', esc(j.provider || '?') + '　模型 ' + esc(j.model || '?'));
+      /* 這一頁不寫死期望的版本 —— 寫死的話每次改 GAS 都要記得回來改這裡，
+         而忘記的那一次會變成假紅燈。改成和 repo 裡的 aiguide.gs 對照
+         做不到（這是靜態頁），所以只印出來讓你自己看一眼。 */
+      set(el, 'ok', '通了', d +
+          '<div class="mt-2 text-slate-500">版本要和 <span class="font-mono text-xs">shared/aiguide.gs</span> 開頭的 VERSION 一樣。' +
+          '不一樣就是<b>改了程式卻沒有重新部署</b> —— 到 Apps Script → 部署 → 管理部署 → 編輯 → 版本選「新版本」。</div>');
+    }).catch(function (e) {
+      set(el, 'bad', '連不上', row('原因', esc(e.message)) +
+          '<div class="mt-2 text-slate-500">部署的存取權要設成「任何人」，否則瀏覽器讀不到。</div>');
     });
   }
 
@@ -395,13 +467,15 @@ if (!window.CONFIG) {
     var c3 = card('queue',   '③ 排隊機制');
     var c4 = card('criteria','④ 兩學期批改標準是否分開');
     var c5 = card('rules',   '⑤ Firestore 安全規則');
+    var c6 = card('gas',     '⑥ AI 引導的 Apps Script');
 
     checkBackend(c1).then(function (health) {
       checkKeys(c2, health);
       return Promise.all([
         checkQueue(c3, health),
         checkCriteria(c4, health),
-        checkRules(c5)
+        checkRules(c5),
+        checkGas(c6)
       ]);
     }).catch(function (e) {
       console.error(e);
