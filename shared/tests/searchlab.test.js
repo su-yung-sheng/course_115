@@ -130,6 +130,119 @@ section('★ 真的掛起來走一遍');
   host2.remove();
 }
 
+/* ═══ 二元搜尋（第 9 關）═══════════════════════════════
+   ⚠️ 這一段全部照課本 6-3-2 的那一列數字驗
+     （12、13、27、34、39、42、58、60、67、71、88、92、95）。
+     課本每一回合都寫出開始位置／結束位置／二分位置，
+     所以每一步都對得起來 —— 對不起來就是我們算錯，不是課本錯。 */
+const BIG = [12, 13, 27, 34, 39, 42, 58, 60, 67, 71, 88, 92, 95];
+
+section('★ 二分位置：（開始＋結束）÷2，取整數部分');
+is(S._midOf(1, 13), 7, '（1＋13）÷2 ＝ 7');
+is(S._midOf(8, 13), 10, '★（8＋13）÷2 ＝ 10.5 → 取 10（課本 p.208：取整數部分）');
+is(S._midOf(8, 9), 8, '★（8＋9）÷2 ＝ 8.5 → 取 8，不是四捨五入的 9');
+is(S._midOf(9, 9), 9, '範圍只剩一格 → 就是那一格');
+is(S._midOf(6, 6), 6, '（6＋6）÷2 ＝ 6');
+
+section('★ 只能點二分位置 —— 算不出來就過不去');
+ok(S._checkMid(1, 13, 7).ok, '第 1 回合點第 7 項 → 可以');
+ok(!S._checkMid(1, 13, 9).ok, '★ 直接點第 9 項（67 就在那裡）→ 擋下來');
+ok(/正中間|÷ 2/.test(S._checkMid(1, 13, 9).msg), '   訊息要講規則（開始＋結束）÷2');
+ok(!/第\s*7\s*項/.test(S._checkMid(1, 13, 9).msg),
+   '★ 不告訴他答案是第幾項 —— 算中間位置正是這一關要他會的事');
+ok(!S._checkMid(8, 13, 3).ok, '點到已經砍掉的那一半 → 擋下來');
+ok(/已經被排除/.test(S._checkMid(8, 13, 3).msg), '   而且要講「那半邊被排除了」，不是只說錯');
+
+section('★ 砍哪一半');
+is(S._sideOf(58, 67), 'right', '中間值 58 < 目標 67 → 取後（右）半部');
+is(S._sideOf(71, 67), 'left', '中間值 71 > 目標 67 → 取前（左）半部');
+is(S._sideOf(67, 67), 'hit', '相等 → 找到了');
+is(S._narrow(1, 13, 7, 'right'), { lo: 8, hi: 13 }, '★ 新範圍不含第 7 項（課本 p.207）');
+is(S._narrow(8, 13, 10, 'left'), { lo: 8, hi: 9 }, '★ 新範圍不含第 10 項');
+ok(!S._empty(9, 9), '範圍剩一格 → 還沒空');
+ok(S._empty(6, 5), '★ 開始位置大於結束位置 → 範圍空了（查無此資料）');
+
+section('★ 比較次數：課本說幾次就是幾次');
+is(S._countBinary(BIG, 67), 4, '★ 找 67 → 4 回合（課本 p.208～209）');
+is(S._countBinary(BIG, 40), 4, '★ 找 40 → 4 回合後範圍空掉，查無此數字（課本 p.210～211）');
+is(S._countBinary(BIG, 58), 1, '目標剛好在正中間 → 1 次');
+is(S._countSequential(BIG, 67), 9,
+   '★ 同一列資料，循序搜尋找 67 要 9 次 —— 4 對 9，這個差距就是第 9 關的全部重點');
+
+section('★ 二元搜尋的資料一定要排序');
+is(S._makeCase({ mode: 'binary', course: 'hit' }), { items: BIG, target: 67 },
+   '★ course:hit 就是課本那一列，找 67');
+is(S._makeCase({ mode: 'binary', course: 'miss' }), { items: BIG, target: 40 },
+   '★ course:miss 是同一列找 40');
+{
+  let bad = 0;
+  for (let k = 0; k < 120; k++) {
+    if (!S._isSorted(S._makeCase({ mode: 'binary', size: 11 }).items)) bad++;
+  }
+  ok(bad === 0,
+     '★ 隨機出的二元搜尋題一定是排好的（120 題裡 ' + bad + ' 題沒排）—— ' +
+     '那是它的前提，不是巧合');
+}
+
+section('★ 照課本走一遍 67（4 回合）');
+{
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  let done = 0;
+  const sim = S.mount(host, { mode: 'binary', course: 'hit', onPass: () => { done++; } });
+  const cell = n => host.querySelectorAll('[data-i]')[n - 1];   // n 用課本的 1 起算
+  const side = s => host.querySelector('[data-side="' + s + '"]').onclick();
+
+  /* 想抄捷徑：67 就在第 9 項，直接點 */
+  cell(9).onclick();
+  is(sim._state().tried, 0, '★ 直接點目標那一格：比較次數沒有增加');
+
+  cell(7).onclick();
+  is(sim._state().phase, 'side', '點對二分位置 → 換學生決定砍哪一半');
+  side('left');
+  is(sim._state().lo + '~' + sim._state().hi, '1~13',
+     '★ 砍錯邊 → 範圍不動（58 < 67，目標在右邊）');
+  ok(/砍錯邊|被你丟掉/.test(host.querySelector('.qs-msg').innerHTML),
+     '   而且要講後果：砍錯就把目標丟掉了');
+  side('right');
+  is(sim._state().lo + '~' + sim._state().hi, '8~13', '第 1 回合後 → 8～13（課本一樣）');
+
+  cell(10).onclick(); side('left');
+  is(sim._state().lo + '~' + sim._state().hi, '8~9', '第 2 回合後 → 8～9');
+  cell(8).onclick(); side('right');
+  is(sim._state().lo + '~' + sim._state().hi, '9~9', '第 3 回合後 → 9～9');
+  cell(9).onclick();
+  ok(sim._state().ended && sim._state().sawHit, '第 4 回合找到了');
+  is(sim._state().tried, 4, '★ 總共比 4 次 —— 和課本一模一樣');
+  ok(/循序搜尋要比 9 次/.test(host.querySelector('.qs-msg').innerHTML),
+     '★ 找到時要把「循序要幾次」一起講出來 —— 那個對照是這一關的重點');
+  is(done, 0, '只走過找得到的，還不放行');
+  host.remove();
+}
+
+section('★ 走一遍找不到的 40（範圍縮到空）');
+{
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const sim = S.mount(host, { mode: 'binary', course: 'miss' });
+  const cell = n => host.querySelectorAll('[data-i]')[n - 1];
+  const side = s => host.querySelector('[data-side="' + s + '"]').onclick();
+
+  cell(7).onclick(); side('left');    // 58 > 40 → 左
+  is(sim._state().lo + '~' + sim._state().hi, '1~6', '第 1 回合後 → 1～6');
+  cell(3).onclick(); side('right');   // 27 < 40 → 右
+  is(sim._state().lo + '~' + sim._state().hi, '4~6', '第 2 回合後 → 4～6');
+  cell(5).onclick(); side('right');   // 39 < 40 → 右
+  is(sim._state().lo + '~' + sim._state().hi, '6~6', '第 3 回合後 → 6～6');
+  cell(6).onclick(); side('left');    // 42 > 40 → 左 → 空
+  ok(sim._state().ended && sim._state().sawMiss, '第 4 回合之後範圍空了，結束');
+  is(sim._state().tried, 4, '★ 比了 4 次（課本 p.211）');
+  const t = host.querySelector('.qs-msg').innerHTML;
+  ok(/查無此資料/.test(t), '★ 要講「查無此資料」—— 課本的用詞');
+  ok(/大於/.test(t), '★ 也要講清楚是「開始位置大於結束位置」—— 那就是迴圈的結束條件');
+  host.remove();
+}
+
 /* ── 關卡資料 ──────────────────────────────────────── */
 section('★ 第 8 關（6-3-1）的關卡資料');
 {
@@ -190,6 +303,77 @@ section('★ 第 8 關（6-3-1）的關卡資料');
   ok(lv.palette.filter(id => !B.DEFS[id]).length === 0, '調色盤沒有不存在的積木');
   ok([...used].filter(id => lv.palette.indexOf(id) < 0).length === 0,
      '答案要的積木調色盤都給了');
+}
+
+section('★ 第 9 關（6-3-2）的關卡資料');
+{
+  const lv = L['6-3-2'];
+  ok(!!lv, '關卡存在');
+  is(lv.lab, { kind: 'search', mode: 'binary', course: 'hit' }, '★ 宣告了 binary 的 lab');
+  ok(!!S.INFO[lv.lab.mode], '   lab.mode 在 SEARCHLAB.INFO 裡查得到');
+  ok((lv.quiz || []).length >= 6, '概念檢測 ' + lv.quiz.length + ' 題');
+  ok(lv.quiz.every(q => q.ref !== undefined), '每一題都指得回來源');
+  ok(lv.quiz.every(q => (q.need || []).every(n => (n.any || []).length >= 3)),
+     '★ 每個概念群至少 3 種同義說法');
+
+  const B = W.BLOCKS;
+  const build = l => (l || []).map(x => {
+    const d = B.DEFS[x.id];
+    return { uid: 'u' + Math.random(), id: x.id,
+             args: (x.args != null ? x.args : (d.args || [])).map(
+               v => (v && typeof v === 'object') ? build([v])[0] : v),
+             children: x.children ? build(x.children)
+                                  : ((d.shape === 'c' || d.shape === 'c2') ? [] : null),
+             children2: x.children2 ? build(x.children2) : (d.shape === 'c2' ? [] : null) };
+  });
+  const got = build(lv.goal);
+  ok(B._same(got, lv.goal, lv.loose || []), '★ 照答案拼 → 判對');
+
+  /* ★★ 這一關拼圖唯一真正的考點：那個「否則」。
+     只寫「那麼」的話，中間值比目標大時範圍完全不動 → 無窮迴圈。
+     而畫面上它看起來只是「少一小塊」。 */
+  const noElse = JSON.parse(JSON.stringify(got));
+  noElse[3].children[1].children2 = [];
+  ok(!B._same(noElse, lv.goal, lv.loose || []),
+     '★★ 「否則」那格空著 → 判錯（另外那一半永遠砍不掉，範圍不動＝無窮迴圈）');
+
+  /* 兩邊放反：該右移的時候左移 —— 目標被砍掉，永遠找不到 */
+  const swap = JSON.parse(JSON.stringify(got));
+  const ie = swap[3].children[1];
+  const t = ie.children; ie.children = ie.children2; ie.children2 = t;
+  ok(!B._same(swap, lv.goal, lv.loose || []),
+     '★ 開始位置與結束位置的調整放反 → 判錯（等於每次都砍掉有目標的那一半）');
+
+  /* 算二分位置放到迴圈外面：範圍變了中間點卻不重算 */
+  const outside = JSON.parse(JSON.stringify(got));
+  const mid = outside[3].children.shift();
+  outside.splice(3, 0, mid);
+  ok(!B._same(outside, lv.goal, lv.loose || []),
+     '★ 「算二分位置」搬到迴圈外面 → 判錯（範圍變了卻不重算，永遠指同一格）');
+
+  /* 結束位置寫死成 13 —— 換一組資料就不能用 */
+  const hard = JSON.parse(JSON.stringify(got));
+  hard[2] = { uid: 'x', id: 'list.setidx', args: ['結束位置', 13], children: null, children2: null };
+  ok(!B._same(hard, lv.goal, lv.loose || []),
+     '   結束位置打死 13（不用清單長度）→ 判錯');
+
+  ['list.changeidx', 'control.if', 'control.repeat', 'control.repeatlen'].forEach(id => {
+    ok(lv.palette.indexOf(id) >= 0, '★ 調色盤上有誘餌 ' + id);
+  });
+  const used = new Set();
+  (function w(l) { (l || []).forEach(n => { used.add(n.id);
+    (n.args || []).forEach(a => { if (a && typeof a === 'object') w([a]); });
+    w(n.children); w(n.children2); }); })(lv.goal);
+  ok(!used.has('list.changeidx'),
+     '★ 「位置改變 1」沒有混進答案 —— 那是上一關循序搜尋的做法，最容易拿錯');
+  ok(!used.has('control.if'), '   單向的「如果…那麼」沒有混進答案（這一關要雙向）');
+  ok(lv.palette.filter(id => !B.DEFS[id]).length === 0, '調色盤沒有不存在的積木');
+  ok([...used].filter(id => lv.palette.indexOf(id) < 0).length === 0, '答案要的積木都給了');
+
+  /* 兩關的用詞要一致 —— 學生是連著上的。 */
+  ok(/開始位置/.test(JSON.stringify(lv)) && /結束位置/.test(JSON.stringify(lv)) &&
+     /二分位置/.test(JSON.stringify(lv)),
+     '★ 用詞照課本（開始位置／結束位置／二分位置）—— 學生回課本 p.208 要對得起來');
 }
 
 /* ── 關卡頁真的接得上 ──────────────────────────────── */

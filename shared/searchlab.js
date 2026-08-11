@@ -73,6 +73,64 @@
     return list.length;
   }
 
+  /* ── 二元搜尋（課本 6-3-2）─────────────────────────
+     ⚠️ 這裡的位置一律用**課本的講法**：第 1 項是 1，不是 0。
+        程式裡改成 0 起算的話，學生算出「(1+13)÷2＝7」
+        卻要點第 8 格 —— 他會以為自己算錯。 */
+
+  /** 二分位置 =（開始＋結束）÷2，取整數部分（無條件捨去，課本 p.208） */
+  function midOf(lo, hi) { return Math.floor((lo + hi) / 2); }
+
+  /**
+   * 這一回合只能點二分位置。
+   * ★ 算錯了不告訴他答案 —— 「（開始＋結束）÷2」正是這一關要他會的事。
+   */
+  function checkMid(lo, hi, i) {
+    if (lo > hi) return { ok: false, msg: '範圍已經空了。' };
+    if (i < lo || i > hi) {
+      return { ok: false,
+               msg: '這一格<b>已經被排除</b>了。這一回合只能在' +
+                    '第 ' + lo + ' ～ ' + hi + ' 項之間找。' };
+    }
+    if (i === midOf(lo, hi)) return { ok: true, msg: '' };
+    return { ok: false,
+             msg: '不是這一格。二元搜尋每一回合都要點<b>正中間</b>那一項 —— ' +
+                  '（開始位置＋結束位置）÷ 2，除不盡就取整數部分。' };
+  }
+
+  /** 比完之後該往哪一邊。'hit' 就是找到了 */
+  function sideOf(value, target) {
+    var v = Number(value), t = Number(target);
+    if (v === t) return 'hit';
+    return (v < t) ? 'right' : 'left';      // 中間值比較小 → 目標在右半
+  }
+
+  /**
+   * 砍掉一半。
+   * ⚠️ 新範圍**不包含**這一回合的二分位置（課本 p.207 教學叮嚀）——
+   *    包含進去的話，同一格會被比第二次，範圍永遠縮不完。
+   */
+  function narrow(lo, hi, mid, side) {
+    return (side === 'right') ? { lo: mid + 1, hi: hi } : { lo: lo, hi: mid - 1 };
+  }
+
+  /** 範圍空了（開始位置大於結束位置）＝ 查無此資料 */
+  function empty(lo, hi) { return lo > hi; }
+
+  /** 二元搜尋一定會比幾次（找到就停；找不到就是砍到範圍空掉） */
+  function countBinary(list, target) {
+    var lo = 1, hi = list.length, n = 0;
+    while (lo <= hi) {
+      var m = midOf(lo, hi);
+      n++;
+      var s = sideOf(list[m - 1], target);
+      if (s === 'hit') return n;
+      var r = narrow(lo, hi, m, s);
+      lo = r.lo; hi = r.hi;
+    }
+    return n;
+  }
+
   /**
    * 出題。
    *   course:'hit'  → 課本 p.204 那一題：8、5、10、1、7 找 10（第 3 回合找到）
@@ -85,18 +143,35 @@
    */
   function makeCase(opts) {
     opts = opts || {};
+    var binary = (opts.mode === 'binary');
+
     if (opts.course) {
+      /* 課本 6-3-2 的那一列（13 個已排序的數字，p.208～p.211）：
+           找 67 → 4 回合找到；找 40 → 4 回合之後範圍空掉，查無此數字 */
+      if (binary) {
+        return { items: [12, 13, 27, 34, 39, 42, 58, 60, 67, 71, 88, 92, 95],
+                 target: opts.course === 'miss' ? 40 : 67 };
+      }
       return { items: [8, 5, 10, 1, 7], target: opts.course === 'miss' ? 9 : 10 };
     }
-    var n = opts.size || 8;
+
+    var n = opts.size || (binary ? 13 : 8);
     var a = [], seen = {};
     while (a.length < n) {
       var v = 1 + Math.floor(Math.random() * 99);
       if (!seen[v]) { seen[v] = 1; a.push(v); }   // 不重複，免得「第幾個」有兩個答案
     }
-    /* 排好了就打散 —— 循序搜尋的資料不該看起來像排序過的 */
-    var tries = 0;
-    while (isSorted(a) && tries++ < 20) a.sort(function () { return Math.random() - 0.5; });
+
+    if (binary) {
+      /* ⚠️ 二元搜尋的資料**一定要排序** —— 那是它的前提，不是巧合。
+         給一列沒排序的資料，砍掉的那一半可能正好裝著目標。 */
+      a.sort(function (x, y) { return x - y; });
+    } else {
+      /* 反過來：循序搜尋的資料排好了就打散。
+         給他一列排好的，他會以為循序搜尋也要先排序。 */
+      var tries = 0;
+      while (isSorted(a) && tries++ < 20) a.sort(function () { return Math.random() - 0.5; });
+    }
 
     var miss = (opts.miss != null) ? opts.miss : (Math.random() < 0.34);
     if (miss) {
@@ -124,6 +199,15 @@
            '直到找到所要的元素，或所有資料都找完為止。',
       life: '交換禮物要選第一個挑的人：從 1 號開始，一個一個問他的紙牌是幾號，' +
             '問到那個數字為止。'
+    },
+    binary: {
+      name: '二元搜尋法', icon: '✂️',
+      rule: '資料<b>已經排好序</b>。每一回合點<b>正中間</b>那一項 —— ' +
+            '（開始位置＋結束位置）÷ 2，除不盡取整數部分 —— 再決定砍掉哪一半。',
+      why: '對已排序的資料折半搜尋：比中間值大就取右半部，比中間值小就取左半部，' +
+           '每一回合待搜尋的資料量馬上少一半。',
+      life: '猜數字：對方說 1～100，你先猜 50。他說「太小」，' +
+            '你就知道 1～50 全部不必猜了 —— 一次刪掉一半。'
     }
   };
 
@@ -154,6 +238,18 @@
     '.qs-cell.now{border-color:#06b6d4;background:#cffafe;transform:translateY(-3px)}',
     '.qs-cell.hit{border-color:#22c55e;background:#dcfce7;color:#166534;cursor:default}',
     '.qs-cell.bad{border-color:#f59e0b;background:#fef3c7}',
+    /* 二元搜尋：被砍掉的那一半整個劃掉。
+       ★ 劃掉但不刪除 —— 學生要看得見「這一刀砍掉了多少」，
+         那正是二元搜尋和循序搜尋的差別。 */
+    '.qs-cell.cut{border-color:#f1f5f9;background:#f8fafc;color:#e2e8f0;',
+    '  text-decoration:line-through;cursor:default}',
+    '.qs-cell.cut:hover{background:#f8fafc;border-color:#f1f5f9}',
+    '.qs-range{font-size:12.5px;color:#0e7490;font-weight:700;margin-bottom:8px}',
+    '.qs-range b{color:#155e75}',
+    '.qs-side{display:flex;gap:9px;margin-top:10px;flex-wrap:wrap}',
+    '.qs-side button{background:#fff;border:2px solid #06b6d4;color:#0e7490;border-radius:9px;',
+    '  padding:8px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}',
+    '.qs-side button:hover{background:#ecfeff}',
     '.qs-msg{margin-top:9px;font-size:13px;line-height:1.8;padding:8px 11px;border-radius:9px}',
     '.qs-msg.good{background:#dcfce7;color:#166534}',
     '.qs-msg.bad{background:#fef3c7;color:#92400e}',
@@ -182,6 +278,9 @@
     var info = INFO[mode] || INFO.sequential;
 
     var items, target, next, tried, passed, ended;
+    /* 二元搜尋用：目前的搜尋範圍（1 起算，照課本），還有這一回合停在哪一步。
+       phase 'pick' = 該點二分位置了；'side' = 點完了，該決定砍哪一半。 */
+    var lo, hi, phase, mid;
     /* ★ 要「找到一次」＋「找不到一次」才算通過。
        只找到過的學生，不會知道迴圈為什麼需要結束條件。 */
     var sawHit = false, sawMiss = false;
@@ -196,6 +295,7 @@
     function reset(c) {
       items = c.items; target = c.target;
       next = 0; tried = 0; ended = false;
+      lo = 1; hi = items.length; phase = 'pick'; mid = 0;
     }
 
     function render() {
@@ -216,17 +316,48 @@
 
     function body() {
       var b = host.querySelector('#qs-body');
-      b.innerHTML = '<div class="qs-row">' + items.map(function (v, i) {
-        var cls = 'qs-cell';
-        if (ended && i === next && String(v) === String(target)) cls += ' hit';
-        else if (i < next) cls += ' past';
-        else if (i === next && !ended) cls += ' now';
-        return '<div class="qs-box"><span class="qs-idx">第 ' + (i + 1) + ' 項</span>' +
-               '<button class="' + cls + '" data-i="' + i + '">' + esc(v) + '</button></div>';
-      }).join('') + '</div>';
+      b.innerHTML = (mode === 'binary' ? rangeHtml() : '') +
+        '<div class="qs-row">' + items.map(cellHtml).join('') + '</div>' +
+        (mode === 'binary' && phase === 'side' && !ended ? sideHtml() : '');
       [].forEach.call(b.querySelectorAll('[data-i]'), function (el) {
         el.onclick = function () { click(Number(el.dataset.i), el); };
       });
+      [].forEach.call(b.querySelectorAll('[data-side]'), function (el) {
+        el.onclick = function () { pickSide(el.dataset.side); };
+      });
+    }
+
+    /* 開始位置／結束位置／二分位置 —— 課本每一回合都寫這三個數字，
+       學生要跟著算，所以畫面上一定要看得到。 */
+    function rangeHtml() {
+      if (ended) return '';
+      return '<div class="qs-range">第 <b>' + (tried + (phase === 'side' ? 0 : 1)) +
+             '</b> 回合　開始位置：<b>' + lo + '</b>　結束位置：<b>' + hi + '</b>' +
+             (phase === 'side'
+               ? '　二分位置：<b>' + mid + '</b>（第 ' + mid + ' 項是 ' + esc(items[mid - 1]) + '）'
+               : '　二分位置：<b>？</b>　←　自己算，然後點那一格') +
+             '</div>';
+    }
+
+    function cellHtml(v, i) {
+      var cls = 'qs-cell', n = i + 1;
+      if (mode === 'binary') {
+        if (ended && n === mid && String(v) === String(target)) cls += ' hit';
+        else if (n < lo || n > hi) cls += ' cut';        // 被砍掉的那一半：劃掉，但看得見
+        else if (n === mid && phase === 'side') cls += ' now';
+      } else {
+        if (ended && i === next && String(v) === String(target)) cls += ' hit';
+        else if (i < next) cls += ' past';
+        else if (i === next && !ended) cls += ' now';
+      }
+      return '<div class="qs-box"><span class="qs-idx">第 ' + n + ' 項</span>' +
+             '<button class="' + cls + '" data-i="' + i + '">' + esc(v) + '</button></div>';
+    }
+
+    function sideHtml() {
+      return '<div class="qs-side">' +
+             '<button data-side="left">◀ 取前（左）半部</button>' +
+             '<button data-side="right">取後（右）半部 ▶</button></div>';
     }
 
     function count() {
@@ -246,6 +377,7 @@
 
     function click(i, el) {
       if (ended) return;
+      if (mode === 'binary') return clickBinary(i, el);
       var r = checkSequential(items, next, i);
       if (!r.ok) { flash(el); say('bad', r.msg); return; }
 
@@ -276,6 +408,72 @@
                  ' —— 往下一個。');
     }
 
+    /* ── 二元搜尋：一回合分兩步 ─────────────────────────
+       ① 點二分位置（自己算（開始＋結束）÷2）
+       ② 決定砍哪一半
+       ⚠️ 兩步分開是刻意的。合成一步（點了就自動砍）的話，
+          學生只練到「會算中間位置」，而「比中間值大就往右」
+          那個判斷完全沒被考到 —— 那才是二元搜尋的核心。 */
+    function clickBinary(i, el) {
+      if (phase === 'side') {
+        say('bad', '先決定要砍掉哪一半 —— 下面兩顆按鈕。');
+        return;
+      }
+      var r = checkMid(lo, hi, i + 1);
+      if (!r.ok) { flash(el); say('bad', r.msg); return; }
+
+      mid = i + 1;
+      tried++;
+      var s = sideOf(items[mid - 1], target);
+      if (s === 'hit') {
+        ended = true; sawHit = true;
+        body(); count();
+        say('good', '找到了 —— <b>' + esc(target) + '</b> 在第 <b>' + mid + '</b> 項。' +
+                    '總共只比了 <b>' + tried + '</b> 次。' +
+                    '<br>⚠️ 資料有 ' + items.length + ' 筆，循序搜尋要比 ' +
+                    countSequential(items, target) + ' 次 —— 差別就在每回合砍掉一半。');
+        maybePass();
+        return;
+      }
+      phase = 'side';
+      body(); count();
+      say('bad', '第 ' + mid + ' 項是 <b>' + esc(items[mid - 1]) + '</b>，' +
+                 (Number(items[mid - 1]) < Number(target) ? '比目標<b>小</b>' : '比目標<b>大</b>') +
+                 ' —— 那目標會在哪一半？');
+    }
+
+    function pickSide(pick) {
+      if (ended || phase !== 'side') return;
+      var want = sideOf(items[mid - 1], target);
+      if (pick !== want) {
+        /* ★ 砍錯邊 = 把目標砍掉了。這裡要講清楚後果，不只是說「錯」——
+           因為錯的代價（永遠找不到）正是「資料要先排序」的理由。 */
+        say('bad', '砍錯邊了。第 ' + mid + ' 項是 ' + esc(items[mid - 1]) +
+                   '，資料<b>由小到大</b>排好 —— ' +
+                   '比目標小的話，目標只可能在它<b>右邊</b>；比目標大就在<b>左邊</b>。' +
+                   '<br>砍錯的話，目標就被你丟掉了，之後再怎麼找都找不到。');
+        return;
+      }
+      var r = narrow(lo, hi, mid, want);
+      lo = r.lo; hi = r.hi;
+      phase = 'pick';
+
+      if (empty(lo, hi)) {
+        /* ★ 開始位置大於結束位置 → 查無此資料（課本 p.211） */
+        ended = true; sawMiss = true;
+        mid = 0;
+        body(); count();
+        say('none', '開始位置（' + lo + '）已經<b>大於</b>結束位置（' + hi + '）' +
+                    '—— 範圍空了，沒有 <b>' + esc(target) + '</b>。' +
+                    '<br>這叫<b>查無此資料</b>。二元搜尋的迴圈就是走到這裡才停的。');
+        maybePass();
+        return;
+      }
+      body(); count();
+      say('good', '砍掉一半了。剩下第 <b>' + lo + '</b> ～ <b>' + hi + '</b> 項（' +
+                  (hi - lo + 1) + ' 筆）—— 再算一次二分位置。');
+    }
+
     function maybePass() {
       if (passed) return;
       /* 找得到、找不到兩種都遇過才算走完一輪。 */
@@ -297,6 +495,7 @@
       destroy: function () { host.innerHTML = ''; },
       _state: function () {
         return { items: items, target: target, next: next, tried: tried,
+                 lo: lo, hi: hi, phase: phase, mid: mid,
                  ended: ended, sawHit: sawHit, sawMiss: sawMiss, passed: !!passed };
       }
     };
@@ -309,6 +508,12 @@
     _checkSequential: checkSequential,
     _stepResult: stepResult,
     _countSequential: countSequential,
+    _midOf: midOf,
+    _checkMid: checkMid,
+    _sideOf: sideOf,
+    _narrow: narrow,
+    _empty: empty,
+    _countBinary: countBinary,
     _makeCase: makeCase,
     _isSorted: isSorted
   };

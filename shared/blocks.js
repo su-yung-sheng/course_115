@@ -138,6 +138,18 @@
     'list.changeidx':   { cat:'list',    shape:'stack', label:'變數 %s 改變 %n',   args:['位置', 1], idArgs:[0], idNs:['var'] }, // DATA_CHANGEVARIABLEBY
     'control.ifless':   { cat:'control', shape:'c',     label:'如果 數列 的第 %n 項 < 數列 的第 %n 項 那麼', args:[1, 2] }, // ★自訂
     'control.repeatlen':{ cat:'control', shape:'c',     label:'重複 清單 數列 的長度 次' },                     // ★自訂
+    /* 二元搜尋（第 9 關）要的四塊。
+       ★自訂 —— 在真的 Scratch 裡，「（開始＋結束）÷2 的整數部分」
+       是「無條件捨去（( ) / ( )）」套「( ) + ( )」三塊橢圓積木疊起來的。
+       引擎的巢狀回報值還只支援一層，硬拆出來學生會忙著卡積木，
+       而這一關要學的是「每回合砍掉一半」——不是積木怎麼疊。
+       ⚠️ 用詞照課本（開始位置／結束位置／二分位置），
+          學生回課本第 208 頁要對得起來。 */
+    'list.setlen':      { cat:'list',    shape:'stack', label:'變數 %s 設為 清單 數列 的長度', args:['結束位置'], idArgs:[0], idNs:['var'] }, // ★自訂
+    'list.setmid':      { cat:'list',    shape:'stack', label:'變數 二分位置 設為（開始位置＋結束位置）÷ 2 的整數部分' },                     // ★自訂
+    'list.tolo':        { cat:'list',    shape:'stack', label:'變數 開始位置 設為 二分位置 ＋ 1' },                                            // ★自訂
+    'list.tohi':        { cat:'list',    shape:'stack', label:'變數 結束位置 設為 二分位置 － 1' },                                            // ★自訂
+    'control.ifmid':    { cat:'control', shape:'c2',    label:'如果 數列 的第 二分位置 項 < 目標 那麼' },                                      // ★自訂
     'control.until':    { cat:'control', shape:'c',     label:'重複直到 找到目標' },                           // ★自訂
 
     /* ===================================================================
