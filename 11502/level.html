@@ -241,16 +241,60 @@ function render() {
       <button id="fromTop">想從第 1 步再看一次</button>
     </div>` : ''}
     <section id="body" class="bg-white rounded-2xl border border-slate-200 shadow-md p-5 sm:p-7 pop"></section>
-    <div id="foot" class="mt-4"></div>`;
+    <div id="foot" class="mt-4"></div>
+    ${materialPanel()}`;
 
   document.querySelectorAll('[data-step]').forEach(b => {
     b.onclick = () => { if (canGo(+b.dataset.step)) { at = +b.dataset.step; render(); window.scrollTo({top:0,behavior:'smooth'}); } };
   });
+  const mt = $('toggle-material');
+  if (mt) mt.onclick = () => { materialOpen = !materialOpen; render(); };
   /* ★ 一定要留這顆。被系統丟到第 5 步、又回不去第 1 步的話，
      學生會覺得「它把我踢走了」—— 而想重看的通常是認真的那一個。 */
   const ft = $('fromTop');
   if (ft) ft.onclick = () => { at = 0; resumed = false; render(); };
   draw(s);
+}
+
+/* ── 補充教材面板 ────────────────────────────────────
+   ★ 為什麼是「嵌在關卡裡」而不是掛在入口
+     logic.html／sort.html／search.html 三支原本掛在闖關基地。
+     問題是：學生會先自己玩過一次，等真正上到那一關時
+     就沒有「第一次看到」的效果了 —— 而那個效果正是它們存在的理由。
+     ⇒ 2026-08-12 收進關卡：只有相關的那一關看得到。
+
+   ★ 為什麼不刪掉
+     三支各有系統裡沒有的東西：
+       logic.html　　「或」和「不成立」（第 4 關只用到「且」）
+       search.html　 找**最大值**（正是第 6 關「找最小值位置」的鏡像）
+       sort.html　　 30 隻魔物的自動排序動畫（課本 p.12 教學叮嚀
+                     就建議用這種動畫讓學生對大量資料的排序有感）
+
+   ⚠️ 欄位叫 material 不叫 ref —— 這一份的 quiz 題目裡
+      已經有一個 ref（指回哪個步驟）。同一個檔案裡兩個 ref
+      各有各的意思，遲早會有人搞混。
+   ⚠️ 預設收合。展開才載入 iframe（loading="lazy" 也擋不住
+      已經寫進 DOM 的請求）—— 十關都嵌一個模擬器會很慢。 */
+let materialOpen = false;
+function materialPanel() {
+  const m = lv && lv.material;
+  if (!m) return '';
+  return `
+    <div class="border border-violet-200 rounded-xl overflow-hidden mt-4">
+      <button id="toggle-material"
+              class="w-full flex items-center justify-between gap-2 bg-violet-50 hover:bg-violet-100 px-3 py-2.5 text-left transition">
+        <span class="flex items-center gap-2">
+          <span class="text-lg">${m.icon || '🧪'}</span>
+          <span><span class="text-sm font-bold text-violet-700">補充教材：${esc(m.title)}</span>
+          <span class="block text-xs text-violet-500 leading-snug">${esc(m.note || '')}</span></span>
+        </span>
+        <span class="text-violet-500 font-black flex-shrink-0">${materialOpen ? '▾ 收合' : '▸ 展開'}</span>
+      </button>
+      ${materialOpen ? `<iframe src="${esc(m.href)}" class="w-full block bg-white"
+            style="height:72vh;border:0" title="${esc(m.title)}" loading="lazy"></iframe>
+        <div class="text-[11px] text-slate-400 px-3 py-1.5 text-center bg-violet-50">
+          玩完往上滑，回到這一關繼續</div>` : ''}
+    </div>`;
 }
 
 function card(title, html) {

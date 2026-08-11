@@ -468,5 +468,6 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
         resetSimulation();
 
     </script>
+<script>/* 被嵌入 iframe 時隱藏返回基地按鈕 —— 關卡頁的補充教材面板會把這幾支嵌進去，留著的話學生會在關卡裡跳回入口。 */if(window.self!==window.top){var _b=document.getElementById('back-to-hub');if(_b)_b.style.display='none';}</script>
 </body>
 </html>

@@ -81,6 +81,38 @@ ok(withLab.every(id => (W.BLOCK_LEVELS[id].lab.kind === 'sort' ||
    ⚠️ 兩個都放的話，學生會連續做兩次一模一樣的事。 */
 ok(!l5.lab && (l5.derive.steps || []).some(s => s.kind === 'sort'),
    '★ 第 5 關用 derive 裡的手動排序，不另外掛 lab（不然會連做兩次同一件事）');
+
+/* ── ★ 補充教材：三支互動頁收進關卡 ────────────────────
+   ⚠️ 2026-08-12 之前它們掛在闖關基地的入口，沒有任何關卡連得到。
+      問題不是「連不到」，是**時機錯了**：學生會先自己玩過一次，
+      等真正上到那一關時就沒有「第一次看到」的效果了 ——
+      而那個效果正是這幾個互動存在的理由。
+   ★ 現在改由 material 欄位掛進對應的關卡。
+     這幾條要釘住「掛對關」，掛錯關等於沒掛。 */
+const MAT = { '4-3-1': 'logic.html', '6-2-1': 'search.html', '6-2-2': 'sort.html' };
+Object.keys(MAT).forEach(id => {
+  const m = W.BLOCK_LEVELS[id].material;
+  ok(!!m && m.href === MAT[id],
+     '★ ' + id + ' 掛的補充教材是 ' + MAT[id] + '（實得：' + ((m && m.href) || '沒有') + '）');
+  ok(!!m && m.title && m.note,
+     '   ' + id + ' 的補充教材有標題和一句說明（沒說明學生不會點）');
+});
+ok(ids.filter(id => W.BLOCK_LEVELS[id].material).length === 3,
+   '★ 只有這三關有補充教材 —— 每關都掛的話它就變成裝飾');
+/* ⚠️ material 和 quiz 題目裡的 ref 是兩件事，別混用。
+   ref 指回「這一題在問哪個步驟」，material 是外部教材。 */
+ok(/materialPanel\(\)/.test(lvHtml), '關卡頁畫得出補充教材面板');
+ok(/let materialOpen = false/.test(lvHtml),
+   '★ 預設收合 —— 十關都嵌一個模擬器會很慢，展開才載');
+ok(/toggle-material/.test(lvHtml), '   面板點得開');
+/* ⚠️ 三支頁面各有一顆「← 返回基地」。嵌進關卡頁的 iframe 之後，
+   那顆按鈕會把 iframe 導到闖關基地 —— 學生會看到「關卡裡面有一個入口」。
+   11501 的 music.html／whatislist.html 早就處理過同一件事，這裡照同一個做法。 */
+Object.values(MAT).forEach(f => {
+  const src = fs.readFileSync(path.join(ROOT, '11502', f), 'utf8');
+  ok(/window\.self!==window\.top/.test(src) && /back-to-hub/.test(src),
+     '★ ' + f + ' 被嵌進 iframe 時會把「返回基地」藏起來');
+});
 ok(!/out\.push\('analysis'\);\s*out\.push\('derive'\)/.test(html), '步驟不是寫死的');
 
 /* ── ★ 卡片上的說明只能有一個來源 ─────────────────

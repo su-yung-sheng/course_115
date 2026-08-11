@@ -610,7 +610,11 @@ def check_sb3_levels():
         return
 
     # 檔名 → 單元代號。新增參考檔時在這裡加一行。
-    PAIRS = {'11502_單元一.sb3': '2-1-1', '11502_單元二.sb3': '2-1-2'}
+    # ⚠️ 2026-08-12：這裡原本寫的是舊代號 2-1-1／2-1-2。
+    #    11502 改用課本章節編號（4-2-1／4-2-2）時漏了這一支，
+    #    於是下面那句 `uid not in levels` 一直成立 →  continue → 整個比對安靜地死掉。
+    #    改名時沒有人會想到來看 check.py，所以下面補了一條「代號查無此關就報錯」。
+    PAIRS = {'11502_單元一.sb3': '4-2-1', '11502_單元二.sb3': '4-2-2'}
     OPS = {'event_whenflagclicked': 'events.whenflag', 'pen_clear': 'pen.clear',
            'pen_penDown': 'pen.down', 'pen_penUp': 'pen.up',
            'motion_turnright': 'motion.turnright', 'motion_turnleft': 'motion.turnleft',
@@ -687,18 +691,39 @@ def check_sb3_levels():
         return r
 
     # 用 node 把 blocks.js 的 goal 讀出來（它是 JS，不是 JSON）
+    #
+    # ⚠️ 2026-08-12 踩到的坑：原本是把**整個檔案的內容**當成 node -e 的參數傳。
+    #    blocks.js 長到 14 萬字之後，超過單一參數的長度上限（Linux 是 128KB），
+    #    subprocess 直接丟 OSError「Argument list too long」——
+    #    而那個例外被下面的 except 接住，變成一行警告就跳過了。
+    #    也就是說：**與 .sb3 的比對安靜地停掉了，而畫面上還是印✅**。
+    #    ⇒ 改成把「檔案路徑」傳進去，讓 node 自己讀。檔案再長都不會爆。
+    #
+    # ⚠️ 而且「node 沒裝」和「資料讀不出來」要分開講。
+    #    混成同一句的話，真的壞掉時看起來就像環境問題。
+    import subprocess
+    if not shutil.which('node'):
+        warns.append('找不到 node，略過與 .sb3 的比對（不是失敗，是這台機器沒裝）')
+        return
     try:
-        import subprocess
-        src = open(lvpath, encoding='utf-8').read()
-        out = subprocess.run(['node', '-e', 'global.window={};' + src +
-                              ';console.log(JSON.stringify(window.BLOCK_LEVELS))'],
-                             capture_output=True, text=True, timeout=20)
+        out = subprocess.run(
+            ['node', '-e',
+             "global.window = {};"
+             "(0, eval)(require('fs').readFileSync(process.argv[1], 'utf8'));"
+             "console.log(JSON.stringify(window.BLOCK_LEVELS));",
+             lvpath],
+            capture_output=True, text=True, timeout=20)
         if out.returncode != 0:
-            warns.append('讀不到 11502 關卡資料，略過與 .sb3 的比對')
+            # 挑「看得懂的那一行」—— node 的錯誤訊息最後一行常常只是版本號
+            lines = (out.stderr or '').strip().splitlines()
+            hint = next((l.strip() for l in lines if 'Error' in l or 'error' in l),
+                        (lines[0].strip() if lines else ''))
+            errors.append('11502 關卡資料讀不出來，與 .sb3 的比對沒跑到'
+                          + ('：' + hint[:160] if hint else ''))
             return
         levels = _json.loads(out.stdout)
-    except (OSError, ValueError, _json.JSONDecodeError):
-        warns.append('沒有 node 或關卡資料讀不出來，略過與 .sb3 的比對')
+    except (OSError, ValueError, _json.JSONDecodeError) as e:
+        errors.append('11502 關卡資料讀不出來，與 .sb3 的比對沒跑到：%s' % e)
         return
 
     def norm(x):
@@ -713,7 +738,15 @@ def check_sb3_levels():
 
     for fn, uid in PAIRS.items():
         path = os.path.join(refdir, fn)
-        if not os.path.exists(path) or uid not in levels:
+        if not os.path.exists(path):
+            warns.append(f'找不到 {fn}，略過這一關與 .sb3 的比對')
+            continue
+        # ★ 代號對不上要**吵**，不可以安靜跳過。
+        #   安靜跳過的話，關卡改名的那一刻這個比對就死了，
+        #   而畫面上還是印 ✅ —— 2026-08-12 就是這樣死了一整天。
+        if uid not in levels:
+            errors.append(f'check.py 的 PAIRS 指到不存在的關卡代號 {uid}'
+                          f'（{fn} 沒有比對到）—— 關卡改名時忘了同步這裡')
             continue
         try:
             with zipfile.ZipFile(path) as z:
