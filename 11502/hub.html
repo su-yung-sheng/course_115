@@ -98,7 +98,15 @@
       { id:'ethics',    title:'媒體與社會議題',   tag:'法律倫理', icon:'⚖️', href:'social.html',    theme:'bg-pink-100 border-pink-300 text-pink-900',       tape:'bg-pink-500/25',    rot:'rotate-1',  desc:'第五、六章共 10 個章節（含 2 個整章挑戰），做完測驗給星。', maxStars:30, subLevels:10 },
       { id:'thinking',  title:'運算思維挑戰',     tag:'運算思維', icon:'🧠', href:'thinking.html',  theme:'bg-green-100 border-green-300 text-green-900',    tape:'bg-green-500/25',   rot:'-rotate-1', desc:'10 道生活謎題，訓練邏輯與拆解力。', maxStars:20, subLevels:10 },
       { id:'flowchart', title:'探索演算法的奧秘', tag:'流程圖',   icon:'🧩', href:'flowchart.html', theme:'bg-emerald-100 border-emerald-300 text-emerald-900', tape:'bg-emerald-500/25', rot:'-rotate-1', desc:'把解題步驟排成流程圖，10 個單元逐關挑戰。', maxStars:20, subLevels:10 },
-      { id:'scratch',   title:'Scratch 程式設計', tag:'程式設計', icon:'🐱', href:'scratch.html',   theme:'bg-orange-100 border-orange-300 text-orange-900',  tape:'bg-orange-500/25',  rot:'rotate-2',  desc:'把流程圖寫成 Scratch 積木程式並上傳作品。', maxStars:30, subLevels:10 },
+      { id:'scratch',   title:'Scratch 程式設計', tag:'程式設計', icon:'🐱', href:'scratch.html',   theme:'bg-orange-100 border-orange-300 text-orange-900',  tape:'bg-orange-500/25',  rot:'rotate-2',  desc:'把流程圖寫成 Scratch 積木程式並上傳作品。', maxStars:40, subLevels:10 },
+      /* ⚠️ maxStars 是進度條的分母，要和 GRADING.moduleMax() 對得起來。
+         40 ＝ 10 關 × 3⭐（AI 批改）＋ 10 關 × 1⭐（交程式錄影的加分）。
+         2026-08-11 之前寫 30，漏掉加分那 10 顆 ——
+         學生把加分拿滿的話進度條會超過 100%。
+         ★ 🧠 概念星是**另一組**，不算在這裡（見 scratch.html 的說明）。
+         ⚠️ 下學期開學前要確認：這張卡讀的是 modules.scratch.stars，
+            而闖關地圖是用 unitStars 現算的 —— 兩邊要對得起來，
+            不然 hub 上的數字會和點進去看到的不一樣。 */
 
       // —— 演算法教材（第六章） ——
       { id:'logic',     title:'邏輯挑戰',         tag:'演算法',   icon:'🔍', href:'logic.html',     theme:'bg-violet-100 border-violet-300 text-violet-900',  tape:'bg-violet-500/25',  rot:'rotate-1',  desc:'條件判斷與邏輯推理的暖身關卡。' },

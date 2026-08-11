@@ -94,9 +94,19 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
         🧠 概念 <span id="quiz-star" class="text-indigo-500 text-2xl font-black">0</span>⭐
       </span>
     </h2>
+    <!-- ⚠️ 2026-08-11 修：這裡本來寫「滿星 30 顆（10 關 × 3 星）」。
+         那句話只講到 🧩 作品星的其中一部分，而畫面上明明有兩組星星 ——
+         看到「滿星 30」卻看到兩個數字，只會讓人以為系統算錯了。
+         ★ 兩組**刻意不相加**（見上面那段註解）：加起來之後，
+           「我到底是哪一種還沒做」就看不出來了。
+         所以要嘛兩組都講清楚，要嘛都不要提 —— 不能只講一半。 -->
     <p class="text-slate-500 text-xs sm:text-sm mt-2 text-center leading-relaxed">
-      關卡<b class="text-orange-600">依序開放</b>：上傳作品拿到 <b>2⭐</b> 以上才會開下一關。
-      滿星 30 顆（10 關 × 3 星）。
+      關卡<b class="text-orange-600">依序開放</b>：上傳作品拿到 <b>2⭐</b> 以上才會開下一關。<br>
+      <b class="text-amber-600">🧩 作品星</b> 每關最多 3⭐（滿 30），
+      再交程式錄影每關 <b>+1⭐</b>（最多 40）；
+      <b class="text-indigo-600">🧠 概念星</b> 每關最多 3⭐（滿 30）。
+      <span class="block mt-1 text-slate-400">兩組<b>分開算、不相加</b> ——
+        它們回答的是不同的問題：作品星是「做出來了沒」，概念星是「懂了沒」。</span>
     </p>
   </section>
 
@@ -116,7 +126,8 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
   <section class="mb-8">
     <div class="flex items-baseline justify-between mb-4">
       <h2 class="font-black text-xl">🗺️ 闖關地圖</h2>
-      <span class="text-xs font-bold text-slate-400">每關 2–3 ⭐，滿星 30</span>
+      <!-- 這裡只講 🧩 作品星（卡片上顯示的就是它）——完整的兩組寫在上面那段。 -->
+      <span class="text-xs font-bold text-slate-400">🧩 作品星：2⭐ 過關，最多 3⭐</span>
     </div>
     <!-- 備課模式的橫幅。開著的時候一定要看得到 —— 見 config.js 的 OPEN_ALL_UNITS -->
     <div id="openall" class="hidden mb-4 rounded-2xl px-4 py-3 text-sm leading-relaxed"

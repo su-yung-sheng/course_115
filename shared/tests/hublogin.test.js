@@ -14,6 +14,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const root = path.join(__dirname, '..', '..');
 
 let pass = 0, fail = 0;
 const ok = (c, l) => { c ? pass++ : fail++; console.log((c ? '  ✅ ' : '  ❌ ') + l); };
@@ -62,6 +63,49 @@ ok(fn('qfm1410905@mail.qfm.kh.edu.tw') === '1410905', '學生帳號取得出學�
 ok(fn('suyungsheng@mail.qfm.kh.edu.tw') === '', '★ 老師帳號取不出 —— 所以老師走不進學生流程');
 ok(fn('') === '', '匿名登入（沒有 email）取不出');
 ok(fn('qfm1410905@gmail.com') === '', '外部網域取不出');
+
+/* ── ★ 進度條的分母要和真正的星數上限對得起來 ─────────
+   ⚠️ 2026-08-11 抓到：hub 卡片的 maxStars 沒有把「老師審核給的加分星」
+      算進去（流程圖交圖 +1⭐／關、程式交錄影 +1⭐／關，各最多 10 顆）。
+        11501 程式設計：寫 50，實際上限 70
+        11502 程式設計：寫 30，實際上限 40
+      學生把加分拿滿的話，進度條會超過 100%。
+
+   ★ 上限的算法只有一份：GRADING.moduleMax()。
+     hub 自己抄一個數字進去，改門檻時就會有一邊忘記 ——
+     而「進度條超過 100%」不會有人回報，只會覺得這系統怪怪的。 */
+section('★ hub 的 maxStars 對得上 GRADING.moduleMax()');
+{
+  const W = {};
+  new Function('window', fs.readFileSync(path.join(root, 'shared', 'grading.js'), 'utf8'))(W);
+  const MAX = W.GRADING.moduleMax(10);
+
+  const want = {
+    /* 11501 的程式設計卡把流程圖與 Scratch 合成一張（combines），
+       所以分母是兩個模組的上限相加。 */
+    '11501/hub.html': { listprog: MAX.flowchart + MAX.scratch },
+    '11502/hub.html': { scratch: MAX.scratch }
+  };
+  Object.keys(want).forEach(f => {
+    const src = fs.readFileSync(path.join(root, f), 'utf8');
+    Object.keys(want[f]).forEach(id => {
+      /* 抓那張卡那一行的 maxStars。卡片是一行一個物件，所以用 id 定位。 */
+      const line = (src.split('\n').filter(l => l.indexOf("id:'" + id + "'") >= 0)[0]) || '';
+      const m = line.match(/maxStars:\s*(\d+)/);
+      ok(!!m, f + ' 的 ' + id + ' 卡片找得到 maxStars');
+      if (m) ok(Number(m[1]) === want[f][id],
+        '★ ' + f + ' 的 ' + id + ' maxStars = ' + m[1] +
+        '（應該是 ' + want[f][id] + ' —— 含老師審核的加分星）');
+    });
+  });
+
+  /* 加分星要真的被算進卡片顯示的數字裡，不是只有分母變大。
+     ⚠️ 只改分母的話，進度條會永遠差那幾顆，看起來像「怎麼樣都補不滿」。 */
+  const h1 = fs.readFileSync(path.join(root, '11501', 'hub.html'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ');
+  ok(/starsWithBonus/.test(h1),
+     '★ 11501 hub 有把加分星算進顯示的星數（老師給了分，學生要看得到）');
+}
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

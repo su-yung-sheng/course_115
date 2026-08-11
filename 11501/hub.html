@@ -96,7 +96,12 @@
     const MODULES = [
       { id:'ethics',    title:'資訊倫理學習系統', tag:'法律倫理', icon:'⚖️', href:'cyberethics.html', theme:'bg-pink-100 border-pink-300 text-pink-900',    tape:'bg-pink-500/25',   rot:'rotate-1',  desc:'資訊倫理、網路禮儀、著作權與個資法。', maxStars:30, subLevels:10 },
       { id:'thinking',  title:'運算思維挑戰',     tag:'運算思維', icon:'🧠', href:'thinking.html',    theme:'bg-green-100 border-green-300 text-green-900',  tape:'bg-green-500/25',  rot:'-rotate-1', desc:'10 道生活謎題，訓練邏輯與拆解力。', maxStars:20, subLevels:10 },
-      { id:'listprog', combines:['flowchart','scratch'], title:'程式設計（Scratch）', tag:'程式設計', icon:'🐱', href:'flowchart.html', theme:'bg-orange-100 border-orange-300 text-orange-900', tape:'bg-orange-500/25', rot:'-rotate-1',  desc:'含前導「清單學習機」與音階教材；一關關：排流程圖 → 寫 Scratch 程式。', maxStars:50, subLevels:20 },
+      { id:'listprog', combines:['flowchart','scratch'], title:'程式設計（Scratch）', tag:'程式設計', icon:'🐱', href:'flowchart.html', theme:'bg-orange-100 border-orange-300 text-orange-900', tape:'bg-orange-500/25', rot:'-rotate-1',  desc:'含前導「清單學習機」與音階教材；一關關：排流程圖 → 寫 Scratch 程式。', maxStars:70, subLevels:20 },
+      /* ⚠️ maxStars 是進度條的分母，一定要和「這張卡真的顯示的星數」對得起來。
+         70 ＝ 流程圖 10×2 ＋ 交圖加分 10 ＋ 程式 10×3 ＋ 交錄影加分 10。
+         2026-08-11 之前寫 50（漏掉兩種加分各 10）——
+         學生把加分拿滿的話，進度條會超過 100%。
+         上限的算法在 GRADING.moduleMax()，改門檻時記得回來對一次。 */
       { id:'arduino',   title:'Arduino 智慧家居', tag:'延伸挑戰', icon:'💡', href:'5016b.html',       theme:'bg-indigo-100 border-indigo-300 text-indigo-900', tape:'bg-indigo-500/25', rot:'rotate-2',  desc:'用模擬器體驗感測器與控制。', maxStars:0, subLevels:0 }   // 延伸體驗，不計星數
     ];
 
@@ -239,6 +244,20 @@
     // ===== 計算 =====
     function starStr(n){ n=Math.max(0,Math.min(3,n||0)); return '★'.repeat(n)+'☆'.repeat(3-n); }
     // 合併卡（combines）會加總多個模組的星數與狀態；一般卡直接讀自己的模組
+    /* 老師審核給的加分星（交流程圖圖片 +1⭐、交程式錄影 +1⭐）。
+       ⚠️ 2026-08-11 修：這一頁本來完全沒有把加分算進來 ——
+          老師在「繳交審核」給了分，教師端看得到、review 頁看得到，
+          唯獨學生自己的闖關基地看不到。
+          那會變成「老師說給我加分了，可是我的星星沒變」——
+          而學生只會覺得是系統壞了，或是老師忘了按。
+       ★ 計算規則走 GRADING.starsWithBonus（單一來源），不要在這裡自己加。 */
+    function bonusOf(mods, id){
+      if(!window.GRADING || !window.GRADING.starsWithBonus) return 0;
+      const b = window.GRADING.starsWithBonus({ modules: mods });
+      return id==='flowchart' ? (b.flowchartBonus||0)
+           : id==='scratch'   ? (b.scratchBonus||0) : 0;
+    }
+
     function cardData(m, mods){
       if(!m.combines){ const d = mods[m.id] || { status:'todo' }; return Object.assign({ levelSum: Number(d.level)||0 }, d); }
       let stars=0, level=0, levelSum=0; const sts=[];
@@ -250,6 +269,7 @@
           const vals = Object.values(dd.unitStars).map(Number).filter(v=>v>0);
           st = vals.reduce((a,b)=>a+b,0); lv = vals.length;
         }
+        st += bonusOf(mods, id);          // ★ 老師給的加分星也要算進去
         stars+=st; levelSum+=lv; if(lv) level=Math.max(level,lv); sts.push(dd.status||'todo');
       });
       let status='todo';
