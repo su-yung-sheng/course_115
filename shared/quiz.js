@@ -167,8 +167,13 @@
          數字     → analysis.qs[n] 的提示
          'write'  → analysis.write（那一段的收尾）
          'scene'  → 情境解說的「為什麼要學這個」
+         'lab'    → 互動實驗室那一步的規則與說明（第 6 章那五關）
      ⚠️ 這不是給答案 —— 引的是那一問的**提示**，不是正解。
-        引錯來源（例如把 pick 的答案端出來）會直接毀掉這一題。 */
+        引錯來源（例如把 pick 的答案端出來）會直接毀掉這一題。
+
+     ⚠️ 2026-08-12 抓到：'lab' 一直沒被處理，所以第 6 章那五關的
+        20 道題**引用框全是空的** —— 而空的引用框不會報錯，
+        只是安靜地什麼都不顯示，看起來就像「這一題本來就沒有出處」。 */
   function refBox(lv, ref) {
     if (ref === undefined || ref === null || !lv) return '';
     var a = lv.analysis || {};
@@ -179,6 +184,15 @@
     } else if (ref === 'write') {
       label = '🔍 問題分析最後那一題';
       body = (a.write || {}).q || '';
+    } else if (ref === 'lab' && lv.lab) {
+      /* 實驗室的規則寫在模組裡（SORTLAB／SEARCHLAB 的 INFO），
+         不在關卡資料裡 —— 抄一份到這邊的話，改規則就會有一邊忘記。
+         ⚠️ 模組不一定載得到（單元測試就沒有），所以要有退路。 */
+      var mod = (lv.lab.kind === 'search') ? global.SEARCHLAB : global.SORTLAB;
+      var info = mod && mod.INFO && mod.INFO[lv.lab.mode];
+      label = '🕹️ 你在「動手試一次」做過的';
+      body = info ? (info.rule + '<br>' + info.why)
+                  : ((lv.scene || {}).pre || '');
     } else if (typeof ref === 'number' && (a.qs || [])[ref]) {
       label = '🔍 問題分析第 ' + (ref + 1) + ' 題';
       body = (a.qs[ref].q || '') + (a.qs[ref].hint ? '<br>' + a.qs[ref].hint : '');
