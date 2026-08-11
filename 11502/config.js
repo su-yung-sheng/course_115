@@ -73,7 +73,20 @@ window.CONFIG = {
         按「新增部署作業」會產生**另一個網址**，這裡就對不上了。 */
   AIGUIDE: {
     GAS_URL: 'https://script.google.com/macros/s/AKfycbzK3CRfHHPgw8YbP5EBOtmxJQ4GbTt1NG5UqxqCsH17q0_gUvbP9kzNfSJc25J9PrrZBw/exec',
-    KEY: ''    // ← 填 GAS 指令碼屬性裡的 QUERY_KEY（留空 = 這個功能關閉）
+    /* ⚠️ 留空 ＝ 學生端的「問問看」**整塊不會出現**。
+       askai.js 的 enabled() 要 GAS_URL 和 KEY 兩個都有才啟用 ——
+       只填網址不填通行碼，畫面上不會有任何說明，就只是那顆按鈕不見了。
+       （狀態檢查頁的第 ⑥ 張卡會把這件事講出來。）
+
+       怎麼填：Apps Script →「專案設定 → 指令碼屬性」新增一列
+       QUERY_KEY，值自己想一組，再把同一組字串貼進下面。
+
+       ★ 這組通行碼會出現在 config.js，也就是**學生看得到**。
+         它擋的是「別人拿你的部署網址亂用」，不是擋學生 ——
+         真正的防線是 GAS 那邊的 DAILY_CAP / PER_SID_CAP / DAILY_TOKEN_CAP。
+       ⚠️ Gemini／Claude 的金鑰**絕對不要**寫在這裡。
+         那些只放 GAS 的指令碼屬性，這個 repo 是公開的。 */
+    KEY: ''
   },
 
   COLLECTIONS: {

@@ -412,11 +412,42 @@ if (!window.CONFIG) {
      ⚠️ 沒設定 GAS_URL 不算失敗：AI 引導本來就可以不接
        （學生端沒接就是少一顆「問問看」，關卡照樣走得完）。 */
   function checkGas(el) {
-    var g = (C.AIGUIDE || {});
+    /* ⚠️ 三種狀態要分清楚，不可以都叫「沒有設定」。
+       2026-08-11 就被問了：上學期的狀態頁顯示「沒有設定」，
+       看起來像少設了什麼 —— 其實上學期本來就沒有用 AI 引導
+       （只有 11502 的關卡頁、闖關地圖、新手訓練會載 ai-guide.js）。
+       「本來就不用」和「該設卻沒設」長得一樣的話，
+       前者會被當成待辦追半天，後者則會被當成正常而一直沒設。 */
+    var g = C.AIGUIDE;
+    if (!g) {
+      set(el, 'ok', '這個學期沒有用到',
+          row('狀態', 'config.js 沒有 AIGUIDE 這一區') +
+          '<div class="mt-2 text-slate-500">' +
+          'AI 引導只掛在<b>下學期的程式設計關卡</b>（問題分析的「問問看」、' +
+          '概念檢測的覆核、新手訓練的一句回饋）。這個學期用不到，不必設定。</div>');
+      return Promise.resolve();
+    }
     if (!g.GAS_URL) {
-      set(el, 'warn', '沒有設定',
+      set(el, 'warn', '沒有填網址',
           row('狀態', 'config.js 的 AIGUIDE.GAS_URL 是空的') +
-          '<div class="mt-2 text-slate-500">AI 引導不會出現，其餘功能不受影響。</div>');
+          '<div class="mt-2 text-amber-700">這個學期有 AIGUIDE 這一區，' +
+          '卻沒有填部署網址 —— AI 引導不會出現。其餘功能不受影響。</div>');
+      return Promise.resolve();
+    }
+    /* ★ 通行碼空著＝整塊功能關閉（shared/askai.js 的 enabled() 要兩個都有）。
+       這不是壞掉，是「還沒接」—— 但學生端會完全看不到「問問看」，
+       而畫面上不會有任何說明，所以這裡一定要講出來。 */
+    if (!g.KEY) {
+      set(el, 'warn', '網址有了，通行碼還沒填',
+          row('部署網址', '<span class="font-mono text-xs">' + esc(g.GAS_URL.slice(0, 60)) + '…</span>') +
+          row('AIGUIDE.KEY', '<span class="text-amber-700">空的</span>') +
+          '<div class="mt-2 text-amber-700 leading-relaxed">' +
+          '學生端的「問問看」<b>整塊不會出現</b>（askai.js 要 GAS_URL 和 KEY 都有才啟用）。<br>' +
+          '要開的話：Apps Script →「專案設定 → 指令碼屬性」新增 ' +
+          '<span class="font-mono text-xs">QUERY_KEY</span>，再把同一組字串填進 config.js 的 ' +
+          '<span class="font-mono text-xs">AIGUIDE.KEY</span>。<br>' +
+          '<span class="text-slate-500">（這組通行碼會出現在 config.js，也就是學生看得到 —— ' +
+          '它擋的是「別人拿你的網址亂用」，真正的防線是 GAS 那邊的每日上限。）</span></div>');
       return Promise.resolve();
     }
     var u = g.GAS_URL + (g.GAS_URL.indexOf('?') < 0 ? '?' : '&') +
