@@ -280,7 +280,10 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
      它有拆解和追蹤活動，但沒有 goal／palette ——
      這裡只檢查有拼圖的關卡，否則會在 lv.palette 上炸掉。 */
   const puzzles = ids.filter(id => L[id].goal);
-  is(puzzles, ['4-2-1', '4-2-2', '4-2-3', '4-3-1'], '目前有拼圖的是這四關');
+  /* ⚠️ 順序照 BLOCK_LEVELS 裡的宣告順序，不是關卡編號 ——
+     6-1-1（第 5 關）是先寫的，所以排在 4-2-2 前面。 */
+  is(puzzles.slice().sort(), ['4-2-1', '4-2-2', '4-2-3', '4-3-1', '6-3-1'],
+     '目前有拼圖的是這五關（第 8 關的是縮小版：互動為主）');
   is(ids.filter(id => !L[id].goal), ['6-1-1'], '第 5 關有內容但沒有拼圖');
   puzzles.forEach(id => {
     const lv = L[id], used = new Set();
