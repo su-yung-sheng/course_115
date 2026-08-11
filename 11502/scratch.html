@@ -27,11 +27,6 @@
   .hl-b{background:linear-gradient(transparent 52%, rgba(147,197,253,.7) 52%);font-weight:800}
   @keyframes pop{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   .pop{animation:pop .35s ease-out both}
-  .blk      {display:inline-flex;align-items:center;gap:.4rem;color:#fff;font-weight:700;
-             padding:.3rem .7rem;border-radius:.45rem;font-size:.8rem;box-shadow:0 2px 0 rgba(0,0,0,.18)}
-  .blk-ctrl {background:#ffab19}
-  .blk-oper {background:#9966ff}
-  .blk-list {background:#ff661a}
 </style>
 
 <script src="config.js"></script>
@@ -158,19 +153,25 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
 
    ⚠️ 下學期第 6～10 關的課程內容尚未定案：
       目前 config.js 的 UNITS 還是從上學期複製過來的。
-      定案後只要改 config.js 一處，這頁與教師端都會跟著變。
-      下面 EXTRA 只是「補充說明與積木標籤」，沒填的關卡不影響運作。 */
-const EXTRA = {
-  '2-1-1A': { desc: '把每位同學的物品放進對應的櫃子。',   blocks: ['blk-list:建立清單'] },
-  '2-1-1B': { desc: '一個一個念名字，念完為止。',         blocks: ['blk-ctrl:重複執行'] },
-  '2-1-2':  { desc: '照著清單裡的音階，一個一個播出來。', blocks: ['blk-ctrl:重複執行','blk-list:清單第 i 項'] },
-  '2-1-3':  { desc: '把全班分數加起來再除以人數。',       blocks: ['blk-oper:加法','blk-oper:除法'] },
-  '2-1-4':  { desc: '隨機抽一位幸運兒，抽過的不再抽。',   blocks: ['blk-oper:隨機取數'] }
-};
+      定案後只要改 config.js 一處，這頁與教師端都會跟著變。 */
+/* 卡片上那一句說明 ＝ 關卡資料的 task。
+   ⚠️ 2026-08-11 修：這裡本來有一份手寫的 EXTRA 對照表，
+      內容是**上學期**的（「照著清單裡的音階播出來」「把全班分數加起來再除以人數」），
+      而且鍵值 2-1-1A／2-1-1B／2-1-4 在下學期根本不存在 ——
+      那是當初把 11501 的 config 複製過來時留下的。
+      結果第 2、3 關的卡片上掛著**別的單元的介紹**，
+      而第 1 關沒有對應鍵值所以什麼都沒有 —— 三張卡三種行為。
+
+   ★ 說明只該有一個來源：關卡資料自己的 task。
+     手抄一份到這裡，改了關卡就得記得回來改 —— 而那次一定會忘。 */
+function descOf(id) {
+  const lv = (window.BLOCK_LEVELS || {})[id];
+  if (!lv || !lv.task) return '';
+  return String(lv.task).replace(/<[^>]*>/g, '');
+}
 
 const UNITS = (window.CONFIG.UNITS || []).map(function (u, i) {
-  const x = EXTRA[u[0]] || {};
-  return { no: i + 1, id: u[0], name: u[1], desc: x.desc || '', blocks: x.blocks || [] };
+  return { no: i + 1, id: u[0], name: u[1], desc: descOf(u[0]) };
 });
 
 /* ===================== 依序開放 =====================
@@ -199,11 +200,6 @@ let preStage  = 0;    // 目前在思考關卡的第幾步
 let preUnit   = '';   // 這幾步是屬於哪一關的（換關要從頭來）
 
 /* ===================== 畫面 ===================== */
-function blockChip(spec){
-  const i = spec.indexOf(':');
-  return '<span class="blk ' + spec.slice(0, i) + '">' + spec.slice(i + 1) + '</span>';
-}
-
 function renderStages(){
   const openTo = openUpTo();
   if (OPEN_ALL) {
@@ -240,8 +236,9 @@ function renderStages(){
             ${done ? '★'.repeat(s) : '☆☆☆'}
           </span>
         </div>
-        <p class="mt-2 text-slate-600 text-sm leading-relaxed">${open ? u.desc : '完成前一關才會開啟'}</p>
-        ${(open && u.blocks.length) ? `<div class="mt-3 flex flex-wrap gap-2">${u.blocks.map(blockChip).join('')}</div>` : ''}
+        <p class="mt-2 text-slate-600 text-sm leading-relaxed">${
+          !open ? '完成前一關才會開啟'
+                : (u.desc || '<span class="text-slate-400">內容準備中</span>')}</p>
         <p class="mt-3 text-xs font-bold ${done ? 'text-emerald-600' : open ? 'text-orange-600' : 'text-slate-400'}">
           ${done ? '✅ 已通關　點進去可以重做' : open ? '👉 點進去開始這一關' : '🔒 尚未開啟'}
         </p>
