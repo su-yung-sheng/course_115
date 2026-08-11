@@ -328,6 +328,27 @@ ok(!!l5.analysis.write, '也有先寫再對照');
     }
     ok(host.querySelector('#dv-nx') && host.querySelector('#dv-nx').disabled === false,
        '★ 答對之後「下一題」才亮起來');
+
+    /* ── ★ 2-1-2 也要真的畫一次 ──────────────────────
+       它和 2-1-1 不一樣：八問、圈選題在第 2 問（不是第 1 問）。
+       ⚠️ 只畫範本那一關的話，等於只驗證了一種形狀 ——
+          而 2026-08-11 補完 2-1-2 之前，它有七問是「寫一句」，
+          畫出來完全是另一條路徑。 */
+    const host2 = w6.document.createElement('div');
+    w6.document.body.appendChild(host2);
+    let crash2 = '';
+    try {
+      w6.DERIVE.renderAnalysis(host2, w6.BLOCK_LEVELS['2-1-2'].analysis,
+        { unit: '2-1-2', onDone: function () {} });
+    } catch (e) { crash2 = e.message; }
+    ok(!crash2, '★ 2-1-2 也畫得出來（' + (crash2 || '沒有例外') + '）');
+    const t2 = host2.textContent.replace(/\s+/g, ' ').trim();
+    ok(t2.length > 60, '★ 2-1-2 畫面上真的有東西（' + t2.length + ' 個字）');
+    ok(/共 8/.test(t2), '   八問都算進去了（' + (t2.match(/第 \d+ 題[^日]{0,8}/) || [''])[0].trim() + '）');
+    ok(host2.querySelectorAll('.dv-opt').length === 4, '   第一問有四個選項');
+    ok(host2.querySelector('#dv-nx') && host2.querySelector('#dv-nx').disabled === true,
+       '★ 2-1-2 第一問也是答對才放行 —— 一路按下一步不可以整段跳過');
+
     global.window = undefined; global.document = undefined;
   }
 }

@@ -158,60 +158,93 @@ section('🖍️ 情境解說的重點提示');
   ok(/theme\.css/.test(levelSrc), '   而且關卡頁真的載了 theme.css');
 }
 
-/* ── ★ 2-1-1 是範本 ─────────────────────────────
-   後面每一關照它的樣子做（見 shared/docs/08_關卡製作範本.md）。
-   這一段是範本的守門員：**範本自己缺欄位的話，先在這裡紅字**，
-   不然後面十關會照著一個壞掉的樣子做。 */
-section('★ 2-1-1 是範本：欄位要齊');
+/* ── ★ 08 範本的規矩，每一關都要守 ─────────────────
+   （見 shared/docs/08_關卡製作範本.md）
+
+   ⚠️ 2026-08-11 之前這一段只檢查 2-1-1。
+      結果是：2-1-2 的八問裡有七問沒有選擇題（貼提示就通關）、
+      六問連 keys 都沒有（AI 引導掛不上去）、
+      收尾的寫作題沒有 keys（只剩字數，亂打十五個字就過）——
+      **測試全綠**，因為它只看範本那一關。
+      範本守得再好，沒有人照著做也沒有用。
+
+   ★ 「上線中」的定義：有 scene ＋ quiz ＋ goal 三樣。
+     這不是名單，是資料自己說了算 —— 新關卡一寫完就自動被納入檢查，
+     不必記得回來加名字（會忘的那一步就是漏洞會長出來的地方）。
+     還在寫的關卡（例如 2-3-1 只有 analysis）印一行提醒，不算失敗。 */
+section('★ 08 範本的規矩：每一關都要守');
 {
   const x = {};
   new Function('window', fs.readFileSync(path.join(root, '11502', 'content', 'blocks.js'), 'utf8'))(x);
-  const lv = x.BLOCK_LEVELS['2-1-1'];
+  const ALL = x.BLOCK_LEVELS;
+  const live = Object.keys(ALL).filter(id => ALL[id].scene && ALL[id].quiz && ALL[id].goal);
+  const wip = Object.keys(ALL).filter(id => live.indexOf(id) < 0);
+
+  ok(live.indexOf('2-1-1') >= 0 && live.indexOf('2-1-2') >= 0,
+     '上線中的關卡：' + live.join('、'));
+  if (wip.length) console.log('     （還在寫，先不檢查：' + wip.join('、') + '）');
+
+  ok(ALL['2-1-1'].combo === true, '第 1 關開著套餐工廠');
+
+  const len = t => String(t).replace(/[\s，。、？！]/g, '').length;
+  const bad = { keys: [], hint: [], ask: [], pick: [], opt: [], len: [] };
+
+  live.forEach(id => {
+    const a = ALL[id].analysis;
+    if (!a) return;                       // 2-1-3 課本用推導，本來就沒有問題分析
+    a.qs.forEach((q, i) => {
+      const at = id + ' 第' + (i + 1) + '問';
+      /* ★ 每一問都要有 keys —— 沒有的話「問問看」掛不上去，
+         因為 AI 不知道要往哪個方向引導。 */
+      if (!(q.keys || []).length) bad.keys.push(at);
+      if (!q.hint || q.hint.length <= 10) bad.hint.push(at);
+      /* ★ 要嘛有圈選題，要嘛有 3 題以上可以抽。
+         都沒有就退回「寫一句」，而那**擋不住把提示貼上來**。 */
+      if (!q.pick && (q.asks || []).length < 3) bad.ask.push(at);
+      (q.asks || []).forEach((k, j) => {
+        const w = at + '第' + (j + 1) + '題';
+        if (k.options.length !== 4 || !k.why) bad.opt.push(w);
+        /* ★ 選項的**長度**不可以出賣答案。
+           ⚠️ 第一版每一題的正解都是描述最詳細、字最多的那一個 ——
+              學生用「選最長的」就能過關，那和瞎猜沒差多少，
+              而且他學到的是「猜題技巧」不是這一關的概念。
+           ⇒ 兩條：四個選項字數差 ≤ 4；正解不可以比別人長 2 字以上。
+           ⚠️ 這只擋得住「最明顯的那種洩題」。真正要靠的還是
+              「錯的選項要是像樣的誤解」—— 那沒辦法自動測，只能自己念一遍。 */
+        const L = k.options.map(len);
+        const spread = Math.max(...L) - Math.min(...L);
+        const lead = L[k.answer] - Math.max(...L.filter((_, y) => y !== k.answer));
+        if (spread > 4) bad.len.push(w + ' 字數差 ' + spread);
+        if (lead >= 2) bad.len.push(w + ' 正解長 ' + lead + ' 字');
+      });
+    });
+    /* ⚠️ 一整關只放一題圈選 —— 每一問都要圈會變成問卷。 */
+    if (a.qs.filter(q => q.pick).length !== 1) bad.pick.push(id);
+  });
+
+  const say = (arr, label) => ok(arr.length === 0, label + (arr.length ? '　←　' + arr.join('、') : ''));
+  say(bad.keys, '★ 每一問都有 keys（沒有的話 AI 引導掛不上去）');
+  say(bad.hint, '   每一問都有提示');
+  say(bad.ask, '★ 每一問有圈選題或 3 題以上可以抽 —— 都沒有就退回「寫一句」，而那擋不住貼提示');
+  say(bad.pick, '★ 一整關只放一題圈選');
+  say(bad.opt, '   每題判斷題四個選項，而且說得出「為什麼是它」');
+  say(bad.len, '★ 選項長度不出賣答案（字數差 ≤4、正解沒有明顯較長）');
+
+  /* 收尾的寫作題。⚠️ 沒有 keys 的話它只剩字數，亂打十五個字就通關。 */
+  live.forEach(id => {
+    const a = ALL[id].analysis;
+    if (!a) return;
+    ok(a.write && a.write.keys && a.write.hintText && a.write.sample,
+       '★ ' + id + ' 收尾的寫作題有 keys／hintText／sample');
+    /* ⚠️ hintText 只能講方向，不可以把 keys 的名稱寫進去 —— 那就是答案。 */
+    ok(!(a.write.keys || []).some(g => a.write.hintText.indexOf(g.name) >= 0),
+       '   ' + id + ' 的 hintText 沒有把 keys 的名稱寫出來（那就是答案，貼上去就過了）');
+  });
+
+  const lv = ALL['2-1-1'];
   const a = lv.analysis;
-
   ok(!!lv.task && !!lv.scene && !!lv.analysis && !!lv.quiz && !!lv.goal,
-     '七個步驟的資料都在（task／scene／analysis／quiz／goal）');
-  ok(lv.combo === true, '第 1 關開著套餐工廠');
-
-  /* ★ 每一問都要有 keys —— 沒有的話「問問看」掛不上去，
-     因為 AI 不知道要往哪個方向引導。 */
-  ok(a.qs.every(q => (q.keys || []).length >= 1),
-     '★ 五問都有 keys（沒有的話 AI 引導掛不上去）');
-  ok(a.qs.every(q => q.hint && q.hint.length > 10), '   五問都有提示');
-  ok(a.qs.every(q => q.pick || (q.asks || []).length >= 3),
-     '★ 每一問要嘛有圈選題，要嘛有 3 題以上可以抽 —— 都沒有就退回「寫一句」，而那擋不住貼提示');
-  ok(a.qs.filter(q => q.pick).length === 1,
-     '★ 一整關只放一題圈選 —— 五問全部要作答會變成問卷');
-  ok(a.qs.every(q => (q.asks || []).every(k => k.options.length === 4 && k.why)),
-     '   每題判斷題四個選項，而且說得出「為什麼是它」');
-
-  /* ★ 選項的**長度**不可以出賣答案。
-     ⚠️ 第一版每一題的正解都是描述最詳細、字最多的那一個 ——
-        學生用「選最長的」就能過關，那和瞎猜沒差多少，
-        而且他學到的是「猜題技巧」不是這一關的概念。
-     ⇒ 兩條：四個選項字數差 ≤ 4；正解不可以比別人長 2 字以上。
-     ⚠️ 這只擋得住「最明顯的那種洩題」。真正要靠的還是
-        「錯的選項要是像樣的誤解」—— 那沒辦法自動測，只能自己念一遍。 */
-  {
-    const len = t => String(t).replace(/[\s，。、？！]/g, '').length;
-    const bad = [];
-    a.qs.forEach((q, i) => (q.asks || []).forEach((k, j) => {
-      const L = k.options.map(len);
-      const spread = Math.max(...L) - Math.min(...L);
-      const lead = L[k.answer] - Math.max(...L.filter((_, x) => x !== k.answer));
-      if (spread > 4) bad.push('第' + (i + 1) + '問第' + (j + 1) + '題 字數差 ' + spread);
-      if (lead >= 2) bad.push('第' + (i + 1) + '問第' + (j + 1) + '題 正解長 ' + lead + ' 字');
-    }));
-    ok(bad.length === 0,
-       '★ 選項長度不出賣答案（字數差 ≤4、正解沒有明顯較長）' +
-       (bad.length ? '：' + bad.join('、') : ''));
-  }
-
-  ok(a.write && a.write.keys && a.write.hintText && a.write.sample,
-     '★ 收尾的寫作題有 keys／hintText／sample');
-  /* ⚠️ hintText 只能講方向，不可以把 keys 的名稱寫進去 —— 那就是答案。 */
-  ok(!(a.write.keys || []).some(g => a.write.hintText.indexOf(g.name) >= 0),
-     '★ hintText 沒有把 keys 的名稱寫出來（那就是答案，貼上去就過了）');
+     '範本 2-1-1 七個步驟的資料都在（task／scene／analysis／quiz／goal）');
 
   ok((lv.quiz || []).length >= 6, '概念檢測題庫 ' + lv.quiz.length + ' 題（抽 5，建議 6 題以上）');
   ok(lv.quiz.every(q => q.ref !== undefined), '★ 每一題都指得回問題分析或情境（ref）');
