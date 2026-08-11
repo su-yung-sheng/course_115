@@ -12,7 +12,7 @@
      證書需要的耗時／答對題數改由 REPORT.unit 的 extra 一起寫進去。
      少一個集合、少一套安全規則、也不用再自動刪舊紀錄。
 
-   ⚠️ 這支是 _shared/ 的產物，改請改 _shared/quiz-firebase.js 再執行 sync_shared.py。
+   ★ 這裡就是正本，改這裡就好（2026-07 併成單一 repo 之後同步機制已移除）。
    ===================================================================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";

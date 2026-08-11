@@ -9,8 +9,10 @@
      <script src="shared/quiz-engine.js"></script>    版型與流程（本檔）
      <script type="module" src="shared/quiz-firebase.js"></script>  資料庫接線
 
-   ⚠️ 這支是 _shared/ 的產物，請改 _shared/quiz-engine.js 後執行 sync_shared.py，
-      不要直接改各 repo 裡 shared/ 的副本。
+   ★ 這裡就是正本，改這裡就好。
+     ⚠️ 這幾行本來寫著「請改 _shared/quiz-engine.js 再執行 sync_shared.py」——
+        那是 2026-07 併成單一 repo **之前**的做法，那支檔案和那個腳本都已經不存在。
+        照著做的話會去改一個不存在的檔案，然後以為改好了（見 docs/01 §3）。
 
    ⚠️ 本檔刻意寫成「一般 script」而非 module：
       module 會被延後執行，已登入的學生會先看到空白畫面再跳章節頁。

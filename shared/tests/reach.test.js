@@ -45,6 +45,12 @@ const KNOWN = {
   'stu_gmail_login_08.html': '課堂用的 Gmail 登入練習單，老師上課時直接給網址，不掛在系統裡',
   'stu_gmail_practise_08.html': '同上，Gmail 操作練習',
   '11501/scratch_ScratchGrader_teacher.html': '教師端的批改工具，從 teacher.html 開',
+  /* ⚠️ 2026-08-11：這裡曾經有 11501/music.html，理由寫「沒人連」——
+     那是錯的。它是第 3 關（演奏小星星）的參考教材，
+     由 content/flowchart.js 的 ref.href 指過去、嵌成 iframe。
+     當時的路徑解析寫錯（見 refs() 裡的 ⚠️），才把它算成孤兒。
+     ★ 教訓：要往 KNOWN 加東西之前，先確認「真的沒有人連」，
+       不要因為工具說沒有就相信 —— 工具也會錯。 */
   '11501/thinking.ipynb': 'Colab 筆記本，不是網頁',
   'shared/backend.ipynb': 'Colab AI 批改後端，不是網頁（兩學期共用一本）',
   'shared/template.html': '新增頁面用的空白範本，本來就不該被連到',
@@ -84,7 +90,7 @@ function refs(file) {
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/^\s*\/\/[^\n]*/gm, ' ');
   const out = [];
-  const dir = path.dirname(file);
+  const dir = norm(path.dirname(file));
   /* href="…" / src="…" / '…/xxx.html' 都算。
      ⚠️ 也要抓字串裡拼出來的路徑（teacher.html 的按鈕、hub 的資料表都是那樣寫的）。 */
   const re = /(?:href|src)\s*=\s*["']([^"'#?]+)|["']((?:\.{0,2}\/)?[\w./-]+\.(?:html|js))["']/g;
@@ -92,7 +98,21 @@ function refs(file) {
   while ((m = re.exec(src))) {
     let p = m[1] || m[2];
     if (!p || /^(https?:|mailto:|data:|javascript:|\/\/)/.test(p)) continue;
-    out.push(norm(path.posix.join(dir === '.' ? '' : dir, p)));
+    /* ⚠️ 相對路徑要相對「誰」，沒有單一答案。
+       content/flowchart.js 裡寫 href:'music.html'，那是**資料**，
+       真正拿去用的是上一層的 flowchart.html —— 所以它指的是
+       11501/music.html，不是 11501/content/music.html。
+
+       第一版只用「這個檔案自己的資料夾」去解，於是
+       11501/music.html 被判定成沒有人連的孤兒，而我照著它刪掉了
+       一個**第 3 關（演奏小星星）正在用的參考教材**。
+       ⇒ 依序試「自己的資料夾 → 上一層 → repo 根」，取第一個真的存在的。
+         寧可多算一個連得到，也不要誤刪。 */
+    const bases = [dir === '.' ? '' : dir, path.posix.dirname(dir), ''];
+    for (const b of bases) {
+      const cand = norm(path.posix.join(b === '.' ? '' : b, p));
+      if (fs.existsSync(path.join(root, cand))) { out.push(cand); break; }
+    }
   }
   return out;
 }

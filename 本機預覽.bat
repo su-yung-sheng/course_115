@@ -58,7 +58,7 @@ echo       教師端(下)      %BASE%/11502/teacher.html
 echo       積木模擬器試玩  %BASE%/shared/blocks-demo.html
 echo       Google 測試     %BASE%/shared/google-test.html
 echo       狀態檢查        %BASE%/shared/status.html?term=11501
-echo       名冊轉換工具    %BASE%/shared/migrate.html
+echo       題目分析      %BASE%/shared/qstat.html?term=11501
 echo.
 echo     結束請按 Ctrl+C 或關閉本視窗。
 echo ============================================

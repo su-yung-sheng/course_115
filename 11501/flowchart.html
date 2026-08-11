@@ -433,7 +433,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         }
       });
     });
-    /* 讓「程式評分」iframe 長成內容的高度：不出現內部捲軸，整頁只用外層捲軸。
+    /* 收下評分站回報的高度，讓 iframe 長成內容的高度：不出現內部捲軸，整頁只用外層捲軸。
 
        ⚠️ 2026-08-11 改法：高度由 **shared/grader.html 自己回報**（postMessage），
           這裡只負責收。原本是在這裡讀 iframe 的 contentDocument 自己量 ——
@@ -442,7 +442,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
           而且 scrolling="no" 連捲都捲不到。
           高度只有評分站自己最清楚，讓它自己講，兩邊就不會有一邊漏掉。
        ⚠️ 一定要驗 e.source：任何網頁都可以 postMessage 過來。 */
-    function autoSizeGraderFrame(){
+    function wireGraderHeight(){
       const f = document.getElementById('grader-frame');
       if(!f) return;
       window.addEventListener('message', (e) => {
@@ -1060,7 +1060,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             </div>
             </div>
           </div>`;
-        autoSizeGraderFrame();
+        wireGraderHeight();
         return;
       }
 
