@@ -81,7 +81,11 @@ function build(list, rename) {
     });
     return {
       uid: 'u' + Math.random(), id: x.id, args,
-      children: x.children ? build(x.children, rename) : (d.shape === 'c' ? [] : null)
+      /* c2（如果…否則）有兩個容器：children 是「那麼」，children2 是「否則」。 */
+      children: x.children ? build(x.children, rename)
+                           : ((d.shape === 'c' || d.shape === 'c2') ? [] : null),
+      children2: x.children2 ? build(x.children2, rename)
+                             : (d.shape === 'c2' ? [] : null)
     };
   });
 }
@@ -486,6 +490,68 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
     is(B._same(w3, worm, []), false, '   建立分身換成刪除分身 → 判錯');
   }
 
+  /* ── ★ 小鳥角色：雙向選擇（如果…否則）──────────────────
+     課本備課用書 p.72 的小鳥角色：
+        當綠旗被點擊／重複無限次｛定位到 鼠標 位置／
+          如果〈滑鼠鍵被按下？〉那麼｛造型換成 小鳥彎腰｝否則｛造型換成 小鳥站立｝｝
+
+     ⚠️ 這一塊有**兩個**容器，引擎原本只支援一個 children。
+        2026-08-11 為了它改了九個地方（建節點／plain／canon／eqOne／
+        render／detach／diffHint／renameParam 的 walk／存檔），
+        每一個漏掉都會壞在不同地方，所以下面連「畫得出來」一起驗。 */
+  section('★ 小鳥吃蟲（小鳥角色）：如果…否則');
+  {
+    const bird = [
+      { id:'events.whenflag' },
+      { id:'control.forever', children:[
+        { id:'motion.gotomouse' },
+        { id:'control.ifelse', args:[ { id:'sensing.mousedown' } ],
+          children:  [ { id:'looks.costume', args:['小鳥彎腰'] } ],
+          children2: [ { id:'looks.costume', args:['小鳥站立'] } ] }
+      ]}
+    ];
+    const got = build(bird);
+    is(B._same(got, bird, []), true, '★ 照課本拼出來 → 判對');
+
+    /* ★★ 這一條是雙向選擇的全部重點。
+       比對如果漏了「否則」那一格，學生把兩個造型放反
+       （按下→站立、放開→彎腰）照樣判對 —— 那正是要他分清楚的事。 */
+    const sw = JSON.parse(JSON.stringify(got));
+    const ie = sw[1].children[1];
+    const tmp = ie.children; ie.children = ie.children2; ie.children2 = tmp;
+    is(B._same(sw, bird, []), false,
+       '★★ 兩個造型放反（那麼／否則對調）→ 判錯');
+
+    /* 只填「那麼」不填「否則」= 退化成單向選擇，鬆手就不會站直。 */
+    const half = JSON.parse(JSON.stringify(got));
+    half[1].children[1].children2 = [];
+    is(B._same(half, bird, []), false, '   「否則」那格空著 → 判錯');
+
+    /* 換成單向的 control.if（同樣只填那麼）也要判錯 —— 積木本身就不同。 */
+    const one = JSON.parse(JSON.stringify(got));
+    one[1].children[1].id = 'control.if';
+    one[1].children[1].children2 = null;
+    is(B._same(one, bird, []), false, '   換成單向的「如果…那麼」→ 判錯');
+
+    /* 畫面：兩個容器 ＋ 中間那條「否則」都要真的畫出來。
+       ⚠️ 只驗判定不驗畫面的話，會出現「判得對但學生根本沒地方放」。 */
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const sim = B.mount(host, {
+      palette: ['events.whenflag','control.forever','control.ifelse',
+                'motion.gotomouse','looks.costume','sensing.mousedown'],
+      goal: bird, stepMs: 0
+    });
+    sim.load(got);
+    is(host.querySelectorAll('.bk-script .bk-slot').length, 3,
+       '   工作區有 3 個容器（重複無限次 1 ＋ 如果否則 2）');
+    is(host.querySelectorAll('.bk-script .bk-else').length, 1,
+       '   中間那條「否則」畫得出來');
+    is(/否則/.test(host.querySelector('.bk-script').textContent), true,
+       '   畫面上看得到「否則」兩個字');
+    host.remove();
+  }
+
   console.log('\n── ★ 拼圖要的數字都有交代 ──');
   ['2-1-1', '2-1-2', '2-1-3'].forEach(id => {
     const lv = L[id];
@@ -502,6 +568,7 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
           });
         }
         walk(b.children);
+        walk(b.children2);   /* 如果…否則的「否則」那一格 */
       });
     })(lv.goal);
 

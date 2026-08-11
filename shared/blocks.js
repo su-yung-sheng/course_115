@@ -174,6 +174,14 @@
     /* 如果…那麼：條件那一格要塞得下一顆六角形的判斷積木
        （碰到顏色？／滑鼠鍵被按下？／兩個用「且」串起來）。 */
     'control.if':       { cat:'control', shape:'c',     label:'如果 %s 那麼', args:[''] },     // CONTROL_IF
+    /* 如果…否則（雙向選擇結構）—— 課本明列的學習目標之一。
+       ★ shape:'c2' 是**兩個**容器：children 是「那麼」，children2 是「否則」。
+         引擎原本只支援一個容器，2026-08-11 為了這一塊改了九個地方
+         （建節點／存檔／正規化／比對／畫面／摘除／差在哪／兩處 walk）。
+       ⚠️ 比對一定要連「否則」那一格一起比。漏掉的話，
+          學生把兩個造型放反（按下→站立、否則→彎腰）照樣判對 ——
+          而那正是雙向選擇要他分清楚的事。 */
+    'control.ifelse':   { cat:'control', shape:'c2',    label:'如果 %s 那麼', args:[''] },     // CONTROL_IF_ELSE
     'control.clone':    { cat:'control', shape:'stack', label:'建立 自己 的分身' },            // CONTROL_CREATECLONE
     'control.whenclone':{ cat:'control', shape:'hat',   label:'當分身產生' },                  // CONTROL_STARTASCLONE
     'control.delclone': { cat:'control', shape:'stack', label:'分身刪除' },                    // CONTROL_DELETETHISCLONE
@@ -315,6 +323,10 @@
       '.bk-c>.bk-row{padding-bottom:4px}',
       '.bk-slot{min-height:24px;margin:0 0 0 15px;padding:0;',
       '         background:var(--bk-canvas);border-radius:4px 0 0 4px}',
+      /* 「否則」那一條：夾在兩個容器中間，用同一個積木色 ——
+         要看得出是同一塊積木的一部分，不是兩塊疊在一起。 */
+      '.bk-else{background:var(--c);color:#fff;font-size:13px;font-weight:500;',
+      '        padding:4px 12px;line-height:1.4}',
       '.bk-foot{height:14px;background:var(--c);',
       '         clip-path:polygon(0 0, 100% 0, 100% calc(100% - 4px), 30px calc(100% - 4px),',
       '                           26px 100%, 16px 100%, 12px calc(100% - 4px), 0 calc(100% - 4px))}',
@@ -367,7 +379,13 @@
      node = { uid, id, args:[…], children:[node…] }（children 只有 C 型積木有） */
   function makeNode(id) {
     var d = DEFS[id];
-    return { uid: uid(), id: id, args: (d.args || []).slice(), children: d.shape === 'c' ? [] : null };
+    /* ★ c2 ＝ 兩個容器的 C 型（如果…否則）。
+       children 是「那麼」那一格，children2 是「否則」那一格。
+       ⚠️ 兩格都要建成陣列 —— 其中一格是 null 的話，
+          學生把積木拖進去時會炸在 push()，而畫面上只看到積木彈回去。 */
+    return { uid: uid(), id: id, args: (d.args || []).slice(),
+             children:  (d.shape === 'c' || d.shape === 'c2') ? [] : null,
+             children2: (d.shape === 'c2') ? [] : null };
   }
 
   /** 樹 → 可比對的純資料（丟掉 uid）。這是「原樣」，名稱不動 —— 存進資料庫用這個 */
@@ -379,6 +397,7 @@
     return (list || []).map(function (n) {
       var o = { id: n.id, args: n.args.map(arg) };
       if (n.children) o.children = plain(n.children);
+      if (n.children2) o.children2 = plain(n.children2);
       return o;
     });
   }
@@ -427,7 +446,8 @@
         if (typeof args[i] !== 'object') args[i] = nameKey(args[i], (d.idNs || [])[k]);
       });
       var o = { id: n.id, args: args };
-      if (d.shape === 'c') o.children = walk(n.children);
+      if (d.shape === 'c' || d.shape === 'c2') o.children = walk(n.children);
+      if (d.shape === 'c2') o.children2 = walk(n.children2);
       return o;
     }
     function walk(l) { return (l || []).map(one); }
@@ -473,6 +493,12 @@
     if (g.children || w.children) {
       if (!eqList(g.children || [], w.children || [], loose)) return false;
     }
+    /* ⚠️ 「否則」那一格也要比。
+       漏掉的話，學生把兩個造型放反（按下→站立、否則→彎腰）
+       照樣判對 —— 而那正是雙向選擇要學生分清楚的事。 */
+    if (g.children2 || w.children2) {
+      if (!eqList(g.children2 || [], w.children2 || [], loose)) return false;
+    }
     return true;
   }
   /** 這份程式和目標對上了幾塊（只看最外層，用來挑「差在哪」要拿誰來比） */
@@ -517,6 +543,7 @@
             }
           }
           walk(n.children);
+          walk(n.children2);
         });
       }
       walk(defs); walk(program);
@@ -702,10 +729,21 @@
       });
       b.appendChild(head);
 
-      if (d.shape === 'c') {
+      if (d.shape === 'c' || d.shape === 'c2') {
         var slot = el('div', 'bk-slot bk-stack');
         slot.dataset.slot = '1';
         b.appendChild(slot);
+        /* c2（如果…否則）：中間插一條「否則」，再開第二個容器。
+           ★ 中間那一條要看得出來是同一塊積木的一部分，不是兩塊疊在一起 ——
+             所以用同一個 --c 顏色，只在文字上區分。 */
+        if (d.shape === 'c2') {
+          var mid = el('div', 'bk-else', '否則');
+          b.appendChild(mid);
+          var slot2 = el('div', 'bk-slot bk-stack');
+          slot2.dataset.slot = '2';
+          b.appendChild(slot2);
+          if (!isTemplate) fill(slot2, node.children2);
+        }
         var foot = el('div', 'bk-foot');
         b.appendChild(foot);
         if (!isTemplate) fill(slot, node.children);
@@ -784,6 +822,7 @@
             }
           });
           walk(n.children);
+          walk(n.children2);
         });
       })(defNode.children);
     }
@@ -969,6 +1008,7 @@
       for (var i = 0; i < list.length; i++) {
         if (list[i] === node) { list.splice(i, 1); return true; }
         if (list[i].children && detach(list[i].children, node)) return true;
+        if (list[i].children2 && detach(list[i].children2, node)) return true;
       }
       return false;
     }
@@ -1242,6 +1282,8 @@
         }
         if (want[i].children && !eqList(got[i].children || [], want[i].children, loose))
           return diffHint(got[i].children, want[i].children, at + '裡面的');
+        if (want[i].children2 && !eqList(got[i].children2 || [], want[i].children2, loose))
+          return diffHint(got[i].children2, want[i].children2, at + '「否則」裡面的');
       }
       return where ? where + '順序不太對。' : '順序好像不太對，再對照一次任務說明。';
     }
