@@ -335,12 +335,19 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
   is(/不同的解法|一模一樣/.test(l1.alts[0].note), true, '另解要說明「這樣也對」，不是默默放行');
   is(/4 次|1 次/.test(l1.alts[0].note), true, '   並且講出差在哪（放筆收筆做幾次）');
 
-  /* 定位座標換個數字仍然算對 —— 課本 p.136：
-     「坐標數值不一定要一樣，目的是定出起始位置，避免圖形超出畫面。」 */
+  /* ★ 2026-08-11 改：定位座標**要照著填**。
+     課本 p.136 說「坐標數值不一定要一樣」，所以原本設了 loose ——
+     但同一句話的後半是「目的是**避免圖形超出畫面**」。
+     只放寬不檢查的話，我們等於只做了前半：
+     學生填 x:200 照樣判「組對了」，而六個正方形有一半在畫面外。
+     ⇒ 這是繪圖題，畫到畫面外就是錯的，不是風格差異。
+       座標寫死，並在 build 裡講明為什麼是這個起點。 */
   const moved = JSON.parse(JSON.stringify(l1.goal));
-  moved.find(n => n.id === 'motion.goto').args = [-150, -30];
-  is(B._same(moved, l1.goal, l1.loose), true, '★ 定位改成 -150,-30 仍然算對');
-  is(B._same(moved, l1.goal), false, '   （不給 loose 就會判錯 —— 確認 loose 真的有作用）');
+  moved.find(n => n.id === 'motion.goto').args = [200, -30];
+  is(B._same(moved, l1.goal, l1.loose), false,
+     '★ 定位改成會畫出畫面外的 x:200 → 判錯');
+  is(!l1.loose || l1.loose.length === 0, true,
+     '★ 第 1 關不再放寬定位（放寬就等於允許畫到畫面外）');
 
   /* 寬鬆只給定位，別的數字不能跟著鬆掉 */
   const w1 = JSON.parse(JSON.stringify(l1.goal));
@@ -384,6 +391,35 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
      ⚠️ mustDerive 不是白名單（★ 不要叫 derive —— 那個名字已經被「推導」那一步用掉了），是**回答**。每加一個數字進去，
         等於在說「這個我刻意不講，要他自己想出來」——
         寫不出這句話的數字，就是該寫進 build 的。 */
+  /* ── 空格的寬度 ─────────────────────────────────────
+     ⚠️ 原本一律 42px。「-140」「-180」「0.2」都塞不下 ——
+        數字被切掉一半，而學生看到的是「我打的東西不見了」，
+        他會以為自己打錯，然後刪掉重打一次。
+     ★ 但也不能全部放大：積木要看得出長短。
+       「移動 10 點」和「定位到 x:-140 y:-20」一樣寬的話，
+       整段程式會變成一排一模一樣的長條，
+       而 Scratch 的積木本來就是靠形狀和長度在幫人記路。 */
+  section('空格寬度：短的維持小巧，長的要塞得下');
+  {
+    document.getElementById('sim').innerHTML = '';
+    const lv = L['2-1-3'];      // 這一關有 -180 / 120 / -80 這種四位數字
+    const sim = B.mount(document.getElementById('sim'),
+      { palette: lv.palette, goal: lv.goal, stepMs: 0 });
+    sim.load(build(lv.goal));
+    const w = {};
+    [...document.querySelectorAll('.bk-script .bk-in')].forEach(i => {
+      if (w[i.value] == null) w[i.value] = parseInt(i.style.width, 10);
+    });
+    is(w['4'] === 42 && w['90'] === 42, true,
+       `一到兩位數維持 42px（4→${w['4']}、90→${w['90']}）`);
+    is(w['-180'] > w['90'], true,
+       `★ 「-180」要比「90」寬才塞得下（${w['-180']} > ${w['90']}）`);
+    is(w['-180'] <= 96, true, `   但有上限，不會撐爆積木（${w['-180']}）`);
+    /* 每一格都要有算過寬度 —— 漏掉的那幾格會退回 CSS 的固定值。 */
+    const none = [...document.querySelectorAll('.bk-script .bk-in')].filter(i => !i.style.width);
+    is(none.length, 0, '   每一個空格都算過寬度');
+  }
+
   console.log('\n── ★ 拼圖要的數字都有交代 ──');
   ['2-1-1', '2-1-2', '2-1-3'].forEach(id => {
     const lv = L[id];

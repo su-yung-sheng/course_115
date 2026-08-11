@@ -149,6 +149,34 @@
   }
   function uid() { return 'b' + Math.random().toString(36).slice(2, 9); }
 
+  /**
+   * 空格的寬度照內容長度算。
+   *
+   * ★ 為什麼不用固定寬度
+   *   原本一律 42px。「-140」「0.2」「200」都塞不下 ——
+   *   數字被切掉一半，而學生看到的是「我打的東西不見了」，
+   *   他會以為自己打錯，然後刪掉重打一次。
+   *   組合區右邊本來就空著一大片，沒有理由省那幾十像素。
+   *
+   * ★ 為什麼不乾脆全部放大
+   *   積木要看得出長短。「移動 10 點」和「定位到 x:-140 y:-20」
+   *   一樣寬的話，整段程式會變成一排一模一樣的長條，
+   *   而 Scratch 的積木本來就是靠形狀和長度在幫人記路。
+   *   ⇒ 短的維持小巧，長的才長出來。
+   *
+   * ⚠️ 上限要留：貼進一長串文字時，積木不可以被撐到跑出畫面。
+   */
+  function fitIn(input, inRep) {
+    if (!input) return;
+    var big = /(^| )s( |$)/.test(input.className);
+    var n = String(input.value == null ? '' : input.value).length;
+    /* 橢圓（回報值）裡的空格用小一號 —— 它本來就該比一般積木秀氣。 */
+    var min = inRep ? (big ? 64 : 38) : (big ? 82 : 42);
+    var max = inRep ? (big ? 150 : 84) : (big ? 190 : 96);
+    /* 12px 的字大約 8px 寬（數字比中文窄），再加左右內距。 */
+    input.style.width = Math.max(min, Math.min(max, n * 8 + 24)) + 'px';
+  }
+
   /* 哪些積木是「定義」。散在五、六個地方各寫一次 id 比對，
      以後新增一種定義積木就一定會漏掉其中一處（而且不會報錯，
      只會變成「那塊積木放進函式區卻不被當成定義」）。集中在這裡。 */
@@ -204,10 +232,19 @@
       '.bk-ghost{position:fixed;z-index:9999;pointer-events:none;opacity:.92;',
       '          filter:drop-shadow(0 6px 10px rgba(0,0,0,.3))}',
       /* 參數欄位：Scratch 是白色圓角膠囊 */
+      /* ★ 空格的寬度是**照內容算**的（見 fitIn()），這裡只給預設值。
+         ⚠️ 原本固定 42px：「-140」「0.2」「200」都塞不下，
+            數字被切掉一半，學生會以為自己打錯。
+            而組合區右邊本來就空著一大片 —— 沒有理由省那幾十像素。 */
       '.bk-in{width:42px;border:0;border-radius:12px;padding:3px 8px;margin:0 3px;',
       '       font:inherit;font-size:12px;font-weight:500;color:#1f2937;text-align:center;',
       '       background:#fff;outline:0}',
       '.bk-in.s{width:82px}',
+      /* 數字框的上下小箭頭吃掉一半空間，而且點下去很容易誤改數值 —— 拿掉。
+         學生要改數字用打的就好。 */
+      '.bk-in[type=number]{-moz-appearance:textfield;appearance:textfield}',
+      '.bk-in[type=number]::-webkit-outer-spin-button,',
+      '.bk-in[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}',
       /* ★ 橢圓形的回報值積木（Scratch 的圓角膠囊） */
       '.bk-rep{display:inline-flex;align-items:center;gap:3px;background:var(--c);',
       '        color:#fff;border-radius:999px;padding:2px 4px;margin:0 3px;font-size:12px;',
@@ -629,7 +666,7 @@
 
     /* 一個「空格」：可以打字，也可以被拖一顆橢圓積木進來。
        DOM 上掛 _node/_idx，拖曳時才知道要塞進誰的第幾格。 */
-    function renderHole(node, idx, kind, isTemplate) {
+    function renderHole(node, idx, kind, isTemplate, inRep) {
       var hole = el('span', 'bk-hole');
       hole._node = node; hole._idx = idx; hole._tpl = !!isTemplate;
       var v = node.args[idx];
@@ -639,7 +676,13 @@
         var i = el('input', 'bk-in' + (kind === '%s' ? ' s' : ''));
         i.value = v == null ? '' : v;
         if (kind === '%n') i.type = 'number';
+        /* ⚠️ 橢圓（回報值）裡的空格要用小一號的尺寸。
+           這裡不能靠 closest('.bk-rep') 判斷 —— 這個時候
+           input 還沒被掛進 DOM，closest 一定回 null。
+           所以由呼叫端明講「我在橢圓裡」。 */
+        fitIn(i, inRep);
         i.addEventListener('input', function () {
+          fitIn(i, inRep);
           var before = node.args[idx];
           node.args[idx] = i.value;
           /* 改的是「定義」上的參數名 → 定義裡面已經放好的橢圓要跟著改。
@@ -668,7 +711,7 @@
       r.dataset.id = node.id;
       var parts = d.label.split(/(%n|%s)/), ai = 0;
       parts.forEach(function (p) {
-        if (p === '%n' || p === '%s') { r.appendChild(renderHole(node, ai, p, isTemplate)); ai++; }
+        if (p === '%n' || p === '%s') { r.appendChild(renderHole(node, ai, p, isTemplate, true)); ai++; }
         else if (p) r.appendChild(el('span', '', p));
       });
       r.addEventListener('pointerdown', function (e) {
