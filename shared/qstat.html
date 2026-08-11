@@ -125,19 +125,30 @@ async function load() {
     ]);
     const roster = {};
     rs.forEach(d => { roster[d.id] = d.data(); });
-    const out = [];
-    ps.forEach(d => {
-      const p = d.data() || {};
+    const prog = {};
+    ps.forEach(d => { prog[d.id] = d.data() || {}; });
+
+    /* ★ 名單以**名冊**為準，不是以進度文件為準。
+       ⚠️ 第一版反過來寫（跑 progress、再去名冊撈姓名），結果是
+          「還沒有人做過測驗的班級，整個班在下拉選單裡不存在」——
+          而那正是你最需要看到的班（一題都還沒做，或全班都卡住）。
+          症狀是「班級只有一部分」，看起來像資料壞了，其實是名單來源選錯。
+       ⇒ 名冊是「這學期有哪些學生」的唯一正解；
+         進度文件只回答「他做過什麼」，沒做過就是空的，不是不存在。 */
+    state.students = Object.keys(roster).sort().map(sid => {
+      const p = prog[sid] || {};
       const mod = ((p.modules || {})[MODULE]) || {};
-      out.push({
-        id: d.id,
-        name: (roster[d.id] || {}).name || p.name || d.id,
-        cls: clsOf(d.id, roster[d.id]),
+      return {
+        id: sid,
+        name: (roster[sid] || {}).name || p.name || sid,
+        cls: clsOf(sid, roster[sid]),
         qstat: mod.qstat || {}
-      });
+      };
     });
-    state.students = out;
-    if (!state.cls) state.cls = '';
+    /* 一載入就選好第一個班（和教師成績登錄系統、繳交審核頁一樣，
+       一開啟就有一個班在作用中，不必先點一下才看得到東西）。 */
+    const cs = [...new Set(state.students.map(s => s.cls))].sort();
+    if (!state.cls && cs.length) state.cls = cs[0];
     state.err = '';
   } catch (e) {
     /* 讀不到就講清楚是什麼問題 —— 「載入失敗」四個字幫不上任何忙。 */
@@ -175,27 +186,46 @@ function draw() {
   const grouped = QSTAT.byClass(state.students);
   const total = grouped[state.cls] || {};
   const rows = QSTAT.rank(total, BANK, state.minN);
-  const done = state.students.filter(s => Object.keys(s.qstat || {}).length).length;
+  /* 「有作答紀錄」只算目前這一班 —— 切到 801 卻看到全校的人數，
+     那個數字對不上眼前的清單，只會讓人懷疑資料是不是錯的。 */
+  const inCls = state.students.filter(s => !state.cls || s.cls === state.cls);
+  const done = inCls.filter(s => Object.keys(s.qstat || {}).length).length;
+
+  /* 班級：一排藥丸分頁，和教師成績登錄系統、繳交審核頁同一套操作。
+     ★ 不加「班級：」字樣，px 也收窄一點 —— 十二個班要排得下一行。
+       多那三個字就會擠掉最後一班，然後 812 自己掉到第二行。
+     ★ 也不顯示人數：這一列是用來切換的，不是用來讀數字的。
+       每顆按鈕後面掛一個括號，眼睛要多過濾一次才找得到班號。 */
+  const pill = (val, label, on) => `
+    <button data-cls="${esc(val)}" class="px-4 py-2 rounded-full text-sm transition-all duration-200
+      ${on ? 'font-bold bg-blue-600 text-white shadow-md transform hover:scale-105'
+           : 'font-medium bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 hover:shadow-sm'}">
+      ${esc(label)}</button>`;
 
   box.innerHTML = `
-    <div class="bg-white rounded-2xl border border-slate-200 shadow p-4 mb-4 flex flex-wrap items-center gap-3 pop">
-      <label class="text-sm font-bold text-slate-600">班級</label>
-      <select id="cls" class="border-2 border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold">
-        <option value="">全部（${state.students.length} 人）</option>
-        ${classes.map(c => `<option value="${esc(c)}" ${state.cls === c ? 'selected' : ''}>${esc(c)}　(${state.students.filter(s => s.cls === c).length} 人)</option>`).join('')}
-      </select>
-      <label class="text-sm font-bold text-slate-600 ml-2">至少被抽到</label>
-      <select id="minN" class="border-2 border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold">
-        ${[1, 5, 10, 20].map(n => `<option value="${n}" ${state.minN === n ? 'selected' : ''}>${n} 次</option>`).join('')}
-      </select>
-      <span class="text-xs text-slate-400 ml-auto">有作答紀錄的學生：${done} / ${state.students.length}</span>
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4 pop">
+      <div class="flex items-center gap-2 flex-wrap">
+        ${classes.length
+          ? classes.map(c => pill(c, c, state.cls === c)).join('') + pill('', '全部', state.cls === '')
+          : '<span class="text-sm text-slate-400">名冊是空的 —— 先到教師端建立名冊</span>'}
+      </div>
+      <div class="flex items-center gap-3 flex-wrap mt-4 pt-4 border-t border-slate-100">
+        <label class="text-sm font-bold text-slate-600">至少被抽到</label>
+        <select id="minN" class="border-2 border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold">
+          ${[1, 5, 10, 20].map(n => `<option value="${n}" ${state.minN === n ? 'selected' : ''}>${n} 次</option>`).join('')}
+        </select>
+        <span class="text-xs text-slate-400 ml-auto">
+          ${state.cls ? esc(state.cls) + ' 班' : '全部'}：有作答紀錄 ${done} / ${inCls.length} 人
+        </span>
+      </div>
     </div>`;
 
   if (!rows.length) {
     box.insertAdjacentHTML('beforeend', `
       <div class="bg-white rounded-2xl border border-slate-200 shadow p-8 text-center text-slate-500 pop">
-        <p class="font-bold mb-1">還沒有資料</p>
+        <p class="font-bold mb-1">${state.cls ? esc(state.cls) + ' 班還沒有資料' : '還沒有資料'}</p>
         <p class="text-sm leading-relaxed">
+          ${state.cls ? '上面可以切到別的班看看。<br>' : ''}
           逐題統計是 2026-08-11 才開始記的，要等學生做過章節測驗才會有東西。<br>
           <span class="text-slate-400 text-xs">若已經上過課還是空的：F12 看主控台有沒有
           <code>[qstat]</code> 開頭的警告 —— 學生端寫不進去的話這裡就會是空的。</span>
@@ -255,7 +285,9 @@ function who(r) {
 }
 
 function wire() {
-  const c = el('cls'); if (c) c.onchange = () => { state.cls = c.value; state.open = ''; draw(); };
+  document.querySelectorAll('[data-cls]').forEach(b => {
+    b.onclick = () => { state.cls = b.dataset.cls; state.open = ''; draw(); };
+  });
   const m = el('minN'); if (m) m.onchange = () => { state.minN = +m.value; draw(); };
   document.querySelectorAll('[data-q]').forEach(b => {
     b.onclick = () => { state.open = (state.open === b.dataset.q) ? '' : b.dataset.q; draw(); };

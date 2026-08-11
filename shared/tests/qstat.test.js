@@ -168,5 +168,30 @@ section('接上去的地方');
      '★ 統計是累加，不是像成績那樣「取最好的一次」');
 }
 
+/* ── 教師端那一頁 ─────────────────────────────────
+   ⚠️ 2026-08-11 實際踩到：班級清單只出現一部分。
+      原因是名單跑的是 progress 集合，再回頭去名冊撈姓名 ——
+      於是「還沒有人做過測驗的班級」整個班在畫面上不存在，
+      而那正是最需要看到的班（一題都還沒做、或全班都卡住）。
+   ★ 名冊是「這學期有哪些學生」的唯一正解；
+     進度文件只回答「他做過什麼」，沒做過是空的，不是不存在。 */
+section('★ 教師端：名單以名冊為準');
+{
+  const html = fs.readFileSync(path.join(root, 'shared', 'qstat.html'), 'utf8');
+  const code = html.replace(/<!--[\s\S]*?-->/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
+  ok(/Object\.keys\(roster\)/.test(code),
+     '★ 學生名單是從 roster 展開的 —— 從 progress 展開的話，沒做過的班會整個消失');
+  ok(!/ps\.forEach\([\s\S]{0,200}out\.push/.test(code),
+     '   不是跑 progress 再回頭撈名冊');
+  /* 班級用按鈕，不用下拉 —— 和教師成績登錄系統、繳交審核頁同一套操作。
+     ⚠️ 也不顯示人數：這一列是用來切換的，不是用來讀數字的。 */
+  ok(/data-cls=/.test(code) && !/<select id="cls"/.test(code),
+     '★ 班級是一排按鈕，不是下拉選單（和系統其他頁一致）');
+  ok(!/data-cls[\s\S]{0,200}人\)/.test(code), '   按鈕上不掛人數');
+  /* 一進來就選好第一個班，不必先點一下才看得到東西。 */
+  ok(/if \(!state\.cls && cs\.length\) state\.cls = cs\[0\]/.test(code),
+     '   一載入就選好第一個班');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
