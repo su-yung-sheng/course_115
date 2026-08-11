@@ -454,7 +454,19 @@ if (!window.CONFIG) {
             'action=ping&key=' + encodeURIComponent(g.KEY || '');
     return fetch(u, { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) {
       if (!j || !j.ok) {
-        set(el, 'bad', '回應不正常', row('回應', esc(JSON.stringify(j).slice(0, 200))));
+        /* ★ GAS 回的錯誤訊息本來就寫得很清楚（它會告訴你伺服器的通行碼
+           幾個字、你送來幾個字）。原封不動端出來就好 ——
+           包成一句「回應不正常」再附上一坨 JSON，等於把答案藏起來。 */
+        var msg = (j && j.error) ? String(j.error) : JSON.stringify(j).slice(0, 200);
+        var isKey = /通行碼/.test(msg);
+        set(el, 'bad', isKey ? '通行碼對不起來' : '回應不正常',
+            row('它說', '<span class="text-rose-700">' + esc(msg) + '</span>') +
+            (isKey
+              ? '<div class="mt-2 text-slate-600 leading-relaxed">' +
+                'config.js 的 <span class="font-mono text-xs">AIGUIDE.KEY</span> 要和 Apps Script ' +
+                '「專案設定 → 指令碼屬性」裡的 <span class="font-mono text-xs">QUERY_KEY</span> ' +
+                '<b>一模一樣</b>（含大小寫，尾端不要有空白）。</div>'
+              : ''));
         return;
       }
       var d = row('版本', '<span class="font-mono">' + esc(j.version || '不明') + '</span>') +
