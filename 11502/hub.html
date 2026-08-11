@@ -140,7 +140,16 @@
 
     // ===== 狀態呈現對照 =====
     const STATUS = {
-      'todo':        { label:'尚未開始', badge:'bg-white/60 text-slate-500 border-slate-300', dim:true },
+      /* ⚠️ 2026-08-11：dim 從 true 改成 false。
+         原本「尚未開始」的卡片會套 opacity-70 —— 而學期一開始
+         **每一張都是尚未開始**，於是整頁看起來霧霧的、像不能點。
+         半透明＋hover 才變亮，那是「停用」的慣用寫法，
+         但這四張明明都點得進去 —— 等於用視覺語言說了相反的話。
+         ★ 狀態改由徽章講（「尚未開始／進行中／已通關」本來就寫在上面），
+           而「接下來做哪一個」由 👉 下一關 的外框講。
+         ⚠️ 把沒做的調暗，其實會和「下一關」的提示打架：
+            該最顯眼的正是那張還沒做的。 */
+      'todo':        { label:'尚未開始', badge:'bg-white/60 text-slate-500 border-slate-300', dim:false },
       'in-progress': { label:'進行中',   badge:'bg-white/70 text-amber-700 border-amber-300', dim:false },
       'pass':        { label:'已通關',   badge:'bg-white/80 text-emerald-700 border-emerald-400', dim:false },
       'pending':     { label:'審核中',   badge:'bg-white/70 text-blue-700 border-blue-300', dim:false }
