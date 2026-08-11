@@ -315,7 +315,7 @@
     // 沒接上進度模組（或讀不到）就直接進閱讀頁，不擋學生
     if (!window.REPORT) { proceedToStudy(id); return; }
 
-    REPORT.history(C.moduleId, id).then(function (list) {
+    window.REPORT.history(C.moduleId, id).then(function (list) {
       recent = (list || []).slice(0, KEEP);
       if (!recent.length) { proceedToStudy(id); return; }
 
@@ -427,7 +427,13 @@
           每次都寫的話，一堂課三十個人就是上千次寫入，
           而寫入額度是整個專案共用的。挑戰結束才寫一次。
        ⚠️ 沒載到 qstat.js 就跳過，不要讓它擋住答題。 */
-    if (global.QSTAT) QSTAT.bump(runStat, current.q, right);
+    /* ⚠️ 一定要 window. 前綴。
+       這一支的外殼是 `(function () {…})()` —— **沒有 global 參數**，
+       而我第一版照著 combo.js／qstat.js 的樣子寫成 global.QSTAT，
+       於是每按一次「送出答案」就丟 ReferenceError：
+       global is not defined。
+       症狀是「送出答案沒有反應」，而題目照樣停在畫面上。 */
+    if (window.QSTAT) window.QSTAT.bump(runStat, current.q, right);
 
     if (right) {
       score++; streak++;
@@ -448,10 +454,10 @@
 
   /** 把這一次挑戰累積的逐題紀錄寫進進度文件（只寫一次） */
   function saveStat() {
-    if (!global.QSTAT || !window.REPORT || !Object.keys(runStat).length) return;
+    if (!window.QSTAT || !window.REPORT || !Object.keys(runStat).length) return;
     var m = runStat;
     runStat = {};                       // 先清掉，避免重複送出同一批
-    REPORT.qstat(C.moduleId, m).catch(function (e) {
+    window.REPORT.qstat(C.moduleId, m).catch(function (e) {
       /* 統計存不進去不可以影響闖關 —— 它是給老師看的，不是學生的成績。 */
       console.warn('[qstat] 題目統計沒存成功（不影響闖關）', e);
     });
@@ -481,8 +487,8 @@
     // 回報到統一進度（hub 才會亮燈）；星等一律走 GRADING，不在這裡寫死門檻。
     // extra 的欄位只寫進 history，供事後檢視證書用（原本是另一個 quiz_records 集合）。
     if (window.REPORT && window.GRADING) {
-      var star = GRADING.ethicsStar(rate);
-      REPORT.unit(C.moduleId, currentId, {
+      var star = window.GRADING.ethicsStar(rate);
+      window.REPORT.unit(C.moduleId, currentId, {
         star: star, score: rate,
         extra: { duration: dur, correct: score, total: total }
       }).then(paintBadges)
@@ -493,7 +499,7 @@
   /* ── 通關標記 ────────────────────────────────────────── */
   function paintBadges() {
     if (!window.REPORT) return Promise.resolve();
-    return REPORT.get(C.moduleId).then(function (mod) {
+    return window.REPORT.get(C.moduleId).then(function (mod) {
       var units = (mod && mod.units) || {}, done = 0;
       document.querySelectorAll('.qz-open').forEach(function (btn) {
         var id = btn.getAttribute('data-ch');
@@ -566,7 +572,7 @@
   bind();
 
   // 快速通道：闖關基地已快取身分時直接進章節頁，不讓學生看到「正在確認身分…」
-  var cached = (window.SSO && SSO.me) ? SSO.me() : null;
+  var cached = (window.SSO && window.SSO.me) ? window.SSO.me() : null;
   if (cached) window.QUIZ.setUser(cached);
 
 })();
