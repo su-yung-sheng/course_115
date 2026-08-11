@@ -1,11 +1,13 @@
 /* =====================================================================
-   手動排序挑戰（sort.html 與程式設計關卡共用一份）
+   排序實驗室（第 6、7 關）：手動挑戰 ＋ 30 筆自動播放
    ---------------------------------------------------------------------
-   ★ 為什麼要抽出來
-     這個挑戰原本寫死在 11502/sort.html 裡。第 6、7 關也需要同一件事，
-     複製一份的話就有兩套規則 —— 而規則一旦不一致，
-     學生在探索頁玩熟的做法，到了關卡頁會被判錯，
-     他不會覺得是兩份程式不同，只會覺得自己記錯。
+   ★ 來歷
+     這兩樣原本都在 11502/sort.html（一支獨立的「排序大冒險」頁面）。
+     2026-08-07 先把手動挑戰抽出來共用；
+     2026-08-12 再把自動排序動畫改寫進來，然後**刪掉 sort.html**。
+     ⚠️ 中間一度是把整支 sort.html 用 iframe 嵌進關卡 ——
+        那不叫整合，只是把它藏起來：用詞、判定、畫面都還是兩套。
+        真正的整合是「挑出對得上課本的那一段，用系統自己的樣子重寫」。
 
    ★ 選擇排序法跟課本走：兩個清單
      原本 sort.html 的選擇排序是「和邊界那一格對調」（原地交換），
@@ -113,6 +115,80 @@
     return [42, 17, 93, 28, 61, 35];
   }
 
+  /* ── 自動播放：30 筆資料跑一遍 ─────────────────────
+     ★ 為什麼手動之外還要有這個
+       手動只排得動六個 —— 而六個排起來一點都不費力，
+       學生不會覺得「排序很花時間」。
+       課本 p.12 的教學叮嚀就建議用動畫讓學生對大量資料有感。
+       ⇒ 30 筆自動跑一遍，而且**把比較次數印出來**。
+         那個數字接得上第 10 關的搜尋大比拼 ——
+         排序與搜尋都在問同一件事：資料變多的時候，要比幾次？
+
+     ★ 為什麼先算好每一格畫面，再播
+       原本 sort.html 是把 await sleep() 混在演算法裡 ——
+       演算法和動畫綁在一起，就沒辦法單獨測「它排得對不對」。
+       ⇒ plan() 是純函式：吃一個陣列，吐出每一步的畫面。
+         播放器只負責一格一格放。演算法對不對，測試裡直接驗。
+
+     一格畫面（frame）：
+       arr      這一刻的排列
+       cmp      這一刻正在比的兩個位置（畫成高亮）
+       best     目前找到的最小值位置（只有選擇排序用）
+       done     第 done 項之前都排好了（畫成綠色）
+       n        到這一刻為止比了幾次 */
+  function plan(items, mode, order) {
+    var a = items.slice().map(Number), n = a.length, frames = [], cmp = 0;
+    function shot(c, best, done) {
+      frames.push({ arr: a.slice(), cmp: c || null,
+                    best: (best == null ? null : best), done: done || 0, n: cmp });
+    }
+    var better = function (x, y) {
+      return order === 'desc' ? x > y : x < y;
+    };
+
+    shot(null, null, 0);
+    if (mode === 'bubble') {
+      for (var i = 0; i < n - 1; i++) {
+        for (var j = 0; j < n - 1 - i; j++) {
+          cmp++; shot([j, j + 1], null, i ? n - i : 0);
+          if (better(a[j + 1], a[j])) {
+            var t = a[j]; a[j] = a[j + 1]; a[j + 1] = t;
+            shot([j, j + 1], null, i ? n - i : 0);
+          }
+        }
+      }
+    } else if (mode === 'insertion') {
+      for (var k = 1; k < n; k++) {
+        var key = a[k], p = k - 1;
+        shot([k, k], null, k);
+        while (p >= 0) {
+          cmp++; shot([p, k], null, k);
+          if (!better(key, a[p])) break;
+          a[p + 1] = a[p]; p--;
+          shot([p + 1, k], null, k);
+        }
+        a[p + 1] = key;
+        shot(null, null, k + 1);
+      }
+    } else {
+      /* 選擇排序照課本的兩清單版：從未排序找最小 → 搬到已排序的最後一項。
+         畫面上已排好的留在左邊不動，未排序的整段往左遞補。 */
+      for (var s = 0; s < n; s++) {
+        var best = s;
+        shot(null, best, s);
+        for (var q = s + 1; q < n; q++) {
+          cmp++; shot([q, best], best, s);
+          if (better(a[q], a[best])) { best = q; shot([q, best], best, s); }
+        }
+        var v = a.splice(best, 1)[0];
+        a.splice(s, 0, v);
+        shot(null, null, s + 1);
+      }
+    }
+    shot(null, null, n);
+    return { frames: frames, compares: cmp };
+  }
+
   /* ── 三種排序法的說明（沿用 sort.html 原本的文案）───── */
   var INFO = {
     selection: {
@@ -166,7 +242,24 @@
     '.sl-msg.bad{background:#fef3c7;color:#92400e}',
     '.sl-btn{background:#6366f1;color:#fff;border:0;border-radius:9px;padding:8px 15px;',
     '  font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:10px}',
-    '.sl-btn:hover{background:#4f46e5}'
+    '.sl-btn:hover{background:#4f46e5}',
+    /* 自動播放 */
+    '.sl-auto{margin-top:16px;border-top:1px dashed #cbd5e1;padding-top:14px}',
+    '.sl-auto h4{font-size:14px;font-weight:900;color:#4338ca;margin:0 0 4px}',
+    '.sl-auto .lead{font-size:12.5px;color:#64748b;line-height:1.8;margin-bottom:10px}',
+    '.sl-bars{display:flex;align-items:flex-end;gap:2px;height:150px;',
+    '  background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px}',
+    '.sl-bar{flex:1;background:#c7d2fe;border-radius:2px 2px 0 0;transition:height .06s}',
+    '.sl-bar.cmp{background:#f59e0b}',      /* 正在比的兩個 */
+    '.sl-bar.best{background:#ef4444}',     /* 目前最小的 */
+    '.sl-bar.ok{background:#34d399}',       /* 已經排好的 */
+    '.sl-ctrl{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:9px}',
+    '.sl-ctrl button{background:#fff;border:2px solid #cbd5e1;color:#334155;border-radius:8px;',
+    '  padding:5px 11px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}',
+    '.sl-ctrl button:hover{border-color:#6366f1;background:#eef2ff}',
+    '.sl-ctrl button.on{border-color:#6366f1;background:#e0e7ff;color:#4338ca}',
+    '.sl-ctrl .num{font-size:12.5px;color:#4338ca;font-weight:900;margin-left:auto}',
+    '.sl-ctrl .num b{font-size:16px}'
   ].join('');
 
   function ensureStyle() {
@@ -192,6 +285,10 @@
     var unsorted = items.slice(), done = [];        // 選擇排序用
     var arr = items.slice(), boundary = 1, sel = null;  // 氣泡／插入用
     var round = 0, passed = false;
+    /* 自動播放的狀態。
+       ⚠️ 一定要在 render() 之前宣告 —— render() 會叫 auto()，
+          而 var 只提升宣告不提升賦值，放在後面的話 algo 會是 undefined。 */
+    var pl = null, at = 0, timer = null, algo = mode, speed = 60;
 
     host.className = 'sl';
     render();
@@ -203,8 +300,10 @@
         '<div class="sl-sub">📝 ' + info.why + '<br>🎒 ' + info.life + '</div></div>' +
         '<div id="sl-body"></div>' +
         '<div id="sl-msg"></div>' +
-        (opts.newRound !== false ? '<button class="sl-btn" id="sl-new">🎲 換一題</button>' : '');
+        (opts.newRound !== false ? '<button class="sl-btn" id="sl-new">🎲 換一題</button>' : '') +
+        '<div id="sl-auto"></div>';
       body();
+      auto();
       var nb = host.querySelector('#sl-new');
       if (nb) nb.onclick = function () {
         items = makeItems(opts.size || 6, order);
@@ -274,6 +373,7 @@
       if (passed) return;
       passed = true;
       say(true, '排好了！' + info.why);
+      auto();                      // ★ 通關才出現自動播放區，這裡要重畫一次
       if (opts.onPass) opts.onPass();
     }
 
@@ -319,13 +419,79 @@
       else say(true, '插好了。換下一張新牌。');
     }
 
-    return { destroy: function () { host.innerHTML = ''; } };
+    /* ── 自動播放區 ────────────────────────────────
+       ★ 先手動、後自動 —— 順序是刻意的。
+         先看動畫的話，學生會覺得「原來這麼快」，
+         然後在手動那一關卡住卻不知道自己卡在哪。
+         自己排過六個之後再看 30 個跑，他看的是**自己剛做過的事**。
+       ⚠️ 所以這一區在通關之前不出現。 */
+    function auto() {
+      var box = host.querySelector('#sl-auto');
+      if (!box) return;
+      if (opts.auto === false || !passed) { box.innerHTML = ''; return; }
+      if (!pl) { pl = plan(makeItems(opts.autoSize || 30, order), algo, order); at = 0; }
+      var f = pl.frames[at];
+      box.className = 'sl-auto';
+      box.innerHTML =
+        '<h4>📺 換 ' + f.arr.length + ' 筆資料，讓它自己跑一遍</h4>' +
+        '<div class="lead">你剛剛用手排六個。' +
+        '同樣的方法，' + f.arr.length + ' 筆要比幾次？' +
+        '<b>一邊看一邊注意右邊那個數字。</b></div>' +
+        '<div class="sl-bars" id="sl-bars"></div>' +
+        '<div class="sl-ctrl">' +
+        ['selection', 'insertion', 'bubble'].map(function (m) {
+          return '<button data-algo="' + m + '"' + (m === algo ? ' class="on"' : '') + '>' +
+                 INFO[m].icon + ' ' + INFO[m].name + '</button>';
+        }).join('') +
+        '<button data-play="1">' + (timer ? '⏸ 暫停' : '▶ 開始') + '</button>' +
+        '<button data-again="1">🎲 換一組</button>' +
+        '<span class="num">比較次數 <b>' + f.n + '</b>' +
+        (at >= pl.frames.length - 1 ? '　✅ 排好了' : '') + '</span></div>';
+      bars(f);
+      [].forEach.call(box.querySelectorAll('[data-algo]'), function (el) {
+        el.onclick = function () { stop(); algo = el.dataset.algo; pl = null; auto(); };
+      });
+      box.querySelector('[data-play]').onclick = toggle;
+      box.querySelector('[data-again]').onclick = function () { stop(); pl = null; auto(); };
+    }
+
+    function bars(f) {
+      var b = host.querySelector('#sl-bars');
+      if (!b) return;
+      var max = Math.max.apply(null, f.arr);
+      b.innerHTML = f.arr.map(function (v, i) {
+        var cls = 'sl-bar';
+        if (i < f.done) cls += ' ok';
+        else if (f.best === i) cls += ' best';
+        else if (f.cmp && (f.cmp[0] === i || f.cmp[1] === i)) cls += ' cmp';
+        return '<div class="' + cls + '" style="height:' +
+               Math.round(v / max * 100) + '%"></div>';
+      }).join('');
+    }
+
+    function toggle() { timer ? stop() : play(); auto(); }
+    function play() {
+      if (at >= pl.frames.length - 1) { at = 0; }
+      timer = setInterval(function () {
+        at++;
+        if (at >= pl.frames.length - 1) { at = pl.frames.length - 1; stop(); auto(); return; }
+        bars(pl.frames[at]);
+        var num = host.querySelector('.sl-ctrl .num b');
+        if (num) num.textContent = pl.frames[at].n;
+      }, speed);
+    }
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+    return { destroy: function () { stop(); host.innerHTML = ''; },
+             _auto: function () { return { algo: algo, at: at, frames: pl && pl.frames.length,
+                                           compares: pl && pl.compares, playing: !!timer }; } };
   }
 
   global.SORTLAB = {
     VERSION: VERSION,
     INFO: INFO,
     mount: mount,
+    _plan: plan,
     _bestOf: bestOf,
     _checkSelection: checkSelection,
     _checkBubble: checkBubble,

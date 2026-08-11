@@ -64,6 +64,50 @@ for (let i = 0; i < 40; i++) {
   if (fail) break;
 }
 
+/* ═══ ★ 自動播放：30 筆跑一遍 ═══════════════════════
+   ⚠️ 這一段是 sort.html 的自動排序動畫改寫進來的（原檔已刪）。
+      原本演算法和 await sleep() 綁在一起，沒辦法單獨測「它排得對不對」。
+      現在 plan() 是純函式：吃一個陣列，吐出每一步的畫面，
+      播放器只負責一格一格放 —— 所以下面可以直接驗演算法。 */
+console.log('\n── ★ 自動播放：算得對不對 ──');
+{
+  const A = [8, 5, 10, 1, 7];                 // 課本 6-2 用的那一組
+  ['selection', 'insertion', 'bubble'].forEach(m => {
+    const r = S._plan(A, m, 'asc');
+    eq(r.frames[r.frames.length - 1].arr, [1, 5, 7, 8, 10], m + ' 排得出課本的答案');
+    ok(r.frames.length > A.length, '   ' + m + ' 有逐格畫面（' + r.frames.length + ' 格）');
+    ok(r.frames[0].n === 0 && r.frames[r.frames.length - 1].n === r.compares,
+       '   ' + m + ' 比較次數從 0 累加到 ' + r.compares);
+  });
+  eq(S._plan(A, 'selection', 'desc').frames.slice(-1)[0].arr, [10, 8, 7, 5, 1],
+     '由大到小也排得出來');
+
+  /* 30 筆：三種都要排得對。
+     ⚠️ 選擇與氣泡的比較次數是固定的 n(n-1)/2 = 435 ——
+        對不上就是迴圈邊界寫錯了。 */
+  const big = Array.from({ length: 30 }, (_, i) => ((i * 17) % 97) + 1);
+  ['selection', 'insertion', 'bubble'].forEach(m => {
+    const r = S._plan(big, m, 'asc');
+    ok(S._sorted(r.frames.slice(-1)[0].arr, 'asc'), '★ 30 筆 ' + m + ' 排得對');
+    ok(r.frames.slice(-1)[0].arr.length === 30, '   ' + m + ' 沒有弄丟或多出資料');
+  });
+  eq(S._plan(big, 'selection', 'asc').compares, 435, '★ 選擇排序 30 筆比 435 次（n(n-1)/2）');
+  eq(S._plan(big, 'bubble', 'asc').compares, 435, '★ 氣泡排序 30 筆也是 435 次');
+  ok(S._plan(big, 'insertion', 'asc').compares < 435,
+     '★ 插入排序比較少（它遇到不必再比的就停）');
+
+  /* 已經排好的資料：插入排序幾乎不用比 —— 這是它的長處，第 7 關的題目問過。 */
+  const done = big.slice().sort((a, b) => a - b);
+  ok(S._plan(done, 'insertion', 'asc').compares <= 29 * 2,
+     '★ 資料本來就排好時，插入排序只要比 ' +
+     S._plan(done, 'insertion', 'asc').compares + ' 次（第 7 關的題目問過這件事）');
+
+  /* 每一格畫面的資料都要完整 —— 少一項的話畫面會跳。 */
+  const r2 = S._plan(A, 'selection', 'asc');
+  ok(r2.frames.every(f => f.arr.length === 5), '每一格畫面都是完整的五筆');
+  ok(r2.frames.every(f => f.done >= 0 && f.done <= 5), 'done 沒有超出範圍');
+}
+
 /* ═══ 第 6、7 關的關卡資料 ═══════════════════════════
    ⚠️ 這兩關的主角是上面那個手動挑戰，拼圖只收尾。
       但拼圖既然放了，就要判得對、改壞要判得錯 ——
@@ -188,6 +232,59 @@ if (!JSDOM) {
     ok(lv.palette.indexOf('control.ifsmaller') >= 0, '   但調色盤上要有它當誘餌');
     ok(lv.palette.filter(id => !B.DEFS[id]).length === 0, '調色盤沒有不存在的積木');
     ok([...used].filter(id => lv.palette.indexOf(id) < 0).length === 0, '答案要的積木都給了');
+  }
+
+  console.log('\n── ★ 自動播放真的掛得起來 ──');
+  {
+    /* ⚠️ 先手動、後自動 —— 順序是刻意的。
+       先看動畫的話，學生會覺得「原來這麼快」，
+       然後在手動那一關卡住卻不知道自己卡在哪。
+       ⇒ 通關之前不可以出現自動播放區。 */
+    const host = dom.window.document.createElement('div');
+    dom.window.document.body.appendChild(host);
+    let done = 0;
+    const sim = S.mount(host, { mode: 'selection', order: 'asc', onPass: () => { done++; } });
+    ok(!host.querySelector('.sl-bars'), '★ 還沒排完之前，看不到自動播放區');
+
+    let guard = 0;
+    while (guard++ < 40) {
+      const cells = [...host.querySelectorAll('[data-i]')];
+      if (!cells.length) break;
+      const vals = cells.map(c => Number(c.textContent));
+      cells[vals.indexOf(Math.min(...vals))].onclick();
+    }
+    ok(done === 1, '手動排完了');
+    ok(!!host.querySelector('.sl-bars'), '★ 排完之後才出現自動播放區');
+    ok(host.querySelectorAll('.sl-bar').length === 30, '   預設 30 筆（手動只有六筆）');
+    ok(/比較次數/.test(host.textContent), '★ 畫面上看得到比較次數 —— 那是接第 10 關的線');
+
+    /* 三種排序法要切換得動，而且切了要重算。 */
+    ok(sim._auto().algo === 'selection', '一開始跟著這一關的演算法');
+    host.querySelector('[data-algo="bubble"]').onclick();
+    ok(sim._auto().algo === 'bubble' && sim._auto().at === 0,
+       '★ 切成氣泡排序 → 重新來過（不是接著上一種的進度）');
+    ok(sim._auto().compares === 435, '   30 筆氣泡排序 435 次');
+
+    /* ⚠️ 計時器一定要收得掉。收不掉的話學生換到下一步，
+       背景還在跑 setInterval —— 一堂課下來會疊很多個。 */
+    host.querySelector('[data-play]').onclick();
+    ok(sim._auto().playing, '按開始會播');
+    sim.destroy();
+    ok(!sim._auto().playing, '★ destroy 之後計時器停掉（不然會愈疊愈多）');
+    host.remove();
+  }
+
+  console.log('\n── ★ sort.html 已經刪掉了 ──');
+  {
+    /* ⚠️ 改寫整合的最後一步就是刪原檔。
+       留著的話同一件事有兩個入口、兩套規則 ——
+       改一邊忘一邊，而學生只會覺得自己記錯。 */
+    ok(!fs.existsSync(path.join(ROOT, '11502', 'sort.html')),
+       '★ 11502/sort.html 已刪（內容都在這一支裡了）');
+    const lv7 = JSON.stringify(L['6-2-2']);
+    ok(!/sort\.html/.test(lv7), '   第 7 關不再掛 sort.html 當補充教材');
+    const hub = fs.readFileSync(path.join(ROOT, '11502', 'hub.html'), 'utf8');
+    ok(!/href:'sort\.html'|href="sort\.html"/.test(hub), '   入口也沒有它的卡片');
   }
 
   console.log('\n── ★ 兩關要對照得起來 ──');

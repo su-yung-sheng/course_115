@@ -89,7 +89,9 @@ ok(!l5.lab && (l5.derive.steps || []).some(s => s.kind === 'sort'),
       而那個效果正是這幾個互動存在的理由。
    ★ 現在改由 material 欄位掛進對應的關卡。
      這幾條要釘住「掛對關」，掛錯關等於沒掛。 */
-const MAT = { '4-3-1': 'logic.html', '6-2-1': 'search.html', '6-2-2': 'sort.html' };
+/* ⚠️ 6-2-2 原本掛 sort.html，2026-08-12 改寫進 sortlab.js 之後原檔已刪。
+   剩下兩支也會照同樣的方式處理掉。 */
+const MAT = { '4-3-1': 'logic.html', '6-2-1': 'search.html' };
 Object.keys(MAT).forEach(id => {
   const m = W.BLOCK_LEVELS[id].material;
   ok(!!m && m.href === MAT[id],
@@ -97,8 +99,8 @@ Object.keys(MAT).forEach(id => {
   ok(!!m && m.title && m.note,
      '   ' + id + ' 的補充教材有標題和一句說明（沒說明學生不會點）');
 });
-ok(ids.filter(id => W.BLOCK_LEVELS[id].material).length === 3,
-   '★ 只有這三關有補充教材 —— 每關都掛的話它就變成裝飾');
+ok(ids.filter(id => W.BLOCK_LEVELS[id].material).length === 2,
+   '★ 還沒改寫完的補充教材剩 2 支（改寫完要歸零）');
 /* ⚠️ material 和 quiz 題目裡的 ref 是兩件事，別混用。
    ref 指回「這一題在問哪個步驟」，material 是外部教材。 */
 ok(/materialPanel\(\)/.test(lvHtml), '關卡頁畫得出補充教材面板');
