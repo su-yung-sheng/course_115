@@ -34,6 +34,8 @@
 <script src="../shared/semester.js"></script>
 <script src="../shared/auth.js"></script>
 <script src="../shared/guard.js"></script>
+<script src="../shared/ai-guide.js"></script>
+<script src="../shared/askai.js"></script>
 <script src="../shared/warmup.js"></script>
 <link rel="stylesheet" href="../shared/theme.css">
 </head>
@@ -227,10 +229,108 @@ function onSend() {
       </button>
     </div>`;
   $('next').onclick = () => {
+    /* ★ 最後一關通過之後，先做一次「選 ＋ 對照」再結束。
+       前四關都是「看 → 選 → 寫」，第 5 關原本只有「寫」——
+       他寫完就走，沒有機會看到「同一件事還有更好的講法」。
+       ⚠️ 這一段不擋人：選錯可以再選，對照完直接完成訓練。 */
+    if (at === STEPS.length - 1 && s.wrap) { drawWrap(s, text); return; }
     at++;
     if (at < STEPS.length) draw();
     else finish();
   };
+}
+
+/* ── 對照環節（只有第 5 關有）───────────────────── */
+function drawWrap(s, mine) {
+  const w = s.wrap;
+  const opts = w.options.map((o, i) => ({ o, i }))
+    .sort(() => Math.random() - 0.5);   // ⚠️ 洗牌，不然第二次就變成「背 B」
+  $('stage').innerHTML = `
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-md p-6 pop">
+      <div class="text-xs font-black text-slate-400 mb-1">最後一步 · 對照</div>
+      <h3 class="text-lg font-black mb-3">${w.prompt}</h3>
+      <div id="wrapOpts" class="space-y-2"></div>
+      <div id="wrapOut" class="mt-4"></div>
+    </div>`;
+  $('wrapOpts').innerHTML = opts.map(({ o, i }) => `
+    <button class="wrap-opt w-full text-left px-4 py-3 rounded-xl border-2 border-slate-200
+      bg-white hover:border-indigo-300 transition leading-relaxed text-sm" data-i="${i}">
+      ${esc(o.t)}
+    </button>`).join('');
+
+  let done = false;
+  $('wrapOpts').onclick = (e) => {
+    const b = e.target.closest('.wrap-opt');
+    if (!b || done) return;
+    const o = w.options[+b.dataset.i];
+    if (!o.ok) {
+      /* 選錯不鎖死，但要說出「為什麼不是它」—— 不然他只是隨機再點一個。 */
+      b.classList.add('border-rose-300', 'bg-rose-50', 'opacity-70');
+      b.disabled = true;
+      $('wrapOut').innerHTML =
+        `<div class="text-sm bg-amber-50 border border-amber-200 text-amber-900
+          rounded-xl px-4 py-3 leading-relaxed">✗ ${esc(o.msg)}</div>`;
+      return;
+    }
+    done = true;
+    b.classList.add('border-emerald-400', 'bg-emerald-50');
+    $('wrapOpts').querySelectorAll('.wrap-opt').forEach(x => { x.disabled = true; });
+    showCompare(s, mine, o);
+  };
+}
+
+/* 把「他選的好句子」和「他自己寫的」並排，四條規則逐項打勾。
+   ★ 差在哪不必別人講 —— 兩句擺在一起自己看得出來。 */
+function showCompare(s, mine, best) {
+  const rs = WARMUP.ruleCheck(mine, { source: s.write.source });
+  $('wrapOut').innerHTML = `
+    <div class="text-sm bg-emerald-50 border border-emerald-200 text-emerald-900
+      rounded-xl px-4 py-3 leading-relaxed mb-4">✓ ${esc(best.msg)}</div>
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div class="rounded-xl border-2 border-slate-200 bg-slate-50 p-4">
+        <div class="text-xs font-black text-slate-500 mb-1">你剛剛寫的</div>
+        <div class="text-sm leading-relaxed">${esc(mine)}</div>
+      </div>
+      <div class="rounded-xl border-2 border-emerald-200 bg-white p-4">
+        <div class="text-xs font-black text-emerald-600 mb-1">你選出來的那一句</div>
+        <div class="text-sm leading-relaxed">${esc(best.t)}</div>
+      </div>
+    </div>
+    <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+      <div class="text-xs font-black text-slate-500 mb-2">你的句子，四條規則各做到了嗎</div>
+      ${rs.map(r => `<div class="text-sm py-0.5 ${r.ok ? 'text-emerald-700' : 'text-slate-400'}">
+        ${r.ok ? '✔' : '○'} ${r.n}. ${esc(r.t)}</div>`).join('')}
+      <div class="mt-2 pt-2 border-t border-slate-100 text-xs text-slate-500 leading-relaxed">
+        沒打勾的那幾條不影響過關 —— 下次求助時記得補上去就好。
+      </div>
+    </div>
+    <div id="coachBox"></div>
+    <button id="wrapDone" class="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white
+      font-black px-6 py-3 rounded-xl shadow transition">完成訓練 🏅</button>`;
+  $('wrapDone').onclick = () => { at = STEPS.length; finish(); };
+
+  /* ── AI 的一句話回饋（可有可無）───────────────────
+     ★ 學生已經通過四條規則了，這一句是錦上添花。
+     ⚠️ 失敗、逾時、沒設定 → 什麼都不顯示，畫面完全不受影響。
+        這一關是全站唯一「擋住就整站進不去」的地方，
+        AI 在這裡不可以有任何一票否決權。 */
+  /* ⚠️ 一律寫 window.ASKAI，不要寫裸的 ASKAI ——
+     這個坑咬過五次了（fetch、document、sessionStorage、GRADING、ASKAI）。
+     真的用瀏覽器開沒問題，但少載一支 js 或換個載入順序就是 ReferenceError，
+     而它會把**後面整段畫面**一起帶走。 */
+  if (window.ASKAI && window.ASKAI.coach) {
+    window.ASKAI.coach(mine, sidOf()).then(tip => {
+      if (!tip) return;
+      $('coachBox').innerHTML = `
+        <div class="mt-3 text-sm bg-indigo-50 border border-indigo-200 text-indigo-900
+          rounded-xl px-4 py-3 leading-relaxed">💡 ${esc(tip)}</div>`;
+    });
+  }
+}
+
+function sidOf() {
+  try { return sessionStorage.getItem('sid' + window.CONFIG.TERM) || ''; }
+  catch (e) { return ''; }
 }
 
 /* ── 全部完成 ───────────────────────────────────── */

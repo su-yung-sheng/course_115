@@ -100,6 +100,26 @@
     }).then(function (j) { return j.results || []; });
   }
 
+  /* 新手訓練第 5 關的一句話回饋。
+     ★ 學生**已經通過本機的四條規則**才會走到這裡 ——
+       所以這一支失敗、逾時、額度用完，通通只是「不顯示那句話」，
+       不影響他完成訓練。
+     ⚠️ 那一關是全站唯一「擋住就整站進不去」的地方，
+        AI 在那裡不可以有任何一票否決權。
+     ⚠️ 所以這裡**永遠 resolve**，不 throw —— 呼叫端不必寫 catch，
+        也就不會有人哪天忘了寫。 */
+  function coach(text, student) {
+    var c = cfg();
+    if (!enabled()) return Promise.resolve('');
+    var url = c.GAS_URL + '?action=coach'
+            + '&key=' + encodeURIComponent(c.KEY)
+            + '&student=' + encodeURIComponent(student || '')
+            + '&text=' + encodeURIComponent(String(text || '').slice(0, 300));
+    return hit(url)
+      .then(function (j) { return String(j.tip || ''); })
+      .catch(function () { return ''; });
+  }
+
   /** 送出去、收回來、把「不是 JSON」和「逾時」都翻成人看得懂的錯誤 */
   function hit(url, init) {
     /* AbortController 才切得斷 fetch。沒有它的話，逾時只是「不再理它」，
@@ -292,6 +312,7 @@
     enabled: enabled,
     mount: mount,
     judge: judge,
+    coach: coach,
     _ask: ask
   };
 

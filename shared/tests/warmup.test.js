@@ -179,5 +179,78 @@ ok(/out\.push\(\{ key:'test'/.test(lvPage),
 ok(/try \{ sessionStorage\.setItem/.test(page), '★ 教程頁的 sessionStorage 有包 try');
 ok(/try \{ ranThisSession = sessionStorage/.test(scr), '★ 關卡頁的也有包 try');
 
+/* ── ★ 第 5 關通過之後的「選 ＋ 對照」──────────────
+   前四關都是「看 → 選 → 寫」，第 5 關原本只有「寫」——
+   他寫完就走，沒有機會看到「同一件事還有更好的講法」。
+
+   ⚠️ 這一段**不擋人**：選錯可以再選，對照完直接完成訓練。
+      這一關是全站唯一「擋住就整站進不去」的地方，
+      不可以在通過之後再長出第二道門檻。 */
+{
+  const w5 = M.STEPS[4].wrap;
+  ok(!!w5, '第 5 關有對照環節');
+  ok(w5.options.length === 4, '   四個候選句');
+  ok(w5.options.filter(o => o.ok).length === 1, '   只有一個是好的問法');
+  ok(w5.options.every(o => o.msg && o.msg.length > 10),
+     '★ 每個選項都說得出「為什麼是／不是它」—— 只說錯了等於沒教');
+  /* ★ 好的那一句要真的通得過四條規則 —— 不然是題目在騙人。 */
+  const best = w5.options.filter(o => o.ok)[0];
+  ok(M.checkAll(best.t, { source: M.STEPS[4].write.source }).ok,
+     '★ 那個「好的問法」自己要過得了四條規則');
+  /* ★ 三個壞的要各自壞在不同的地方 —— 四個選項壞法一樣就只剩兩選一。 */
+  const bad = w5.options.filter(o => !o.ok)
+    .map(o => M.ruleCheck(o.t, { source: M.STEPS[4].write.source })
+                .filter(r => !r.ok).map(r => r.n).join(','));
+  ok(new Set(bad).size === bad.length,
+     '★ 三個不好的問法各自違反不同的規則（' + bad.join(' ｜ ') + '）');
+}
+
+/* 逐條檢查：畫面上打的勾，要和實際判定同一套規則 */
+{
+  const src5 = M.STEPS[4].write.source;
+  const rc = t => M.ruleCheck(t, { source: src5 }).map(r => (r.ok ? 1 : 0)).join('');
+  ok(M.ruleCheck('隨便', {}).length === 4, 'ruleCheck 回四條');
+  ok(rc('第一個畫好了第二個黏在一起，我想問畫完之後要往旁邊走多少') === '1111',
+     '★ 好句子四條全勾');
+  ok(rc('我做了很多事情然後發現有一個地方好像怪怪的所以想問一下')[1] === '0',
+     '   指不出位置 → 第 ② 條不打勾');
+  ok(rc('為什麼會黏住？是不是寫錯了？還是要改邊長？')[3] === '0',
+     '   一次問三件 → 第 ④ 條不打勾');
+  ok(rc(src5)[2] === '0', '   整段抄情境 → 第 ③ 條不打勾');
+}
+
+/* ── ★ AI 的一句話回饋不可以擋到任何人 ───────────── */
+{
+  const page5 = fs.readFileSync(path.join(__dirname, '..', '..', '11502', 'warmup.html'), 'utf8');
+  ok(/window\.ASKAI && window\.ASKAI\.coach/.test(page5),
+     '★ 一律寫 window.ASKAI —— 裸的全域在這個 repo 已經咬過五次');
+  ok(/if \(!tip\) return;/.test(page5),
+     '★ AI 沒回東西就什麼都不顯示（不是顯示一塊空白框）');
+  {
+    /* 完成鈕要在呼叫 AI **之前**就綁好 —— 反過來的話，
+       AI 那一段一炸，學生就按不到「完成訓練」。 */
+    const iBtn = page5.indexOf("$('wrapDone').onclick");
+    const iAI = page5.indexOf('window.ASKAI.coach');
+    ok(iBtn > 0 && iAI > 0 && iBtn < iAI,
+       '★ 完成鈕先綁好，才去呼叫 AI —— 順序反了的話 AI 一炸就沒人走得掉');
+  }
+  const askaiSrc = fs.readFileSync(path.join(__dirname, '..', 'askai.js'), 'utf8');
+  const coach = askaiSrc.slice(askaiSrc.indexOf('function coach'), askaiSrc.indexOf('/** 送出去、收回來'));
+  ok(/catch\(?[\s\S]{0,40}return ''/.test(coach.replace(/\s+/g, ' ')) || /return '';/.test(coach),
+     '★ coach 失敗一律回空字串，不 throw —— 呼叫端不必寫 catch，也就不會有人忘了寫');
+  ok(/if \(!enabled\(\)\) return Promise\.resolve\(''\)/.test(coach),
+     '   沒設定 KEY 時直接回空字串，不送出任何請求');
+  const gs5 = fs.readFileSync(path.join(__dirname, '..', 'aiguide.gs'), 'utf8');
+  const h = gs5.slice(gs5.indexOf("p.action === 'coach'"), gs5.indexOf("if (p.action !== 'ask')"));
+  ok(/ok: true, tip: ''/.test(h),
+     '★ 伺服器端額度用完也回 ok:true —— 學生不該看到 AI 的家務事');
+  ok(/COACH_CAP/.test(h), '   每人每天有上限');
+  const pr = gs5.slice(gs5.indexOf('function coachPrompt_'));
+  ok(/不可以.*打分數|不可以打分數/.test(pr),
+     '★ 提示詞明講不可以打分數 —— 這一頁刻意沒有分數，' +
+     '一顯示「你得幾分」，學生就會為了分數重寫');
+  ok(/<<</.test(pr) && /只是資料/.test(pr), '   學生寫的內容當資料，裡面的指示不照做');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

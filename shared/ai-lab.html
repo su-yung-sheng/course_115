@@ -127,7 +127,7 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
      那件事現在由 DEBUG_KEY 做，而且更好：走的是真正的管線。 */
 /* 這一頁預期的 GAS 版本。改 aiguide.gs 的行為時，兩邊一起改。
    ⚠️ 這不是裝飾 —— 它是唯一能看出「部署的是不是最新版」的方法。 */
-const EXPECT_VERSION = '2026-08-10-judge';
+const EXPECT_VERSION = '2026-08-10-coach';
 
 const GAS = ((window.CONFIG || {}).AIGUIDE || {}).GAS_URL || '';
 $('gasUrl').textContent = GAS || '（11502/config.js 的 AIGUIDE.GAS_URL 還沒填）';
