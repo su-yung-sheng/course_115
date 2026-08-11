@@ -31,7 +31,14 @@
 (function (global) {
   'use strict';
 
-  var VERSION = '2026-08-07-derive';
+  var VERSION = '2026-08-11-derive';
+
+  /* 判斷題連錯幾次就強制讀提示、鎖幾秒。
+     ★ 兩次不是一次：第一次很可能只是看太快或手滑，
+       罰第一次會罰到大部分人；連錯兩次才比較確定是真的不懂。
+     ★ 20 秒不是 30 秒：這是一顆小判斷題，不是整段情境。 */
+  var PENALTY_WRONG = 2;
+  var PENALTY_SEC = 20;
 
   /* ── 純計算（沒有畫面，可以單獨測） ───────────────── */
 
@@ -245,7 +252,26 @@
     /* ★ 提示不給滑鼠選取 —— 提高「複製貼上」的摩擦。
        ⚠️ 這不是安全機制（F12 一開就繞過了），
           它擋的是「順手反白貼上」那個動作，而那才是多數學生會做的事。 */
-    '.dv-hint div{user-select:none;-webkit-user-select:none}',
+    '.dv-hint div,.dv-modal-c{user-select:none;-webkit-user-select:none}',
+    /* ── 題目後面那顆 💡 ──────────────────────────────
+       ⚠️ 至少 32×32 —— 電腦教室有觸控螢幕，比手指小的目標按不到。 */
+    '.dv-tip{margin-left:7px;border:0;background:#fef3c7;border-radius:999px;',
+    '  width:32px;height:32px;font-size:15px;line-height:1;cursor:pointer;',
+    '  vertical-align:middle;transition:transform .15s}',
+    '.dv-tip:hover{background:#fde68a;transform:scale(1.1)}',
+    /* ── 提示的浮動視窗 ────────────────────────────── */
+    '.dv-modal{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:60;',
+    '  display:flex;align-items:center;justify-content:center;padding:18px}',
+    '.dv-modal-b{background:#fff;border-radius:18px;max-width:520px;width:100%;',
+    '  box-shadow:0 18px 50px rgba(15,23,42,.3);overflow:hidden}',
+    '.dv-modal-h{display:flex;align-items:center;justify-content:space-between;',
+    '  padding:13px 16px;font-weight:900;background:#fffbeb;border-bottom:1px solid #fde68a}',
+    '.dv-modal-x{border:0;background:transparent;font-size:17px;cursor:pointer;color:#92400e}',
+    '.dv-modal-c{padding:15px 17px;font-size:14px;line-height:2;max-height:52vh;overflow:auto}',
+    '.dv-modal-f{padding:0 17px 15px;text-align:right}',
+    '.dv-modal-ok{border:0;background:#6366f1;color:#fff;font-weight:900;font-size:14px;',
+    '  border-radius:11px;padding:9px 18px;cursor:pointer}',
+    '.dv-modal-ok:disabled{background:#cbd5e1;cursor:not-allowed}',
     '.dv-say textarea{width:100%;border:2px solid #e2e8f0;border-radius:12px;padding:9px 11px;',
     '  font-family:inherit;font-size:14px;line-height:1.8;resize:vertical;margin-top:8px}',
     '.dv-say textarea:focus{outline:0;border-color:#6366f1}',
@@ -603,6 +629,7 @@
          而是安靜地變成 undefined，然後在別的地方炸。
        ⇒ 狀態變數一律和其他狀態放在一起，放在第一次 draw() 之前。 */
     var chosen = {};            // 每一問抽到哪一題、選項怎麼排
+    var wrongN = {};            // 這一問已經選錯幾次（見 penalty()）
 
     host.innerHTML =
       (data.intro ? '<div class="dv-intro">' + data.intro + '</div>' : '') +
@@ -619,20 +646,63 @@
       if (at >= qs.length) { box.innerHTML = ''; writeStage(); return; }
 
       var it = qs[at];
+      /* ★ 提示改成題目後面的一顆 💡（2026-08-11）。
+         原本是題目下面一整條「▸ 想不出來？點開看提示」——
+         它佔掉一整行，而且就長在選項正上方，
+         等於一直在對學生說「你大概想不出來吧」。
+         做成圖示之後：想用的人看得到，不想用的人眼裡沒有它。 */
       box.innerHTML =
         '<div class="dv-num">第 ' + (at + 1) + ' 題 / 共 ' + qs.length + '</div>' +
-        '<div class="dv-qt">' + it.q + '</div>' +
+        '<div class="dv-qt">' + it.q +
+          (it.hint ? '<button class="dv-tip" data-tip="' + at + '" ' +
+                     'title="看提示" aria-label="看提示">💡</button>' : '') +
+        '</div>' +
         (it.pick ? pickHtml(it.pick, at) : askHtml(it, at)) +
-        (it.hint ? '<details class="dv-hint"><summary>想不出來？點開看提示</summary><div>' +
-                   it.hint + '</div></details>' : '') +
         ((it.keys || []).length ? '<div data-ai="' + at + '"></div>' : '') +
         '<div class="dv-next"></div>';
 
+      if (it.hint) wireTip(host, it, at);
       if (it.pick) wirePick(host, it.pick, at);
       else if (chosen[at]) wireAsk1(host, at);
       else wireSay(host, it, at);
       wireAsk(host, it, at, opts);
       nextBar();
+    }
+
+    /* ── 提示的浮動視窗 ───────────────────────────────
+       ⚠️ 提示照樣禁止滑鼠選取（見樣式表那一段）——
+          換成浮動視窗不是為了讓它更好複製。 */
+    function wireTip(root, it, i) {
+      var b = root.querySelector('[data-tip="' + i + '"]');
+      if (b) b.onclick = function () { openTip(it.hint); };
+    }
+    function openTip(html, locked) {
+      var old = document.getElementById('dv-modal');
+      if (old) old.remove();
+      var m = document.createElement('div');
+      m.id = 'dv-modal';
+      m.className = 'dv-modal';
+      m.innerHTML =
+        '<div class="dv-modal-b">' +
+          '<div class="dv-modal-h">💡 提示' +
+            (locked ? '' : '<button class="dv-modal-x" aria-label="關閉">✕</button>') +
+          '</div>' +
+          '<div class="dv-modal-c">' + html + '</div>' +
+          '<div class="dv-modal-f">' +
+            (locked
+              ? '<button class="dv-modal-ok" disabled>請先讀完（' + locked + '）</button>'
+              : '<button class="dv-modal-ok">讀完了</button>') +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(m);
+      var close = function () { m.remove(); };
+      var x = m.querySelector('.dv-modal-x');
+      if (x) x.onclick = close;
+      var okb = m.querySelector('.dv-modal-ok');
+      if (!locked) okb.onclick = close;
+      /* ⚠️ 罰讀的時候不可以點背景關掉 —— 那就等於沒有罰。 */
+      if (!locked) m.onclick = function (e) { if (e.target === m) close(); };
+      return { box: m, ok: okb, close: close };
     }
 
     /* ── 沒有圈選題的那幾問：要寫一句 ─────────────────
@@ -692,11 +762,52 @@
           prog(); nextBar();
         } else {
           /* ★ 答錯不鎖死，可以再選 —— 這一段是「想一想」不是考試。
-             但要說出「為什麼不是這個」，不然他只是隨機再點一個。 */
+             ⚠️ 但也不可以說出「為什麼是對的那個」。
+                a.why 講的是**正解**為什麼對 —— 端在錯誤回饋裡，
+                等於錯一次就把答案送給他，剩下三選一變成直接勾。 */
           b.classList.add('wrong');
           b.disabled = true;
+          wrongN[i] = (wrongN[i] || 0) + 1;
           fb.className = 'dv-fb bad';
-          fb.innerHTML = '✗ 再想一次。' + (a.why ? '（提示：' + a.why + '）' : '');
+          fb.innerHTML = '✗ 這個不是。再看一次剩下的選項。';
+          /* ★ 錯兩次 → 強制讀提示（2026-08-11）。
+             錯兩次通常不是手滑，是真的不懂 —— 而提示就是寫給這種情況的。
+             他自己不會點（點提示像認輸），所以由系統打開。 */
+          if (wrongN[i] >= PENALTY_WRONG && qs[i].hint) penalty(wrap, qs[i].hint);
+        }
+      });
+    }
+
+    /* ── 錯兩次的罰讀 ─────────────────────────────────
+       ★ 為什麼是「讀提示」不是「退回重來」
+         錯的是這一問，退回整段重讀罰得太重，只會讓人不耐煩；
+         而不耐煩的人接下來就是亂點到過為止。
+       ★ 為什麼用 READHOLD
+         「秒數只在人真的在看的時候才走」這件事只該有一份規則。
+         切到別的視窗會暫停，離開太久會重算 —— 和情境解說完全一樣。
+       ⚠️ 沒載到 READHOLD 就只開提示、不鎖 —— 少罰一次，
+          總比把學生鎖在一個永遠不會動的視窗裡好。 */
+    function penalty(wrap, hint) {
+      var opts2 = [].slice.call(wrap.querySelectorAll('.dv-opt'));
+      var was = opts2.map(function (x) { return x.disabled; });
+      opts2.forEach(function (x) { x.disabled = true; });
+      var free = function () {
+        opts2.forEach(function (x, n) { x.disabled = was[n]; });
+      };
+      if (!global.READHOLD) { openTip(hint); free(); return; }
+      var m = openTip(hint, PENALTY_SEC);
+      global.READHOLD.start({
+        sec: PENALTY_SEC,
+        onTick: function (v) {
+          m.ok.textContent =
+            v.state === 'reset' ? '離開太久，重來（' + v.left + '）' :
+            v.state === 'pause' ? '請回到這個畫面（' + v.left + '）' :
+                                  '請先讀完（' + v.left + '）';
+        },
+        onDone: function () {
+          m.ok.disabled = false;
+          m.ok.textContent = '讀完了，再選一次';
+          m.ok.onclick = function () { m.close(); free(); };
         }
       });
     }

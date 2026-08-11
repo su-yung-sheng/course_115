@@ -333,6 +333,54 @@ ok(/onFail:[\s\S]{0,300}held = \{\}/.test(levelSrc),
      '★ 程式拼圖不加停留 —— 它本來就要拼對才過得去');
 }
 
+/* ── 📍 記錄點 ─────────────────────────────────────
+   ★ 為什麼要有
+     這一關有六步，走完十幾分鐘。當機、按到關閉、下課先關機 ——
+     任何一件事發生，學生就得整關重跑。而重跑第二次他不會更認真讀，
+     只會更快亂點過去。
+   ⚠️ 存不進去**不可以擋闖關**。11502 的進度在 2027-02-01 之前
+      只有測試帳號寫得進去，規則沒發布的話連測試帳號也會被擋 ——
+      那時候學生照樣要走得完這一關。 */
+section('📍 記錄點：重進來可以接回上次那一步');
+{
+  const w = level('2-1-1');
+  /* 第 4 個參數就是記錄點。走真正的入口，不要偷改內部變數。 */
+  w.applyProgress({}, {}, {}, { '2-1-1': 3 });
+  const now = [...w.document.querySelectorAll('.stp')]
+    .findIndex(b => b.className.indexOf('stp-now') >= 0);
+  ok(now === 3, '★ 上次做完 3 步 → 這次從第 4 步開始（現在在第 ' + (now + 1) + ' 步）');
+  const t = w.document.getElementById('app').textContent;
+  ok(/上次做到/.test(t),
+     '★ 而且要講一聲 —— 沒說就把人丟到第 4 步，學生會以為系統壞了');
+  const back = w.document.getElementById('fromTop');
+  ok(!!back, '★ 留得回第 1 步（想重看的通常是認真的那一個）');
+  back.dispatchEvent(new w.Event('click', { bubbles: true }));
+  const now2 = [...w.document.querySelectorAll('.stp')]
+    .findIndex(b => b.className.indexOf('stp-now') >= 0);
+  ok(now2 === 0, '   按下去真的回得去（現在在第 ' + (now2 + 1) + ' 步）');
+  ok(!/上次做到/.test(w.document.getElementById('app').textContent),
+     '   回去之後那句提示就收起來，不要一直掛著');
+}
+{
+  const w = level('2-1-1');
+  w.applyProgress({}, {}, {}, {});
+  ok(!/上次做到/.test(w.document.getElementById('app').textContent),
+     '第一次進來不顯示記錄點的提示');
+}
+{
+  /* ⚠️ 七個地方要前進。各寫一次的話，漏掉的那一個不會有任何症狀 ——
+     學生當下走得過去，只是那一步沒被記下來。 */
+  const body = levelSrc.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  ok(!/at\+\+/.test(body.replace(/function advance[\s\S]*?\n\}/, '')),
+     '★ 只有 advance() 一個地方會往前走 —— 前進和存記錄點不可以分開寫');
+  ok(/saveStep/.test(body) && /window\.saveStep/.test(body),
+     '   advance() 會存記錄點，而且用 window. 前綴（少寫過五次，每次都整頁掛掉）');
+  ok(/n <= cur/.test(levelSrc),
+     '★ 記錄點只往前不往後 —— 學生點回第 3 步再看一次，不該把紀錄退回去');
+  ok(/console\.warn\('記錄點沒存成功/.test(levelSrc),
+     '★ 存不進去只記在主控台，不擋闖關（規則還沒發布的期間會一直失敗）');
+}
+
 section('📐 版面：步驟多了也不可以被切掉');
 {
   /* ⚠️ 步驟從五個長到七個之後，原本的 max-w-3xl 放不下 ——

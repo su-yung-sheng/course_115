@@ -254,6 +254,12 @@
       '.bk-defarea{min-height:120px}',
       '.bk-empty{color:#9aa0b4;font-size:13px;text-align:center;padding:34px 8px;pointer-events:none}',
       '.bk-parahint{color:#8d8fa6;font-size:11px;line-height:1.7;padding:2px 4px}',
+      '.bk-goal{margin-top:10px;font-size:13px;line-height:1.75;color:#475569;' +
+        'background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:9px 11px}',
+      '.bk-goal-h{font-weight:700;color:#334155}',
+      '.bk-goal-s{margin:7px 0 0;padding-left:18px}',
+      '.bk-goal-s li{margin:3px 0}',
+      '.bk-goal b{color:#4f46e5}',
 
       /* ★ 舞台：白底 ＋ 綠旗／停止列 */
       '.bk-stagebar{display:flex;align-items:center;gap:8px;background:#e6e9ef;',
@@ -542,10 +548,25 @@
     bubble.style.display = 'none';
     stage.appendChild(sprite); stage.appendChild(bubble);
     rightBox.appendChild(stage);
-    if (opts.hint) {
-      var h = el('div', '', '🎯 ' + opts.hint);
-      h.style.cssText = 'margin-top:10px;font-size:13px;line-height:1.7;color:#475569;' +
-                        'background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:9px 11px';
+    /* ── 這一關要做出什麼 ─────────────────────────────
+       ⚠️ 2026-08-11：這裡本來用 el()（textContent），
+          而 opts.hint 傳進來的是 lv.task —— 裡面有 <b>副程式</b>。
+          結果畫面上直接印出「<b>副程式</b>」這一串標籤。
+          ★ 這裡的內容是**課程作者寫的**，不是學生輸入的，
+            所以可以用 innerHTML。學生的自由輸入一律走 el()／textContent，
+            這條界線不要因為方便就模糊掉。
+
+       ★ 為什麼要有第二段（steps）
+          原本只有一句 task，學生看完還是不知道「要拼成什麼樣子」。
+          第二段講**結構**（先定義、再主程式、各要放什麼），
+          但不講積木的順序與參數 —— 那是這一關要他自己排出來的。 */
+    if (opts.hint || opts.steps) {
+      var h = el('div', 'bk-goal');
+      h.innerHTML =
+        (opts.hint ? '<div class="bk-goal-h">🎯 ' + opts.hint + '</div>' : '') +
+        (opts.steps ? '<ul class="bk-goal-s">' +
+          opts.steps.map(function (t) { return '<li>' + t + '</li>'; }).join('') +
+          '</ul>' : '');
       rightBox.appendChild(h);
     }
 

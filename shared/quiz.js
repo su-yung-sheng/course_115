@@ -59,6 +59,12 @@
 
   /* ── 判分 ─────────────────────────────────────────
      回一個 Promise，永遠 resolve —— AI 出事就只用規則的結果。 */
+  /** 這一份作答「連送去覆核都不值得」嗎：太短，而且一個概念都沒沾到。 */
+  function tooThin(text, it, r) {
+    var n = String(text || '').replace(/\s/g, '').length;
+    return n < (it.min || 8) && !(r.got || []).length;
+  }
+
   function grade(items, answers, unitId, student, lv) {
     var A = global.ANSWER;
     /* ★ 把「這一題看得到的提示」一起交給判定當**抄襲來源**。
@@ -70,9 +76,21 @@
       }));
     });
 
-    /* 規則已經給滿分的題目不必送 —— 覆核只能加分，加不上去了。 */
+    /* 規則已經給滿分的題目不必送 —— 覆核只能加分，加不上去了。
+       ★ 也不送「根本沒寫幾個字、而且一個概念都沒沾到」的那些（2026-08-11）。
+         覆核要撿回來的是「他講對了，只是用了我沒收錄的說法」——
+         六個字又什麼都沒講到的答案，沒有東西可以撿。
+         送出去只是白花額度（而額度是全班共用的），
+         還會排在真正需要覆核的人前面。
+       ⚠️ 判斷條件是「太短**而且**沒沾到任何概念」，兩個都要成立。
+          只看字數的話會殺掉「省事啊」這種三個字但講到重點的答案 ——
+          answer.js 的規矩是「講到概念就不套用字數限制」，這裡不可以自己另立一套。 */
     var ask = [];
-    base.forEach(function (r, i) { if (r.level !== 'full') ask.push(i); });
+    base.forEach(function (r, i) {
+      if (r.level === 'full') return;
+      if (tooThin(answers[i], items[i], r)) return;
+      ask.push(i);
+    });
 
     if (!ask.length || !(global.ASKAI && global.ASKAI.enabled() && global.ASKAI.judge)) {
       return Promise.resolve({ results: base, ai: 0 });
@@ -181,8 +199,13 @@
         return '<li><div class="qz-q">' + it.q + '</div>' +
           /* ★ 最少字數要寫在框裡。
              學生按了送出才被告知「至少 N 個字」，等於罰他不知道規則。 */
-          '<textarea class="qz-ta" data-i="' + i + '" rows="3" maxlength="' + MAX_CHARS + '" ' +
+          '<textarea class="qz-ta" data-i="' + i + '" data-min="' + (it.min || 8) + '" ' +
+            'rows="3" maxlength="' + MAX_CHARS + '" ' +
             'placeholder="用自己的話寫幾句（至少 ' + (it.min || 8) + ' 個字）…"></textarea>' +
+          /* ★ 字數就在框子底下即時算（2026-08-11）。
+             以前要按了送出、等批改跑完，才被告知「至少 N 個字」——
+             那等於用一次批改去告訴他一件他早就該看得到的事。 */
+          '<div class="qz-cnt" id="qz-c' + i + '"></div>' +
           /* ★ 按鈕上要講明它會給什麼。
              只寫「提示」的話，學生不知道值不值得按 ——
              而這一顆給的是「問題分析那一步已經講過的東西」，
@@ -205,6 +228,32 @@
       };
     });
 
+    /* ── 字數的即時回饋 ───────────────────────────────
+       ★ 三種狀態，刻意分清楚：
+           沒寫       → 灰字，不催
+           還沒到 min → 紅框＋「還差 N 個字」（他知道自己在寫，只是還沒夠）
+           夠了       → 綠色打勾
+       ⚠️ 「還差 N 個字」**不是**通過條件。
+          answer.js 的規矩是「只要講到任何一個概念，字數限制就不套用」——
+          「省事啊」三個字也可能是滿分。所以這裡只提醒，不擋送出，
+          否則我們會擋掉一個其實答對的人，而他永遠不知道為什麼。 */
+    function paintCount(t) {
+      var box = host.querySelector('#qz-c' + t.dataset.i);
+      if (!box) return;
+      var n = String(t.value || '').replace(/\s/g, '').length;
+      var min = +t.dataset.min || 8;
+      t.classList.remove('short', 'okay');
+      if (!n) { box.className = 'qz-cnt'; box.textContent = ''; return; }
+      if (n < min) {
+        t.classList.add('short');
+        box.className = 'qz-cnt short';
+        box.textContent = '再多寫一點 —— 還差 ' + (min - n) + ' 個字';
+      } else {
+        t.classList.add('okay');
+        box.className = 'qz-cnt okay';
+        box.textContent = '✓ ' + n + ' 個字';
+      }
+    }
     function left() {
       var n = 0;
       host.querySelectorAll('.qz-ta').forEach(function (t) {
@@ -214,6 +263,7 @@
     }
     host.querySelectorAll('.qz-ta').forEach(function (t) {
       t.addEventListener('input', function () {
+        paintCount(t);
         var n = left(), go = host.querySelector('#qz-go');
         go.disabled = n > 0;
         go.textContent = n > 0 ? ('還有 ' + n + ' 題沒寫') : '送出';
@@ -303,6 +353,14 @@
       '  font-family:inherit;font-size:14px;line-height:1.8;resize:vertical}',
       '.qz-ta:focus{outline:0;border-color:#6366f1}',
       '.qz-ta:disabled{background:#f8fafc;color:#475569}',
+      /* ★ 紅框只是提醒，不是「你錯了」—— 所以用橘紅、不用正紅，
+         而且 focus 的時候讓紫色蓋過去（他正在改，不必一直被指著）。 */
+      '.qz-ta.short{border-color:#fb923c}',
+      '.qz-ta.okay{border-color:#6ee7b7}',
+      '.qz-ta.short:focus,.qz-ta.okay:focus{border-color:#6366f1}',
+      '.qz-cnt{min-height:17px;font-size:12px;margin-top:3px;line-height:1.5}',
+      '.qz-cnt.short{color:#c2410c}',
+      '.qz-cnt.okay{color:#059669}',
       '.qz-hint{margin-top:6px;background:none;border:0;color:#6366f1;font-family:inherit;',
       '  font-size:12.5px;font-weight:800;cursor:pointer;padding:2px 0}',
       '.qz-hintbox:not(:empty){margin-top:6px;background:#eef2ff;border:1px solid #c7d2fe;',

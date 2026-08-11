@@ -136,7 +136,14 @@
       done: '你只動了一格，其他兩格完全沒碰。<br>' +
             '<b>這就是模組化最實際的好處：改一個地方，其他都不用動。</b>' },
     { title: '③ 打開主餐，換掉裡面一樣東西',
-      ask: '點一下托盤上的主餐把它打開，然後<b>換掉裡面任何一個零件</b>。',
+      /* ★ 這一關的 ask 比前兩關長，是刻意的。
+         前兩關學生已經在做了，一句話就夠；這一關要先讓他知道
+         「主餐本身也是拼出來的」—— 沒有這句，點開之後跳出四個插槽
+         只會像是又一個要選的東西，而不是「模組裡面還有模組」。
+         ⚠️ 別把答案寫進去：不說換哪一個，也不說換了會發生什麼。 */
+      ask: '前面兩關，主餐一直是<b>一整塊</b> —— 選「牛肉漢堡」就是一整個漢堡。<br>' +
+           '可是漢堡自己也是<b>拼出來的</b>：麵包、主料、蔬菜、醬料。<br>' +
+           '👉 點一下托盤上的主餐<b>把它打開</b>，然後換掉裡面任何一個零件。',
       done: '主餐自己也是拼出來的：麵包 ＋ 主料 ＋ 蔬菜 ＋ 醬料，' +
             '而且你只換了其中一格，其他三格沒動。' +
             '換掉主料的話，連<b>外面看到的名字都跟著變</b>了。<br>' +
@@ -182,11 +189,42 @@
     var oi = 0;                                       // 現在第幾張
     var pick = { main: null, side: null, drink: null };
     var swapWant = null;      // 第 2 關要換成哪一種飲料
+    /* 這一張訂單裡，學生自己動過哪幾格（見 mark() 的 ⚠️）。
+       換訂單、換關卡時清空。 */
+    var touched = {};
+    var shakeKey = '';        // 剛剛選錯的那一格 —— 只有它抖一下，不是整排都抖
     var opened = false;
     var inner = {};           // 第 3 關：主餐裡面現在裝了什麼
     var innerBase = '';       // 打開時的原樣（用來判斷「換過了沒」）
 
     draw();
+
+    /** 這一格這一關要不要顯示（第 3 關只留主餐） */
+    function visible(sl) { return st !== 2 || sl.key === 'main'; }
+
+    /**
+     * 這一格現在對不對：'ok'／'no'／''（還沒動過，或這一關不判這一格）。
+     *
+     * ★ 為什麼要即時判，不等按送出
+     *   這一站是「體驗」，不是考試 —— 學生要看到的是
+     *   「換這一格，畫面就跟著變」，而不是最後才知道全錯。
+     *   而且沒有回饋的話，選對選錯長得一樣，他會以為亂選也算過。
+     *
+     * ⚠️ 但只判**他這一張訂單動過的格子**（touched）。
+     *   下一張訂單會保留上一張的選擇（那是刻意的，他才會看到
+     *   「只要改不一樣的那幾格」）—— 如果一換單就把留下來的格子
+     *   打上紅色 ✗，他人還沒動就先被判錯一次，那不是回饋，是找碴。
+     */
+    function mark(key) {
+      if (!pick[key] || !touched[key]) return '';
+      if (st === 0) return pick[key].id === orders[oi][key] ? 'ok' : 'no';
+      /* 第 2 關只換飲料：另外兩格「保持原樣」才是對的。 */
+      if (st === 1) {
+        if (key !== 'drink') return 'ok';
+        return swapWant && pick.drink.id === swapWant.id ? 'ok' : 'no';
+      }
+      return '';                 // 第 3 關換哪個零件都算對，不打勾也不打叉
+    }
 
     function draw() {
       var s = STAGES[st];
@@ -199,7 +237,13 @@
           '<p class="cb-ask">' + s.ask + '</p>' +
         '</div>' +
         orderCard() +
-        '<div class="cb-tray">' + SLOTS.map(function (sl) {
+        /* ★ 第 3 關只留主餐（visible）。
+           打開主餐之後畫面上會同時有「托盤三格 ＋ 三排按鈕 ＋ 四個零件插槽」，
+           而這一關要看的只有最後那一組 —— 東西一多，
+           「模組裡面還有模組」那件事就被淹掉了。
+           配餐和飲料不是消失，是收起來（下面那一行字會說明），
+           因為「它們還在，只是這一關不動它們」正是模組化的重點。 */
+        '<div class="cb-tray">' + SLOTS.filter(visible).map(function (sl) {
           var got = pick[sl.key];
           /* ★ 主餐打開之後，托盤上的名字要跟著裡面的主料變 ——
              不然學生換了炸雞腿，托盤還寫「牛肉漢堡」，那才是真的看不懂。 */
@@ -208,13 +252,23 @@
             var nm = mainNameOf(inner);
             show = { icon: nm.icon, name: nm.name };
           }
-          return '<div class="cb-slot' + (got ? ' has' : '') + '" data-slot="' + sl.key + '">' +
-            '<div class="cb-slot-h">' + sl.name + '</div>' +
+          /* ★ 選了就要看得出「這一格對不對」。
+             ⚠️ 2026-08-11 之前選錯完全靜音 —— 格子填上去、變黃框，
+                和選對長得一模一樣，學生會以為亂選也算對。 */
+          var mk = mark(sl.key);
+          return '<div class="cb-slot' + (got ? ' has' : '') + (mk ? ' ' + mk : '') +
+                 (mk === 'no' && shakeKey === sl.key ? ' shake' : '') +
+                 '" data-slot="' + sl.key + '">' +
+            '<div class="cb-slot-h">' + sl.name +
+              (mk === 'ok' ? ' <span class="cb-tick">✓</span>' :
+               mk === 'no' ? ' <span class="cb-cross">✗</span>' : '') + '</div>' +
             '<div class="cb-slot-b">' + (show ? '<span class="cb-ic">' + show.icon + '</span>' +
               '<span class="cb-nm">' + show.name + '</span>' : '<span class="cb-empty">還沒選</span>') +
             '</div></div>';
         }).join('') + '</div>' +
-        '<div class="cb-picks">' + SLOTS.map(function (sl) {
+        (st === 2 ? '<p class="cb-side">🍟 配餐和 🥤 飲料先收起來 —— ' +
+                    '它們沒有不見，只是<b>這一關不動它們</b>。' : '') +
+        '<div class="cb-picks">' + SLOTS.filter(visible).map(function (sl) {
           return '<div class="cb-row"><div class="cb-row-h">' + sl.name + '</div>' +
             '<div class="cb-row-b">' + sl.items.map(function (it) {
               var on = pick[sl.key] && pick[sl.key].id === it.id;
@@ -270,7 +324,10 @@
         return;
       }
       pick[key] = it;
+      touched[key] = true;
+      shakeKey = (mark(key) === 'no') ? key : '';
       draw();
+      shakeKey = '';          // 抖一次就好，之後重畫不再抖
       check(key, was);
     }
 
@@ -280,12 +337,31 @@
         var okAll = SLOTS.every(function (sl) {
           return pick[sl.key] && pick[sl.key].id === o[sl.key];
         });
-        if (!okAll) { note('', ''); return; }
+        if (!okAll) {
+          /* ⚠️ 這裡本來是 note('', '') —— 選錯完全沒有聲音。
+             格子照樣填上去、照樣變成黃框，和選對長得一模一樣，
+             學生自然會以為「亂選也對」。
+             ★ 但也不要罵人：這一站是體驗，講「哪一格還不對」就夠了，
+               不必說「你錯了」，也不要直接說出正確答案。 */
+          var wrong = SLOTS.filter(function (sl) { return mark(sl.key) === 'no'; })
+                           .map(function (sl) { return sl.name; });
+          if (wrong.length) {
+            note('bad', '❗ <b>' + wrong.join('、') + '</b> 和訂單上寫的不一樣，' +
+                        '再對一次上面那張單子。');
+          } else {
+            note('', '');            // 只是還沒選完，不是選錯
+          }
+          return;
+        }
         if (oi < orders.length - 1) {
           oi++;
           /* ★ 下一張訂單保留上一份的選擇 ——
-             這樣他自己會看到「只要改動不一樣的那幾格」。 */
-          note('good2', '✅ 訂單 ' + oi + ' 完成！接著是下一張。');
+             這樣他自己會看到「只要改動不一樣的那幾格」。
+             ⚠️ 但要把 touched 清掉，不然留下來的格子會立刻被打紅叉 ——
+                他人都還沒動就先被判錯一次。 */
+          touched = {};
+          note('good2', '✅ 訂單 ' + oi + ' 完成！接著是下一張。' +
+                        '<br>上一張的選擇留著 —— <b>只要改和訂單不一樣的那幾格</b>。');
           draw();
           return;
         }
@@ -359,7 +435,9 @@
       var b = host.querySelector('#cb-next');
       if (!b) return;
       b.onclick = function () {
-        if (st < STAGES.length - 1) { st++; draw(); return; }
+        /* 換關卡也要清 touched —— 第 2 關一進來，
+           三格都是上一關留下的，不該一開始就掛滿勾叉。 */
+        if (st < STAGES.length - 1) { st++; touched = {}; draw(); return; }
         if (opts.onDone) opts.onDone();
       };
     }
@@ -388,6 +466,18 @@
       '.cb-tray{display:flex;gap:8px;margin:12px 0}',
       '.cb-slot{flex:1;border:2px dashed #cbd5e1;border-radius:14px;padding:8px;text-align:center;background:#fff}',
       '.cb-slot.has{border-style:solid;border-color:#fbbf24;background:#fffbeb}',
+      /* ★ 對錯用**邊框顏色＋符號**兩種方式表示，不要只靠顏色 ——
+         班上一定有色覺辨認不同的學生，只用紅綠等於對他沒有回饋。 */
+      '.cb-slot.ok{border-color:#34d399;background:#ecfdf5}',
+      '.cb-slot.no{border-color:#f87171;background:#fef2f2}',
+      /* 只有剛動到的那一格會抖 —— 每次重畫整排都抖的話，
+         畫面一直在動，反而看不出是哪一格有問題。 */
+      '.cb-slot.no.shake{animation:cbShake .3s}',
+      '.cb-tick{color:#059669}',
+      '.cb-cross{color:#dc2626}',
+      '@keyframes cbShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}' +
+        '75%{transform:translateX(4px)}}',
+      '.cb-side{margin:8px 0 0;font-size:12.5px;color:#94a3b8;line-height:1.7;text-align:center}',
       '.cb-slot.clickable{cursor:pointer}',
       '.cb-slot.clickable:hover{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.15)}',
       '.cb-slot-h{font-size:11.5px;font-weight:900;color:#94a3b8;margin-bottom:3px}',

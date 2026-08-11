@@ -45,6 +45,10 @@
   .stp-now {background:#4f46e5;color:#fff}
   .stp-done{background:#ecfdf5;color:#047857;border-color:#6ee7b7}
   .stp-todo{background:#fff;color:#94a3b8;border-color:#e2e8f0;cursor:not-allowed}
+  .resume{background:#eef2ff;border:1px solid #c7d2fe;border-radius:14px;
+          padding:10px 14px;font-size:13.5px;line-height:1.9;color:#3730a3}
+  .resume button{margin-left:8px;background:none;border:0;color:#4f46e5;
+                 font:inherit;font-weight:800;text-decoration:underline;cursor:pointer}
   .scene-shot{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
   .scene-shot > div{flex:1 1 200px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px}
 </style>
@@ -104,6 +108,7 @@ let quizDone = {};       // { '2-1-1': { score: 4 } }
 let preDone = {};        // 思考關卡做完了沒
 let at = 0;              // 現在第幾步
 let ready = { 1:false, 2:false, 3:false };   // 各步驟完成了沒（步驟 0、4 不必判定）
+let resumed = false;     // 這一次是不是從記錄點接回來的（要跟學生講一聲）
 
 const GATE = (window.GRADING && window.GRADING.GATE) || null;
 function unitOpen(no) {
@@ -149,6 +154,20 @@ function stepDone(i) {
 }
 function canGo(i) { return i <= at || stepDone(i - 1); }
 
+/* 走到下一步 —— 順便把記錄點存起來。
+   ⚠️ 有七個地方要前進。各寫一次的話，漏掉的那一個**不會有任何症狀**：
+      學生當下走得過去，只是那一步沒被記下來，
+      下次重進來又要從那裡再做一遍 —— 而他不會知道為什麼。
+   ⇒ 前進這件事只有這一個入口。 */
+function advance(scroll) {
+  ready[at] = true;
+  at++;
+  resumed = false;          // 已經自己往前走了，不必再提醒「上次做到這裡」
+  if (window.saveStep && unit) window.saveStep(unit.id, at);
+  render();
+  if (scroll !== false) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function render() {
   stopHold();               // ⚠️ 見 nextBtn：不清的話計時器會愈疊愈多
   if (!unit) {
@@ -179,12 +198,20 @@ function render() {
               data-step="${i}" ${canGo(i) ? '' : 'disabled'}>
         <span>${x.icon}</span><span>${i + 1}. ${x.name}</span>
       </button>`).join('')}</div>
+    ${resumed ? `<div class="resume mb-4">
+      📍 上次做到<b>第 ${at + 1} 步（${S[at].name}）</b>，直接從這裡接下去。
+      <button id="fromTop">想從第 1 步再看一次</button>
+    </div>` : ''}
     <section id="body" class="bg-white rounded-2xl border border-slate-200 shadow-md p-5 sm:p-7 pop"></section>
     <div id="foot" class="mt-4"></div>`;
 
   document.querySelectorAll('[data-step]').forEach(b => {
     b.onclick = () => { if (canGo(+b.dataset.step)) { at = +b.dataset.step; render(); window.scrollTo({top:0,behavior:'smooth'}); } };
   });
+  /* ★ 一定要留這顆。被系統丟到第 5 步、又回不去第 1 步的話，
+     學生會覺得「它把我踢走了」—— 而想重看的通常是認真的那一個。 */
+  const ft = $('fromTop');
+  if (ft) ft.onclick = () => { at = 0; resumed = false; render(); };
   draw(s);
 }
 
@@ -242,7 +269,7 @@ function nextBtn(label, wantHold) {
   btn.onclick = () => {
     if (btn.disabled) return;
     stopHold();
-    ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'});
+    advance();
   };
   if (!needHold) return;
 
@@ -314,7 +341,7 @@ function draw(s) {
       '等一下要把「畫正方形」包成一塊積木。在那之前，先看看速食店怎麼組套餐。</p>' +
       '<div id="combo-host"></div>';
     window.COMBO.mount($('combo-host'), {
-      onDone: () => { ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+      onDone: () => { advance(); }
     });
     /* ⚠️ 這裡不設時間也不給跳過 —— 三關本來就要動手才過得去，
        再加倒數是雙重處罰。 */
@@ -327,7 +354,7 @@ function draw(s) {
       student: sid(),
       onAsked: (q, a) => { if (window.saveAsk) window.saveAsk(unit.id, q, a); },
       onWrite: t => { if (window.saveNote) window.saveNote(unit.id, t); },
-      onDone: () => { ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+      onDone: () => { advance(); }
     });
     /* ⚠️ 這裡**不要**再補一顆按鈕。
        renderAnalysis 自己會畫「想清楚了，開始動手 →」，
@@ -338,7 +365,7 @@ function draw(s) {
 
   if (s.key === 'derive') {
     DERIVE.mount(body, lv.derive, {
-      onDone: () => { ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+      onDone: () => { advance(); }
     });
     return;
   }
@@ -366,11 +393,11 @@ function draw(s) {
       unit: unit.id,
       student: sid(),
       /* 沒有題庫就整步跳過 —— 不要讓學生看到一個空的檢測。 */
-      onNone: () => { ready[at] = true; at++; render(); },
+      onNone: () => { advance(false); },
       onPass: (score) => {
         quizDone = Object.assign({}, quizDone, { [unit.id]: { score: score } });
         if (window.saveQuiz) window.saveQuiz(unit.id, score);
-        ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'});
+        advance();
       },
       /* ★ 不到門檻就送回情境解說，不是把他丟在原地。
          「回去重讀」要真的帶他回去 —— 不然他只會一直按重考、亂猜到過為止。 */
@@ -389,9 +416,12 @@ function draw(s) {
     /* ⚠️ BLOCKS.mount 收的是「攤平的選項」，不是整個關卡物件。
        傳 lv 進去的話 palette／goal 都讀不到，畫面會是一個空的拼圖區 ——
        而且不會報錯，只會安靜地沒東西可拼。 */
+    /* steps：講「要拼成什麼結構」，不講積木順序 —— 順序是這一步要他排的。
+       ⚠️ 不要把 lv.tips 丟進來：那裡面是給老師看的、直接寫著答案。 */
     BLOCKS.mount(body, {
-      palette: lv.palette, goal: lv.goal, alts: lv.alts, loose: lv.loose, hint: lv.task,
-      onPass: () => { markPre(); ready[at] = true; at++; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+      palette: lv.palette, goal: lv.goal, alts: lv.alts, loose: lv.loose,
+      hint: lv.task, steps: lv.build,
+      onPass: () => { markPre(); advance(); }
     });
     return;
   }
@@ -418,10 +448,25 @@ function draw(s) {
       而畫面上的結果是：**每一關都停在「只開第 1 關」**。
       沒有紅字、沒有錯誤頁，只是永遠開不了第 2 關。
    ⚠️ 重畫時要保留學生走到第幾步（at），不然讀進度回來會把他踢回第 1 步。 */
-window.applyProgress = function (stars, pre, quiz) {
+window.applyProgress = function (stars, pre, quiz, step) {
   quizDone = quiz || {};
   unitStars = stars || {};
   preDone = pre || {};
+  /* ★ 記錄點：上次做到第幾步（2026-08-11）。
+     ⚠️ 存的是「做完了幾步」，不是「停在第幾步」——
+        停在第幾步會把「開著沒做」也記成進度。
+
+     ★ 為什麼不直接跳過去
+       學生自己按重新整理、或想從頭再看一次的時候，
+       被系統丟到最後一步只會覺得「它把我踢走了」。
+       ⇒ 跳到最遠的那一步，但**明講**，而且留一個「回第 1 步」。 */
+  const done = Number((step || {})[unit ? unit.id : ''] || 0);
+  if (done > 0) {
+    const S = steps();
+    for (let i = 0; i < done && i < S.length; i++) ready[i] = true;
+    at = Math.min(done, S.length - 1);
+    resumed = at > 0;
+  }
   render();
 };
 
@@ -457,7 +502,8 @@ render();
       const mods = (snap.exists() && snap.data().modules) || {};
       window.applyProgress((mods.scratch && mods.scratch.unitStars) || {},
                            (mods.scratch && mods.scratch.pre) || {},
-                           (mods.scratch && mods.scratch.quiz) || {});
+                           (mods.scratch && mods.scratch.quiz) || {},
+                           (mods.scratch && mods.scratch.step) || {});
     } catch (e) {
       /* 讀不到就維持「只開第 1 關」。寧可少開，也不要因為連線問題整批放行。 */
       console.error('讀進度失敗', e);
@@ -470,6 +516,31 @@ render();
       await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
         { modules: { scratch: { pre: { [unitId]: true } } } }, { merge: true });
     } catch (e) { console.warn('思考關卡紀錄沒存成功（不影響闖關）', e); }
+  };
+
+  /* ── 記錄點 ───────────────────────────────────────
+     ★ 為什麼要有
+       這一關有六步，走完要十幾分鐘。電腦教室當機、按到關閉、
+       下課鐘響先關機 —— 任何一件事發生，學生就得整關重跑一次。
+       重跑第二次的內容他不會更認真讀，只會更快亂點過去。
+
+     ★ 為什麼只往前不往後（Math.max）
+       學生點回第 3 步再看一次是好事，不該因此把紀錄退回去。
+       這裡記的是「他最遠做到哪」，不是「他現在在看哪一步」。
+
+     ⚠️ 存不進去不可以擋闖關（和其他四個存檔一樣）。
+        11502 的進度在 2027-02-01 之前只有測試帳號寫得進去，
+        規則沒重新發布的話連測試帳號也會被擋 —— 那時候這裡會一直失敗，
+        而學生**照樣要能把這一關走完**。 */
+  window.saveStep = async function (unitId, n) {
+    if (!sid || !unitId || !(n > 0)) return;
+    try {
+      const ref = doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid);
+      const snap = await getDoc(ref);
+      const cur = Number(((((snap.exists() && snap.data().modules) || {}).scratch || {}).step || {})[unitId] || 0);
+      if (n <= cur) return;                       // 只往前，不往後
+      await setDoc(ref, { modules: { scratch: { step: { [unitId]: n } } } }, { merge: true });
+    } catch (e) { console.warn('記錄點沒存成功（不影響闖關）', e); }
   };
   /* 概念檢測的成績。
      ⚠️ 只寫 modules.scratch.quiz，不碰 unitStars ——
