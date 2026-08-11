@@ -100,5 +100,33 @@ is(/結束/.test(nudgeSrc), true, '順便講明以「結束」收尾');
 is(/\$\{last\}/.test(nudgeSrc), true, '排了之後改成提醒「你已經排到哪一步」');
 is(/第\s*\$\{|正確答案|下一步是/.test(nudgeSrc), false, '沒有直接說出下一步是什麼');
 
+/* ── 閱讀停留 ───────────────────────────────────────
+   規則本身在 shared/readhold.js（readhold.test.js 顧），
+   這裡只釘 11501 自己的兩件事：接上去了、以及「已通關免等」還在。 */
+console.log('\n── 閱讀停留：接的是共用規則，而且已通關的關卡免等 ──');
+/* ⚠️ 「不可以再出現」這一類的檢查一定要**先去掉註解**。
+   註解裡正好會引用舊寫法來說明為什麼不要它 ——
+   直接比對原始碼的話，那段說明自己會把測試打成紅字。
+   （反過來也發生過：levelpage.test.js 有一條命中的是註解，
+     程式裡根本沒那段判斷，紅不起來也綠得沒有意義。） */
+const sCode = s.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/[^\n]*/gm, ' ');
+is(/readhold\.js/.test(s), true, '有載入 shared/readhold.js');
+is(/READHOLD\.start\(/.test(sCode), true, '★ 用共用規則，不是自己再寫一個計時器');
+is(/isWatching|document\.hasFocus|visibilityState/.test(sCode), false,
+   '★ 不留舊的 isWatching() —— 它判對了焦點卻沒有保險絲，' +
+   '報不出焦點的環境會讓學生永遠卡在這一頁');
+is(/!window\.READHOLD/.test(sCode), true, '沒載到就放行，不是把學生鎖死');
+{
+  /* ⚠️ 這一條是 11501 想到而 11502 原本漏掉的：
+     強制停留是為了「第一次別亂點」，不是懲罰。
+     已經排對過的人回來查資料、或想再練習一次，
+     每次都被鎖 30 秒只會讓他覺得系統在找麻煩。 */
+  const fn = s.slice(s.indexOf('function readSecondsFor'), s.indexOf('const HINT_SECONDS'));
+  is(/state\.done\[u\.id\]/.test(fn) && /\? 0 :/.test(fn), true,
+     '★ 已經排對過的關卡回傳 0 秒 —— 回來查資料不該再被鎖一次');
+  is(/sec:\s*readSecondsFor\(state\.unit\)/.test(s), true,
+     '   而且真的把它傳給倒數（不是算完就丟掉）');
+}
+
 console.log(`\n通過 ${pass}／失敗 ${fail}`);
 process.exit(fail?1:0);

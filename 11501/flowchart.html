@@ -36,6 +36,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
   <!-- 全站共用計分規則（單一來源） -->
   <script src="../shared/grading.js"></script>
+  <script src="../shared/readhold.js"></script>
 <script src="content/flowchart.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -367,42 +368,65 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     }
     const HINT_SECONDS = 10;   // 選件頁提示顯示秒數（只有一次機會）
     const SELECT_TRIES = 3;    // 選元件可確認的次數，用完退回重讀
-    let readTimer = null, hintTimer = null;
+    let readHold = null, hintTimer = null;
     function clearTimers(){
-      if(readTimer){ clearInterval(readTimer); readTimer=null; }
+      if(readHold){ readHold.stop(); readHold=null; }
       if(hintTimer){ clearInterval(hintTimer); hintTimer=null; }
     }
-    // 閱讀倒數：直接改按鈕文字，不整頁重繪（避免內嵌教材 iframe 被重載）
-    // ⏸ 只有「這個分頁在前景」時才會倒數；切到別的分頁／視窗會暫停，要保持關注才算秒數
-    function isWatching(){ return !document.hidden && document.hasFocus(); }
-    function startReadCountdown(){
-      const paint = () => {
-        const btn = document.getElementById('begin-sel');
-        if(!btn) return;
-        if(state.readLeft > 0){
-          btn.disabled = true;
-          btn.textContent = isWatching()
-            ? `請先仔細閱讀…（還要 ${state.readLeft} 秒）`
-            : `⏸ 已暫停：請回到這個畫面才會繼續倒數（還要 ${state.readLeft} 秒）`;
-          btn.className = 'mt-5 w-full bg-slate-300 text-white font-bold text-lg py-3 rounded-xl cursor-not-allowed transition';
-        }else{
-          btn.disabled = false;
-          btn.textContent = '我讀完了，開始闖關 →';
-          btn.className = 'mt-5 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg py-3 rounded-xl active:scale-95 transition';
-        }
-      };
-      paint();
-      if(readTimer) clearInterval(readTimer);
-      readTimer = setInterval(() => {
-        if(!isWatching()){ paint(); return; }        // 沒在看 → 不扣秒數
-        state.readLeft--;
-        if(state.readLeft <= 0){ state.readLeft = 0; clearInterval(readTimer); readTimer = null; }
-        paint();
-      }, 1000);
+
+    /* ── 閱讀倒數 ──────────────────────────────────────
+       ★ 規則在 shared/readhold.js，這裡只管畫面文字。
+         什麼叫「離開」（切分頁／並列視窗焦點跑掉）、寬限幾秒、
+         什麼時候從頭算、保險絲 —— 全部在那一支，兩學期共用一份。
+
+       ⚠️ 2026-08-11 之前這一頁自己判：
+             function isWatching(){ return !document.hidden && document.hasFocus(); }
+          焦點判對了（11502 那邊漏掉，並列視窗完全繞得過去），
+          但**沒有保險絲** —— hasFocus() 一直回 false 的環境
+          （內嵌瀏覽器、看板模式）學生會永遠卡在這一頁，
+          畫面上只有一個不動的「⏸ 已暫停」，沒有任何錯誤訊息。
+          而且 document.hidden 在 prerender 狀態是 true，
+          配上沒有出口就更危險。
+          兩學期各寫一套的結果是各自對一半、各自錯一半。
+
+       ★ 直接改按鈕文字，不整頁重繪 —— 避免內嵌教材 iframe 被重載。 */
+    function paintRead(v){
+      const btn = document.getElementById('begin-sel');
+      if(!btn) return;
+      if(v && v.left > 0){
+        btn.disabled = true;
+        btn.textContent =
+          v.state === 'reset' ? `⏸ 離開太久，從頭算（還要 ${v.left} 秒）` :
+          v.state === 'pause' ? `⏸ 已暫停：請回到這個畫面才會繼續倒數（還要 ${v.left} 秒）` :
+                                `請先仔細閱讀…（還要 ${v.left} 秒）`;
+        btn.className = 'mt-5 w-full bg-slate-300 text-white font-bold text-lg py-3 rounded-xl cursor-not-allowed transition';
+      }else{
+        btn.disabled = false;
+        btn.textContent = '我讀完了，開始闖關 →';
+        btn.className = 'mt-5 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg py-3 rounded-xl active:scale-95 transition';
+      }
     }
-    // 切回畫面時立刻更新提示文字
+    function startReadCountdown(){
+      if(readHold){ readHold.stop(); readHold = null; }
+      /* 沒載到 readhold.js 就直接放行。
+         少讀 30 秒的代價，遠小於整節課卡在一個不會動的按鈕前面。 */
+      if(!window.READHOLD){ state.readLeft = 0; paintRead(null); return; }
+      readHold = window.READHOLD.start({
+        sec:  readSecondsFor(state.unit),
+        left: state.readLeft,          // 重繪時從目前秒數接著算
+        onTick: v => { state.readLeft = v.left; paintRead(v); },
+        onDone: () => { state.readLeft = 0; paintRead(null); }
+      });
+    }
+    /* 切回畫面時立刻換文字，不用等下一秒。
+       ⚠️ 只換「暫停／繼續」，不猜有沒有重算 —— 那要等下一次 onTick，
+          在這裡猜會和真正的狀態對不上。 */
     ['visibilitychange','focus','blur'].forEach(ev=>{
-      window.addEventListener(ev, ()=>{ if(state.status==='read' && readTimer){ const b=document.getElementById('begin-sel'); if(b) b.textContent = isWatching()?`請先仔細閱讀…（還要 ${state.readLeft} 秒）`:`⏸ 已暫停：請回到這個畫面才會繼續倒數（還要 ${state.readLeft} 秒）`; } });
+      window.addEventListener(ev, ()=>{
+        if(state.status==='read' && readHold && state.readLeft > 0){
+          paintRead({ left: state.readLeft, state: readHold.away() ? 'pause' : 'run' });
+        }
+      });
     });
     // 讓右側「程式評分」iframe 自動長成內容高度：不出現內部捲軸，整頁只用外層捲軸
     function autoSizeGraderFrame(){

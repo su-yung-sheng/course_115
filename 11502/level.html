@@ -54,6 +54,7 @@
 <script src="../shared/auth.js"></script>
 <script src="../shared/guard.js"></script>
 <script src="../shared/grading.js"></script>
+<script src="../shared/readhold.js"></script>
 <script src="../shared/blocks.js"></script>
 <script src="../shared/derive.js"></script>
 <script src="../shared/ai-guide.js"></script>
@@ -200,49 +201,39 @@ function card(title, html) {
      然後在那裡卡住，再回頭問「這題到底要幹嘛」。
      這 30 秒不是懲罰，是**把「讀完」變成一件真的發生過的事**。
 
-   ★ 離開 5 秒內是暫停，超過才重來
-     學生會被老師叫、會切去看投影、通知會跳出來、輸入法會搶焦點。
-     「一離開就重來」的話，被罰的通常是最乖的那一個 ——
-     他學到的是「不要離開」，不是「要讀」。
-     可是「永遠只是暫停」等於零成本：並排視窗掛在那裡，
-     回來按一下就過了，眼睛從頭到尾沒看過這一頁。
-     ⇒ 前 AWAY_RESET 秒只暫停（保護被打斷的人），
-       超過就從 HOLD_SEC 重新算（讓「掛著」沒有便宜可佔）。
-     ⇒ 想早點過關，就專心讀完 —— 這是最快的一條路，而且只有這一條。
+   ★ 規則本身在 shared/readhold.js，這裡只管畫面
+     什麼叫「離開」（切分頁／並列視窗焦點跑掉）、寬限幾秒、
+     什麼時候從頭算、保險絲 —— 全部在那一支，兩學期共用一份。
+     ⚠️ 不要在這裡另外判一次。11501 和 11502 各寫一套的時候，
+        兩邊各自對一半、各自錯一半，而且沒有人會發現
+        （2026-08-11：11502 漏了焦點，11501 漏了保險絲）。
 
-   ★ 「離開」要看兩件事，只看一件會被並列視窗繞過
-     ① document.visibilityState === 'hidden'   切分頁、最小化
-     ② document.hasFocus() === false           視窗還看得見，但焦點在別的視窗
-
-     ⚠️ 2026-08-11 才發現：原本只判 ①。
-        Windows 鍵 ＋ ← / → 把兩個視窗並排，這一頁還「看得見」，
-        visibilityState 就是 'visible' —— 秒數照走，旁邊可以做任何事。
-        更糟的是它把兩件事判反了：
-          切分頁去開 Scratch 看題目（我們要的）→ 暫停，被罰
-          並列視窗在旁邊玩（我們不要的）      → 照常倒數
-        加上 ② 之後兩種都算「不在讀」。
-
-   ⚠️ 但 ② 必須「先看過焦點，才准用它判離開」（sawFocus）
-     jsdom 的 document.hasFocus() 永遠回 false；
-     內嵌瀏覽器、看板模式也可能一直回 false。
-     直接信它的話，倒數會**永遠停在原地**，而畫面上只有一個「（暫停）」
-     停著不動，沒有任何錯誤訊息 —— 和 2026-08-10 的 prerender 是同一種壞法。
-     ⇒ 只有在「這個環境真的回報過一次有焦點」之後，失焦才算離開。
-       沒回報過就當作一直有焦點（寧可放過）。
+   ★ 已經通關的關卡不必再等
+     強制停留是為了「第一次別亂點」，不是懲罰。
+     已經拿到星星的人回來查資料、或想重做一次練習，
+     每次都被鎖 30 秒只會讓他覺得系統在找麻煩。
 
    ⚠️ 計時器一定要在 render() 裡清掉。
       不清的話，每重畫一次就多一個計時器在跑，
       倒數會愈跳愈快 —— 而且畫面上看不出原因。 */
 const HOLD_SEC = 30;
-const AWAY_RESET = 5;   // 離開超過幾秒就從頭算（5 秒內只是暫停）
 let held = {};          // 這一步的停留時間已經滿了沒
-let holdTimer = null;
+let hold = null;        // 目前的倒數（READHOLD 傳回來的控制器）
 
-function stopHold() { if (holdTimer) { clearInterval(holdTimer); holdTimer = null; } }
+function stopHold() { if (hold) { hold.stop(); hold = null; } }
 
-function nextBtn(label, hold) {
+/** 這一步要停留幾秒。已經通關的關卡回傳 0（見上面那段 ★）
+    ⚠️ 看的是作品星（unitStars），不是概念星 ——
+       作品星是「這一關真的做完了」唯一的憑據，也是依序開放讀的那一組。 */
+function holdSecFor() {
+  return (unit && unitStars[unit.id] > 0) ? 0 : HOLD_SEC;
+}
+
+/* ⚠️ 第二個參數不要叫 hold —— 那會蓋掉上面存控制器的 hold，
+      而症狀是「倒數停不下來」，看起來完全不像是名字的問題。 */
+function nextBtn(label, wantHold) {
   const step = at;
-  const needHold = hold && !held[step];
+  const needHold = wantHold && !held[step] && holdSecFor() > 0;
   $('foot').innerHTML = `<button id="go" ${needHold ? 'disabled' : ''}
     class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white
     font-black text-lg rounded-2xl px-6 py-4 shadow-md transition">${label} →</button>`;
@@ -255,59 +246,16 @@ function nextBtn(label, hold) {
   };
   if (!needHold) return;
 
-  let left = HOLD_SEC;
-  /* 這個環境到底報不報得出「有焦點」。
-     沒報過就不准拿失焦當作離開 —— 理由見上面那段 ⚠️。 */
-  let sawFocus = false;
-  let awayFor = 0;        // 已經連續離開幾秒
-  /* 保險絲：不管發生什麼事，最久 HOLD_SEC × 3 一定解鎖。
-     ★ 為什麼需要
-       這個倒數是靠 visibilityState 和 hasFocus 決定要不要扣秒的。
-       只要有任何一個瀏覽器（或內嵌瀏覽器、或某個外掛）
-       把狀態一直報成非 visible／永遠沒有焦點，學生就會**永遠卡在這一步**，
-       而且畫面上只會看到「還要 30 秒」停著不動 —— 沒有任何錯誤訊息。
-       ⚠️ 實際踩過兩次：
-          · jsdom 預設的 visibilityState 是 'prerender'，
-            用 document.hidden 判斷的話一秒都不會走。
-          · jsdom 的 document.hasFocus() 永遠回 false。
-          瀏覽器不會這樣，但「我以為不會」正是這種 bug 的形狀。
-     ⇒ 擋錯人的代價遠大於少讀 30 秒，所以一定要有出口。
-     ⇒ 這也是「掛著不動」的出口：時間到了就算沒焦點也照樣倒數完。
-       那是刻意留的 —— 一個離開座位的學生不該永遠回不來。 */
-  const deadline = Date.now() + HOLD_SEC * 3000;
-  paint();
+  /* 規則全部在 shared/readhold.js。這裡只負責把狀態畫出來。
+     ⚠️ 沒載到 readhold.js 就直接放行，不要把學生鎖死在一個
+        永遠不會動的按鈕前面 —— 少讀 30 秒的代價遠小於整節課卡住。 */
+  if (!window.READHOLD) { done(); return; }
   stopHold();
-  holdTimer = setInterval(() => {
-    /* ★ 不在眼前、或焦點在別的視窗，就不扣秒。
-       ⚠️ 判 visibilityState === 'hidden'，不要判 document.hidden。
-          後者是「只要不是 visible 就算躲起來」，包含 prerender 這種
-          我們沒預期的狀態；判斷要「明確說躲起來了才停」，
-          不是「沒說看得到就停」。
-       ★ hasFocus 同一個道理，而且再多一層：
-          連「這個環境報得出焦點嗎」都要先確認過（sawFocus）才敢用。
-          沒有 hasFocus 這個 API 的話一律當作有焦點。 */
-    const focused = !document.hasFocus || document.hasFocus();
-    if (focused) sawFocus = true;
-    const away = document.visibilityState === 'hidden' || (sawFocus && !focused);
-    if (away && Date.now() < deadline) {
-      awayFor++;
-      /* 離開超過 AWAY_RESET 秒 → 從頭算。
-         ⚠️ 這是 2026-08-11 才改的，原本一律只是暫停。
-            只暫停的話，「並排視窗、這邊掛著、那邊做別的」等於零成本 ——
-            回來按一下就過了。要讓眼睛留在頁面上，離開就得有代價。
-         ★ 但前 AWAY_RESET 秒仍然只是暫停，這個寬限期是重點：
-            通知跳出來、按到工作列、輸入法搶焦點、老師喊一句話回頭 ——
-            這些都在 5 秒內結束，而它們發生在**認真的學生**身上最多。
-            沒有寬限期的「離開就重來」，罰到的會是最乖的那一個。 */
-      if (awayFor >= AWAY_RESET) left = HOLD_SEC;
-      paint(awayFor >= AWAY_RESET ? 'reset' : 'pause');
-      return;
-    }
-    awayFor = 0;
-    left--;
-    if (left > 0) { paint(); return; }
-    done();
-  }, 1000);
+  hold = window.READHOLD.start({
+    sec: holdSecFor(),
+    onTick: v => paint(v),
+    onDone: done
+  });
 
   function done() {
     stopHold();
@@ -322,11 +270,11 @@ function nextBtn(label, hold) {
      狀態變了只換一個詞，學生看得出來就夠。
      ⚠️ 但「重來」一定要說出口。秒數自己跳回 30 而沒有任何說明，
         看起來就是系統壞了 —— 那會讓人去按重新整理，不是回來讀。 */
-  function paint(state) {
+  function paint(v) {
     btn.textContent =
-      state === 'reset' ? `${label}（離開太久，重來）` :
-      state === 'pause' ? `${label}（暫停）` :
-                          `${label}（${left}）`;
+      v.state === 'reset' ? `${label}（離開太久，重來）` :
+      v.state === 'pause' ? `${label}（暫停）` :
+                            `${label}（${v.left}）`;
   }
 }
 
