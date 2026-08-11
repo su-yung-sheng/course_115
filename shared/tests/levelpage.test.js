@@ -256,12 +256,46 @@ section('⏱️ 純閱讀的步驟要停留 30 秒');
      '★ 硬按也不會跳到下一步');
 }
 ok(/HOLD_SEC = 30/.test(levelSrc), '停留 30 秒');
-ok(/document\.hidden/.test(levelSrc),
-   '★ 分頁不在前面就不扣秒 —— 這就是「不能離開頁面」那條規則的實作');
+{
+  /* ⚠️ 這幾條一定要在**去掉註解之後**的原始碼上比對。
+     舊版寫的是 `ok(/document\.hidden/.test(levelSrc))` —— 而那時候
+     程式裡根本沒有 document.hidden，它命中的是註解裡「不要判 document.hidden」
+     那一句。也就是說：那一條測試從頭到尾在測一段註解，
+     真的把判斷刪掉它還是綠的。**假綠燈比沒有測試更危險。** */
+  const code = levelSrc.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/[^\n]*/gm, ' ');
+  ok(/visibilityState === 'hidden'/.test(code),
+     '★ 切分頁／最小化就不扣秒（真的寫在程式裡，不是只寫在註解裡）');
+  /* ★ 2026-08-11：只判 visibilityState 會被**並列視窗**整個繞過。
+     視窗並排時這一頁還「看得見」，visibilityState 就是 'visible'，
+     秒數照走 —— 旁邊要做什麼都行。
+     而且它把兩件事判反了：切分頁去看 Scratch（我們要的）反而被暫停。 */
+  ok(/hasFocus/.test(code),
+     '★ 焦點在別的視窗也要停 —— 只判 visibilityState 的話，並列視窗完全繞得過去');
+  /* ⚠️ 但 hasFocus 不可以直接信：jsdom 永遠回 false，
+     內嵌瀏覽器也可能一直回 false。直接信的話倒數永遠停在原地，
+     畫面上只有一個不動的「（暫停）」，沒有任何錯誤訊息。 */
+  ok(/sawFocus/.test(code),
+     '★ 要先確認「這個環境報得出焦點」才准拿失焦當離開（沒報過就當作有焦點）');
+  ok(/!document\.hasFocus \|\| document\.hasFocus\(\)/.test(code),
+     '   沒有 hasFocus 這個 API 的環境一律當作有焦點 —— 寧可放過');
+}
 {
   const hold = levelSrc.slice(levelSrc.indexOf('function nextBtn'), levelSrc.indexOf('function draw'));
-  ok(/暫停/.test(hold) && !/重新計時|歸零|重來/.test(hold),
-     '★ 離開是「暫停」不是「重來」—— 重來的話被罰的通常是最乖的那一個');
+  /* ★ 2026-08-11 改了設計，這一條也跟著改。
+     原本釘的是「離開只會暫停，永遠不重來」，理由是
+     「重來的話被罰的通常是最乖的那一個」——那個理由現在還成立，
+     但只暫停等於「掛在旁邊」零成本，回來按一下就過關。
+     ⇒ 改成有寬限期的重來：5 秒內暫停（保護被打斷的人），
+       超過才從頭算（讓掛著的人沒有便宜可佔）。
+     ⚠️ 寬限期不可以拿掉。沒有它就變成「離開就重來」，
+        那正是這一條原本要防的東西。 */
+  ok(/暫停/.test(hold), '短暫離開只是暫停（通知、輸入法、被老師叫一下）');
+  ok(/AWAY_RESET/.test(levelSrc) && /left = HOLD_SEC/.test(hold),
+     '★ 離開太久要從頭算 —— 只暫停的話「並排掛著」是零成本');
+  ok(/AWAY_RESET = [1-9]\d?;/.test(levelSrc),
+     '★ 而且一定要有寬限期（AWAY_RESET 秒）—— 沒有的話罰到的是最乖的那一個');
+  ok(/離開太久/.test(hold),
+     '★ 重來要說出口 —— 秒數自己跳回 30 而沒有說明，看起來就是系統壞了');
 }
 ok(/function render\(\) \{\s*\n?\s*stopHold\(\)/.test(levelSrc),
    '★ render 一開始就清掉計時器 —— 不清的話倒數會愈跳愈快，而且看不出原因');
@@ -327,11 +361,58 @@ section('🍔 套餐工廠只掛在第 1 關');
     .find(b => b.className.indexOf('stp-now') >= 0).textContent.replace(/\s+/g, '');
   ok(nowStep.indexOf('情境解說') < 0, '★ 解鎖之後按下去真的會前進（現在在「' + nowStep + '」）');
 
-  ok(/visibilityState === 'hidden'/.test(levelSrc),
-     '★ 判 visibilityState === hidden，不要判 document.hidden ——' +
-     '「沒說看得到就停」會把 prerender 這種沒預期的狀態也算成離開');
   ok(/deadline/.test(levelSrc),
      '★ 要有保險絲：不管發生什麼事最久都會解鎖 —— 擋錯人的代價遠大於少讀 30 秒');
+
+  /* ── ★ 焦點：真的跑一次，不是看有沒有寫 ────────────────
+     jsdom 的 document.hasFocus() 永遠回 false，所以這一段
+     順便驗證了「沒報過焦點就當作有焦點」那條退路 ——
+     它一旦寫錯，倒數會**永遠停在原地**，而畫面上只有一個不動的
+     「（暫停）」，沒有任何錯誤訊息。上面那條剛跑完的倒數就是證據：
+     jsdom 從頭到尾 hasFocus() === false，秒數照樣走完了。 */
+  section('🪟 並列視窗：焦點跑掉就不扣秒（真的跑一次）');
+  {
+    /* HOLD_SEC 20、AWAY_RESET 3，時間才夠在幾秒內看完整個過程 */
+    const w2 = level('2-1-1', null, src => src
+      .replace('HOLD_SEC = 30', 'HOLD_SEC = 20')
+      .replace('AWAY_RESET = 5', 'AWAY_RESET = 3'));
+    const b = () => w2.document.getElementById('go').textContent;
+    let focus = true;
+    w2.document.hasFocus = () => focus;      // 這一步讓 sawFocus latch 起來
+
+    await new Promise(r => setTimeout(r, 2200));
+    const t1 = b();
+    ok(/（1[78]）/.test(t1), '有焦點時正常倒數（' + t1.trim() + '）');
+
+    /* 視窗還看得見（visibilityState 仍是 visible），只是焦點跑掉 ——
+       這正是「並排兩個視窗，在另一邊做事」的樣子。 */
+    focus = false;
+    await new Promise(r => setTimeout(r, 1200));
+    ok(/暫停/.test(b()),
+       '★ 頁面看得見但焦點在別的視窗 → 暫停（' + b().trim() + '）');
+
+    /* 5 秒（這裡縮成 3 秒）內回來 → 只是暫停，秒數不該倒退 */
+    focus = true;
+    await new Promise(r => setTimeout(r, 1200));
+    ok(/（1[5-8]）/.test(b()),
+       '★ 短暫離開又回來 → 接著算，不是從頭（' + b().trim() + '）—— ' +
+       '被通知打斷、被老師叫一下的都是認真的那幾個');
+
+    /* 離開超過寬限期 → 從頭算 */
+    focus = false;
+    await new Promise(r => setTimeout(r, 4200));
+    ok(/離開太久/.test(b()), '★ 離開超過寬限期 → 說明「重來」（' + b().trim() + '）');
+    focus = true;
+    await new Promise(r => setTimeout(r, 1200));
+    /* ⚠️ 不要釘死成「剛好 19」—— setTimeout 不保證只走一格，
+       CI 慢一點就會多跳一秒，那種紅字是假的，只會教人忽略測試。
+       要區分的是「有沒有重算」：沒重算的話這時候大約是 14～15，
+       重算了才會在 17 以上。 */
+    const n = Number((b().match(/（(\d+)）/) || [])[1]);
+    ok(n >= 17,
+       '★ 而且真的回到滿秒重算（' + b().trim() + '）—— ' +
+       '只暫停的話「並排掛著」是零成本，回來按一下就過關');
+  }
 
   console.log('\n（含套餐與倒數）通過 ' + pass + '／失敗 ' + fail);
   process.exit(fail ? 1 : 0);
