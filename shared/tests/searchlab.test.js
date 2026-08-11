@@ -376,6 +376,135 @@ section('★ 第 9 關（6-3-2）的關卡資料');
      '★ 用詞照課本（開始位置／結束位置／二分位置）—— 學生回課本 p.208 要對得起來');
 }
 
+/* ═══ 大比拼（第 10 關）═══════════════════════════════ */
+section('★ 最壞情況要比幾次 —— 對得上課本的習題');
+is(S._afterCut(13), 6, '13 筆比完中間那筆 → 剩 6 筆（新範圍不含它）');
+is(S._afterCut(1), 0, '剩 1 筆比完 → 範圍空了');
+is(S._worstSequential(50), 50, '循序最壞 = 全部比一遍');
+is(S._worstBinary(50), 6, '★ 50 筆 → 6 次（課本 p.220 習題的答案）');
+is(S._worstBinary(1024), 11, '★ 1024 筆 → 11 次（課本 p.220 習題的答案）');
+is(S._worstBinary(13), 4, '13 筆 → 4 次（和課本找 67 的回合數一樣）');
+is(S._worstBinary(1), 1, '只有 1 筆 → 1 次');
+{
+  /* 資料翻倍，二元搜尋只多比一次 —— 這一關要學生看見的就是這件事。 */
+  const bad = [8, 16, 32, 64, 128, 256, 512].filter(
+    n => S._worstBinary(n * 2) !== S._worstBinary(n) + 1);
+  ok(bad.length === 0, '★ 資料翻一倍，二元搜尋只多比一次（' + bad.join('、') + '）');
+}
+
+section('★ 大比拼：四種資料量都要跑過');
+{
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  let done = 0;
+  const sim = S.mount(host, { mode: 'compare', onPass: () => { done++; } });
+  const size = n => host.querySelector('[data-size="' + n + '"]').onclick();
+  const cutBtn = () => host.querySelector('[data-cut]');
+
+  ok(!!size, '四個資料量的按鈕都畫出來了');
+  is(S.SIZES, [13, 50, 100, 1024], '★ 資料量含課本習題問過的 50 與 1024');
+
+  S.SIZES.forEach(n => {
+    size(n);
+    let guard = 0;
+    while (cutBtn() && guard++ < 60) cutBtn().onclick();
+    is(sim._state().table[n], S._worstBinary(n),
+       n + ' 筆：學生按了 ' + sim._state().table[n] + ' 下，和算出來的一樣');
+    if (n !== 1024) is(done, 0, '   還沒跑完全部 → 不放行');
+  });
+  is(done, 1, '★ 四種都跑完 → 放行');
+  is(host.querySelectorAll('.qs-tbl tr').length - 1, 4, '對照表累積了四列');
+  ok(/1024/.test(host.querySelector('.qs-tbl').textContent) &&
+     /11/.test(host.querySelector('.qs-tbl').textContent),
+     '★ 表格上看得到 1024 對 11 —— 那個對比不必解釋');
+  host.remove();
+}
+{
+  /* ⚠️ 只跑最小的那一個不可以就放行。
+     13 筆是 13 對 4 —— 差距不夠大，學生會覺得「好像也沒差多少」，
+     而那正好是這一關要打掉的錯覺。 */
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  let done = 0;
+  S.mount(host, { mode: 'compare', onPass: () => { done++; } });
+  host.querySelector('[data-size="13"]').onclick();
+  let guard = 0;
+  while (host.querySelector('[data-cut]') && guard++ < 60) host.querySelector('[data-cut]').onclick();
+  is(done, 0, '★ 只跑 13 筆 → 不放行（差距不夠大，看不出重點）');
+  ok(/還有/.test(host.querySelector('.qs-msg').innerHTML), '   而且要講還差哪幾個');
+  host.remove();
+}
+
+section('★ 第 10 關（6-3-3）的關卡資料');
+{
+  const lv = L['6-3-3'];
+  ok(!!lv, '關卡存在');
+  is(lv.lab, { kind: 'search', mode: 'compare' }, '★ 宣告了 compare 的 lab');
+  ok(!!S.INFO[lv.lab.mode], '   lab.mode 在 SEARCHLAB.INFO 裡查得到');
+  ok((lv.quiz || []).length >= 6, '概念檢測 ' + lv.quiz.length + ' 題');
+  ok(lv.quiz.every(q => q.ref !== undefined), '每一題都指得回來源');
+  ok(lv.quiz.every(q => (q.need || []).every(n => (n.any || []).length >= 3)),
+     '★ 每個概念群至少 3 種同義說法');
+
+  const B = W.BLOCKS;
+  const build = l => (l || []).map(x => {
+    const d = B.DEFS[x.id];
+    return { uid: 'u' + Math.random(), id: x.id,
+             args: (x.args != null ? x.args : (d.args || [])).map(
+               v => (v && typeof v === 'object') ? build([v])[0] : v),
+             children: x.children ? build(x.children)
+                                  : ((d.shape === 'c' || d.shape === 'c2') ? [] : null),
+             children2: x.children2 ? build(x.children2) : (d.shape === 'c2' ? [] : null) };
+  });
+  const got = build(lv.goal);
+  ok(B._same(got, lv.goal, lv.loose || []), '★ 照答案拼 → 判對');
+
+  /* ★★ 這一關拼圖唯一的新東西：迴圈的停止條件有兩個。
+     換成第 8 關那個只有一個條件的版本 → 找不到時無窮迴圈。 */
+  const oneCond = JSON.parse(JSON.stringify(got));
+  oneCond[4].id = 'control.until';
+  ok(!B._same(oneCond, lv.goal, lv.loose || []),
+     '★★ 換成第 8 關那個只有一個條件的「重複直到找到目標」→ 判錯' +
+     '（找不到時位置會一直加下去，讀到不存在的項目）');
+
+  /* 「否則」空著 → 位置永遠停在第 1 項 */
+  const noElse = JSON.parse(JSON.stringify(got));
+  noElse[4].children[0].children2 = [];
+  ok(!B._same(noElse, lv.goal, lv.loose || []),
+     '★ 「否則」那格空著 → 判錯（位置永遠停在第 1 項）');
+
+  /* 沒把答案存起來 → 下一次詢問就蓋掉了 */
+  const noSave = got.filter(n => n.id !== 'list.settarget');
+  ok(!B._same(noSave, lv.goal, lv.loose || []), '   少了「目標資料 設為 詢問的答案」→ 判錯');
+
+  ['control.until', 'control.if', 'list.setmid', 'list.tolo'].forEach(id => {
+    ok(lv.palette.indexOf(id) >= 0, '★ 調色盤上有誘餌 ' + id);
+  });
+  const used = new Set();
+  (function w(l) { (l || []).forEach(n => { used.add(n.id);
+    (n.args || []).forEach(a => { if (a && typeof a === 'object') w([a]); });
+    w(n.children); w(n.children2); }); })(lv.goal);
+  ok(!used.has('control.until'),
+     '★ 只有一個條件的那一塊沒有混進答案 —— 它是這一關最關鍵的誘餌');
+  ok(!used.has('list.setmid') && !used.has('list.tolo'),
+     '   第 9 關的二元搜尋積木沒有混進來（這裡的資料沒排序）');
+  ok(lv.palette.filter(id => !B.DEFS[id]).length === 0, '調色盤沒有不存在的積木');
+  ok([...used].filter(id => lv.palette.indexOf(id) < 0).length === 0, '答案要的積木都給了');
+}
+
+section('★ 第 8 關留的洞，第 10 關要補起來');
+{
+  /* ⚠️ 第 8 關的 tips 最後一條白紙黑字寫著「回到真的 Scratch 時，
+     『重複直到』要再加一個條件」。那句話如果沒有下文，
+     就是一個開了不收的口 —— 學生讀到會以為自己漏學了什麼。 */
+  const l8 = JSON.stringify(L['6-3-1'].tips);
+  const l10 = JSON.stringify(L['6-3-3']);
+  ok(/再加一個條件|超過清單長度/.test(l8), '第 8 關有留下那句伏筆');
+  ok(/兩個/.test(l10) && /超過/.test(l10),
+     '★ 第 10 關真的把它補起來了（講到「兩個條件」與「超過長度」）');
+  ok(/流程圖/.test(l10), '   而且指回課本的流程圖，讓學生對得起來');
+}
+
 /* ── 關卡頁真的接得上 ──────────────────────────────── */
 section('★ level.html 接得上');
 {

@@ -131,6 +131,40 @@
     return n;
   }
 
+  /* ── 大比拼（第 10 關）─────────────────────────────
+     ★ 第 8、9 關各自都走完了，但學生還是不會有感覺 ——
+       13 筆資料，4 次對 9 次，差距不夠大。
+       這一關要問的是：**資料變成 1000 筆呢？**
+       課本第 203 頁的開場就是這個（5 個一眼看到、100 個來不及）。
+
+     ⚠️ 這裡刻意**不教 log**。國中生不必碰對數。
+        砍半這件事他在第 9 關已經做過了 —— 這一關只是讓他
+        一直砍下去、自己數按了幾次。數出來的就是答案。
+
+     ⚠️ 循序那一邊不給他按。1000 筆要按 1000 次 ——
+        而且「最壞就是全部比一遍」本來就一望即知，
+        真正反直覺的是二元那個小得離譜的數字。 */
+
+  /** 比完中間那筆之後還剩幾筆（新範圍不含中間那筆，和第 9 關同一條規則） */
+  function afterCut(n) { return Math.ceil((n - 1) / 2); }
+
+  /**
+   * 二元搜尋最壞情況要比幾次 —— 一直砍到範圍空掉為止。
+   * ★ 對得起課本的兩題：50 筆 → 6 次、1024 筆 → 11 次（p.220 習題）。
+   */
+  function worstBinary(n) {
+    var c = 0;
+    while (n > 0) { c++; n = afterCut(n); }
+    return c;
+  }
+
+  /** 循序搜尋最壞情況：全部比一遍（找不到，或目標在最後一筆） */
+  function worstSequential(n) { return n; }
+
+  /* 大比拼要跑的幾種資料量。
+     13 是課本 6-3-2 那一列；50 與 1024 是課本習題直接問過的數字。 */
+  var SIZES = [13, 50, 100, 1024];
+
   /**
    * 出題。
    *   course:'hit'  → 課本 p.204 那一題：8、5、10、1、7 找 10（第 3 回合找到）
@@ -208,6 +242,15 @@
            '每一回合待搜尋的資料量馬上少一半。',
       life: '猜數字：對方說 1～100，你先猜 50。他說「太小」，' +
             '你就知道 1～50 全部不必猜了 —— 一次刪掉一半。'
+    },
+    compare: {
+      name: '搜尋大比拼', icon: '⚖️',
+      rule: '選一個資料量，然後一直按<b>「比一次，砍掉一半」</b>，' +
+            '直到範圍空掉 —— 按了幾下，就是二元搜尋最多要比幾次。',
+      why: '循序搜尋最壞要把資料全部比一遍；二元搜尋每比一次就少掉一半。' +
+           '資料愈多，兩者的差距愈誇張。',
+      life: '在 1000 個人裡找一個人：一個一個問，最多問 1000 次；' +
+            '如果大家按身高排好，用二元搜尋只要問 10 次。'
     }
   };
 
@@ -250,6 +293,21 @@
     '.qs-side button{background:#fff;border:2px solid #06b6d4;color:#0e7490;border-radius:9px;',
     '  padding:8px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}',
     '.qs-side button:hover{background:#ecfeff}',
+    /* 大比拼 */
+    '.qs-pick{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;align-items:center}',
+    '.qs-pick .lb{font-size:12px;font-weight:700;color:#64748b}',
+    '.qs-pick button{background:#fff;border:2px solid #cbd5e1;color:#334155;border-radius:9px;',
+    '  padding:6px 13px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}',
+    '.qs-pick button:hover{border-color:#06b6d4;background:#ecfeff}',
+    '.qs-pick button.on{border-color:#06b6d4;background:#cffafe;color:#0e7490}',
+    '.qs-pick button.ok{border-color:#86efac;background:#dcfce7;color:#166534}',
+    '.qs-left{font-size:15px;font-weight:700;color:#155e75;margin-bottom:10px}',
+    '.qs-left b{font-size:22px;color:#0e7490}',
+    '.qs-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}',
+    '.qs-tbl th,.qs-tbl td{border:1px solid #e2e8f0;padding:6px 9px;text-align:center}',
+    '.qs-tbl th{background:#f1f5f9;color:#475569;font-size:12px}',
+    '.qs-tbl td.big{color:#b45309;font-weight:700}',
+    '.qs-tbl td.small{color:#0e7490;font-weight:700}',
     '.qs-msg{margin-top:9px;font-size:13px;line-height:1.8;padding:8px 11px;border-radius:9px}',
     '.qs-msg.good{background:#dcfce7;color:#166534}',
     '.qs-msg.bad{background:#fef3c7;color:#92400e}',
@@ -281,13 +339,16 @@
     /* 二元搜尋用：目前的搜尋範圍（1 起算，照課本），還有這一回合停在哪一步。
        phase 'pick' = 該點二分位置了；'side' = 點完了，該決定砍哪一半。 */
     var lo, hi, phase, mid;
+    /* 大比拼用：目前選的資料量、還剩幾筆、按了幾下，還有已經跑完的紀錄。 */
+    var sizes = opts.sizes || SIZES;
+    var size = 0, left = 0, cuts = 0, table = {};
     /* ★ 要「找到一次」＋「找不到一次」才算通過。
        只找到過的學生，不會知道迴圈為什麼需要結束條件。 */
     var sawHit = false, sawMiss = false;
 
     reset(opts.items && opts.items.length
             ? { items: opts.items.slice(), target: opts.target }
-            : makeCase(opts));
+            : (mode === 'compare' ? { items: [], target: '' } : makeCase(opts)));
 
     host.className = 'qs';
     render();
@@ -302,12 +363,14 @@
       host.innerHTML =
         '<div class="qs-tip">' + info.icon + ' <b>' + info.name + '</b>　' + info.rule +
         '<div class="qs-sub">📝 ' + info.why + '<br>🎁 ' + info.life + '</div></div>' +
-        '<div class="qs-goal"><span class="lb">目標資料</span>' +
-        '<span class="qs-target">' + esc(target) + '</span>' +
-        '<span class="qs-count" id="qs-cnt"></span></div>' +
+        (mode === 'compare' ? ''
+          : '<div class="qs-goal"><span class="lb">目標資料</span>' +
+            '<span class="qs-target">' + esc(target) + '</span>' +
+            '<span class="qs-count" id="qs-cnt"></span></div>') +
         '<div id="qs-body"></div>' +
         '<div id="qs-msg"></div>' +
-        (opts.newRound !== false ? '<button class="qs-btn" id="qs-new">🎲 換一題</button>' : '');
+        (opts.newRound !== false && mode !== 'compare'
+          ? '<button class="qs-btn" id="qs-new">🎲 換一題</button>' : '');
       body();
       count();
       var nb = host.querySelector('#qs-new');
@@ -316,6 +379,7 @@
 
     function body() {
       var b = host.querySelector('#qs-body');
+      if (mode === 'compare') { b.innerHTML = compareHtml(); wire(b); return; }
       b.innerHTML = (mode === 'binary' ? rangeHtml() : '') +
         '<div class="qs-row">' + items.map(cellHtml).join('') + '</div>' +
         (mode === 'binary' && phase === 'side' && !ended ? sideHtml() : '');
@@ -325,6 +389,79 @@
       [].forEach.call(b.querySelectorAll('[data-side]'), function (el) {
         el.onclick = function () { pickSide(el.dataset.side); };
       });
+    }
+
+    /* ── 大比拼 ────────────────────────────────────── */
+    function compareHtml() {
+      var out = '<div class="qs-pick"><span class="lb">資料量</span>' +
+        sizes.map(function (n) {
+          var cls = (n === size) ? ' class="on"' : (table[n] ? ' class="ok"' : '');
+          return '<button data-size="' + n + '"' + cls + '>' +
+                 n + ' 筆' + (table[n] ? ' ✓' : '') + '</button>';
+        }).join('') + '</div>';
+
+      if (!size) {
+        out += '<div class="qs-left">先選一個資料量。</div>';
+      } else if (left > 0) {
+        out += '<div class="qs-left">還要找的範圍：<b>' + left + '</b> 筆' +
+               '　（已經比了 ' + cuts + ' 次）</div>' +
+               '<div class="qs-side"><button data-cut="1">✂️ 比一次，砍掉一半</button></div>';
+      } else {
+        out += '<div class="qs-left">範圍空了 —— 二元搜尋最多比 <b>' + cuts + '</b> 次。</div>';
+      }
+      return out + tableHtml();
+    }
+
+    /* ★ 累積成一張表，讓差距自己長出來。
+       只跑一種資料量看不出什麼；跑到 1024 筆那一列時，
+       1024 對 11 —— 那個對比不必解釋。 */
+    function tableHtml() {
+      var done = sizes.filter(function (n) { return table[n]; });
+      if (!done.length) return '';
+      return '<table class="qs-tbl"><tr><th>資料量</th>' +
+             '<th>循序搜尋<br>最多比幾次</th><th>二元搜尋<br>最多比幾次</th></tr>' +
+             done.map(function (n) {
+               return '<tr><td>' + n + ' 筆</td>' +
+                      '<td class="big">' + worstSequential(n) + '</td>' +
+                      '<td class="small">' + table[n] + '</td></tr>';
+             }).join('') + '</table>';
+    }
+
+    function wire(b) {
+      [].forEach.call(b.querySelectorAll('[data-size]'), function (el) {
+        el.onclick = function () { startSize(Number(el.dataset.size)); };
+      });
+      [].forEach.call(b.querySelectorAll('[data-cut]'), function (el) {
+        el.onclick = cut;
+      });
+    }
+
+    function startSize(n) {
+      size = n; left = n; cuts = 0;
+      body();
+      say('bad', '假設最倒楣的情況：目標在最後才找到，或根本不在裡面。' +
+                 '<br>一直按下去，看看要按幾下才砍完 <b>' + n + '</b> 筆。');
+    }
+
+    function cut() {
+      if (!size || left <= 0) return;
+      cuts++;
+      left = afterCut(left);         // 比完中間那筆，剩下的不含它
+      if (left > 0) {
+        body();
+        say('good', '比了第 ' + cuts + ' 次，範圍剩 <b>' + left + '</b> 筆。');
+        return;
+      }
+      table[size] = cuts;
+      body();
+      var seq = worstSequential(size);
+      say('good', '<b>' + size + '</b> 筆資料：循序搜尋最多要比 <b>' + seq + '</b> 次，' +
+                  '二元搜尋只要 <b>' + cuts + '</b> 次。' +
+                  (seq >= cuts * 20
+                    ? '<br>⚠️ 資料量是比較次數的 <b>' + Math.round(seq / cuts) + '</b> 倍 —— ' +
+                      '那就是「每次砍一半」的威力。'
+                    : ''));
+      maybePass();
     }
 
     /* 開始位置／結束位置／二分位置 —— 課本每一回合都寫這三個數字，
@@ -476,6 +613,24 @@
 
     function maybePass() {
       if (passed) return;
+
+      if (mode === 'compare') {
+        /* ★ 每一種資料量都要跑過。
+           ⚠️ 只跑 13 筆的話，4 對 13 —— 差距不夠大，
+              學生會覺得「好像也沒差多少」。
+              一定要走到最大那一個，1024 對 11 才有感覺，
+              而那正是這一關存在的理由。 */
+        var miss = sizes.filter(function (n) { return !table[n]; });
+        if (miss.length) {
+          say2('還有 ' + miss.join('、') + ' 筆沒跑。' +
+               '資料愈多差距愈大 —— 跑到最大那一個才看得出來。');
+          return;
+        }
+        passed = true;
+        if (opts.onPass) opts.onPass();
+        return;
+      }
+
       /* 找得到、找不到兩種都遇過才算走完一輪。 */
       if (!(sawHit && sawMiss)) {
         var need = sawHit ? '找<b>不到</b>' : '找<b>得到</b>';
@@ -496,6 +651,7 @@
       _state: function () {
         return { items: items, target: target, next: next, tried: tried,
                  lo: lo, hi: hi, phase: phase, mid: mid,
+                 size: size, left: left, cuts: cuts, table: table,
                  ended: ended, sawHit: sawHit, sawMiss: sawMiss, passed: !!passed };
       }
     };
@@ -514,6 +670,10 @@
     _narrow: narrow,
     _empty: empty,
     _countBinary: countBinary,
+    _afterCut: afterCut,
+    _worstBinary: worstBinary,
+    _worstSequential: worstSequential,
+    SIZES: SIZES,
     _makeCase: makeCase,
     _isSorted: isSorted
   };

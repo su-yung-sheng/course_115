@@ -150,6 +150,17 @@
     'list.tolo':        { cat:'list',    shape:'stack', label:'變數 開始位置 設為 二分位置 ＋ 1' },                                            // ★自訂
     'list.tohi':        { cat:'list',    shape:'stack', label:'變數 結束位置 設為 二分位置 － 1' },                                            // ★自訂
     'control.ifmid':    { cat:'control', shape:'c2',    label:'如果 數列 的第 二分位置 項 < 目標 那麼' },                                      // ★自訂
+    /* 第 10 關（搜尋法的程式應用，課本 6-3-3）要的四塊。
+       ★ 這一關要補上第 8 關**故意留下**的那個洞：
+         迴圈的停止條件其實有**兩個** —— 找到了，或位置已經超過資料量。
+         只有一個的話，找不到時會一直往下讀空的項目。
+         課本 p.215 的流程圖第一個判斷就是「位置大於原始資料數量？」。
+       ⚠️ 詢問是真的 Scratch 積木（SENSING_ASKANDWAIT），用詞照官方。 */
+    'sensing.ask':      { cat:'sensing', shape:'stack', label:'詢問 %s 並等待', args:['要搜尋的數字是？'] },                                   // SENSING_ASKANDWAIT
+    'list.settarget':   { cat:'list',    shape:'stack', label:'變數 目標資料 設為 詢問的答案' },                                               // ★自訂
+    'control.untilfound':{cat:'control', shape:'c',     label:'重複直到 找到目標 或 位置 > 數列 的長度' },                                     // ★自訂
+    'control.iffound':  { cat:'control', shape:'c2',    label:'如果 數列 的第 位置 項 = 目標資料 那麼' },                                      // ★自訂
+    'looks.sayfound':   { cat:'looks',   shape:'stack', label:'說出「找到了，位於第（位置）個數字」' },                                        // ★自訂
     'control.until':    { cat:'control', shape:'c',     label:'重複直到 找到目標' },                           // ★自訂
 
     /* ===================================================================
