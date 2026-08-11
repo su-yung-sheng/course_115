@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一一五學年度上學期 資訊科技學習系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc; /* 全站統一：平面 slate-50 底 */
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;      /* slate-200 細邊框，與 hub 卡片一致 */
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(15,23,42,0.06); /* 柔和陰影 */
+        }
+        .pass-card {
+            background: white;
+            border: 4px solid #3b82f6;
+            position: relative;
+            overflow: hidden;
+        }
+        .pass-card::before {
+            content: "PASSED";
+            position: absolute;
+            top: 30px;
+            right: -40px;
+            transform: rotate(45deg);
+            background: #10b981;
+            color: white;
+            padding: 8px 50px;
+            font-weight: 900;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .study-note-box {
+            background: #fffdf5;
+            border-left: 6px solid #f59e0b;
+        }
+        .study-note-box h4 {
+            color: #b45309;
+            font-weight: 900;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        .study-note-box ul {
+            list-style-type: disc;
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .study-note-box p {
+            margin-bottom: 0.5rem;
+        }
+        
+        @keyframes pop {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop { animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        
+        .pdf-link {
+            display: inline-flex;
+            align-items: center;
+            background-color: #ef4444; 
+            color: white;
+            font-size: 0.75rem;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            margin-left: 12px;
+            font-weight: 700;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+            text-decoration: none;
+        }
+        .pdf-link:hover {
+            background-color: #b91c1c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(185, 28, 28, 0.3);
+        }
+    </style>
+<style>
+/* === 全站紙膠帶手作風套件（以 hub 為準，勿重複注入） === */
+body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba(120,113,108,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(120,113,108,.06) 1px,transparent 1px) !important; background-size:26px 26px !important; }
+.tape{position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(-3deg);width:76px;height:26px;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.08);background:rgba(250,204,21,.3);z-index:5}
+.underline-doodle{background:linear-gradient(transparent 62%, rgba(250,204,21,.55) 62%)}
+
+    /* ★ 小節按鈕：編號自己一行，標題自己一行。
+       ⚠️ 字放大之後，「3-2 電腦與網路犯罪概述」會被瀏覽器斷成
+          「3-2 電腦與網路 / 犯罪概述」—— 斷在詞的中間，讀起來卡卡的。
+       ⇒ 編號拆成獨立的一行，標題就整句留在下面；
+         真的還是放不下時，text-wrap:balance 會把兩行切得長度接近，
+         不會出現「上面一長串、下面剩兩個字」。 */
+    .sec-btn { line-height: 1.5; text-wrap: balance; }
+    /* ⚠️ 九個字以上的標題（例如「電腦與網路犯罪概述」）在三欄裡放不下，
+       瀏覽器會斷在「電腦與網路 / 犯罪概述」—— 斷在詞的中間。
+       字小一階就整句放得下，比斷錯地方好看得多。 */
+    .sec-long { font-size: 15px; letter-spacing: -.01em; }
+    .sec-no  { display: block; font-size: 11px; font-weight: 800;
+               opacity: .6; letter-spacing: .05em; margin-bottom: 2px; }
+</style>
+  <!-- 全站共用設定（要在 guard 之前載入）-->
+  <script src="config.js"></script>
+<script src="../shared/semester.js"></script>
+<!-- 登入邏輯單一來源（含「不要蓋掉 Google 身分」的匿名登入把關）-->
+<script src="../shared/auth.js"></script>
+  <!-- 身分守門：未從闖關基地登入者導回入口 -->
+  <script src="../shared/guard.js"></script>
+</head>
+<body class="p-4 md:p-8 text-slate-800 bg-slate-50 min-h-screen">
+
+    <div id="app" class="max-w-2xl mx-auto">
+        <!-- 0. SSO 自動登入中(避免閃登入表單) -->
+        <div id="sso-loading" class="glass-card p-10 max-w-md mx-auto mt-8 text-center hidden">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-4 border-blue-600 mx-auto mb-4"></div>
+            <p class="text-blue-600 font-bold">登入中…</p>
+        </div>
+        <!-- 1. 登入畫面（預設隱藏；下方script 依 localStorage 立即決定要顯示哪一個，避免閃表單） -->
+        <div id="login-screen" class="glass-card p-10 max-w-md mx-auto mt-8 relative hidden">
+            <span class="tape"></span>
+            <div class="text-center mb-8">
+                <span class="text-blue-500 font-bold tracking-widest uppercase text-sm">前峰國中八年級</span>
+                <h1 class="text-3xl font-black text-slate-800 mt-2 leading-tight">一一五學年度上學期<br><span class="text-blue-600 underline-doodle">資訊科技學習系統</span></h1>
+            </div>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-slate-700 font-bold mb-2">學號</label>
+                    <input type="text" id="sid-input" inputmode="numeric" maxlength="7" placeholder="14XXXXX" class="w-full p-3 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition font-mono tracking-widest">
+                </div>
+                <div>
+                    <label class="block text-slate-700 font-bold mb-2">姓名 <span class="text-slate-400 font-normal text-sm">（首次登入才需要）</span></label>
+                    <input type="text" id="sname-input" placeholder="首次登入請輸入姓名" class="w-full p-3 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition">
+                </div>
+                <div>
+                    <label class="block text-slate-700 font-bold mb-2">驗證碼</label>
+                    <div class="relative">
+                        <input type="password" id="code-input" inputmode="numeric" maxlength="6" placeholder="6 位數字（首次登入請自訂）" class="w-full p-3 pr-12 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition font-mono tracking-widest">
+                        <button type="button" tabindex="-1" onclick="var i=document.getElementById('code-input');var s=i.type==='password';i.type=s?'text':'password';this.textContent=s?'🙈':'👁';" class="absolute right-3 top-1/2 -translate-y-1/2 text-xl text-slate-400 hover:text-slate-600" aria-label="顯示或隱藏驗證碼">👁</button>
+                    </div>
+                </div>
+                <button onclick="loginByStudentId()" class="w-full mt-4 bg-blue-600 text-white font-black py-4 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition transform active:scale-95">登入系統</button>
+                <p class="text-xs text-slate-400 text-center">首次登入請輸入姓名並自訂驗證碼；之後用學號＋驗證碼</p>
+            </div>
+        </div>
+
+        <!-- 2. 章節選擇畫面 -->
+        <div id="chapter-screen" class="glass-card p-10 hidden animate-pop">
+            <div class="text-center mb-8">
+                <h2 id="welcome-info" class="text-lg font-bold text-slate-500 mb-2"></h2>
+                <h2 class="text-3xl font-black text-slate-800">請選擇學習章節</h2>
+                <p id="chapter-progress" class="text-sm font-bold text-emerald-600 mt-2"></p>
+                <p class="text-xs text-slate-500 mt-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 inline-block">
+                    💡 小提示：<b>藍色／綠色的章節大標題也是測驗</b>，點下去可一次挑戰整章；下方小方塊則是單一小節的測驗。
+                </p>
+            </div>
+            <div class="space-y-6">
+                <!-- 第一章 資訊倫理 -->
+                <div class="p-5 border-2 border-slate-50 rounded-2xl bg-white shadow-sm hover:shadow-md transition">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex flex-wrap items-center">
+                            <button onclick="showStudyNotes('ch1-all')" data-ch="ch1-all" class="text-2xl font-black text-blue-700 text-left hover:text-blue-500 hover:underline transition flex items-center">
+                                第一章 資訊倫理
+                                <span class="ml-2 text-[13px] font-bold bg-blue-100 text-blue-700 border border-blue-300 px-2 py-0.5 rounded-full whitespace-nowrap">🎯 點我挑戰整章測驗</span>
+                            </button>
+                            <a href="https://drive.google.com/file/d/16I3JWMn6zJjADEZ2PbgjaYE01sZdATtq/view" target="_blank" class="pdf-link">課本教材 PDF</a>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <button onclick="showStudyNotes('1-1')" data-ch="1-1" class="sec-btn py-3 px-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-base hover:bg-blue-600 hover:text-white transition"><span class="sec-no">1-1</span>資訊倫理的意涵</button>
+                        <button onclick="showStudyNotes('1-2')" data-ch="1-2" class="sec-btn py-3 px-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-base hover:bg-blue-600 hover:text-white transition"><span class="sec-no">1-2</span>網路禮儀與規範</button>
+                        <button onclick="showStudyNotes('1-3')" data-ch="1-3" class="sec-btn py-3 px-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-base hover:bg-blue-600 hover:text-white transition"><span class="sec-no">1-3</span>PAPA 理論</button>
+                        <button onclick="showStudyNotes('1-4')" data-ch="1-4" class="sec-btn py-3 px-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-base hover:bg-blue-600 hover:text-white transition"><span class="sec-no">1-4</span>數位落差的意義</button>
+                    </div>
+                </div>
+
+                <!-- 第三章 資訊科技與相關法律 -->
+                <div class="p-5 border-2 border-slate-50 rounded-2xl bg-white shadow-sm hover:shadow-md transition">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex flex-wrap items-center">
+                            <button onclick="showStudyNotes('ch3-all')" data-ch="ch3-all" class="text-2xl font-black text-emerald-700 text-left hover:text-emerald-500 hover:underline transition flex items-center">
+                                第三章 資訊科技與相關法律
+                                <span class="ml-2 text-[13px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-300 px-2 py-0.5 rounded-full whitespace-nowrap">🎯 點我挑戰整章測驗</span>
+                            </button>
+                            <a href="https://drive.google.com/file/d/1rQdZZpTjHINo-mxXDaK9nfexzXbjyxK-/view" target="_blank" class="pdf-link">課本教材 PDF</a>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="showStudyNotes('3-1')" data-ch="3-1" class="sec-btn py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition"><span class="sec-no">3-1</span>資訊與法律</button>
+                        <button onclick="showStudyNotes('3-2')" data-ch="3-2" class="sec-btn sec-long py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition"><span class="sec-no">3-2</span>電腦與網路犯罪概述</button>
+                        <button onclick="showStudyNotes('3-3')" data-ch="3-3" class="sec-btn sec-long py-3 px-2 bg-emerald-50 text-emerald-700 rounded-xl font-bold text-base hover:bg-emerald-600 hover:text-white transition"><span class="sec-no">3-3</span>著作權法及個資法罰則</button>
+                    </div>
+                </div>
+
+                <!-- 資訊倫理與相關法律總整理 -->
+                <div class="p-5 border-2 border-slate-50 rounded-2xl bg-white shadow-sm hover:shadow-md transition">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex flex-wrap items-center">
+                            <span class="text-2xl font-black text-purple-700 text-left">資訊倫理與相關法律總整理</span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 gap-3">
+                        <button onclick="showStudyNotes('review-all')" data-ch="review-all" class="py-4 bg-purple-50 text-purple-700 rounded-xl font-bold text-lg hover:bg-purple-600 hover:text-white transition">進入總整理與綜合測驗</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 章節重點閱讀頁面 -->
+        <div id="study-screen" class="glass-card p-8 hidden animate-pop">
+            <h2 id="study-title" class="text-2xl font-black text-slate-800 mb-6 border-b-4 border-blue-500 pb-2 inline-block">章節重點</h2>
+            <div id="study-content" class="study-note-box p-6 mb-8 text-slate-700 leading-relaxed space-y-4 text-lg max-h-[60vh] overflow-y-auto"></div>
+            <div class="flex space-x-4">
+                <button onclick="backToChapters()" class="flex-1 py-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition">返回目錄</button>
+                <button id="start-quiz-btn" class="flex-2 px-10 py-4 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition transform active:scale-95">開始測驗挑戰</button>
+            </div>
+        </div>
+
+        <!-- 4. 測驗介面 -->
+        <div id="quiz-screen" class="glass-card p-8 hidden animate-pop">
+            <div class="flex justify-between items-center mb-8 border-b pb-6">
+                <div class="max-w-[70%]">
+                    <div id="current-chapter-title" class="text-blue-600 font-black text-xl leading-tight"></div>
+                    <div class="flex items-center space-x-3 mt-2">
+                        <span id="score-counter" class="bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-black shadow-sm">連對: 0 / 10</span>
+                        <span id="target-counter" class="bg-slate-100 text-slate-500 text-xs px-3 py-1 rounded-full font-bold">目標連對: 10</span>
+                        <span id="wrong-counter" class="bg-red-100 text-red-600 text-xs px-3 py-1 rounded-full font-bold shadow-sm">容錯: 20</span>
+                    </div>
+                </div>
+                <div id="timer" class="text-red-500 font-mono font-black text-2xl bg-red-50 px-4 py-1 rounded-lg border border-red-100">00:00</div>
+            </div>
+            <div id="question-container" class="min-h-[300px]"></div>
+            <div class="mt-10 flex justify-end">
+                <button id="next-btn" onclick="checkAnswer()" class="px-10 py-4 bg-blue-600 text-white font-black rounded-xl shadow-xl hover:bg-blue-700 transition transform active:scale-95">送出答案</button>
+            </div>
+        </div>
+
+        <!-- 5. 通關卡畫面 -->
+        <div id="result-screen" class="glass-card p-8 hidden animate-pop">
+            <div class="pass-card rounded-[2rem] p-8 shadow-2xl">
+                <div class="text-center mb-6">
+                    <h2 id="pass-status-title" class="text-4xl font-black text-blue-600 italic underline tracking-tighter uppercase">QUIZ PASS CARD</h2>
+                    <p class="text-[10px] text-slate-400 font-bold tracking-[0.3em] mt-1">INFORMATION TECHNOLOGY LEARNING SYSTEM</p>
+                </div>
+                
+                <div class="bg-blue-50/30 border-y-4 border-double border-blue-50 rounded-xl p-6 mb-6">
+                    <div class="flex justify-around items-center mb-4">
+                        <div class="text-center">
+                            <span class="block text-[10px] text-blue-400 font-black uppercase mb-1">Class</span>
+                            <span id="res-class" class="text-2xl font-black text-slate-800"></span>
+                        </div>
+                        <div class="h-8 w-[2px] bg-blue-100"></div>
+                        <div class="text-center">
+                            <span class="block text-[10px] text-blue-400 font-black uppercase mb-1">No.</span>
+                            <span id="res-no" class="text-2xl font-black text-slate-800"></span>
+                        </div>
+                        <div class="h-8 w-[2px] bg-blue-100"></div>
+                        <div class="text-center">
+                            <span class="block text-[10px] text-blue-400 font-black uppercase mb-1">Name</span>
+                            <span id="res-name" class="text-2xl font-black text-slate-800"></span>
+                        </div>
+                    </div>
+                    <div class="text-center pt-2 border-t border-blue-100/50">
+                        <span class="text-[10px] text-blue-400 font-black uppercase mr-2">Challenge Date:</span>
+                        <span id="res-date" class="text-sm font-bold text-slate-600 tracking-widest"></span>
+                    </div>
+                </div>
+
+                <div class="space-y-4 mb-8">
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                        <span class="text-[10px] text-slate-400 font-black uppercase block mb-1">Completed Chapter</span>
+                        <span id="res-chapter" class="font-black text-blue-800 text-lg leading-tight"></span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                            <span class="text-[10px] text-slate-400 font-black block mb-1">DURATION</span>
+                            <span id="res-duration" class="font-black text-orange-600 text-lg"></span>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                            <span class="text-[10px] text-slate-400 font-black block mb-1">ACCURACY</span>
+                            <span id="res-rate" class="font-black text-green-600 text-lg">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 text-center mb-8">
+                    <div>
+                        <div class="text-[10px] text-slate-400 font-bold">CORRECT</div>
+                        <div id="res-correct" class="text-2xl font-black text-green-500">0</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-400 font-bold">TOTAL Q.</div>
+                        <div id="res-total" class="text-2xl font-black text-slate-800">0</div>
+                    </div>
+                </div>
+
+                <p id="pass-msg" class="text-center text-sm text-slate-400 mb-8 italic font-bold"></p>
+                
+                <button id="cert-return-btn" onclick="returnToChapters()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xl shadow-xl hover:bg-black transition transform active:scale-95">
+                    完成挑戰
+                </button>
+            </div>
+        </div>
+
+        <!-- 6. 學習狀態警示單畫面 -->
+        <div id="warning-screen" class="glass-card p-8 hidden animate-pop">
+            <div class="bg-white border-4 border-red-500 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-4 bg-red-500"></div>
+                <div class="text-center mb-6 mt-4">
+                    <h2 class="text-4xl font-black text-red-600 italic tracking-tighter uppercase">LEARNING WARNING</h2>
+                    <p class="text-xs text-red-400 font-bold tracking-[0.2em] mt-2">學習狀態警示單</p>
+                </div>
+                
+                <div class="bg-red-50 p-6 rounded-xl border border-red-100 text-center mb-8">
+                    <div class="text-6xl mb-4">⚠️</div>
+                    <h3 class="text-2xl font-black text-slate-800 mb-3">累積答錯已達 20 題！</h3>
+                    <p class="text-slate-600 font-bold leading-relaxed text-lg">
+                        看來學習遇到了一點小瓶頸呢。<br>
+                        請先暫停測驗，<span class="text-red-600 underline">重新閱讀課本</span>或<span class="text-red-600 underline">仔細查看重點整理</span>後，準備好再來挑戰吧！
+                    </p>
+                </div>
+
+                <button onclick="backToStudyFromWarning()" class="w-full bg-red-600 text-white py-5 rounded-2xl font-black text-xl shadow-xl hover:bg-red-700 transition transform active:scale-95">
+                    返回閱讀重點
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示框 -->
+    <div id="modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl border-4 border-blue-600">
+            <h3 id="modal-title" class="text-2xl font-black mb-4 text-blue-600">提示</h3>
+            <p id="modal-msg" class="text-slate-600 font-bold mb-8 text-lg"></p>
+            <div class="flex justify-end">
+                <button onclick="closeModal()" class="w-full py-3 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition">我知道了</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 闖關紀錄與動作框 -->
+    <div id="action-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border-4 border-emerald-500">
+            <h3 class="text-2xl font-black mb-2 text-emerald-600">過關紀錄查詢</h3>
+            <p class="text-slate-600 font-bold mb-6 text-sm">你已經通過這個章節了，這是你的輝煌紀錄！</p>
+            <div id="history-list" class="space-y-3 mb-8 max-h-[40vh] overflow-y-auto pr-2"></div>
+            <div class="flex space-x-3">
+                <button onclick="closeActionModal()" class="flex-1 py-3 bg-slate-200 text-slate-700 rounded-xl font-black hover:bg-slate-300 transition shadow-sm">返回目錄</button>
+                <button onclick="proceedToStudy(); closeActionModal()" class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-black hover:bg-emerald-700 transition shadow-sm">再次闖關</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 進站先決定畫面：hub 已登入過就直接顯示「登入中…」，沒有才顯示登入表單（避免閃表單） -->
+    <script>
+      (function () {
+        var loginEl = document.getElementById('login-screen');
+        var ssoEl = document.getElementById('sso-loading');
+        var sid = null;
+        try { sid = sessionStorage.getItem('sid11501'); } catch (e) {}
+        if (sid && /^14\d{5}$/.test(sid)) {
+          ssoEl.classList.remove('hidden');
+          // 保險：若 7 秒內還沒自動登入完成（例如連線異常），仍讓學生能手動登入
+          setTimeout(function () {
+            if (!ssoEl.classList.contains('hidden')) {
+              ssoEl.classList.add('hidden');
+              loginEl.classList.remove('hidden');
+            }
+          }, 7000);
+        } else {
+          loginEl.classList.remove('hidden');
+        }
+      })();
+    </script>
+
+    <!-- 全站共用計分規則（單一來源；改這支即同步學生端與教師端） -->
+  <script src="../shared/grading.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, getDoc, setDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 1. 重點整理資料 (Study Notes) ---
+        const studyNotes = {
+            "ch1-all": { 
+                title: "第一章 資訊倫理 重點總整理", 
+                content: `
+                    <h4>一、資訊倫理與網路禮儀</h4>
+                    <p><strong>資訊倫理</strong>是維繫虛擬社會秩序的準則，強調發自良知的「自律」。在網路上應保持友善與尊重，保護隱私（不暴露個資、不隨意截圖），並確保資訊正確與簡潔。資訊從業人員更需嚴守保密與職業責任。</p>
+                    
+                    <h4>二、PAPA 理論 (核心必考)</h4>
+                    <p>由梅森(Mason)提出，包含四個核心面向：</p>
+                    <ul>
+                        <li><strong>隱私權 (Privacy)：</strong>保障個資不被不當蒐集或公開。</li>
+                        <li><strong>正確性 (Accuracy)：</strong>確保資訊真實無誤，不散布未經查證的謠言。</li>
+                        <li><strong>所有權 (Property)：</strong>尊重智慧財產權，合法使用數位資源。</li>
+                        <li><strong>近用權 (Accessibility)：</strong>確保所有人都有公平使用電腦與網路的權利。</li>
+                    </ul>
+
+                    <h4>三、從數位落差到數位包容</h4>
+                    <p>為了消除不同族群在科技使用上的<strong>「數位落差」</strong>，現代轉向推動<strong>「數位包容」</strong>。透過科技輔具（如視障者的朗讀器、行動障礙者的眼動追蹤技術）來改善障礙者的資訊近用權。</p>
+
+                    <h4>四、人工智慧 (AI) 基礎</h4>
+                    <p>AI 的三大核心技術為：<strong>類神經網路</strong>、<strong>機器學習</strong>與<strong>自然語言處理</strong>。現今盛行的生成式 AI（如 ChatGPT）則是透過大型語言模型與使用者互動，創造出全新的內容。</p>
+                ` 
+            },
+            "1-1": { 
+                title: "1-1 資訊倫理的意涵", 
+                content: `
+                    <h4>一、資訊倫理的定義與核心價值</h4>
+                    <p>倫理是個人內化的行為準則與是非善惡的價值觀，用以維持社會秩序。資訊倫理則是將此概念延伸至資訊社會，指人們在產生、傳播、整理、保存、檢索及利用資訊時應遵守的行為準則，其目的是為了維繫資訊社會的秩序與和諧。</p>
+                    
+                    <h4>二、資訊倫理在現代社會的必要性</h4>
+                    <p>由於資訊世界具有跨國界、跨文化及跨世代的特性，其人際互動比傳統社會更為多元且複雜。為了在虛擬世界中建立安全與安心的使用環境，除了個人的自律良知，還需要一套適用於資訊社會的多元倫理規範來引導正確的行為。</p>
+                    
+                    <h4>三、具體規範與職業倫理責任</h4>
+                    <p>除了內化的價值觀，社會也透過具體的資訊倫理規範（如《臺灣學術網路管理規範》）作為外在約束力量。特別是資訊從業人員（如校務管理人員），因具備較大權限可存取敏感個資，因此負有更重的職業或專業倫理責任，必須嚴守保密協議以保護他人隱私。</p>
+                ` 
+            },
+            "1-2": { 
+                title: "1-2 網路禮儀與規範", 
+                content: `
+                    <h4>一、建立友善與尊重的環境</h4>
+                    <p>網路禮儀（netiquette）是網路公民最重要的倫理規範。使用者應對網友保持尊重與體諒，在發言時注意基本禮貌。若遇到不禮貌的情況，應盡量以私訊方式提醒對方並進行理性對話，避免在群組等公共場所發生衝突，以維護友善的網路環境。</p>
+
+                    <h4>二、維護系統安全與個人隱私</h4>
+                    <p>網路是一個虛擬的公共場所，必須重視隱私與安全。這包括不在網路上暴露個人資訊（如私密照、身分證件、機票或護照等），也不應輕易公開他人的私人訊息或截圖。此外，遇到不明的訊息、圖片或連結時，在未經求證前不應隨意轉發或公開散布，以確保系統與資訊安全。</p>
+
+                    <h4>三、正確、簡潔與清楚的表達</h4>
+                    <p>在網路的人際互動中，應力求正確且簡潔的表達。進行正式書信往返（如電子郵件）時，郵件主旨及內容必須明確且務必署名，以示尊重。最重要的是，在按下「傳送」鍵前，應再次確認內容無誤，避免資訊錯誤傳達。</p>
+                ` 
+            },
+            "1-3": { 
+                title: "1-3 PAPA 理論", 
+                content: `
+                    <h4>一、PAPA 理論的核心目標與本質</h4>
+                    <p>1986 年由梅森（Mason）提出，旨在呼籲社會大眾重視資訊倫理議題，以維持資訊社會的和諧與正義。資訊倫理強調的是發自良知的<strong>「自律」</strong>，相對於法律的「他律」，倫理在維持社會秩序上更為重要，是數位公民必須具備的重要素養。</p>
+                    
+                    <h4>二、個人資料的保護與資訊的真實性</h4>
+                    <ul>
+                        <li><strong>隱私權 (Privacy)：</strong>個人有權決定資料的保密或公開。數位公民應嚴守不經同意不傳送他人個資、不侵害他人隱私，以及不在網路討論區指名道姓討論私事。</li>
+                        <li><strong>正確性 (Accuracy)：</strong>資訊的精確與否會影響生活、社會安寧甚至國家安全。每個人都應遵守不寄發或不轉寄未經查證的不實訊息，且管理者應維護個資的正確性以降低資安風險。</li>
+                    </ul>
+
+                    <h4>三、資源的產權尊重與資訊使用的公平性</h4>
+                    <ul>
+                        <li><strong>所有權 (Property)：</strong>應尊重他人的著作權、專利權與商業機密，了解侵權行為需負擔法律責任。例如：下載圖片自用可能屬於合理使用，但未經授權轉傳他人則是違法利用。</li>
+                        <li><strong>近用權 (Accessibility)：</strong>主張人人皆有使用電腦與網路的權利。重點在於縮短數位落差（Digital Divide），致力於消除弱勢族群或偏鄉地區在資訊科技使用機會上的不公平現象。</li>
+                    </ul>
+                ` 
+            },
+            "1-4": { 
+                title: "1-4 數位落差的意義", 
+                content: `
+                    <h4>一、數位落差轉型為「數位包容」</h4>
+                    <p>數位落差是指不同族群在近用數位產品與網路時的機會不均等，這可能導致社會兩極化。過去政策側重於硬體補貼與網路建設，現在則轉向推動「數位包容（digital inclusion）」，強調提升個人的軟體應用素養，確保所有人不論身分地位都能公平地接觸與使用數位服務。</p>
+
+                    <h4>二、改善障礙者的資訊近用權</h4>
+                    <p>透過科技的進步，障礙者能利用各類「協助工具」來克服使用障礙。例如，視障者可使用朗讀器或文字放大程式；聽障者可透過文字輔具或音樂觸覺體驗；行動障礙者則能利用眼動追蹤技術（利用演算法計算眼球觀看位置來操作）等科技，落實資訊近用的公平性。</p>
+
+                    <h4>三、人工智慧（AI）的核心與應用</h4>
+                    <p>人工智慧旨在使電腦具備模擬人類思考與邏輯的能力，其三大核心技術包含：類神經網路（模擬神經元運作）、機器學習（從大量資料中建立分辨能力）以及自然語言處理（理解並回應人類語言）。此外，現今盛行的生成式 AI（如 ChatGPT）透過大型語言模型（LLM）與使用者問答互動，能創造出影像、故事或音樂等新內容。</p>
+                ` 
+            },
+            "3-1": { 
+                title: "3-1 資訊與法律", 
+                content: `
+                    <h4>一、電腦犯罪的定義與法律規範</h4>
+                    <p>我國刑法第 36 章設有「妨害電腦使用罪」來處理不法行為。電腦犯罪可分為狹義（以電腦或網路為攻擊目標）與廣義（犯罪過程涉及電腦或網路工具）兩類。當前的網路犯罪（Cybercrime）類型多樣，包含侵入他人網站、在網路販賣違禁品或利用網路誘騙個人資料等。</p>
+
+                    <h4>二、個資、著作權與秘密之法律保障</h4>
+                    <p>資訊科技使得重製著作物與管理數位個資變得方便，但也增加了安全風險。法律對此有明確規範，例如刑法第 318-1 條與第 318-2 條針對透過資訊設備知悉他人秘密訂有罰則。此外，對於非法重製著作物或竊取個資的行為，也分別受《著作權法》及《個人資料保護法》的約束。</p>
+
+                    <h4>三、人工智慧（AI）的發展與治理原則</h4>
+                    <p>隨著 AI 技術快速發展，雖然帶來效益但也產生新風險。為了建立良好的運作環境，我國政府於 2024 年制訂「人工智慧基本法」草案。該法案旨在從基本原則與政府推動重點等面向出發，在促進創新的同時兼顧人權保護與風險管理，建構良善的 AI 治理方針。</p>
+                ` 
+            },
+            "3-2": { 
+                title: "3-2 電腦與網路犯罪概述", 
+                content: `
+                    <h4>一、妨害電腦使用罪的法律界定</h4>
+                    <p>我國《刑法》妨害電腦使用罪章規範了多項不法行為，包含未經許可入侵他人帳號（如猜測密碼登入他人遊戲帳號，觸犯第 358 條）、未經授權取得或刪除電磁紀錄（如趁他人未登出時複製作業，觸犯第 359 條），以及惡意干擾系統運作（如更改無線網路密碼致使他人無法上網，觸犯第 360 條）。</p>
+
+                    <h4>二、網路詐欺與個資盜用的風險</h4>
+                    <p>網路犯罪常利用假訊息或釣魚網頁獲取個人資料，進而進行金錢詐騙。例如，利用電信積分兌換手機的誘因，誘導使用者輸入個資與簡訊驗證碼，實則開啟小額支付功能。此類行為可能觸犯《刑法》中的普通詐欺罪（第 339 條）及電腦設備詐欺罪（第 339-3 條）。</p>
+
+                    <h4>三、網路散布猥褻物與違禁品銷售</h4>
+                    <p>在網路上散發或提供不當內容及商品亦須負法律責任。散布色情圖片或卡通連結供大眾瀏覽，觸犯《刑法》第 235 條（散布猥褻物品罪）。此外，網路拍賣也受特定法律約束，例如私自在網路上販售隱形眼鏡屬於違反《藥事法》的行為，會面臨三萬元以上、十五萬元以下的罰鍰。</p>
+                ` 
+            },
+            "3-3": { 
+                title: "3-3 著作權法及個資法罰則", 
+                content: `
+                    <h4>一、著作權法的侵權罰則與區分</h4>
+                    <p>法律針對非法「重製」與「利用」設有嚴厲罰則。「意圖銷售或出租」而擅自重製者，其刑度比一般擅自重製更重。在利用方面，擅自公開播送、傳輸或改作他人著作亦屬違法，且營利目的（如開啟頻道收益）的侵權刑度會重於教育用途。然而，若著作僅供個人參考或屬於合理使用者，則不構成侵害。</p>
+
+                    <h4>二、個人資料保護法的法律責任</h4>
+                    <p>違反個資法需負擔民事、刑事與行政三重責任：</p>
+                    <ul>
+                        <li><strong>民事賠償：</strong>若不易證明損害額，每人每一事件可求償 500 元至 2 萬元，同一事件最高賠償總額通常以 2 億元為限。</li>
+                        <li><strong>機關與企業責任：</strong>公務員違法加重其刑至二分之一；非公務機關（如企業）負責人若未盡監督義務，將被課以相同額度罰鍰。</li>
+                        <li><strong>刑事與行政罰：</strong>意圖營利者加重處罰，行政罰鍰最高可處 50 萬元並可連續處罰。</li>
+                    </ul>
+
+                    <h4>三、人工智慧（AI）法規的國際趨勢與國內草案</h4>
+                    <ul>
+                        <li><strong>歐盟 AI 法案：</strong>2024 年生效，採「基於風險的管理」模式，將 AI 系統分為不可接受（禁止使用）、高風險（需評定）、有限風險（負透明度義務）及最小風險四個等級。</li>
+                        <li><strong>臺灣 AI 基本法草案：</strong>於 2024 年預告，擬定七大原則（如隱私保護、公平不歧視、透明可解釋等），並規範應避免 AI 造成利益衝突、歧視或資訊造假，同時訂定政府的獎勵與教育措施。</li>
+                    </ul>
+                ` 
+            },
+            "ch3-all": {
+                title: "第三章 資訊科技與法律 重點總整理",
+                content: `
+                    <h4>一、電腦犯罪與妨害電腦使用罪</h4>
+                    <p>刑法第36章「妨害電腦使用罪」規範了<strong>無故入侵他人帳號</strong>（第358條）、<strong>取得/刪除/變更電磁紀錄</strong>（第359條）以及<strong>干擾系統運作</strong>（第360條）等不法行為。</p>
+                    
+                    <h4>二、網路詐欺與散布不當內容</h4>
+                    <p>利用假訊息或釣魚網頁騙取個資並進行金錢詐騙，觸犯普通或電腦設備詐欺罪。散布猥褻物品或私自於網路販賣違禁品（如隱形眼鏡），亦會面臨刑法或相關行政法規（如藥事法）的嚴格處罰。</p>
+                    
+                    <h4>三、著作權法與個資法的保障與罰則</h4>
+                    <p>擅自重製、改作、公開傳輸他人著作屬侵權行為，<strong>營利目的刑度更重</strong>；僅供個人參考等合理使用則不罰。違反《個資法》將面臨<strong>民事賠償</strong>（同一事件最高2億元）、<strong>行政罰鍰</strong>與<strong>刑事責任</strong>的三重懲處。</p>
+                    
+                    <h4>四、人工智慧 (AI) 治理與法規</h4>
+                    <p>為因應 AI 帶來的風險與效益，歐盟於2024年生效 AI 法案（採基於風險的管理），臺灣亦預告「人工智慧基本法」草案，明定隱私保護、透明可解釋等七大原則，兼顧創新與風險管理。</p>
+                `
+            },
+            "review-all": { 
+                title: "資訊倫理與相關法律 總複習", 
+                content: `
+                    <h4>第一部分：資訊倫理 (PAPA 理論與數位包容)</h4>
+                    <p><strong>資訊倫理</strong>強調自律與網路禮儀。核心必考為 <strong>PAPA 理論</strong>：隱私權(Privacy)、正確性(Accuracy)、所有權(Property)、近用權(Accessibility)。此外，現代社會致力於弭平「數位落差」，推廣「數位包容」，利用科技輔具保障所有人的資訊近用權。</p>
+                    
+                    <h4>第二部分：資訊科技相關法律</h4>
+                    <p>網路空間亦受法律規範：<br>
+                    1. <strong>妨害電腦使用罪：</strong>無故入侵帳號、變更電磁紀錄、干擾系統。<br>
+                    2. <strong>網路犯罪：</strong>網路詐欺、散布猥褻物、販賣違禁品。<br>
+                    3. <strong>著作權與個資法：</strong>非法重製與利用他人著作將受罰；違反個資法需負民事、刑事及行政三重責任。</p>
+                    
+                    <h4>第三部分：人工智慧 (AI) 基礎與法規</h4>
+                    <p>AI 的三大核心技術為<strong>類神經網路</strong>、<strong>機器學習</strong>與<strong>自然語言處理</strong>。各國（如歐盟 AI 法案、臺灣 AI 基本法草案）正積極建立法規，以基於風險的管理模式，確保 AI 的發展兼顧人權、隱私與透明度。</p>
+                ` 
+            }
+        };
+
+        // --- 2. 題庫生成 ---
+        
+        // 1-1 小節題庫 (20題)
+        const q1_1 = [
+            {q: "資訊倫理主要目的為何？", options: ["增加網路速度", "推廣特定軟體", "維持資訊社會的秩序與和諧", "減少資料備份"], correct: 2},
+            {q: "下列哪一項不是網路禮儀強調的重點？", options: ["維護系統安全", "鼓勵隨意公開他人帳號資訊", "尊重他人與友善互動", "清楚且簡潔的表達"], correct: 1},
+            {q: "資訊所有權 (property) 關心的主要議題是？", options: ["資料備份頻率", "使用者介面友善性", "系統穩定度", "著作權與智慧財產權保護"], correct: 3},
+            {q: "資訊近用權 (accessibility) 主要討論什麼？", options: ["每個人都能取得與使用資訊", "提高網路廣告收益", "加速資料加密演算法", "強化伺服器硬體"], correct: 0},
+            {q: "下列哪一項屬於網路禮儀的溝通原則？", options: ["大量使用大寫字母以示強調", "表達要正確、簡潔、清楚", "公開散播他人私人資訊", "刻意模糊責任歸屬"], correct: 1},
+            {q: "「數位落差」主要指什麼現象？", options: ["取得與使用資訊科技資源的差距", "網路速度的短暫中斷", "伺服器資料損毀", "軟體版本的不同"], correct: 0},
+            {q: "為縮短數位落差，書中提到的新概念為何？", options: ["數位包容", "只建置高階伺服器", "限制網路使用人數", "集中式資料儲存"], correct: 0},
+            {q: "教育機構中，誰有責任保護個人資料？", options: ["只有學生個人", "校務人員", "外部廠商全權負責", "任何不具權限的人"], correct: 1},
+            {q: "網路禮儀中提到維護系統安全的目的最接近下列哪項？", options: ["增加系統的外觀吸引力", "提高使用者登入次數", "保護使用者資料與隱私", "延長網站停機時間"], correct: 2},
+            {q: "資訊倫理課程提到的溝通應有的態度不包括？", options: ["煽動攻擊性言論", "尊重他人", "友善互動", "清楚表達"], correct: 0},
+            {q: "在推動數位包容時，應特別考量哪一群體？", options: ["只考量都市使用者", "僅限年輕族群", "障礙者與弱勢族群", "只關注企業用戶"], correct: 2},
+            {q: "下列哪一項是資訊倫理教育最可能教授的內容？", options: ["尊重著作權與正確使用資料", "如何破解密碼", "散播未經證實的謠言", "避免所有網路互動"], correct: 0},
+            {q: "關於個人資料保護，下列何者為正確做法？", options: ["在公開場所不加密保存個資", "限制存取權限並妥善保管個資", "任意分享同事個人電話", "將所有資料上傳至公開網盤"], correct: 1},
+            {q: "數位包容政策要改善的不是下列哪一項？", options: ["增加針對性網路廣告量", "提升弱勢的網路使用機會", "提供障礙者的無障礙設施", "縮短城鄉或世代間的資訊差距"], correct: 0},
+            {q: "網路禮儀對人際互動的要求不包括下列哪一項？", options: ["保持尊重與友善", "保護個人隱私", "以惡意攻擊他人為常態", "表達要正確且簡潔"], correct: 2},
+            {q: "「數位包容」的核心目標最接近下列哪一項？", options: ["提供每個人相同型號的數位設備", "降低網路費用以減輕負擔", "確保所有族群都能公平參與與使用數位資源與服務", "強化網路使用規範並嚴格執行罰則"], correct: 2},
+            {q: "資訊倫理規範的對象通常涵蓋下列哪一類範圍？", options: ["僅資訊技術人員", "僅個別使用者與消費者", "僅企業與政府機構", "個人、組織與整體社會"], correct: 3},
+            {q: "根據本章關於網路禮儀的說明，下列哪一組是作者同時強調的要點？", options: ["建立友善與尊重的環境、清楚溝通、分享私人資料", "建立友善與尊重的環境、維護系統安全、保護個人隱私", "強調技術實作、系統升級、資料分析", "推廣開放資料、公開成績、鼓勵匿名"], correct: 1},
+            {q: "作者將「資訊倫理」比喻為下列何者？", options: ["基本法律規範", "技術工具", "教育課程內容", "維持資訊社會秩序與和諧的支柱"], correct: 3},
+            {q: "在介紹網路禮儀時，作者指出人際互動在表達上應具備哪三個特性？", options: ["友善、尊重、有禮", "維護系統安全與隱私", "正確、簡潔、清楚", "頻繁更新與快速回應"], correct: 2}
+        ];
+        
+        // 1-2 到 1-4 小節題庫 (後續可持續擴充)
+        const q1_2 = [
+            {q: "在群組中有人發言不禮貌時，最適當的處理方式是什麼？", options: ["在群組公開反擊並批評對方", "直接刪除對方的訊息", "私訊提醒並理性溝通", "把對話截圖公開到其他平台"], correct: 2},
+            {q: "在公開平臺分享私人訊息或截圖應該如何處理？", options: ["隨意分享以證明自己有理", "先徵求當事人同意再公開", "只要去掉名字就可公開", "把訊息先翻拍後再分享"], correct: 1},
+            {q: "以下哪一項最能體現網路發言的基本禮貌？", options: ["郵件或訊息務必署名並寫明主旨", "用大量大寫字母強調立場", "在群組中連續貼相同訊息", "不回應就表示同意"], correct: 0},
+            {q: "群組如同公共場所，因此在發言時應該如何做？", options: ["隨意發言不需顧忌他人", "保持應有的禮貌態度", "只在深夜發言以免被注意", "用私人玩笑取代正式溝通"], correct: 1},
+            {q: "遇到不明的連結或訊息，正確的處理方式是？", options: ["先確認來源再決定是否分享", "立即轉發給所有群組成員", "把連結貼出並要求大家點開", "只轉發給親近朋友"], correct: 0},
+            {q: "在撰寫通訊或貼文時，哪一項是良好寫作原則？", options: ["盡量使用複雜長句顯得專業", "大量使用表情符號替代文字", "用字遣詞力求正確且簡潔", "不需要檢查就直接貼出"], correct: 2},
+            {q: "在準備資訊專題報告群組時，下列哪種回應最能促進團隊合作？", options: ["指責同學沒做事並要求退群", "用嘲諷語氣催促他人", "把責任全部推給一人", "用理性且尊重的語氣提醒與協調"], correct: 3},
+            {q: "在寄送電子郵件時，哪一點是重要的禮儀？", options: ["信件不用主旨以免洩露資訊", "只寫一句話即可表示客套", "務必署名並寫清楚主旨", "大量附件但不說明內容"], correct: 2},
+            {q: "當群組有人情緒化回應他人時，最不恰當的做法是？", options: ["在群組公開辱罵或羞辱對方", "私下詢問狀況並澄清誤會", "建議暫時停止討論以冷靜", "提醒彼此保持尊重語氣"], correct: 0},
+            {q: "分享地點連結如地圖時，應注意什麼？", options: ["只貼連結不需說明為何分享", "把私密位置公開給所有人", "說明用途並附上正確連結", "使用不明短網址以提高點閱率"], correct: 2},
+            {q: "在群組討論報告分工時，下列哪種做法較能維持和諧？", options: ["不回應就等別人完成自己的部分", "私下抱怨再公開發難", "明確告知截止時間與分工要求", "把責任全推給組長讓他負責"], correct: 2},
+            {q: "張貼信件或貼文前應該做哪一項檢查？", options: ["先轉發給最多人以測試反應", "確認內容正確且無誤再張貼", "把私人意見寫入公開貼文以增加真實性", "刪除回覆功能以避免討論"], correct: 1},
+            {q: "下列何者是避免在網路上暴露個人資訊的正確做法？", options: ["不在公開平臺透露敏感個人資訊", "在留言中寫下身分證字號以證明身分", "公開所有私訊以示透明", "在社群上分享家中門牌以方便朋友"], correct: 0},
+            {q: "在群組溝通遇到誤會時，下列哪一種語氣較有助於解決問題？", options: ["指責式語氣", "嘲諷語氣", "沉默不回應", "理性且尊重的語氣"], correct: 3},
+            {q: "當收到可疑訊息但不確定真假時，應優先採取什麼行動？", options: ["立即在群組轉發以提醒大家", "回覆訊息要求對方提供更多個資", "把訊息存檔然後忽略", "先查證來源再決定是否分享"], correct: 3},
+            {q: "在發送重要郵件時，為何要寫明主旨？", options: ["主旨可以用空白以保持神秘感", "明確主旨讓收件者迅速理解內容", "主旨越長越能顯示專業", "主旨只需寫一個表情符號"], correct: 1},
+            {q: "何者不是良好的網路發言習慣？", options: ["保持尊重並理性討論", "未查證即任意轉發", "在公開場合避免揭露私人資訊", "發文前確認內容無誤"], correct: 1},
+            {q: "為保持訊息專業，通訊或貼文應如何呈現？", options: ["用字遣詞力求正確且簡潔", "大量使用俚語以拉近距離", "以長篇大論展示見解", "刻意省略重要資訊以引起好奇"], correct: 0},
+            {q: "當發現自己在群組中不當發言時，最合適的回應是？", options: ["刪除訊息然後假裝沒事", "誠實道歉並修正說法", "攻擊回應者以保護自己", "把責任推給別人"], correct: 1},
+            {q: "在群組討論時，為了讓報告順利進行，成員之間應該怎麼做？", options: ["只在截止前一天才完成分工", "明確分工並互相尊重與溝通", "把所有任務交給最認真的一人", "公開指責未完成者以示警惕"], correct: 1}
+        ];
+        
+        const q1_3 = [
+            {q: "下列哪一項最能代表 Privacy (隱私) 原則的精神？", options: ["確保資訊正確無誤", "保障資訊可被公開取用", "未經當事人同意不得傳送個資", "強化資料的著作權保護"], correct: 2},
+            {q: "關於資訊正確性 (Accuracy)，下列何者為良好行為？", options: ["隨意轉發未經查證的訊息", "以匿名方式散布未證實的謠言", "寄發前查證資訊來源", "蓄意修改他人資料再散播"], correct: 2},
+            {q: "關於資訊管理者的倫理，下列敘述何者最合適？", options: ["資訊管理者可隨意分享使用者資料", "資訊管理者只需遵守公司規定", "資訊管理者應嚴守專業倫理規範", "資訊管理者無需考慮使用者權益"], correct: 2},
+            {q: "根據課文，轉寄不實或可疑的郵件會產生何種問題？", options: ["增加資訊正確性", "造成錯誤資訊擴散", "提升網路可及性", "保護個人隱私"], correct: 1},
+            {q: "個人資料保護法的目的除了保護隱私外，還強調哪一項？", options: ["促進數位分化", "提高資料曝露率", "取消資料使用限制", "維護個資的正確性"], correct: 3},
+            {q: "在網路公共討論區談論私人事務時，應避免下列哪種行為？", options: ["使用匿名化語言討論公共議題", "分享政策性資訊以促進討論", "引用公開來源資料作說明", "指名道姓討論他人私人事務"], correct: 3},
+            {q: "Accessibility (可及性) 在 PAPA 中主要關注什麼議題？", options: ["資訊的著作權保護", "資訊取得與使用的平等性", "資訊的法律責任歸屬", "資訊內容的審查權"], correct: 1},
+            {q: "下列哪一句是課文所列關於個資處理的原則？", options: ["未經當事人同意，不應將他人個資傳送給第三者", "應公開所有個人資料以利審查", "政府有權自由交換所有個資", "只要有利害關係即可任意分享"], correct: 0},
+            {q: "為何維持資訊正確性也與資安有關？", options: ["正確性只與法律有關", "不正確資訊會增加資安風險", "資安與正確性無關", "正確性只影響著作權問題"], correct: 1},
+            {q: "關於散布未經查證的貼文，下列哪個理由最能說明為何應避免？", options: ["可以增加網站流量", "能迅速取得權威回應", "能保證資訊來源可靠", "可能損害名譽並擴散錯誤資訊"], correct: 3},
+            {q: "Digital divide (數位落差) 一詞與 PAPA 的哪一面向最相關？", options: ["財產權 (Property)", "可及性 (Accessibility)", "隱私 (Privacy)", "正確性 (Accuracy)"], correct: 1},
+            {q: "PAPA 中的 Property (財產) 主要討論何者？", options: ["資訊的可達性", "使用者隱私權保護", "資訊是否正確", "資訊的所有權與著作權"], correct: 3},
+            {q: "資料管理者分享敏感個資前應該採取的第一步是什麼？", options: ["立即公開資料以利透明", "取得當事人同意", "事後再告知當事人", "只分享給特定媒體"], correct: 1},
+            {q: "在公共討論中揭露他人私人資訊可能違反哪一項 PAPA 原則？", options: ["隱私 (Privacy)", "正確性 (Accuracy)", "財產 (Property)", "可及性 (Accessibility)"], correct: 0},
+            {q: "下列哪一種做法有助於提升資訊的正確性？", options: ["只依靠傳言判斷", "刪除批判性來源", "不重視來源標示", "在傳播前查證來源"], correct: 3},
+            {q: "若在網路討論區指名道姓討論他人私事，可能違反下列何種倫理？", options: ["侵犯隱私", "促進可及性", "維護資訊正確性", "保障財產權"], correct: 0},
+            {q: "下列哪項不是維護資訊正確性可達成的效果？", options: ["降低資安風險", "避免錯誤決策", "提升資料利用的可靠性", "促進隱私曝露"], correct: 3},
+            {q: "若要減少數位落差，以下哪種措施較為直接？", options: ["加強著作權保護", "鼓勵私人資料公開分享", "普及網路設備與數位教育", "限制資訊查證機制"], correct: 2},
+            {q: "PAPA 中的 Accuracy (正確性) 主要強調下列哪一項？", options: ["確保資訊來源的隱私保護", "強化系統或資產的所有權管理", "維持資訊的正確性以避免錯誤與資安風險", "提升社會各群體的網路可及性"], correct: 2},
+            {q: "下列哪一項做法對於預防身分盜用最直接有效？", options: ["在公共論壇指名道姓討論他人私事", "維持資訊正確性以避免錯誤分辨", "資訊管理者遵守專業倫理", "避免未經當事人同意將他人個資傳送給第三者"], correct: 3}
+        ];
+        
+        const q1_4 = [
+            {q: "根據教材，何者屬於「數位包容」的新定義意涵？", options: ["只強調硬體供應", "以商業利益為優先", "讓各種身分地位的人都能接觸數位服務", "限制未成年人使用網路"], correct: 2},
+            {q: "下列哪一項是教學現場推動生成式 AI 使用的年齡建議（根據教材整理）？", options: ["所有年齡皆可自由使用", "只能 18 歲以上使用", "13 歲以下需教師指導，13~18 歲需教師與家長監督", "禁止在校園使用"], correct: 2},
+            {q: "下列哪一項不是生成式 AI 常見可產生的結果？", options: ["對話回應", "故事文本", "影像與影片", "氣象預報模型"], correct: 3},
+            {q: "教材中列出 AI 的三大核心技術，下列何者不是其一？", options: ["類神經網路", "機器學習", "區塊鏈技術", "自然語言處理"], correct: 2},
+            {q: "在改善障礙者資訊近用方面，教材提到哪一種協助工具？", options: ["觸覺手套", "眼動追蹤", "量子計算機", "雲端儲存"], correct: 1},
+            {q: "教材中提到以 5G 應用可以實現哪一項社會服務？", options: ["離線資料備份", "遠端看診與遠距教學", "手動電話交換", "傳統郵寄服務"], correct: 1},
+            {q: "教材中提及提升網路公民應注意的要點，下列哪一項不是其中一項？", options: ["監控他人隱私以確保安全", "對網友表現尊重", "重視個人隱私及系統安全", "文字溝通要正確、簡潔、清楚"], correct: 0},
+            {q: "關於生成式 AI 的運作，教材指出其核心模型為何？", options: ["大型語言模型 (LLM)", "決策樹分析", "基因演算法", "資料倉儲"], correct: 0},
+            {q: "教材提到為了促進偏鄉地區的數位資源應該做什麼？", options: ["完備偏鄉地區的數位資源", "集中所有資源於都市", "禁止偏鄉使用社群平台", "僅提供紙本教材"], correct: 0},
+            {q: "教材中提到募集二手電腦的目的為何？", options: ["賣給外國企業獲利", "普及各地的電腦近用", "回收金屬材料", "建立私人資料庫"], correct: 1},
+            {q: "下列哪一項屬於提升資訊倫理中「正確性」的具體行為？", options: ["忽略來源直接轉發", "只分享未經證實的消息", "查核並傳播正確資訊", "刻意更改他人作品"], correct: 2},
+            {q: "教材提到哪種技術可以幫助視覺障礙者接近資訊？", options: ["無障礙網頁與輔助功能", "高畫質影像輸出", "密碼強化", "加速器硬體"], correct: 0},
+            {q: "教材中提及培育數位教育人才的目的不包括下列哪一項？", options: ["增加數位教學師資", "建立校園數位學習環境", "全面取消傳統教學科目", "帶動數位發展"], correct: 2},
+            {q: "下列哪一項是教材提到的生成式 AI 與使用者互動的主要方式？", options: ["單向資料流", "問答互動", "硬體升級通知", "網路封包分析"], correct: 1},
+            {q: "教材提到在資訊社會中，制訂使用規範的主要原因是為了什麼？", options: ["維持虛擬世界的秩序與行為準則", "提高硬體銷售量", "減少網速耗費", "限制資訊創作"], correct: 0},
+            {q: "教材建議為提升各年齡層的數位應用能力應該做什麼？", options: ["加強各年齡層的數位應用學習", "只提供給專業人士課程", "全面限制年長者使用設備", "停止學校數位課程"], correct: 0},
+            {q: "教材對 ChatGPT 的提醒為何？", options: ["ChatGPT 可能會發生錯誤，需查核重要資訊", "ChatGPT 永遠正確，可直接當事實使用", "禁止在教學上使用任何 AI 工具", "只要是 ChatGPT 的結果就無需修改"], correct: 0},
+            {q: "根據教材，何者最能準確描述人工智慧 (AI) 的意義？", options: ["以程式自動執行既定程序", "僅透過固定規則判斷而不需學習", "讓系統模擬人類思考並透過數據分析持續校正與進化", "使電腦在無需資料訓練下即具備智慧"], correct: 2},
+            {q: "教材指出生成式 AI 在與使用者互動之後，會如何進一步提升其性能？", options: ["利用互動資料做自我訓練與修正", "僅依原始訓練資料，不做變動", "將使用者資料公開共享給第三方", "把互動內容永久固定成模型輸出，不再學習"], correct: 0},
+            {q: "教材指出人工智慧 (AI) 能夠持續校正與進化，下列哪一項最能說明其主要方式？", options: ["透過大量資料訓練與機器學習持續校正", "由人工逐條修改程式碼來手動更新行為", "只靠預先設定的固定規則運作不再改變", "透過法律與規範強制要求其輸出改變"], correct: 0}
+        ];
+
+        // 第一章重點總整理題庫 (自動結合 1-1 到 1-4)
+        const q_ch1 = [...q1_1, ...q1_2, ...q1_3, ...q1_4];
+
+        const q3_1 = [
+            {q: "在資訊科技時代，數位化個人資料相比傳統方式的主要優點是什麼？", options: ["完全免於風險", "處理與管理更方便且有效率", "法律自動保護所有資料", "永遠不會被竊取"], correct: 1},
+            {q: "下列哪一項是網路犯罪常見特性？", options: ["只會發生在實體店面", "透過網路實施且型態多樣", "完全無法追蹤來源", "只限國內犯行"], correct: 1},
+            {q: "關於人工智慧 (AI) 治理的全球趨勢，下列哪一項最貼切？", options: ["全面禁止所有人工智慧研究", "完全放任市場自行調節", "只重視技術創新而忽略風險", "在不妨礙技術發展下建立治理方針與原則"], correct: 3},
+            {q: "「人工智慧基本法」草案的目的不包括下列哪一項？", options: ["提出基本價值與治理原則", "提升國家競爭力", "全面取代現有憲法", "建構良善運作環境"], correct: 2},
+            {q: "為何刑法中的「妨害電腦使用罪」無法規範大部分網路犯罪？", options: ["因為網路犯罪不存在", "因為範圍有限，常以其他法律來規範", "因為刑法禁止所有網路活動", "因為電腦無法被法律認定"], correct: 1},
+            {q: "書中提到何者是利用資訊科技常見的違法行為？", options: ["只用於科研目的的合法複製", "書籍合法借閱", "公開圖書館的書架整理", "非法重製與利用著作物"], correct: 3},
+            {q: "網路上竊取個資屬於下列哪種法律問題範疇？", options: ["土地法問題", "交通法規", "個人資料保護法相關違法", "公司法內部治理"], correct: 2},
+            {q: "政府制定人工智慧政策時，書中建議首要建立什麼？", options: ["立即禁止所有 AI 應用", "僅依賴民間自律", "建立治理原則與施政方針", "取消相關研究經費"], correct: 2},
+            {q: "數位化後著作物更易被非法重製，此句子最能反映下列哪一項風險？", options: ["天然災害風險", "著作權被非法重製與利用", "地震安全問題", "氣候變遷影響"], correct: 1},
+            {q: "書中提到人工智慧技術進步的驅動因素為何？", options: ["語言政策變更", "法律立即全面放寬", "硬體效能提升", "減少網路頻寬"], correct: 2},
+            {q: "為什麼政府要訂定人工智慧基本法草案？", options: ["為了取消所有 AI 監管", "確立發展方向並構建良善運作環境", "僅為國際宣傳用途", "限制民間研究"], correct: 1},
+            {q: "書中對網路犯罪的處理方式指出何種情況會用其他法律規範？", options: ["所有網路行為都由刑法處理", "只在國際層級處理", "刑法未能規範時以其他法規範", "網路犯罪不需法律規範"], correct: 2},
+            {q: "下列哪一項屬於資訊科技帶來的合法便利？", options: ["資料永遠安全", "處理與管理更方便與有效率", "不用遵守任何法令", "完全避免錯誤"], correct: 1},
+            {q: "書中所稱「良善運作環境」在人工智慧政策中意指何者？", options: ["促進創新並兼顧人權與風險", "禁止所有創新", "只追求短期利益", "忽視風險管理"], correct: 0},
+            {q: "書中為何提及人工智慧可能帶來新的風險或影響？", options: ["因為 AI 同時帶來效益與潛在風險", "因為 AI 沒有任何效益", "因為 AI 只影響硬體製造業", "因為 AI 已完全受控"], correct: 0},
+            {q: "下列哪一項不是書中對人工智慧治理的期待？", options: ["提出基本價值與治理原則", "訂定施政方針", "促進創新並關注人權", "全面停止所有 AI 技術發展"], correct: 3},
+            {q: "書中提到哪一種犯罪行為常見於利用資訊科技的情況？", options: ["只有街頭詐騙", "透過網路竊取個資", "只發生在公司內部管理", "單純筆誤"], correct: 1},
+            {q: "書中提及哪一項行為會違反著作權法？", options: ["合理引用並標示來源", "非法重製與利用著作物", "購買正版授權", "在圖書館內閱覽"], correct: 1},
+            {q: "書中提到 AI 治理要達成的目標不含下列哪一項？", options: ["取消所有科技教育", "建立治理原則", "促進創新", "兼顧人權與風險"], correct: 0},
+            {q: "哪一項敘述最能代表本章對於資訊科技與法律關係的總覽？", options: ["資訊科技完全不影響法律", "法律只適用於實體世界", "資訊科技帶來新型犯罪，需相關法律回應", "所有法律已完備無需修正"], correct: 2}
+        ];
+        
+        const q3_2 = [
+            {q: "下列哪一種行為最可能觸犯刑法第 358 條「入侵電腦或相關設備」？", options: ["散布虛假訊息以獲利", "公開他人隱私檔案內容", "未經許可遠端登入並取得系統控制權", "販賣違法藥物"], correct: 2},
+            {q: "若透過發送大量網路封包造成他人系統無法運作，這屬於哪一類犯罪？", options: ["散布猥褻物品", "普通詐欺", "破壞電磁紀錄", "干擾電腦或其相關設備"], correct: 3},
+            {q: "以下哪項行為最不屬於教材中提到的電腦或網路犯罪類型？", options: ["街頭非法集會與示威", "未經授權登入伺服器", "破壞電子交易紀錄", "用惡意程式攻擊網站"], correct: 0},
+            {q: "若有人以程式刪除企業內部之交易紀錄，教材會將此行為歸類為？", options: ["散布猥褻物品", "入侵電腦", "破壞電磁紀錄", "販售違法商品"], correct: 2},
+            {q: "教材中將利用假訊息騙取他人金錢或資料的行為，最直接對應下列哪一條？", options: ["普通詐欺", "販售違法商品", "非法集會", "民事侵權"], correct: 0},
+            {q: "教材案例中，未經許可存取他人資料庫並下載資料，哪一項最合適的法律分類？", options: ["入侵電腦或相關設備", "破壞電磁紀錄", "散布猥褻物品", "民事侵權"], correct: 0},
+            {q: "教材指出，透過電子手段偽造交易紀錄以騙取，除了普通詐欺外，還可能構成？", options: ["破壞電磁紀錄", "電腦設備詐欺", "偽造交易紀錄", "破壞紀錄"], correct: 1},
+            {q: "教材中提到的「干擾電腦或其相關設備」的典型例子是哪一項？", options: ["散布猥褻內容", "販售違規藥品", "偷取密碼後秘密使用", "大量封包攻擊使服務中斷"], correct: 3},
+            {q: "教材案例若為盜用他人帳號後散布不雅影像，主要可能涉及哪些法律問題？", options: ["入侵電腦行為與散布猥褻物品", "僅屬民事契約違約", "僅屬藥事法違規", "破壞電磁紀錄單一適用"], correct: 0},
+            {q: "教材中常見透過社交工程或假訊息騙取密碼的行為，學理上最接近哪一類犯罪？", options: ["散布猥褻物品", "藥事法違規", "普通詐欺與電腦設備詐欺", "破壞電磁紀錄"], correct: 2},
+            {q: "根據教材，若有人未經授權改變公司電子發票之內容，首先最可能被歸類為？", options: ["破壞電磁紀錄（刑法第 359 條）", "散布猥褻物品（刑法第 235 條）", "入侵電腦（刑法第 358 條）", "普通詐欺（刑法第 339 條）"], correct: 0},
+            {q: "下列哪一種行為，最可能單獨構成刑法第 339-3 條「電腦設備詐欺」？", options: ["以假訊息誘使他人轉帳", "未經授權下載並公開公司機敏資料販售", "發動大量封包使對方網站癱瘓", "以程式控制他人電腦變更交易或轉帳金額以騙取金錢"], correct: 3},
+            {q: "教材「電腦與網路犯罪概述」主要列舉下列哪一組犯罪類型？", options: ["僅列舉電子商務與網路交易的經濟規範", "主要討論著作權與智慧財產權之保護方法", "只描述網路倫理與使用者行為守則", "未經授權入侵、破壞電磁紀錄、干擾設備、散布不法內容與網路詐欺"], correct: 3},
+            {q: "根據教材，將某詐欺行為稱為「電腦設備詐欺」與稱為「普通詐欺」的主要差別為何？", options: ["是否造成較大財務損失", "是否有偽造文件的行為", "是否以電腦或電子設備為實行手段", "是否涉及暴力或脅迫"], correct: 2},
+            {q: "下列哪一項不是成立刑法第 360 條「干擾電腦或其相關設備」犯罪所必須的要件？", options: ["行為人有故意使電腦功能受干擾之意圖", "目標為電腦或其相關設備而非一般紙本系統", "行為造成系統暫時無法運作", "必須造成永久性毀損才成立犯罪"], correct: 3},
+            {q: "根據教材案例，販售違規隱形眼鏡被下架並處以新臺幣罰鍰，此類處罰最可能屬於下列哪一類法律責任？", options: ["刑事責任", "民事賠償", "行政罰鍰", "刑事與行政雙重處罰"], correct: 2},
+            {q: "為了降低遭受未經授權入侵或網路攻擊的風險，組織最應優先採取下列哪一項防護措施？", options: ["將所有內部系統全面公開至網際網路", "完全禁止員工連上網際網路", "僅依賴防火牆而不做其他維護", "定期備份資料並即時安裝安全更新與補丁"], correct: 3},
+            {q: "若有人未經他人同意，在對方電腦上植入程式，利用其處理能力長期挖掘加密貨幣，最可能觸犯下列哪一條？", options: ["破壞電磁紀錄（第 359 條）", "普通竊盜", "電腦詐欺（第 339-3 條）", "入侵電腦或相關設備（第 358 條）"], correct: 3},
+            {q: "下列哪一項最符合教材中「電磁紀錄」的範疇？", options: ["紙本合約影本", "口頭會議記錄", "電子郵件或伺服器上的資料檔", "手寫筆記掃描的紙本影像"], correct: 2},
+            {q: "根據教材說明，行政罰與刑事責任的主要差別為何？", options: ["行政罰為行政機關依行政法規處分，刑事責任為國家透過刑法追訴並可能剝奪自由", "行政罰只針對公司，刑事責任只針對個人", "行政罰必須由法院判決，刑事責任由行政機關決定", "行政罰可直接沒收財產，刑事責任永遠不涉及財產處分"], correct: 0}
+        ];
+        
+        const q3_3 = [
+            {q: "下列哪一種行為最有可能構成著作權侵害 (未經著作財產權人同意)？", options: ["下載並剪輯他人電影預告片上傳並開放收益", "在課堂上口頭引用他人文章段落作為討論", "私下備份購買的電子書以備個人閱讀", "在報告中適度引用他人研究並標示來源"], correct: 0},
+            {q: "如果未經授權重製並公開播送他人的著作，可能面臨哪一種法律責任？", options: ["僅道德責任", "行政書面警告但無其他責任", "民事損害賠償及可能的刑事或行政處罰", "僅需向原作者道歉即可"], correct: 2},
+            {q: "小波將電影預告片剪輯並加入頻道 logo 再上傳，主要違反哪一項權利？", options: ["侵犯肖像權", "侵犯商標權", "侵犯著作財產權", "侵犯個人隱私權"], correct: 2},
+            {q: "下列哪一條並非資訊犯罪相關之條文範例 (依簡述)？", options: ["刑法第 358 條 入侵電腦", "刑法第 359 條 破壞電磁紀錄", "刑法第 360 條 干擾電腦", "刑法第 235 條 散布猥褻物品"], correct: 3},
+            {q: "下列何者屬於電腦犯罪中常見的罪名之一？", options: ["入侵電腦或相關設備", "妨害婚姻", "偽造印章", "環境污染罪"], correct: 0},
+            {q: "在資訊科技時代，個人資料處理的優點與風險何者敘述正確？", options: ["只帶來便利沒有風險", "提高效率但伴隨較高安全風險", "會使個人資料完全匿名化", "必然降低管理成本"], correct: 1},
+            {q: "以下哪一項不是歐盟 2024 年 AI 法案列為「不可接受風險」的範例？", options: ["操控人類行為", "剝削弱勢群體", "生成式 AI 的內容產出", "政府社會評分系統"], correct: 2},
+            {q: "歐盟 AI 法案中，哪一類系統被列為需合格評定的高風險？", options: ["垃圾郵件過濾系統", "遊戲內置 AI", "生成式聊天機器人回覆", "評估健康、人壽或公共福利資格"], correct: 3},
+            {q: "歐盟 AI 法案採用哪種方法來訂定規範？", options: ["全面禁止所有 AI", "基於風險的管理", "僅採自願性準則", "以行業自律為主"], correct: 1},
+            {q: "在 AI 風險等級中，哪一類需要履行透明度義務？", options: ["不可接受風險", "最小風險", "高風險", "有限風險"], correct: 3},
+            {q: "哪一項屬於「不可接受風險」範疇而被禁止？", options: ["垃圾郵件過濾系統", "遊戲內含 AI", "政府機關的社會評分系統", "消費者互動系統"], correct: 2},
+            {q: "以下哪一項屬於 AI 法案列為「有限風險」的範例？", options: ["醫療器械的安全零組件", "評估保險資格的系統", "生成式 AI 的內容", "垃圾郵件過濾"], correct: 2},
+            {q: "關於 AI 的定義，下列哪一項最符合文中描述？", options: ["以機器為基礎並具不同程度運行自主性的系統", "僅指能玩棋類遊戲的軟體", "只包括深度學習模型", "僅為資料庫檢索工具"], correct: 0},
+            {q: "人工智慧基本法草案提到的七大原則中，不包括下列哪一項？", options: ["隱私保護與資料治理", "完全禁止私人開發 AI", "公平與不歧視", "透明與可解釋"], correct: 1},
+            {q: "根據文中，歐盟 AI 法案將生成式 AI 分入哪一風險等級？", options: ["不可接受風險 (禁止)", "高風險 (需合格評定)", "最小風險 (無義務)", "有限風險 (透明度義務)"], correct: 3},
+            {q: "下列哪一項不是文中提到的 AI 基本原則或重點？", options: ["永續發展與福祉", "隱私保護與資料治理", "賦予 AI 法律人格", "公平與不歧視"], correct: 2},
+            {q: "以下哪一項屬於歐盟 AI 法案列為「最小風險或無風險」的範例？", options: ["含有 AI 的醫療器械", "公共場所即時遠端生物識別系統", "與消費者互動的生成式聊天機器人", "垃圾郵件過濾系統"], correct: 3},
+            {q: "根據教材，歐盟《人工智慧法案》對下列何者規範其應負義務？", options: ["僅規範 AI 系統的最終使用者", "開發者、供應商、經銷商與部署或負責的組織及高階職位", "僅規範技術供應商與開源社群", "僅針對 product 製造者與零件供應商"], correct: 1},
+            {q: "歐盟《人工智慧法案》將 AI 風險分為幾個等級？", options: ["二個等級", "三個等級", "四個等級", "五個等級"], correct: 2},
+            {q: "根據教材，哪一個機關應參考國際標準或規範，推動 AI 風險分級框架？", options: ["國科會", "教育部", "數位發展部", "經濟部"], correct: 2}
+        ];
+        
+        // 第三章重點總整理題庫
+        const q_ch3 = [...q3_1, ...q3_2, ...q3_3];
+
+        const q_review = [
+            {q: "綜合測驗：遵守 PAPA 理論與資訊相關法律的最主要目的是？", options: ["為了應付學校的考試成績", "建立安全、和諧且受尊重的數位資訊社會", "避免被父母禁止上網", "展現自己的電腦技術高超"], correct: 1}
+        ];
+        
+        // 大會考總複習題庫 (結合第一章、第三章與綜合題)
+        const q_review_all = [...q_ch1, ...q_ch3, ...q_review];
+
+        const allQuestions = {
+            "ch1-all": q_ch1,
+            "1-1": q1_1, "1-2": q1_2, "1-3": q1_3, "1-4": q1_4,
+            "ch3-all": q_ch3,
+            "3-1": q3_1, "3-2": q3_2, "3-3": q3_3,
+            "review-all": q_review_all
+        };
+
+        // --- 3. 系統狀態與邏輯 ---
+        let user = { cls: '', no: '', name: '' };
+        let ssoAttempted = false;
+
+        // 若 hub 已存學號，先隱藏登入表單、顯示「登入中」，避免閃爍
+        (function () {
+            const saved = sessionStorage.getItem('sid11501');
+            if (saved && /^14\d{5}$/.test(saved)) {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('sso-loading').classList.remove('hidden');
+            }
+        })();
+        let currentChapterId = '';
+        let availableQuestions = []; // 暫存可用題庫牌堆
+        let currentQuestion = null;  // 當前題目物件
+        let consecutiveCorrect = 0;  // 連對次數
+        let score = 0;               // 總答對次數
+        let wrongCount = 0;          // 累積答錯次數
+        let selectedOption = -1;
+        
+        let timerInterval = null;
+        let secondsElapsed = 0;
+
+        // Firebase 狀態
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let appIdStr = 'school-quiz-app'; // 固定一個識別字串
+        let globalUserRecords = [];
+
+        // 使用您提供的 Firebase Config
+        const firebaseConfig = window.CONFIG.FIREBASE;
+
+        const ROSTER_COL = window.CONFIG.COLLECTIONS.ROSTER;
+
+        // 初始化 Firebase（登入改用學號＋驗證碼，不再需要班級/座號選單）
+        const initSystem = () => {
+            // 啟動專屬 Firebase
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                const initAuth = async () => {
+                    try {
+                        // AUTH.attachSession()：已經有身分（例如剛在闖關基地用學校 Google 帳號登入）
+                        //    就不要再匿名登入，否則會把 Google 身分蓋掉，安全規則的 isOwner() 失效。
+                        await AUTH.attachSession(auth, signInAnonymously, onAuthStateChanged);
+                    } catch(e) { console.error("Firebase Auth Error", e); }
+                };
+                initAuth();
+
+                onAuthStateChanged(auth, (authUser) => {
+                    currentUser = authUser;
+                    if (authUser) {
+                        // 使用共用的 Public 資料夾，讓學生可以跨裝置撈到自己的資料
+                        const recordsRef = collection(db, 'artifacts', appIdStr, 'public', 'data', 'quiz_records');
+                        onSnapshot(recordsRef, (snapshot) => {
+                            globalUserRecords = [];
+                            snapshot.forEach(docSnap => {
+                                globalUserRecords.push({ id: docSnap.id, ...docSnap.data() });
+                            });
+                            // 紀錄更新（含剛通關）→ 立即刷新章節上的通關標記
+                            if (!document.getElementById('chapter-screen').classList.contains('hidden')) {
+                                paintChapterMarks();
+                            }
+                        }, (err) => {
+                            console.error("Firestore Snapshot Error", err);
+                        });
+                        // SSO：若 hub 已存學號，自動登入（只嘗試一次）
+                        if (!ssoAttempted) { ssoAttempted = true; autoLoginSSO(); }
+                    }
+                });
+            } catch (e) { console.error("Firebase Setup Error", e); }
+        };
+        initSystem();
+
+        // 綁定全域事件供 HTML 呼叫 (因為 type="module" 會隔離作用域)
+
+        // 向名冊查出學生資料（{cls,no,name,code}）
+        async function resolveStudent(sid) {
+            try { const snap = await getDoc(doc(db, ROSTER_COL, sid)); if (snap.exists()) return snap.data(); }
+            catch(e) { console.error("名冊查詢失敗", e); }
+            return null;
+        }
+        function enterChapters() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('sso-loading').classList.add('hidden');
+            document.getElementById('chapter-screen').classList.remove('hidden');
+            document.getElementById('welcome-info').innerText = `${user.cls}班 ${user.no}號 ${user.name}，歡迎登入`;
+            paintChapterMarks();
+        }
+
+        // 在章節按鈕上標示通關狀態：依該章「最佳正確率」顯示 ★ 星等
+        function paintChapterMarks() {
+            if (!user || !user.name) return;
+            const best = {};
+            globalUserRecords
+                .filter(r => r.cls === user.cls && r.no === user.no && r.name === user.name)
+                .forEach(r => {
+                    const k = r.chapterId;
+                    best[k] = Math.max(best[k] || 0, Number(r.rate) || 0);
+                });
+
+            let done = 0;
+            document.querySelectorAll('[data-ch]').forEach(btn => {
+                const id = btn.getAttribute('data-ch');
+                const old = btn.querySelector('.ch-mark');
+                if (old) old.remove();
+                btn.classList.remove('ring-2', 'ring-emerald-400');
+                if (best[id] == null) return;
+
+                done++;
+                const rate = Math.round(best[id]);
+                const star = window.GRADING ? window.GRADING.ethicsStar(rate) : 1;
+                const mark = document.createElement('span');
+                mark.className = 'ch-mark ml-1.5 whitespace-nowrap font-black text-amber-500';
+                mark.textContent = '✅' + '★'.repeat(star);
+                mark.title = `已通關　最佳正確率 ${rate}%　獲得 ${star} 顆星`;
+                btn.appendChild(mark);
+                btn.classList.add('ring-2', 'ring-emerald-400');
+            });
+
+            // 頁面標題旁顯示總進度
+            const info = document.getElementById('chapter-progress');
+            if (info) {
+                const total = document.querySelectorAll('[data-ch]').length;
+                info.textContent = done ? `已通關 ${done} / ${total} 個章節` : '還沒有通關紀錄，挑選一個章節開始吧！';
+            }
+        }
+        // 學號＋驗證碼登入（首次以姓名驗身後自設驗證碼）
+        window.loginByStudentId = async () => {
+            const sid = document.getElementById('sid-input').value.trim();
+            const name = document.getElementById('sname-input').value.trim();
+            const code = document.getElementById('code-input').value.trim();
+            if(!/^14\d{5}$/.test(sid)) { showModal('學號格式錯誤', '請輸入 7 位數字、以 14 開頭的學號。'); return; }
+            const info = await resolveStudent(sid);
+            if(!info) { showModal('找不到學號', `名冊中查無學號 ${sid}，請找老師確認名冊。`); return; }
+            if(!info.code) {
+                // 首次登入：姓名驗身 + 自設驗證碼
+                if(!name || name !== (info.name || '').trim()) { showModal('首次登入', '請輸入與名冊相符的姓名，才能設定你的驗證碼。'); return; }
+                if(!/^\d{6}$/.test(code)) { showModal('設定驗證碼', '首次登入請自訂 6 位數字驗證碼。'); return; }
+                try { await setDoc(doc(db, ROSTER_COL, sid), { code, updatedAt: Date.now() }, { merge: true }); }
+                catch(e) { console.error(e); showModal('設定失敗', '請稍後再試。'); return; }
+            } else {
+                if(!/^\d{6}$/.test(code)) { showModal('驗證碼格式', '請輸入 6 位數字的驗證碼。'); return; }
+                if(String(info.code) !== code) { showModal('驗證碼錯誤', '驗證碼不正確，請再確認。'); return; }
+            }
+            user.cls = info.cls; user.no = String(info.no); user.name = info.name; user.sid = sid;
+            sessionStorage.setItem('sid11501', sid);
+            enterChapters();
+        };
+        // 回報到統一進度（11501-progress）：每章節依最佳正確率給 1–3 星，累加
+        async function reportEthicsProgress(rate, wrongCount) {
+            if (!user.sid || !db) return;
+            const starOf = window.GRADING.ethicsStar;   // 門檻定義在 shared/grading.js（單一來源）
+            // 收集本學生各章節的最佳正確率（含本次）
+            const best = {};
+            globalUserRecords
+                .filter(r => r.cls === user.cls && r.no === user.no && r.name === user.name)
+                .forEach(r => { best[r.chapterId] = Math.max(best[r.chapterId] || 0, r.rate || 0); });
+            // 本次作答「新增」了幾顆星（供每週評分統計；同章重考只算進步的部分）
+            const prevBestThis = best[currentChapterId] || 0;
+            const gained = Math.max(0, starOf(Math.max(prevBestThis, rate)) - (prevBestThis ? starOf(prevBestThis) : 0));
+
+            best[currentChapterId] = Math.max(best[currentChapterId] || 0, rate);
+            let totalStars = 0, done = 0;
+            Object.values(best).forEach(rt => { totalStars += starOf(rt); done++; });
+            const totalChapters = Object.keys(studyNotes).length;
+            const status = done >= totalChapters ? 'pass' : 'in-progress';
+            const now = Date.now();
+            try {
+                await setDoc(doc(db, '11501-progress', user.sid), {
+                    studentId: user.sid,
+                    modules: { ethics: { status, score: rate, stars: totalStars, level: done, source: 'auto', updatedAt: now } },
+                    history: arrayUnion({ module: 'ethics', score: rate, chapter: currentChapterId, at: now, stars: gained }),
+                    updatedAt: now
+                }, { merge: true });
+            } catch (e) { console.error('回報統一進度失敗', e); }
+        }
+
+        // SSO 自動登入（hub 已驗證過，這裡信任 localStorage）
+        async function autoLoginSSO() {
+            const saved = sessionStorage.getItem('sid11501');
+            if(!(saved && /^14\d{5}$/.test(saved))) return;
+            const info = await resolveStudent(saved);
+            if(info) {
+                user.cls = info.cls; user.no = String(info.no); user.name = info.name; user.sid = saved;
+                enterChapters();
+            } else {
+                // 名冊查不到：改回顯示登入表單讓學生手動處理
+                document.getElementById('sso-loading').classList.add('hidden');
+                document.getElementById('login-screen').classList.remove('hidden');
+            }
+        }
+
+        window.showStudyNotes = (id) => {
+            currentChapterId = id;
+            
+            // 檢查該學生的專屬過關紀錄 (跨裝置比對：班級+座號+姓名)
+            const chapterRecords = globalUserRecords
+                .filter(r => r.cls === user.cls && r.no === user.no && r.name === user.name && r.chapterId === id)
+                .sort((a, b) => b.timestamp - a.timestamp);
+
+            if (chapterRecords.length > 0) {
+                // 顯示最新三筆紀錄框
+                const displayRecords = chapterRecords.slice(0, 3);
+                let listHtml = '';
+                displayRecords.forEach((r, idx) => {
+                    const dateStr = new Date(r.timestamp).toLocaleString('zh-TW', {
+                        month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+                    });
+                    listHtml += `
+                        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100 mb-3 shadow-sm flex justify-between items-center gap-2">
+                            <div>
+                                <div class="text-xs text-slate-400 font-black mb-1 tracking-wider uppercase">History ${idx + 1} &bull; ${dateStr}</div>
+                                <div class="flex items-center gap-3 mt-1">
+                                    <span class="text-emerald-700 font-black text-sm md:text-lg">正確率: ${r.rate}%</span>
+                                    <span class="text-orange-500 font-bold bg-white px-2 py-1 rounded-md text-xs md:text-sm border border-orange-100">耗時: ${r.duration}</span>
+                                </div>
+                            </div>
+                            <button onclick="viewCertificate('${r.id}')" class="shrink-0 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs md:text-sm font-bold rounded-lg transition shadow-sm">
+                                檢視證書
+                            </button>
+                        </div>
+                    `;
+                });
+                document.getElementById('history-list').innerHTML = listHtml;
+                document.getElementById('action-modal').classList.remove('hidden');
+                document.getElementById('action-modal').classList.add('flex');
+            } else {
+                window.proceedToStudy(id);
+            }
+        };
+
+        window.proceedToStudy = (id) => {
+            const targetId = id || currentChapterId;
+            if (studyNotes[targetId]) {
+                document.getElementById('study-title').innerText = studyNotes[targetId].title;
+                document.getElementById('study-content').innerHTML = studyNotes[targetId].content;
+            } else {
+                document.getElementById('study-title').innerText = "建置中";
+                document.getElementById('study-content').innerHTML = "內容尚未建置";
+            }
+            
+            document.getElementById('chapter-screen').classList.add('hidden');
+            document.getElementById('study-screen').classList.remove('hidden');
+        };
+
+        window.closeActionModal = () => {
+            document.getElementById('action-modal').classList.remove('flex');
+            document.getElementById('action-modal').classList.add('hidden');
+        };
+
+        window.viewCertificate = (recordId) => {
+            const record = globalUserRecords.find(r => r.id === recordId);
+            if(!record) return;
+
+            window.closeActionModal();
+            document.getElementById('chapter-screen').classList.add('hidden');
+
+            // 填入歷史紀錄資料
+            document.getElementById('res-class').innerText = record.cls;
+            document.getElementById('res-no').innerText = record.no;
+            document.getElementById('res-name').innerText = record.name;
+            
+            const date = new Date(record.timestamp);
+            document.getElementById('res-date').innerText = `${date.getFullYear()}/${(date.getMonth()+1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
+            document.getElementById('res-chapter').innerText = studyNotes[record.chapterId]?.title || record.chapterId;
+            document.getElementById('res-duration').innerText = record.duration;
+            document.getElementById('res-rate').innerText = `${record.rate}%`;
+            document.getElementById('res-correct').innerText = record.correct;
+            document.getElementById('res-total').innerText = record.total;
+
+            let msg = "";
+            if(record.correct === record.total) msg = "PERFECT! 零失誤完美通關！";
+            else if(record.rate >= 90) msg = "GREAT! 表現出色，拿下三星！";
+            else if(record.rate >= 75) msg = "GOOD! 順利過關，拿下二星！";
+            else msg = "完成挑戰！再複習一次就能拿更多星，加油！";
+            document.getElementById('pass-msg').innerText = msg;
+
+            // 將按鈕文字改為返回目錄
+            document.getElementById('cert-return-btn').innerText = "返回目錄";
+
+            document.getElementById('result-screen').classList.remove('hidden');
+        };
+
+        window.backToChapters = () => {
+            document.getElementById('study-screen').classList.add('hidden');
+            document.getElementById('chapter-screen').classList.remove('hidden');
+        };
+
+        window.closeModal = () => {
+            document.getElementById('modal').classList.remove('flex');
+            document.getElementById('modal').classList.add('hidden');
+        };
+
+        // 測驗邏輯
+        document.getElementById('start-quiz-btn').addEventListener('click', () => {
+            const pool = allQuestions[currentChapterId] || [];
+            if (pool.length === 0) {
+                showModal('題庫建置中', '本小節題庫尚未建置完成，敬請期待！');
+                return;
+            }
+
+            availableQuestions = [...pool].sort(() => 0.5 - Math.random());
+            
+            consecutiveCorrect = 0;
+            score = 0;
+            wrongCount = 0;
+            secondsElapsed = 0;
+            
+            document.getElementById('study-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            
+            document.getElementById('current-chapter-title').innerText = studyNotes[currentChapterId].title;
+            document.getElementById('target-counter').innerText = `目標連對: 10`;
+            
+            startTimer();
+            loadQuestion();
+        });
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            let m = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+            let s = (secondsElapsed % 60).toString().padStart(2, '0');
+            document.getElementById('timer').innerText = `${m}:${s}`;
+        }
+
+        function loadQuestion() {
+            selectedOption = -1;
+            document.getElementById('score-counter').innerText = `連對: ${consecutiveCorrect} / 10`;
+            document.getElementById('wrong-counter').innerText = `容錯: ${20 - wrongCount}`;
+
+            if (availableQuestions.length === 0) {
+                availableQuestions = [...allQuestions[currentChapterId]].sort(() => 0.5 - Math.random());
+            }
+
+            currentQuestion = availableQuestions.shift();
+            
+            let html = `<h3 class="text-xl md:text-2xl font-black mb-6 text-slate-800 leading-relaxed">${currentQuestion.q}</h3><div class="space-y-3">`;
+
+            let shuffledOptions = currentQuestion.options.map((opt, index) => ({
+                text: opt,
+                originalIndex: index
+            })).sort(() => 0.5 - Math.random());
+
+            currentQuestion.currentShuffledOptions = shuffledOptions;
+
+            shuffledOptions.forEach((optObj, idx) => {
+                html += `<div onclick="selectOption(${idx})" id="opt-${idx}" class="p-4 border-2 border-slate-200 rounded-xl cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition text-lg font-bold text-slate-700 select-none">${optObj.text}</div>`;
+            });
+            html += `</div>`;
+            
+            document.getElementById('question-container').innerHTML = html;
+        }
+
+        window.selectOption = (idx) => {
+            selectedOption = idx;
+            for(let i=0; i<4; i++) {
+                let el = document.getElementById(`opt-${i}`);
+                if(el) {
+                    el.classList.remove('bg-blue-100', 'border-blue-500', 'text-blue-800');
+                    if(i === idx) {
+                        el.classList.add('bg-blue-100', 'border-blue-500', 'text-blue-800');
+                    }
+                }
+            }
+        }
+
+        window.checkAnswer = () => {
+            if(selectedOption === -1) {
+                showModal('尚未作答', '請先選擇一個選項再送出！');
+                return;
+            }
+            
+            const selectedOriginalIndex = currentQuestion.currentShuffledOptions[selectedOption].originalIndex;
+            
+            if(selectedOriginalIndex === currentQuestion.correct) {
+                score++;
+                consecutiveCorrect++;
+                
+                if (consecutiveCorrect >= 10) {
+                    showResult();
+                    return;
+                }
+            } else {
+                wrongCount++;
+                consecutiveCorrect = 0;
+                
+                availableQuestions = [...allQuestions[currentChapterId]].sort(() => 0.5 - Math.random());
+                
+                if(wrongCount >= 20) {
+                    clearInterval(timerInterval);
+                    document.getElementById('quiz-screen').classList.add('hidden');
+                    document.getElementById('warning-screen').classList.remove('hidden');
+                    return;
+                }
+            }
+            loadQuestion();
+        }
+
+        window.backToStudyFromWarning = () => {
+            document.getElementById('warning-screen').classList.add('hidden');
+            document.getElementById('study-screen').classList.remove('hidden');
+        }
+
+        window.returnToChapters = () => {
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('chapter-screen').classList.remove('hidden');
+        }
+
+        function showResult() {
+            clearInterval(timerInterval);
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+
+            document.getElementById('res-class').innerText = user.cls;
+            document.getElementById('res-no').innerText = user.no;
+            document.getElementById('res-name').innerText = user.name;
+            
+            const today = new Date();
+            document.getElementById('res-date').innerText = `${today.getFullYear()}/${(today.getMonth()+1).toString().padStart(2, '0')}/${today.getDate().toString().padStart(2, '0')}`;
+            document.getElementById('res-chapter').innerText = studyNotes[currentChapterId].title;
+
+            let m = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+            let s = (secondsElapsed % 60).toString().padStart(2, '0');
+            document.getElementById('res-duration').innerText = `${m}:${s}`;
+
+            let totalAnswered = score + wrongCount;
+            let rate = Math.round((score / totalAnswered) * 100);
+            
+            document.getElementById('res-rate').innerText = `${rate}%`;
+            document.getElementById('res-correct').innerText = score;
+            document.getElementById('res-total').innerText = totalAnswered;
+
+            let msg = "";
+            if(wrongCount === 0) msg = "PERFECT! 零失誤完美通關！";
+            else if(rate >= 90) msg = "GREAT! 表現出色，拿下三星！";
+            else if(rate >= 75) msg = "GOOD! 順利過關，拿下二星！";
+            else msg = "完成挑戰！再複習一次就能拿更多星，加油！";
+            
+            document.getElementById('pass-msg').innerText = msg;
+
+            // 🌟 回報到統一進度（11501-progress）
+            reportEthicsProgress(rate, wrongCount);
+
+            // 恢復過關狀態下的按鈕文字
+            document.getElementById('cert-return-btn').innerText = "完成挑戰";
+
+            // 將結果儲存到專屬 Firebase
+            if (db && currentUser) {
+                const recordsRef = collection(db, 'artifacts', appIdStr, 'public', 'data', 'quiz_records');
+                addDoc(recordsRef, {
+                    cls: user.cls,
+                    no: user.no,
+                    name: user.name,
+                    chapterId: currentChapterId,
+                    timestamp: Date.now(),
+                    duration: `${m}:${s}`,
+                    rate: rate,
+                    correct: score,
+                    total: totalAnswered
+                }).then(() => {
+                    // 自動清理舊紀錄：找出該學生的該章節紀錄，超過 3 筆的刪掉
+                    const studentRecords = globalUserRecords.filter(r => r.cls === user.cls && r.no === user.no && r.name === user.name && r.chapterId === currentChapterId);
+                    if (studentRecords.length >= 3) {
+                        studentRecords.sort((a, b) => b.timestamp - a.timestamp);
+                        const toDelete = studentRecords.slice(2); // 保留最新的2筆(加上剛剛新增的這1筆，剛好共3筆)
+                        toDelete.forEach(oldRecord => {
+                            deleteDoc(doc(db, 'artifacts', appIdStr, 'public', 'data', 'quiz_records', oldRecord.id)).catch(e => console.error("刪除舊紀錄失敗", e));
+                        });
+                    }
+                }).catch(e => console.error("Firebase Save Error", e));
+            }
+        }
+    </script>
+
+<!-- 返回基地按鈕（自動加入） -->
+<a id="back-to-hub" href="hub.html" title="返回闖關基地"
+   style="position:fixed;top:14px;left:14px;z-index:99999;display:inline-flex;align-items:center;gap:6px;background:#1e293b;color:#fff;font-family:'Noto Sans TC',system-ui,sans-serif;font-weight:700;font-size:14px;padding:8px 14px;border-radius:9999px;text-decoration:none;box-shadow:0 4px 12px rgba(0,0,0,.25);transition:transform .15s;" onmouseover="this.style.transform='translateX(-2px)'" onmouseout="this.style.transform=''">← 返回基地</a>
+</body>
+</html>

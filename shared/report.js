@@ -187,6 +187,25 @@
     }, Object.assign({ stars: star, score: score, unit: unitId }, extra));
   }
 
+  /**
+   * ③ 逐題統計：把這一次挑戰的 { 題id: {n, ok} } 累加進去。
+   *
+   * ★ 為什麼要獨立一支，不塞進 unit()
+   *   unit() 是「成績」—— 只留最好的一次、會影響星數與通關。
+   *   統計是「次數」—— 永遠累加、不影響任何判定，
+   *   而且累積答錯太多被導去學習警示的人**沒有成績卻最需要被統計到**。
+   *   兩件事的合併規則不一樣，混在一起遲早會有人把統計也寫成「取最好」。
+   *
+   * ⚠️ 這裡不寫 history、不動 stars、不動 status —— 只加 qstat 這一格。
+   */
+  async function qstat(moduleId, add) {
+    if (!ready() || !global.QSTAT) return null;
+    if (!add || !Object.keys(add).length) return null;
+    var cur = await readDoc();
+    var mod = (cur.modules && cur.modules[moduleId]) || {};
+    return write(moduleId, { qstat: global.QSTAT.merge(mod.qstat, add) });
+  }
+
   /** 讀出某模組目前的狀態（畫面要顯示已通關單元時用） */
   async function get(moduleId) {
     if (!ready()) return null;
@@ -214,6 +233,7 @@
     configure: configure,
     pass: pass,
     unit: unit,
+    qstat: qstat,
     get: get,
     history: history,
     MAX: MAX,

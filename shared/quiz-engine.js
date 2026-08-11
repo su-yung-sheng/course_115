@@ -284,6 +284,8 @@
   var user = { cls:'', no:'', name:'' };
   var currentId = '';
   var pool = [], current = null, streak = 0, score = 0, wrong = 0, picked = -1;
+  /* 這一次挑戰的逐題紀錄 { 題id: {n, ok} }。挑戰結束才寫出去，見 saveStat()。 */
+  var runStat = {};
   var timer = null, seconds = 0;
   // 闖關紀錄直接讀 progress 文件的 history（原本另開 quiz_records 集合，已廢除）
   var recent = [];           // 目前章節最近幾次的紀錄，由新到舊
@@ -373,7 +375,7 @@
     var n = NODES[currentId];
     if (!n || !n.questions.length) { showModal('題庫建置中', '本小節題庫尚未建置完成，敬請期待！'); return; }
     pool = shuffle(n.questions.slice());
-    streak = 0; score = 0; wrong = 0; seconds = 0;
+    streak = 0; score = 0; wrong = 0; seconds = 0; runStat = {};
     hide('study-screen'); show('quiz-screen');
     $('current-chapter-title').textContent = n.title;
     startTimer(); loadQuestion();
@@ -417,17 +419,42 @@
 
   function checkAnswer() {
     if (picked === -1) { showModal('尚未作答', '請先選擇一個選項再送出！'); return; }
-    if (current.shuffled[picked].orig === current.correct) {
+    var right = current.shuffled[picked].orig === current.correct;
+
+    /* ★ 逐題記一筆（2026-08-11）——「這一節下次該重講什麼」只有這個答得出來。
+       ⚠️ 只累加在記憶體裡，**不是每答一題就寫 Firestore**。
+          一次挑戰要連對 10 題、容錯 20 題，實際上可能作答幾十次；
+          每次都寫的話，一堂課三十個人就是上千次寫入，
+          而寫入額度是整個專案共用的。挑戰結束才寫一次。
+       ⚠️ 沒載到 qstat.js 就跳過，不要讓它擋住答題。 */
+    if (global.QSTAT) QSTAT.bump(runStat, current.q, right);
+
+    if (right) {
       score++; streak++;
       if (streak >= TARGET) { showResult(); return; }
     } else {
       wrong++; streak = 0;
       pool = shuffle(NODES[currentId].questions.slice());   // 答錯就重新洗牌，避免背題序
       if (wrong >= MAX_WRONG) {
+        /* ⚠️ 這一條路（累積答錯太多 → 學習警示）以前直接離開，
+           什麼都沒存。而**答錯 20 題的人，正是最需要知道他錯在哪的那一個** ——
+           統計裡少掉的偏偏是最該看到的資料。 */
+        saveStat();
         clearInterval(timer); hide('quiz-screen'); show('warning-screen'); return;
       }
     }
     loadQuestion();
+  }
+
+  /** 把這一次挑戰累積的逐題紀錄寫進進度文件（只寫一次） */
+  function saveStat() {
+    if (!global.QSTAT || !window.REPORT || !Object.keys(runStat).length) return;
+    var m = runStat;
+    runStat = {};                       // 先清掉，避免重複送出同一批
+    REPORT.qstat(C.moduleId, m).catch(function (e) {
+      /* 統計存不進去不可以影響闖關 —— 它是給老師看的，不是學生的成績。 */
+      console.warn('[qstat] 題目統計沒存成功（不影響闖關）', e);
+    });
   }
 
   function showResult() {
@@ -448,6 +475,8 @@
     $('res-correct').textContent = score; $('res-total').textContent = total;
     $('pass-msg').textContent = praise(wrong === 0, rate);
     $('cert-return-btn').textContent = '完成挑戰';
+
+    saveStat();          // ★ 逐題統計：一次挑戰只寫這一次
 
     // 回報到統一進度（hub 才會亮燈）；星等一律走 GRADING，不在這裡寫死門檻。
     // extra 的欄位只寫進 history，供事後檢視證書用（原本是另一個 quiz_records 集合）。
