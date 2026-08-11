@@ -57,7 +57,23 @@ const KNOWN = {
   'shared/blocks-demo.html': '積木模擬器的開發用試玩頁，只有改 blocks.js 時自己開',
   'shared/ai-lab.html': 'AI 引導的調校台，改提示詞時自己開；學生端不該連得到',
   '11502/content/flowchart.js': '刻意留的空檔：下學期沒有逐關流程圖，' +
-    '留一支同名空檔並寫明原因，免得看起來像漏掉（見檔案開頭的說明）'
+    '留一支同名空檔並寫明原因，免得看起來像漏掉（見檔案開頭的說明）',
+
+  /* ⚠️ 2026-08-11：這三支從 hub 收起來了，但檔案刻意保留。
+     它們要改寫成關卡裡的互動實驗室：
+       logic  → 第 4 關（小鳥吃蟲的條件判斷：且／或／不是）
+       sort   → 第 6／7 關（選擇排序、插入排序）
+       search → 第 8／9 關（循序搜尋、二元搜尋）
+     ★ 為什麼先收起來
+       掛在入口的話，學生會在上到那一關之前先自己玩過一次 ——
+       等真正需要它解釋概念時，就沒有「第一次看到」的效果了，
+       而那個效果正是這幾個互動存在的理由。
+     ⚠️ 改寫整合完成之後，它們會從關卡裡被連到，
+        那時**要把這三筆從 KNOWN 刪掉** —— 留著的話，
+        哪天真的斷線了也不會有人發現。 */
+  '11502/logic.html': '待改寫成第 4 關的互動實驗室（條件判斷）—— 暫時沒有人連',
+  '11502/sort.html': '待改寫成第 6／7 關的互動實驗室（排序）—— 暫時沒有人連',
+  '11502/search.html': '待改寫成第 8／9 關的互動實驗室（搜尋）—— 暫時沒有人連'
 };
 
 /* ── 走訪 ──────────────────────────────────────────── */
@@ -122,6 +138,32 @@ while (queue.length) {
   refs(f).forEach(r => { if (fs.existsSync(path.join(root, r))) push(r); });
 }
 
+/* ── KNOWN 檔案用到的東西也要留著 ────────────────────
+   ⚠️ 2026-08-11：把 11502/sort.html 收進 KNOWN 之後，
+      只有它在載的 shared/sortlab.js 立刻被判成孤兒 ——
+      但那支根本沒問題，它只是「被一個刻意保留的檔案用著」。
+   ★ KNOWN 的意思是「這支我確認過，刻意留著」，不是「這支不存在」。
+     既然留著，它用到的東西當然也要留著。
+     不這樣做的話，每收起一支頁面就要把它的相依檔一個一個補進 KNOWN，
+     而那份清單很快就會長到沒有人看。
+
+   ⚠️ 但**不可以併進 seen**。seen 代表「從真正的入口走得到」，
+      而底下有一條檢查是「KNOWN 裡不該有其實已經被連到的檔案」——
+      混在一起的話那一條會把每一筆 KNOWN 都當成多餘的。
+      （我第一版就是這樣，一改就有 12 筆誤報。） */
+const kept = new Set();
+{
+  const q2 = Object.keys(KNOWN).filter(f => fs.existsSync(path.join(root, f)));
+  const walked = new Set(q2);
+  while (q2.length) {
+    const f = q2.shift();
+    refs(f).forEach(r => {
+      if (!fs.existsSync(path.join(root, r)) || walked.has(r) || seen.has(r)) return;
+      walked.add(r); kept.add(r); q2.push(r);
+    });
+  }
+}
+
 /* ── 盤點 ──────────────────────────────────────────── */
 const all = [];
 (function walk(dir) {
@@ -140,7 +182,7 @@ ENTRY.forEach(e => ok(fs.existsSync(path.join(root, e)), '入口存在：' + e))
 
 section('★ 沒有人連得到的檔案');
 {
-  const orphan = all.filter(f => !seen.has(f) && !KNOWN[f]);
+  const orphan = all.filter(f => !seen.has(f) && !KNOWN[f] && !kept.has(f));
   ok(orphan.length === 0,
      '★ 沒有孤兒檔（改了也沒人看得到的檔案）' +
      (orphan.length ? '　←　' + orphan.join('、') : ''));

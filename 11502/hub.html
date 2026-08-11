@@ -118,15 +118,21 @@
             而闖關地圖是用 unitStars 現算的 —— 兩邊要對得起來，
             不然 hub 上的數字會和點進去看到的不一樣。 */
 
-      // —— 演算法教材（第六章） ——
-      /* ⚠️ 這三張是**暫時**的：它們最後會改寫成關卡裡的互動實驗室
-         （邏輯 → 第 4 關小鳥吃蟲、排序 → 第 6／7 關、搜尋 → 第 8／9 關），
-         整合完成之後這三張卡就會消失，剩下和 11501 一樣的四張。
-         ⚠️ maxStars:0 —— 它們不給星。沒寫的話會被算成 3 顆（見 summary 的 ||3），
-            分母就多了 9 顆永遠拿不到的星，進度條到不了 100%。 */
-      { id:'logic',     title:'邏輯挑戰',         tag:'練習',     icon:'🔍', href:'logic.html',     theme:'bg-violet-100 border-violet-300 text-violet-900',  tape:'bg-violet-500/25',  rot:'rotate-1',  desc:'條件判斷的暖身：讀懂「且／或／不是」。之後會併進第 4 關。', maxStars:0, subLevels:0 },
-      { id:'search',    title:'線性搜尋最大值',   tag:'練習',     icon:'🎯', href:'search.html',    theme:'bg-sky-100 border-sky-300 text-sky-900',          tape:'bg-sky-500/25',     rot:'-rotate-2', desc:'一個一個比，找出全班最高分的那個人。之後會併進搜尋那幾關。', maxStars:0, subLevels:0 },
-      { id:'sort',      title:'排序演算法大冒險', tag:'練習',     icon:'⚔️', href:'sort.html',      theme:'bg-fuchsia-100 border-fuchsia-300 text-fuchsia-900', tape:'bg-fuchsia-500/25', rot:'rotate-2', desc:'看資料怎麼一步一步排好隊。之後會併進排序那幾關。', maxStars:0, subLevels:0 },
+      /* ⚠️ 2026-08-11：邏輯挑戰／線性搜尋／排序大冒險三張卡**先不出現**。
+         ---------------------------------------------------------------
+         檔案沒有刪（11502/logic.html、search.html、sort.html 都還在），
+         它們要改寫成關卡裡的互動實驗室：
+           邏輯 → 第 4 關（小鳥吃蟲的條件判斷）
+           排序 → 第 6／7 關（選擇排序、插入排序）
+           搜尋 → 第 8／9 關（循序搜尋、二元搜尋）
+         在改寫好之前掛在入口，學生會先自己玩過一次，
+         等真正上到那一關時就沒有「第一次看到」的效果了 ——
+         而那個效果正是這幾個互動存在的理由。
+
+         ⚠️ 這三支現在沒有任何地方連得到（reach.test.js 的 KNOWN 有登記，
+            理由就是這一段）。改寫整合之後，它們會從關卡裡被連到，
+            那時要把 KNOWN 的那三筆刪掉。
+         --------------------------------------------------------------- */
 
       // —— 延伸挑戰 ——
       { id:'arduino',   title:'Arduino 智慧家居', tag:'延伸挑戰', icon:'💡', href:'5016b.html',     theme:'bg-indigo-100 border-indigo-300 text-indigo-900',  tape:'bg-indigo-500/25',  rot:'rotate-1',  desc:'用模擬器體驗感測器與控制。', maxStars:0, subLevels:0 }   // 延伸體驗，不計星數
