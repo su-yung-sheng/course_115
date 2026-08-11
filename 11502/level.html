@@ -45,6 +45,10 @@
   .stp-now {background:#4f46e5;color:#fff}
   .stp-done{background:#ecfdf5;color:#047857;border-color:#6ee7b7}
   .stp-todo{background:#fff;color:#94a3b8;border-color:#e2e8f0;cursor:not-allowed}
+  /* 備課模式的橫幅：故意用橘色、故意顯眼 —— 它的工作就是被看到 */
+  .openall{background:#fff7ed;border:2px solid #fdba74;border-radius:14px;
+           padding:10px 14px;font-size:13.5px;line-height:1.9;color:#7c2d12}
+  .openall code{background:#ffedd5;padding:1px 5px;border-radius:5px;font-size:12px}
   .resume{background:#eef2ff;border:1px solid #c7d2fe;border-radius:14px;
           padding:10px 14px;font-size:13.5px;line-height:1.9;color:#3730a3}
   .resume button{margin-left:8px;background:none;border:0;color:#4f46e5;
@@ -111,7 +115,12 @@ let ready = { 1:false, 2:false, 3:false };   // 各步驟完成了沒（步驟 0
 let resumed = false;     // 這一次是不是從記錄點接回來的（要跟學生講一聲）
 
 const GATE = (window.GRADING && window.GRADING.GATE) || null;
+/* 備課用的總開關（見 config.js 的 OPEN_ALL_UNITS）。
+   ⚠️ 開著的時候畫面上一定要看得到 —— 見 render() 裡的橘色橫幅。
+      安靜地全部打開，就等於哪天忘了關也不會有人發現。 */
+const OPEN_ALL = !!(window.GRADING && window.GRADING.openAll && window.GRADING.openAll(window.CONFIG));
 function unitOpen(no) {
+  if (OPEN_ALL) return true;
   return GATE ? GATE.isOpen(no, UNITS, true, null, unitStars) : (no === 1);
 }
 
@@ -198,6 +207,11 @@ function render() {
               data-step="${i}" ${canGo(i) ? '' : 'disabled'}>
         <span>${x.icon}</span><span>${i + 1}. ${x.name}</span>
       </button>`).join('')}</div>
+    ${OPEN_ALL ? `<div class="openall mb-4">
+      🔧 <b>備課模式：十關全部開著</b>（依序開放暫時關掉）。
+      <b>${esc(window.CONFIG.OPEN_ALL_UNTIL || '沒設到期日')}</b> 之後會自動恢復；
+      確認完內容請把 <code>config.js</code> 的 <code>OPEN_ALL_UNITS</code> 改回 <code>false</code>。
+    </div>` : ''}
     ${resumed ? `<div class="resume mb-4">
       📍 上次做到<b>第 ${at + 1} 步（${S[at].name}）</b>，直接從這裡接下去。
       <button id="fromTop">想從第 1 步再看一次</button>
@@ -441,6 +455,22 @@ function draw(s) {
                '&unit=' + encodeURIComponent(unit.id);
   if (f.getAttribute('src') !== want) f.setAttribute('src', want);
 }
+
+/* ★ 評分站會自己回報高度（見 shared/grader.html 結尾）。
+   ⚠️ 上面那個 560px 只是還沒收到訊息之前的暫時值。
+      沒有這一段的話，內容一超過 560px 就被切掉，而且
+      scrolling="no" 讓學生連捲都捲不到 —— 「上傳你的作品」
+      那一塊只露出一半，看起來就是頁面壞了。
+   ⚠️ 一定要驗 e.source：任何一個網頁都可以 postMessage 過來，
+      不驗的話別人送一個 h:1 就能把畫面弄壞。 */
+window.addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d || d.type !== 'graderHeight') return;
+  const f = $('gf');
+  if (!f || e.source !== f.contentWindow) return;
+  const h = Number(d.h) || 0;
+  if (h > 200 && h < 4000) f.style.height = h + 'px';
+});
 
 /* ★ 讀進度之後把星數套進來，並重畫。
    ⚠️ 這個函式一度只有「被呼叫」沒有「被定義」——

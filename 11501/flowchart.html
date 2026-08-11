@@ -336,9 +336,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       isOpen:   function(){ return false; },
       reason:   function(){ return '闖關規則沒有載入成功，請重新整理頁面；若一直這樣請找老師。'; }
     };
-    function openUpTo(){ return GATE.openUpTo(UNITS, state.leadDone, state.done, state.progStars); }
-    function unitOpen(no){ return GATE.isOpen(no, UNITS, state.leadDone, state.done, state.progStars); }
-    function lockReason(no){ return GATE.reason(no, UNITS, state.leadDone, state.done, state.progStars); }
+    /* 備課用的總開關（見 config.js 的 OPEN_ALL_UNITS）。
+       ⚠️ 判斷只有一份，在 GRADING.openAll() —— 它會連到期日一起看。
+          在這裡自己判 `=== true` 的話，到期自動失效那一層就繞過去了。
+       ⚠️ 開著的時候畫面上一定要看得到橘色橫幅。 */
+    const OPEN_ALL = !!(window.GRADING && window.GRADING.openAll && window.GRADING.openAll(window.CONFIG));
+    function openUpTo(){ return OPEN_ALL ? UNITS.length : GATE.openUpTo(UNITS, state.leadDone, state.done, state.progStars); }
+    function unitOpen(no){ return OPEN_ALL ? true : GATE.isOpen(no, UNITS, state.leadDone, state.done, state.progStars); }
+    function lockReason(no){ return OPEN_ALL ? '' : GATE.reason(no, UNITS, state.leadDone, state.done, state.progStars); }
 
     /** 點到鎖住的關卡：把原因顯示在列表上方，並捲回頂端讓學生看得到 */
     function refuse(no){
@@ -428,22 +433,25 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         }
       });
     });
-    // 讓右側「程式評分」iframe 自動長成內容高度：不出現內部捲軸，整頁只用外層捲軸
+    /* 讓「程式評分」iframe 長成內容的高度：不出現內部捲軸，整頁只用外層捲軸。
+
+       ⚠️ 2026-08-11 改法：高度由 **shared/grader.html 自己回報**（postMessage），
+          這裡只負責收。原本是在這裡讀 iframe 的 contentDocument 自己量 ——
+          那份程式碼只有這一頁有，而下學期的 11502/level.html 嵌的是同一支
+          評分站、卻沒有這一段，於是那邊的「上傳你的作品」被切掉一半，
+          而且 scrolling="no" 連捲都捲不到。
+          高度只有評分站自己最清楚，讓它自己講，兩邊就不會有一邊漏掉。
+       ⚠️ 一定要驗 e.source：任何網頁都可以 postMessage 過來。 */
     function autoSizeGraderFrame(){
       const f = document.getElementById('grader-frame');
       if(!f) return;
-      const fit = () => {
-        try{
-          const d = f.contentDocument;
-          if(!d || !d.body) return;
-          const h = Math.max(d.body.scrollHeight, d.documentElement.scrollHeight);
-          if(h > 0) f.style.height = (h + 12) + 'px';
-        }catch(e){ /* 跨網域時忽略 */ }
-      };
-      f.addEventListener('load', () => {
-        fit();
-        try{ new ResizeObserver(fit).observe(f.contentDocument.body); }catch(e){}
-        [300, 800, 1500, 3000].forEach(t => setTimeout(fit, t));   // 圖片／字型載入後再校正
+      window.addEventListener('message', (e) => {
+        const d = e.data;
+        if(!d || d.type !== 'graderHeight') return;
+        const cur = document.getElementById('grader-frame');
+        if(!cur || e.source !== cur.contentWindow) return;
+        const h = Number(d.h) || 0;
+        if(h > 200 && h < 4000) cur.style.height = h + 'px';
       });
     }
 
@@ -740,6 +748,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
               </h1>
               <p class="text-slate-500 text-sm mt-1">關卡<b class="text-purple-600">依序開放</b>：排流程圖(+${STARS_PER_UNIT}⭐) → 寫程式拿到 <b>2⭐</b> 以上，才會開下一關。看不懂先讀 <a href="reference.html" class="text-purple-600 underline font-bold">參考說明</a>。</p>
             </header>
+            ${OPEN_ALL ? `<div class="rounded-2xl px-4 py-3 mb-4 text-sm leading-relaxed"
+                 style="background:#fff7ed;border:2px solid #fdba74;color:#7c2d12">
+              🔧 <b>備課模式：十關全部開著</b>（依序開放暫時關掉）。
+              <b>${(window.CONFIG.OPEN_ALL_UNTIL || '沒設到期日')}</b> 之後會自動恢復；
+              確認完內容請把 <code style="background:#ffedd5;padding:1px 5px;border-radius:5px">config.js</code>
+              的 <code style="background:#ffedd5;padding:1px 5px;border-radius:5px">OPEN_ALL_UNITS</code>
+              改回 <code style="background:#ffedd5;padding:1px 5px;border-radius:5px">false</code>。
+            </div>` : ''}
             ${state.gateMsg?`<div class="bg-amber-50 border-2 border-amber-300 rounded-2xl px-4 py-3 mb-4 flex items-start gap-3 pop">
               <span class="text-2xl flex-shrink-0">🔒</span>
               <div class="flex-1"><div class="text-sm font-black text-amber-800 mb-0.5">這一關還沒開啟</div><div class="text-sm text-amber-700 leading-relaxed">${state.gateMsg}</div></div>

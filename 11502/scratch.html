@@ -123,6 +123,15 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
       <h2 class="font-black text-xl">🗺️ 闖關地圖</h2>
       <span class="text-xs font-bold text-slate-400">每關 2–3 ⭐，滿星 30</span>
     </div>
+    <!-- 備課模式的橫幅。開著的時候一定要看得到 —— 見 config.js 的 OPEN_ALL_UNITS -->
+    <div id="openall" class="hidden mb-4 rounded-2xl px-4 py-3 text-sm leading-relaxed"
+         style="background:#fff7ed;border:2px solid #fdba74;color:#7c2d12">
+      🔧 <b>備課模式：十關全部開著</b>（依序開放暫時關掉）。
+      <b id="openall-until"></b> 之後會自動恢復；確認完內容請把
+      <code style="background:#ffedd5;padding:1px 5px;border-radius:5px">config.js</code>
+      的 <code style="background:#ffedd5;padding:1px 5px;border-radius:5px">OPEN_ALL_UNITS</code>
+      改回 <code style="background:#ffedd5;padding:1px 5px;border-radius:5px">false</code>。
+    </div>
     <div id="stage-grid" class="grid gap-4 sm:grid-cols-2"></div>
   </section>
 
@@ -174,9 +183,13 @@ const GATE = (window.GRADING && window.GRADING.GATE) || {
   isOpen:   function(){ return false; },
   reason:   function(){ return '闖關規則沒有載入成功，請重新整理頁面；若一直這樣請找老師。'; }
 };
-function openUpTo(){ return GATE.openUpTo(UNITS, true, null, unitStars); }
-function unitOpen(no){ return GATE.isOpen(no, UNITS, true, null, unitStars); }
-function lockReason(no){ return GATE.reason(no, UNITS, true, null, unitStars); }
+/* 備課用的總開關（見 config.js 的 OPEN_ALL_UNITS）。
+   ⚠️ 開著的時候畫面上一定要看得到橘色橫幅 ——
+      安靜地全部打開，就等於哪天忘了關也不會有人發現。 */
+const OPEN_ALL = !!(window.GRADING && window.GRADING.openAll && window.GRADING.openAll(window.CONFIG));
+function openUpTo(){ return OPEN_ALL ? UNITS.length : GATE.openUpTo(UNITS, true, null, unitStars); }
+function unitOpen(no){ return OPEN_ALL ? true : GATE.isOpen(no, UNITS, true, null, unitStars); }
+function lockReason(no){ return OPEN_ALL ? '' : GATE.reason(no, UNITS, true, null, unitStars); }
 
 /* ===================== 狀態 ===================== */
 let unitStars = {};   // 作品星：{ '2-1-1A': 3, … }　由 AI 批改寫入 11502-progress
@@ -193,6 +206,14 @@ function blockChip(spec){
 
 function renderStages(){
   const openTo = openUpTo();
+  if (OPEN_ALL) {
+    const b = document.getElementById('openall');
+    if (b) {
+      b.classList.remove('hidden');
+      const u = document.getElementById('openall-until');
+      if (u) u.textContent = window.CONFIG.OPEN_ALL_UNTIL || '（沒設到期日）';
+    }
+  }
   document.getElementById('stage-grid').innerHTML = UNITS.map(u => {
     const s = unitStars[u.id] || 0;
     const done = s > 0;

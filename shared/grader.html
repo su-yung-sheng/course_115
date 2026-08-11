@@ -478,6 +478,41 @@ function reset(){
              improved: star > prev, scoreImproved: nowScore > prevScore };
   };
 
+  /* ── 被嵌進 iframe 時，把自己的高度告訴外面 ────────────
+     ⚠️ 2026-08-11：外面兩支頁面（11502/level.html 的「實作測試」、
+        11501/flowchart.html）都把 iframe 寫死 height:560px，
+        而且 scrolling="no" ＋ overflow:hidden ——
+        內容一超過 560px 就直接被切掉，**而且捲不到**。
+        學生看到的是「上傳你的作品」那一塊只露出一半，
+        沒有捲軸、沒有任何提示，看起來就是頁面壞了。
+
+     ★ 為什麼由裡面主動報高度，不由外面去量
+       外面量要讀 contentDocument，那是**兩個地方各寫一次**的東西
+       （flowchart.html 本來就有一份 autoSizeGraderFrame）。
+       兩份一定會走鐘，而且走鐘的那一份不會有人發現。
+       ⇒ 高度只有這一頁自己最清楚，讓它自己講。
+
+     ★ 為什麼要一直報，不是只報一次
+       這一頁的高度會變：選了檔案、批改結果出來、錯誤訊息展開。
+       只在載入時報一次的話，結果一長出來就又被切掉了。 */
+  (function reportHeight() {
+    if (window.self === window.top) return;      // 沒被嵌就不必做
+    var last = 0;
+    var tell = function () {
+      var h = Math.max(
+        document.body.scrollHeight, document.documentElement.scrollHeight,
+        document.body.offsetHeight, document.documentElement.offsetHeight);
+      if (!h || Math.abs(h - last) < 4) return;  // 差幾像素不必吵
+      last = h;
+      try { parent.postMessage({ type: 'graderHeight', h: h + 8 }, '*'); } catch (e) {}
+    };
+    tell();
+    try { new ResizeObserver(tell).observe(document.body); } catch (e) {}
+    window.addEventListener('load', tell);
+    /* 圖片、字型載入完會再長一點；ResizeObserver 沒生效的瀏覽器也靠這幾次補上。 */
+    [200, 600, 1200, 2500].forEach(function (t) { setTimeout(tell, t); });
+  })();
+
   // 把作品備份連結記到進度裡（教師端可查閱）
   window.saveWorkLink = async function (sid, unit, url) {
     if (!sid || !unit || !url) return;

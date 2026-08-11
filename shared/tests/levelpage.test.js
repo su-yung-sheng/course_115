@@ -25,7 +25,7 @@ const UNITS = [['2-1-1','平行的正方形'],['2-1-2','愈畫愈大的正方形
                ['2-1-3','畫圖形'],['2-2-1','小鳥吃蟲'],['2-3-1','排隊比高矮']];
 
 /** 開一次 level.html，stars 是已經拿到的星數 */
-function level(unitId, stars, tweak) {
+function level(unitId, stars, tweak, moreCfg) {
   const html = (tweak ? tweak(levelSrc) : levelSrc)
     .replace(/<script src="[^"]*"><\/script>/g, '')
     .replace(/<script type="module">[\s\S]*?<\/script>/g, '');
@@ -33,7 +33,9 @@ function level(unitId, stars, tweak) {
   const w = dom.window;
   global.document = w.document; global.window = w; global.location = w.location;
   global.sessionStorage = w.sessionStorage; global.URLSearchParams = w.URLSearchParams;
-  w.CONFIG = { TERM: '11502', UNITS: UNITS, AIGUIDE: { GAS_URL: 'x', KEY: '' }, COLLECTIONS: {} };
+  w.CONFIG = Object.assign(
+    { TERM: '11502', UNITS: UNITS, AIGUIDE: { GAS_URL: 'x', KEY: '' }, COLLECTIONS: {} },
+    moreCfg || {});
   ['grading.js','readhold.js','blocks.js','derive.js','ai-guide.js','askai.js','combo.js','answer.js','quiz.js']
     .forEach(f => new Function('window', fs.readFileSync(path.join(root, 'shared', f), 'utf8'))(w));
   new Function('window', fs.readFileSync(path.join(root, '11502', 'content', 'blocks.js'), 'utf8'))(w);
@@ -64,6 +66,17 @@ ok(/GRADING/.test(levelSrc), '   而且用的是共用的 GRADING 規則，不�
 {
   const w = level('沒有這一關');
   ok(/找不到這一關/.test(text(w)), '亂打 unit → 講清楚，不要白畫面');
+}
+/* 備課模式：config 的 OPEN_ALL_UNITS 打開時，十關全部進得去。
+   ⚠️ 上面那幾條「擋得住」的測試用的是**測試自己造的 config**（沒有這個旗標），
+      所以就算真的 config 開著，它們仍然在驗真正的鎖 —— 這是刻意的。
+      旗標本身的可見性（橘色橫幅、11501 不可以開）由 openall.test.js 顧。 */
+{
+  const w = level('2-1-3', null, src => src, { OPEN_ALL_UNITS: true });
+  ok(!/這一關還沒開/.test(text(w)),
+     '★ 備課模式開著 → 第 3 關直接進得去（改內容時不必先通關前兩關）');
+  ok(/備課模式/.test(text(w)),
+     '★ 而且畫面上一定看得到橫幅 —— 安靜地全開，就等於哪天忘了關也沒人發現');
 }
 
 section('步驟的順序');
