@@ -6,7 +6,7 @@
         <script src="config.js"></script>
    ★ 計分規則另見 shared/grading.js；身分守門見 shared/guard.js
    ---------------------------------------------------------------------
-   ⚠️ 這支的內容要與 course_11501/config.js 保持「結構相同、值不同」，
+   ⚠️ 這支的內容要與 11501/config.js 保持「結構相同、值不同」，
       不要只改一邊。上學期版本改了什麼，這邊通常也要跟。
    ===================================================================== */
 window.CONFIG = {
@@ -96,7 +96,7 @@ window.CONFIG = {
   // ── 後端服務 ────────────────────────────────────────────
   //   共用後端 shared/backend.ipynb 啟動後的固定網域。
   //   上下學期共用同一本 notebook、同一個網域，靠請求裡的 term 參數分學期。
-  //   ⚠️ 換網域時，這裡與 course_11501/config.js 都要改。
+  //   ⚠️ 換網域時，這裡與 11501/config.js 都要改。
   SERVER_URL: 'https://flanking-snort-cyclic.ngrok-free.dev',
 
   //   班級密碼：需與 Colab Secrets 的 CLASS_PASSCODE2 一致（留空 = 後端不檢查）
