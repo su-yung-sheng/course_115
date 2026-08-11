@@ -163,7 +163,27 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
    ['motion.setx', 'x 設為 [0]'],
    ['my.callp', '[畫正方形] [50]'],
    ['data.var', '[我的變數]'],
-   ['op.div', '[360] / [4]']
+   ['op.div', '[360] / [4]'],
+   /* 第 4 關「小鳥吃蟲」起要用的遊戲類積木。
+      ⚠️ 名稱一定要和 Scratch 官方繁中一模一樣 ——
+         學生在這裡拼完，要回真的 Scratch 找得到同一塊。
+         差一個字（「造型換成」寫成「切換造型」）他就找不到了。 */
+   ['looks.show', '顯示'],
+   ['looks.hide', '隱藏'],
+   ['looks.costume', '造型換成 [造型1]'],
+   ['control.forever', '重複無限次'],
+   ['control.if', '如果 [] 那麼'],
+   ['control.clone', '建立 自己 的分身'],
+   ['control.whenclone', '當分身產生'],
+   ['control.delclone', '分身刪除'],
+   ['sensing.touchcolor', '碰到顏色 [紅] ?'],
+   ['sensing.mousedown', '滑鼠鍵被按下?'],
+   ['op.and', '[] 且 []'],
+   /* ⚠️ Scratch 是一塊「定位到（隨機位置▾）」附下拉選單。
+      引擎沒有下拉選單，所以拆成兩塊 —— 用詞照官方，
+      學生回 Scratch 只要自己在下拉選單裡選。 */
+   ['motion.gotorandom', '定位到 隨機 位置'],
+   ['motion.gotomouse', '定位到 鼠標 位置']
   ].forEach(([id, want]) => is(drawnLabel(id), want, id));
   is(drawnLabel('events.whenflag').includes('▶'), false, '綠旗不是播放三角形');
 
@@ -418,6 +438,52 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
     /* 每一格都要有算過寬度 —— 漏掉的那幾格會退回 CSS 的固定值。 */
     const none = [...document.querySelectorAll('.bk-script .bk-in')].filter(i => !i.style.width);
     is(none.length, 0, '   每一個空格都算過寬度');
+  }
+
+  /* ── ★ 課本的參考解答要拼得出來，而且判得對 ────────────
+     ⚠️ 光是「積木都存在」不夠 —— 真正要問的是：
+        照課本拼出來，check() 會不會說對？改壞一個地方，會不會說錯？
+        這兩件事任何一件不成立，那一關就是壞的，而畫面上看不出來。
+
+     這是第 4 關「小鳥吃蟲」的蟲角色（課本備課用書 p.72）：
+        當綠旗被點擊／隱藏／重複 10 次｛產生蟲｝
+        定義 產生蟲／定位到隨機位置／建立自己的分身
+        當分身產生／顯示／重複無限次｛如果〈碰到顏色？ 且 滑鼠鍵被按下？〉那麼｛分身刪除, 產生蟲｝｝ */
+  section('★ 小鳥吃蟲（蟲角色）：課本的解答拼得起來');
+  {
+    const worm = [
+      { id:'my.define', args:['產生蟲'], children:[
+        { id:'motion.gotorandom' }, { id:'control.clone' } ]},
+      { id:'events.whenflag' },
+      { id:'looks.hide' },
+      { id:'control.repeat', args:[10], children:[ { id:'my.call', args:['產生蟲'] } ]},
+      { id:'control.whenclone' },
+      { id:'looks.show' },
+      { id:'control.forever', children:[
+        { id:'control.if', args:[
+            { id:'op.and', args:[ {id:'sensing.touchcolor',args:['紅']}, {id:'sensing.mousedown'} ] } ],
+          children:[ { id:'control.delclone' }, { id:'my.call', args:['產生蟲'] } ]}
+      ]}
+    ];
+    const got = build(worm);
+    is(B._same(got, worm, []), true, '★ 照課本拼出來 → 判對');
+
+    /* 改壞一個地方就要判錯 —— 不然「拼對才過」只是句話。 */
+    const w1 = JSON.parse(JSON.stringify(got));
+    w1[3].args = [8];
+    is(B._same(w1, worm, []), false, '   重複 10 次改成 8 次 → 判錯');
+
+    /* ★ 這一條是這一關的重點：碰到**而且**按下，兩件事同時成立才算吃到。
+       把「且」拿掉只留一個條件，等於滑鼠一按就吃掉所有蟲。 */
+    const w2 = JSON.parse(JSON.stringify(got));
+    w2[6].children[0].args = [ { id:'sensing.mousedown', args:[] } ];
+    is(B._same(w2, worm, []), false,
+       '★ 把「且」拿掉只留滑鼠 → 判錯（碰到而且按下，缺一不可）');
+
+    /* 分身相關的三塊要真的分得出來（產生／當分身產生／刪除）。 */
+    const w3 = JSON.parse(JSON.stringify(got));
+    w3[0].children[1].id = 'control.delclone';
+    is(B._same(w3, worm, []), false, '   建立分身換成刪除分身 → 判錯');
   }
 
   console.log('\n── ★ 拼圖要的數字都有交代 ──');

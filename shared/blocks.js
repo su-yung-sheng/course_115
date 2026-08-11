@@ -57,6 +57,7 @@
     data:    { name: '變數',   color: '#ff8c1a', dark: '#db6e00' },  // CATEGORY_VARIABLES
     list:    { name: '清單',   color: '#ff661a', dark: '#e64d00' },  // Scratch 把清單放在「變數」裡，顏色是這個
     operator:{ name: '運算',   color: '#59c059', dark: '#389438' },  // CATEGORY_OPERATORS
+    sensing: { name: '偵測',   color: '#5cb1d6', dark: '#2e8eb8' },  // CATEGORY_SENSING
     my:      { name: '函式積木', color: '#ff6680', dark: '#ff4d6a' }, // CATEGORY_MYBLOCKS（不是「我的積木」）
     pen:     { name: '畫筆',   color: '#0fbd8c', dark: '#0b8e69' }   // pen.categoryName
   };
@@ -137,7 +138,57 @@
     'list.changeidx':   { cat:'list',    shape:'stack', label:'變數 %s 改變 %n',   args:['位置', 1], idArgs:[0], idNs:['var'] }, // DATA_CHANGEVARIABLEBY
     'control.ifless':   { cat:'control', shape:'c',     label:'如果 數列 的第 %n 項 < 數列 的第 %n 項 那麼', args:[1, 2] }, // ★自訂
     'control.repeatlen':{ cat:'control', shape:'c',     label:'重複 清單 數列 的長度 次' },                     // ★自訂
-    'control.until':    { cat:'control', shape:'c',     label:'重複直到 找到目標' }                            // ★自訂
+    'control.until':    { cat:'control', shape:'c',     label:'重複直到 找到目標' },                           // ★自訂
+
+    /* ===================================================================
+       遊戲類的積木（第 4 關「小鳥吃蟲」起）
+       -------------------------------------------------------------------
+       ★ 為什麼一次加這麼多
+         前三關是畫圖題，用到的都是動作與畫筆。第 4 關開始是遊戲：
+         角色會隱藏、換造型、產生分身，還要判斷「碰到而且被按下」。
+         這幾塊在第 6～10 關的排序與搜尋也躲不掉（如果…那麼、重複無限次、且），
+         所以這是七關共同的地基，不是第 4 關專用。
+
+       ⚠️ 模擬器（按綠旗會動的那個）**不會執行**這些積木。
+         它是畫線用的，沒有角色、造型、分身、滑鼠事件的概念。
+         第 4 關的拼圖只比對「結構對不對」——
+         真的跑起來看，是「實作測試」那一步在 Scratch 裡做的事。
+         ⇒ exec() 的 switch 遇到不認得的 id 就什麼都不做，
+           所以不必為它們補執行邏輯，也不會壞掉。
+       =================================================================== */
+
+    /* ── 外觀 ───────────────────────────────────── */
+    'looks.show':       { cat:'looks',   shape:'stack', label:'顯示' },                        // LOOKS_SHOW
+    'looks.hide':       { cat:'looks',   shape:'stack', label:'隱藏' },                        // LOOKS_HIDE
+    'looks.costume':    { cat:'looks',   shape:'stack', label:'造型換成 %s', args:['造型1'] }, // LOOKS_SWITCHCOSTUMETO
+
+    /* ── 動作 ───────────────────────────────────── */
+    /* ⚠️ Scratch 是一塊「定位到（隨機位置▾）」附下拉選單。
+       引擎沒有下拉選單，所以拆成兩塊 —— 名稱照官方用詞，
+       學生回 Scratch 找得到同一塊（只是要自己在下拉選單裡選）。 */
+    'motion.gotorandom':{ cat:'motion',  shape:'stack', label:'定位到 隨機 位置' },            // MOTION_GOTO（隨機位置）
+    'motion.gotomouse': { cat:'motion',  shape:'stack', label:'定位到 鼠標 位置' },            // MOTION_GOTO（鼠標）
+
+    /* ── 控制 ───────────────────────────────────── */
+    'control.forever':  { cat:'control', shape:'c',     label:'重複無限次' },                  // CONTROL_FOREVER
+    /* 如果…那麼：條件那一格要塞得下一顆六角形的判斷積木
+       （碰到顏色？／滑鼠鍵被按下？／兩個用「且」串起來）。 */
+    'control.if':       { cat:'control', shape:'c',     label:'如果 %s 那麼', args:[''] },     // CONTROL_IF
+    'control.clone':    { cat:'control', shape:'stack', label:'建立 自己 的分身' },            // CONTROL_CREATECLONE
+    'control.whenclone':{ cat:'control', shape:'hat',   label:'當分身產生' },                  // CONTROL_STARTASCLONE
+    'control.delclone': { cat:'control', shape:'stack', label:'分身刪除' },                    // CONTROL_DELETETHISCLONE
+
+    /* ── 偵測 ───────────────────────────────────── */
+    /* ⚠️ Scratch 的判斷積木是**六角形**，而且不能打字進去。
+       引擎目前只有橢圓形的回報值，所以先用 reporter ——
+       形狀不一樣，但「可以拖進另一塊的空格裡」這個行為是對的。 */
+    'sensing.touchcolor':{ cat:'sensing', shape:'reporter', label:'碰到顏色 %s ?', args:['紅'] }, // SENSING_TOUCHINGCOLOR
+    'sensing.mousedown': { cat:'sensing', shape:'reporter', label:'滑鼠鍵被按下?' },              // SENSING_MOUSEDOWN
+
+    /* ── 運算 ───────────────────────────────────── */
+    /* 「且」要能把兩顆判斷積木串起來 —— 這正是第 4 關（和邏輯實驗室）
+       要學生看懂的東西：碰到蟲**而且**按下滑鼠，兩件事同時成立才算吃到。 */
+    'op.and':           { cat:'operator', shape:'reporter', label:'%s 且 %s', args:['', ''] }   // OPERATORS_AND
   };
 
   /* ===== 小工具 ===== */
