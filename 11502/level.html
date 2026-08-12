@@ -68,12 +68,13 @@
 <script src="../shared/ai-guide.js"></script>
 <script src="../shared/askai.js"></script>
 <script src="../shared/combo.js"></script>
-<!-- 互動實驗室：第 6 章那幾關（排序、搜尋）的主角。
-     和 sort.html／search.html 共用同一份規則 ——
-     兩份的話，學生在探索頁玩熟的做法到關卡頁會被判錯，
-     他不會覺得是兩支程式不同，只會覺得自己記錯。 -->
+<!-- 互動實驗室。三支都是由原本的獨立頁面（logic／search／sort.html）
+     改寫而來 —— 玩法留下，內容換成課本／關卡自己的教材，原檔已刪。
+     ⚠️ 規則只有一份。兩份的話，改一邊忘一邊，
+        而學生只會覺得自己記錯。 -->
 <script src="../shared/sortlab.js"></script>
 <script src="../shared/searchlab.js"></script>
+<script src="../shared/logiclab.js"></script>
 <script src="../shared/answer.js"></script>
 <script src="../shared/quiz.js"></script>
 <script src="content/blocks.js"></script>
@@ -146,6 +147,7 @@ function labMod(lab) {
   if (!lab) return null;
   if (lab.kind === 'search') return window.SEARCHLAB || null;
   if (lab.kind === 'sort')   return window.SORTLAB   || null;
+  if (lab.kind === 'logic')  return window.LOGICLAB  || null;
   return null;
 }
 
@@ -161,11 +163,14 @@ function steps() {
      現在問題分析自己一題一題走完，最後一題就是寫作題。 */
   if (lv && lv.analysis) out.push({ key:'analysis', icon:'🔍', name:'問題分析' });
   if (lv && lv.derive) out.push({ key:'derive', icon:'📐', name:'推導' });
-  /* ★ 互動實驗室 —— 第 6 章那幾關（排序、搜尋）的主角。
-     ⚠️ 那幾關和第 4 章的四關不一樣：
+  /* ★ 互動實驗室 —— 第 6 章那五關的主角，第 4 關也有一個。
+     ⚠️ 第 6 章那幾關和第 4 章不一樣：
         「每一輪挑出最小的」「從第一個一格一格往下比」這種事，
         用讀的三秒鐘就讀完了，但學生要**自己動手被擋一次**才會記得。
         所以那幾關的重心在這一步，程式拼圖只留一小段收尾。
+     ★ 第 4 關（小鳥吃蟲）是第 4 章唯一有實驗室的：
+        條件判斷是那一關第一次出現的東西，而它光讀是讀不會的。
+        另外三關的主角仍然是程式拼圖。
      ⚠️ 只有宣告 lab 的關卡才有 —— 每一關都放的話就變成點擊過場。 */
   if (lv && lv.lab && labMod(lv.lab)) out.push({ key:'lab', icon:'🕹️', name:'動手試一次' });
   /* 概念檢測排在程式拼圖**之前**：
@@ -263,12 +268,11 @@ function render() {
      就沒有「第一次看到」的效果了 —— 而那個效果正是它們存在的理由。
      ⇒ 2026-08-12 收進關卡：只有相關的那一關看得到。
 
-   ★ 為什麼不刪掉
-     三支各有系統裡沒有的東西：
-       logic.html　　「或」和「不成立」（第 4 關只用到「且」）
-       search.html　 找**最大值**（正是第 6 關「找最小值位置」的鏡像）
-       sort.html　　 30 隻魔物的自動排序動畫（課本 p.12 教學叮嚀
-                     就建議用這種動畫讓學生對大量資料的排序有感）
+   ⚠️ 2026-08-12 後續：那三支後來都**改寫成系統自己的模組**
+      （sortlab.js／searchlab.js／logiclab.js）並刪掉原檔 ——
+      嵌一份別人風格的頁面不叫整合，用詞、判定、畫面都還是兩套。
+      ⇒ 目前沒有任何關卡在用 material。機制留著，
+        以後真的要掛外部教材（例如 11501 的 music.html）還用得到。
 
    ⚠️ 欄位叫 material 不叫 ref —— 這一份的 quiz 題目裡
       已經有一個 ref（指回哪個步驟）。同一個檔案裡兩個 ref

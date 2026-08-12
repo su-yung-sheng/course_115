@@ -68,53 +68,44 @@ ok(steps(l5).join() === 'analysis,derive', '★ 所以它的步驟裡沒有拼�
    ok(/markPre\(\)/.test(lvHtml), '   沒有拼圖的關卡也要標記得了完成（markPre）');
    ok(/out\.push\(\{ key:'test'/.test(lvHtml), '   一步都沒有時也還有實作測試，不會變空白');
 
-/* ★ 第 6 章那五關（6-2-1／6-2-2／6-3-1／6-3-2／6-3-3）才有互動實驗室。
-   ⚠️ 第 4 章那四關**不可以**有 —— 它們的主角是程式拼圖。
+/* ★ 哪幾關有互動實驗室。
+   第 6 章那五關：那幾關的主角就是操作。
+   第 4 關（4-3-1 小鳥吃蟲）：第 4 章唯一的例外 ——
+     條件判斷是那一關第一次出現的東西，光讀是讀不會的，
+     而且「或」和「不成立」在系統裡沒有別的地方教。
+   ⚠️ 4-2-1／4-2-2／4-2-3 **不可以**有 —— 它們的主角是程式拼圖。
       每一關都掛實驗室的話，它就從「這一關的重點」變成點擊過場。 */
 const withLab = ids.filter(id => W.BLOCK_LEVELS[id].lab).sort();
-ok(withLab.join() === '6-2-1,6-2-2,6-3-1,6-3-2,6-3-3',
-   '★ 只有第 6 章那五關有互動實驗室（實得：' + withLab.join('、') + '）');
-ok(withLab.every(id => (W.BLOCK_LEVELS[id].lab.kind === 'sort' ||
-                        W.BLOCK_LEVELS[id].lab.kind === 'search')),
-   '   每一個 lab 都指定得出要掛哪一支模組（sort／search）');
+ok(withLab.join() === '4-3-1,6-2-1,6-2-2,6-3-1,6-3-2,6-3-3',
+   '★ 有實驗室的是這六關（實得：' + withLab.join('、') + '）');
+ok(['4-2-1', '4-2-2', '4-2-3'].every(id => !W.BLOCK_LEVELS[id].lab),
+   '★ 第 4 章的前三關沒有實驗室 —— 它們的主角是程式拼圖');
+ok(withLab.every(id => ['sort', 'search', 'logic'].indexOf(W.BLOCK_LEVELS[id].lab.kind) >= 0),
+   '   每一個 lab 都指定得出要掛哪一支模組（sort／search／logic）');
 /* 第 5 關是排序的觀念導入，用的是 derive 裡的手動追蹤，不是 lab。
    ⚠️ 兩個都放的話，學生會連續做兩次一模一樣的事。 */
 ok(!l5.lab && (l5.derive.steps || []).some(s => s.kind === 'sort'),
    '★ 第 5 關用 derive 裡的手動排序，不另外掛 lab（不然會連做兩次同一件事）');
 
-/* ── ★ 補充教材：三支互動頁收進關卡 ────────────────────
-   ⚠️ 2026-08-12 之前它們掛在闖關基地的入口，沒有任何關卡連得到。
-      問題不是「連不到」，是**時機錯了**：學生會先自己玩過一次，
-      等真正上到那一關時就沒有「第一次看到」的效果了 ——
-      而那個效果正是這幾個互動存在的理由。
-   ★ 現在改由 material 欄位掛進對應的關卡。
-     這幾條要釘住「掛對關」，掛錯關等於沒掛。 */
-/* ⚠️ sort.html 與 search.html 都已改寫進 sortlab.js，原檔刪除。
-   只剩 logic.html 還是整份嵌進來的 —— 那一支也要照同樣的方式處理。 */
-const MAT = { '4-3-1': 'logic.html' };
-Object.keys(MAT).forEach(id => {
-  const m = W.BLOCK_LEVELS[id].material;
-  ok(!!m && m.href === MAT[id],
-     '★ ' + id + ' 掛的補充教材是 ' + MAT[id] + '（實得：' + ((m && m.href) || '沒有') + '）');
-  ok(!!m && m.title && m.note,
-     '   ' + id + ' 的補充教材有標題和一句說明（沒說明學生不會點）');
+/* ── ★ 三支互動頁：改寫整合，原檔刪除 ──────────────────
+   ⚠️ 中間一度是把整支頁面用 iframe 嵌進關卡（material 欄位）——
+      那不叫整合，只是把它藏起來：用詞、判定、畫面都還是兩套。
+   ★ 現在三支的**玩法**都改寫成系統自己的模組，
+     內容換成課本／關卡自己的教材，原檔全部刪掉：
+       logic.html  預測動作＋慢動作推理 → shared/logiclab.js（第 4 關）
+       search.html 逐步變數追蹤         → shared/sortlab.js（第 6 關）
+       sort.html   30 筆自動排序動畫     → shared/sortlab.js（第 6、7 關）
+   ⚠️ 留著原檔的話，同一件事有兩個入口、兩套規則 ——
+      改一邊忘一邊，而學生只會覺得自己記錯。 */
+['logic.html', 'search.html', 'sort.html'].forEach(f => {
+  ok(!fs.existsSync(path.join(ROOT, '11502', f)), '★ 11502/' + f + ' 已刪');
 });
-ok(ids.filter(id => W.BLOCK_LEVELS[id].material).length === 1,
-   '★ 還沒改寫完的補充教材剩 1 支（logic.html；改寫完要歸零）');
-/* ⚠️ material 和 quiz 題目裡的 ref 是兩件事，別混用。
-   ref 指回「這一題在問哪個步驟」，material 是外部教材。 */
-ok(/materialPanel\(\)/.test(lvHtml), '關卡頁畫得出補充教材面板');
-ok(/let materialOpen = false/.test(lvHtml),
-   '★ 預設收合 —— 十關都嵌一個模擬器會很慢，展開才載');
-ok(/toggle-material/.test(lvHtml), '   面板點得開');
-/* ⚠️ 三支頁面各有一顆「← 返回基地」。嵌進關卡頁的 iframe 之後，
-   那顆按鈕會把 iframe 導到闖關基地 —— 學生會看到「關卡裡面有一個入口」。
-   11501 的 music.html／whatislist.html 早就處理過同一件事，這裡照同一個做法。 */
-Object.values(MAT).forEach(f => {
-  const src = fs.readFileSync(path.join(ROOT, '11502', f), 'utf8');
-  ok(/window\.self!==window\.top/.test(src) && /back-to-hub/.test(src),
-     '★ ' + f + ' 被嵌進 iframe 時會把「返回基地」藏起來');
-});
+ok(ids.filter(id => W.BLOCK_LEVELS[id].material).length === 0,
+   '★ 沒有關卡還掛著外部教材（三支都改寫完了）');
+/* material 這個機制本身留著 —— 以後真的要掛外部教材（例如
+   11501 的 music.html）還用得到，而且它預設收合、展開才載。 */
+ok(/materialPanel\(\)/.test(lvHtml), '關卡頁仍然畫得出補充教材面板（機制留著）');
+ok(/let materialOpen = false/.test(lvHtml), '   預設收合，展開才載');
 ok(!/out\.push\('analysis'\);\s*out\.push\('derive'\)/.test(html), '步驟不是寫死的');
 
 /* ── ★ 卡片上的說明只能有一個來源 ─────────────────
