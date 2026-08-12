@@ -515,7 +515,12 @@ section('★ level.html 接得上');
      '★ 沒宣告 lab 或模組沒載到就不出現這一步 —— 不留點不動的空步驟');
   const i = src.indexOf("s.key === 'lab'");
   ok(i > 0, '找得到 lab 那一段的畫面');
-  const seg = src.slice(i, i + 900);
+  /* ⚠️ 取樣範圍要夠寬。原本取 900 字，2026-08-12 在那一段補了
+     big:true 的說明之後，onPass 就被推到 900 字之外 ——
+     測試變紅，但**程式其實沒壞**。
+     ★ 這種「加註解害測試變紅」的假警報最傷：
+       下一個人會直接把檢查刪掉，而不是把範圍調寬。 */
+  const seg = src.slice(i, i + 2200);
   ok(/onPass/.test(seg), '★ 通過條件交給模組決定（不然模組和關卡頁會各有一套規則）');
   ok(/advance\(\)/.test(seg), '通過之後會往下一步走');
 

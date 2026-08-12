@@ -473,6 +473,82 @@ section('🍔 套餐工廠只掛在第 1 關');
        '★ 頁面看得見但焦點在別的視窗 → 停（' + b().trim() + '）');
   }
 
+  /* ── ★ 每一關的情境要用課本自己的生活案例 ─────────────
+     ⚠️ 2026-08-12 抓到三處：
+          第 6 關的選擇排序我寫「整理書箱」—— 課本是撲克牌理牌方法一
+          第 9 關的二元搜尋我寫「猜數字」—— 課本是交換禮物方法二
+          第 8 關漏了課本 6-3 的開場（大賣場找用品、排隊人龍找朋友）
+        三個都不算錯，但**不是學生手上那本書寫的**。
+     ★ 為什麼要緊
+       學生讀課本、也看這個網站。兩邊各講各的比喻，
+       他會以為那是兩件事，而不是同一件事的兩種說法。
+       ⚠️ 尤其第 6、7 關和第 8、9 關 —— 課本刻意用**同一個情境**
+          示範兩種方法（同一副撲克牌、同一場交換禮物），差別才看得出來。
+          換掉其中一個，那個對照就沒了。 */
+  console.log('\n── ★ 情境有沒有用到課本的生活案例 ──');
+  {
+    const V = new JSDOM('<!DOCTYPE html><body></body>', { pretendToBeVisual: true }).window;
+    const g = global.window, gd = global.document;
+    global.window = V; global.document = V.document;
+    ['shared/sortlab.js', 'shared/searchlab.js', 'shared/logiclab.js',
+     'shared/blocks.js', '11502/content/blocks.js']
+      .forEach(f => V.eval(fs.readFileSync(path.join(root, f), 'utf8')));
+    const LV = V.BLOCK_LEVELS;
+
+    /* 這一關「自己的」文字＝關卡資料 ＋ 它自己那一個實驗室的說明。
+       ⚠️ 不可以把三支實驗室的文案混在一起比 ——
+          那會讓別關的例子算到這一關頭上（我第一版就是這樣，白高興一場）。 */
+    const textOf = id => {
+      const lv = LV[id];
+      let t = JSON.stringify(lv);
+      if (lv.lab) {
+        const m = lv.lab.kind === 'sort' ? V.SORTLAB
+                : lv.lab.kind === 'search' ? V.SEARCHLAB : V.LOGICLAB;
+        const info = m && m.INFO && m.INFO[lv.lab.mode];
+        if (info) t += JSON.stringify(info);
+        if (lv.lab.kind === 'logic') t += JSON.stringify(m.FORMS);
+        if (lv.lab.trace && V.SORTLAB.TRACE_CODE) t += JSON.stringify(V.SORTLAB.TRACE_CODE);
+      }
+      return t;
+    };
+
+    const ANCHOR = {
+      '4-2-1': [['校務行政系統', '課本 4-1 校務行政系統'],
+                ['電腦主機', '課本 4-1 電腦主機'],
+                ['七上|繪圖篇|巢狀', '課本 4-2 先備知識（七上繪圖篇）']],
+      '4-2-2': [['汽車|傳動', '課本 4-2-2 汽車傳動模式']],
+      '4-2-3': [['360', '課本補充：外角 360÷邊數'], ['正六邊形', '課本的三種圖形']],
+      '4-3-1': [['草原', '課本 4-3 草原背景'], ['分身', '課本 4-3 分身'],
+                ['顏色|嘴巴', '課本 p.157 用嘴巴的顏色判定']],
+      '6-1-1': [['身高', '課本 6-2 依身高排座位'],
+                ['座號|考卷|聯絡簿|叫號', '課本 6-2 教學叮嚀（收考卷／叫號）']],
+      '6-2-1': [['理牌|撲克|牌', '★課本 6-2 生活案例：理牌方法一']],
+      '6-2-2': [['理牌|撲克|牌', '★課本 6-2 生活案例：理牌方法二']],
+      '6-3-1': [['交換禮物|紙牌', '★課本 6-3 生活案例：方法一（依座號比）'],
+                ['大賣場|人龍|排隊', '課本 6-3 開場（大賣場／排隊人龍）']],
+      '6-3-2': [['交換禮物|中間位置', '★課本 6-3 生活案例：方法二（說中間的數字）'],
+                ['猜數字', '課本 6-3 補充資源：猜數字']],
+      '6-3-3': [['1000|1024', '課本 p.203 資料量暴增']]
+    };
+    let gaps = 0;
+    Object.keys(ANCHOR).forEach(id => {
+      const t = textOf(id);
+      ANCHOR[id].forEach(([re, name]) => {
+        const hit = new RegExp(re).test(t);
+        if (!hit) gaps++;
+        ok(hit, (name[0] === '★' ? '★ ' : '   ') + id + ' 用到「' + name.replace('★', '') + '」');
+      });
+    });
+    ok(gaps === 0, '★ 十關的情境都對得回課本');
+
+    /* ★★ 課本刻意用同一個情境示範兩種方法 —— 那個對照不能斷。 */
+    ok(/理牌|撲克|牌/.test(textOf('6-2-1')) && /理牌|撲克|牌/.test(textOf('6-2-2')),
+       '★★ 第 6、7 關用**同一副撲克牌**（課本就是這樣示範兩種理牌方法的）');
+    ok(/交換禮物/.test(textOf('6-3-1')) && /交換禮物/.test(textOf('6-3-2')),
+       '★★ 第 8、9 關用**同一場交換禮物**（課本的方法一與方法二）');
+    global.window = g; global.document = gd;
+  }
+
   console.log('\n（含套餐與倒數）通過 ' + pass + '／失敗 ' + fail);
   process.exit(fail ? 1 : 0);
 })();

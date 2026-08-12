@@ -1567,6 +1567,8 @@ window.BLOCK_LEVELS = {
     lab: { kind: 'search', mode: 'sequential', course: 'hit' },
     scene: {
       why: '前面幾關都在<b>排</b>資料。這一關開始<span class="hl">找</span>資料。'
+         + '<br>在大賣場裡找想買的東西、在排隊的人龍裡找朋友 ——'
+         + '你每天都在做這件事，只是沒把它叫做<span class="hl">搜尋</span>。'
          + '<br>只有五個數字時，你一眼就看得到答案 —— 但電腦<span class="hl">沒有眼睛</span>，'
          + '它只能一個一個拿出來比。'
          + '<br>而且資料量從 5 個變成 100 個、1000 個時，'
