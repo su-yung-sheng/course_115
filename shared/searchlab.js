@@ -314,7 +314,29 @@
     '.qs-msg.none{background:#e2e8f0;color:#475569}',
     '.qs-btn{background:#06b6d4;color:#fff;border:0;border-radius:9px;padding:8px 15px;',
     '  font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:10px}',
-    '.qs-btn:hover{background:#0891b2}'
+    '.qs-btn:hover{background:#0891b2}',
+    /* ── 放大版（關卡頁的「動手試一次」那一步）─────────
+       ★ 這一步是第 6 章那幾關的主角，畫面上就該長得像主角。
+         原本的尺寸是給「順手嵌在別的東西旁邊」用的，
+         單獨佔一整步時下面會空一大片，看起來像還沒載完。
+       ⚠️ 放大的是高度與字級，**不是頁寬** —— 頁寬要和闖關地圖一致。 */
+    '.qs-big .qs-cell{min-width:64px;padding:18px 14px;font-size:22px;border-width:3px}',
+    '.qs-big .qs-idx{font-size:12.5px}',
+    '.qs-big .qs-row{gap:10px;margin-bottom:16px}',
+    '.qs-big .qs-target{padding:10px 22px;font-size:24px;border-width:3px}',
+    '.qs-big .qs-goal{gap:12px;margin-bottom:16px}',
+    '.qs-big .qs-goal .lb,.qs-big .qs-count{font-size:14px}',
+    '.qs-big .qs-range{font-size:14.5px;margin-bottom:12px}',
+    '.qs-big .qs-tip{font-size:14.5px;padding:14px 17px}',
+    '.qs-big .qs-sub{font-size:13.5px}',
+    '.qs-big .qs-msg{font-size:15px;padding:13px 16px;min-height:52px}',
+    '.qs-big .qs-side button{padding:12px 20px;font-size:15px}',
+    '.qs-big .qs-btn{padding:11px 20px;font-size:15px}',
+    '.qs-big .qs-left{font-size:17px}',
+    '.qs-big .qs-left b{font-size:28px}',
+    '.qs-big .qs-pick button{padding:9px 18px;font-size:15px}',
+    '.qs-big .qs-tbl{font-size:14.5px}',
+    '.qs-big .qs-tbl th,.qs-big .qs-tbl td{padding:10px 12px}'
   ].join('');
 
   function ensureStyle() {
@@ -350,7 +372,7 @@
             ? { items: opts.items.slice(), target: opts.target }
             : (mode === 'compare' ? { items: [], target: '' } : makeCase(opts)));
 
-    host.className = 'qs';
+    host.className = 'qs' + (opts.big ? ' qs-big' : '');
     render();
 
     function reset(c) {

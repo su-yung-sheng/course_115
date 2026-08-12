@@ -448,7 +448,17 @@ function draw(s) {
       '<p class="text-sm text-slate-600 leading-relaxed mb-4">' +
       '先自己跑一遍這個演算法。等一下的題目問的就是你在這裡看到的事。</p>' +
       '<div id="lab-host"></div>';
+    /* ★ big:true —— 這一步是這幾關的主角，畫面上就該長得像主角。
+       ⚠️ 放大的是**高度和字級**，不是頁寬。
+          頁寬和闖關地圖一樣是 4xl（見上面版面容器那段說明）——
+          ⚠️ 這裡不要寫出 main 的標籤字樣：check.py 會把它算進標籤數，
+             整頁就被判成「開合不對稱」。
+          只有這一步變寬的話，前後翻步驟會「跳一下」。
+       ⚠️ 放大的規格寫在各模組自己的 CSS（.qs-big／.sl-big／.lg-big），
+          不寫在這一頁：尺寸和它畫的東西要放在一起，
+          分開的話改了一邊另一邊不會跟。 */
     mod.mount($('lab-host'), Object.assign({}, lv.lab, {
+      big: true,
       onPass: () => { advance(); }
     }));
     /* ⚠️ 這裡不設倒數也不給跳過 —— 過關條件就是「真的做完」，

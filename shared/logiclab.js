@@ -171,7 +171,22 @@
     '.lg-book div{flex:1;min-width:140px;background:#f8fafc;border:1px solid #e2e8f0;',
     '  border-radius:9px;padding:7px 10px;font-size:12px;line-height:1.75;color:#64748b}',
     '.lg-book div.on{background:#f5f3ff;border-color:#c4b5fd;color:#5b21b6}',
-    '.lg-book b{color:#6d28d9}'
+    '.lg-book b{color:#6d28d9}',
+    /* ── 放大版（關卡頁的「動手試一次」那一步）───────── */
+    '.lg-big .lg-tip{font-size:14.5px;padding:14px 17px}',
+    '.lg-big .lg-bar span{font-size:14.5px}',
+    '.lg-big .lg-bar b{font-size:22px;letter-spacing:3px}',
+    '.lg-big .lg-sense div{padding:11px 20px;font-size:14.5px;border-width:3px}',
+    '.lg-big .lg-sense div b{font-size:28px}',
+    /* 程式碼是這一段的主角 —— 學生要讀的就是它 */
+    '.lg-big .lg-code{font-size:18px;line-height:2.1;padding:18px 22px}',
+    '.lg-big .lg-code .dim{font-size:14px}',
+    '.lg-big .lg-pick button{padding:16px 18px;font-size:15.5px;min-width:190px}',
+    '.lg-big .lg-msg{font-size:15px;padding:13px 16px;min-height:58px}',
+    '.lg-big .lg-btn{padding:11px 20px;font-size:15px}',
+    '.lg-big .lg-slow{font-size:14.5px;padding:13px 16px}',
+    '.lg-big .lg-slow .yn button{padding:7px 20px;font-size:14.5px}',
+    '.lg-big .lg-book div{font-size:13px;padding:10px 13px;min-width:170px}'
   ].join('');
 
   function ensureStyle() {
@@ -198,7 +213,7 @@
        「或」和「不成立」等於沒教。 */
     var seen = { and: false, or: false, not: false };
 
-    host.className = 'lg';
+    host.className = 'lg' + (opts.big ? ' lg-big' : '');
     next();
 
     function next() {

@@ -106,6 +106,39 @@ ok(ids.filter(id => W.BLOCK_LEVELS[id].material).length === 0,
    11501 的 music.html）還用得到，而且它預設收合、展開才載。 */
 ok(/materialPanel\(\)/.test(lvHtml), '關卡頁仍然畫得出補充教材面板（機制留著）');
 ok(/let materialOpen = false/.test(lvHtml), '   預設收合，展開才載');
+/* ── ★ 「動手試一次」要用得起下面那片空白 ──────────────
+   ⚠️ 這一步是第 6 章那幾關的主角，但預設尺寸是給「順手嵌在別的東西旁邊」
+      用的 —— 單獨佔一整步時下面會空一大片，看起來像還沒載完。
+   ★ 所以關卡頁掛實驗室時傳 big:true，模組自己套放大版的 CSS。
+   ⚠️ 放大的是**高度與字級，不是頁寬**。
+      頁寬要和闖關地圖一致（4xl）—— 只有這一步變寬的話，
+      前後翻步驟會「跳一下」，看起來像兩個網站。
+      （level.html 上面那段 <main> 的說明記著同一件事。） */
+{
+  const i = lvHtml.indexOf("s.key === 'lab'");
+  const seg = lvHtml.slice(i, i + 1400);
+  ok(/big: true/.test(seg), '★ 關卡頁掛實驗室時傳 big:true');
+  ok(/不是頁寬|不是\*\*頁寬/.test(seg), '   而且註解寫明放大的不是頁寬');
+  ok(/max-w-4xl/.test(lvHtml) && !/max-w-5xl|max-w-6xl/.test(lvHtml),
+     '★ 頁寬還是 4xl —— 和闖關地圖一樣');
+
+  /* 三支模組都要認得 big，而且放大規格寫在自己的 CSS 裡。
+     ⚠️ 寫在 level.html 的話，尺寸和它畫的東西就分家了 ——
+        改了一邊另一邊不會跟。 */
+  [['searchlab.js', 'qs'], ['sortlab.js', 'sl'], ['logiclab.js', 'lg']].forEach(([f, k]) => {
+    const src = fs.readFileSync(path.join(ROOT, 'shared', f), 'utf8');
+    ok(new RegExp("opts\\.big \\? ' " + k + "-big'").test(src) ||
+       new RegExp("' " + k + "-big'").test(src),
+       '★ ' + f + ' 認得 big（掛上 .' + k + '-big）');
+    ok(new RegExp("\\." + k + "-big ").test(src),
+       '   ' + f + ' 的放大規格寫在自己的 CSS 裡');
+  });
+  /* 長條圖是最需要高度的那一個 —— 150px 在一整步的版面裡太矮。 */
+  const sl = fs.readFileSync(path.join(ROOT, 'shared', 'sortlab.js'), 'utf8');
+  ok(/\.sl-big \.sl-bars\{height:(2\d\d|3\d\d)px/.test(sl),
+     '★ 自動播放的長條圖放大版至少 200px 高（預設 150 太矮）');
+}
+
 ok(!/out\.push\('analysis'\);\s*out\.push\('derive'\)/.test(html), '步驟不是寫死的');
 
 /* ── ★ 卡片上的說明只能有一個來源 ─────────────────

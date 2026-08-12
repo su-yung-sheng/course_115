@@ -337,7 +337,32 @@
     '.sl-cell.dp{border-color:#0d9488;background:#ccfbf1;color:#0f766e}',
     '.sl-cell.mp{border-color:#ef4444;background:#fee2e2;color:#991b1b}',
     '.sl-note{font-size:12.5px;line-height:1.8;padding:8px 11px;border-radius:9px;',
-    '  background:#f0fdfa;color:#0f766e;margin-top:8px}'
+    '  background:#f0fdfa;color:#0f766e;margin-top:8px}',
+    /* ── 放大版（關卡頁的「動手試一次」那一步）───────── */
+    '.sl-big .sl-cell{min-width:62px;padding:15px 16px;font-size:21px;border-width:3px}',
+    '.sl-big .sl-slot{width:22px;height:56px}',
+    '.sl-big .sl-row{gap:10px;margin-bottom:12px}',
+    '.sl-big .sl-tag{font-size:13px;min-width:64px}',
+    '.sl-big .sl-round{font-size:14.5px}',
+    '.sl-big .sl-tip{font-size:14.5px;padding:14px 17px}',
+    '.sl-big .sl-sub{font-size:13.5px}',
+    '.sl-big .sl-msg{font-size:15px;padding:12px 15px;min-height:50px}',
+    '.sl-big .sl-btn{padding:11px 20px;font-size:15px}',
+    /* 自動播放的長條圖：150 → 300，資料量大的時候差距才看得出來 */
+    '.sl-big .sl-bars{height:300px;padding:12px;gap:3px}',
+    '.sl-big .sl-auto h4{font-size:16px}',
+    '.sl-big .sl-auto .lead{font-size:13.5px}',
+    '.sl-big .sl-ctrl button{padding:8px 15px;font-size:14px}',
+    '.sl-big .sl-ctrl .num{font-size:14.5px}',
+    '.sl-big .sl-ctrl .num b{font-size:22px}',
+    /* 變數追蹤：程式碼要看得清楚，它等一下就是要拼的那一段 */
+    '.sl-big .sl-tr h4{font-size:16px}',
+    '.sl-big .sl-tr .lead{font-size:13.5px}',
+    '.sl-big .sl-code{font-size:14.5px;padding:13px 6px}',
+    '.sl-big .sl-code div{padding:3px 14px}',
+    '.sl-big .sl-var span{padding:8px 16px;font-size:14.5px}',
+    '.sl-big .sl-var span b{font-size:21px}',
+    '.sl-big .sl-note{font-size:14.5px;padding:12px 15px;min-height:48px}'
   ].join('');
 
   function ensureStyle() {
@@ -368,7 +393,7 @@
           而 var 只提升宣告不提升賦值，放在後面的話 algo 會是 undefined。 */
     var pl = null, at = 0, timer = null, algo = mode, speed = 60;
 
-    host.className = 'sl';
+    host.className = 'sl' + (opts.big ? ' sl-big' : '');
     render();
 
     function render() {
