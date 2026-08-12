@@ -286,6 +286,27 @@
     return { steps: steps, compares: cmp, at: last.mp, value: a[last.mp - 1] };
   }
 
+  /* ── 驗收挑戰的三關（第 6、7 關）───────────────────
+     ⚠️ 排序的「次數」和搜尋不一樣：手動挑戰是一回合挑一個，
+        不是一次一次比。所以第 1 關問的是
+        「這一組資料用這個排序法**總共**要比幾次」——
+        而答案就在下面的自動播放裡，他可以自己按來驗證。
+        ★ 預測 → 自己驗證，比我直接給答案有用得多。
+
+     ⭐   預測：這一組（6 筆）要比幾次
+     ⭐⭐  零失誤：換一題手動排完，全程不能點錯
+     ⭐⭐⭐ 最壞情況：10 筆要比幾次（n×(n−1)÷2 = 45）
+          ⚠️ 不必教公式。選擇與氣泡每一對都要比一次，
+             10 個裡任兩個配對就是 45 —— 數得出來。 */
+  var TESTS = {
+    worstSize: 10,
+    worstAsk: '一組有 <b>10</b> 筆資料。用<b>選擇排序法</b>把它排好，' +
+              '總共要比幾次？',
+    worstWhy: '選擇排序每一輪都要把剩下的全部看一遍：9＋8＋7＋…＋1 ＝ 45 次。' +
+              '（也就是「10 個裡任兩個配對」的數目。）',
+    worstAns: function (n) { return n * (n - 1) / 2; }
+  };
+
   /* ── 三種排序法的說明（沿用 sort.html 原本的文案）───── */
   var INFO = {
     selection: {
@@ -426,7 +447,9 @@
   function ensureStyle() {
     if (document.getElementById('sl-style')) return;
     var s = document.createElement('style');
-    s.id = 'sl-style'; s.textContent = CSS;
+    s.id = 'sl-style';
+    /* 挑戰與證書的樣式在 shared/labtest.js —— 三支實驗室共用一份。 */
+    s.textContent = CSS + ((global.LABTEST && global.LABTEST.css) || '');
     document.head.appendChild(s);
   }
   function esc(t) {
@@ -446,6 +469,12 @@
     var unsorted = items.slice(), done = [];        // 選擇排序用
     var arr = items.slice(), boundary = 1, sel = null;  // 氣泡／插入用
     var round = 0, passed = false;
+    /* ── 驗收挑戰（手動排完才開）─────────────────
+       ★ 「排得完」只證明他會操作。真正的證據是
+         他能不能在動手之前說出「這一組要比幾次」。
+       三個難度的定義在 shared/labtest.js（三支實驗室共用）。 */
+    var freePassed = false, lvNow = 0, cleared = {}, guess = null, errs = 0;
+    var testMsg = '', testKind = 'info';
     /* 自動播放的狀態。
        ⚠️ 一定要在 render() 之前宣告 —— render() 會叫 auto()，
           而 var 只提升宣告不提升賦值，放在後面的話 algo 會是 undefined。 */
@@ -462,16 +491,22 @@
         '<div id="sl-body"></div>' +
         '<div id="sl-msg"></div>' +
         (opts.newRound !== false ? '<button class="sl-btn" id="sl-new">🎲 換一題</button>' : '') +
+        '<div id="sl-test"></div>' +
         '<div id="sl-trace"></div>' +
         '<div id="sl-auto"></div>';
       body();
+      test();
       trace();
       auto();
       var nb = host.querySelector('#sl-new');
       if (nb) nb.onclick = function () {
         items = makeItems(opts.size || 6, order);
         unsorted = items.slice(); done = []; arr = items.slice();
-        boundary = 1; sel = null; round = 0; passed = false;
+        boundary = 1; sel = null; round = 0;
+        /* ⚠️ 挑戰開著的時候不要把 passed 清掉 ——
+           清掉的話 finish() 會再跑一次 openTest()，挑戰就被重置了。 */
+        if (!lvNow) passed = false;
+        errs = 0;                    // 新的一題，失誤重新算
         render();
       };
     }
@@ -528,16 +563,27 @@
       m.innerHTML = (ok ? '✓ ' : '✗ ') + msg;
     }
     function flash(el) {
+      errs++;                     // 零失誤那一關要數
       if (!el) return;
       el.classList.add('bad');
       setTimeout(function () { el.classList.remove('bad'); }, 650);
     }
     function finish() {
+      /* 挑戰第 2 關（零失誤）：排完這一題就結算。 */
+      if (lvNow === 2) {
+        if (errs === 0) {
+          cleared[2] = true; lvNow = 3;
+          tsay('good', '整題零失誤 ⭐⭐<br>最後一關：不必真的排，直接算給我看。');
+        } else {
+          tsay('bad', '這一題點錯了 ' + errs + ' 次。按「🎲 換一題」再挑戰一次。');
+        }
+        return;
+      }
       if (passed) return;
       passed = true;
       say(true, '排好了！' + info.why);
       trace(); auto();             // ★ 通關才出現這兩區，這裡要重畫一次
-      if (opts.onPass) opts.onPass();
+      openTest();
     }
 
     function click(i, el) {
@@ -581,6 +627,88 @@
       if (boundary >= arr.length) finish();
       else say(true, '插好了。換下一張新牌。');
     }
+
+    /* ── 驗收挑戰 ──────────────────────────────────
+       ★ 手動排完才開。三關，一關一顆星。
+       ⚠️ 第 1 關的答案就在下面的自動播放裡 ——
+          預測完自己按來驗證，比我直接給答案有用得多。 */
+    function openTest() {
+      if (freePassed) return;
+      freePassed = true;
+      if (!global.LABTEST) { finishAll(); return; }
+      lvNow = 1;
+      render();
+    }
+    function finishAll() {
+      if (opts.onPass) opts.onPass(stars());
+    }
+    function stars() { return global.LABTEST ? global.LABTEST.starsOf(cleared) : 0; }
+
+    function test() {
+      var box = host.querySelector('#sl-test');
+      if (!box) return;
+      if (!lvNow) { box.innerHTML = ''; return; }
+      if (lvNow > 3) {
+        box.innerHTML = global.LABTEST.certificate(3, { title: info.name + '　驗收挑戰' });
+        return;
+      }
+      var L = global.LABTEST.LEVELS[lvNow - 1];
+      var head = '<div class="lt-box"><div class="h">' + L.icon +
+                 ' 驗收挑戰 ' + lvNow + '／3　' + L.name + '（目前 ' + stars() + ' ★）</div>';
+      if (lvNow === 1) {
+        box.innerHTML = head +
+          '<div class="q">上面那 <b>' + items.length + '</b> 筆資料，用<b>' + info.name +
+          '</b>排好，總共要<b>比幾次</b>？' +
+          '<br><span style="font-size:12.5px">想不出來？下面的自動播放會幫你數 ——' +
+          '但先自己猜一個。</span></div>' +
+          '<div class="row"><input id="sl-g" type="number" min="1" placeholder="次數">' +
+          '<button data-g="1">送出預測</button></div></div>';
+      } else if (lvNow === 2) {
+        box.innerHTML = head +
+          '<div class="q">按「🎲 換一題」拿一組新的，<b>全程不能點錯</b>。' +
+          '<br>目前這一題已經錯了 <b>' + errs + '</b> 次。</div></div>';
+      } else {
+        box.innerHTML = head +
+          '<div class="q">' + TESTS.worstAsk +
+          '<br><span style="font-size:12.5px">這一關<b>不必真的排</b> ——' +
+          '想想每一輪要看幾個。</span></div>' +
+          '<div class="row"><input id="sl-g" type="number" min="1" placeholder="次數">' +
+          '<button data-g="3">送出答案</button></div></div>';
+      }
+      box.innerHTML += '<div class="lt-say ' + testKind + '" id="sl-tsay">' +
+                       (testMsg || '　') + '</div>';
+      [].forEach.call(box.querySelectorAll('[data-g]'), function (el) {
+        el.onclick = function () { submit(Number(el.dataset.g)); };
+      });
+    }
+
+    function submit(which) {
+      var inp = host.querySelector('#sl-g');
+      var v = Number(inp && inp.value);
+      if (!(v > 0)) { tsay('info', '先填一個數字。'); return; }
+      if (which === 1) {
+        var real = plan(items, mode, order).compares;
+        if (v === real) {
+          cleared[1] = true; lvNow = 2; errs = 0;
+          tsay('good', '猜中了 —— 真的是 <b>' + real + '</b> 次 ⭐<br>' +
+                       '下一關：按「🎲 換一題」拿一組新的，<b>全程不能點錯</b>。');
+        } else {
+          tsay('bad', '你猜 ' + v + '，實際是 <b>' + real + '</b> 次。' +
+                      '<br>用下面的自動播放按「下一步」數一遍，看看差在哪 —— 然後再猜一次。');
+        }
+        return;
+      }
+      var want = TESTS.worstAns(TESTS.worstSize);
+      if (v === want) {
+        cleared[3] = true; lvNow = 4;
+        tsay('good', '對了 —— <b>' + want + '</b> 次。' + TESTS.worstWhy +
+                     '<br>三關全過，證書拿到了 ★★★');
+        render(); finishAll();
+      } else {
+        tsay('bad', '不是 ' + v + ' 次。' + TESTS.worstWhy + '<br>再想一次。');
+      }
+    }
+    function tsay(kind, msg) { testKind = kind; testMsg = msg; render(); }
 
     /* ── 變數追蹤區（只有第 6 關開）─────────────────
        ★ 位置在「手動」和「自動」中間，順序是刻意的：
@@ -725,6 +853,7 @@
     VERSION: VERSION,
     INFO: INFO,
     mount: mount,
+    TESTS: TESTS,
     _plan: plan,
     _traceMin: traceMin,
     TRACE_CODE: TRACE_CODE,

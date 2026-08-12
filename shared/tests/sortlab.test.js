@@ -122,6 +122,14 @@ if (!JSDOM) {
   global.window = V; global.document = V.document;
   const ROOT = path.join(__dirname, '..', '..');
   const rd = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
+  /* ⚠️ 挑戰與證書在 shared/labtest.js。
+     沒載的話 LABTEST 是 undefined，sortlab 會判定「沒有挑戰」直接放行 ——
+     整段挑戰一條都測不到（searchlab 那邊就是這樣白測了一輪）。
+     ⚠️ 而且要用**這個 window 裡**的 SORTLAB，不是檔案最上面那一份：
+        那一份的 global 是空物件 {}，看不到 LABTEST。 */
+  V.eval(rd('shared/labtest.js'));
+  V.eval(rd('shared/sortlab.js'));
+  const SL = V.SORTLAB;
   V.eval(rd('shared/blocks.js'));
   V.eval(rd('11502/content/blocks.js'));
   const B = V.BLOCKS, L = V.BLOCK_LEVELS;
@@ -347,6 +355,108 @@ if (!JSDOM) {
     ok(/\.sl-say\{[^}]*min-height/.test(src),
        '★ 解說列有最小高度（不然按下一步整頁會彈）');
     sim.destroy(); host.remove();
+  }
+
+  console.log('\n── ★ 驗收挑戰：三關三顆星 ──');
+  {
+    /* ★ 「排得完」只證明他會操作。真正的證據是
+       他能不能在動手之前說出「這一組要比幾次」。
+       ⚠️⚠️ 這三顆星不是系統的星數 —— 見 shared/labtest.js 開頭。 */
+    eq(SL.TESTS.worstAns(10), 45, '★ 10 筆選擇排序比 45 次（9＋8＋…＋1）');
+    eq(SL.TESTS.worstAns(6), 15, '   6 筆比 15 次');
+    ok(/45/.test(SL.TESTS.worstWhy) && /9/.test(SL.TESTS.worstWhy),
+       '★ 解釋要把 9＋8＋7＋… 寫出來（不必教公式，數得出來就好）');
+
+    const host = dom.window.document.createElement('div');
+    dom.window.document.body.appendChild(host);
+    let badge = null;
+    const sim = SL.mount(host, { mode: 'selection', order: 'asc', onPass: b => { badge = b; } });
+    const solve = () => { for (let k = 0; k < 40; k++) {
+      const c = [...host.querySelectorAll('[data-i]')];
+      if (!c.length) return;
+      const v = c.map(x => Number(x.textContent));
+      c[v.indexOf(Math.min(...v))].onclick(); } };
+
+    solve();
+    ok(!!host.querySelector('.lt-box'), '★ 手動排完 → 挑戰出現');
+    ok(/驗收挑戰 1／3/.test(host.textContent), '   從第 1 關開始');
+    ok(badge === null, '★ 挑戰還沒過 → 不放行');
+
+    /* 第 1 關：先猜錯，看它給不給提示 */
+    host.querySelector('#sl-g').value = 999;
+    host.querySelector('[data-g="1"]').onclick();
+    const msg = host.querySelector('#sl-tsay').textContent;
+    ok(/實際是/.test(msg), '★ 猜錯會講實際次數');
+    ok(/自動播放/.test(msg), '★★ 而且叫他用下面的自動播放自己數一遍（答案就在畫面上）');
+    ok(/驗收挑戰 1／3/.test(host.textContent), '   還停在第 1 關，可以再猜');
+
+    const real = Number(msg.match(/實際是 (\d+)/)[1]);
+    host.querySelector('#sl-g').value = real;
+    host.querySelector('[data-g="1"]').onclick();
+    ok(/猜中了/.test(host.querySelector('#sl-tsay').textContent), '★ 猜中 → 過第 1 關');
+    ok(/驗收挑戰 2／3/.test(host.textContent) && /目前 1 ★/.test(host.textContent),
+       '   進第 2 關，拿到 1 顆星');
+
+    /* 第 2 關：換一題零失誤 */
+    host.querySelector('#sl-new').onclick();
+    solve();
+    ok(/零失誤/.test(host.querySelector('#sl-tsay').textContent), '★ 沒點錯 → 過第 2 關');
+    ok(/驗收挑戰 3／3/.test(host.textContent), '   進第 3 關');
+
+    /* 第 3 關：答錯再答對 */
+    host.querySelector('#sl-g').value = 100;
+    host.querySelector('[data-g="3"]').onclick();
+    ok(badge === null, '★ 第 3 關沒過 → 還是不放行');
+    host.querySelector('#sl-g').value = 45;
+    host.querySelector('[data-g="3"]').onclick();
+    eq(badge, 3, '★★ 三關全過 → 3 顆星才放行');
+    ok(/★★★/.test(host.textContent) && /金牌/.test(host.textContent), '   金牌證書');
+    sim.destroy(); host.remove();
+  }
+
+  console.log('\n── ★ 零失誤那一關真的會擋 ──');
+  {
+    const host = dom.window.document.createElement('div');
+    dom.window.document.body.appendChild(host);
+    let badge = null;
+    const sim = SL.mount(host, { mode: 'selection', order: 'asc', onPass: b => { badge = b; } });
+    const solve = () => { for (let k = 0; k < 40; k++) {
+      const c = [...host.querySelectorAll('[data-i]')];
+      if (!c.length) return;
+      const v = c.map(x => Number(x.textContent));
+      c[v.indexOf(Math.min(...v))].onclick(); } };
+    solve();
+    /* 過第 1 關 */
+    host.querySelector('#sl-g').value = 1;
+    host.querySelector('[data-g="1"]').onclick();
+    const real = Number(host.querySelector('#sl-tsay').textContent.match(/實際是 (\d+)/)[1]);
+    host.querySelector('#sl-g').value = real;
+    host.querySelector('[data-g="1"]').onclick();
+    /* 第 2 關：故意點錯一次（挑最大的），再排完 */
+    host.querySelector('#sl-new').onclick();
+    const c0 = [...host.querySelectorAll('[data-i]')];
+    const v0 = c0.map(x => Number(x.textContent));
+    c0[v0.indexOf(Math.max(...v0))].onclick();          // ← 錯的
+    solve();
+    ok(/點錯了/.test(host.querySelector('#sl-tsay').textContent),
+       '★ 中途點錯 → 這一關不算過');
+    ok(/驗收挑戰 2／3/.test(host.textContent), '   還停在第 2 關');
+    ok(badge === null, '   而且沒有放行');
+    /* 換一題重來，這次零失誤 */
+    host.querySelector('#sl-new').onclick();
+    solve();
+    ok(/零失誤/.test(host.querySelector('#sl-tsay').textContent), '★ 重來一次零失誤 → 過');
+    sim.destroy(); host.remove();
+  }
+
+  console.log('\n── ★★ 挑戰開著時「換一題」不可以把進度洗掉 ──');
+  {
+    /* ⚠️ 換一題原本會 passed = false —— 那會讓 finish() 再跑一次 openTest()，
+       挑戰整個重置回第 1 關，學生的進度白做。 */
+    const src = fs.readFileSync(path.join(ROOT, 'shared', 'sortlab.js'), 'utf8');
+    ok(/if \(!lvNow\) passed = false;/.test(src),
+       '★★ 挑戰開著的時候不清 passed（清了會把挑戰重置回第 1 關）');
+    ok(/errs = 0;/.test(src), '   但失誤次數要歸零（新的一題重新算）');
   }
 
   console.log('\n── ★ 變數追蹤：電腦怎麼找出最小值 ──');
