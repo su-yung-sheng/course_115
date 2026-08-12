@@ -25,6 +25,9 @@ const dom = new JSDOM('<!DOCTYPE html><body><div id="h"></div></body>', { preten
 const W = dom.window;
 global.window = W; global.document = W.document;
 const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
+/* ⚠️ 挑戰與證書在 shared/labtest.js。沒載的話 LABTEST 是 undefined，
+   searchlab 會判定「沒有挑戰資料」直接放行 —— 整段挑戰測不到。 */
+W.eval(read('shared/labtest.js'));
 W.eval(read('shared/searchlab.js'));
 W.eval(read('shared/blocks.js'));
 W.eval(read('11502/content/blocks.js'));
@@ -241,6 +244,147 @@ section('★ 走一遍找不到的 40（範圍縮到空）');
   ok(/查無此資料/.test(t), '★ 要講「查無此資料」—— 課本的用詞');
   ok(/大於/.test(t), '★ 也要講清楚是「開始位置大於結束位置」—— 那就是迴圈的結束條件');
   host.remove();
+}
+
+/* ═══ ★ 驗收挑戰：三關三顆星 ═══════════════════════════
+   ★ 自由玩的通過條件是「照規則走完」—— 那證明他**會操作**。
+     真正的證據是：動手之前先說得出「這一題要比幾次」。
+   ⚠️⚠️ 這三顆星**不是**系統的星數（那只有作品星與概念星兩組，
+        各有唯一的寫入者）。它是挑戰徽章，畫在證書上，
+        另外記在 modules.scratch.lab 給老師看。 */
+section('★ 三關的題目');
+{
+  is(S.TESTS.sequential.worstAns(12), 12,
+     '★ 循序 12 筆最壞比 12 次（目標在最後或根本沒有）');
+  is(S.TESTS.binary.worstAns(15), 4,
+     '★ 二元 15 筆最壞比 4 次（15→7→3→1→空）');
+  ok(!S.TESTS.compare, '★ 大比拼沒有挑戰 —— 它本來就是一步一步按著數的');
+  is(S._realCount('sequential', [8, 5, 10, 1, 7], 10), 3, '這一題實際比 3 次（課本）');
+  is(S._realCount('binary', BIG, 67), 4, '這一題實際比 4 次（課本）');
+  ok(S.TESTS.sequential.worstAsk.indexOf('最壞') >= 0, '第 3 關問的是「最壞」，不是「這一題」');
+  ok(/砍一半|砍四次/.test(S.TESTS.binary.worstWhy),
+     '   二元的解釋講「一直砍一半」（那才是最壞次數的由來）');
+  ok(/searchlab/.test('searchlab') && /不必真的走/.test(read('shared/searchlab.js')),
+     '★ 畫面上會講「這一關不必真的走」—— 不然學生會以為要走一遍');
+}
+
+section('★★ 一個學生從自由玩一路挑戰到金牌');
+['sequential', 'binary'].forEach(mode => {
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  let badge = null;
+  const sim = S.mount(host, { mode: mode, course: 'hit', onPass: b => { badge = b; } });
+  const walk = () => {
+    for (let k = 0; k < 60; k++) {
+      const st = sim._state();
+      if (st.ended) return;
+      if (mode === 'binary') {
+        if (st.phase === 'side') {
+          const w = Number(st.items[st.mid - 1]) < Number(st.target) ? 'right' : 'left';
+          host.querySelector('[data-side="' + w + '"]').onclick();
+          continue;
+        }
+        const m = Math.floor((st.lo + st.hi) / 2);
+        host.querySelectorAll('[data-i]')[m - 1].onclick();
+      } else {
+        host.querySelectorAll('[data-i]')[st.next].onclick();
+      }
+    }
+  };
+  const nextQ = () => host.querySelector('#qs-new').onclick();
+
+  walk(); nextQ(); walk();
+  ok(!!host.querySelector('.lt-box'), '★ ' + mode + '：自由玩過了 → 挑戰出現');
+  ok(/驗收挑戰 1／3/.test(host.textContent), '   從第 1 關開始');
+  ok(badge === null, '★ ' + mode + '：挑戰還沒過 → 還不放行');
+
+  nextQ();
+  const st1 = sim._state();
+  const real = S._realCount(mode, st1.items, st1.target);
+  host.querySelector('#qs-g').value = real;
+  host.querySelector('[data-g="1"]').onclick();
+  walk();
+  ok(/猜中了/.test(host.querySelector('#qs-tsay').textContent),
+     '★ ' + mode + '：猜中實際次數 → 過第 1 關');
+  ok(/驗收挑戰 2／3/.test(host.textContent), '   進到第 2 關');
+  ok(/目前 1 ★/.test(host.textContent), '   拿到 1 顆星');
+
+  nextQ(); walk();
+  ok(/零失誤/.test(host.querySelector('#qs-tsay').textContent),
+     '★ ' + mode + '：整題沒點錯 → 過第 2 關');
+  ok(/驗收挑戰 3／3/.test(host.textContent), '   進到第 3 關');
+
+  host.querySelector('#qs-g').value = 99;
+  host.querySelector('[data-g="3"]').onclick();
+  ok(/不是 99/.test(host.querySelector('#qs-tsay').textContent), '   答錯會說不是');
+  ok(badge === null, '★ ' + mode + '：第 3 關沒過 → 還是不放行');
+  const want = S.TESTS[mode].worstAns(S.TESTS[mode].worstSize);
+  host.querySelector('#qs-g').value = want;
+  host.querySelector('[data-g="3"]').onclick();
+  is(badge, 3, '★★ ' + mode + '：三關全過 → 拿到 3 顆星才放行');
+  ok(/★★★/.test(host.textContent), '   證書上是三顆實心星');
+  ok(/金牌/.test(host.textContent), '   金牌');
+  host.remove();
+});
+
+section('★ 猜錯不會擋死，可以一直重來');
+{
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  let badge = null;
+  const sim = S.mount(host, { mode: 'sequential', course: 'hit', onPass: b => { badge = b; } });
+  const walk = () => { for (let k = 0; k < 60; k++) {
+    const st = sim._state(); if (st.ended) return;
+    host.querySelectorAll('[data-i]')[st.next].onclick(); } };
+  const nextQ = () => host.querySelector('#qs-new').onclick();
+  walk(); nextQ(); walk();
+  for (let t = 0; t < 3; t++) {
+    nextQ();
+    host.querySelector('#qs-g').value = 999;
+    host.querySelector('[data-g="1"]').onclick();
+    walk();
+  }
+  ok(/實際是/.test(host.querySelector('#qs-tsay').textContent), '★ 猜錯會告訴他實際幾次');
+  ok(/驗收挑戰 1／3/.test(host.textContent), '★ 還停在第 1 關，可以再試（不會鎖死）');
+  ok(badge === null, '   而且沒有偷偷放行');
+  host.remove();
+}
+
+section('★ 大比拼沒有挑戰，跑完就放行');
+{
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  let badge = 'x';
+  S.mount(host, { mode: 'compare', onPass: b => { badge = b; } });
+  S.SIZES.forEach(n => {
+    host.querySelector('[data-size="' + n + '"]').onclick();
+    let g = 0;
+    while (host.querySelector('[data-cut]') && g++ < 60) host.querySelector('[data-cut]').onclick();
+  });
+  is(badge, 0, '★ 大比拼跑完四種資料量就放行（徽章 0 —— 它沒有挑戰）');
+  ok(!host.querySelector('.lt-box'), '   畫面上也沒有挑戰區');
+  host.remove();
+}
+
+section('★★ 徽章不是系統的星數');
+{
+  /* ⚠️ 系統只有兩組星，各有唯一的寫入者：
+       🧩 作品星 unitStars（Colab 批改）、🧠 概念星（quiz 現算）。
+     再開第三組會讓 hub 的分母錯掉，也會讓「這顆星是誰給的」說不清楚。 */
+  const lvHtml = read('11502/level.html');
+  ok(/saveLab/.test(lvHtml), '關卡頁把徽章存起來');
+  ok(/modules: \{ scratch: \{ lab:/.test(lvHtml), '★ 存在 modules.scratch.lab —— 自己一個欄位');
+  /* ⚠️ 要找的是**定義**那一處，不是 onPass 裡的呼叫 ——
+     indexOf 抓到的是先出現的那個呼叫，取樣就整段偏掉。 */
+  const i = lvHtml.indexOf('window.saveLab = async');
+  ok(i > 0, '找得到 saveLab 的定義');
+  const seg = lvHtml.slice(Math.max(0, i - 500), i + 900);
+  ok(/不是星數/.test(seg), '★★ 而且註解寫明它不是星數');
+  /* 去掉註解再比對 —— 註解裡正好會解釋「為什麼不碰 unitStars」。
+     ⚠️ 這是今天第九次同一種錯：「不可以出現」的檢查一律先去註解。 */
+  const code = seg.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  ok(!/unitStars/.test(code), '   程式碼本身完全沒有碰 unitStars');
+  ok(/只往上不往下/.test(seg), '   重做拿比較少不會把紀錄蓋掉');
 }
 
 /* ── 關卡資料 ──────────────────────────────────────── */
@@ -523,7 +667,7 @@ section('★★ 只按畫面上的按鈕，從頭走到底');
   let passed = 0;
   const sim = S.mount(host, { mode: mode, course: 'hit', onPass: () => { passed++; } });
   const targets = [];
-  for (let step = 0; step < 200 && !passed; step++) {
+  for (let step = 0; step < 200 && !host.querySelector('.lt-box'); step++) {
     const st = sim._state();
     if (st.ended) {                       // 走完一題 → 按「換一題」
       targets.push(st.target);
@@ -542,11 +686,15 @@ section('★★ 只按畫面上的按鈕，從頭走到底');
       host.querySelectorAll('[data-i]')[st.next].onclick();
     }
   }
-  ok(passed === 1, '★★ ' + mode + '：老老實實走 → 真的過得了關');
+  /* ⚠️ 2026-08-12 之後「自由玩走完」不再直接 onPass —— 它會開啟驗收挑戰。
+     這一段原本要釘的是「學生走得完，不會卡死」，那個意圖沒有變，
+     只是終點從 onPass 換成「挑戰出現」。 */
   ok(sim._state().sawHit && sim._state().sawMiss,
-     '   ' + mode + '：找得到與找不到都遇過了');
+     '★★ ' + mode + '：老老實實走 → 找得到與找不到都遇得到（不會卡死）');
+  ok(!!host.querySelector('.lt-box'),
+     '★ ' + mode + '：自由玩走完 → 驗收挑戰出現');
   ok(targets.length >= 1 && targets.length <= 6,
-     '   ' + mode + '：走了 ' + (targets.length + 1) + ' 題就過關（不必一直換）');
+     '   ' + mode + '：走了 ' + (targets.length + 1) + ' 題就走完自由玩（不必一直換）');
   host.remove();
 });
 

@@ -72,6 +72,7 @@
      改寫而來 —— 玩法留下，內容換成課本／關卡自己的教材，原檔已刪。
      ⚠️ 規則只有一份。兩份的話，改一邊忘一邊，
         而學生只會覺得自己記錯。 -->
+<script src="../shared/labtest.js"></script>
 <script src="../shared/sortlab.js"></script>
 <script src="../shared/searchlab.js"></script>
 <script src="../shared/logiclab.js"></script>
@@ -459,7 +460,13 @@ function draw(s) {
           分開的話改了一邊另一邊不會跟。 */
     mod.mount($('lab-host'), Object.assign({}, lv.lab, {
       big: true,
-      onPass: () => { advance(); }
+      /* onPass 會帶回挑戰拿到幾顆星（0～3）。
+         ⚠️⚠️ 這**不是**系統的星數。系統只有兩組，各有唯一的寫入者：
+              🧩 作品星 unitStars（Colab 批改）、🧠 概念星（quiz 現算）。
+              再開第三組會讓 hub 的分母錯掉，也會讓「這顆星是誰給的」說不清楚。
+         ⇒ 這裡只存到 modules.scratch.lab 給老師看，不進任何星數統計。
+            存不進去照樣放行（和其他存檔一樣）。 */
+      onPass: (badge) => { if (window.saveLab) window.saveLab(unit.id, badge); advance(); }
     }));
     /* ⚠️ 這裡不設倒數也不給跳過 —— 過關條件就是「真的做完」，
        再加時間限制是雙重處罰（和套餐工廠同一個道理）。 */
@@ -676,6 +683,21 @@ render();
       await setDoc(ref, { modules: { scratch: { step: { [unitId]: n } } } }, { merge: true });
     } catch (e) { console.warn('記錄點沒存成功（不影響闖關）', e); }
   };
+  /* 互動實驗室的挑戰徽章（0～3）。
+     ⚠️ 這不是星數 —— 見上面 onPass 那一段的說明。
+        它只是「這個學生在實驗室裡做到哪一關」，教師端看得到。
+     ⚠️ 只往上不往下：學生重做一次拿比較少，不該把紀錄蓋掉。 */
+  window.saveLab = async function (unitId, badge) {
+    if (!sid || !unitId || !(badge > 0)) return;
+    try {
+      const ref = doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid);
+      const snap = await getDoc(ref);
+      const cur = Number(((((snap.exists() && snap.data().modules) || {}).scratch || {}).lab || {})[unitId] || 0);
+      if (badge <= cur) return;
+      await setDoc(ref, { modules: { scratch: { lab: { [unitId]: Number(badge) } } } }, { merge: true });
+    } catch (e) { console.warn('實驗室徽章沒存成功（不影響闖關）', e); }
+  };
+
   /* 概念檢測的成績。
      ⚠️ 只寫 modules.scratch.quiz，不碰 unitStars ——
         星數只有一個寫入者（Colab 的批改），這裡寫的是「上限的依據」。

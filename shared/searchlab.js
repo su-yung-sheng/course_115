@@ -291,6 +291,37 @@
   /* 10.5 這種要印得出來（Math 直接印會變 10.5，但整數要印 7 不是 7.0） */
   function fmt(x) { return (Math.round(x * 10) / 10); }
 
+  /* ── 驗收挑戰的三關 ───────────────────────────────
+     ⚠️ 每一關考的東西不一樣，不是同一件事考三次：
+       ⭐   預測：這一題**實際**要比幾次（要在腦子裡跑一遍）
+       ⭐⭐  零失誤：換一題，全程不能點錯（會操作 ≠ 不出錯）
+       ⭐⭐⭐ 最壞情況：這種資料量**最多**要比幾次（那是演算法的性質，
+             和某一題無關 —— 這一關不必真的走）
+     ★ 第 3 關的答案就是第 10 關「搜尋大比拼」在算的東西，
+       兩關互相接得上。 */
+  var TESTS = {
+    sequential: {
+      worstSize: 12,
+      worstAsk: '一列有 <b>12</b> 筆資料（沒有排序）。用循序搜尋法找一個目標，' +
+                '<b>最壞</b>的情況要比幾次？',
+      worstWhy: '最壞就是目標在最後一項、或根本不在裡面 —— 兩種都得把 12 筆全部比過。',
+      worstAns: function (n) { return worstSequential(n); }
+    },
+    binary: {
+      worstSize: 15,
+      worstAsk: '一列有 <b>15</b> 筆<b>已經排好序</b>的資料。用二元搜尋法找一個目標，' +
+                '<b>最壞</b>的情況要比幾次？',
+      worstWhy: '15 → 7 → 3 → 1 → 空，一直砍一半，砍四次範圍就空了。',
+      worstAns: function (n) { return worstBinary(n); }
+    }
+  };
+
+  /** 這一題實際會比幾次（挑戰第 1 關的答案） */
+  function realCount(mode, items, target) {
+    return (mode === 'binary') ? countBinary(items, target)
+                               : countSequential(items, target);
+  }
+
   /* ── 說明文案 ─────────────────────────────────────── */
   var INFO = {
     sequential: {
@@ -437,7 +468,10 @@
   function ensureStyle() {
     if (document.getElementById('qs-style')) return;
     var s = document.createElement('style');
-    s.id = 'qs-style'; s.textContent = CSS;
+    /* 挑戰與證書的樣式在 shared/labtest.js —— 三支實驗室共用一份，
+       抄過來的話改一邊會忘另一邊。 */
+    s.id = 'qs-style';
+    s.textContent = CSS + ((global.LABTEST && global.LABTEST.css) || '');
     document.head.appendChild(s);
   }
   function esc(t) {
@@ -465,6 +499,16 @@
     /* 逐步示範：dAt < 0 代表沒開。開了才算步數。 */
     var dAt = -1, dSteps = null;
     var usedMiss = false;      // 課本的第二題（找不到）出過了沒
+    /* ── 驗收挑戰（自由玩通過之後才開）─────────────
+       ⚠️ 「照規則走完」只證明他**會操作**。
+          真正的證據是：動手之前先說得出「這一題要比幾次」。
+       三個難度見 shared/labtest.js。 */
+    var freePassed = false;    // 自由玩那一段過了沒
+    var lvNow = 0;             // 正在挑戰第幾關（0＝還沒開始）
+    var cleared = {};          // 過了哪幾關
+    var guess = null;          // 這一關預測的數字
+    var errs = 0;              // 這一題點錯幾次（零失誤那一關要）
+    var testMsg = '', testKind = 'info';
 
     reset(opts.items && opts.items.length
             ? { items: opts.items.slice(), target: opts.target }
@@ -504,6 +548,7 @@
         reset(makeCase(o));
       }
       dAt = -1; dSteps = null;      // 換題就把示範收起來
+      errs = 0;                     // 新的一題，失誤重新算
       render();
     }
 
@@ -515,16 +560,120 @@
           : '<div class="qs-goal"><span class="lb">目標資料</span>' +
             '<span class="qs-target">' + esc(target) + '</span>' +
             '<span class="qs-count" id="qs-cnt"></span></div>') +
+        '<div id="qs-test"></div>' +
         '<div id="qs-demo"></div>' +
         '<div id="qs-body"></div>' +
         '<div id="qs-msg"></div>' +
         (opts.newRound !== false && mode !== 'compare'
           ? '<button class="qs-btn" id="qs-new">🎲 換一題</button>' : '');
       body();
+      test();
       demo();
       count();
       var nb = host.querySelector('#qs-new');
       if (nb) nb.onclick = nextCase;
+    }
+
+    /* ── 驗收挑戰的畫面 ──────────────────────────
+       ⚠️ 一次只出現一關。三關攤開的話，
+          學生會先看第 3 關的題目，那一關就白出了。 */
+    function test() {
+      var box = host.querySelector('#qs-test');
+      if (!box) return;
+      if (!lvNow) { box.innerHTML = ''; return; }
+      var T = TESTS[mode], L = global.LABTEST.LEVELS[lvNow - 1];
+
+      if (lvNow > 3) {                       // 三關都過了 → 證書
+        box.className = '';
+        box.innerHTML = global.LABTEST.certificate(3,
+          { title: INFO[mode].name + '　驗收挑戰' });
+        return;
+      }
+      box.className = '';
+      var head = '<div class="lt-box"><div class="h">' + L.icon +
+                 ' 驗收挑戰 ' + lvNow + '／3　' + L.name +
+                 '（目前 ' + stars() + ' ★）</div>';
+
+      if (lvNow === 1) {
+        box.innerHTML = head +
+          (guess === null
+            ? '<div class="q">先別動手。<b>這一題</b>要比幾次才會結束？' +
+              '（找到就停；找不到就是全部比完）</div>' +
+              '<div class="row"><input id="qs-g" type="number" min="1" placeholder="次數">' +
+              '<button data-g="1">送出預測</button></div>'
+            : '<div class="q">你猜 <b>' + guess + '</b> 次。現在真的走一遍 —— ' +
+              '走完就知道猜得準不準。</div>') +
+          '</div>';
+      } else if (lvNow === 2) {
+        box.innerHTML = head +
+          '<div class="q">換一題，<b>全程不能點錯</b>。' +
+          '點錯一次就得重來（按「換一題」重新開始）。' +
+          '<br>目前這一題已經錯了 <b>' + errs + '</b> 次。</div></div>';
+      } else {
+        box.innerHTML = head +
+          '<div class="q">' + T.worstAsk + '<br>' +
+          '<span style="font-size:12.5px">這一關<b>不必真的走</b> —— ' +
+          '想想這個演算法最多會做幾次。</span></div>' +
+          '<div class="row"><input id="qs-g" type="number" min="1" placeholder="次數">' +
+          '<button data-g="3">送出答案</button></div></div>';
+      }
+      box.innerHTML += '<div class="lt-say ' + (testKind || 'info') + '" id="qs-tsay">' +
+                       (testMsg || '　') + '</div>';
+      [].forEach.call(box.querySelectorAll('[data-g]'), function (el) {
+        el.onclick = function () { submit(Number(el.dataset.g)); };
+      });
+    }
+
+    function submit(which) {
+      var inp = host.querySelector('#qs-g');
+      var v = Number(inp && inp.value);
+      if (!(v > 0)) { tsay('info', '先填一個數字。'); return; }
+
+      if (which === 1) {
+        guess = v;
+        tsay('info', '記下來了：<b>' + v + '</b> 次。現在真的走一遍。');
+        render();
+        return;
+      }
+      /* 第 3 關：最壞情況 */
+      var want = TESTS[mode].worstAns(TESTS[mode].worstSize);
+      if (v === want) {
+        cleared[3] = true; lvNow = 4;
+        tsay('good', '對了 —— <b>' + want + '</b> 次。' + TESTS[mode].worstWhy +
+                     '<br>三關全過，證書拿到了 ★★★');
+        render(); finishAll();
+      } else {
+        tsay('bad', '不是 ' + v + ' 次。' + TESTS[mode].worstWhy +
+                    '<br>再想一次 —— 這一關可以一直試。');
+      }
+    }
+    function tsay(kind, msg) { testKind = kind; testMsg = msg; render(); }
+
+    /* 走完一題之後，看看挑戰過了沒 */
+    function afterRound() {
+      if (!lvNow || lvNow > 3) return;
+      var real = realCount(mode, items, target);
+      if (lvNow === 1) {
+        if (guess === null) return;          // 還沒預測就走完 → 不算
+        if (guess === real) {
+          cleared[1] = true; lvNow = 2; guess = null;
+          tsay('good', '猜中了 —— 真的是 <b>' + real + '</b> 次 ⭐<br>' +
+                       '下一關：換一題，<b>全程不能點錯</b>。');
+        } else {
+          tsay('bad', '你猜 ' + guess + '，實際是 <b>' + real + '</b> 次。' +
+                      '<br>換一題再試一次 —— 這一關可以一直重來。');
+          guess = null;
+        }
+        return;
+      }
+      if (lvNow === 2) {
+        if (errs === 0) {
+          cleared[2] = true; lvNow = 3;
+          tsay('good', '整題零失誤 ⭐⭐<br>最後一關：不必真的走，直接算給我看。');
+        } else {
+          tsay('bad', '這一題點錯了 ' + errs + ' 次。換一題再挑戰一次。');
+        }
+      }
     }
 
     /* ── 逐步示範 ────────────────────────────────
@@ -721,7 +870,7 @@
       if (ended) return;
       if (mode === 'binary') return clickBinary(i, el);
       var r = checkSequential(items, next, i);
-      if (!r.ok) { flash(el); say('bad', r.msg); return; }
+      if (!r.ok) { errs++; flash(el); say('bad', r.msg); return; }
 
       tried++;
       var s = stepResult(items, target, i);
@@ -762,7 +911,7 @@
         return;
       }
       var r = checkMid(lo, hi, i + 1);
-      if (!r.ok) { flash(el); say('bad', r.msg); return; }
+      if (!r.ok) { errs++; flash(el); say('bad', r.msg); return; }
 
       mid = i + 1;
       tried++;
@@ -788,6 +937,7 @@
       if (ended || phase !== 'side') return;
       var want = sideOf(items[mid - 1], target);
       if (pick !== want) {
+        errs++;
         /* ★ 砍錯邊 = 把目標砍掉了。這裡要講清楚後果，不只是說「錯」——
            因為錯的代價（永遠找不到）正是「資料要先排序」的理由。 */
         say('bad', '砍錯邊了。第 ' + mid + ' 項是 ' + esc(items[mid - 1]) +
@@ -817,6 +967,10 @@
     }
 
     function maybePass() {
+      /* ★ 挑戰開著的時候，走完一題要先結算挑戰。
+         ⚠️ 放在 maybePass 開頭 —— 三個「這一題結束了」的出口都會經過這裡，
+            各自呼叫的話一定會漏掉其中一個。 */
+      if (lvNow && lvNow <= 3) { afterRound(); return; }
       if (passed) return;
 
       if (mode === 'compare') {
@@ -831,8 +985,7 @@
                '資料愈多差距愈大 —— 跑到最大那一個才看得出來。');
           return;
         }
-        passed = true;
-        if (opts.onPass) opts.onPass();
+        openTest();
         return;
       }
 
@@ -843,8 +996,30 @@
              '兩條路都走過，才知道迴圈為什麼需要結束條件。');
         return;
       }
+      openTest();
+    }
+
+    /* ── 驗收挑戰：自由玩過了才開 ──────────────────
+       ★ 「照規則走完」只證明他**會操作**。
+         真正的證據是：動手之前先說得出「這一題要比幾次」。
+       三個難度的定義在 shared/labtest.js（三支實驗室共用）。
+       ⚠️ 大比拼沒有挑戰 —— 它本來就是一步一步按著數的，
+          再加一層等於同一件事做兩次。 */
+    function openTest() {
+      if (freePassed) return;
+      freePassed = true;
+      if (mode === 'compare' || !global.LABTEST) { finishAll(); return; }
+      lvNow = 1;
+      render();
+      say('good', '自由玩的部分過了 ✔<br><b>接下來是驗收挑戰</b> —— 三關，一關一顆星。');
+    }
+    function finishAll() {
+      if (passed) return;
       passed = true;
-      if (opts.onPass) opts.onPass();
+      if (opts.onPass) opts.onPass(stars());
+    }
+    function stars() {
+      return global.LABTEST ? global.LABTEST.starsOf(cleared) : 0;
     }
     function say2(extra) {
       var m = host.querySelector('#qs-msg');
@@ -876,6 +1051,8 @@
     _empty: empty,
     _countBinary: countBinary,
     _demoSteps: demoSteps,
+    TESTS: TESTS,
+    _realCount: realCount,
     _afterCut: afterCut,
     _worstBinary: worstBinary,
     _worstSequential: worstSequential,
