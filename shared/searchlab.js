@@ -47,7 +47,7 @@
     if (i === next) return { ok: true, msg: '' };
     if (i < next) {
       return { ok: false,
-               msg: '這一格<b>已經比過了</b>。循序搜尋不會回頭 —— 往下一個。' };
+               msg: '這一項<b>已經比過了</b>。循序搜尋不會回頭 —— 往下一項。' };
     }
     return { ok: false,
              msg: '不可以跳。循序搜尋是<b>從第一個開始、一個接一個</b>往下比，' +
@@ -89,12 +89,12 @@
     if (lo > hi) return { ok: false, msg: '範圍已經空了。' };
     if (i < lo || i > hi) {
       return { ok: false,
-               msg: '這一格<b>已經被排除</b>了。這一回合只能在' +
+               msg: '這一項<b>已經被排除</b>了。這一回合只能在' +
                     '第 ' + lo + ' ～ ' + hi + ' 項之間找。' };
     }
     if (i === midOf(lo, hi)) return { ok: true, msg: '' };
     return { ok: false,
-             msg: '不是這一格。二元搜尋每一回合都要點<b>正中間</b>那一項 —— ' +
+             msg: '不是這一項。二元搜尋每一回合都要點<b>正中間</b>那一項 —— ' +
                   '（開始位置＋結束位置）÷ 2，除不盡就取整數部分。' };
   }
 
@@ -273,13 +273,13 @@
     }
     /* 循序：從第 1 項一格一格往下 */
     out.push({ at: 0, n: 0,
-               note: '循序搜尋：從<b>第 1 項</b>開始，一格一格往右比。要找 <b>' + target + '</b>。' });
+               note: '循序搜尋：從<b>第 1 項</b>開始，一項一項往右比。要找 <b>' + target + '</b>。' });
     for (var i = 0; i < items.length; i++) {
       var hit = String(items[i]) === String(target);
       out.push({ at: i + 1, n: i + 1, done: hit || (i === items.length - 1), found: hit,
                  note: hit
                    ? '第 ' + (i + 1) + ' 項是 <b>' + items[i] + '</b>　＝　目標 ' + target +
-                     ' —— <b>找到了，停。</b>後面那幾格不必再比。'
+                     ' —— <b>找到了，停。</b>後面那幾項不必再比。'
                    : '第 ' + (i + 1) + ' 項是 <b>' + items[i] + '</b>　≠　目標 ' + target +
                      (i === items.length - 1
                        ? ' —— 全部比完了都沒有，<b>查無此資料</b>。'
@@ -295,7 +295,10 @@
   var INFO = {
     sequential: {
       name: '循序搜尋法', icon: '🔍',
-      rule: '從<b>第 1 格</b>開始，一格一格往右點，' +
+      /* ⚠️ 用詞一律跟課本：「項」不是「格」。
+         畫面上的標籤是「第 N 項」，說明卻寫「第 1 格」的話，
+         學生會以為那是兩個不同的東西。 */
+      rule: '從<b>第 1 項</b>開始，一項一項往右點，' +
             '把它和目標比一比 —— <b>不可以跳</b>。',
       why: '從第一個元素開始取出，依序逐個與目標資料比較，' +
            '直到找到所要的元素，或所有資料都找完為止。',
@@ -356,7 +359,9 @@
     '.qs-cell.past:hover{background:#f8fafc;border-color:#e2e8f0}',
     '.qs-cell.now{border-color:#06b6d4;background:#cffafe;transform:translateY(-3px)}',
     '.qs-cell.hit{border-color:#22c55e;background:#dcfce7;color:#166534;cursor:default}',
-    '.qs-cell.bad{border-color:#f59e0b;background:#fef3c7}',
+    /* 出錯一律紅色（三支實驗室一致）。⚠️ 要排在其他狀態後面，
+       不然閃爍會被 now／cut 蓋掉，學生點錯卻沒有任何反應。 */
+    '.qs-cell.bad{border-color:#ef4444;background:#fee2e2;color:#991b1b}',
     /* 二元搜尋：被砍掉的那一半整個劃掉。
        ★ 劃掉但不刪除 —— 學生要看得見「這一刀砍掉了多少」，
          那正是二元搜尋和循序搜尋的差別。 */
@@ -629,7 +634,7 @@
              '</b> 回合　開始位置：<b>' + lo + '</b>　結束位置：<b>' + hi + '</b>' +
              (phase === 'side'
                ? '　二分位置：<b>' + mid + '</b>（第 ' + mid + ' 項是 ' + esc(items[mid - 1]) + '）'
-               : '　二分位置：<b>？</b>　←　自己算，然後點那一格') +
+               : '　二分位置：<b>？</b>　←　自己算，然後點那一項') +
              '</div>';
     }
 
@@ -696,7 +701,7 @@
         body(); count();
         say('good', '找到了 —— <b>' + esc(target) + '</b> 在第 <b>' + (i + 1) + '</b> 項。' +
                     '總共比了 <b>' + tried + '</b> 次。' +
-                    '<br>⚠️ 找到就<b>停</b>，後面那幾格不必再比。');
+                    '<br>⚠️ 找到就<b>停</b>，後面那幾項不必再比。');
         maybePass();
         return;
       }

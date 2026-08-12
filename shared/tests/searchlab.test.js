@@ -517,12 +517,12 @@ section('★ 循序搜尋的示範');
   ok(/第 1 項/.test(st[0].note), '開場先講「從第 1 項開始」');
   ok(/8/.test(st[1].note) && /不是它/.test(st[1].note), '第 1 步：8 不是目標');
   ok(st[3].found && /找到了/.test(st[3].note), '★ 第 3 步找到 10');
-  ok(/後面那幾格不必再比/.test(st[3].note),
+  ok(/後面那幾項不必再比/.test(st[3].note),
      '★ 找到就停 —— 這句話要講出來（那是迴圈跳出的由來）');
   is(st[3].n, 3, '   比較次數 3，和 _countSequential 一致');
 
   const miss = S._demoSteps('sequential', [8, 5, 10, 1, 7], 9);
-  is(miss.length, 6, '找 9 要走完五格');
+  is(miss.length, 6, '找 9 要走完五項');
   ok(/查無此資料/.test(miss[5].note), '★ 找不到那一條要講「查無此資料」');
 }
 

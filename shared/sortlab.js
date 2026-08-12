@@ -332,11 +332,21 @@
     '  border-radius:10px;font-size:15px;font-weight:700;font-family:inherit;color:#334155;',
     '  cursor:pointer;transition:.12s}',
     '.sl-cell:hover{border-color:#6366f1;background:#eef2ff}',
+    /* ⚠️ 這四條的**順序就是規則**（同權重，後面的贏）。
+       2026-08-12 踩到：原本 .card 排在 .sel 後面 ——
+       學生點下「橘框那張新牌」，畫面除了浮起 3px 之外**什麼都沒變**，
+       因為 .card 的橘色又把 .sel 的靛藍蓋回去了。
+       說明寫著「點橘框那張」，他點了卻看不出有沒有點到。
+       ⇒ 正確順序：已排好 → 橘框（這一張要處理）→ 點選中 → 出錯閃爍。
+          出錯一定要排最後，不然閃爍會被別的狀態蓋掉。 */
     '.sl-cell.done{border-color:#34d399;background:#dcfce7;color:#166534;cursor:default}',
     '.sl-cell.done:hover{background:#dcfce7}',
-    '.sl-cell.sel{border-color:#6366f1;background:#e0e7ff;transform:translateY(-3px)}',
-    '.sl-cell.card{border-color:#f97316;background:#fff7ed}',
-    '.sl-cell.bad{border-color:#f59e0b;background:#fef3c7}',
+    /* 橘框＝這一回合要處理的那一張新牌（INFO.insertion.rule 講的就是它） */
+    '.sl-cell.card{border-color:#f97316;background:#fff7ed;color:#9a3412}',
+    '.sl-cell.sel{border-color:#6366f1;background:#e0e7ff;color:#3730a3;transform:translateY(-3px)}',
+    /* ⚠️ 出錯用**紅色**，不要用琥珀色 —— 琥珀和橘框太像，
+       學生會分不出「這是要處理的那張」和「你點錯了」。 */
+    '.sl-cell.bad{border-color:#ef4444;background:#fee2e2;color:#991b1b}',
     '.sl-slot{width:16px;height:38px;border:2px dashed #cbd5e1;border-radius:6px;',
     '  background:transparent;cursor:pointer;padding:0}',
     '.sl-slot:hover{border-color:#6366f1;background:#eef2ff}',
