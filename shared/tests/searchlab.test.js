@@ -505,6 +505,95 @@ section('★ 第 8 關留的洞，第 10 關要補起來');
   ok(/流程圖/.test(l10), '   而且指回課本的流程圖，讓學生對得起來');
 }
 
+/* ═══ ★ 逐步示範（按下一步慢慢看）═══════════════════════
+   ⚠️ 示範是**求助**，不是開場。
+      一開場就放示範的話，學生會照著示範按 —— 那就沒有在想了。
+      ⇒ 收在一顆按鈕後面，卡住才看。（和第 4 關的「慢動作重看」同一個設計。） */
+section('★ 循序搜尋的示範');
+{
+  const st = S._demoSteps('sequential', [8, 5, 10, 1, 7], 10);
+  is(st.length, 4, '★ 課本 p.204 的例子走 4 步（開場 ＋ 三個回合）');
+  ok(st.every(x => x.note && x.note.length > 8), '每一步都有一句解說');
+  ok(/第 1 項/.test(st[0].note), '開場先講「從第 1 項開始」');
+  ok(/8/.test(st[1].note) && /不是它/.test(st[1].note), '第 1 步：8 不是目標');
+  ok(st[3].found && /找到了/.test(st[3].note), '★ 第 3 步找到 10');
+  ok(/後面那幾格不必再比/.test(st[3].note),
+     '★ 找到就停 —— 這句話要講出來（那是迴圈跳出的由來）');
+  is(st[3].n, 3, '   比較次數 3，和 _countSequential 一致');
+
+  const miss = S._demoSteps('sequential', [8, 5, 10, 1, 7], 9);
+  is(miss.length, 6, '找 9 要走完五格');
+  ok(/查無此資料/.test(miss[5].note), '★ 找不到那一條要講「查無此資料」');
+}
+
+section('★ 二元搜尋的示範 —— 每一步都對得回課本');
+{
+  const st = S._demoSteps('binary', BIG, 67);
+  ok(/已經由小到大排好/.test(st[0].note), '★ 開場先講前提：資料要先排序');
+  /* 課本 p.208～209 的四個回合，數字一個都不能錯 */
+  ok(/（1＋13）÷ 2 = 7/.test(st[1].note), '★ 第 1 回合：(1+13)÷2 = 7');
+  ok(/58/.test(st[1].note), '   第 7 項是 58');
+  ok(/（8＋13）÷ 2 = 10.5 → 取整數部分 <b>10<\/b>/.test(st[3].note),
+     '★★ 第 2 回合：10.5 要寫出來，再講取整數部分 10（課本就是這樣算的）');
+  ok(/（8＋9）÷ 2 = 8.5 → 取整數部分 <b>8<\/b>/.test(st[5].note),
+     '★★ 第 3 回合：8.5 → 8（不是四捨五入的 9）');
+  ok(/（9＋9）÷ 2 = 9/.test(st[7].note), '   第 4 回合：9');
+  ok(st[8].found && /找到了/.test(st[8].note), '★ 第 4 回合找到 67');
+  is(st[8].n, 4, '   比了 4 次，和 _countBinary 一致');
+  ok(/循序搜尋要比 9 次/.test(st[8].note),
+     '★ 找到時要把「循序要幾次」一起講 —— 4 對 9 才是這一關的重點');
+  /* 砍掉哪一半、為什麼砍，每一步都要說 */
+  ok(/小.*右邊|右邊.*小/.test(st[2].note), '★ 講清楚「比目標小 → 目標在右邊」');
+  ok(/大.*左邊|左邊.*大/.test(st[4].note), '★ 也講清楚「比目標大 → 在左邊」');
+  ok(/砍掉/.test(st[2].note) && /第 7 項/.test(st[2].note),
+     '★ 要講「連同二分位置整個砍掉」—— 新範圍不含它');
+
+  const miss = S._demoSteps('binary', BIG, 40);
+  ok(miss[miss.length - 1].done && !miss[miss.length - 1].found, '找 40 → 沒找到');
+  ok(/大於/.test(miss[miss.length - 1].note) && /查無此資料/.test(miss[miss.length - 1].note),
+     '★ 結尾要講「開始位置大於結束位置 → 查無此資料」');
+}
+
+section('★ 示範掛得起來，而且是「卡住才看」');
+{
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const sim = S.mount(host, { mode: 'binary', course: 'hit' });
+  ok(!!host.querySelector('#qs-dgo'), '★ 一開始只有一顆按鈕 —— 示範不會自己跳出來');
+  ok(!host.querySelector('.qs-demo .say'), '   還沒按就沒有解說（不會先洩題）');
+
+  host.querySelector('#qs-dgo').onclick();
+  ok(!!host.querySelector('.qs-demo .say'), '按下去才出現');
+  ok(/第 0 步/.test(host.querySelector('.qs-demo .h').textContent), '從第 0 步開始');
+
+  host.querySelector('[data-d="1"]').onclick();
+  ok(/第 1 步/.test(host.querySelector('.qs-demo .h').textContent), '★ 按「下一步」走一步');
+  /* ★ 格子要跟著示範走 —— 不然畫面在講第 3 步，格子卻停在別的地方。 */
+  host.querySelector('[data-d="1"]').onclick();
+  host.querySelector('[data-d="1"]').onclick();
+  ok(host.querySelectorAll('.qs-cell.cut').length > 0,
+     '★ 砍掉的那一半在畫面上劃掉了（' + host.querySelectorAll('.qs-cell.cut').length + ' 格）');
+
+  host.querySelector('[data-d="9"]').onclick();
+  ok(/找到了/.test(host.querySelector('.qs-demo .say').textContent), '「一路看完」直接到最後');
+  ok(!!host.querySelector('[data-d="0"]'), '   跑完了給「再看一次」');
+
+  host.querySelector('[data-d="-1"]').onclick();
+  ok(!!host.querySelector('#qs-dgo'), '★ 關得掉 —— 關掉之後回到「自己試」');
+  ok(!host.querySelector('.qs-demo .say'), '   關掉就不佔版面');
+  host.remove();
+}
+
+section('★ 大比拼那一關不需要示範');
+{
+  /* 它本來就是一步一步按的 —— 再加一個示範等於同一件事做兩次。 */
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  S.mount(host, { mode: 'compare' });
+  ok(!host.querySelector('#qs-dgo'), '★ 大比拼沒有示範按鈕');
+  host.remove();
+}
+
 /* ── 關卡頁真的接得上 ──────────────────────────────── */
 section('★ level.html 接得上');
 {

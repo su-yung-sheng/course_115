@@ -223,6 +223,74 @@
     return true;
   }
 
+  /* ── 逐步示範：按「下一步」慢慢看一遍 ─────────────────
+     ★ 為什麼是「求助」而不是「開場」
+       這個實驗室本來就是要學生**自己動手**（不准跳、自己算二分位置）。
+       一開場就先放示範，他會照著示範按 —— 那就沒有在想了。
+       ⇒ 示範收在一顆按鈕後面，卡住才看。
+         和第 4 關條件判斷實驗室的「慢動作重看」是同一個設計。
+
+     ★ 為什麼每一步都要有一句話
+       只有畫面在動、沒有解說的話，學生看到的是格子在變色 ——
+       他知道「有事情在發生」，但不知道發生的是什麼。
+
+     ⚠️ 示範用的一定是**課本那一組數字**（8、5、10、1、7 找 10；
+        13 個數字找 67）—— 學生手上的書就是這樣寫的。 */
+  function demoSteps(mode, items, target) {
+    var out = [];
+    if (mode === 'binary') {
+      var lo = 1, hi = items.length, n = 0;
+      out.push({ lo: lo, hi: hi, mid: 0, n: 0,
+                 note: '資料<b>已經由小到大排好</b>了 —— 這是二元搜尋的前提。' +
+                       '開始位置 1、結束位置 ' + hi + '，要找 <b>' + target + '</b>。' });
+      while (lo <= hi) {
+        var m = midOf(lo, hi), v = items[m - 1];
+        n++;
+        out.push({ lo: lo, hi: hi, mid: m, n: n,
+                   note: '第 ' + n + ' 回合：二分位置 =（' + lo + '＋' + hi + '）÷ 2 = ' +
+                         fmt((lo + hi) / 2) + ' → 取整數部分 <b>' + m + '</b>。' +
+                         '第 ' + m + ' 項是 <b>' + v + '</b>。' });
+        var side = sideOf(v, target);
+        if (side === 'hit') {
+          out.push({ lo: lo, hi: hi, mid: m, n: n, done: true, found: true,
+                     note: '<b>' + v + ' = ' + target + '，找到了！</b>只比了 ' + n + ' 次 —— ' +
+                           '同一列資料用循序搜尋要比 ' + countSequential(items, target) + ' 次。' });
+          return out;
+        }
+        var r = narrow(lo, hi, m, side);
+        out.push({ lo: r.lo, hi: r.hi, mid: m, n: n,
+                   note: v + (side === 'right' ? ' 比 ' + target + ' <b>小</b> —— 目標只可能在<b>右邊</b>，'
+                                               : ' 比 ' + target + ' <b>大</b> —— 目標只可能在<b>左邊</b>，') +
+                         '另一半連同第 ' + m + ' 項整個<b>砍掉</b>。' +
+                         (r.lo > r.hi ? '' : '剩下第 ' + r.lo + ' ～ ' + r.hi + ' 項（' +
+                          (r.hi - r.lo + 1) + ' 筆）。') });
+        lo = r.lo; hi = r.hi;
+      }
+      out.push({ lo: lo, hi: hi, mid: 0, n: n, done: true, found: false,
+                 note: '開始位置（' + lo + '）已經<b>大於</b>結束位置（' + hi + '）—— ' +
+                       '範圍空了，<b>查無此資料</b>。迴圈就是走到這裡才停的。' });
+      return out;
+    }
+    /* 循序：從第 1 項一格一格往下 */
+    out.push({ at: 0, n: 0,
+               note: '循序搜尋：從<b>第 1 項</b>開始，一格一格往右比。要找 <b>' + target + '</b>。' });
+    for (var i = 0; i < items.length; i++) {
+      var hit = String(items[i]) === String(target);
+      out.push({ at: i + 1, n: i + 1, done: hit || (i === items.length - 1), found: hit,
+                 note: hit
+                   ? '第 ' + (i + 1) + ' 項是 <b>' + items[i] + '</b>　＝　目標 ' + target +
+                     ' —— <b>找到了，停。</b>後面那幾格不必再比。'
+                   : '第 ' + (i + 1) + ' 項是 <b>' + items[i] + '</b>　≠　目標 ' + target +
+                     (i === items.length - 1
+                       ? ' —— 全部比完了都沒有，<b>查無此資料</b>。'
+                       : ' —— 不是它，往下一個。') });
+      if (hit) break;
+    }
+    return out;
+  }
+  /* 10.5 這種要印得出來（Math 直接印會變 10.5，但整數要印 7 不是 7.0） */
+  function fmt(x) { return (Math.round(x * 10) / 10); }
+
   /* ── 說明文案 ─────────────────────────────────────── */
   var INFO = {
     sequential: {
@@ -323,6 +391,20 @@
     '.qs-btn{background:#06b6d4;color:#fff;border:0;border-radius:9px;padding:8px 15px;',
     '  font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:10px}',
     '.qs-btn:hover{background:#0891b2}',
+    /* 逐步示範 */
+    '.qs-demo{background:#f0f9ff;border:1px solid #bae6fd;border-radius:11px;',
+    '  padding:11px 14px;margin-bottom:10px}',
+    '.qs-demo .h{font-size:13.5px;font-weight:900;color:#0369a1;margin-bottom:6px}',
+    '.qs-demo .say{font-size:13px;line-height:1.85;color:#075985;min-height:44px}',
+    '.qs-demo .say b{color:#0c4a6e}',
+    '.qs-demo .row{display:flex;gap:7px;margin-top:8px;flex-wrap:wrap}',
+    '.qs-demo button{background:#fff;border:2px solid #7dd3fc;color:#0369a1;border-radius:8px;',
+    '  padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}',
+    '.qs-demo button:hover{background:#e0f2fe}',
+    '.qs-big .qs-demo{padding:14px 17px}',
+    '.qs-big .qs-demo .h{font-size:15px}',
+    '.qs-big .qs-demo .say{font-size:15px;min-height:56px}',
+    '.qs-big .qs-demo button{padding:8px 17px;font-size:14.5px}',
     /* ── 放大版（關卡頁的「動手試一次」那一步）─────────
        ★ 這一步是第 6 章那幾關的主角，畫面上就該長得像主角。
          原本的尺寸是給「順手嵌在別的東西旁邊」用的，
@@ -375,6 +457,8 @@
     /* ★ 要「找到一次」＋「找不到一次」才算通過。
        只找到過的學生，不會知道迴圈為什麼需要結束條件。 */
     var sawHit = false, sawMiss = false;
+    /* 逐步示範：dAt < 0 代表沒開。開了才算步數。 */
+    var dAt = -1, dSteps = null;
 
     reset(opts.items && opts.items.length
             ? { items: opts.items.slice(), target: opts.target }
@@ -397,14 +481,57 @@
           : '<div class="qs-goal"><span class="lb">目標資料</span>' +
             '<span class="qs-target">' + esc(target) + '</span>' +
             '<span class="qs-count" id="qs-cnt"></span></div>') +
+        '<div id="qs-demo"></div>' +
         '<div id="qs-body"></div>' +
         '<div id="qs-msg"></div>' +
         (opts.newRound !== false && mode !== 'compare'
           ? '<button class="qs-btn" id="qs-new">🎲 換一題</button>' : '');
       body();
+      demo();
       count();
       var nb = host.querySelector('#qs-new');
       if (nb) nb.onclick = function () { reset(makeCase(opts)); render(); };
+    }
+
+    /* ── 逐步示範 ────────────────────────────────
+       ★ 收在一顆按鈕後面：先自己試，卡住才看。
+         一開場就放示範的話，學生會照著示範按 —— 那就沒有在想了。
+       ⚠️ 只有循序與二元有；大比拼那一關本來就是一步一步按的。 */
+    function demo() {
+      var box = host.querySelector('#qs-demo');
+      if (!box) return;
+      if (mode === 'compare') { box.innerHTML = ''; return; }
+      if (dAt < 0) {
+        box.className = '';
+        box.innerHTML = '<button class="qs-btn" id="qs-dgo" ' +
+          'style="background:#0ea5e9;margin:0 0 10px">🐢 看一次逐步示範（用課本的例子）</button>';
+        box.querySelector('#qs-dgo').onclick = function () {
+          var c = makeCase({ mode: mode, course: 'hit' });
+          dSteps = demoSteps(mode, c.items, c.target);
+          dAt = 0; render();
+        };
+        return;
+      }
+      var st = dSteps[dAt], last = dAt >= dSteps.length - 1;
+      box.className = 'qs-demo';
+      box.innerHTML =
+        '<div class="h">🐢 逐步示範　第 ' + dAt + ' 步 ／ 共 ' + (dSteps.length - 1) + ' 步' +
+        (st.n ? '　比較次數 ' + st.n : '') + '</div>' +
+        '<div class="say">' + st.note + '</div>' +
+        '<div class="row">' +
+        (last ? '<button data-d="0">↺ 再看一次</button>'
+              : '<button data-d="1">⏭ 下一步</button><button data-d="9">⏩ 一路看完</button>') +
+        '<button data-d="-1">關掉示範，自己試</button></div>';
+      [].forEach.call(box.querySelectorAll('[data-d]'), function (el) {
+        el.onclick = function () {
+          var v = Number(el.dataset.d);
+          if (v === -1) { dAt = -1; dSteps = null; }
+          else if (v === 0) dAt = 0;
+          else if (v === 9) dAt = dSteps.length - 1;
+          else dAt = Math.min(dAt + 1, dSteps.length - 1);
+          render();
+        };
+      });
     }
 
     function body() {
@@ -508,6 +635,20 @@
 
     function cellHtml(v, i) {
       var cls = 'qs-cell', n = i + 1;
+      /* ★ 示範開著的時候，格子跟著示範走 ——
+         不然畫面在講第 3 步，格子卻停在學生自己按到的地方。 */
+      if (dAt >= 0 && dSteps) {
+        var st = dSteps[dAt];
+        if (mode === 'binary') {
+          if (st.mid === n) cls += (st.found ? ' hit' : ' now');
+          else if (n < st.lo || n > st.hi) cls += ' cut';
+        } else {
+          if (st.at === n) cls += (st.found ? ' hit' : ' now');
+          else if (st.at && n < st.at) cls += ' past';
+        }
+        return '<div class="qs-box"><span class="qs-idx">第 ' + n + ' 項</span>' +
+               '<button class="' + cls + '" data-i="' + i + '">' + esc(v) + '</button></div>';
+      }
       if (mode === 'binary') {
         if (ended && n === mid && String(v) === String(target)) cls += ' hit';
         else if (n < lo || n > hi) cls += ' cut';        // 被砍掉的那一半：劃掉，但看得見
@@ -700,6 +841,7 @@
     _narrow: narrow,
     _empty: empty,
     _countBinary: countBinary,
+    _demoSteps: demoSteps,
     _afterCut: afterCut,
     _worstBinary: worstBinary,
     _worstSequential: worstSequential,

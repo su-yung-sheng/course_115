@@ -138,54 +138,89 @@
        n        到這一刻為止比了幾次 */
   function plan(items, mode, order) {
     var a = items.slice().map(Number), n = a.length, frames = [], cmp = 0;
-    function shot(c, best, done) {
+    /* ★ 每一格都要帶一句「這一步發生了什麼」。
+       ⚠️ 只有動畫沒有解說的話，學生看到的是一堆長條在跳 ——
+          他知道「有事情在發生」，但不知道發生的是什麼。
+          按「下一步」慢慢看的人，讀的就是這一句。 */
+    function shot(c, best, done, note) {
       frames.push({ arr: a.slice(), cmp: c || null,
-                    best: (best == null ? null : best), done: done || 0, n: cmp });
+                    best: (best == null ? null : best), done: done || 0,
+                    n: cmp, note: note || '' });
     }
     var better = function (x, y) {
       return order === 'desc' ? x > y : x < y;
     };
+    var W = (order === 'desc') ? '大' : '小';       // 由大到小就是找最大
+    var no = function (i) { return i + 1; };        // 畫面上用第幾項（1 起算）
 
-    shot(null, null, 0);
     if (mode === 'bubble') {
+      shot(null, null, 0, '氣泡排序：從頭開始，每次比<b>相鄰</b>的兩個。');
       for (var i = 0; i < n - 1; i++) {
         for (var j = 0; j < n - 1 - i; j++) {
-          cmp++; shot([j, j + 1], null, i ? n - i : 0);
+          cmp++;
+          shot([j, j + 1], null, i ? n - i : 0,
+               '比第 ' + no(j) + '、' + no(j + 1) + ' 項（' + a[j] + ' 和 ' + a[j + 1] + '）。');
           if (better(a[j + 1], a[j])) {
+            var big = a[j], small = a[j + 1];
             var t = a[j]; a[j] = a[j + 1]; a[j + 1] = t;
-            shot([j, j + 1], null, i ? n - i : 0);
+            shot([j, j + 1], null, i ? n - i : 0,
+                 '順序不對 —— ' + small + ' 比 ' + big + W + '，<b>交換</b>。');
+          } else {
+            frames[frames.length - 1].note +=
+              ' 順序本來就對，<b>不用換</b>。';
           }
         }
+        shot(null, null, n - 1 - i,
+             '跑完第 ' + (i + 1) + ' 回合 —— 最' + (order === 'desc' ? '小' : '大') +
+             '的那個已經被推到<b>最後面</b>，之後不必再看它。');
       }
     } else if (mode === 'insertion') {
+      shot(null, null, 1, '插入排序：左邊那一段當成「已經排好的手牌」，' +
+                          '每次<b>抽一張新牌</b>插進去。');
       for (var k = 1; k < n; k++) {
         var key = a[k], p = k - 1;
-        shot([k, k], null, k);
+        shot([k, k], null, k, '抽第 ' + no(k) + ' 張牌：<b>' + key + '</b>。' +
+                              '要把它插進左邊那 ' + k + ' 張裡。');
         while (p >= 0) {
-          cmp++; shot([p, k], null, k);
+          cmp++;
+          shot([p, k], null, k,
+               '和左邊的 ' + a[p] + ' 比：' +
+               (better(key, a[p]) ? '<b>' + key + ' 比較' + W + '</b>，' + a[p] + ' 要往右讓一格。'
+                                  : '<b>' + key + ' 沒有比較' + W + '</b> —— 位置就在這裡，停。'));
           if (!better(key, a[p])) break;
           a[p + 1] = a[p]; p--;
-          shot([p + 1, k], null, k);
+          shot([p + 1, k], null, k, a[p + 2] + ' 往右移了一格，空出位子。');
         }
         a[p + 1] = key;
-        shot(null, null, k + 1);
+        shot(null, null, k + 1, '<b>' + key + '</b> 插進第 ' + no(p + 1) + ' 個位置。' +
+                                '左邊 ' + (k + 1) + ' 張現在都排好了。');
       }
     } else {
       /* 選擇排序照課本的兩清單版：從未排序找最小 → 搬到已排序的最後一項。
          畫面上已排好的留在左邊不動，未排序的整段往左遞補。 */
+      shot(null, null, 0, '選擇排序：每一回合從<b>還沒排好</b>的那一段裡挑出最' + W + '的。');
       for (var s = 0; s < n; s++) {
         var best = s;
-        shot(null, best, s);
+        shot(null, best, s, '第 ' + (s + 1) + ' 回合開始。先假設第 ' + no(s) +
+                            ' 項（' + a[s] + '）最' + W + '。');
         for (var q = s + 1; q < n; q++) {
-          cmp++; shot([q, best], best, s);
-          if (better(a[q], a[best])) { best = q; shot([q, best], best, s); }
+          cmp++;
+          var hit = better(a[q], a[best]);
+          shot([q, best], best, s,
+               '拿第 ' + no(q) + ' 項（' + a[q] + '）和目前最' + W + '的第 ' + no(best) +
+               ' 項（' + a[best] + '）比 —— ' +
+               (hit ? '<b>更' + W + '了，換人。</b>' : '沒有更' + W + '，不換。'));
+          if (hit) { best = q; shot([q, best], best, s,
+               '目前最' + W + '的換成第 ' + no(best) + ' 項（' + a[best] + '）。'); }
         }
         var v = a.splice(best, 1)[0];
         a.splice(s, 0, v);
-        shot(null, null, s + 1);
+        shot(null, null, s + 1,
+             '整段看完了，最' + W + '的是 <b>' + v + '</b> —— ' +
+             '把它搬到已排好那一段的<b>最後面</b>，並從未排序刪掉。');
       }
     }
-    shot(null, null, n);
+    shot(null, null, n, '沒有東西可以挑了 —— <b>排好了</b>。總共比了 ' + cmp + ' 次。');
     return { frames: frames, compares: cmp };
   }
 
@@ -329,6 +364,11 @@
     '.sl-ctrl button.on{border-color:#6366f1;background:#e0e7ff;color:#4338ca}',
     '.sl-ctrl .num{font-size:12.5px;color:#4338ca;font-weight:900;margin-left:auto}',
     '.sl-ctrl .num b{font-size:16px}',
+    /* 解說列：固定高度，不然按「下一步」整頁會彈 */
+    '.sl-say{background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;',
+    '  padding:9px 12px;margin-top:9px;font-size:13px;line-height:1.8;',
+    '  color:#3730a3;min-height:46px}',
+    '.sl-say b{color:#4338ca}',
     /* 變數追蹤（玩法沿用 search.html：程式碼行高亮＋變數面板＋逐步執行） */
     '.sl-tr{margin-top:16px;border-top:1px dashed #cbd5e1;padding-top:14px}',
     '.sl-tr h4{font-size:14px;font-weight:900;color:#0f766e;margin:0 0 4px}',
@@ -362,6 +402,7 @@
     '.sl-big .sl-ctrl button{padding:8px 15px;font-size:14px}',
     '.sl-big .sl-ctrl .num{font-size:14.5px}',
     '.sl-big .sl-ctrl .num b{font-size:22px}',
+    '.sl-big .sl-say{font-size:15px;padding:12px 16px;min-height:58px}',
     /* 變數追蹤：程式碼要看得清楚，它等一下就是要拼的那一段 */
     '.sl-big .sl-tr h4{font-size:16px}',
     '.sl-big .sl-tr .lead{font-size:13.5px}',
@@ -592,27 +633,43 @@
       if (!pl) { pl = plan(makeItems(opts.autoSize || 30, order), algo, order); at = 0; }
       var f = pl.frames[at];
       box.className = 'sl-auto';
+      var last = at >= pl.frames.length - 1;
       box.innerHTML =
-        '<h4>📺 換 ' + f.arr.length + ' 筆資料，讓它自己跑一遍</h4>' +
-        '<div class="lead">你剛剛用手排六個。' +
-        '同樣的方法，' + f.arr.length + ' 筆要比幾次？' +
-        '<b>一邊看一邊注意右邊那個數字。</b></div>' +
+        '<h4>📺 換 ' + f.arr.length + ' 筆資料，一步一步看它怎麼排</h4>' +
+        '<div class="lead">你剛剛用手排六個。同樣的方法，' + f.arr.length + ' 筆要比幾次？' +
+        '<br><b>看不懂就按「下一步」</b> —— 每一步下面都會告訴你它剛才做了什麼。' +
+        '想快轉再按「自動播放」。</div>' +
         '<div class="sl-bars" id="sl-bars"></div>' +
+        /* ★ 解說列。⚠️ 給固定高度 —— 文字長短不一，
+           不固定的話按一下「下一步」整頁就往上下彈一格。 */
+        '<div class="sl-say" id="sl-say">' + (f.note || '　') + '</div>' +
         '<div class="sl-ctrl">' +
         ['selection', 'insertion', 'bubble'].map(function (m) {
           return '<button data-algo="' + m + '"' + (m === algo ? ' class="on"' : '') + '>' +
                  INFO[m].icon + ' ' + INFO[m].name + '</button>';
         }).join('') +
-        '<button data-play="1">' + (timer ? '⏸ 暫停' : '▶ 開始') + '</button>' +
-        '<button data-again="1">🎲 換一組</button>' +
-        '<span class="num">比較次數 <b>' + f.n + '</b>' +
-        (at >= pl.frames.length - 1 ? '　✅ 排好了' : '') + '</span></div>';
+        (last ? '<button data-again="1">↺ 再看一次</button>'
+              : '<button data-step="1">⏭ 下一步</button>' +
+                '<button data-play="1">' + (timer ? '⏸ 暫停' : '▶ 自動播放') + '</button>') +
+        '<button data-new="1">🎲 換一組</button>' +
+        '<span class="num">第 ' + at + ' 步　比較次數 <b>' + f.n + '</b>' +
+        (last ? '　✅ 排好了' : '') + '</span></div>';
       bars(f);
       [].forEach.call(box.querySelectorAll('[data-algo]'), function (el) {
         el.onclick = function () { stop(); algo = el.dataset.algo; pl = null; auto(); };
       });
-      box.querySelector('[data-play]').onclick = toggle;
-      box.querySelector('[data-again]').onclick = function () { stop(); pl = null; auto(); };
+      var b;
+      if ((b = box.querySelector('[data-step]'))) b.onclick = function () { stop(); step(); };
+      if ((b = box.querySelector('[data-play]'))) b.onclick = toggle;
+      if ((b = box.querySelector('[data-again]'))) b.onclick = function () { at = 0; auto(); };
+      if ((b = box.querySelector('[data-new]'))) b.onclick = function () { stop(); pl = null; auto(); };
+    }
+
+    /* 走一步 —— 按鈕和自動播放共用同一條路，不會有兩套走法。 */
+    function step() {
+      if (at >= pl.frames.length - 1) return;
+      at++;
+      auto();
     }
 
     function bars(f) {
@@ -636,8 +693,14 @@
         at++;
         if (at >= pl.frames.length - 1) { at = pl.frames.length - 1; stop(); auto(); return; }
         bars(pl.frames[at]);
+        /* 自動播放時只換會變的那幾塊，不整段重畫 ——
+           整段重畫會讓按鈕在腳下閃爍，按不準。 */
         var num = host.querySelector('.sl-ctrl .num b');
         if (num) num.textContent = pl.frames[at].n;
+        var st = host.querySelector('.sl-ctrl .num');
+        if (st) st.innerHTML = '第 ' + at + ' 步　比較次數 <b>' + pl.frames[at].n + '</b>';
+        var say = host.querySelector('#sl-say');
+        if (say) say.innerHTML = pl.frames[at].note || '　';
       }, speed);
     }
     function stop() { if (timer) { clearInterval(timer); timer = null; } }

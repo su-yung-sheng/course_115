@@ -275,6 +275,80 @@ if (!JSDOM) {
     host.remove();
   }
 
+  console.log('\n── ★ 逐步示範：每一格都要有解說 ──');
+  {
+    /* ⚠️ 只有動畫沒有解說的話，學生看到的是一堆長條在跳 ——
+       他知道「有事情在發生」，但不知道發生的是什麼。
+       ★ 按「下一步」慢慢看的人，讀的就是那一句。 */
+    ['selection', 'insertion', 'bubble'].forEach(m => {
+      const r = S._plan([8, 5, 10, 1, 7], m, 'asc');
+      ok(r.frames.every(f => f.note && f.note.length > 4),
+         '★ ' + m + ' 每一格都有解說（' + r.frames.length + ' 格）');
+      ok(/排好了/.test(r.frames[r.frames.length - 1].note),
+         '   ' + m + ' 最後一格講「排好了」');
+      ok(new RegExp('比了 ' + r.compares + ' 次').test(r.frames[r.frames.length - 1].note),
+         '   ' + m + ' 收尾把總比較次數講出來（接第 10 關的線）');
+    });
+
+    /* 選擇排序的解說要用課本的講法：從未排序挑最小 → 搬到已排序最後面。 */
+    const sel = S._plan([8, 5, 10, 1, 7], 'selection', 'asc');
+    ok(/還沒排好/.test(sel.frames[0].note), '★ 選擇排序開場先講規則');
+    ok(sel.frames.some(f => /先假設第 1 項（8）最小/.test(f.note)),
+       '★ 講出「先假設第 1 項最小」—— 那正是程式裡兩個變數都設 1 的理由');
+    ok(sel.frames.some(f => /更小了，換人/.test(f.note)), '★ 找到更小的要講「換人」');
+    ok(sel.frames.some(f => /搬到已排好那一段的<b>最後面<\/b>/.test(f.note) &&
+                            /從未排序刪掉/.test(f.note)),
+       '★★ 搬走那一步要講**兩件事**：加到已排序最後面、從未排序刪掉' +
+       '（課本的兩清單版，也是第 6 關拼圖要拼的）');
+
+    /* 插入排序：抽一張牌、往左找位置、插進去。 */
+    const ins = S._plan([8, 5, 10, 1, 7], 'insertion', 'asc');
+    ok(/手牌/.test(ins.frames[0].note), '★ 插入排序開場用手牌的講法（課本的理牌）');
+    ok(ins.frames.some(f => /抽第 2 張牌/.test(f.note)), '   會講「抽第幾張牌」');
+    ok(ins.frames.some(f => /位置就在這裡，停/.test(f.note)),
+       '★ 找到位置要講「停」—— 那是內圈跳出的條件');
+
+    /* 氣泡排序：只換相鄰，而且每回合最大的沉到最後。 */
+    const bub = S._plan([8, 5, 10, 1, 7], 'bubble', 'asc');
+    ok(/相鄰/.test(bub.frames[0].note), '★ 氣泡排序開場先講「只比相鄰的」');
+    ok(bub.frames.some(f => /順序本來就對/.test(f.note)),
+       '★ 不用換的時候也要說 —— 不然學生以為每次都要換');
+    ok(bub.frames.some(f => /推到<b>最後面<\/b>/.test(f.note)),
+       '★ 每回合結束要講「最大的已經就位」');
+
+    /* 由大到小時用詞要跟著換，不然解說會和畫面相反。 */
+    const d = S._plan([8, 5, 10, 1, 7], 'selection', 'desc');
+    ok(d.frames.some(f => /最大/.test(f.note)) && !d.frames.some(f => /挑出最小/.test(f.note)),
+       '★ 由大到小時解說講「最大」，不是照抄「最小」');
+  }
+
+  console.log('\n── ★ 播放器：按下一步走得動 ──');
+  {
+    const host = dom.window.document.createElement('div');
+    dom.window.document.body.appendChild(host);
+    const sim = S.mount(host, { mode: 'selection', order: 'asc' });
+    let guard = 0;
+    while (guard++ < 40) {
+      const cells = [...host.querySelectorAll('[data-i]')];
+      if (!cells.length) break;
+      const vals = cells.map(c => Number(c.textContent));
+      cells[vals.indexOf(Math.min(...vals))].onclick();
+    }
+    ok(!!host.querySelector('#sl-say'), '★ 有解說列');
+    ok(!!host.querySelector('[data-step]'), '★ 有「下一步」按鈕（不是只能自動播）');
+    const say0 = host.querySelector('#sl-say').textContent;
+    host.querySelector('[data-step]').onclick();
+    ok(host.querySelector('#sl-say').textContent !== say0, '★ 按一下 → 解說跟著換');
+    ok(/第 1 步/.test(host.querySelector('.sl-ctrl .num').textContent), '   而且看得到走到第幾步');
+    ok(sim._auto().at === 1, '   狀態也對');
+    /* ⚠️ 解說列要有最小高度 —— 文字長短不一，
+       不固定的話按「下一步」整頁會上下彈一格。 */
+    const src = fs.readFileSync(path.join(ROOT, 'shared', 'sortlab.js'), 'utf8');
+    ok(/\.sl-say\{[^}]*min-height/.test(src),
+       '★ 解說列有最小高度（不然按下一步整頁會彈）');
+    sim.destroy(); host.remove();
+  }
+
   console.log('\n── ★ 變數追蹤：電腦怎麼找出最小值 ──');
   {
     /* ⚠️ 玩法取自 search.html（逐步執行＋程式碼行高亮＋變數面板），
