@@ -464,6 +464,7 @@
     var sawHit = false, sawMiss = false;
     /* 逐步示範：dAt < 0 代表沒開。開了才算步數。 */
     var dAt = -1, dSteps = null;
+    var usedMiss = false;      // 課本的第二題（找不到）出過了沒
 
     reset(opts.items && opts.items.length
             ? { items: opts.items.slice(), target: opts.target }
@@ -476,6 +477,34 @@
       items = c.items; target = c.target;
       next = 0; tried = 0; ended = false;
       lo = 1; hi = items.length; phase = 'pick'; mid = 0;
+    }
+
+    /* ── 換一題 ────────────────────────────────────
+       ⚠️ 2026-08-12 抓到的當機級錯誤：
+          原本是 `reset(makeCase(opts))` —— opts 裡還帶著 course:'hit'，
+          所以 makeCase 每次都回課本那一題（8、5、10、1、7 找 10）。
+          「換一題」按幾次都一樣，而通過條件要「找得到＋找不到各一次」
+          ⇒ **這一關永遠過不了**，學生卡在這一步走不下去。
+          ★ 而且畫面上完全看不出異常：題目長得好好的，
+            只是每次都一樣，學生只會覺得「怎麼一直是這題」。
+
+       ★ 換題的順序是設計過的：
+         第 1 題　課本 p.204 那一題（找得到）——和他手上的書一樣
+         第 2 題　課本 p.205 那一題（同一列資料找 9，找不到）
+                  ⇒ 課本用同一列示範兩次，這裡照走一遍
+         之後　　 隨機出題（三分之一是找不到的） */
+    function nextCase() {
+      if (opts.course && !usedMiss) {
+        usedMiss = true;
+        reset(makeCase({ mode: mode, course: 'miss' }));
+      } else {
+        /* ⚠️ 一定要把 course 拿掉，不然又回到同一題。 */
+        var o = {};
+        for (var k in opts) if (k !== 'course') o[k] = opts[k];
+        reset(makeCase(o));
+      }
+      dAt = -1; dSteps = null;      // 換題就把示範收起來
+      render();
     }
 
     function render() {
@@ -495,7 +524,7 @@
       demo();
       count();
       var nb = host.querySelector('#qs-new');
-      if (nb) nb.onclick = function () { reset(makeCase(opts)); render(); };
+      if (nb) nb.onclick = nextCase;
     }
 
     /* ── 逐步示範 ────────────────────────────────

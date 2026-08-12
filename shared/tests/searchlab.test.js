@@ -505,6 +505,87 @@ section('★ 第 8 關留的洞，第 10 關要補起來');
   ok(/流程圖/.test(l10), '   而且指回課本的流程圖，讓學生對得起來');
 }
 
+/* ═══ ★★ 一個學生從頭走到底，一定要過得了關 ═══════════════
+   ⚠️ 2026-08-12 抓到的當機級錯誤，而且是這一份測試自己漏掉的：
+      「換一題」原本寫成 reset(makeCase(opts)) —— opts 裡還帶著 course:'hit'，
+      所以每次都回課本那一題。按幾次都一樣，
+      而通過條件要「找得到＋找不到各一次」⇒ **這一關永遠過不了**。
+
+   ★ 為什麼前面那些測試沒抓到
+     它們是 mount 兩台，一台 course:'hit'、一台 course:'miss'，
+     各自驗各自的 —— 那條路學生根本走不到。
+     學生只有一台，而且只會按「換一題」。
+   ⇒ 這一段一律**只用 UI**、**只用一個實例**，模擬真的學生。 */
+section('★★ 只按畫面上的按鈕，從頭走到底');
+['sequential', 'binary'].forEach(mode => {
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  let passed = 0;
+  const sim = S.mount(host, { mode: mode, course: 'hit', onPass: () => { passed++; } });
+  const targets = [];
+  for (let step = 0; step < 200 && !passed; step++) {
+    const st = sim._state();
+    if (st.ended) {                       // 走完一題 → 按「換一題」
+      targets.push(st.target);
+      host.querySelector('#qs-new').onclick();
+      continue;
+    }
+    if (mode === 'binary') {
+      if (st.phase === 'side') {          // 決定砍哪一半
+        const want = Number(st.items[st.mid - 1]) < Number(st.target) ? 'right' : 'left';
+        host.querySelector('[data-side="' + want + '"]').onclick();
+        continue;
+      }
+      const m = Math.floor((st.lo + st.hi) / 2);
+      host.querySelectorAll('[data-i]')[m - 1].onclick();
+    } else {
+      host.querySelectorAll('[data-i]')[st.next].onclick();
+    }
+  }
+  ok(passed === 1, '★★ ' + mode + '：老老實實走 → 真的過得了關');
+  ok(sim._state().sawHit && sim._state().sawMiss,
+     '   ' + mode + '：找得到與找不到都遇過了');
+  ok(targets.length >= 1 && targets.length <= 6,
+     '   ' + mode + '：走了 ' + (targets.length + 1) + ' 題就過關（不必一直換）');
+  host.remove();
+});
+
+section('★ 換一題要真的換');
+['sequential', 'binary'].forEach(mode => {
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const sim = S.mount(host, { mode: mode, course: 'hit' });
+  const seen = new Set([sim._state().target]);
+  for (let i = 0; i < 10; i++) {
+    host.querySelector('#qs-new').onclick();
+    seen.add(sim._state().target);
+  }
+  ok(seen.size >= 3, '★ ' + mode + '：按十次換一題，出了 ' + seen.size + ' 種不同的目標');
+  host.remove();
+});
+
+section('★ 第二題就是課本的另一半');
+{
+  /* 課本用同一列資料示範兩次（找得到／找不到）——
+     學生按第一次「換一題」時，就該看到書上的第二個例子。 */
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const sim = S.mount(host, { mode: 'sequential', course: 'hit' });
+  is(sim._state().target, 10, '第 1 題是課本 p.204 的找 10');
+  host.querySelector('#qs-new').onclick();
+  is(sim._state().target, 9, '★ 第 2 題是課本 p.205 的找 9（同一列資料）');
+  is(sim._state().items, [8, 5, 10, 1, 7], '   資料列沒變，只換目標');
+  host.remove();
+
+  const h2 = document.createElement('div');
+  document.body.appendChild(h2);
+  const s2 = S.mount(h2, { mode: 'binary', course: 'hit' });
+  is(s2._state().target, 67, '二元第 1 題是找 67');
+  h2.querySelector('#qs-new').onclick();
+  is(s2._state().target, 40, '★ 二元第 2 題是找 40（課本 p.210）');
+  h2.remove();
+}
+
 /* ═══ ★ 逐步示範（按下一步慢慢看）═══════════════════════
    ⚠️ 示範是**求助**，不是開場。
       一開場就放示範的話，學生會照著示範按 —— 那就沒有在想了。
