@@ -76,6 +76,7 @@
 <script src="../shared/sortlab.js"></script>
 <script src="../shared/searchlab.js"></script>
 <script src="../shared/logiclab.js"></script>
+<script src="../shared/minlab.js"></script>
 <script src="../shared/answer.js"></script>
 <script src="../shared/quiz.js"></script>
 <script src="content/blocks.js"></script>
@@ -149,6 +150,7 @@ function labMod(lab) {
   if (lab.kind === 'search') return window.SEARCHLAB || null;
   if (lab.kind === 'sort')   return window.SORTLAB   || null;
   if (lab.kind === 'logic')  return window.LOGICLAB  || null;
+  if (lab.kind === 'min')    return window.MINLAB    || null;
   return null;
 }
 

@@ -62,22 +62,33 @@
    */
   function certificate(level, opts) {
     opts = opts || {};
+    /* ★ single：這個實驗室的挑戰**只有一關**（目前是第 5 關的找最小值）。
+       ⚠️ 不分開處理的話會出兩個錯，而且都是靜默的：
+          ① 星星畫成 ★☆☆ —— 學生以為自己只拿了三分之一，實際上他全過了
+          ② 結尾寫「再挑戰下一關，就能把證書升級」——
+             叫他去找一個**不存在**的下一關，他會在畫面上找很久
+       ⇒ single 的時候只畫一顆星、只列那一關，文案也換掉。 */
+    var single = !!opts.single;
+    var list = single ? [LEVELS[0]] : LEVELS;
     var stars = '';
-    for (var i = 1; i <= 3; i++) stars += (i <= level ? '★' : '☆');
-    var rank = ['', '銅', '銀', '金'][level] || '';
+    if (single) stars = '★';
+    else for (var i = 1; i <= 3; i++) stars += (i <= level ? '★' : '☆');
+    var rank = single ? '' : (['', '銅', '銀', '金'][level] || '');
     return '<div class="lt-cert lt-r' + level + '">' +
       '<div class="lt-stars">' + stars + '</div>' +
-      '<div class="lt-rank">' + rank + '牌　' + esc(opts.title || '演算法挑戰') + '</div>' +
-      '<ul class="lt-list">' + LEVELS.map(function (L) {
+      '<div class="lt-rank">' + rank + (single ? '' : '牌　') + esc(opts.title || '演算法挑戰') + '</div>' +
+      '<ul class="lt-list">' + list.map(function (L) {
         var got = L.n <= level;
         return '<li class="' + (got ? 'got' : '') + '">' +
                (got ? '✔ ' : '○ ') + L.icon + ' ' + L.name +
                '<span>' + L.why + '</span></li>';
       }).join('') + '</ul>' +
-      (level < 3
-        ? '<div class="lt-more">再挑戰下一關，就能把證書升級。</div>'
-        : '<div class="lt-more">三關全過 —— 這個演算法你是真的懂了。</div>') +
-      '</div>';
+      (single
+        ? '<div class="lt-more">這一關是前導關，挑戰只有這一題 —— 過了就是過了。</div>'
+        : (level < 3
+            ? '<div class="lt-more">再挑戰下一關，就能把證書升級。</div>'
+            : '<div class="lt-more">三關全過 —— 這個演算法你是真的懂了。</div>'))
+      + '</div>';
   }
 
   var css = [
