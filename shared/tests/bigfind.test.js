@@ -106,9 +106,27 @@ section('★★ 畫成一整片站著的人（不是一格一個數字）');
        學生才會像在人群裡找人：先用看的掃，然後發現
        「有幾個好像差不多高，我分不出來」—— 那個瞬間就是這一關。 */
   const v = mount({ big: true });
+  /* ⚠️⚠️ 一百個人**一定要一屏塞得下**（老師 2026-08-17：
+     「不在同一個頁面內顯示全部的人，不好選擇與比對」）。
+     ★ 這一關的動作就是「掃一遍、比一比」——
+       要捲動的話學生看不到全部，也就無從比較。
+     ⇒ 20 欄 × 5 排，而不是 10 欄 × 10 排。 */
   const rows = v.host.querySelectorAll('.bf-row');
-  ok(rows.length === 10, '★ 排成 10 排（' + rows.length + '）');
-  ok(rows[0].querySelectorAll('[data-i]').length === 10, '   每排 10 個人');
+  ok(rows.length === 5, '★★ 只排 5 排（' + rows.length + '）—— 一屏看得完');
+  ok(rows[0].querySelectorAll('[data-i]').length === 20, '★ 每排 20 個人');
+
+  /* ⚠️ 每排幾個人是寫在兩個地方的：JS 的 per 和 CSS 的 grid-template-columns。
+     對不上的話最後一排會歪掉，而且沒有人看得出為什麼。 */
+  const src0 = read('shared/bigfind.js');
+  ok(/var per = 20;/.test(src0) && /repeat\(20,minmax/.test(src0),
+     '★★ JS 的每排人數和 CSS 的欄數一致（都是 20）');
+
+  /* 總高度要壓在一屏內：最高的人 + 數字 + 間距，乘以 5 排 */
+  const tallest = Math.max(...[...v.host.querySelectorAll('.bf-body')]
+    .map(b => Number((b.getAttribute('style') || '').replace(/\D/g, ''))));
+  const rowH = tallest + 11 + 10 + 8;          // 身體 + 頭 + 數字 + 間距
+  ok(rowH * 5 < 420,
+     '★★ 五排總高約 ' + (rowH * 5) + 'px —— 壓在一屏內（不必捲動）');
 
   const one = v.cells()[0];
   ok(!!one.querySelector('.bf-hd'), '★ 每個人有頭');
@@ -271,7 +289,7 @@ section('★★ 每次進來要不一樣，而且第 ③ 題要換一批人');
      '★ 最矮的落點夠散（40 次落在 ' + spots.size + ' 個不同位置）');
 
   /* ③★★ 走完第 ①② 題進到第 ③ 題時，人群要換掉 */
-  let same = 0;
+  let changed = 0;
   for (let k = 0; k < 15; k++) {
     const v = mount();
     const before = v.s().items.map(p => p.h).join(',');
@@ -282,12 +300,16 @@ section('★★ 每次進來要不一樣，而且第 ③ 題要換一批人');
     v.cells()[B.minOf(s2.items, s2.doneSet)].onclick();
     v.btn(/下一題/).onclick();
     const after = v.s().items.map(p => p.h).join(',');
-    const a3 = B.minOf(v.s().items);
-    if (before === after || a1 === a3) same++;
+    if (before !== after) changed++;
     v.done();
   }
-  ok(same === 0,
-     '★★ 第 ③ 題**換了一批人**（15 次裡有 ' + same + ' 次沒換）—— ' +
+  /* ⚠️ 要釘的是「**人群換掉了**」，不是「答案不在同一格」。
+     新的一群人，最矮的**剛好**又落在同一個位置的機率是 1/100 ——
+     那是巧合，不是 bug。把它算成失敗的話，
+     這條測試每七、八次就會無故紅一次。
+     ★ 會隨機紅的測試，紅的時候沒有人相信是真的壞了。 */
+  ok(changed === 15,
+     '★★ 第 ③ 題**每次都換一批人**（15 次裡換了 ' + changed + ' 次）—— ' +
      '不換的話計時量到的是記憶力');
 
   /* ④ 但第 ② 題**不該**換：它要沿用同一群人，

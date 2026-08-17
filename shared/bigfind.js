@@ -122,22 +122,33 @@
        ⚠️ 所以人形的高度一定要跟著身高變，不可以全部一樣高。 */
     '.bf-yard{background:linear-gradient(#f8fafc,#eef2ff);border:1px solid #e2e8f0;',
     '  border-radius:14px;padding:10px 8px 4px;margin-bottom:11px}',
-    '.bf-row{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));',
-    '  align-items:end;border-bottom:2px solid #cbd5e1;margin-bottom:9px;padding-bottom:2px}',
-    '@media (max-width:560px){.bf-row{grid-template-columns:repeat(5,minmax(0,1fr))}}',
+    /* ⚠️⚠️ 一百個人**一定要一屏塞得下**。
+       2026-08-17 老師：「不在同一個頁面內顯示全部的人，不好選擇與比對」。
+       ★ 這一關的動作就是「掃一遍、比一比」——
+         要捲動的話，學生看不到全部，也就無從比較；
+         而且捲上捲下更容易漏看，那不是這一關想製造的困難。
+       ⇒ 20 欄 × 5 排。一排 20 個人在 4xl 寬度下每人約 40px，
+         放得下 11～15px 的人形，總高度約 300px，一屏看得完。
+       ⚠️ 手機窄，20 欄會擠成一條線 —— 改 10 欄 10 排（那時本來就要捲）。 */
+    '.bf-row{display:grid;grid-template-columns:repeat(20,minmax(0,1fr));',
+    '  align-items:end;border-bottom:2px solid #cbd5e1;margin-bottom:6px;padding-bottom:2px}',
+    '@media (max-width:640px){.bf-row{grid-template-columns:repeat(10,minmax(0,1fr))}}',
     /* 一個人：由下往上長，站在那條地面線上 */
     '.bf-p{position:relative;display:flex;flex-direction:column;align-items:center;',
     '  justify-content:flex-end;background:none;border:0;padding:0 0 2px;cursor:pointer;',
     '  font-family:inherit;transition:.12s}',
     '.bf-p:hover{transform:translateY(-3px)}',
-    '.bf-p .ht{font-size:9.5px;font-weight:900;color:#94a3b8;margin-bottom:2px;',
+    /* 身高數字要小 —— 20 欄的格子只有 40px 寬，太大就疊在一起。
+       ⚠️ 但不可以拿掉：老師要求「頭上有身高顯示」，
+          而且沒有數字的話「差不多高的兩個」就真的分不出來了。 */
+    '.bf-p .ht{font-size:8.5px;font-weight:900;color:#94a3b8;margin-bottom:1px;',
     '  white-space:nowrap;line-height:1}',
     '.bf-p:hover .ht{color:#4338ca}',
     /* ⚠️ 叫 .bf-hd 不叫 .bf-head —— .bf-head 已經是上面**步驟列**的容器。
        撞名的話步驟列會被套上 9×9 的圓形，整條列直接壞掉，
        而 jsdom 不套 CSS，測試照樣全綠。 */
-    '.bf-hd{width:9px;height:9px;border-radius:50%;background:#94a3b8;transition:.12s}',
-    '.bf-body{width:11px;border-radius:5px 5px 2px 2px;background:#cbd5e1;',
+    '.bf-hd{width:8px;height:8px;border-radius:50%;background:#94a3b8;transition:.12s}',
+    '.bf-body{width:10px;border-radius:5px 5px 2px 2px;background:#cbd5e1;',
     '  margin-top:1px;transition:.12s}',
     '.bf-p:hover .bf-hd,.bf-p:hover .bf-body{background:#6366f1}',
     /* 狀態。宣告順序：done → scan → best → bad/good（後面的蓋前面的） */
@@ -174,10 +185,10 @@
     '  padding:14px 16px;font-size:14px;line-height:1.95;color:#065f46}',
     /* 放大版（關卡頁的那一步）：人變大、數字看得清楚。
        ⚠️ 不可以沿用方格版那組 min-height／padding —— 那會把人形壓扁。 */
-    '.bf-big .bf-hd{width:12px;height:12px}',
-    '.bf-big .bf-body{width:15px}',
-    '.bf-big .bf-p .ht{font-size:11.5px}',
-    '.bf-big .bf-row{margin-bottom:12px}',
+    '.bf-big .bf-hd{width:10px;height:10px}',
+    '.bf-big .bf-body{width:13px}',
+    '.bf-big .bf-p .ht{font-size:10px}',
+    '.bf-big .bf-row{margin-bottom:8px}',
     '.bf-big .bf-tip{font-size:14.5px;padding:14px 17px}',
     '.bf-big .bf-msg{font-size:14.5px}'
   ].join('');
@@ -264,19 +275,28 @@
      *   ⚠️ 比例不能太小，不然一百個人看起來一樣高，
      *      「用看的分不出來」就變成系統的問題，不是學生的體驗。
      */
+    /**
+     * 身高 → 人形高度。
+     * ⚠️ 這個範圍是**被總高度綁住**的：5 排要塞進一屏（約 300px），
+     *    所以一排最多約 55px（人 + 數字 + 間距）。
+     * ★ 但差距不能壓太扁 —— 16→46px（差 30px）是還看得出高矮的下限。
+     *   再小就變成「只能讀數字」，那又回到算術題了。
+     */
     function figH(h) {
-      var base = 22 + (h - 120) * 0.377;          // 120cm → 22px、199.5cm → 52px
-      return Math.round(base * (opts.big ? 1.35 : 1));
+      var base = 16 + (h - 120) * 0.377;          // 120cm → 16px、199.5cm → 46px
+      return Math.round(base * (opts.big ? 1.12 : 1));
     }
     /* 頭的高度（含下面那 1px 間距）。放大版的頭也比較大 ——
        ⚠️ 不扣掉頭的話，身高愈高的人整體會多長出一顆頭的距離，
           畫出來的比例就不是身高的比例了。 */
-    function headH() { return opts.big ? 13 : 10; }
+    function headH() { return opts.big ? 11 : 9; }
 
     function grid() {
       var box = host.querySelector('#bf-yard');
       if (!box) return;
-      var per = 10;                       // 一排幾個人
+      /* ⚠️ 要和 CSS 的 grid-template-columns 一致（20 欄）。
+         對不上的話最後一排會歪掉，而且沒有人看得出為什麼。 */
+      var per = 20;                       // 一排幾個人 → 100 人剛好 5 排
       var rows = [];
       for (var r = 0; r * per < items.length; r++) {
         rows.push(items.slice(r * per, (r + 1) * per).map(function (p) {
