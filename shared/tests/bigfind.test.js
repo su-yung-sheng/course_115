@@ -97,6 +97,51 @@ function mount(opts) {
            done: () => { sim.destroy(); host.remove(); } };
 }
 
+section('★★ 畫成一整片站著的人（不是一格一個數字）');
+{
+  /* ⚠️ 老師 2026-08-17：「太沒有遊戲性了，有很多人形圖案、站著的畫面，
+     頭上有身高顯示」。
+     ★ 這不只是好看：一格一個數字會變成「找最小的數字」——
+       那是算術題。畫成人、而且**身高真的畫出來**，
+       學生才會像在人群裡找人：先用看的掃，然後發現
+       「有幾個好像差不多高，我分不出來」—— 那個瞬間就是這一關。 */
+  const v = mount({ big: true });
+  const rows = v.host.querySelectorAll('.bf-row');
+  ok(rows.length === 10, '★ 排成 10 排（' + rows.length + '）');
+  ok(rows[0].querySelectorAll('[data-i]').length === 10, '   每排 10 個人');
+
+  const one = v.cells()[0];
+  ok(!!one.querySelector('.bf-hd'), '★ 每個人有頭');
+  ok(!!one.querySelector('.bf-body'), '★ 有身體');
+  ok(/^\d/.test(one.querySelector('.ht').textContent), '★★ 頭上有身高數字');
+
+  /* ★★ 最要緊的一條：人形高度要**跟著身高變**。
+     全部一樣高的話，畫成人形就只是裝飾，
+     「用看的分不出來」會變成系統的問題，不是學生的體驗。 */
+  const st = v.s();
+  const lo = st.items.reduce((a, b) => (a.h < b.h ? a : b));
+  const hi = st.items.reduce((a, b) => (a.h > b.h ? a : b));
+  const px = i => Number((v.cells()[i].querySelector('.bf-body')
+                          .getAttribute('style') || '').replace(/\D/g, ''));
+  ok(px(hi.id) > px(lo.id),
+     '★★ 最高的人畫得比最矮的高（' + px(hi.id) + 'px > ' + px(lo.id) + 'px）');
+  ok(px(hi.id) - px(lo.id) >= 25,
+     '★ 而且差距夠明顯（' + (px(hi.id) - px(lo.id)) + 'px）—— 差幾像素等於沒畫');
+
+  /* 中間值也要落在中間，不是只有兩端對 */
+  const mid = st.items.slice().sort((a, b) => a.h - b.h)[50];
+  ok(px(mid.id) > px(lo.id) && px(mid.id) < px(hi.id),
+     '★ 中等身高的人畫出來也在中間（比例是連續的，不是分三級）');
+
+  /* ⚠️ .bf-head 是**步驟列**的容器，人的頭一定要叫別的名字。
+     撞名的話步驟列會被套上 9×9 圓形整條壞掉 ——
+     而 jsdom 不套 CSS，測試照樣全綠。 */
+  const src = read('shared/bigfind.js');
+  ok(!/'\.bf-p:hover \.bf-head/.test(src) && /\.bf-hd\{/.test(src),
+     '★★ 人的頭叫 .bf-hd，沒有和步驟列的 .bf-head 撞名');
+  v.done();
+}
+
 section('★★ 第 1 題：找最矮的');
 {
   const v = mount();

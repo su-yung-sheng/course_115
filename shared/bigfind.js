@@ -112,25 +112,49 @@
     '.bf-step.on{background:#6366f1;color:#fff}',
     '.bf-step.ok{background:#dcfce7;color:#166534}',
     '.bf-timer{margin-left:auto;font-size:13px;font-weight:900;color:#6366f1}',
-    /* 100 個人排成網格。
-       ⚠️ 一定要**擠**：排得鬆的話一眼就掃完，那就沒有痛感了。
-          但格子不能小於 32px —— 電腦教室有觸控螢幕，比手指小就點不到。 */
-    '.bf-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;',
-    '  margin-bottom:11px}',
-    '@media (max-width:560px){.bf-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}',
-    '.bf-p{position:relative;min-height:38px;padding:5px 2px;border:1px solid #e2e8f0;',
-    '  background:#fff;border-radius:7px;font-family:inherit;cursor:pointer;',
-    '  font-size:11.5px;font-weight:700;color:#475569;transition:.1s;line-height:1.25}',
-    '.bf-p:hover{border-color:#6366f1;background:#eef2ff;transform:scale(1.12);z-index:2}',
-    '.bf-p .no{display:block;font-size:9px;color:#cbd5e1;font-weight:900}',
-    /* 宣告順序：done（已排序）→ scan（電腦掃到）→ best（電腦手上最矮的）→ bad/good
-       ⚠️ 反過來的話後面的狀態會被前面的蓋掉，畫面上看不出電腦在做什麼。 */
-    '.bf-p.done{background:#f1f5f9;border-color:#cbd5e1;color:#94a3b8}',
-    '.bf-p.done .no{color:#e2e8f0}',
-    '.bf-p.scan{background:#e0e7ff;border-color:#6366f1}',
-    '.bf-p.best{background:#fef3c7;border-color:#f59e0b;color:#92400e}',
-    '.bf-p.bad{background:#fee2e2;border-color:#ef4444;color:#991b1b}',
-    '.bf-p.good{background:#dcfce7;border-color:#22c55e;color:#166534}',
+    /* ── 一整片站著的人 ─────────────────────────────
+       ★ 為什麼要畫成人形而不是一格一個數字
+         數字方格會變成「找最小的數字」——那是算術題，不是這一關要教的事。
+         畫成人，而且**身高真的畫出來**（矮的人看起來就是比較矮），
+         學生才會像真的在人群裡找人：先用看的掃一遍，
+         然後發現「有幾個好像差不多高，我分不出來」——
+         那個瞬間就是這一關的全部。
+       ⚠️ 所以人形的高度一定要跟著身高變，不可以全部一樣高。 */
+    '.bf-yard{background:linear-gradient(#f8fafc,#eef2ff);border:1px solid #e2e8f0;',
+    '  border-radius:14px;padding:10px 8px 4px;margin-bottom:11px}',
+    '.bf-row{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));',
+    '  align-items:end;border-bottom:2px solid #cbd5e1;margin-bottom:9px;padding-bottom:2px}',
+    '@media (max-width:560px){.bf-row{grid-template-columns:repeat(5,minmax(0,1fr))}}',
+    /* 一個人：由下往上長，站在那條地面線上 */
+    '.bf-p{position:relative;display:flex;flex-direction:column;align-items:center;',
+    '  justify-content:flex-end;background:none;border:0;padding:0 0 2px;cursor:pointer;',
+    '  font-family:inherit;transition:.12s}',
+    '.bf-p:hover{transform:translateY(-3px)}',
+    '.bf-p .ht{font-size:9.5px;font-weight:900;color:#94a3b8;margin-bottom:2px;',
+    '  white-space:nowrap;line-height:1}',
+    '.bf-p:hover .ht{color:#4338ca}',
+    /* ⚠️ 叫 .bf-hd 不叫 .bf-head —— .bf-head 已經是上面**步驟列**的容器。
+       撞名的話步驟列會被套上 9×9 的圓形，整條列直接壞掉，
+       而 jsdom 不套 CSS，測試照樣全綠。 */
+    '.bf-hd{width:9px;height:9px;border-radius:50%;background:#94a3b8;transition:.12s}',
+    '.bf-body{width:11px;border-radius:5px 5px 2px 2px;background:#cbd5e1;',
+    '  margin-top:1px;transition:.12s}',
+    '.bf-p:hover .bf-hd,.bf-p:hover .bf-body{background:#6366f1}',
+    /* 狀態。宣告順序：done → scan → best → bad/good（後面的蓋前面的） */
+    '.bf-p.done .bf-hd,.bf-p.done .bf-body{background:#e2e8f0}',
+    '.bf-p.done .ht{color:#e2e8f0}',
+    '.bf-p.scan .bf-hd,.bf-p.scan .bf-body{background:#6366f1}',
+    '.bf-p.scan .ht{color:#4338ca}',
+    '.bf-p.best .bf-hd,.bf-p.best .bf-body{background:#f59e0b}',
+    '.bf-p.best .ht{color:#b45309}',
+    '.bf-p.bad .bf-hd,.bf-p.bad .bf-body{background:#ef4444}',
+    '.bf-p.bad .ht{color:#991b1b}',
+    '.bf-p.good .bf-hd,.bf-p.good .bf-body{background:#22c55e}',
+    '.bf-p.good .ht{color:#166534}',
+    /* 已排好的人頭上插一支小旗子 */
+    '.bf-p .flag{position:absolute;top:-2px;font-size:9px}',
+    /* 電腦手上「目前最矮的」戴皇冠 —— 那一頂就是變數 */
+    '.bf-p .crown{position:absolute;top:-3px;font-size:10px}',
     '.bf-msg{font-size:13.5px;line-height:1.85;padding:10px 13px;border-radius:10px;margin-bottom:10px}',
     '.bf-msg.good{background:#dcfce7;color:#166534}',
     '.bf-msg.bad{background:#fee2e2;color:#991b1b}',
@@ -148,7 +172,12 @@
     '.bf-race .vl{font-size:20px;font-weight:900;color:#4338ca}',
     '.bf-done{background:#ecfdf5;border:2px solid #6ee7b7;border-radius:14px;',
     '  padding:14px 16px;font-size:14px;line-height:1.95;color:#065f46}',
-    '.bf-big .bf-p{min-height:46px;font-size:13px;padding:7px 3px}',
+    /* 放大版（關卡頁的那一步）：人變大、數字看得清楚。
+       ⚠️ 不可以沿用方格版那組 min-height／padding —— 那會把人形壓扁。 */
+    '.bf-big .bf-hd{width:12px;height:12px}',
+    '.bf-big .bf-body{width:15px}',
+    '.bf-big .bf-p .ht{font-size:11.5px}',
+    '.bf-big .bf-row{margin-bottom:12px}',
     '.bf-big .bf-tip{font-size:14.5px;padding:14px 17px}',
     '.bf-big .bf-msg{font-size:14.5px}'
   ].join('');
@@ -190,7 +219,7 @@
         tipHTML() +
         headHTML() +
         (task().key === 'race' ? raceHTML() : '') +
-        '<div class="bf-grid" id="bf-grid"></div>' +
+        '<div class="bf-yard" id="bf-yard"></div>' +
         (msg ? '<div class="bf-msg ' + kind + '">' + msg + '</div>' : '') +
         (allDone() ? doneHTML() : '') +
         barHTML();
@@ -229,20 +258,48 @@
         '</div>';
     }
 
+    /**
+     * 畫出一整片站著的人。
+     * ★ 身高 → 人形高度：120 公分畫 22px、199.5 公分畫 52px。
+     *   ⚠️ 比例不能太小，不然一百個人看起來一樣高，
+     *      「用看的分不出來」就變成系統的問題，不是學生的體驗。
+     */
+    function figH(h) {
+      var base = 22 + (h - 120) * 0.377;          // 120cm → 22px、199.5cm → 52px
+      return Math.round(base * (opts.big ? 1.35 : 1));
+    }
+    /* 頭的高度（含下面那 1px 間距）。放大版的頭也比較大 ——
+       ⚠️ 不扣掉頭的話，身高愈高的人整體會多長出一顆頭的距離，
+          畫出來的比例就不是身高的比例了。 */
+    function headH() { return opts.big ? 13 : 10; }
+
     function grid() {
-      var box = host.querySelector('#bf-grid');
+      var box = host.querySelector('#bf-yard');
       if (!box) return;
-      box.innerHTML = items.map(function (p, i) {
-        var cls = 'bf-p';
-        if (task().key === 'next' && doneSet[p.id]) cls += ' done';
-        if (i === autoAt) cls += ' scan';
-        if (i === autoBest) cls += ' best';
-        if (mark[i] === 'bad') cls += ' bad';
-        if (mark[i] === 'good') cls += ' good';
-        return '<button class="' + cls + '" data-i="' + i + '">' +
-               '<span class="no">' + (i + 1) + '</span>' +
-               (task().key === 'next' && doneSet[p.id] ? '✔ ' : '') +
-               p.h + '</button>';
+      var per = 10;                       // 一排幾個人
+      var rows = [];
+      for (var r = 0; r * per < items.length; r++) {
+        rows.push(items.slice(r * per, (r + 1) * per).map(function (p) {
+          var i = p.id;
+          var cls = 'bf-p';
+          if (task().key === 'next' && doneSet[p.id]) cls += ' done';
+          if (i === autoAt) cls += ' scan';
+          if (i === autoBest) cls += ' best';
+          if (mark[i] === 'bad') cls += ' bad';
+          if (mark[i] === 'good') cls += ' good';
+          var bh = Math.max(6, figH(p.h) - headH());
+          return '<button class="' + cls + '" data-i="' + i + '" ' +
+                 'title="第 ' + (i + 1) + ' 個｜' + p.h + ' 公分">' +
+                 (task().key === 'next' && doneSet[p.id] ? '<span class="flag">🚩</span>' : '') +
+                 (i === autoBest ? '<span class="crown">👑</span>' : '') +
+                 '<span class="ht">' + p.h + '</span>' +
+                 '<span class="bf-hd"></span>' +
+                 '<span class="bf-body" style="height:' + bh + 'px"></span>' +
+                 '</button>';
+        }).join(''));
+      }
+      box.innerHTML = rows.map(function (r) {
+        return '<div class="bf-row">' + r + '</div>';
       }).join('');
       [].forEach.call(box.querySelectorAll('[data-i]'), function (el) {
         el.onclick = function () { tap(Number(el.dataset.i)); };
