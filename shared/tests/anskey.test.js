@@ -141,6 +141,36 @@ section('★★ 複製的每一條出口都要擋到');
      '★★ 沒有用 user-select:none（那會讓螢幕朗讀器一起失效）');
 }
 
+section('★★ 題庫不可以整批留在 window 上');
+{
+  /* ★ 老師 2026-08-17：「還有什麼可能的漏洞？」
+     擋複製擋的是一題一題，但題庫本來整份掛在 window ——
+     Console 打一行 QUIZ_CONTENT（或 QUIZ.content）就是 370 題一次帶走。
+     ⚠️ 這一條擋的是「考試當下順手一行」，
+        **不是**「拿不到題庫」——content/*.js 是公開檔案，
+        view-source 或直接開 GitHub 都讀得到（repo 是公開的）。 */
+  const src = read('shared/quiz-engine.js').replace(/\/\*[\s\S]*?\*\//g, ' ');
+  ok(/delete window\.QUIZ_CONTENT/.test(src),
+     '★★ 引擎讀完就把 window.QUIZ_CONTENT 刪掉');
+  ok(!/content:\s*C\b/.test(src),
+     '★★ window.QUIZ 沒有再把整份題庫端出去（content: C）');
+  ok(!/nodes:\s*NODES/.test(src),
+     '★★ 也沒有端出 nodes（那是同一份題目換個名字）');
+
+  /* 真的跑一次：把引擎載進一個假的 window，看題庫還在不在。
+     ⚠️ 引擎會去動 DOM，所以只驗到「刪掉那一步」就好 —— 用最小的替身。 */
+  const w = {
+    QUIZ_CONTENT: { moduleId: 'x', chapters: [] },
+    CONFIG: {}, document: null
+  };
+  try {
+    new Function('window', read('shared/quiz-engine.js'))(w);
+  } catch (e) { /* 後面一定會因為沒有 DOM 而中斷，那不影響這一條 */ }
+  ok(w.QUIZ_CONTENT === undefined,
+     '★★ 載入之後 window.QUIZ_CONTENT 真的不見了（實得 ' +
+     (w.QUIZ_CONTENT === undefined ? 'undefined' : '還在') + '）');
+}
+
 section('★★ 老師還看得到答案');
 {
   /* ⚠️ 把答案藏起來之後，教師端的題目統計頁也會看不到正確選項 ——

@@ -24,6 +24,18 @@
   var C = window.QUIZ_CONTENT;
   if (!C) { console.error('[quiz-engine] 找不到 window.QUIZ_CONTENT，請先載入內容資料檔'); return; }
 
+  /* ★★ 讀完就把它從 window 上拿掉（老師 2026-08-17 問「還有什麼漏洞」）。
+     ⚠️ 原本題庫掛在全域，學生在 Console 打一行 `QUIZ_CONTENT`，
+        370 題一次全部帶走 —— 擋複製擋的是一題一題，這裡是整批。
+     ★ 拿掉之後題目只活在這個閉包裡，Console 讀不到。
+     ⚠️ 但這**不是**把題庫藏起來了：content/*.js 本身還是公開的檔案，
+        view-source 或直接開 GitHub 都拿得到（repo 是公開的）。
+        這一步擋的是「在考試當下順手一行帶走」，不是「拿不到題庫」。
+     ⚠️ quiz-firebase.js 是 module，會在這支之後才執行 ——
+        它只用 window.QUIZ 檢查引擎在不在，不讀 QUIZ_CONTENT（已確認）。 */
+  try { delete window.QUIZ_CONTENT; }
+  catch (e) { window.QUIZ_CONTENT = undefined; }
+
   // ── 預設值：內容資料沒寫的就用這些 ────────────────────────
   var TARGET    = C.target   || 10;   // 目標連對題數
   var MAX_WRONG = C.maxWrong || 20;   // 容錯上限，超過就跳學習警示單
@@ -643,8 +655,12 @@
      7. 對外介面：給 quiz-firebase.js 用
      =================================================================== */
   window.QUIZ = {
-    content: C,
-    nodes: NODES,
+    /* ⚠️ 這裡**刻意不再暴露 content 與 nodes**。
+       原本寫著 content: C, nodes: NODES —— 那等於把剛才 delete 掉的
+       題庫又從另一個名字端出去（Console 打 QUIZ.content 一樣整批帶走）。
+       ★ 沒有任何呼叫端在用它們（quiz-firebase 只檢查 window.QUIZ 在不在）。
+         真的有人要用，請傳「要用的那一小塊」，不要整份。 */
+    moduleId: C.moduleId,
     // 身分確定後呼叫（快取或名冊都走這裡）
     setUser: function (me) {
       if (!me) return;
