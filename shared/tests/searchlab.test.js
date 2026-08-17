@@ -355,13 +355,28 @@ section('★ 大比拼沒有挑戰，跑完就放行');
   const host = document.createElement('div');
   document.body.appendChild(host);
   let badge = 'x';
-  S.mount(host, { mode: 'compare', onPass: b => { badge = b; } });
-  S.SIZES.forEach(n => {
+  /* ⚠️ stepMs:0 是測試用的：賽跑同步跑完，不開六秒鐘的計時器。 */
+  S.mount(host, { mode: 'compare', stepMs: 0, onPass: b => { badge = b; } });
+  const runSize = n => {
     host.querySelector('[data-size="' + n + '"]').onclick();
     let g = 0;
     while (host.querySelector('[data-cut]') && g++ < 60) host.querySelector('[data-cut]').onclick();
-  });
-  is(badge, 0, '★ 大比拼跑完四種資料量就放行（徽章 0 —— 它沒有挑戰）');
+    /* ★ 2026-08-17 起還要看兩種搜尋比一場 ——
+       砍一半只要按 11 下，那是**快的那一邊**；
+       循序那 1024 次不看著它跑完，差距就只是表格上的一個數字。 */
+    const r = host.querySelector('[data-race]');
+    if (r) r.onclick();
+  };
+  /* 先砍完但不比賽跑 → 還不可以放行 */
+  host.querySelector('[data-size="13"]').onclick();
+  let g0 = 0;
+  while (host.querySelector('[data-cut]') && g0++ < 60) host.querySelector('[data-cut]').onclick();
+  ok(!!host.querySelector('[data-race]'), '★★ 砍完之後出現「讓兩種搜尋比一場」');
+  S.SIZES.forEach(runSize);
+  is(badge, 0, '★ 大比拼四種資料量都砍完＋都比過一場才放行（徽章 0 —— 它沒有挑戰）');
+  ok(/放慢/.test(host.textContent),
+     '★★ 畫面上講明動畫是放慢的（不然學生會以為電腦搜尋要跑好幾秒）');
+  ok(/比例是真的/.test(host.textContent), '　　但強調比例是真的');
   ok(!host.querySelector('.lt-box'), '   畫面上也沒有挑戰區');
   host.remove();
 }
@@ -600,9 +615,10 @@ section('★ 大比拼：四種資料量都要跑過');
   const host = document.createElement('div');
   document.body.appendChild(host);
   let done = 0;
-  const sim = S.mount(host, { mode: 'compare', onPass: () => { done++; } });
+  const sim = S.mount(host, { mode: 'compare', stepMs: 0, onPass: () => { done++; } });
   const size = n => host.querySelector('[data-size="' + n + '"]').onclick();
   const cutBtn = () => host.querySelector('[data-cut]');
+  const raceBtn = () => host.querySelector('[data-race]');
 
   ok(!!size, '四個資料量的按鈕都畫出來了');
   is(S.SIZES, [13, 50, 100, 1024], '★ 資料量含課本習題問過的 50 與 1024');
@@ -613,9 +629,15 @@ section('★ 大比拼：四種資料量都要跑過');
     while (cutBtn() && guard++ < 60) cutBtn().onclick();
     is(sim._state().table[n], S._worstBinary(n),
        n + ' 筆：學生按了 ' + sim._state().table[n] + ' 下，和算出來的一樣');
+    /* ★ 砍完還不算走過這一種資料量 —— 要看兩種搜尋比一場。
+       ⚠️ 那 11 下是「快的那一邊」；循序的 1024 次不看它跑完，
+          差距就只是表格上的一個數字（老師 2026-08-17 試跑時的原話：
+          「一直按下一步就過了，沒有體驗到數字的差距與時間成本」）。 */
+    is(done, 0, '   ' + n + ' 筆砍完了，但還沒比賽跑 → 不放行');
+    raceBtn().onclick();
     if (n !== 1024) is(done, 0, '   還沒跑完全部 → 不放行');
   });
-  is(done, 1, '★ 四種都跑完 → 放行');
+  is(done, 1, '★ 四種都砍完＋都比過一場 → 放行');
   is(host.querySelectorAll('.qs-tbl tr').length - 1, 4, '對照表累積了四列');
   ok(/1024/.test(host.querySelector('.qs-tbl').textContent) &&
      /11/.test(host.querySelector('.qs-tbl').textContent),
@@ -629,12 +651,68 @@ section('★ 大比拼：四種資料量都要跑過');
   const host = document.createElement('div');
   document.body.appendChild(host);
   let done = 0;
-  S.mount(host, { mode: 'compare', onPass: () => { done++; } });
+  S.mount(host, { mode: 'compare', stepMs: 0, onPass: () => { done++; } });
   host.querySelector('[data-size="13"]').onclick();
   let guard = 0;
   while (host.querySelector('[data-cut]') && guard++ < 60) host.querySelector('[data-cut]').onclick();
+  host.querySelector('[data-race]').onclick();
   is(done, 0, '★ 只跑 13 筆 → 不放行（差距不夠大，看不出重點）');
   ok(/還有/.test(host.querySelector('.qs-msg').innerHTML), '   而且要講還差哪幾個');
+  /* ★ 砍完卻沒比賽跑的時候，訊息要指名是哪一種資料量在等 */
+  const h2 = document.createElement('div');
+  document.body.appendChild(h2);
+  S.mount(h2, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  h2.querySelector('[data-size="100"]').onclick();
+  let g2 = 0;
+  while (h2.querySelector('[data-cut]') && g2++ < 60) h2.querySelector('[data-cut]').onclick();
+  ok(/比一場/.test(h2.textContent),
+     '★★ 砍完之後畫面上請他「讓兩種搜尋比一場」');
+  h2.remove();
+  host.remove();
+}
+
+section('★★ 賽跑：時間感是這一步唯一要給的東西');
+{
+  /* ★ 老師 2026-08-17 試跑的原話：
+       「目前只要一直按下一步就過了，沒有體驗到數字的差距與時間成本」
+     診斷：1024 筆按 11 下就結束 —— 學生體驗到的只有**快的那一邊**。
+     ⇒ 讓循序搜尋當場跑給他看，他要等。那個等待就是教學內容。 */
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const sim = S.mount(host, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  host.querySelector('[data-size="1024"]').onclick();
+  let g = 0;
+  while (host.querySelector('[data-cut]') && g++ < 60) host.querySelector('[data-cut]').onclick();
+  host.querySelector('[data-race]').onclick();
+
+  const t = host.textContent;
+  ok(/1024 \/ 1024 次/.test(t.replace(/\s+/g, ' ')) || /1024/.test(t),
+     '★ 循序那一條真的跑到 1024');
+  ok(/11 \/ 11 次/.test(t.replace(/\s+/g, ' ')) || /11/.test(t), '   二元那一條跑到 11');
+  ok(/差 <b>93<\/b> 倍|93/.test(host.innerHTML), '★★ 講出差幾倍（1024 對 11 是 93 倍）');
+  ok(/你等了多久/.test(t), '★★ 而且問他「你等了多久」—— 那才是這一步要留下的印象');
+  is(host.querySelectorAll('.qs-lane').length, 2, '兩條跑道都畫出來了');
+  is(host.querySelectorAll('.qs-lane .fill').length, 2, '   各有一條進度條');
+
+  /* ⚠️ 每一次比較放慢成 6ms：1024 次要等 6 秒。
+     那個數字是刻意的 —— 調快就沒有等待，也就沒有這一步。 */
+  const src = read('shared/searchlab.js');
+  const m = src.match(/var STEP_MS = \(opts\.stepMs != null\) \? Number\(opts\.stepMs\) : (\d+)/);
+  ok(!!m, '找得到每一步的毫秒數');
+  const ms = m ? Number(m[1]) : 0;
+  ok(ms >= 4, '★★ 放慢到 ' + ms + 'ms／次 —— 1024 筆要等 ' +
+     (1024 * ms / 1000).toFixed(1) + ' 秒（調太快就沒有「等待」這件事了）');
+  ok(1024 * ms / 1000 >= 3, '   最大那一次至少要等三秒以上');
+
+  /* ⚠️ 離開這一步要把計時器停掉，不然它會繼續跑並且畫到已經清空的畫面上 */
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  const iD = code.indexOf('destroy: function');
+  ok(iD > 0 && /clearInterval/.test(code.slice(iD, iD + 220)),
+     '★★ destroy 會停掉賽跑的計時器');
+  /* 換資料量也要收乾淨 */
+  const iS = code.indexOf('function startSize');
+  ok(iS > 0 && /clearInterval/.test(code.slice(iS, iS + 260)),
+     '★ 換資料量也會把上一輪的賽跑停掉');
   host.remove();
 }
 

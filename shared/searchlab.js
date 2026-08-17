@@ -427,6 +427,31 @@
     '.qs-pick button.ok{border-color:#86efac;background:#dcfce7;color:#166534}',
     '.qs-left{font-size:15px;font-weight:700;color:#155e75;margin-bottom:10px}',
     '.qs-left b{font-size:22px;color:#0e7490}',
+    /* ── 賽跑（老師 2026-08-17）────────────────────────────
+       ★ 為什麼要有這一段
+         原本這一步是「一直按『比一次砍一半』，按完四種資料量就過」。
+         1024 筆按 **11 下**就結束了 —— 學生體驗到的只有**快的那一邊**；
+         循序搜尋那 1024 次他一次都沒有經歷過，只是表格上的一個數字。
+         ⇒ 差距當然沒感覺。
+       ★ 所以讓循序搜尋**當場跑給他看**：計數器跳、進度條爬，而他要等。
+         那個等待就是這一步的教學內容。
+       ⚠️⚠️ 動畫的速度是**放慢過的**（真的電腦一秒可以比幾百萬次）。
+          畫面上一定要講出來，不然學生會以為電腦搜尋要跑好幾秒。
+          ★ 要強調的是：**兩邊的比例是真的**。 */
+    '.qs-race{margin-top:12px;background:#f8fafc;border:1px solid #e2e8f0;',
+    '  border-radius:12px;padding:11px 13px}',
+    '.qs-race .rh{font-size:12.5px;font-weight:900;color:#475569;margin-bottom:8px}',
+    '.qs-lane{margin-bottom:9px}',
+    '.qs-lane .nm{display:flex;justify-content:space-between;align-items:baseline;',
+    '  font-size:12.5px;font-weight:800;color:#334155;margin-bottom:3px}',
+    '.qs-lane .nm .ct{font-family:ui-monospace,monospace;font-size:13px}',
+    '.qs-lane .track{background:#e2e8f0;border-radius:7px;height:16px;overflow:hidden}',
+    '.qs-lane .fill{height:100%;border-radius:7px;transition:width .12s linear}',
+    '.qs-lane.seq .fill{background:#f59e0b}',
+    '.qs-lane.bin .fill{background:#06b6d4}',
+    '.qs-lane.done .nm{color:#166534}',
+    '.qs-race .note{font-size:11.5px;color:#94a3b8;line-height:1.7;margin-top:6px}',
+    '.qs-race .win{font-size:13.5px;line-height:1.85;color:#166534;font-weight:700;margin-top:7px}',
     '.qs-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}',
     '.qs-tbl th,.qs-tbl td{border:1px solid #e2e8f0;padding:6px 9px;text-align:center}',
     '.qs-tbl th{background:#f1f5f9;color:#475569;font-size:12px}',
@@ -524,6 +549,18 @@
     /* 大比拼用：目前選的資料量、還剩幾筆、按了幾下，還有已經跑完的紀錄。 */
     var sizes = opts.sizes || SIZES;
     var size = 0, left = 0, cuts = 0, table = {};
+    /* ── 賽跑的狀態 ────────────────────────────────
+       raceN：這一輪跑的是幾筆　raceSeq／raceBin：兩邊各比了幾次
+       raceOn：跑到哪一個階段（0＝還沒跑、1＝跑到一半、2＝跑完）
+       ⚠️ raced 記「哪幾種資料量的賽跑跑完了」—— 通過條件看它，
+          不是看 table（按完砍一半只算走了一半）。 */
+    var raceN = 0, raceSeq = 0, raceBin = 0, raceOn = 0, raceTimer = null;
+    var raced = {};
+    /* 每比一次停幾毫秒。★ 這個數字決定 1024 筆要等多久（1024×6ms ≈ 6 秒）。
+       ⚠️ 不要調到太快 —— 那個等待就是這一步要給的東西。
+       ⚠️ opts.stepMs = 0 是**測試用**的：0 就同步跑完，不開計時器。
+          （測試是同步寫的，等六秒鐘的計時器沒辦法驗。） */
+    var STEP_MS = (opts.stepMs != null) ? Number(opts.stepMs) : 6;
     /* ★ 要「找到一次」＋「找不到一次」才算通過。
        只找到過的學生，不會知道迴圈為什麼需要結束條件。 */
     var sawHit = false, sawMiss = false;
@@ -840,8 +877,75 @@
                '<div class="qs-side"><button data-cut="1">✂️ 比一次，砍掉一半</button></div>';
       } else {
         out += '<div class="qs-left">範圍空了 —— 二元搜尋最多比 <b>' + cuts + '</b> 次。</div>';
+        /* ★ 砍完之後不要就這樣結束：那 11 下太輕鬆了。
+           讓循序搜尋當場跑一次，看它要跑多久。 */
+        if (!raced[size]) {
+          out += raceOn
+            ? raceHtml()
+            : '<div class="qs-side"><button data-race="1">🏁 讓兩種搜尋比一場</button></div>' +
+              '<div class="qs-left" style="font-size:13px;font-weight:600;margin-top:8px">' +
+              '你按 <b>' + cuts + '</b> 下就砍完了。那循序搜尋呢？它要一格一格走 ——' +
+              '<b>看它跑一次</b>。</div>';
+        } else {
+          out += raceHtml();
+        }
       }
       return out + tableHtml();
+    }
+
+    /* ── 賽跑：同一批資料，兩種搜尋同時起跑 ──────────────
+       ⚠️ 二元那一邊幾乎瞬間結束，循序那一邊要爬很久 ——
+          **那個落差就是這一步唯一要給的東西**。
+       ⚠️ 不給「跳過」：跳過等於沒體驗。但小資料量（13 筆）本來就很快，
+          所以真正要等的只有 1024 那一次。 */
+    function raceHtml() {
+      var seqMax = worstSequential(raceN), binMax = table[raceN] || worstBinary(raceN);
+      var lane = function (cls, name, now, max) {
+        var pct = max ? Math.min(100, now / max * 100) : 0;
+        return '<div class="qs-lane ' + cls + (now >= max ? ' done' : '') + '">' +
+               '<div class="nm"><span>' + name + '</span>' +
+               '<span class="ct">' + now + ' / ' + max + ' 次' +
+               (now >= max ? '　✅' : '') + '</span></div>' +
+               '<div class="track"><div class="fill" style="width:' + pct + '%"></div></div></div>';
+      };
+      var out = '<div class="qs-race"><div class="rh">🏁 ' + raceN + ' 筆資料，最倒楣的情況</div>' +
+        lane('bin', '二元搜尋（每次砍一半）', raceBin, binMax) +
+        lane('seq', '循序搜尋（一個一個看）', raceSeq, seqMax);
+      if (raceOn === 2) {
+        out += '<div class="win">跑完了：循序 <b>' + seqMax + '</b> 次、二元 <b>' + binMax +
+               '</b> 次 —— 差 <b>' + Math.round(seqMax / binMax) + '</b> 倍。' +
+               '<br>你剛才按 ' + cuts + ' 下就結束了；循序那一條，你等了多久？</div>';
+      }
+      /* ⚠️⚠️ 這一句一定要在：不講的話學生會以為電腦搜尋真的要跑好幾秒。 */
+      out += '<div class="note">⚠️ 這裡把每一次比較放慢成 ' + STEP_MS +
+             ' 毫秒，你才看得到它在跑。真的電腦一秒可以比<b>幾百萬次</b> —— ' +
+             '但<b>兩邊的比例是真的</b>。</div>';
+      return out + '</div>';
+    }
+
+    function startRace() {
+      if (!size || raceTimer) return;
+      raceN = size; raceSeq = 0; raceBin = 0; raceOn = 1;
+      var seqMax = worstSequential(raceN), binMax = table[raceN] || worstBinary(raceN);
+      if (!STEP_MS) {                       // 測試用：直接跑完
+        raceSeq = seqMax; raceBin = binMax; raceOn = 2; raced[raceN] = true;
+        body(); maybePass(); return;
+      }
+      /* 二元那一邊比較次數少很多，所以它會先跑完 —— 這是刻意的。
+         ⚠️ 兩邊用同一個計時器：不然「同時起跑」這件事會不成立。 */
+      raceTimer = setInterval(function () {
+        if (raceSeq < seqMax) raceSeq++;
+        if (raceBin < binMax) raceBin++;
+        if (raceSeq >= seqMax && raceBin >= binMax) {
+          clearInterval(raceTimer); raceTimer = null;
+          raceOn = 2; raced[raceN] = true;
+          body();
+          maybePass();
+          return;
+        }
+        body();
+      }, STEP_MS);
+      body();
     }
 
     /* ★ 累積成一張表，讓差距自己長出來。
@@ -866,9 +970,16 @@
       [].forEach.call(b.querySelectorAll('[data-cut]'), function (el) {
         el.onclick = cut;
       });
+      [].forEach.call(b.querySelectorAll('[data-race]'), function (el) {
+        el.onclick = startRace;
+      });
     }
 
     function startSize(n) {
+      /* ⚠️ 換資料量要把上一輪的賽跑收乾淨 ——
+         計時器沒清掉的話，它會繼續在背景跑並且畫到新的畫面上。 */
+      if (raceTimer) { clearInterval(raceTimer); raceTimer = null; }
+      raceOn = 0; raceSeq = 0; raceBin = 0;
       size = n; left = n; cuts = 0;
       body();
       say('bad', '假設最倒楣的情況：目標在最後才找到，或根本不在裡面。' +
@@ -1074,10 +1185,18 @@
               學生會覺得「好像也沒差多少」。
               一定要走到最大那一個，1024 對 11 才有感覺，
               而那正是這一關存在的理由。 */
-        var miss = sizes.filter(function (n) { return !table[n]; });
+        /* ⚠️⚠️ 2026-08-17 改：條件從「砍完」改成「賽跑也跑完」。
+           老師試跑時說「一直按下一步就過了，沒有體驗到差距」——
+           原因就在這裡：砍一半只要按 11 下，那是**快的那一邊**，
+           而循序搜尋那 1024 次學生一次都沒經歷過。
+           ⇒ 要看著循序跑完一次才算走過這一種資料量。 */
+        var miss = sizes.filter(function (n) { return !raced[n]; });
         if (miss.length) {
-          say2('還有 ' + miss.join('、') + ' 筆沒跑。' +
-               '資料愈多差距愈大 —— 跑到最大那一個才看得出來。');
+          var cut0 = sizes.filter(function (n) { return table[n] && !raced[n]; });
+          say2(cut0.length
+            ? ('' + cut0[0] + ' 筆你砍完了，但還沒看它們比一場 —— 按「🏁 讓兩種搜尋比一場」。')
+            : ('還有 ' + miss.join('、') + ' 筆沒跑。' +
+               '資料愈多差距愈大 —— 跑到最大那一個才看得出來。'));
           return;
         }
         openTest();
@@ -1129,7 +1248,12 @@
     }
 
     return {
-      destroy: function () { host.innerHTML = ''; },
+      /* ⚠️ 賽跑的計時器一定要停：離開這一步之後它還會繼續跑，
+         而且會去畫一個已經被清空的畫面。 */
+      destroy: function () {
+        if (raceTimer) { clearInterval(raceTimer); raceTimer = null; }
+        host.innerHTML = '';
+      },
       _state: function () {
         return { items: items, target: target, next: next, tried: tried,
                  lo: lo, hi: hi, phase: phase, mid: mid,
@@ -1166,8 +1290,11 @@
       var m = (lab && lab.mode) || 'sequential';
       if (m === 'compare') {
         return { why: '循序和二元到底差多少？用**同一批資料**跑兩種搜尋，' +
-                      '資料愈多差距愈明顯 —— 這一步是要你親眼看到那個差距。',
-                 pass: '四種資料量（13、50、100、1024 筆）**全部**跑過一次。' };
+                      '資料愈多差距愈明顯 —— 這一步是要你親眼看到那個差距。' +
+                      '<br>⚠️ 砍一半你按 11 下就結束了，' +
+                      '但循序搜尋那 1024 次是什麼感覺？**看它跑一次**。',
+                 pass: '四種資料量（13、50、100、1024 筆）都要：' +
+                       '① 自己砍到範圍空掉　② 看兩種搜尋<b>比一場</b>。' };
       }
       var name = INFO[m].name;
       return {
