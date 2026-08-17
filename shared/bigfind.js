@@ -43,17 +43,31 @@
   function makeCase(n, rnd) {
     rnd = rnd || Math.random;
     n = n || 100;
-    /* 120～199 公分共 80 個整數，不夠 100 個人用 ——
-       所以配到 0.5 公分，剛好也更像真的身高。 */
+    /* ⚠️⚠️ 2026-08-17 老師問「每次的最小值與 100 個數字是固定嗎」——
+       查下來：組合每次都不同，但**最小值幾乎固定**。
+       原本的池子是 120～199.5 每 0.5 一格（160 種），每次抽 100 個
+       ⇒ 120 公分被抽中的機率 100/160 = 62.5%，
+         實測 400 次：最小值是 120 的有 249 次、120.5 有 97 次 —— 兩者就佔了 86%。
+         學生玩兩次就會發現「找 120 開頭的那個」，題目等於白出。
+
+       ⇒ 改成：**每一題的身高範圍自己浮動**。
+         起點在 125～148 之間隨機，往上 42 公分（都在國中生的合理範圍），解析度 0.1。
+         這樣最小值可能是 121.4、也可能是 149.8，猜不到。
+       ★ 0.1 公分看起來也更像真的身高（163.7 公分）。 */
+    /* ⚠️ 範圍要**像真的國中生**：125～190 公分。
+       原本寫 118～202，最高那個 202 公分不是國中生的身高，
+       學生一看就知道是亂數，人群的說服力就沒了。 */
+    var lo = Math.round((125 + rnd() * 23) * 10);      // 起點 125～148 公分
+    var span = 420;                                    // 往上 42 公分 → 最高約 190
     var pool = [];
-    for (var v = 1200; v <= 1995; v += 5) pool.push(v / 10);
+    for (var v = lo; v <= lo + span; v++) pool.push(v / 10);
     /* 洗牌後取前 n 個 */
     for (var i = pool.length - 1; i > 0; i--) {
       var j = Math.floor(rnd() * (i + 1));
       var t = pool[i]; pool[i] = pool[j]; pool[j] = t;
     }
     return pool.slice(0, n).map(function (h, k) {
-      return { id: k, h: h };
+      return { id: k, h: Math.round(h * 10) / 10 };
     });
   }
 
@@ -176,6 +190,12 @@
     '.bf-btn:hover{background:#4f46e5}',
     '.bf-btn:disabled{background:#cbd5e1;cursor:default}',
     '.bf-btn.ghost{background:#fff;border:2px solid #cbd5e1;color:#475569}',
+    /* 還沒開始計時：蓋住那一片人 */
+    '.bf-veil{display:flex;align-items:center;justify-content:center;min-height:190px}',
+    '.bf-veil-in{text-align:center;color:#64748b}',
+    '.bf-veil-in .ico{font-size:40px;line-height:1}',
+    '.bf-veil-in .tx{font-size:13.5px;line-height:1.9;margin-top:8px}',
+    '.bf-veil-in .tx b{color:#4338ca}',
     '.bf-race{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:10px}',
     '.bf-race div{flex:1;min-width:130px;background:#f8fafc;border:2px solid #e2e8f0;',
     '  border-radius:11px;padding:9px 12px}',
@@ -207,6 +227,12 @@
 
     var n = opts.n || 100;
     var items = makeCase(n, opts.rnd);
+    var loH = 0, hiH = 0;                  // 這一題的最矮／最高（畫人形用）
+    function measure() {
+      loH = Math.min.apply(null, items.map(function (p) { return p.h; }));
+      hiH = Math.max.apply(null, items.map(function (p) { return p.h; }));
+    }
+    measure();
     var at = 0;                    // 第幾題（0～2）
     var cleared = {};              // 過了哪幾題
     var msg = '', kind = 'info';
@@ -226,11 +252,25 @@
 
     function render() {
       host.className = 'bf' + (opts.big ? ' bf-big' : '');
+      /* ⚠️⚠️ 第 ③ 題還沒按「開始計時」之前，人群要**蓋起來**。
+         2026-08-17 老師：「第三個要按計時開始，但是我可以先找到再開始」。
+         看得到的話，學生先慢慢找到目標、再按開始、再一秒點下去 ——
+         計時量到的是按按鈕的速度，整題就白出了。
+         ★ 蓋住而不是不畫：學生要先看到「等一下要面對這麼一大片」，
+           心理準備和實際開始是兩件事。 */
+      var hide = (task().key === 'race' && !cleared.race && !t0);
       host.innerHTML =
         tipHTML() +
         headHTML() +
         (task().key === 'race' ? raceHTML() : '') +
-        '<div class="bf-yard" id="bf-yard"></div>' +
+        (hide
+          ? '<div class="bf-yard bf-veil">' +
+              '<div class="bf-veil-in">' +
+                '<div class="ico">🫣</div>' +
+                '<div class="tx">一百個人已經站好了，先蓋起來。' +
+                '<br>按下<b>開始計時</b>才會掀開 —— 到時候再找。</div>' +
+              '</div></div>'
+          : '<div class="bf-yard" id="bf-yard"></div>') +
         (msg ? '<div class="bf-msg ' + kind + '">' + msg + '</div>' : '') +
         (allDone() ? doneHTML() : '') +
         barHTML();
@@ -282,8 +322,17 @@
      * ★ 但差距不能壓太扁 —— 16→46px（差 30px）是還看得出高矮的下限。
      *   再小就變成「只能讀數字」，那又回到算術題了。
      */
+    /**
+     * 身高 → 人形高度。
+     * ★ 用**這一題實際的最矮／最高**去換算，不是寫死 120～199.5。
+     *   ⚠️ 身高範圍現在每題浮動（見 makeCase）——
+     *      寫死的話，範圍窄的那幾題所有人會畫得差不多高，
+     *      「用看的分不出來」就變成系統的問題。
+     *   ⇒ 不管抽到什麼範圍，畫出來永遠用滿 16～46px。
+     */
     function figH(h) {
-      var base = 16 + (h - 120) * 0.377;          // 120cm → 16px、199.5cm → 46px
+      var span = hiH - loH || 1;
+      var base = 16 + (h - loH) / span * 30;      // 最矮 → 16px、最高 → 46px
       return Math.round(base * (opts.big ? 1.12 : 1));
     }
     /* 頭的高度（含下面那 1px 間距）。放大版的頭也比較大 ——
@@ -292,6 +341,7 @@
     function headH() { return opts.big ? 11 : 9; }
 
     function grid() {
+      /* 蓋著的時候沒有 #bf-yard —— 直接不畫（見 render 裡的 hide）。 */
       var box = host.querySelector('#bf-yard');
       if (!box) return;
       /* ⚠️ 要和 CSS 的 grid-template-columns 一致（20 欄）。
@@ -419,6 +469,7 @@
               「已經搬走 10 個」是怎麼回事。 */
         if (TASKS[at].key === 'race') {
           items = makeCase(n, opts.rnd);
+          measure();
           doneSet = {};
           autoAt = -1; autoBest = -1;
         }

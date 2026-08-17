@@ -44,7 +44,23 @@ section('★★ 出題：一百個人，身高不可以重複');
   ok(new Set(hs).size === 100,
      '★★ 身高全部不一樣 —— 有兩個並列最矮的話，' +
      '「最矮的是誰」有兩個答案，學生點到另一個會被判錯，那是系統的鍋');
-  ok(hs.every(h => h >= 120 && h <= 199.5), '身高落在 120～199.5 公分');
+  /* ⚠️⚠️ 身高範圍**每題浮動**（見 makeCase）—— 這條不可以寫死 120～199.5，
+     不然會隨機紅（起點是 125～148 隨機的）。
+     ★ 要釘的是兩件事：都在國中生的合理範圍內，
+       而且**最小值不可以每次都一樣**（那才是老師問的重點）。 */
+  ok(hs.every(h => h >= 125 && h <= 190),
+     '身高都在 125～190 公分（像真的國中生，不是亂數）');
+  const mins = {};
+  for (let k = 0; k < 200; k++) {
+    const m = Math.min(...B.makeCase(100).map(p => p.h));
+    mins[Math.floor(m / 5) * 5] = (mins[Math.floor(m / 5) * 5] || 0) + 1;
+  }
+  const top = Math.max(...Object.values(mins));
+  ok(top / 200 < 0.35,
+     '★★ 最小值散得開（最集中的一組佔 ' + (top / 200 * 100).toFixed(0) + '%）—— ' +
+     '原本 120 公分佔 62%，學生玩兩次就知道「找 120 開頭的」');
+  ok(Object.keys(mins).length >= 4,
+     '   最小值落在 ' + Object.keys(mins).length + ' 個不同區間');
   /* 五個人和一百個人是不同的體驗 —— 這一段的全部意義就在數量 */
   ok(B.makeCase(100).length > B.makeCase(5).length * 10,
      '★ 這一段給的是「一大片」，不是實驗室那種五個');
@@ -221,12 +237,20 @@ section('★★ 第 3 題：比速度，而且要先按開始計時');
   v.btn(/下一題/).onclick();
   ok(v.s().at === 2, '走到第 3 題');
 
-  const want = B.minOf(v.s().items);
-  v.cells()[want].onclick();
-  ok(!v.s().cleared.race, '★ 還沒按開始就點 → 不算');
-  ok(/先按/.test(v.txt()), '   而且告訴他要先按開始計時');
+  /* ⚠️⚠️ 老師 2026-08-17：「第三個要按計時開始，但是我可以先找到再開始」。
+     ★ 修法不是「點了不算」，而是**根本看不到人** ——
+       看得到的話，學生先慢慢找好、再按開始、再一秒點下去，
+       計時量到的是按按鈕的速度。
+     ⇒ 按開始之前那一片人是蓋著的。 */
+  ok(v.cells().length === 0,
+     '★★ 還沒按開始 → 一個人都看不到（不是「點了不算」，是根本沒得點）');
+  ok(/蓋起來|開始計時/.test(v.txt()), '★ 而且說明白：按開始才會掀開');
+  ok(!!v.host.querySelector('.bf-veil'), '   蓋子畫出來了');
 
   v.btn(/開始計時/).onclick();
+  ok(v.cells().length === 100, '★★ 按了開始 → 一百個人才出現');
+  ok(!v.host.querySelector('.bf-veil'), '   蓋子收起來了');
+  const want = B.minOf(v.s().items);
   v.cells()[want].onclick();
   ok(v.s().cleared.race, '★ 按了開始、再點對 → 過第 3 題');
   ok(v.s().mySec >= 0, '   有記到花了幾秒');
