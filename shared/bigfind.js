@@ -389,6 +389,19 @@
         if (at >= TASKS.length) at = TASKS.length - 1;
         tries = 0; mark = {}; msg = ''; kind = 'info';
         if (TASKS[at].key === 'next') doneSet = lowestK(items, 10);
+        /* ⚠️⚠️ 第 ③ 題（計時）一定要**換一批人**。
+           不換的話，答案和第 ① 題在**同一個位置** ——
+           學生記得剛才點哪裡，一秒就點完，計時量到的是記憶力不是找人。
+           ★ 這和 searchlab 那個「換一題永遠出同一題」是同一種錯：
+             畫面看起來換了，其實沒換，而且測試不走 UI 就抓不到。
+           ⚠️ 第 ② 題**不必**換：它的答案是第 11 矮的，
+              位置本來就和第 ① 題不同，而且沿用同一群人才看得出
+              「已經搬走 10 個」是怎麼回事。 */
+        if (TASKS[at].key === 'race') {
+          items = makeCase(n, opts.rnd);
+          doneSet = {};
+          autoAt = -1; autoBest = -1;
+        }
         render();
         return;
       }

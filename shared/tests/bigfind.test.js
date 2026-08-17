@@ -247,6 +247,61 @@ section('★★ 三題都過才給「完成」（這一步會擋）');
   v.done(); v2.done();
 }
 
+section('★★ 每次進來要不一樣，而且第 ③ 題要換一批人');
+{
+  /* ⚠️⚠️ 老師問「位置每次相同嗎」—— 查下來第 ①③ 題**是同一批人、同一個答案**。
+     第 ③ 題是計時題：學生記得剛才點哪裡，一秒就點完，
+     量到的是記憶力不是找人。
+     ★ 這和 searchlab 那個「換一題永遠出同一題」是同一種錯：
+       畫面看起來換了，其實沒換 —— 而且不走 UI 就抓不到。 */
+
+  /* ① 每次掛載都是不同的人群 */
+  const sets = new Set();
+  for (let k = 0; k < 20; k++) {
+    sets.add(B.makeCase(100).map(p => p.h).join(','));
+  }
+  ok(sets.size === 20, '★ 每次出題都不一樣（20 次都不同）');
+
+  /* ② 答案的位置也要散開，不可以老是在同一區 */
+  const spots = new Set();
+  for (let k = 0; k < 40; k++) {
+    spots.add(B.minOf(B.makeCase(100)));
+  }
+  ok(spots.size >= 25,
+     '★ 最矮的落點夠散（40 次落在 ' + spots.size + ' 個不同位置）');
+
+  /* ③★★ 走完第 ①② 題進到第 ③ 題時，人群要換掉 */
+  let same = 0;
+  for (let k = 0; k < 15; k++) {
+    const v = mount();
+    const before = v.s().items.map(p => p.h).join(',');
+    const a1 = B.minOf(v.s().items);
+    v.cells()[a1].onclick();
+    v.btn(/下一題/).onclick();
+    const s2 = v.s();
+    v.cells()[B.minOf(s2.items, s2.doneSet)].onclick();
+    v.btn(/下一題/).onclick();
+    const after = v.s().items.map(p => p.h).join(',');
+    const a3 = B.minOf(v.s().items);
+    if (before === after || a1 === a3) same++;
+    v.done();
+  }
+  ok(same === 0,
+     '★★ 第 ③ 題**換了一批人**（15 次裡有 ' + same + ' 次沒換）—— ' +
+     '不換的話計時量到的是記憶力');
+
+  /* ④ 但第 ② 題**不該**換：它要沿用同一群人，
+     學生才看得出「已經搬走 10 個」是怎麼回事 */
+  const v = mount();
+  const before2 = v.s().items.map(p => p.h).join(',');
+  v.cells()[B.minOf(v.s().items)].onclick();
+  v.btn(/下一題/).onclick();
+  ok(v.s().items.map(p => p.h).join(',') === before2,
+     '★★ 第 ② 題**沿用同一群人** —— 換掉的話「已經搬走 10 個」就沒有來由');
+  ok(Object.keys(v.s().doneSet).length === 10, '   而且那 10 個是從這一群裡挑的');
+  v.done();
+}
+
 section('★ 目標與過關標準');
 {
   const g = B.goal({ n: 100 });
