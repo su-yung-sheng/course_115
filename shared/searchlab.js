@@ -189,7 +189,18 @@
       return { items: [8, 5, 10, 1, 7], target: opts.course === 'miss' ? 9 : 10 };
     }
 
-    var n = opts.size || (binary ? 13 : 8);
+    /* ★★ 資料量要**每題不同**。
+       ⚠️ 2026-08-17 老師回報：原本寫死 binary→13、sequential→8，
+          所以「換一題」拿到的永遠是 13 項 ——
+          第一次的中間項**永遠是第 7 項**，學生背位置就好，不必真的算
+          （開始位置＋結束位置）÷ 2。
+       ★★ 而且 13 是奇數，(1+13)÷2 = 7 剛好整除 ——
+          學生因此**永遠碰不到**「除不盡取整數部分」那件事，
+          而那正是這個公式最容易錯的地方。
+       ⇒ 隨機題從下面這組挑，**故意奇偶都有**。
+          課本那一題（opts.course）不受影響，維持 13 筆，學生對得回課本。 */
+    var SIZES = binary ? [8, 9, 11, 12, 14, 15] : [6, 7, 8, 9, 10];
+    var n = opts.size || SIZES[Math.floor(Math.random() * SIZES.length)];
     var a = [], seen = {};
     while (a.length < n) {
       var v = 1 + Math.floor(Math.random() * 99);
@@ -462,7 +473,26 @@
     '.qs-big .qs-left b{font-size:28px}',
     '.qs-big .qs-pick button{padding:9px 18px;font-size:15px}',
     '.qs-big .qs-tbl{font-size:14.5px}',
-    '.qs-big .qs-tbl th,.qs-big .qs-tbl td{padding:10px 12px}'
+    '.qs-big .qs-tbl th,.qs-big .qs-tbl td{padding:10px 12px}',
+    /* ── 第 3 關的砍半計數器（答錯一次才出現）───────── */
+    '.qs-aid{background:#fffbeb;border:1px solid #fcd34d;border-radius:11px;',
+    '  padding:10px 13px;margin-top:9px}',
+    '.qs-aid .h{font-size:13px;font-weight:900;color:#92400e;margin-bottom:6px}',
+    '.qs-aid .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:6px;',
+    '  font-size:13px;color:#78350f}',
+    '.qs-aid .row b{font-size:19px;color:#b45309}',
+    '.qs-aid button{background:#f59e0b;color:#fff;border:0;border-radius:8px;',
+    '  padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}',
+    '.qs-aid button:hover{background:#d97706}',
+    '.qs-aid button:disabled{background:#e2e8f0;color:#94a3b8;cursor:default}',
+    '.qs-aid button.ghost{background:#fff;border:2px solid #fcd34d;color:#92400e}',
+    '.qs-aid .say{font-size:12.5px;line-height:1.8;color:#92400e;margin-top:4px}',
+    '.qs-big .qs-aid{padding:13px 16px}',
+    '.qs-big .qs-aid .h{font-size:14.5px}',
+    '.qs-big .qs-aid .row{font-size:14.5px}',
+    '.qs-big .qs-aid .row b{font-size:24px}',
+    '.qs-big .qs-aid button{padding:9px 18px;font-size:14.5px}',
+    '.qs-big .qs-aid .say{font-size:13.5px}'
   ].join('');
 
   function ensureStyle() {
@@ -504,6 +534,8 @@
           真正的證據是：動手之前先說得出「這一題要比幾次」。
        三個難度見 shared/labtest.js。 */
     var freePassed = false;    // 自由玩那一段過了沒
+    var worstTries = 0;        // 第 3 關答錯幾次（答錯一次才給鷹架）
+    var aidN = 0, aidC = 0;    // 鷹架的計數器：還剩幾項、已經比幾次
     var lvNow = 0;             // 正在挑戰第幾關（0＝還沒開始）
     var cleared = {};          // 過了哪幾關
     var guess = null;          // 這一關預測的數字
@@ -592,7 +624,7 @@
       box.className = '';
       var head = '<div class="lt-box"><div class="h">' + L.icon +
                  ' 驗收挑戰 ' + lvNow + '／3　' + L.name +
-                 '（目前 ' + stars() + ' ★）</div>';
+                 '（目前 ' + stars() + ' ★，三關全過才能往下一步）</div>';
 
       if (lvNow === 1) {
         box.innerHTML = head +
@@ -610,17 +642,29 @@
           '點錯一次就得重來（按「換一題」重新開始）。' +
           '<br>目前這一題已經錯了 <b>' + errs + '</b> 次。</div></div>';
       } else {
+        /* ★★ 第 3 關是**實際的通關門檻**（onPass 只在這裡被扳動），
+             所以它不可以是「想不出來就卡死」的一題。
+           ⚠️ 2026-08-17 之前這裡只有題目和一句 worstWhy，
+              答錯就只回「不是 N 次」—— 學生沒有任何東西可以推。
+           ★ 現在：**答錯一次之後**才長出一個砍半計數器，
+             讓他自己按、自己數。先給的話這一題就白出了；
+             不給的話他只能亂猜數字，那更糟。 */
         box.innerHTML = head +
           '<div class="q">' + T.worstAsk + '<br>' +
           '<span style="font-size:12.5px">這一關<b>不必真的走</b> —— ' +
           '想想這個演算法最多會做幾次。</span></div>' +
           '<div class="row"><input id="qs-g" type="number" min="1" placeholder="次數">' +
-          '<button data-g="3">送出答案</button></div></div>';
+          '<button data-g="3">送出答案</button></div>' +
+          (worstTries > 0 ? aidHTML() : '') +
+          '</div>';
       }
       box.innerHTML += '<div class="lt-say ' + (testKind || 'info') + '" id="qs-tsay">' +
                        (testMsg || '　') + '</div>';
       [].forEach.call(box.querySelectorAll('[data-g]'), function (el) {
         el.onclick = function () { submit(Number(el.dataset.g)); };
+      });
+      [].forEach.call(box.querySelectorAll('[data-aid]'), function (el) {
+        el.onclick = function () { aidTap(el.dataset.aid); };
       });
     }
 
@@ -643,9 +687,56 @@
                      '<br>三關全過，證書拿到了 ★★★');
         render(); finishAll();
       } else {
-        tsay('bad', '不是 ' + v + ' 次。' + TESTS[mode].worstWhy +
-                    '<br>再想一次 —— 這一關可以一直試。');
+        worstTries++;
+        /* ★ 第一次答錯就把砍半計數器放出來（見 test() 裡的說明）。
+           ⚠️ worstWhy 本來就寫著「15 → 7 → 3 → 1 → 空」——
+              但那是一行字，學生讀過去不會停下來數。
+              自己按四下才會。 */
+        tsay('bad', '不是 ' + v + ' 次。' +
+                    (worstTries === 1
+                      ? '<br>下面給你一個工具：<b>自己按按看</b>，數數看按幾下範圍才會空。'
+                      : TESTS[mode].worstWhy + '<br>用下面那個工具再數一次。'));
       }
+    }
+
+    /**
+     * 第 3 關的鷹架：一個砍半（或逐一比）的計數器。
+     * ★ 為什麼是「自己按」而不是把過程印出來
+     *   印出來的話學生用讀的，讀完照樣不知道那個數字怎麼來的。
+     *   按四下、看著範圍從 15 變成空的，那四下他自己數過。
+     */
+    function aidHTML() {
+      var T = TESTS[mode];
+      return '<div class="qs-aid">' +
+        '<div class="h">🧮 自己數數看</div>' +
+        '<div class="row">' +
+          '<span>還剩 <b id="qs-aid-n">' + aidN + '</b> 項</span>' +
+          '<span>已經比了 <b id="qs-aid-c">' + aidC + '</b> 次</span>' +
+        '</div>' +
+        '<div class="row">' +
+          '<button data-aid="go"' + (aidN <= 0 ? ' disabled' : '') + '>' +
+            (mode === 'binary' ? '比一次，砍掉一半' : '比一次，往下一項') + '</button>' +
+          '<button data-aid="rst" class="ghost">↺ 重來</button>' +
+        '</div>' +
+        '<div class="say">' +
+          (aidN <= 0
+            ? '範圍空了 —— 你按了 <b>' + aidC + '</b> 次。那就是最壞的情況。'
+            : (aidC === 0
+                ? '從 ' + T.worstSize + ' 項開始。按一下看看剩幾項。'
+                : '每比一次就' + (mode === 'binary' ? '砍掉一半' : '少一項') + '。繼續按。')) +
+        '</div></div>';
+    }
+
+    function aidTap(what) {
+      if (what === 'rst') { aidN = TESTS[mode].worstSize; aidC = 0; render(); return; }
+      if (aidN <= 0) return;
+      /* ⚠️ 這裡的算法要和 worstBinary／worstSequential **完全一致**，
+         不然工具數出來的和答案對不起來 —— 那比沒有工具還糟。
+         binary：比完中間那一項，剩下的一半是 floor(n/2)
+         sequential：一次只排除一項 */
+      aidN = (mode === 'binary') ? Math.floor(aidN / 2) : aidN - 1;
+      aidC++;
+      render();
     }
     function tsay(kind, msg) { testKind = kind; testMsg = msg; render(); }
 
@@ -1010,8 +1101,15 @@
       freePassed = true;
       if (mode === 'compare' || !global.LABTEST) { finishAll(); return; }
       lvNow = 1;
+      aidN = TESTS[mode] ? TESTS[mode].worstSize : 0; aidC = 0;
       render();
-      say('good', '自由玩的部分過了 ✔<br><b>接下來是驗收挑戰</b> —— 三關，一關一顆星。');
+      /* ⚠️ 一定要講明這是**通關條件**。
+         2026-08-17 老師試跑時卡住：自由玩走了三次還是不能往下一步，
+         因為放行的開關（onPass）只在挑戰第 3 關答對時才會被扳動 ——
+         而畫面上從來沒說過「三關全過才放行」。
+         學生只會以為系統壞了，然後一直重玩自由玩那一段。 */
+      say('good', '自由玩的部分過了 ✔<br><b>接下來是驗收挑戰</b> —— 三關，一關一顆星。' +
+                  '<br>⚠️ <b>三關全過</b>才能進入下一步（實作測試）。');
     }
     function finishAll() {
       if (passed) return;

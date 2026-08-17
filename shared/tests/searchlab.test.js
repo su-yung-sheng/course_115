@@ -851,5 +851,149 @@ section('★ level.html 接得上');
      '   也排在程式拼圖前面');
 }
 
+/* ═══════════════════════════════════════════════════════
+   2026-08-17 老師試跑第 9 關時回報的兩件事
+   ═══════════════════════════════════════════════════════ */
+
+section('★★ 換一題要真的換到不同的資料量');
+{
+  /* ⚠️ 原本寫死 binary→13、sequential→8。
+     所以「換一題」拿到的永遠是 13 項 ——
+       · 第一次的中間項**永遠是第 7 項**，學生背位置就好
+       · 13 是奇數，(1+13)÷2 = 7 剛好整除
+         ⇒ 學生**永遠碰不到**「除不盡取整數部分」，
+           而那正是這個公式最容易錯的地方。 */
+  const sizes = {};
+  for (let k = 0; k < 300; k++) sizes[S._makeCase({ mode: 'binary' }).items.length] = 1;
+  const got = Object.keys(sizes).map(Number).sort((a, b) => a - b);
+  ok(got.length >= 4, '★★ 二元搜尋的隨機題有多種資料量（' + got.join('、') + '）');
+  ok(got.some(n => n % 2 === 0),
+     '★★ 而且**有偶數** —— 不然永遠碰不到「除不盡要取整數部分」');
+  ok(got.some(n => n % 2 === 1), '   也有奇數');
+
+  /* 第一次的中間項要真的會變 */
+  const mids = {};
+  for (let k = 0; k < 300; k++) {
+    const c = S._makeCase({ mode: 'binary' });
+    mids[S._midOf(1, c.items.length)] = 1;
+  }
+  ok(Object.keys(mids).length >= 3,
+     '★★ 第一次的中間項會變（第 ' + Object.keys(mids).sort().join('、') + ' 項）—— ' +
+     '固定的話學生背位置就好，不必真的算');
+
+  /* 偶數筆的時候，中間項要是「無條件捨去」那一個 */
+  ok(S._midOf(1, 14) === 7, '★★ 14 項 → (1+14)÷2 = 7.5 → 取 7（無條件捨去）');
+  ok(S._midOf(1, 12) === 6, '   12 項 → 6.5 → 取 6');
+  ok(S._midOf(8, 13) === 10, '   後半段 8～13 → 10.5 → 取 10');
+
+  /* ⚠️ 但課本那一題不可以跟著變 —— 學生要對得回課本 p.208 */
+  for (let k = 0; k < 20; k++) {
+    const c = S._makeCase({ mode: 'binary', course: 'hit' });
+    if (c.items.length !== 13) { ok(false, '★★ 課本題被改成 ' + c.items.length + ' 筆了'); break; }
+    if (k === 19) ok(true, '★★ 課本那一題**維持 13 筆**（學生要對得回課本）');
+  }
+}
+
+section('★★ 三關全過才放行 —— 這件事畫面上要講');
+{
+  /* ⚠️ 老師實際卡住的地方：自由玩走了三次還是不能往下一步，
+     因為放行的開關（onPass）只在挑戰第 3 關答對時才會被扳動 ——
+     而畫面上從來沒說過「三關全過才放行」。
+     學生只會以為系統壞了，然後一直重玩自由玩那一段。 */
+  const src = read('shared/searchlab.js');
+  ok(/三關全過.{0,12}下一步/.test(src),
+     '★★ 原始碼裡有講明「三關全過才能往下一步」');
+
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  const sim = S.mount(host, { mode: 'binary', course: 'hit' });
+  const walk = () => {
+    for (let k = 0; k < 60; k++) {
+      const st = sim._state();
+      if (st.ended) return;
+      if (st.phase === 'side') {
+        const w = Number(st.items[st.mid - 1]) < Number(st.target) ? 'right' : 'left';
+        host.querySelector('[data-side="' + w + '"]').onclick();
+        continue;
+      }
+      host.querySelectorAll('[data-i]')[Math.floor((st.lo + st.hi) / 2) - 1].onclick();
+    }
+  };
+  walk(); host.querySelector('#qs-new').onclick(); walk();
+  ok(/三關全過/.test(host.textContent),
+     '★★ 挑戰一打開，畫面上就講明這是通關條件');
+  ok(/驗收挑戰 1／3/.test(host.textContent) && /往下一步/.test(host.textContent),
+     '★ 標題列也一直帶著這句 —— 中途才進來的人也看得到');
+  host.remove();
+}
+
+section('★★ 第 3 關要有東西可以推（不是想不出來就卡死）');
+{
+  ['binary', 'sequential'].forEach(mode => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    let badge = null;
+    const sim = S.mount(host, { mode: mode, course: 'hit', onPass: b => { badge = b; } });
+    const walk = () => {
+      for (let k = 0; k < 60; k++) {
+        const st = sim._state();
+        if (st.ended) return;
+        if (mode === 'binary') {
+          if (st.phase === 'side') {
+            const w = Number(st.items[st.mid - 1]) < Number(st.target) ? 'right' : 'left';
+            host.querySelector('[data-side="' + w + '"]').onclick();
+            continue;
+          }
+          host.querySelectorAll('[data-i]')[Math.floor((st.lo + st.hi) / 2) - 1].onclick();
+        } else {
+          host.querySelectorAll('[data-i]')[st.next].onclick();
+        }
+      }
+    };
+    const nextQ = () => host.querySelector('#qs-new').onclick();
+    /* 走到第 3 關 */
+    walk(); nextQ(); walk(); nextQ();
+    const st1 = sim._state();
+    host.querySelector('#qs-g').value = S._realCount(mode, st1.items, st1.target);
+    host.querySelector('[data-g="1"]').onclick();
+    walk();
+    nextQ(); walk();
+    ok(/驗收挑戰 3／3/.test(host.textContent), mode + '：走到第 3 關');
+
+    ok(!host.querySelector('.qs-aid'),
+       '★★ ' + mode + '：一開始**沒有**計數器 —— 先給的話這一題就白出了');
+
+    host.querySelector('#qs-g').value = 99;
+    host.querySelector('[data-g="3"]').onclick();
+    ok(!!host.querySelector('.qs-aid'),
+       '★★ ' + mode + '：答錯一次之後，計數器才長出來');
+    ok(/自己按按看|自己數/.test(host.textContent),
+       '★ ' + mode + '：而且叫他自己按 —— 不是把答案印給他看');
+
+    /* ★★ 工具數出來的，一定要和標準答案一樣。
+       對不起來的話比沒有工具更糟：他照著數還是被判錯。 */
+    const want = S.TESTS[mode].worstAns(S.TESTS[mode].worstSize);
+    let taps = 0;
+    for (let k = 0; k < 40; k++) {
+      const b = host.querySelector('[data-aid="go"]');
+      if (!b || b.disabled) break;
+      b.onclick(); taps++;
+    }
+    ok(taps === want,
+       '★★ ' + mode + '：一直按到範圍空掉 = ' + taps + ' 次，' +
+       '和標準答案 ' + want + ' **一模一樣**');
+    ok(/你按了/.test(host.textContent), '   而且直接報出按了幾次');
+
+    host.querySelector('[data-aid="rst"]').onclick();
+    ok(/還剩 /.test(host.textContent), '★ 「重來」把計數器歸零，可以再數一次');
+
+    ok(badge === null, '   數完還是要自己填答案（不會自動過關）');
+    host.querySelector('#qs-g').value = want;
+    host.querySelector('[data-g="3"]').onclick();
+    is(badge, 3, '★★ ' + mode + '：填對 → 三關全過，放行');
+    host.remove();
+  });
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
