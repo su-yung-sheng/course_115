@@ -114,6 +114,33 @@ section('★★ 判分引擎真的走雜湊');
   });
 }
 
+section('★★ 複製的每一條出口都要擋到');
+{
+  /* ★ 老師 2026-08-17 問「Ctrl+C 可偵測，那滑鼠右鍵？」
+     右鍵選單的「複製」一樣會觸發 copy 事件 —— 所以攔 copy 就夠了，
+     那是**出口**，不管從哪條路過來都會經過。
+     ⚠️ 但拖曳不是：選取文字之後直接拖進別的視窗走的是 dragstart，
+        copy 完全不會被觸發。那一條是問到右鍵時才想到的。 */
+  const src = read('shared/quiz-engine.js').replace(/\/\*[\s\S]*?\*\//g, ' ');
+  [['copy', 'Ctrl+C 與右鍵選單的「複製」'],
+   ['cut', '剪下'],
+   ['dragstart', '★★ 選取後直接拖到別的視窗（不會觸發 copy）']
+  ].forEach(([ev, why]) => {
+    ok(new RegExp("addEventListener\\('" + ev + "'").test(src), '攔得到 ' + ev + '：' + why);
+  });
+  ok(/preventDefault/.test(src), '   而且真的擋下來（不是只記次數）');
+
+  /* ⚠️ 刻意**不**攔右鍵與選取 —— 那會把朗讀器、翻譯、長按選字一起關掉，
+     而這一章正好在教「資訊近用權」。有人哪天順手加上去要能被擋下來。 */
+  ok(!/addEventListener\('contextmenu'/.test(src),
+     '★★ 沒有攔 contextmenu（右鍵選單裡有朗讀與翻譯，而複製那條路已經擋了）');
+  /* ⚠️ 要去掉註解再看 —— 註解裡正好寫著「刻意不用 user-select:none」，
+     連著註解一起掃的話這一條永遠紅（第一版就是這樣）。
+     ★ 這是「不可以出現 X」型的檢查最常見的自傷方式：講到它的那句話本身。 */
+  ok(!/user-select\s*:\s*none/.test(src),
+     '★★ 沒有用 user-select:none（那會讓螢幕朗讀器一起失效）');
+}
+
 section('★★ 老師還看得到答案');
 {
   /* ⚠️ 把答案藏起來之後，教師端的題目統計頁也會看不到正確選項 ——

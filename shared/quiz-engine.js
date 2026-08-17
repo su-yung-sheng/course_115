@@ -408,14 +408,40 @@
     var el = document.getElementById('quiz-screen');
     return !!el && !el.classList.contains('hidden');
   }
+  var CLIP_MSG = '（題目請自己讀 😉 這一份要看的是你想得到什麼）';
+
+  /* ★ 為什麼攔的是 copy 而不是右鍵（老師 2026-08-17 問的）
+     copy 是**出口**：不管走 Ctrl+C、右鍵選單的「複製」、還是編輯選單，
+     最後都會經過這個事件。攔它一個，那幾條路一起擋掉。
+     ⚠️ 反過來說，攔 contextmenu（右鍵選單）幾乎沒有多擋到什麼 ——
+        複製那條路已經擋了，而右鍵選單裡還有「朗讀所選文字」「翻譯」，
+        手機的長按選字也是同一個事件。關掉它是把輔具的入口一起關掉。
+     ⇒ 不攔右鍵。 */
   document.addEventListener('copy', function (e) {
     if (!isQuizOn()) return;
     behav.copy++;
     try {
-      (e.clipboardData || window.clipboardData)
-        .setData('text/plain', '（題目請自己讀 😉 這一份要看的是你想得到什麼）');
+      (e.clipboardData || window.clipboardData).setData('text/plain', CLIP_MSG);
       e.preventDefault();
     } catch (err) { /* 瀏覽器不給改剪貼簿就算了，至少數字記到了 */ }
+  });
+  /* 剪下：題目區沒有可編輯的欄位，理論上不會發生 —— 但成本是一行。 */
+  document.addEventListener('cut', function (e) {
+    if (!isQuizOn()) return;
+    behav.copy++;
+    try {
+      (e.clipboardData || window.clipboardData).setData('text/plain', CLIP_MSG);
+      e.preventDefault();
+    } catch (err) {}
+  });
+  /* ⚠️⚠️ 這一條是老師問「那滑鼠右鍵呢」的時候才想到的漏洞：
+     選取文字之後**直接用滑鼠拖進另一個視窗**（例如 AI 的輸入框），
+     那是 dragstart，**不會觸發 copy** —— 前面那兩道都攔不到。
+     ★ 只擋題目區的文字拖曳；拼圖那邊的積木拖曳在別的頁面，不受影響。 */
+  document.addEventListener('dragstart', function (e) {
+    if (!isQuizOn()) return;
+    var box = document.getElementById('question-container');
+    if (box && box.contains(e.target)) { behav.copy++; e.preventDefault(); }
   });
   /* 切出視窗（換分頁、切到別的 App）。同樣只記次數，不做任何處置。 */
   document.addEventListener('visibilitychange', function () {
