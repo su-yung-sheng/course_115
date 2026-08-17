@@ -658,8 +658,20 @@ const onStage = s => s.x0 >= 0 && s.x1 <= 480 && s.y0 >= 0 && s.y1 <= 360;
       });
     })(lv.goal);
 
-    /* 說過的話：題目 ＋ 拼圖說明。去掉標籤只留文字。 */
-    const said = ((lv.task || '') + ' ' + (lv.build || []).join(' ')).replace(/<[^>]*>/g, '');
+    /* 說過的話：題目 ＋ 拼圖說明 ＋ **虛擬碼**。去掉標籤只留文字。
+       ⚠️ 2026-08-17 加上虛擬碼：那天把散文式的結構說明改成虛擬碼
+          （老師：「整個說明太長了」），數字就從 build 搬到虛擬碼裡了。
+          不把虛擬碼算進來的話，這條會說「60、0.2、-120 沒交代」——
+          可是畫面上明明就寫著。 */
+    /* ⚠️ 要和畫面一樣傳 hide（＝mustDerive）——
+       不傳的話虛擬碼會把「要他自己想的數字」也印出來，
+       於是下面那條「mustDerive 沒有和說明打架」永遠紅，
+       而畫面上其實是挖空的。 */
+    const pseudo = (lv.sprites ? lv.sprites : [{ goal: lv.goal, pseudo: lv.pseudo }])
+      .map(sp => (sp.pseudo || B._pseudo(sp.goal || [], 0, false, lv.mustDerive || []))
+                   .join(' ')).join(' ');
+    const said = ((lv.task || '') + ' ' + (lv.build || []).join(' ') + ' ' + pseudo)
+                   .replace(/<[^>]*>/g, '');
     const told = n => new RegExp('(^|[^\\d.-])' + String(n).replace('-', '-?') + '($|[^\\d])')
       .test(said.replace(/−/g, '-'));
     const derive = new Set(lv.mustDerive || []);

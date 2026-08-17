@@ -88,8 +88,11 @@ section('★★ 第 4 關的關卡資料：兩個角色');
   /* ⚠️ goal 不可以在關卡資料裡再手抄一份 —— 改了 sprites 忘了 goal 不會報錯 */
   const src = fs.readFileSync(path.join(ROOT, '11502', 'content', 'blocks.js'), 'utf8');
   const seg = src.slice(src.indexOf("'4-3-1': {"), src.indexOf("'6-3-1': {"));
-  ok(!/^\s*goal: \[/m.test(seg),
-     '★★ 那一關**沒有**自己寫 goal（由 sprites 串出來，單一真相只有一份）');
+  /* ⚠️ 要盯的是**頂層**的 goal（縮排 4 格）。
+     sprites 裡每個角色都有自己的 goal（縮排 8 格），那是正常的 ——
+     第一版寫成 /^\s*goal:/ 會把角色的 goal 也算進去，於是永遠紅。 */
+  ok(!/^ {4}goal: \[/m.test(seg),
+     '★★ 那一關**沒有**自己寫一份頂層 goal（由 sprites 串出來，單一真相只有一份）');
   is(lv.goal.length, 9, '★ 但 goal 串得出來（9 塊：蟲 7 ＋ 小鳥 2）—— 舊的讀取端還在用它');
   is(lv.goal.length, lv.sprites[0].goal.length + lv.sprites[1].goal.length,
      '   串接的長度對得起來');

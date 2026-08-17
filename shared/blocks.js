@@ -398,6 +398,21 @@
       /* ★ 程式區：Scratch 的淺灰格點底 */
       /* 角色標題（一關有兩個角色時才出現）。
          ⚠️ 要夠明顯 —— 它是在說「以下是另一份程式」，不是一個小標。 */
+      /* 虛擬碼：縮排要看得出層次，所以用等寬字。
+         ⚠️ 顏色不要太搶 —— 它是參考，主角是右邊的積木。 */
+      '.bk-pseudo{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;',
+      '  padding:8px 12px;margin-bottom:9px}',
+      '.bk-pseudo summary{font-size:12.5px;font-weight:900;color:#475569;cursor:pointer;',
+      '  list-style:none}',
+      '.bk-pseudo summary::-webkit-details-marker{display:none}',
+      '.bk-pseudo summary::before{content:"▾ ";color:#94a3b8}',
+      '.bk-pseudo:not([open]) summary::before{content:"▸ "}',
+      '.bk-pseudo pre{margin:7px 0 2px;font-family:ui-monospace,"Cascadia Code",',
+      '  "Noto Sans TC",monospace;font-size:12.5px;line-height:1.85;color:#334155;',
+      '  white-space:pre-wrap;overflow-wrap:anywhere}',
+      '.bk-pseudo pre b{color:#4338ca}',
+      '.bk-pseudo pre i{color:#94a3b8;font-style:normal}',
+      '.bk-psnote{font-size:11.5px;color:#94a3b8;line-height:1.7;margin-top:5px}',
       '.bk-sphead{display:inline-flex;align-items:center;gap:6px;font-size:14px;',
       '  font-weight:900;color:#fff;background:#4c97ff;border-radius:9px;',
       '  padding:5px 13px;margin-bottom:8px}',
@@ -564,6 +579,74 @@
     return n;
   }
 
+  /* ===================================================================
+     虛擬碼：把 goal 直接印成有縮排的文字
+     -------------------------------------------------------------------
+     ★ 2026-08-17 老師：「整個說明太長了，能夠簡介完功能後，
+       使用 pseudo code 的文字描述來引導嗎？」
+       原本每一關右邊都是幾條散文式的結構說明，讀完還是要自己在腦中排成程式。
+
+     ★ 為什麼用**算的**、不用手寫
+       手寫一份就等於同一件事寫兩遍：改了 goal 忘了改虛擬碼，
+       學生照著虛擬碼拼卻被判錯 —— 而那是**不會報錯**的。
+       ⇒ 直接從 goal 印出來，永遠對得上。
+       關卡想寫旁註（← 先補一隻）時可以自己給 pseudo，覆寫這裡的結果。
+
+     ⚠️ 名字（副程式名、參數名）印的是參考答案的取法。
+        學生可以自己取名（判定用的是代號，不是字面），所以要在畫面上講一句。
+     =================================================================== */
+  var PAD = '    ';
+  /**
+   * 一塊積木印成一行字。
+   * @param hide 要**挖空**的數字（關卡的 mustDerive）
+   * ★ 為什麼要挖空
+   *   前三關刻意不說「正方形有幾條邊、每次轉幾度、要重複幾次」——
+   *   那正是那幾關要學生自己想出來的東西（見 mustDerive 的說明）。
+   *   虛擬碼要是把它們一起印出來，等於一邊說「你自己想」、一邊把答案寫在旁邊。
+   *   ⚠️ 規格（大小、間隔、位置、秒數）照印 —— 那是題目，不是他要學的東西。
+   */
+  function labelOf(node, hide) {
+    var d = DEFS[node.id] || {};
+    var args = (node.args != null ? node.args : (d.args || []));
+    var i = 0;
+    return String(d.label || node.id).replace(/%[a-z]+/g, function (tok) {
+      if (tok === '%flag') return '綠旗';
+      var v = args[i++];
+      if (v && typeof v === 'object') return '(' + labelOf(v, hide) + ')';
+      v = String(v == null ? '' : v);
+      if (hide && hide.length && v !== '' && hide.indexOf(Number(v)) >= 0) return '？';
+      return v === '' ? '（　）' : v;
+    });
+  }
+  /** goal → 一行一行的虛擬碼（頂層每一塊之間空一行）
+      ⚠️ 拼圖的資料結構裡，「當綠旗被點擊」和它下面那幾塊是**平行的頂層項目**，
+         但在 Scratch 裡它們是接在帽子積木下面的一串。
+         照著資料結構印的話，虛擬碼會變成一堆對齊的敘述，看不出誰帶著誰 ——
+         所以帽子積木之後的頂層積木要縮一格。 */
+  function pseudoFrom(list, depth, under, hide) {
+    depth = depth || 0;
+    var out = [];
+    (list || []).forEach(function (n, i) {
+      var d = DEFS[n.id] || {};
+      var head = (d.shape === 'hat' || isDefine(n.id));
+      if (depth === 0 && head) {
+        if (i > 0) out.push('');          // 各自獨立的程式之間空一行
+        under = true;
+      }
+      var dep = depth + (depth === 0 && !head && under ? 1 : 0);
+      out.push(new Array(dep + 1).join(PAD) + esc(labelOf(n, hide)));
+      if (n.children && n.children.length) out = out.concat(pseudoFrom(n.children, dep + 1, false, hide));
+      if (d.shape === 'c2') {
+        out.push(new Array(dep + 1).join(PAD) + '否則');
+        out = out.concat(pseudoFrom(n.children2 || [], dep + 1, false, hide));
+      }
+    });
+    return out;
+  }
+  function esc(t) {
+    return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
   /* ===== 主體 ===== */
   function mount(host, opts) {
     ensureStyle();
@@ -671,7 +754,8 @@
        ⚠️ 函式區要不要出現，是**課程作者**在 sprite 上指定的（hasDefine）。
           不去看那個角色的 goal 裡有沒有定義積木 —— 那等於把答案畫在畫面上。 */
     var SPRITES = (opts.sprites && opts.sprites.length) ? opts.sprites
-                : [{ name: '', goal: goal, hasDefine: hasDefine, alts: opts.alts }];
+                : [{ name: '', goal: goal, hasDefine: hasDefine,
+                     alts: opts.alts, pseudo: opts.pseudo }];
     var multi = SPRITES.length > 1;
 
     var midBox = el('div');
@@ -685,6 +769,9 @@
         if (si) head.style.marginTop = '18px';
         midBox.appendChild(head);
       }
+      /* 沒寫 pseudo 就從 goal 印一份 —— 每一關都該有，而且永遠對得上 */
+      var ps = sd.pseudo || pseudoFrom(sd.goal || [], 0, false, opts.hide || []);
+      if (ps && ps.length) midBox.appendChild(pseudoBox(ps));
       var wantDef = (sd.hasDefine == null) ? (hasDefine && !multi) : !!sd.hasDefine;
       if (wantDef) {
         midBox.appendChild(tag('函式區（定義副程式）'));
@@ -774,6 +861,37 @@
       var n = el('div', '', t);
       n.style.cssText = 'font-size:12px;font-weight:900;color:#64748b;margin-bottom:7px';
       return n;
+    }
+    /* ── 虛擬碼 ───────────────────────────────────────
+       ★ 2026-08-17 老師：「整個說明太長了，能夠簡介完功能後，
+         使用 pseudo code 的文字描述來引導嗎？」
+         原本第 4 關右邊塞了 1 句任務＋10 條散文式說明（466 字），
+         讀完還是要自己在腦中把它排成程式。
+       ⇒ 改成把**程式的形狀**直接畫出來：縮排看得出誰包著誰，
+         一眼就知道有幾塊、每一塊裡面有什麼。
+       ★ 放在**那個角色自己的程式區正上方** —— 對照的時候眼睛不必跑來跑去。
+       ⚠️ 內容是課程作者寫的（要用 <b> 標重點），所以用 innerHTML。
+          學生的自由輸入一律走 textContent，這條界線不要因為方便就模糊掉。
+       ⚠️ 用 <details> 是為了可以收起來：拼到後面已經記得的人，
+          不必一直被它佔著螢幕。 */
+    function pseudoBox(lines) {
+      var d = global.document.createElement('details');
+      d.className = 'bk-pseudo';
+      d.open = true;
+      var sum = global.document.createElement('summary');
+      sum.textContent = '📝 程式要長這樣';
+      d.appendChild(sum);
+      var pre = global.document.createElement('pre');
+      pre.innerHTML = (typeof lines === 'string') ? lines : lines.join('\n');
+      d.appendChild(pre);
+      /* ★ 每一關都要講的兩件事，寫在模組裡 ——
+         讓每一關自己在 build 裡寫一遍的話，總有幾關會忘記。 */
+      var note = el('div', 'bk-psnote',
+        '往右縮排＝包在上面那塊積木的肚子裡。名字（副程式、變數）可以自己取，'
+        + '但兩邊要用同一個。'
+        + (/？/.test(String(lines)) ? '　❓ 是這一關要你自己想出來的數字。' : ''));
+      d.appendChild(note);
+      return d;
     }
     function btnCss(bg) {
       return 'background:' + bg + ';color:#fff;border:0;border-radius:10px;padding:9px 15px;' +
@@ -1445,7 +1563,8 @@
     _plain: plain,
     _canon: canon,
     _same: same,
-    _score: score
+    _score: score,
+    _pseudo: pseudoFrom
   };
 
 })(window);

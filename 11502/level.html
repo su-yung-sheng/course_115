@@ -700,6 +700,11 @@ function draw(s) {
     BLOCKS.mount(body, {
       palette: lv.palette, goal: lv.goal, sprites: lv.sprites,
       alts: lv.alts, loose: lv.loose,
+      /* ★ hide：虛擬碼裡要挖空的數字 —— 就是那一關刻意不說、
+         要學生自己想出來的那幾個（mustDerive）。
+         ⚠️ 不傳的話，虛擬碼會把「正方形有幾條邊、轉幾度」直接印出來，
+            等於一邊說「你自己想」、一邊把答案寫在旁邊。 */
+      hide: lv.mustDerive,
       hint: lv.task, steps: lv.build,
       onPass: () => { markPre(); advance(); }
     });
