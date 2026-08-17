@@ -373,17 +373,61 @@
   }
 
   /* ── 測驗 ────────────────────────────────────────────── */
+  /* ── 作答過程的紀錄（老師 2026-08-17 要的）───────────────
+     ⚠️⚠️ 這幾個數字**不是作弊判定**，是給老師看的參考。
+        · 切出視窗可能只是通知跳出來、切輸入法
+        · 秒數快可能是他真的會
+        ⇒ 系統**不封鎖、不扣分、不跳警告**，只把它記下來。
+          任何「自動抓作弊」的做法都會冤枉到人，而被冤枉一次
+          比讓一個人抄到還糟。
+     ★ 真正有訊號的是**對照**：整份都 3 秒、只有難題 40 秒，那才值得問一句。 */
+  var behav = { t: [], copy: 0, away: 0 };
+  var qStart = 0;
+
   function startQuiz() {
     var n = NODES[currentId];
     if (!n || !n.questions.length) { showModal('題庫建置中', '本小節題庫尚未建置完成，敬請期待！'); return; }
     pool = shuffle(n.questions.slice());
     streak = 0; score = 0; wrong = 0; seconds = 0; runStat = {};
+    behav = { t: [], copy: 0, away: 0 };
     hide('study-screen'); show('quiz-screen');
     $('current-chapter-title').textContent = n.title;
     startTimer(); loadQuestion();
   }
 
   function shuffle(a) { return a.sort(function () { return 0.5 - Math.random(); }); }
+
+  /* ── 題目不給複製 ─────────────────────────────────────
+     ★ 老師 2026-08-17：「不能複製呢？」
+     ⚠️ 刻意**不用** user-select:none —— 那會讓螢幕朗讀器、翻譯工具、
+        放大鏡一起失效，而這一章正好在教「資訊近用權」與「數位包容」。
+        ⇒ 改成攔 copy 事件：選取照常（輔具正常），但剪貼簿裡放的是一句話。
+     ⚠️ 這擋不掉截圖 —— 現在的 AI 讀得懂截圖，按 Win+Shift+S 只要兩秒。
+        它擋的是「最省事的那一條」，不是全部。 */
+  function isQuizOn() {
+    var el = document.getElementById('quiz-screen');
+    return !!el && !el.classList.contains('hidden');
+  }
+  document.addEventListener('copy', function (e) {
+    if (!isQuizOn()) return;
+    behav.copy++;
+    try {
+      (e.clipboardData || window.clipboardData)
+        .setData('text/plain', '（題目請自己讀 😉 這一份要看的是你想得到什麼）');
+      e.preventDefault();
+    } catch (err) { /* 瀏覽器不給改剪貼簿就算了，至少數字記到了 */ }
+  });
+  /* 切出視窗（換分頁、切到別的 App）。同樣只記次數，不做任何處置。 */
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && isQuizOn()) behav.away++;
+  });
+
+  /** 把每題的秒數濃縮成兩個數字 —— 不存整個陣列（history 有長度上限） */
+  function pace() {
+    var a = behav.t.slice().sort(function (x, y) { return x - y; });
+    if (!a.length) return null;
+    return { med: a[Math.floor(a.length / 2)], min: a[0], n: a.length };
+  }
 
   function startTimer() {
     clearInterval(timer); paintTimer();
@@ -409,6 +453,7 @@
            +  MAIN.optHover + ' transition text-lg font-bold text-slate-700 select-none">' + o.text + '</div>';
     });
     $('question-container').innerHTML = html + '</div>';
+    qStart = Date.now();          // ★ 這一題從現在開始計時
   }
 
   function selectOption(i) {
@@ -419,9 +464,28 @@
     });
   }
 
+  /**
+   * 這一題答對了沒。
+   * ★ 2026-08-17 起，題庫裡**沒有明碼答案** —— 只有一段雜湊（a）。
+   *   判分改成「對學生選的那個選項算一次雜湊，和 a 比」。
+   *   為什麼：這個 repo 是公開的，原本 `correct: 2` 按 F12 就看得到，
+   *   學生根本不必問 AI。詳見 shared/anskey.js 開頭。
+   * ⚠️ 舊題庫（還沒跑 hash-answers.js 的）仍然吃 correct ——
+   *    不然忘了轉換就整份題庫判錯，那比洩題還糟。
+   *    anskey.test.js 會盯著「內容檔裡不可以還有明碼答案」。
+   */
+  function isRight(item, picked) {
+    if (window.ANSKEY && item.a) {
+      return window.ANSKEY.check(item.q, item.shuffled[picked].text, item.a);
+    }
+    return item.shuffled[picked].orig === item.correct;
+  }
+
   function checkAnswer() {
     if (picked === -1) { showModal('尚未作答', '請先選擇一個選項再送出！'); return; }
-    var right = current.shuffled[picked].orig === current.correct;
+    /* 這一題想了幾秒（上限 600 —— 中間去上廁所不必記成兩小時） */
+    if (qStart) behav.t.push(Math.min(600, Math.round((Date.now() - qStart) / 1000)));
+    var right = isRight(current, picked);
 
     /* ★ 逐題記一筆（2026-08-11）——「這一節下次該重講什麼」只有這個答得出來。
        ⚠️ 只累加在記憶體裡，**不是每答一題就寫 Firestore**。
@@ -492,7 +556,9 @@
       var star = window.GRADING.ethicsStar(rate);
       window.REPORT.unit(C.moduleId, currentId, {
         star: star, score: rate,
-        extra: { duration: dur, correct: score, total: total }
+        /* ★ pace／copy／away 是給老師看的參考，不影響星等，也不影響過關。 */
+        extra: { duration: dur, correct: score, total: total,
+                 pace: pace(), copy: behav.copy, away: behav.away }
       }).then(paintBadges)
         .catch(function (e) { console.error('回報進度失敗', e); });
     }

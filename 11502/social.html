@@ -21,6 +21,9 @@
   <script src="../shared/sso.js"></script>
   <script src="../shared/grading.js"></script>
   <script src="../shared/qstat.js"></script>
+  <!-- 選擇題的答案是雜湊，不是明碼 —— 見 shared/anskey.js 開頭的說明。
+       ⚠️ 一定要排在 quiz-engine 之前：引擎判分時就要用到它。 -->
+  <script src="../shared/anskey.js"></script>
   <script src="../shared/report.js"></script>
 
   <!-- ③ 版型與流程引擎：畫面完全由這支產生，兩學期共用同一份 -->

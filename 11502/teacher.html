@@ -1330,7 +1330,22 @@
         const dt = h.at ? new Date(h.at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
         const what = h.chapter ? `章節 ${h.chapter}` : (h.challenge != null ? `第 ${h.challenge} 關` : '完成一項');
         const sc = (h.score != null) ? `　正確率 ${h.score}%` : '';
-        return `<div class="text-xs text-slate-600 px-3 py-1.5 border-b border-slate-50 flex justify-between gap-2"><span class="font-medium">${i + 1}. ${what}${sc}</span><span class="text-slate-400 flex-shrink-0">${dt}</span></div>`;
+        /* ⚠️⚠️ 作答過程的參考數字（2026-08-17 加）——
+           **不是作弊判定**，系統不會因為這些數字擋任何人。
+             ⏱ 中位／最快：每一題想了幾秒
+             ⧉ 複製：按 Ctrl+C 的次數（題目本來就不給複製，按了只會拿到一句話）
+             ↗ 離開：切到別的分頁或 App 的次數（通知跳出來也算）
+           ★ 單看一個數字沒有意義，要看**對照**：
+             整份都 3 秒、或難題特別久，那才值得找學生聊一句。 */
+        const p = h.pace || null;
+        const bits = [];
+        if (p && p.med != null) bits.push(`⏱ ${p.med}s／最快 ${p.min}s`);
+        if (h.copy) bits.push(`⧉ ${h.copy}`);
+        if (h.away) bits.push(`↗ ${h.away}`);
+        const beh = bits.length
+          ? `<span class="text-slate-400 ml-2" title="作答過程參考：想的秒數／複製次數／切出視窗次數（不是作弊判定）">${bits.join('　')}</span>`
+          : '';
+        return `<div class="text-xs text-slate-600 px-3 py-1.5 border-b border-slate-50 flex justify-between gap-2"><span class="font-medium">${i + 1}. ${what}${sc}${beh}</span><span class="text-slate-400 flex-shrink-0">${dt}</span></div>`;
       }).join('');
     }
 

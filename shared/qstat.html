@@ -32,7 +32,9 @@
   var bank = (t === '11501') ? 'ethics' : 'social';
   document.write('<scr' + 'ipt src="../' + t + '/config.js' + v + '"></scr' + 'ipt>');
   document.write('<scr' + 'ipt src="../' + t + '/content/' + bank + '.js' + v + '"></scr' + 'ipt>');
-  ['auth.js', 'qstat.js'].forEach(function (f) {
+  /* ⚠️ anskey.js 一定要載：題庫裡的答案是雜湊，
+     教師端要靠它反查「哪一個選項才是對的」。 */
+  ['auth.js', 'anskey.js', 'qstat.js'].forEach(function (f) {
     document.write('<scr' + 'ipt src="' + f + v + '"></scr' + 'ipt>');
   });
 })();

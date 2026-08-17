@@ -116,7 +116,13 @@
         (list || []).forEach(function (it) {
           var k = id(it.q);
           if (!k) return;
-          if (!out[k]) out[k] = { id: k, q: it.q, options: it.options, correct: it.correct, where: [] };
+          /* ★ 2026-08-17：題庫裡不再有明碼的 correct，只有雜湊（a）。
+             教師端要顯示「哪一個才是對的」，只能拿四個選項各算一次雜湊反查。
+             ⚠️ 這也正好說明 anskey 的防護等級：**擋隨手看，不擋有心人**。
+             （舊題庫還有 correct 的話照舊用它 —— 兩種都吃。） */
+          var ci = (it.correct != null) ? it.correct
+                 : (global.ANSKEY ? global.ANSKEY.find(it.q, it.options, it.a) : -1);
+          if (!out[k]) out[k] = { id: k, q: it.q, options: it.options, correct: ci, where: [] };
           if (out[k].where.indexOf(where) < 0) out[k].where.push(where);
         });
       };

@@ -58,8 +58,20 @@ BANKS.forEach(([name, rel]) => {
   ok(all.length > 100, '題目載得進來（' + all.length + ' 筆，含整章挑戰）');
 
   ok(all.every(x => (x.q.options || []).length === 4), '每題都是四個選項');
-  ok(all.every(x => x.q.correct >= 0 && x.q.correct < (x.q.options || []).length),
-     '答案索引都在範圍內');
+  /* ⚠️ 2026-08-17 起答案不是明碼索引，而是一段雜湊（見 shared/anskey.js）：
+     這個 repo 是公開的，原本 `correct: 2` 按 F12 就看得到。
+     ⇒ 這一條從「索引在範圍內」改成「反查得回**唯一一個**選項」——
+       檢查的意圖沒變（答案要指得到東西），只是換了表示法。
+     ★ 兩個選項算出同一個雜湊也要抓：那表示這一題有兩個「正確答案」。 */
+  const A = require(path.join(root, 'shared', 'anskey.js'));
+  const hit = x => (x.q.options || []).filter(o => A.check(x.q.q, o, x.q.a)).length;
+  const noAns = all.filter(x => (x.q.correct == null) && hit(x) !== 1);
+  ok(noAns.length === 0,
+     '★ 每一題的答案都對得回唯一一個選項' +
+     (noAns.length ? '　⚠️ ' + noAns.length + ' 題有問題：' +
+        noAns.slice(0, 2).map(x => x.at + '｜' + String(x.q.q).slice(0, 16)).join('；') : ''));
+  ok(all.every(x => x.q.correct == null),
+     '★★ 題庫裡沒有明碼答案（correct）—— 有的話學生 F12 就看得到');
   ok(all.every(x => x.q.q && x.q.q.length > 4), '每題都有題目文字');
 
   /* ★ 選項長度不可以出賣答案。
