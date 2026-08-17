@@ -128,9 +128,9 @@ section('★★ 沒有回呼的步驟，一定要有「下一步」按鈕');
   ok(marks.length >= 5, '切得出各步驟的分支（' + marks.map(m => m[1]).join('、') + '）');
   /* ⚠️ 終點步驟不需要「出路」—— 它本來就是最後一步。
      · test：上傳作品，等批改（沒有下一步）
-     · done：沒有作品要交的關卡的收尾（第 5 關）
+     · play：沒有作品要交的關卡的最後一步（第 5、10 關的實作體驗）
      ★ 但終點一定要給學生**一條離開的路**，不然他會停在那裡不知道做什麼。 */
-  const TERMINAL = ['test', 'done'];
+  const TERMINAL = ['test', 'play'];
   marks.forEach((m, i) => {
     const from = m.index;
     const to = i + 1 < marks.length ? marks[i + 1].index : body.length;
@@ -170,14 +170,14 @@ section('★★ 十關逐關檢查：每一步都接得上');
     if (v.quiz) out.push('quiz');
     if (v.goal) out.push('blocks');
     /* ⚠️ 最後一步不一定是「實作測試」：
-       沒有作品要交的關卡（GRADING.GATE.NO_UPLOAD）是「完成」。
+       沒有作品要交的關卡（GRADING.GATE.NO_UPLOAD）是「實作體驗」。
        ★ 名單只有一份 —— 這裡也要去讀它，不可以自己寫死。 */
-    out.push(GATE.needsUpload(v._id) ? 'test' : 'done');
+    out.push(GATE.needsUpload(v._id) ? 'test' : 'play');
     return out;
   };
   /* 上面那一段已經確認過每一種步驟都接得上；
      這裡確認的是「每一關實際會走到的那幾步」都在清單裡。 */
-  const WIRED = ['scene', 'combo', 'analysis', 'derive', 'lab', 'quiz', 'blocks', 'test', 'done'];
+  const WIRED = ['scene', 'combo', 'analysis', 'derive', 'lab', 'quiz', 'blocks', 'test', 'play'];
   ORDER.forEach((id, i) => {
     const st = stepsOf(L[id]);
     const bad = st.filter(k => WIRED.indexOf(k) < 0);

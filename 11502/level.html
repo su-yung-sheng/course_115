@@ -98,6 +98,7 @@
 <script src="../shared/logiclab.js"></script>
 <script src="../shared/minlab.js"></script>
 <script src="../shared/bigfind.js"></script>
+<script src="../shared/bigcost.js"></script>
 <script src="../shared/answer.js"></script>
 <script src="../shared/quiz.js"></script>
 <script src="content/blocks.js"></script>
@@ -169,6 +170,20 @@ function unitOpen(no) {
    ⚠️ 回傳的是模組本身，不是 true —— steps() 拿它判斷「這一步出不出現」。
       模組沒載進來就當作沒有這一步：少一步學生還走得完，
       多一個點不動的空步驟才是真的卡住。 */
+/* 最後一步（實作體驗）要掛哪一支模組。
+   ⚠️ 沒有作品要交的關卡才有這一步（見 GATE.NO_UPLOAD），
+      而**每一關的體驗不一樣**：
+        第 5 關  bigfind → 100 個人，找最矮的
+        第 10 關 bigcost → 資料大爆炸（排序 vs 搜尋的成本）
+   ★ 用關卡資料的 finish 欄位決定，不要在畫面那一段寫 if (unit.id === …) ——
+     那樣每加一關就要回去改一次畫面的程式碼。 */
+function finishMod(fin) {
+  if (!fin) return null;
+  if (fin.kind === 'bigfind') return window.BIGFIND || null;
+  if (fin.kind === 'bigcost') return window.BIGCOST || null;
+  return null;
+}
+
 function labMod(lab) {
   if (!lab) return null;
   if (lab.kind === 'search') return window.SEARCHLAB || null;
@@ -497,7 +512,8 @@ function stepGoal(key) {
   /* 實作體驗的標準由 BIGFIND 自己給（和實驗室同一個道理：
      通過條件是模組決定的，關卡頁抄一份就會不同步）。 */
   if (key === 'play') {
-    return (window.BIGFIND && window.BIGFIND.goal) ? window.BIGFIND.goal({ n: 100 }) : null;
+    const mod = finishMod(lv && lv.finish);
+    return (mod && typeof mod.goal === 'function') ? mod.goal(lv.finish) : null;
   }
   if (key === 'lab') {
     const mod = labMod(lv && lv.lab);
@@ -687,31 +703,32 @@ function draw(s) {
   }
 
   if (s.key === 'play') {
-    /* ★ 沒有作品要交的關卡（第 5 關）的最後一步。
-       ⚠️ 不是一頁「完成」——老師 2026-08-17 要的是真的有得玩的體驗：
-          100 個人、顯示身高，找最矮的／找下一個該搬的／和電腦比一次。
-       ★ 為什麼一定要 100 個
-         前面的實驗室只有 5 個人，而概念檢測寫著
-         「五個人你看一眼就好，五萬個人呢？」——
-         五個人證明不了那句話，一百個人才會痛。
-       ⚠️ 這一步**會擋**（做不完進不了第 6 關）。
+    /* ★ 沒有作品要交的關卡的最後一步（第 5、10 關）。
+       ⚠️ 不是一頁「完成」—— 是真的有得玩的體驗：
+          第 5 關：100 個人，找最矮的（資料變多，用看的就不夠）
+          第 10 關：資料大爆炸（排序有多貴、搜尋差幾倍、先排序划不划算）
+       ⚠️ 這一步**會擋**（做不完進不了下一關）。
           紀錄是學生端自己寫的，按 F12 就能偽造 —— 見 GATE.cleared 的說明。 */
     markPre();
+    const fmod = finishMod(lv && lv.finish);
+    const intro = (lv && lv.finish && lv.finish.kind === 'bigcost')
+      ? '這一關<b>沒有程式要寫</b> —— 你要比的，是<b>第 8、9 關寫過的那兩支程式</b>。' +
+        '<br>把第 6～9 關學的四個演算法放在一起，看資料變多的時候會發生什麼事。'
+      : '這一關<b>沒有程式要交</b> —— 課本這一節是觀念導入，' +
+        '你想清楚的做法，<b>第 6、7 關</b>才用 Scratch 寫出來。' +
+        '<br>先在這裡感受一件事：資料變多的時候，「用看的」為什麼不夠。';
     body.innerHTML =
-      '<h2 class="text-xl font-black mb-1">🎮 實作體驗：一百個人</h2>' +
-      '<p class="text-sm text-slate-600 leading-relaxed mb-4">' +
-      '這一關<b>沒有程式要交</b> —— 課本這一節是觀念導入，' +
-      '你想清楚的做法，<b>第 6、7 關</b>才用 Scratch 寫出來。' +
-      '<br>先在這裡感受一件事：資料變多的時候，「用看的」為什麼不夠。</p>' +
+      '<h2 class="text-xl font-black mb-1">🎮 實作體驗</h2>' +
+      '<p class="text-sm text-slate-600 leading-relaxed mb-4">' + intro + '</p>' +
       '<div id="play-host"></div>';
-    if (window.BIGFIND) {
-      window.BIGFIND.mount($('play-host'), {
-        n: 100, big: true,
+    if (fmod) {
+      fmod.mount($('play-host'), Object.assign({}, lv.finish, {
+        big: true,
         onPass: () => {
           if (window.savePlay) window.savePlay(unit.id);
           location.href = 'scratch.html';
         }
-      });
+      }));
     } else {
       /* ⚠️ 模組沒載進來也要留一條路，不然這一關就是死路。 */
       $('play-host').innerHTML =
