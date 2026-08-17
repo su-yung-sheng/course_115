@@ -300,6 +300,7 @@ const SEMANTIC = {
     ]},
   '11502_單元七.sb3': { uid: '6-2-2', name: '插入排序',
     checks: [
+      ['★ 主程式是「當角色被點擊」', t => /event_whenthisspriteclicked/.test(t)],
       ['外圈重複固定次數', t => /control_repeat\b/.test(t)],
       ['內圈是「重複直到」', t => /control_repeat_until/.test(t)],
       ['★ 內圈的停止條件是「或」（兩個）', t => /operator_or/.test(t)],
@@ -308,6 +309,7 @@ const SEMANTIC = {
     ]},
   '11502_單元八.sb3': { uid: '6-3-1', name: '循序搜尋',
     checks: [
+      ['★ 主程式是「當角色被點擊」', t => /event_whenthisspriteclicked/.test(t)],
       ['有詢問', t => /sensing_askandwait/.test(t)],
       ['★ 停止條件是「或」（兩個）', t => /control_repeat_until[\s\S]*operator_or/.test(t)],
       ['★★ 報告結果在迴圈**外面**（找不到也要說話）',
@@ -317,6 +319,11 @@ const SEMANTIC = {
   '11502_單元九.sb3': { uid: '6-3-2', name: '二元搜尋',
     checks: [
       ['有詢問', t => /sensing_askandwait/.test(t)],
+      ['★★ 收斂用 ±1（2026-08-17 老師修正版）',
+        t => /operator_add/.test(t) && /operator_subtract/.test(t)],
+      ['★★ 停止條件是「開始位置 > 結束位置」，不是「開始位置 = 位置」',
+        t => /operator_gt\s+開始位置\s+結束位置|開始位置\s+結束位置/.test(t) &&
+             !/operator_equals\s+開始位置\s+位置/.test(t)],
       ['算二分位置用無條件捨去', t => /operator_mathop/.test(t)],
       ['★ 停止條件是「或」（兩個）', t => /control_repeat_until[\s\S]*operator_or/.test(t)],
       ['★★ 報告結果在迴圈**外面**',
@@ -393,8 +400,20 @@ section('★★ 系統的目標程式要有同樣的性質');
        範圍剩兩格時，(開始＋結束)÷2 取整數永遠等於開始位置，
        最後一項永遠輪不到被比較。
        ⇒ 以後有人「照範例修正」把 ±1 拿掉的話，這條會紅。 */
-    ['6-3-2', '★★ 收斂用 ±1（**刻意不照範例檔** —— 少了它最後一項永遠比不到）',
-      t => /list\.tolo/.test(t) && /list\.tohi/.test(t)]
+    /* ⚠️ 2026-08-17 傍晚：老師改好範例檔重傳了 ——
+       ±1、開始 > 結束、迴圈末尾那塊多餘的「再算一次」也刪掉了，
+       還加了「位置 ← 0」。重跑同一份 50 筆資料：全部找得到，最多 6 次。
+       ⇒ 這條從「刻意不一樣」變成「兩邊一樣」，但還是要釘 —— 拿掉就會漏答案。 */
+    ['6-3-2', '★★ 收斂用 ±1（少了它，範圍剩兩格時最後一項永遠比不到）',
+      t => /list\.tolo/.test(t) && /list\.tohi/.test(t)],
+    ['6-3-2', '★ 先把二分位置歸零（停止條件第一次檢查時它還沒算過）',
+      /* ⚠️ 比對前兩邊都要去空白 —— flat() 印出來是「list.setidx ["二分位置",0]」，
+         regex 裡若還留著那個空白就永遠對不上（第一版就是這樣紅的）。 */
+      t => /list\.setidx\["二分位置",0\]/.test(t.replace(/\s/g, ''))],
+    /* ★ 三關的主程式都是「當角色被點擊」—— 綠旗那一塊在範例裡是建立資料用的 */
+    ['6-2-2', '★ 主程式是「當角色被點擊」', t => /events\.whenclicked/.test(t)],
+    ['6-3-1', '★ 主程式是「當角色被點擊」', t => /events\.whenclicked/.test(t)],
+    ['6-3-2', '★ 主程式是「當角色被點擊」', t => /events\.whenclicked/.test(t)]
   ];
   CASES.forEach(([id, label, fn]) => ok(fn(flatOf(id)), '   ' + id + '　' + label));
 }

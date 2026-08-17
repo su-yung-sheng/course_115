@@ -1828,6 +1828,8 @@ window.BLOCK_LEVELS = {
       '對照課本第 215 頁的流程圖：第一個判斷是「位置大於原始資料數量？」，最後的分岔就是這裡的「如果…否則」。'
     ],
     palette: [
+      'events.whenclicked',
+      /* 誘餌：綠旗那一塊在範例檔裡是「建立資料」用的，不是這一支 */
       'events.whenflag',
       'sensing.ask', 'list.setidx', 'list.changeidx',
       'control.untilfound', 'looks.saycompare',
@@ -1850,7 +1852,9 @@ window.BLOCK_LEVELS = {
          迴圈只負責「說出正在比的數字、往下走一格」，
          走完之後在**迴圈外**用「如果 位置 > 長度」報告沒有／找到。 */
     goal: [
-      { id: 'events.whenflag' },
+      /* ★ 照範例檔：主程式是「當角色被點擊」——
+         綠旗那一塊在範例裡是負責「建立資料」的，不是這一支。 */
+      { id: 'events.whenclicked' },
       { id: 'sensing.ask', args: ['請輸入要搜尋的數字（1-100）：'] },
       { id: 'list.setidx', args: ['位置', 1] },
       /* ★ 兩個停止條件 —— 課本 p.215 流程圖的第一個判斷。
@@ -1997,6 +2001,8 @@ window.BLOCK_LEVELS = {
       '報告結果和第 8 關一樣要在迴圈**外面**：比到了就說「找到了」，範圍空了就說「沒有符合的數字」。'
     ],
     palette: [
+      'events.whenclicked',
+      /* 誘餌：綠旗那一塊在範例檔裡是「建立資料」用的，不是這一支 */
       'events.whenflag', 'sensing.ask',
       'list.setidx', 'list.setlen', 'list.setmid', 'list.tolo', 'list.tohi',
       'control.untilhalf', 'control.ifmid', 'looks.saycomparemid',
@@ -2023,10 +2029,16 @@ window.BLOCK_LEVELS = {
            同一份資料重跑：50 個全部找得到，最多比 6 次（50 筆的上界就是 6）。
        ★ 老師 2026-08-17 知情並選了這個版本。 */
     goal: [
-      { id: 'events.whenflag' },
+      /* ★ 照範例檔：主程式是「當角色被點擊」——
+         綠旗那一塊在範例裡是負責「建立資料」的，不是這一支。 */
+      { id: 'events.whenclicked' },
       { id: 'sensing.ask', args: ['請輸入要搜尋的數字（1-100）：'] },
       { id: 'list.setidx', args: ['開始位置', 1] },     // 起點
       { id: 'list.setlen', args: ['結束位置'] },        // 終點＝清單長度，不是寫死的 13
+      /* ★ 先把二分位置歸零：迴圈的停止條件會用到它，
+         而第一次檢查的時候它還沒被算過 —— 不歸零就會拿到上一次執行的殘值。
+         （老師 2026-08-17 的修正版範例檔也加了這一塊。） */
+      { id: 'list.setidx', args: ['二分位置', 0] },
       /* ★ 兩個停止條件：範圍空了（找不到），或比到了 */
       { id: 'control.untilhalf', children: [
         { id: 'list.setmid' },                          // 範圍變了就要重算中間點
@@ -2500,6 +2512,8 @@ window.BLOCK_LEVELS = {
       '最後一塊是「刪除 原始資料 的第 1 項」：這一張處理完了，下一輪的「第 1 項」才會換成下一張。'
     ],
     palette: [
+      'events.whenclicked',
+      /* 誘餌：綠旗那一塊在範例檔裡是「建立資料」用的，不是這一支 */
       'events.whenflag',
       'control.repeat', 'looks.saytake',
       'list.setidx', 'control.untilspot', 'list.changeidx',
@@ -2519,7 +2533,9 @@ window.BLOCK_LEVELS = {
        ⇒ 少了「新牌」這個中間變數，學生在真的 Scratch 裡拼得出同一支程式。
        ★ 外圈也照範例用「重複 5 次」（課本的例子就是 5 個數字）。 */
     goal: [
-      { id: 'events.whenflag' },
+      /* ★ 照範例檔：主程式是「當角色被點擊」——
+         綠旗那一塊在範例裡是負責「建立資料」的，不是這一支。 */
+      { id: 'events.whenclicked' },
       { id: 'control.repeat', args: [5], children: [
         { id: 'looks.saytake' },                              // 先讓學生看到這一輪拿的是哪一張
         { id: 'list.setidx', args: ['插入位置', 1] },          // 每一張牌都要從頭找起

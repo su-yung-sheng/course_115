@@ -65,6 +65,13 @@
   var DEFS = {
     // %flag 會畫成綠旗（就是 Scratch 的那面旗子），不是播放三角形
     'events.whenflag':  { cat:'events',  shape:'hat',   label:'當 %flag 被點擊' },              // EVENT_WHENFLAGCLICKED
+    /* ★ 2026-08-17 加：老師的範例檔（單元七、八、九）主程式都是**當角色被點擊**——
+       綠旗那一塊留給「建立資料」（隨機產生一列數字），
+       點角色才開始排序／搜尋。那是刻意的：資料和演算法分成兩支，
+       學生可以重跑演算法而不必重新亂數一組資料。
+       ⚠️ 系統原本只有綠旗，於是拼圖教的和範例檔對不起來 ——
+          學生照拼圖做完，回 Scratch 會發現帽子積木不一樣。 */
+    'events.whenclicked':{cat:'events',  shape:'hat',   label:'當角色被點擊' },                    // EVENT_WHENTHISSPRITECLICKED
     'motion.move':      { cat:'motion',  shape:'stack', label:'移動 %n 點',        args:[10] }, // MOTION_MOVESTEPS
     // ↻ ↺ 是 Scratch 積木上真的有的箭頭圖示（MOTION_TURNRIGHT 的 %1）
     // 預設 15 度也照 Scratch —— 順便讓調色盤不會直接把答案（90）送給學生
@@ -149,7 +156,10 @@
     'list.setmid':      { cat:'list',    shape:'stack', label:'變數 二分位置 設為（開始位置＋結束位置）÷ 2 的整數部分' },                     // ★自訂
     'list.tolo':        { cat:'list',    shape:'stack', label:'變數 開始位置 設為 二分位置 ＋ 1' },                                            // ★自訂
     'list.tohi':        { cat:'list',    shape:'stack', label:'變數 結束位置 設為 二分位置 － 1' },                                            // ★自訂
-    'control.ifmid':    { cat:'control', shape:'c2',    label:'如果 數列 的第 二分位置 項 < 詢問的答案 那麼' },                             // ★自訂
+    /* ⚠️ 寫法和範例檔對齊：範例是「如果 詢問的答案 > 第二分位置項」。
+       「中間值 < 答案」和「答案 > 中間值」是同一件事，但學生回 Scratch
+       是照著範例拼的 —— 兩邊長得一樣，他就不必在腦中翻一次。 */
+    'control.ifmid':    { cat:'control', shape:'c2',    label:'如果 詢問的答案 > 數列 的第 二分位置 項 那麼' },                            // ★自訂
     /* 第 9 關的停止條件與收尾（2026-08-17 依老師的範例檔 11502_單元九 改寫）。
        ★ 結構照範例：迴圈只負責砍一半，找到／沒有在**迴圈外**報告。
        ⚠️⚠️ 但收斂**不照**範例：範例是「開始位置 ← 位置」（不加減 1），
