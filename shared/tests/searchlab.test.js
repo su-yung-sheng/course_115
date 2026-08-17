@@ -417,30 +417,55 @@ section('★ 第 8 關（6-3-1）的關卡資料');
 
   /* ★ 這一條是這一關拼圖唯一真正的考點。
      少了「位置改變 1」，程式永遠停在第 1 項 —— 那就是無窮迴圈，
-     而畫面上它看起來只是「少一塊」。 */
+     而畫面上它看起來只是「少一塊」。
+     ⚠️ 2026-08-17：原本用寫死的索引（goal[2]）抓那個迴圈。
+        那天依老師的範例檔改寫這一關（報告結果搬到迴圈外面），
+        塊數和順序都變了 —— 於是這裡直接爆掉。
+        ★ 改成**用 id 找**：關卡資料的順序本來就會變，
+          測試不該把它當成契約。 */
+  const idxOf = (l, id) => l.findIndex(n => n.id === id);
+  const iLoop = idxOf(got, 'control.untilfound');
+  ok(iLoop >= 0, '★ 找得到那個「重複直到」（兩個停止條件的那一塊）');
+
   const noStep = JSON.parse(JSON.stringify(got));
-  noStep[2].children = noStep[2].children.filter(n => n.id !== 'list.changeidx');
+  noStep[iLoop].children = noStep[iLoop].children.filter(n => n.id !== 'list.changeidx');
   ok(!B._same(noStep, lv.goal, lv.loose || []),
      '★ 漏掉「位置改變 1」→ 判錯（那是無窮迴圈）');
 
   /* 位置加 1 放到迴圈外面 —— 同樣是停在第 1 項 */
   const outside = JSON.parse(JSON.stringify(got));
-  const moved = outside[2].children.pop();
+  const moved = outside[iLoop].children.pop();
   outside.push(moved);
   ok(!B._same(outside, lv.goal, lv.loose || []),
      '★ 把「位置改變 1」搬到迴圈外面 → 判錯');
 
   /* 起點不是 1 */
   const from0 = JSON.parse(JSON.stringify(got));
-  from0[1].args[1] = 0;
+  from0[idxOf(got, 'list.setidx')].args[1] = 0;
   ok(!B._same(from0, lv.goal, lv.loose || []), '   起點不是第 1 項 → 判錯');
+
+  /* ★★ 2026-08-17 依老師的範例檔（單元八）改的那件事：
+     報告結果要在迴圈**外面**。寫在裡面的話，找不到時程式什麼都不會說。 */
+  ok(idxOf(got, 'control.ifover') > iLoop,
+     '★★ 「如果 位置 > 長度」在迴圈**外面** —— 找不到也要說話');
+  const noNone = got.filter(n => n.id !== 'control.ifover');
+  ok(!B._same(noNone, lv.goal, lv.loose || []),
+     '★★ 少了迴圈外那段報告 → 判錯（找不到的時候一片安靜）');
+  const inside = JSON.parse(JSON.stringify(got));
+  inside[iLoop].children.push({ id: 'looks.sayfound', args: [], children: null, children2: null });
+  ok(!B._same(inside, lv.goal, lv.loose || []),
+     '★ 把「說出找到了」塞回迴圈裡 → 判錯（那是舊版的寫法）');
 
   /* 誘餌要在調色盤上，而且不可以混進答案 */
   const used = new Set();
   (function w(l) { (l || []).forEach(n => { used.add(n.id);
     (n.args || []).forEach(a => { if (a && typeof a === 'object') w([a]); });
     w(n.children); w(n.children2); }); })(lv.goal);
-  ['control.repeat', 'control.repeatlen', 'control.ifless'].forEach(id => {
+  /* ⚠️ 誘餌名單跟著改版換過：
+       control.until    只有一個停止條件（找不到時停不下來）
+       control.iffound  把「找到了」寫在迴圈裡 —— 那正是這次修掉的舊寫法
+       list.settarget   範例檔沒有這一塊（它直接用「詢問的答案」比） */
+  ['control.until', 'control.iffound', 'list.settarget', 'control.repeatlen'].forEach(id => {
     ok(lv.palette.indexOf(id) >= 0, '★ 調色盤上有誘餌 ' + id);
     ok(!used.has(id), '   誘餌 ' + id + ' 沒有混進答案');
   });
@@ -475,31 +500,54 @@ section('★ 第 9 關（6-3-2）的關卡資料');
 
   /* ★★ 這一關拼圖唯一真正的考點：那個「否則」。
      只寫「那麼」的話，中間值比目標大時範圍完全不動 → 無窮迴圈。
-     而畫面上它看起來只是「少一小塊」。 */
+     而畫面上它看起來只是「少一小塊」。
+     ⚠️ 2026-08-17：原本用寫死的索引 goal[3] 抓那個迴圈 ——
+        那天依老師的範例檔改寫這一關（多了詢問、報告搬到迴圈外），
+        索引整個位移，測試直接爆掉。★ 改成用 id 找。 */
+  const idxOf = (l, id) => l.findIndex(n => n.id === id);
+  const iLoop = idxOf(got, 'control.untilhalf');
+  ok(iLoop >= 0, '★ 找得到那個「重複直到」（兩個停止條件的那一塊）');
+  const iIf = got[iLoop].children.findIndex(n => n.id === 'control.ifmid');
+
   const noElse = JSON.parse(JSON.stringify(got));
-  noElse[3].children[1].children2 = [];
+  noElse[iLoop].children[iIf].children2 = [];
   ok(!B._same(noElse, lv.goal, lv.loose || []),
      '★★ 「否則」那格空著 → 判錯（另外那一半永遠砍不掉，範圍不動＝無窮迴圈）');
 
   /* 兩邊放反：該右移的時候左移 —— 目標被砍掉，永遠找不到 */
   const swap = JSON.parse(JSON.stringify(got));
-  const ie = swap[3].children[1];
+  const ie = swap[iLoop].children[iIf];
   const t = ie.children; ie.children = ie.children2; ie.children2 = t;
   ok(!B._same(swap, lv.goal, lv.loose || []),
      '★ 開始位置與結束位置的調整放反 → 判錯（等於每次都砍掉有目標的那一半）');
 
   /* 算二分位置放到迴圈外面：範圍變了中間點卻不重算 */
   const outside = JSON.parse(JSON.stringify(got));
-  const mid = outside[3].children.shift();
-  outside.splice(3, 0, mid);
+  const mid = outside[iLoop].children.shift();
+  outside.splice(iLoop, 0, mid);
   ok(!B._same(outside, lv.goal, lv.loose || []),
      '★ 「算二分位置」搬到迴圈外面 → 判錯（範圍變了卻不重算，永遠指同一格）');
 
   /* 結束位置寫死成 13 —— 換一組資料就不能用 */
   const hard = JSON.parse(JSON.stringify(got));
-  hard[2] = { uid: 'x', id: 'list.setidx', args: ['結束位置', 13], children: null, children2: null };
+  hard[idxOf(got, 'list.setlen')] =
+    { uid: 'x', id: 'list.setidx', args: ['結束位置', 13], children: null, children2: null };
   ok(!B._same(hard, lv.goal, lv.loose || []),
      '   結束位置打死 13（不用清單長度）→ 判錯');
+
+  /* ★★ 2026-08-17 依老師的範例檔（單元九）改的那件事：迴圈外要報告結果。
+     ⚠️ 但收斂**刻意不照範例**：範例用「開始位置 ← 二分位置」（不加減 1），
+        接上它自己那 50 筆資料跑，第 25 項的 50 和第 50 項的 100 都找不到。 */
+  ok(idxOf(got, 'control.iffoundmid') > iLoop,
+     '★★ 找到／沒有在迴圈**外面**報告 —— 找不到也要說話');
+  const noReport = got.filter(n => n.id !== 'control.iffoundmid');
+  ok(!B._same(noReport, lv.goal, lv.loose || []),
+     '★★ 少了迴圈外那段報告 → 判錯');
+  const noPM1 = JSON.parse(JSON.stringify(got));
+  noPM1[iLoop].children[iIf].children  = [{ uid: 'a', id: 'list.setidx', args: ['開始位置', 1], children: null, children2: null }];
+  noPM1[iLoop].children[iIf].children2 = [{ uid: 'b', id: 'list.setidx', args: ['結束位置', 1], children: null, children2: null }];
+  ok(!B._same(noPM1, lv.goal, lv.loose || []),
+     '★★ 收斂不用 ±1 → 判錯（範例檔就是這樣漏掉最後一項的）');
 
   ['list.changeidx', 'control.if', 'control.repeat', 'control.repeatlen'].forEach(id => {
     ok(lv.palette.indexOf(id) >= 0, '★ 調色盤上有誘餌 ' + id);
@@ -581,6 +629,13 @@ section('★ 大比拼：四種資料量都要跑過');
 
 section('★ 第 10 關（6-3-3）的關卡資料');
 {
+  /* ⚠️⚠️ 2026-08-17 整段重寫。
+     這一段原本在測第 10 關的**程式拼圖**（停止條件、否則、存答案…），
+     但那天老師說：「第十關應該不需要程式，因為比較的是大量程式的效能」——
+     拼圖拿掉了，那支「兩個停止條件」的循序搜尋**搬回第 8 關**。
+     ⇒ 舊斷言全部指向已經不存在的 goal[4]，測試直接爆掉（不是紅字，是 crash）。
+     ★ 教訓：這一支跑很久（jsdom＋大量案例），那天我沒跑到它就說「相關測試全綠」。
+       改關卡結構的時候，**跑得慢的測試才是最容易被漏掉的那一個**。 */
   const lv = L['6-3-3'];
   ok(!!lv, '關卡存在');
   is(lv.lab, { kind: 'search', mode: 'compare' }, '★ 宣告了 compare 的 lab');
@@ -590,63 +645,23 @@ section('★ 第 10 關（6-3-3）的關卡資料');
   ok(lv.quiz.every(q => (q.need || []).every(n => (n.any || []).length >= 3)),
      '★ 每個概念群至少 3 種同義說法');
 
-  const B = W.BLOCKS;
-  const build = l => (l || []).map(x => {
-    const d = B.DEFS[x.id];
-    return { uid: 'u' + Math.random(), id: x.id,
-             args: (x.args != null ? x.args : (d.args || [])).map(
-               v => (v && typeof v === 'object') ? build([v])[0] : v),
-             children: x.children ? build(x.children)
-                                  : ((d.shape === 'c' || d.shape === 'c2') ? [] : null),
-             children2: x.children2 ? build(x.children2) : (d.shape === 'c2' ? [] : null) };
-  });
-  const got = build(lv.goal);
-  ok(B._same(got, lv.goal, lv.loose || []), '★ 照答案拼 → 判對');
-
-  /* ★★ 這一關拼圖唯一的新東西：迴圈的停止條件有兩個。
-     換成第 8 關那個只有一個條件的版本 → 找不到時無窮迴圈。 */
-  const oneCond = JSON.parse(JSON.stringify(got));
-  oneCond[4].id = 'control.until';
-  ok(!B._same(oneCond, lv.goal, lv.loose || []),
-     '★★ 換成第 8 關那個只有一個條件的「重複直到找到目標」→ 判錯' +
-     '（找不到時位置會一直加下去，讀到不存在的項目）');
-
-  /* 「否則」空著 → 位置永遠停在第 1 項 */
-  const noElse = JSON.parse(JSON.stringify(got));
-  noElse[4].children[0].children2 = [];
-  ok(!B._same(noElse, lv.goal, lv.loose || []),
-     '★ 「否則」那格空著 → 判錯（位置永遠停在第 1 項）');
-
-  /* 沒把答案存起來 → 下一次詢問就蓋掉了 */
-  const noSave = got.filter(n => n.id !== 'list.settarget');
-  ok(!B._same(noSave, lv.goal, lv.loose || []), '   少了「目標資料 設為 詢問的答案」→ 判錯');
-
-  ['control.until', 'control.if', 'list.setmid', 'list.tolo'].forEach(id => {
-    ok(lv.palette.indexOf(id) >= 0, '★ 調色盤上有誘餌 ' + id);
-  });
-  const used = new Set();
-  (function w(l) { (l || []).forEach(n => { used.add(n.id);
-    (n.args || []).forEach(a => { if (a && typeof a === 'object') w([a]); });
-    w(n.children); w(n.children2); }); })(lv.goal);
-  ok(!used.has('control.until'),
-     '★ 只有一個條件的那一塊沒有混進答案 —— 它是這一關最關鍵的誘餌');
-  ok(!used.has('list.setmid') && !used.has('list.tolo'),
-     '   第 9 關的二元搜尋積木沒有混進來（這裡的資料沒排序）');
-  ok(lv.palette.filter(id => !B.DEFS[id]).length === 0, '調色盤沒有不存在的積木');
-  ok([...used].filter(id => lv.palette.indexOf(id) < 0).length === 0, '答案要的積木都給了');
+  ok(!lv.goal, '★★ 這一關**沒有程式拼圖** —— 它比的是第 8、9 關寫過的那兩支');
+  ok(!lv.palette, '   調色盤也拿掉了');
+  ok(lv.finish && lv.finish.kind === 'bigcost',
+     '★ 最後一步是實作體驗「資料大爆炸」（不是上傳作品）');
 }
 
-section('★ 第 8 關留的洞，第 10 關要補起來');
+section('★ 第 8 關留的洞，第 8 關自己補起來了');
 {
-  /* ⚠️ 第 8 關的 tips 最後一條白紙黑字寫著「回到真的 Scratch 時，
-     『重複直到』要再加一個條件」。那句話如果沒有下文，
-     就是一個開了不收的口 —— 學生讀到會以為自己漏學了什麼。 */
-  const l8 = JSON.stringify(L['6-3-1'].tips);
-  const l10 = JSON.stringify(L['6-3-3']);
-  ok(/再加一個條件|超過清單長度/.test(l8), '第 8 關有留下那句伏筆');
-  ok(/兩個/.test(l10) && /超過/.test(l10),
-     '★ 第 10 關真的把它補起來了（講到「兩個條件」與「超過長度」）');
-  ok(/流程圖/.test(l10), '   而且指回課本的流程圖，讓學生對得起來');
+  /* ⚠️ 第 8 關的 tips 一度寫著「回到真的 Scratch 時，『重複直到』要再加一個條件」，
+     把完整版留給第 10 關。2026-08-17 那支程式搬回第 8 關之後，
+     這一關本來就該把兩個停止條件講完 —— 不可以再留伏筆。 */
+  const l8 = JSON.stringify(L['6-3-1']);
+  ok(/兩個/.test(l8) && /超過/.test(l8),
+     '★★ 第 8 關自己就講完「兩個停止條件」與「位置超過長度」');
+  ok(/流程圖/.test(l8), '   而且指回課本 p.215 的流程圖');
+  ok(!/第 10 關|下一關再/.test(JSON.stringify(L['6-3-1'].tips)),
+     '★ 不再把完整版推給第 10 關（那支程式已經搬回來了）');
 }
 
 /* ═══ ★★ 一個學生從頭走到底，一定要過得了關 ═══════════════

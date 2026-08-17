@@ -123,6 +123,21 @@ function convert(bl) {
     return { id: OPS[o] || o };
   }
 
+  /** 條件裡有什麼（只取關鍵字，給性質比對用，不求精確） */
+  function condOf(b) {
+    const seen = [];
+    (function w(x, d) {
+      if (!x || d > 6) return;
+      if (typeof x === 'string' && bl[x]) { w(bl[x], d + 1); return; }
+      if (x.opcode) {
+        seen.push(x.opcode);
+        Object.values(x.inputs || {}).forEach(v => w(v[1], d + 1));
+        Object.values(x.fields || {}).forEach(v => seen.push(String(v[0])));
+      }
+    })(b, 0);
+    return seen;
+  }
+
   function walk(k) {
     const out = [];
     while (k) {
@@ -185,7 +200,13 @@ function convert(bl) {
         }
         out.push(node);
       } else {
-        throw new Error('沒有對照的積木：' + o);
+        /* ⚠️ 不認得就原樣留下，**不要丟錯**。
+           第 6～9 關用的是清單與變數積木（data_*），
+           系統那邊把它們包成一塊一塊的教學積木（例如
+           「變數 二分位置 設為（開始＋結束）÷2 的整數部分」＝ Scratch 的三塊橢圓）。
+           那幾關本來就不做逐塊比對 —— 見下面的「性質比對」。
+           ★ 但前四關**必須**全部認得：出現 raw 就是漏了對照，要紅。 */
+        out.push({ id: o, raw: true, args: condOf(b) });
       }
       k = b.next;
     }
@@ -257,6 +278,127 @@ Object.keys(PAIRS).forEach(fn => {
      '（系統 ' + a.length + ' 塊、範例 ' + b.length + ' 塊）' + diff);
 });
 
+/* ── 第 6～9 關：性質比對 ─────────────────────────────
+   ⚠️ 這四關**不能**逐塊比對。
+      系統把 Scratch 的好幾塊包成一塊教學積木
+      （例如「變數 二分位置 設為（開始＋結束）÷2 的整數部分」
+        在 Scratch 是三顆橢圓疊起來），
+      逐塊比對必然對不上 —— 那不是錯，是刻意的簡化。
+   ⇒ 改成比**結構性質**：停止條件幾個、報告寫在迴圈裡還是外面、
+     插入和刪除誰先誰後。那幾件事才是這四關的教學重點，
+     也正是 2026-08-17 老師上傳範例檔之後抓到的三個差異。 */
+const SEMANTIC = {
+  '11502_單元六.sb3': { uid: '6-2-1', name: '選擇排序',
+    checks: [
+      ['副程式包起來', t => /procedures_definition/.test(t)],
+      ['兩個變數都先設成 1', t => (t.match(/data_setvariableto/g) || []).length >= 2],
+      ['重複「清單長度」次', t => /control_repeat[\s\S]*data_lengthoflist/.test(t)],
+      ['迴圈裡有一個「如果」', t => /control_if\b/.test(t)],
+      ['★ 位置改變 1 在「如果」外面（不然沒換人時就不往下走）',
+        t => /control_if[\s\S]*data_changevariableby/.test(t) &&
+             !/control_if\s+data_setvariableto\s+data_changevariableby/.test(t)]
+    ]},
+  '11502_單元七.sb3': { uid: '6-2-2', name: '插入排序',
+    checks: [
+      ['外圈重複固定次數', t => /control_repeat\b/.test(t)],
+      ['內圈是「重複直到」', t => /control_repeat_until/.test(t)],
+      ['★ 內圈的停止條件是「或」（兩個）', t => /operator_or/.test(t)],
+      ['★ 先插入、才刪除第 1 項',
+        t => t.indexOf('data_insertatlist') < t.indexOf('data_deleteoflist')]
+    ]},
+  '11502_單元八.sb3': { uid: '6-3-1', name: '循序搜尋',
+    checks: [
+      ['有詢問', t => /sensing_askandwait/.test(t)],
+      ['★ 停止條件是「或」（兩個）', t => /control_repeat_until[\s\S]*operator_or/.test(t)],
+      ['★★ 報告結果在迴圈**外面**（找不到也要說話）',
+        t => t.indexOf('control_if_else') > t.indexOf('control_repeat_until')],
+      ['★ 有「沒有符合的數字」那一句', t => /沒有符合/.test(t)]
+    ]},
+  '11502_單元九.sb3': { uid: '6-3-2', name: '二元搜尋',
+    checks: [
+      ['有詢問', t => /sensing_askandwait/.test(t)],
+      ['算二分位置用無條件捨去', t => /operator_mathop/.test(t)],
+      ['★ 停止條件是「或」（兩個）', t => /control_repeat_until[\s\S]*operator_or/.test(t)],
+      ['★★ 報告結果在迴圈**外面**',
+        t => t.lastIndexOf('control_if_else') > t.indexOf('control_repeat_until')],
+      ['★ 有「沒有符合的數字」那一句', t => /沒有符合/.test(t)]
+    ]}
+};
+
+section('★★ 第 6～9 關：和範例檔比「結構性質」（不逐塊）');
+Object.keys(SEMANTIC).forEach(fn => {
+  const spec = SEMANTIC[fn];
+  const p = path.join(refdir, fn);
+  ok(fs.existsSync(p), fn + ' 在 reference 資料夾裡（' + spec.uid + ' ' + spec.name + '）');
+  if (!fs.existsSync(p)) return;
+  const json = JSON.parse(readZipEntry(fs.readFileSync(p), 'project.json').toString('utf8'));
+  /* 直接看 opcode 的順序字串 —— 性質比對不需要精確的樹 */
+  let t = '';
+  json.targets.filter(x => !x.isStage).forEach(x => {
+    const bl = x.blocks;
+    const tops = Object.keys(bl).filter(k => bl[k].topLevel);
+    tops.forEach(top => {
+      (function w(k, d) {
+        while (k) {
+          const b = bl[k]; if (!b) break;
+          t += b.opcode + ' ';
+          Object.values(b.inputs || {}).forEach(v => {
+            (function sub(id, dd) {
+              if (typeof id !== 'string' || !bl[id] || dd > 6) return;
+              t += bl[id].opcode + ' ';
+              Object.values(bl[id].fields || {}).forEach(f => { t += f[0] + ' '; });
+              Object.values(bl[id].inputs || {}).forEach(vv => {
+                if (Array.isArray(vv[1])) t += String(vv[1][1]) + ' ';
+                else sub(vv[1], dd + 1);
+              });
+            })(v[1], 0);
+          });
+          Object.values(b.fields || {}).forEach(f => { t += f[0] + ' '; });
+          if ((b.inputs || {}).SUBSTACK) w(b.inputs.SUBSTACK[1], d + 1);
+          if ((b.inputs || {}).SUBSTACK2) w(b.inputs.SUBSTACK2[1], d + 1);
+          k = b.next;
+        }
+      })(top, 0);
+    });
+  });
+  spec.checks.forEach(([label, fn2]) => {
+    ok(fn2(t), '   ' + spec.uid + '　' + label);
+  });
+});
+
+section('★★ 系統的目標程式要有同樣的性質');
+{
+  /* ⚠️ 上面那圈只確認**範例檔**長什麼樣。
+     系統這邊要跟得上，不然對照了等於沒對照。 */
+  const flatOf = id => flat(L[id].goal).join(' ');
+  const CASES = [
+    ['6-2-1', '★ 位置改變 1 在「如果」外面',
+      t => /control\.ifsmaller[\s\S]*list\.setmin[\s\S]*list\.changeidx/.test(t)],
+    ['6-2-2', '★ 先插入、才刪除第 1 項',
+      t => t.indexOf('list.insertfirst') < t.indexOf('list.delfirst')],
+    ['6-2-2', '★ 不再用「取出即刪除」那一塊（那是舊版）',
+      t => t.indexOf('list.takenext') < 0],
+    ['6-3-1', '★★ 報告結果在迴圈外面（找不到也會說話）',
+      t => t.indexOf('control.ifover') > t.indexOf('control.untilfound')],
+    ['6-3-1', '★ 有「沒有符合的數字」', t => /looks\.saynone/.test(t)],
+    ['6-3-1', '★ 「說出找到了」不在迴圈裡面（那是舊版的寫法）',
+      t => t.indexOf('looks.sayfound') > t.indexOf('control.ifover')],
+    ['6-3-2', '★★ 報告結果在迴圈外面',
+      t => t.indexOf('control.iffoundmid') > t.indexOf('control.untilhalf')],
+    ['6-3-2', '★ 有「沒有符合的數字」', t => /looks\.saynone/.test(t)],
+    /* ⚠️⚠️ 這一條是刻意和範例檔**不一樣**的地方，要釘死。
+       範例檔用「開始位置 ← 二分位置」（不加減 1），
+       接上它自己那 50 筆資料跑，有 2 個數字找不到
+       （第 25 項的 50、第 50 項的 100）——
+       範圍剩兩格時，(開始＋結束)÷2 取整數永遠等於開始位置，
+       最後一項永遠輪不到被比較。
+       ⇒ 以後有人「照範例修正」把 ±1 拿掉的話，這條會紅。 */
+    ['6-3-2', '★★ 收斂用 ±1（**刻意不照範例檔** —— 少了它最後一項永遠比不到）',
+      t => /list\.tolo/.test(t) && /list\.tohi/.test(t)]
+  ];
+  CASES.forEach(([id, label, fn]) => ok(fn(flatOf(id)), '   ' + id + '　' + label));
+}
+
 section('★★ 還沒有範例檔的關卡要列出來（不可以安靜跳過）');
 {
   /* ⚠️ 「不知道對不對」和「對」是兩件事。
@@ -264,12 +406,13 @@ section('★★ 還沒有範例檔的關卡要列出來（不可以安靜跳過�
      所以八關的目標程式是我猜的，而畫面上一片綠。 */
   const ORDER = ['4-2-1', '4-2-2', '4-2-3', '4-3-1', '6-1-1',
                  '6-2-1', '6-2-2', '6-3-1', '6-3-2', '6-3-3'];
-  const covered = Object.values(PAIRS);
+  const covered = Object.values(PAIRS)
+                    .concat(Object.values(SEMANTIC).map(v => v.uid));
   const missing = ORDER.filter(id => L[id] && L[id].goal && covered.indexOf(id) < 0);
   console.log('     目前有範例檔可對的：' + covered.join('、'));
   console.log('     ⚠️ 還沒有的：' + (missing.join('、') || '（沒有了）'));
   ok(true, '（這一條不判成敗 —— 它的工作是把「還沒對過」講出來）');
-  ok(missing.length <= 5,
+  ok(missing.length <= 0,
      '★ 還沒對照的關卡剩 ' + missing.length + ' 關' +
      (missing.length ? '（' + missing.join('、') + '）' : ''));
 }
