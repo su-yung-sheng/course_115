@@ -1150,6 +1150,31 @@
     _countBinary: countBinary,
     _demoSteps: demoSteps,
     TESTS: TESTS,
+    /**
+     * 這一步的「目標」與「過關標準」（關卡頁畫在最前面那條橫幅）。
+     * ★ 為什麼寫在模組裡，不寫在關卡頁
+     *   通過條件本來就是模組自己決定的（見 openTest／finishAll）。
+     *   關卡頁再抄一份的話，改了一邊另一邊不會跟 ——
+     *   而學生看到的是關卡頁那一份，也就是**錯的那一份**。
+     * ⚠️ 2026-08-17 老師卡在第 9 關就是因為畫面上沒寫通過條件。
+     */
+    goal: function (lab) {
+      var m = (lab && lab.mode) || 'sequential';
+      if (m === 'compare') {
+        return { why: '循序和二元到底差多少？用**同一批資料**跑兩種搜尋，' +
+                      '資料愈多差距愈明顯 —— 這一步是要你親眼看到那個差距。',
+                 pass: '四種資料量（13、50、100、1024 筆）**全部**跑過一次。' };
+      }
+      var name = INFO[m].name;
+      return {
+        why: '照著' + name + '的規則走一遍。' +
+             '等一下概念檢測問的「為什麼不能跳」「找不到怎麼結束」，' +
+             '都是你在這裡被擋過、走完過才答得出來的。',
+        pass: '① 自由玩：<b>找得到</b>和<b>找不到</b>各走一次' +
+              '（找不到那一種才看得出迴圈為什麼需要結束條件）<br>' +
+              '② 驗收挑戰 <b>三關全過</b>：預測次數 → 零失誤 → 最壞情況'
+      };
+    },
     _realCount: realCount,
     _afterCut: afterCut,
     _worstBinary: worstBinary,

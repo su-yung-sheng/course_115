@@ -331,25 +331,30 @@ ok(!!l5.analysis.write, '也有先寫再對照');
     const optsNow = () => [...host.querySelectorAll('.dv-opt')];
     const nx = () => host.querySelector('#dv-nx');
     const before = qOf();
-    let sawWrong = false;
-    for (const b of optsNow()) {
-      b.dispatchEvent(new w6.window.Event('click', { bubbles: true }));
-      const fb = host.querySelector('.dv-fb');
-      if (fb && /✗/.test(fb.textContent)) { sawWrong = true; break; }
-      if (nx() && !nx().disabled) break;                 // 第一下就對了
-    }
-    if (sawWrong) {
-      ok(optsNow().every(b => b.disabled),
-         '★ 答錯之後整組選項鎖住 —— 不讓他在剩下三個裡面挑');
-      ok(/換一題/.test(host.querySelector('.dv-fb').textContent),
-         '   而且說清楚接下來會換一題');
-      await new Promise(r => setTimeout(r, 1200));
-      ok(qOf() !== before, '★ 真的換了一題（' + qOf().slice(0, 18) + '…）');
-      ok(optsNow().length === 4 && optsNow().every(b => !b.disabled),
-         '★ 新的一題又是完整的四選一 —— 刪去法沒有累積效果');
-    } else {
-      ok(true, '（這一次第一下就答對，換題的路徑由下一輪測）');
-    }
+    /* ⚠️ 2026-08-17 修：原本是「照順序一顆一顆點，點到錯的為止」。
+       選項每次都會重新洗牌 —— 第一顆剛好是正解的時候（大約每四次一次），
+       迴圈直接 break，下面那四條**整組不會跑**，而測試照樣印綠燈。
+       ★ 這比紅燈更糟：它讓「答錯要換一題」這條最重要的規則
+         有四分之一的機率沒有被驗到，而沒有人看得出來。
+       ⇒ 和下面「答對」那條路徑一樣，從關卡資料查出正解，
+         然後點一顆**保證不是正解**的。結果是確定的。 */
+    const bank0 = w6.BLOCK_LEVELS['4-2-1'].analysis.qs[0].asks || [];
+    const cur0 = bank0.filter(a => a.q === qOf())[0];
+    ok(!!cur0, '★ 畫面上這一題找得回題庫裡的那一筆（要靠它挑出錯的選項）');
+    const right0 = cur0 ? String(cur0.options[cur0.answer]) : null;
+    const wrongBtn = optsNow().filter(b => b.textContent.trim() !== right0)[0];
+    ok(!!wrongBtn, '★ 找得到一顆**保證錯**的選項');
+    wrongBtn.dispatchEvent(new w6.window.Event('click', { bubbles: true }));
+    ok(/✗/.test((host.querySelector('.dv-fb') || {}).textContent || ''),
+       '★ 點錯的那一顆，真的被判錯');
+    ok(optsNow().every(b => b.disabled),
+       '★ 答錯之後整組選項鎖住 —— 不讓他在剩下三個裡面挑');
+    ok(/換一題/.test(host.querySelector('.dv-fb').textContent),
+       '   而且說清楚接下來會換一題');
+    await new Promise(r => setTimeout(r, 1200));
+    ok(qOf() !== before, '★ 真的換了一題（' + qOf().slice(0, 18) + '…）');
+    ok(optsNow().length === 4 && optsNow().every(b => !b.disabled),
+       '★ 新的一題又是完整的四選一 —— 刪去法沒有累積效果');
 
     /* 答對之後才解鎖 —— 走真正的點擊路徑，不要偷改內部狀態。
        ⚠️ 不要用「一個一個試到對為止」。答錯現在會換一題，

@@ -849,7 +849,21 @@
                                            tAt: tAt, tSteps: tr && tr.steps.length }; } };
   }
 
+  /** 這一步的目標與過關標準（說明見 searchlab.js 的同名函式）。 */
+  function goal(lab) {
+    var m = (lab && lab.mode) || 'selection';
+    var name = (INFO[m] || {}).name || '排序法';
+    return {
+      why: '用手排一次' + name + '。' +
+           '同一批資料、同一個結果，但**怎麼排**兩種方法完全不同 —— ' +
+           '那個差別用讀的讀不出來，要自己動手才會有感覺。',
+      pass: '① 自由玩：把整排資料<b>排好</b>（點錯會擋下來並說明原因）<br>' +
+            '② 驗收挑戰 <b>三關全過</b>：預測次數 → 零失誤 → 最壞情況'
+    };
+  }
+
   global.SORTLAB = {
+    goal: goal,
     VERSION: VERSION,
     INFO: INFO,
     mount: mount,

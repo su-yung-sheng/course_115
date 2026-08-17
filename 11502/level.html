@@ -55,6 +55,26 @@
                  font:inherit;font-weight:800;text-decoration:underline;cursor:pointer}
   .scene-shot{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
   .scene-shot > div{flex:1 1 200px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px}
+  /* ── 每一步最前面的「目標＋過關標準」 ─────────────
+     ⚠️ 這條橫幅要**明顯**。做得太素的話它會被當成裝飾滑過去，
+        而它正是為了「學生不知道怎樣才算過」才加的。
+     ★ 兩行分開、標籤各有顏色：綠色那一行是通過條件，
+       學生卡住的時候會直接找綠色那一條。 */
+  .goalbar{background:#fff;border:2px solid #6366f1;border-radius:16px;
+           padding:12px 15px;box-shadow:0 3px 12px rgba(99,102,241,.13)}
+  .gb-row{display:flex;gap:10px;align-items:flex-start}
+  .gb-row + .gb-row{margin-top:9px;padding-top:9px;border-top:1px dashed #e2e8f0}
+  .gb-tag{flex:0 0 auto;font-size:11.5px;font-weight:900;padding:4px 9px;
+          border-radius:9999px;white-space:nowrap;line-height:1.4}
+  .gb-why{background:#eef2ff;color:#4338ca}
+  .gb-ok{background:#dcfce7;color:#166534}
+  .gb-txt{font-size:13.5px;line-height:1.9;color:#334155}
+  .gb-txt b{color:#4338ca}
+  .gb-pass .gb-txt b{color:#166534}
+  @media (max-width:520px){
+    /* 手機上標籤自己一行 —— 並排的話文字只剩十幾個字寬 */
+    .gb-row{flex-direction:column;gap:5px}
+  }
 </style>
 
 <script src="config.js"></script>
@@ -248,6 +268,7 @@ function render() {
       📍 上次做到<b>第 ${at + 1} 步（${S[at].name}）</b>，直接從這裡接下去。
       <button id="fromTop">想從第 1 步再看一次</button>
     </div>` : ''}
+    <div id="goalbar"></div>
     <section id="body" class="bg-white rounded-2xl border border-slate-200 shadow-md p-5 sm:p-7 pop"></section>
     <div id="foot" class="mt-4"></div>
     ${materialPanel()}`;
@@ -394,9 +415,102 @@ function nextBtn(label, wantHold) {
   }
 }
 
+/* ── 每一步最前面的「目標＋過關標準」 ──────────────────
+   ⚠️ 2026-08-17 老師的要求，起因是他自己卡在第 9 關：
+      自由玩走了三次還是不能往下一步，因為真正的門檻是
+      「驗收挑戰三關全過」—— 而畫面上從來沒寫過。
+      學生遇到這種事不會去猜規則，只會以為系統壞了。
+
+   ★ 兩件事都要寫，而且**寫在最前面**：
+       🎯 為什麼要做這一步（目標）—— 不然學生只是在照指令點
+       ✅ 怎樣才算過（標準）　　 —— 而且要具體到「幾題」「幾次」「哪兩種情況」
+
+   ⚠️ 實驗室那一步的標準**不可以寫在這裡**。
+      通過條件本來就是模組自己決定的（見各模組的 openTest／finishAll）；
+      這裡再抄一份的話，改了一邊另一邊不會跟 ——
+      而學生看到的是這一份，也就是**錯的那一份**。
+      ⇒ 一律問模組要（mod.goal(lab)）。模組沒給就不畫，不要自己編。 */
+const STEP_GOAL = {
+  scene: {
+    why: '先看清楚「這一關要做出什麼」。不知道成品長什麼樣的話，' +
+         '後面的分析等於在拆一段不知道要幹嘛的程式。',
+    pass: '讀完，按下面的按鈕。' +
+          '<br>（第一次做這一關的話，按鈕會等你 <b>30 秒</b> —— ' +
+          '不是懲罰，是讓「讀完」真的發生過。已經通關過就不會等。）'
+  },
+  combo: {
+    why: '「把重複的那一段包起來」對還沒寫過幾行程式的人太抽象，' +
+         '但速食店的套餐你每個人都點過。這一步是把你已經有的直覺搬過來，' +
+         '不是教你新東西。',
+    pass: '把三個套餐都組出來。'
+  },
+  analysis: {
+    why: '這是課本的<b>問題拆解</b>，也是這一章真正在教的東西 —— ' +
+         '先把大題目切成幾個小問題，才知道程式要分成哪幾塊。' +
+         '不是拼積木的技巧。',
+    pass: '一題一題答完（想不出來可以點 💡）。' +
+          '<br>最後一題要用<b>自己的話</b>寫，寫夠字數才算完成 —— 不判分，寫了就過。'
+  },
+  derive: {
+    why: '自己把規則<b>推出來</b>，不是背公式。' +
+         '推過一遍的東西，下次忘了還推得回來；背的忘了就沒了。',
+    pass: '每一步都答對才會開下一步。' +
+          '<br>⚠️ <b>答錯不扣任何東西，可以一直試</b> —— 這一步就是拿來試的。'
+  },
+  quiz: {
+    why: '檢查你懂的是「<b>為什麼</b>」，不是「怎麼點」。' +
+         '題目問的全部都是你前面幾步親手做過、被擋過的事。',
+    pass: '五題裡<b>講到 3 題</b>才能往下走（講到 4 題 🧠🧠、5 題 🧠🧠🧠）。' +
+          '<br>⚠️ 不到 3 題會被<b>送回情境解說</b>重讀一遍 —— 不是讓你一直按重考亂猜。'
+  },
+  blocks: {
+    why: '把前面想清楚的東西，排成<b>真的程式</b>。' +
+         '講得出來和排得出來是兩回事 —— 這一步在補那個差距。',
+    pass: '拼出和目標<b>一模一樣</b>的程式：積木對、<b>順序</b>對、' +
+          '包在裡面的那幾塊也要在對的地方。' +
+          '<br>（調色盤裡有故意放錯的誘餌，拿錯會被擋下來並說明差在哪。）'
+  },
+  test: {
+    why: '真的在 Scratch 裡做一次，然後交出來。' +
+         '前面所有步驟都是為了這一步 —— 而且 🧩 <b>作品星只有這裡拿得到</b>。',
+    pass: '把作品上傳。<br>⚠️ 上傳之後要等批改，' +
+          '<b>批改完才會開下一關</b>（關卡是依序開放的）。'
+  }
+};
+
+/** 這一步的目標與標準。實驗室一律問模組要，問不到就不畫。 */
+function stepGoal(key) {
+  if (key === 'lab') {
+    const mod = labMod(lv && lv.lab);
+    /* ⚠️ 模組沒有 goal() 就回 null（不畫），不要自己編一份 ——
+       編出來的和模組真正的判定不一樣的話，比不寫更糟。 */
+    return (mod && typeof mod.goal === 'function') ? mod.goal(lv.lab) : null;
+  }
+  return STEP_GOAL[key] || null;
+}
+
+function drawGoal(s) {
+  const bar = $('goalbar');
+  if (!bar) return;
+  const g = stepGoal(s.key);
+  if (!g) { bar.innerHTML = ''; return; }
+  bar.innerHTML = `
+    <div class="goalbar mb-4">
+      <div class="gb-row">
+        <span class="gb-tag gb-why">🎯 這一步在做什麼</span>
+        <div class="gb-txt">${g.why}</div>
+      </div>
+      <div class="gb-row gb-pass">
+        <span class="gb-tag gb-ok">✅ 怎樣才算過</span>
+        <div class="gb-txt">${g.pass}</div>
+      </div>
+    </div>`;
+}
+
 function draw(s) {
   const body = $('body');
   $('foot').innerHTML = '';
+  drawGoal(s);
 
   if (s.key === 'scene') {
     /* 情境解說：先看懂「要做出什麼」，才有東西可以分析。

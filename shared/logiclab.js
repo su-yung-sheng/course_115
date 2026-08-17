@@ -366,7 +366,20 @@
     };
   }
 
+  /** 這一步的目標與過關標準（說明見 searchlab.js 的同名函式）。 */
+  function goal(lab) {
+    var need = (lab && lab.need) || 5;
+    return {
+      why: '這一關的拼圖只用到「且」，但條件判斷還有「或」和「不成立」。' +
+           '少了那兩個，你對條件的理解是缺一半的 —— ' +
+           '而「或」正是等一下拼圖最容易拿錯的那一塊誘餌。',
+      pass: '吃到 <b>' + need + ' 隻蟲</b>，而且「且」「或」「不成立」<b>三種都遇過</b>。' +
+            '<br>（答錯會扣體力，但按「慢動作重看」一步一步推的時候<b>不扣</b>。）'
+    };
+  }
+
   global.LOGICLAB = {
+    goal: goal,
     VERSION: VERSION,
     FORMS: FORMS,
     SENSORS: SENSORS,

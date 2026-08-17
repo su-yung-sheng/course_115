@@ -39,7 +39,7 @@ ok(missing.length === 0,
 
    ★ 但「沒有資料的步驟不出現」這條規則**沒有跟著消失**，
      而且比以前更重要：現在每一關都有資料，卻不是每一關都有每一步
-     （第 5 關沒有拼圖、第 3 關沒有拆解、第 6 章那五關才有實驗室）。
+     （第 5 關沒有拼圖、第 3 關沒有拆解、第 6 章那幾關與第 4、5 關才有實驗室）。
      下面那幾條就是在釘這件事。 */
 ok(ids.every(id => units.indexOf(id) >= 0),
    '★ 沒有多出 config.js 以外的關卡代號（多出來的學生永遠走不到）');
@@ -63,7 +63,10 @@ ok(s3.join() === 'derive,blocks', '第 3 關兩步：推導 → 拼圖（沒有�
    而且永遠上傳不了 —— 和第 4～10 關那個坑是同一個。 */
 const l5 = W.BLOCK_LEVELS['6-1-1'];
 ok(!!l5 && !l5.goal, '第 5 關有內容但沒有 goal');
-ok(steps(l5).join() === 'analysis,derive', '★ 所以它的步驟裡沒有拼圖');
+/* ⚠️ 2026-08-17：第 5 關加了實驗室（蒙眼比高矮），所以多一步 lab。
+   這一條要釘的是「沒有拼圖」—— 別把它寫死成完整的步驟清單，
+   不然每次加一步都要來改，而改的人分不清哪一條才是重點。 */
+ok(steps(l5).indexOf('blocks') < 0, '★ 所以它的步驟裡沒有拼圖（' + steps(l5).join('→') + '）');
    ok(/if \(lv && lv\.goal\)   out\.push/.test(lvHtml), '   程式裡確實是看有沒有 goal 才加拼圖');
    ok(/markPre\(\)/.test(lvHtml), '   沒有拼圖的關卡也要標記得了完成（markPre）');
    ok(/out\.push\(\{ key:'test'/.test(lvHtml), '   一步都沒有時也還有實作測試，不會變空白');
@@ -76,16 +79,26 @@ ok(steps(l5).join() === 'analysis,derive', '★ 所以它的步驟裡沒有拼�
    ⚠️ 4-2-1／4-2-2／4-2-3 **不可以**有 —— 它們的主角是程式拼圖。
       每一關都掛實驗室的話，它就從「這一關的重點」變成點擊過場。 */
 const withLab = ids.filter(id => W.BLOCK_LEVELS[id].lab).sort();
-ok(withLab.join() === '4-3-1,6-2-1,6-2-2,6-3-1,6-3-2,6-3-3',
-   '★ 有實驗室的是這六關（實得：' + withLab.join('、') + '）');
+ok(withLab.join() === '4-3-1,6-1-1,6-2-1,6-2-2,6-3-1,6-3-2,6-3-3',
+   '★ 有實驗室的是這七關（實得：' + withLab.join('、') + '）');
 ok(['4-2-1', '4-2-2', '4-2-3'].every(id => !W.BLOCK_LEVELS[id].lab),
    '★ 第 4 章的前三關沒有實驗室 —— 它們的主角是程式拼圖');
-ok(withLab.every(id => ['sort', 'search', 'logic'].indexOf(W.BLOCK_LEVELS[id].lab.kind) >= 0),
-   '   每一個 lab 都指定得出要掛哪一支模組（sort／search／logic）');
-/* 第 5 關是排序的觀念導入，用的是 derive 裡的手動追蹤，不是 lab。
-   ⚠️ 兩個都放的話，學生會連續做兩次一模一樣的事。 */
-ok(!l5.lab && (l5.derive.steps || []).some(s => s.kind === 'sort'),
-   '★ 第 5 關用 derive 裡的手動排序，不另外掛 lab（不然會連做兩次同一件事）');
+ok(withLab.every(id => ['sort', 'search', 'logic', 'min'].indexOf(W.BLOCK_LEVELS[id].lab.kind) >= 0),
+   '   每一個 lab 都指定得出要掛哪一支模組（sort／search／logic／min）');
+/* ★★ 第 5 關：derive 和 lab **兩個都有**，但刻意不做同一件事。
+   ⚠️ 2026-08-17 之前這裡斷言「不可以有 lab」，理由是
+      「兩個都放的話學生會連續做兩次一模一樣的事」——
+      那個理由只在**兩者一樣**的時候成立。
+   現在：
+     derive：身高**看得見**，整排排完 —— 用眼睛做一遍
+     lab　 ：身高**全部藏起來**，只找最矮的 —— 把眼睛拿掉
+   ⇒ 要釘的不是「不可以有 lab」，而是「兩者不可以變成同一件事」。 */
+ok((l5.derive.steps || []).some(s => s.kind === 'sort'),
+   '★ 第 5 關的推導是看得見數字的手動排序');
+ok(l5.lab && l5.lab.kind === 'min',
+   '★★ 而實驗室是找最小值（蒙眼），不是再排一次');
+ok(l5.lab.kind !== 'sort',
+   '★★ 實驗室**不可以**也是 sort —— 那才會變成連做兩次同一件事');
 
 /* ── ★ 三支互動頁：改寫整合，原檔刪除 ──────────────────
    ⚠️ 中間一度是把整支頁面用 iframe 嵌進關卡（material 欄位）——
