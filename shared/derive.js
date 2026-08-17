@@ -807,6 +807,16 @@
     var chosen = {};            // 每一問抽到哪一題、選項怎麼排
     var wrongN = {};            // 這一問已經選錯幾次（見 penalty()）
     var usedAsk = {};           // 這一問已經抽過哪幾題（見 pickAsk()）
+    /* ⚠️⚠️ 2026-08-17：**同一條規則又被犯了一次**。
+       SAY_MIN 本來宣告在下面 sayHtml() 的旁邊（約 1030 行），
+       但 sayHtml 在第一次 draw() 就會被呼叫 ——
+       於是畫面上寫著「先寫下你現在的想法（至少 <b>undefined</b> 個字）」。
+       ★ 老師回報「之前有幾次更新後，檢查字數都會變成 undefined 字」——
+         就是這個。每次有人在下面新增一個常數，就再中一次。
+       ⇒ 這裡是「第一次 draw() 之前」的唯一正確位置，**新的常數一律加在這裡**。
+         shared/tests/undefined.test.js 現在會把每一關的畫面渲染出來，
+         直接檢查有沒有 undefined／NaN 漏到畫面上。 */
+    var SAY_MIN = 6;            // 沒有圈選題的那幾問，想法至少要寫幾個字
 
     host.innerHTML =
       (data.intro ? '<div class="dv-intro">' + data.intro + '</div>' : '') +
@@ -1029,7 +1039,8 @@
       return a;
     }
 
-    var SAY_MIN = 6;
+    /* ⚠️ SAY_MIN 移到上面「第一次 draw() 之前」了 —— 見那裡的說明。
+       放在這裡的話，第一次畫出來會是「至少 undefined 個字」。 */
     function sayHtml(i) {
       return '<div class="dv-say">' +
         '<textarea id="dv-say' + i + '" rows="2" ' +
