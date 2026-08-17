@@ -168,6 +168,7 @@
          'write'  → analysis.write（那一段的收尾）
          'scene'  → 情境解說的「為什麼要學這個」
          'lab'    → 互動實驗室那一步的規則與說明（第 6 章那五關）
+         'derive' → 推導那一步自己推出來的結論（第 3、4、5 關）
      ⚠️ 這不是給答案 —— 引的是那一問的**提示**，不是正解。
         引錯來源（例如把 pick 的答案端出來）會直接毀掉這一題。
 
@@ -188,11 +189,25 @@
       /* 實驗室的規則寫在模組裡（SORTLAB／SEARCHLAB 的 INFO），
          不在關卡資料裡 —— 抄一份到這邊的話，改規則就會有一邊忘記。
          ⚠️ 模組不一定載得到（單元測試就沒有），所以要有退路。 */
-      var mod = (lv.lab.kind === 'search') ? global.SEARCHLAB : global.SORTLAB;
+      var mod = (lv.lab.kind === 'search') ? global.SEARCHLAB
+              : (lv.lab.kind === 'logic') ? global.LOGICLAB : global.SORTLAB;
       var info = mod && mod.INFO && mod.INFO[lv.lab.mode];
       label = '🕹️ 你在「動手試一次」做過的';
-      body = info ? (info.rule + '<br>' + info.why)
-                  : ((lv.scene || {}).pre || '');
+      body = info ? (info.rule + '<br>' + info.why) : '';
+      /* ⚠️ 邏輯實驗室（第 4 關）沒有 INFO —— 它的說明長在 FORMS 裡，
+         一種條件一條。整份端出來太長，取「且／或」那兩條就夠 ——
+         第 4 關的條件題問的就是它們。 */
+      if (!body && mod && mod.FORMS) {
+        body = mod.FORMS.filter(function (f) { return f.type === 'and' || f.type === 'or'; })
+                        .map(function (f) { return f.rule; }).join('<br>');
+      }
+      if (!body) body = (lv.scene || {}).pre || '';
+    } else if (ref === 'derive' && lv.derive) {
+      /* ★ 推導那一步是學生**自己按出來**的結論（第 3、4、5 關）。
+         概念題引它，比引情境解說更準 —— 情境是老師講的，推導是他自己得到的。
+         ⚠️ 引的是 done（那一步的收尾），不是 steps 裡的答案。 */
+      label = '🧪 你在「自己推一次」得到的';
+      body = lv.derive.done || lv.derive.intro || '';
     } else if (typeof ref === 'number' && (a.qs || [])[ref]) {
       label = '🔍 問題分析第 ' + (ref + 1) + ' 題';
       body = (a.qs[ref].q || '') + (a.qs[ref].hint ? '<br>' + a.qs[ref].hint : '');
