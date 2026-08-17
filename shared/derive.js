@@ -352,7 +352,30 @@
     '.dv-chip.pickable:hover{border-color:#6366f1;background:#eef2ff}',
     '.dv-chip.moved{border-color:#34d399;background:#dcfce7;color:#166534}',
     '.dv-chip.wrong{border-color:#f59e0b;background:#fef3c7}',
-    '.dv-empty{font-size:12px;color:#cbd5e1}'
+    '.dv-empty{font-size:12px;color:#cbd5e1}',
+    /* ── 本尊與分身（kind:'clone'）───────────────────
+       ⚠️ 本尊那一格「隱藏」的時候要**看得出來還在**（半透明＋虛線框），
+          直接不畫的話學生會以為本尊被刪掉了 ——
+          而概念檢測正好要問「本尊隱藏、分身顯示為什麼不打架」。 */
+    '.dv-stage{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;',
+    '  padding:12px 14px;margin-top:10px;text-align:center}',
+    '.dv-body{display:inline-flex;align-items:center;gap:7px;font-size:26px;',
+    '  border:2px solid #cbd5e1;border-radius:12px;padding:5px 12px;background:#fff}',
+    '.dv-body.hid{opacity:.4;border-style:dashed}',
+    '.dv-lab{font-size:11px;font-weight:900;color:#64748b}',
+    '.dv-st{font-size:11px;font-weight:900;color:#94a3b8}',
+    '.dv-body.hid .dv-st{color:#f59e0b}',
+    '.dv-arrow{font-size:11.5px;font-weight:900;color:#a855f7;margin:5px 0;min-height:16px}',
+    '.dv-clones{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;min-height:30px;',
+    '  align-items:center}',
+    '.dv-c{font-size:22px}',
+    '.dv-hats{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}',
+    '.dv-hat{flex:1;min-width:140px;border:2px solid #cbd5e1;border-radius:12px;',
+    '  padding:7px 11px;background:#fff;text-align:left}',
+    '.dv-hat-n{display:block;font-size:11.5px;font-weight:900;color:#475569}',
+    '.dv-hat-v{display:block;font-size:19px;font-weight:900;margin-top:1px}',
+    '.dv-ask2{background:#eef2ff;border:1px solid #c7d2fe;border-radius:12px;',
+    '  padding:11px 13px;margin-top:10px;font-size:13.5px;line-height:1.85}'
   ].join('');
 
   function ensureStyle() {
@@ -430,6 +453,8 @@
       else if (st.kind === 'draw')    box.innerHTML = head + drawHtml(st);
       else if (st.kind === 'formula') box.innerHTML = head + formulaHtml(st);
       else if (st.kind === 'sort')    box.innerHTML = head + '<div class="dv-sort"></div>' +
+                                                      '<div class="dv-fb" style="display:none"></div>';
+      else if (st.kind === 'clone')   box.innerHTML = head + '<div class="dv-clone"></div>' +
                                                       '<div class="dv-fb" style="display:none"></div>';
       wire(box, st, i);
       return box;
@@ -510,6 +535,7 @@
       }
 
       if (st.kind === 'sort') { wireSort(box, st, i, say, pass); return; }
+      if (st.kind === 'clone') { wireClone(box, st, i, say, pass); return; }
 
       if (st.kind === 'formula') {
         var L = box.querySelector('[data-l]'), R = box.querySelector('[data-r]');
@@ -575,6 +601,145 @@
           say(true, st.finish || '這就是選擇排序法：每一回合挑出最小的，搬到已排序的最後面。');
           st._got = right.map(label).join('、');
           setTimeout(function () { passFn(i); }, 900);
+        }
+      }
+    }
+
+    /* ── 本尊與分身（第 4 關 小鳥吃蟲）─────────────────
+       ★ 為什麼需要這一段
+         「分身」在前三關出現 **0 次**（前三關都在畫正方形），
+         但第 4 關的概念檢測有**兩題**在考它：
+           · 本尊隱藏、分身顯示，為什麼不打架？
+           · 「當分身產生」和「當綠旗被點擊」差在哪？
+         而唯一解釋這件事的 build 是掛在**拼圖**那一步 —— 在概念檢測之後。
+         也就是說學生被問到的時候，畫面上從來沒有任何地方講過
+         本尊和分身是兩回事。這一段就是補那個洞。
+
+       ★ 為什麼要「先預測，再看答案」
+         計數器直接攤在畫面上的話，學生會用讀的 ——
+         讀出來的數字不代表他知道那塊帽子積木什麼時候會被觸發。
+         ⇒ 先按綠旗、先吃幾隻（真的看到分身怎麼來的），
+           再自己押一個數字，押對才把計數器打開。 */
+    function wireClone(box, st, i, say, passFn) {
+      var total = st.n || 10;          // 開場產生幾隻
+      var alive = 0;                   // 現在畫面上有幾隻分身
+      var born = 0;                    // 「當分身產生」被觸發了幾次（累計，不會減）
+      var flag = 0;                    // 「當綠旗被點擊」被觸發了幾次
+      var ate = 0;                     // 吃掉幾隻
+      var opened = false;              // 計數器打開了沒（答對才開）
+      var wrap = box.querySelector('.dv-clone');
+
+      draw2();
+
+      function draw2() {
+        var ready = flag > 0 && ate >= (st.eat || 2);
+        wrap.innerHTML =
+          /* 本尊 */
+          '<div class="dv-stage">' +
+            '<div class="dv-body' + (flag ? ' hid' : '') + '">' +
+              '<span class="dv-lab">本尊</span>🐛' +
+              '<span class="dv-st">' + (flag ? '隱藏' : '顯示') + '</span>' +
+            '</div>' +
+            '<div class="dv-arrow">' + (flag ? '複製出 ↓' : '　') + '</div>' +
+            '<div class="dv-clones">' +
+              (alive
+                ? new Array(alive + 1).join('<span class="dv-c">🐛</span>')
+                : '<span class="dv-empty">（還沒有分身）</span>') +
+            '</div>' +
+          '</div>' +
+          /* 兩塊帽子積木的觸發次數 */
+          '<div class="dv-hats">' +
+            hat('當綠旗被點擊', flag, '#22c55e') +
+            hat('當分身產生', born, '#a855f7') +
+          '</div>' +
+          '<div class="dv-row" style="margin-top:9px">' +
+            '<button class="dv-btn" data-act="flag"' + (flag ? ' disabled' : '') + '>🏳️ 按綠旗</button>' +
+            '<button class="dv-btn ghost" data-act="eat"' + (alive ? '' : ' disabled') + '>🐦 吃掉一隻</button>' +
+          '</div>' +
+          '<p class="dv-unit" style="font-size:12.5px;margin-top:6px">' +
+            (!flag
+              ? '先按一次綠旗，看看那十隻蟲是<b>哪裡來的</b>。'
+              : (ate < (st.eat || 2)
+                  ? '再吃掉幾隻看看 —— 吃掉一隻會發生什麼事？（還要 ' +
+                    ((st.eat || 2) - ate) + ' 隻）'
+                  : '')) +
+          '</p>' +
+          /* ★ 預測欄：真的玩過才出現 */
+          (ready && !opened
+            ? '<div class="dv-ask2">' +
+                '<b>' + (st.ask || '「當分身產生」那塊，到現在總共被觸發了幾次？') + '</b>' +
+                '<div class="dv-row" style="margin-top:7px">' +
+                  '<input class="dv-in" type="number" inputmode="numeric" placeholder="?">' +
+                  '<button class="dv-btn" data-act="guess">送出</button>' +
+                '</div>' +
+                '<div class="dv-unit" style="font-size:12px;margin-top:5px">' +
+                  '⚠️ 提示：開場那幾隻算不算？被吃掉又補上的那幾隻呢？</div>' +
+              '</div>'
+            : '');
+
+        [].forEach.call(wrap.querySelectorAll('[data-act]'), function (b) {
+          b.onclick = function () { act(b.dataset.act); };
+        });
+        var inp = wrap.querySelector('.dv-in');
+        if (inp) inp.onkeydown = function (e) {
+          if (e.key === 'Enter') wrap.querySelector('[data-act="guess"]').click();
+        };
+      }
+
+      function hat(name, n, color) {
+        return '<div class="dv-hat" style="border-color:' + color + '">' +
+          '<span class="dv-hat-n">' + esc(name) + '</span>' +
+          '<span class="dv-hat-v" style="color:' + color + '">' +
+            (opened ? n + ' 次' : '？') + '</span></div>';
+      }
+
+      function act(what) {
+        if (what === 'flag') {
+          /* 綠旗：本尊先隱藏，再重複 n 次呼叫「產生蟲」。
+             ★ 每呼叫一次就多一個分身，而每一個分身都會觸發一次「當分身產生」。 */
+          flag = 1; alive = total; born = total;
+          say(true, '本尊<b>隱藏</b>了 —— 但畫面上有 ' + total + ' 隻蟲。' +
+                    '你看到的全部都是<b>分身</b>。');
+          draw2();
+          return;
+        }
+        if (what === 'eat') {
+          if (!alive) return;
+          ate++;
+          /* 吃掉一隻：刪掉自己，再補一隻 —— 所以數量不變，但又觸發一次。 */
+          born++;
+          say(true, '刪掉一隻、又補一隻 —— 蟲的<b>數量沒變</b>，' +
+                    '但「當分身產生」<b>又被觸發了一次</b>。');
+          draw2();
+          return;
+        }
+        if (what === 'guess') {
+          var inp = wrap.querySelector('.dv-in');
+          var v = parseFloat(inp && inp.value);
+          if (!isFinite(v)) { say(false, '先填一個數字。'); return; }
+          if (v === born) {
+            opened = true;
+            st._got = '綠旗 ' + flag + ' 次、當分身產生 ' + born + ' 次';
+            draw2();
+            say(true, st.finish ||
+              ('對了 —— 綠旗只按了 <b>1</b> 次，「當分身產生」卻跑了 <b>' + born + '</b> 次。' +
+               '<br>兩塊都是帽子積木，但<b>觸發的時機不一樣</b>：' +
+               '綠旗是你按的，分身是每產生一個就自己跑一次。'));
+            setTimeout(function () { passFn(i); }, 1100);
+            return;
+          }
+          if (v === total) {
+            say(false, '差一點 —— 你只算了開場那 ' + total + ' 隻。' +
+                       '被吃掉之後<b>補上來</b>的那幾隻呢？它們也是新的分身。');
+            return;
+          }
+          if (v === alive) {
+            say(false, '那是<b>現在畫面上</b>有幾隻。問的是這塊積木<b>總共被觸發幾次</b> —— ' +
+                       '被吃掉的那幾隻，當初也觸發過。');
+            return;
+          }
+          say(false, '不是 ' + v + ' 次。開場產生了 ' + total + ' 隻，' +
+                     '之後你吃掉幾隻、就補了幾隻。');
         }
       }
     }
