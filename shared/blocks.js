@@ -62,6 +62,15 @@
     pen:     { name: '畫筆',   color: '#0fbd8c', dark: '#0b8e69' }   // pen.categoryName
   };
 
+  /* ⚠️⚠️ 用詞規則（老師 2026-08-17 決定）：
+     **一律用範例檔（.sb3）裡的清單與變數名稱**，不要自己另取一套。
+       清單：原始資料／已排序資料　　變數：位置、開始位置、結束位置、
+             資料位置、最小值位置、插入位置
+     ★ 為什麼：學生在拼圖上看到的字，回到 Scratch 要找得到同一個東西。
+       系統原本寫「數列」「二分位置」（那是課本 p.208 的講法），
+       範例檔寫的是「原始資料」「位置」—— 兩套名字，學生得自己翻譯一次。
+     ⚠️ 代價：課本用「二分位置」，這裡叫「位置」。
+        指回課本的時候要說一句「課本上叫二分位置」。 */
   var DEFS = {
     // %flag 會畫成綠旗（就是 Scratch 的那面旗子），不是播放三角形
     'events.whenflag':  { cat:'events',  shape:'hat',   label:'當 %flag 被點擊' },              // EVENT_WHENFLAGCLICKED
@@ -139,12 +148,12 @@
        回報值積木塞進另一塊裡）。引擎還不支援巢狀的回報值，先做成單塊，
        名稱盡量沿用官方用詞（「清單 %1 的長度」「%2 的第 %1 項」）。
        等引擎補上回報值積木，這幾塊就該拆回真正的 Scratch 組合。 */
-    'list.swap':        { cat:'list',    shape:'stack', label:'交換 數列 的第 %n 項和第 %n 項', args:[1, 2] }, // ★自訂
-    'list.say':         { cat:'list',    shape:'stack', label:'說出 數列 的第 %n 項', args:[1] },              // ★自訂
+    'list.swap':        { cat:'list',    shape:'stack', label:'交換 原始資料 的第 %n 項和第 %n 項', args:[1, 2] }, // ★自訂
+    'list.say':         { cat:'list',    shape:'stack', label:'說出 原始資料 的第 %n 項', args:[1] },              // ★自訂
     'list.setidx':      { cat:'list',    shape:'stack', label:'變數 %s 設為 %n',   args:['位置', 1], idArgs:[0], idNs:['var'] }, // DATA_SETVARIABLETO
     'list.changeidx':   { cat:'list',    shape:'stack', label:'變數 %s 改變 %n',   args:['位置', 1], idArgs:[0], idNs:['var'] }, // DATA_CHANGEVARIABLEBY
-    'control.ifless':   { cat:'control', shape:'c',     label:'如果 數列 的第 %n 項 < 數列 的第 %n 項 那麼', args:[1, 2] }, // ★自訂
-    'control.repeatlen':{ cat:'control', shape:'c',     label:'重複 清單 數列 的長度 次' },                     // ★自訂
+    'control.ifless':   { cat:'control', shape:'c',     label:'如果 原始資料 的第 %n 項 < 原始資料 的第 %n 項 那麼', args:[1, 2] }, // ★自訂
+    'control.repeatlen':{ cat:'control', shape:'c',     label:'重複 原始資料 的長度 次' },                     // ★自訂
     /* 二元搜尋（第 9 關）要的四塊。
        ★自訂 —— 在真的 Scratch 裡，「（開始＋結束）÷2 的整數部分」
        是「無條件捨去（( ) / ( )）」套「( ) + ( )」三塊橢圓積木疊起來的。
@@ -152,14 +161,14 @@
        而這一關要學的是「每回合砍掉一半」——不是積木怎麼疊。
        ⚠️ 用詞照課本（開始位置／結束位置／二分位置），
           學生回課本第 208 頁要對得起來。 */
-    'list.setlen':      { cat:'list',    shape:'stack', label:'變數 %s 設為 清單 數列 的長度', args:['結束位置'], idArgs:[0], idNs:['var'] }, // ★自訂
-    'list.setmid':      { cat:'list',    shape:'stack', label:'變數 二分位置 設為（開始位置＋結束位置）÷ 2 的整數部分' },                     // ★自訂
-    'list.tolo':        { cat:'list',    shape:'stack', label:'變數 開始位置 設為 二分位置 ＋ 1' },                                            // ★自訂
-    'list.tohi':        { cat:'list',    shape:'stack', label:'變數 結束位置 設為 二分位置 － 1' },                                            // ★自訂
+    'list.setlen':      { cat:'list',    shape:'stack', label:'變數 %s 設為 已排序資料 的長度', args:['結束位置'], idArgs:[0], idNs:['var'] }, // ★自訂
+    'list.setmid':      { cat:'list',    shape:'stack', label:'變數 位置 設為（開始位置＋結束位置）÷ 2 的整數部分' },                     // ★自訂
+    'list.tolo':        { cat:'list',    shape:'stack', label:'變數 開始位置 設為 位置 ＋ 1' },                                            // ★自訂
+    'list.tohi':        { cat:'list',    shape:'stack', label:'變數 結束位置 設為 位置 － 1' },                                            // ★自訂
     /* ⚠️ 寫法和範例檔對齊：範例是「如果 詢問的答案 > 第二分位置項」。
        「中間值 < 答案」和「答案 > 中間值」是同一件事，但學生回 Scratch
        是照著範例拼的 —— 兩邊長得一樣，他就不必在腦中翻一次。 */
-    'control.ifmid':    { cat:'control', shape:'c2',    label:'如果 詢問的答案 > 數列 的第 二分位置 項 那麼' },                            // ★自訂
+    'control.ifmid':    { cat:'control', shape:'c2',    label:'如果 詢問的答案 > 已排序資料 的第 位置 項 那麼' },                            // ★自訂
     /* 第 9 關的停止條件與收尾（2026-08-17 依老師的範例檔 11502_單元九 改寫）。
        ★ 結構照範例：迴圈只負責砍一半，找到／沒有在**迴圈外**報告。
        ⚠️⚠️ 但收斂**不照**範例：範例是「開始位置 ← 位置」（不加減 1），
@@ -171,10 +180,10 @@
           ⇒ 改成 ±1、停止條件用「開始位置 > 結束位置」。
             同一份資料重跑：50 個全部找得到，最多比 6 次（50 筆的上界就是 6）。
        ★ 老師 2026-08-17 知情並選擇這個版本，範例檔也會跟著改。 */
-    'control.untilhalf':{ cat:'control', shape:'c',     label:'重複直到 開始位置 > 結束位置 或 詢問的答案 = 數列 的第 二分位置 項' },         // ★自訂
-    'control.iffoundmid':{cat:'control', shape:'c2',    label:'如果 詢問的答案 = 數列 的第 二分位置 項 那麼' },                                // ★自訂
-    'looks.saycomparemid':{cat:'looks',  shape:'stack', label:'說出「目前比對的數字是（數列 的第 二分位置 項）」持續 0.5 秒' },                // ★自訂
-    'looks.sayfoundmid':{ cat:'looks',   shape:'stack', label:'說出「找到了，位於第（二分位置）個數字」' },                                    // ★自訂
+    'control.untilhalf':{ cat:'control', shape:'c',     label:'重複直到 開始位置 > 結束位置 或 詢問的答案 = 已排序資料 的第 位置 項' },         // ★自訂
+    'control.iffoundmid':{cat:'control', shape:'c2',    label:'如果 詢問的答案 = 已排序資料 的第 位置 項 那麼' },                                // ★自訂
+    'looks.saycomparemid':{cat:'looks',  shape:'stack', label:'說出「目前比對的數字是（已排序資料 的第 位置 項）」持續 0.5 秒' },                // ★自訂
+    'looks.sayfoundmid':{ cat:'looks',   shape:'stack', label:'說出「找到了，位於第（位置）個數字」' },                                    // ★自訂
     /* 第 10 關（搜尋法的程式應用，課本 6-3-3）要的四塊。
        ★ 這一關要補上第 8 關**故意留下**的那個洞：
          迴圈的停止條件其實有**兩個** —— 找到了，或位置已經超過資料量。
@@ -191,16 +200,16 @@
        ★ 條件的順序也照範例：先問「位置有沒有超過」，再問「是不是找到了」。
        ⚠️ 範例檔寫死「位置 > 50」，這裡用「數列的長度」——
           寫死的話資料筆數一改就壞，那不是要教給學生的習慣。 */
-    'control.untilfound':{cat:'control', shape:'c',     label:'重複直到 位置 > 數列 的長度 或 詢問的答案 = 數列 的第 位置 項' },              // ★自訂
-    'control.ifover':   { cat:'control', shape:'c2',    label:'如果 位置 > 數列 的長度 那麼' },                                                // ★自訂
-    'looks.saycompare': { cat:'looks',   shape:'stack', label:'說出「目前比對的數字是（數列 的第 位置 項）」持續 0.5 秒' },                    // ★自訂
+    'control.untilfound':{cat:'control', shape:'c',     label:'重複直到 位置 > 原始資料 的長度 或 詢問的答案 = 原始資料 的第 位置 項' },              // ★自訂
+    'control.ifover':   { cat:'control', shape:'c2',    label:'如果 位置 > 原始資料 的長度 那麼' },                                                // ★自訂
+    'looks.saycompare': { cat:'looks',   shape:'stack', label:'說出「目前比對的數字是（原始資料 的第 位置 項）」持續 0.5 秒' },                    // ★自訂
     'looks.saynone':    { cat:'looks',   shape:'stack', label:'說出「沒有符合的數字」' },                                                      // ★自訂
-    'control.iffound':  { cat:'control', shape:'c2',    label:'如果 數列 的第 位置 項 = 目標資料 那麼' },                                      // ★自訂
+    'control.iffound':  { cat:'control', shape:'c2',    label:'如果 原始資料 的第 位置 項 = 目標資料 那麼' },                                      // ★自訂
     'looks.sayfound':   { cat:'looks',   shape:'stack', label:'說出「找到了，位於第（位置）個數字」' },                                        // ★自訂
     /* 第 6 關 選擇排序（課本 6-2-1、備課用書 p.198 的「找出最小值位置」副程式）。
        ★ 課本把「找最小值」單獨包成一個函式積木，理由寫在 p.198：
          那是每一回合都要做的同一件事 —— 正是副程式存在的意義。 */
-    'control.ifsmaller':{ cat:'control', shape:'c',     label:'如果 數列 的第 資料位置 項 < 數列 的第 最小值位置 項 那麼' },                   // ★自訂
+    'control.ifsmaller':{ cat:'control', shape:'c',     label:'如果 原始資料 的第 資料位置 項 < 原始資料 的第 最小值位置 項 那麼' },                   // ★自訂
     'list.setmin':      { cat:'list',    shape:'stack', label:'變數 最小值位置 設為 資料位置' },                                               // ★自訂
     /* 第 7 關 插入排序（課本 6-2-2）。
        ★ 課本的規則：「遇到大於自己的元素就插入此元素之前；
@@ -212,11 +221,11 @@
        原本用一塊「取出第 1 項當作新牌（並從原始資料刪掉）」把兩件事合成一塊，
        老師的做法是：**一路用「原始資料的第 1 項」比對，插入之後才刪掉它**。
        ⇒ 少了「新牌」這個中間變數，學生在真的 Scratch 裡也拼得出同一支程式。 */
-    'control.untilspot':{ cat:'control', shape:'c',     label:'重複直到 已排序 的第 插入位置 項 > 原始資料 的第 1 項 或 插入位置 > 已排序 的長度' }, // ★自訂
-    'list.insertfirst': { cat:'list',    shape:'stack', label:'把 原始資料 的第 1 項 插入 已排序 的第 插入位置 項' },                          // ★自訂
+    'control.untilspot':{ cat:'control', shape:'c',     label:'重複直到 已排序資料 的第 插入位置 項 > 原始資料 的第 1 項 或 插入位置 > 已排序資料 的長度' }, // ★自訂
+    'list.insertfirst': { cat:'list',    shape:'stack', label:'把 原始資料 的第 1 項 插入 已排序資料 的第 插入位置 項' },                          // ★自訂
     'list.delfirst':    { cat:'list',    shape:'stack', label:'刪除 原始資料 的第 1 項' },                                                     // ★自訂
     'looks.saytake':    { cat:'looks',   shape:'stack', label:'說出「目前取出的數字是（原始資料 的第 1 項）」持續 2 秒' },                     // ★自訂
-    'list.insertcard':  { cat:'list',    shape:'stack', label:'把 新牌 插入 已排序 的第 插入位置 項' },                                        // ★自訂
+    'list.insertcard':  { cat:'list',    shape:'stack', label:'把 新牌 插入 已排序資料 的第 插入位置 項' },                                        // ★自訂
     'control.until':    { cat:'control', shape:'c',     label:'重複直到 找到目標' },                           // ★自訂
 
     /* ===================================================================

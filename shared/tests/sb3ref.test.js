@@ -406,10 +406,11 @@ section('★★ 系統的目標程式要有同樣的性質');
        ⇒ 這條從「刻意不一樣」變成「兩邊一樣」，但還是要釘 —— 拿掉就會漏答案。 */
     ['6-3-2', '★★ 收斂用 ±1（少了它，範圍剩兩格時最後一項永遠比不到）',
       t => /list\.tolo/.test(t) && /list\.tohi/.test(t)],
-    ['6-3-2', '★ 先把二分位置歸零（停止條件第一次檢查時它還沒算過）',
-      /* ⚠️ 比對前兩邊都要去空白 —— flat() 印出來是「list.setidx ["二分位置",0]」，
-         regex 裡若還留著那個空白就永遠對不上（第一版就是這樣紅的）。 */
-      t => /list\.setidx\["二分位置",0\]/.test(t.replace(/\s/g, ''))],
+    ['6-3-2', '★ 先把「位置」歸零（停止條件第一次檢查時它還沒算過）',
+      /* ⚠️ 比對前兩邊都要去空白 —— flat() 印出來是「list.setidx ["位置",0]」，
+         regex 裡若還留著那個空白就永遠對不上（第一版就是這樣紅的）。
+         ⚠️ 變數名 2026-08-17 傍晚從「二分位置」改成「位置」（跟範例檔）。 */
+      t => /list\.setidx\["位置",0\]/.test(t.replace(/\s/g, ''))],
     /* ★ 三關的主程式都是「當角色被點擊」—— 綠旗那一塊在範例裡是建立資料用的 */
     ['6-2-2', '★ 主程式是「當角色被點擊」', t => /events\.whenclicked/.test(t)],
     ['6-3-1', '★ 主程式是「當角色被點擊」', t => /events\.whenclicked/.test(t)],
@@ -434,6 +435,54 @@ section('★★ 還沒有範例檔的關卡要列出來（不可以安靜跳過�
   ok(missing.length <= 0,
      '★ 還沒對照的關卡剩 ' + missing.length + ' 關' +
      (missing.length ? '（' + missing.join('、') + '）' : ''));
+}
+
+section('★★ 用詞一律跟範例檔（老師 2026-08-17 決定）');
+{
+  /* ★ 學生在拼圖上看到的清單與變數名字，回 Scratch 要找得到同一個東西。
+     系統原本自己取了一套（「數列」「二分位置」），
+     於是同一件事有兩個名字 —— 那一層翻譯是白費的認知負擔。
+     ⚠️ 這裡掃的是**積木的標籤**（DEFS.label）與關卡資料，
+        不掃註解 —— 註解裡寫著「原本叫數列」是刻意留的歷史。 */
+  global.window = {};
+  (0, eval)(fs.readFileSync(path.join(ROOT, 'shared', 'blocks.js'), 'utf8'));
+  const DEFS = global.window.BLOCKS.DEFS;
+  const labels = Object.keys(DEFS).map(k => k + '：' + (DEFS[k].label || '')).join('\n');
+
+  const BAD = [
+    ['數列', '範例檔的清單叫「原始資料」「已排序資料」'],
+    ['二分位置', '範例檔的變數叫「位置」（課本才叫二分位置）']
+  ];
+  BAD.forEach(([w, why]) => {
+    const hit = labels.split('\n').filter(l => l.indexOf(w) >= 0);
+    ok(hit.length === 0,
+       '★★ 積木標籤裡沒有「' + w + '」—— ' + why +
+       (hit.length ? '\n       ' + hit.join('\n       ') : ''));
+  });
+
+  /* 反過來：範例檔的名字要真的用上 */
+  [['原始資料', '第 6～8 關'], ['已排序資料', '第 7、9 關'],
+   ['開始位置', '第 9 關'], ['結束位置', '第 9 關'],
+   ['資料位置', '第 6 關'], ['最小值位置', '第 6 關'], ['插入位置', '第 7 關']
+  ].forEach(([w, where]) => {
+    ok(labels.indexOf(w) >= 0, '   用得到範例檔的名字「' + w + '」（' + where + '）');
+  });
+
+  /* 那幾個名字要真的在範例檔裡（不是我自己編的） */
+  const NAMES = {};
+  ['11502_單元六.sb3', '11502_單元七.sb3', '11502_單元八.sb3', '11502_單元九.sb3']
+    .forEach(fn => {
+      const j = JSON.parse(readZipEntry(fs.readFileSync(path.join(refdir, fn)),
+                                        'project.json').toString('utf8'));
+      j.targets.forEach(t => {
+        Object.values(t.lists || {}).forEach(l => { NAMES[l[0]] = 1; });
+        Object.values(t.variables || {}).forEach(v => { NAMES[v[0]] = 1; });
+      });
+    });
+  ['原始資料', '已排序資料', '位置', '開始位置', '結束位置',
+   '資料位置', '最小值位置', '插入位置'].forEach(w => {
+    ok(!!NAMES[w], '★ 「' + w + '」真的是範例檔裡的名字（不是我自己取的）');
+  });
 }
 
 section('★★ 帽蓋積木底下不可以再接東西');

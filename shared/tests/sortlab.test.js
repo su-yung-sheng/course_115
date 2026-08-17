@@ -29,8 +29,13 @@ ok(!/第 \d|位置|索引/.test(S._checkSelection([5, 2, 8], 0, 'asc').msg),
 const src = fs.readFileSync(path.join(__dirname, '..', 'sortlab.js'), 'utf8');
 ok(/加到「已排序」的最後一項/.test(src), '★ 選擇排序照課本：加到已排序的最後一項');
 ok(/從「未排序」刪掉|從未排序數列裡刪掉/.test(src), '★ 並且從未排序刪掉');
-ok(/未排序/.test(S.INFO.selection.why) && /已排序/.test(S.INFO.selection.why),
-   '說明文字也是兩個清單的講法');
+/* ⚠️ 2026-08-17 老師：「全部使用上傳程式中的變數名稱。」
+   範例檔（.sb3）的清單叫**原始資料／已排序資料**，
+   課本這一段寫「未排序數列／已排序數列」——
+   兩個名字指的是同一件事，但學生在 Scratch 裡看到的是前者。
+   ⇒ 這一條改成盯「兩個清單的講法」本身，不再要求出現「未排序」三個字。 */
+ok(/原始資料|未排序/.test(S.INFO.selection.why) && /已排序/.test(S.INFO.selection.why),
+   '說明文字也是兩個清單的講法（用範例檔的名字：原始資料／已排序資料）');
 
 /* ── 氣泡：只能換相鄰 ─────────────────────────────── */
 ok(S._checkBubble(1, 2).ok, '相鄰 → 可以換');
