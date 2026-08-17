@@ -396,6 +396,11 @@
       '           padding:10px;max-height:420px;overflow:auto}',
 
       /* ★ 程式區：Scratch 的淺灰格點底 */
+      /* 角色標題（一關有兩個角色時才出現）。
+         ⚠️ 要夠明顯 —— 它是在說「以下是另一份程式」，不是一個小標。 */
+      '.bk-sphead{display:inline-flex;align-items:center;gap:6px;font-size:14px;',
+      '  font-weight:900;color:#fff;background:#4c97ff;border-radius:9px;',
+      '  padding:5px 13px;margin-bottom:8px}',
       '.bk-script{min-height:300px;padding:14px;border-radius:8px;background:#f9f9f9;',
       '           background-image:radial-gradient(#d9d9d9 1px, transparent 1px);',
       '           background-size:22px 22px;border:1px solid #e5e7eb}',
@@ -595,7 +600,7 @@
           walk(n.children2);
         });
       }
-      walk(defs); walk(program);
+      SP.forEach(function (sp) { walk(sp.defs); walk(sp.program); });
       return out;
     }
 
@@ -653,22 +658,50 @@
       return isDefine(id);
     });
 
+    /* ── 角色 ─────────────────────────────────────────
+       ★ 第 4 關起，一關可能有**兩個角色**（蟲、小鳥）。
+         在真的 Scratch 裡那是兩份各自獨立的程式：先點角色，再拼它的積木。
+         全部堆在同一個程式區的話，畫面上會出現兩個「當綠旗被點擊」，
+         看起來像同一個角色有兩個開頭 —— 那是錯的心智模型。
+         而且判定是逐項比對的，等於還要求學生把兩個角色照指定的順序排，
+         可是在 Scratch 裡這兩份程式根本沒有先後可言。
+       ⇒ opts.sprites 有值就分區，每個角色**各自判定**。
+       ★ 沒有 sprites 的關卡當成「一個沒有名字的角色」，走的是**同一套**程式碼 ——
+         留兩條路徑的話，總有一條長期沒人走，而沒人走的那條遲早壞掉。
+       ⚠️ 函式區要不要出現，是**課程作者**在 sprite 上指定的（hasDefine）。
+          不去看那個角色的 goal 裡有沒有定義積木 —— 那等於把答案畫在畫面上。 */
+    var SPRITES = (opts.sprites && opts.sprites.length) ? opts.sprites
+                : [{ name: '', goal: goal, hasDefine: hasDefine, alts: opts.alts }];
+    var multi = SPRITES.length > 1;
+
     var midBox = el('div');
-    var defs = [];                 // 函式區的積木（只放定義）
-    var defArea = null;
-
-    if (hasDefine) {
-      midBox.appendChild(tag('函式區（定義副程式）'));
-      defArea = el('div', 'bk-script bk-defarea');
-      midBox.appendChild(defArea);
-      var gap = el('div');
-      gap.style.height = '14px';
-      midBox.appendChild(gap);
-    }
-
-    midBox.appendChild(tag(hasDefine ? '主程式' : '程式區'));
-    var script = el('div', 'bk-script');
-    midBox.appendChild(script);
+    var SP = SPRITES.map(function (sd, si) {
+      var sp = { name: sd.name || '', icon: sd.icon || '',
+                 goal: sd.goal || [], alts: sd.alts || [],
+                 defs: [], program: [], defArea: null, script: null };
+      if (multi) {
+        var head = el('div', 'bk-sphead',
+                      (sp.icon ? sp.icon + ' ' : '') + sp.name + '　角色');
+        if (si) head.style.marginTop = '18px';
+        midBox.appendChild(head);
+      }
+      var wantDef = (sd.hasDefine == null) ? (hasDefine && !multi) : !!sd.hasDefine;
+      if (wantDef) {
+        midBox.appendChild(tag('函式區（定義副程式）'));
+        sp.defArea = el('div', 'bk-script bk-defarea');
+        sp.defArea._isDef = true;
+        sp.defArea._sp = sp;
+        midBox.appendChild(sp.defArea);
+        var gap = el('div');
+        gap.style.height = '14px';
+        midBox.appendChild(gap);
+      }
+      midBox.appendChild(tag(sp.defArea ? '主程式' : '程式區'));
+      sp.script = el('div', 'bk-script');
+      sp.script._sp = sp;
+      midBox.appendChild(sp.script);
+      return sp;
+    });
 
     var bar = el('div');
     bar.style.cssText = 'display:flex;gap:8px;margin-top:10px;flex-wrap:wrap';
@@ -885,8 +918,9 @@
         box.appendChild(dropZone(list, i + 1));
       });
       if (!list.length) {
-        if (box === script) box.appendChild(el('div', 'bk-empty', '把左邊的積木拖到這裡'));
-        else if (box === defArea) box.appendChild(el('div', 'bk-empty', '把「定義…」積木拖到這裡'));
+        box.appendChild(el('div', 'bk-empty', box._isDef
+          ? '把「定義…」積木拖到這裡'
+          : '把左邊的積木拖到這裡'));
       }
     }
     function dropZone(list, idx) {
@@ -895,15 +929,28 @@
       return z;
     }
     function redraw() {
-      if (defArea) { fill(defArea, defs); defArea.classList.add('bk-stack'); }
-      fill(script, program);
-      script.classList.add('bk-stack');
+      SP.forEach(function (sp) {
+        if (sp.defArea) { fill(sp.defArea, sp.defs); sp.defArea.classList.add('bk-stack'); }
+        fill(sp.script, sp.program);
+        sp.script.classList.add('bk-stack');
+      });
       drawPalette();          // 定義上的參數名可能變了，調色盤要跟著換
     }
     /** 所有程式區（判定與拖曳都要一起看） */
-    function areas() { return defArea ? [defArea, script] : [script]; }
-    /** 完整的程式 = 函式區 ＋ 主程式（順序固定，goal 也照這個順序寫） */
-    function whole() { return defs.concat(program); }
+    function areas() {
+      var out = [];
+      SP.forEach(function (sp) { if (sp.defArea) out.push(sp.defArea); out.push(sp.script); });
+      return out;
+    }
+    /** 一個角色的完整程式 = 它的函式區 ＋ 它的主程式 */
+    function wholeOf(sp) { return sp.defs.concat(sp.program); }
+    /** 全部角色串起來（給模擬器與 load 用；判定不走這裡 —— 判定是一個角色一份） */
+    function whole() {
+      var out = [];
+      SP.forEach(function (sp) { out = out.concat(wholeOf(sp)); });
+      return out;
+    }
+    function clearAll() { SP.forEach(function (sp) { sp.defs.length = 0; sp.program.length = 0; }); }
 
     /* ── 拖曳（pointer events：滑鼠、觸控、觸控筆都能用）── */
     var drag = null;
@@ -919,8 +966,12 @@
           // 從別的積木的空格裡拉出來 → 那一格恢復成可以打字的欄位
           owner.args[oidx] = (DEFS[owner.id].args || [])[oidx];
           if (owner.args[oidx] == null) owner.args[oidx] = '';
-        } else if (!detach(program, node)) {
-          detach(defs, node);
+        } else {
+          /* ⚠️ 不知道它原本在哪一個角色的哪一區 —— 全部找一遍。
+             找不到就當它已經被摘掉了（不要當成錯誤）。 */
+          SP.some(function (sp) {
+            return detach(sp.program, node) || detach(sp.defs, node);
+          });
         }
       }
       var isRep = DEFS[moving.id].shape === 'reporter';
@@ -995,12 +1046,12 @@
       var zones = all.filter(function (z) {
         var top = z.parentNode === box;               // 頂層（不在 C 型積木的凹槽裡）
         if (!top) return true;                        // 凹槽裡一律可放
-        return box === defArea ? isDef : !isDef;
+        return box._isDef ? isDef : !isDef;
       });
       if (!zones.length) {
         /* 游標在區域內但這塊積木不該放這裡。
            記下原因 —— 積木默默消失是最讓人困惑的失敗方式。 */
-        rejected = box === defArea
+        rejected = box._isDef
           ? '函式區只放「定義…」積木，其他積木請放到下面的主程式。'
           : '「定義…」積木要放在上面的函式區，不能接在主程式裡。';
         return null;
@@ -1275,33 +1326,42 @@
        ★ 但也不是「畫出來一樣就算過」
          這一關要學的是模組化。六段一樣的積木也畫得出六個正方形，
          那不能算過。所以是「幾份指定的正確寫法」，不是「畫得像就好」。 */
-    var targets = [{ goal: goal, note: '' }].concat(opts.alts || []);
     var loose = opts.loose || [];
+    /** 這個角色可以接受的答案（第一份是參考解答） */
+    function targetsOf(sp) { return [{ goal: sp.goal, note: '' }].concat(sp.alts || []); }
+    /** 錯誤訊息前面標角色 —— 兩個角色的時候，不講是哪一個等於沒講 */
+    function who(sp) {
+      return multi ? '【' + (sp.icon ? sp.icon + ' ' : '') + sp.name + '】' : '';
+    }
 
     function check() {
-      var all = whole();
-      if (!all.length) { say('程式區還是空的，先從左邊拖幾塊積木過來。'); return; }
+      if (!whole().length) { say('程式區還是空的，先從左邊拖幾塊積木過來。'); return; }
 
-      var hit = null;
-      for (var i = 0; i < targets.length && !hit; i++) {
-        if (same(all, targets[i].goal, loose)) hit = targets[i];
-      }
-      if (hit) {
-        say(hit.note
-              ? '✅ 這樣也對！' + hit.note
-              : ('✅ 組對了！' + (passed ? '' : ' 這一關通過。')),
-            true);
-        if (!passed) { passed = true; if (opts.onPass) opts.onPass(plain(all)); }
+      /* ★ 一個角色一份判定。
+         ⚠️ 不可以把兩個角色串起來比 —— 那會變成「兩個角色的順序也要對」，
+            而在真的 Scratch 裡它們根本沒有先後。 */
+      var notes = [];
+      for (var k = 0; k < SP.length; k++) {
+        var sp = SP[k], all = wholeOf(sp), ts = targetsOf(sp), hit = null;
+        for (var i = 0; i < ts.length && !hit; i++) {
+          if (same(all, ts[i].goal, loose)) hit = ts[i];
+        }
+        if (hit) { if (hit.note) notes.push(hit.note); continue; }
+        /* 「差在哪」要拿最接近的那一份來比 —— 學生在拼另一種解法時，
+           硬拿參考解答去比，會指著一個他根本沒打算寫的地方叫他改。 */
+        var got = canon(all), best = canon(ts[0].goal), bs = -1;
+        ts.forEach(function (t) {
+          var w = canon(t.goal), sc = score(got, w, loose);
+          if (sc > bs) { bs = sc; best = w; }
+        });
+        say('❌ ' + who(sp) + diffHint(got, best));
         return;
       }
-      /* 「差在哪」要拿最接近的那一份來比 —— 學生在拼另一種解法時，
-         硬拿參考解答去比，會指著一個他根本沒打算寫的地方叫他改。 */
-      var got = canon(all), best = canon(targets[0].goal), bs = -1;
-      targets.forEach(function (t) {
-        var w = canon(t.goal), s = score(got, w, loose);
-        if (s > bs) { bs = s; best = w; }
-      });
-      say('❌ ' + diffHint(got, best));
+      say(notes.length
+            ? '✅ 這樣也對！' + notes.join(' ')
+            : ('✅ 組對了！' + (passed ? '' : ' 這一關通過。')),
+          true);
+      if (!passed) { passed = true; if (opts.onPass) opts.onPass(plain(whole())); }
     }
     /** 給一句「差在哪」，不要只說錯 —— 學生看到「錯了」只會亂試。
         差別藏在 C 型積木裡面時要一路追進去講（「第 5 塊裡面的第 2 塊」）：
@@ -1343,23 +1403,37 @@
     runBtn.addEventListener('click', run);
     checkBtn.addEventListener('click', check);
     clearBtn.addEventListener('click', function () {
-      program.length = 0; defs.length = 0; redraw(); resetStage(); say('');
+      clearAll(); redraw(); resetStage(); say('');
     });
 
     redraw();
     setTimeout(resetStage, 0);
 
     return {
-      reset: function () { program.length = 0; defs.length = 0; redraw(); resetStage(); say(''); },
+      reset: function () { clearAll(); redraw(); resetStage(); say(''); },
       /* 載入：自動把「定義」放進函式區、其餘放進主程式 */
-      load: function (list) {
-        defs.length = 0; program.length = 0;
+      load: function (list, which) {
+        /* which：要載到第幾個角色（多角色關卡才需要，預設第 1 個）。
+           ⚠️ 這支只有測試與「載入上次進度」在用 —— 學生是用拖的。 */
+        clearAll();
+        var sp = SP[which || 0] || SP[0];
         (list || []).forEach(function (n) {
-          var d = isDefine(n.id);
-          (d && defArea ? defs : program).push(n);
+          (isDefine(n.id) && sp.defArea ? sp.defs : sp.program).push(n);
         });
         redraw();
       },
+      /* 多角色關卡：一次載入每個角色的程式（陣列的陣列） */
+      loadAll: function (lists) {
+        clearAll();
+        (lists || []).forEach(function (list, i) {
+          var sp = SP[i]; if (!sp) return;
+          (list || []).forEach(function (n) {
+            (isDefine(n.id) && sp.defArea ? sp.defs : sp.program).push(n);
+          });
+        });
+        redraw();
+      },
+      get sprites() { return SP.length; },
       get program() { return plain(whole()); }
     };
   }

@@ -694,8 +694,12 @@ function draw(s) {
        而且不會報錯，只會安靜地沒東西可拼。 */
     /* steps：講「要拼成什麼結構」，不講積木順序 —— 順序是這一步要他排的。
        ⚠️ 不要把 lv.tips 丟進來：那裡面是給老師看的、直接寫著答案。 */
+    /* ★ sprites：一關有兩個角色時（第 4 關的蟲與小鳥），拼圖要分區。
+       在真的 Scratch 裡那是兩份各自獨立的程式，不是一支很長的程式。
+       ⚠️ 沒有 sprites 的關卡照舊走 goal —— 模組那邊會當成「一個沒有名字的角色」。 */
     BLOCKS.mount(body, {
-      palette: lv.palette, goal: lv.goal, alts: lv.alts, loose: lv.loose,
+      palette: lv.palette, goal: lv.goal, sprites: lv.sprites,
+      alts: lv.alts, loose: lv.loose,
       hint: lv.task, steps: lv.build,
       onPass: () => { markPre(); advance(); }
     });
