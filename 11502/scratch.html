@@ -104,9 +104,12 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
       關卡<b class="text-orange-600">依序開放</b>：上傳作品拿到 <b>2⭐</b> 以上才會開下一關。<br>
       <b class="text-amber-600">🧩 作品星</b> 每關最多 3⭐，再交程式錄影每關 <b>+1⭐</b>；
       <b class="text-indigo-600">🧠 概念星</b> 每關最多 3⭐（十關滿 30）。
-      <span class="block mt-1">⚠️ <b>第 5 關（排隊比高矮）沒有程式作品要交</b> ——
-        課本這一節是觀念導入，它的程式就是第 6、7 關。
-        所以作品星的滿分是 <b>9 關</b>（36⭐），那一關只有概念星。</span>
+      <span class="block mt-1">⚠️ <b>第 5、10 關沒有程式作品要交</b> ——
+        第 5 關（排隊比高矮）是觀念導入，它的程式就是第 6、7 關；
+        第 10 關（資料大爆炸）比的是第 8、9 關寫過的那兩支。
+        那兩關做完最後的<b>實作體驗</b>就算完成，卡片上給一枚
+        <b class="text-amber-600">🏅 體驗完成</b>（不是作品星）。
+        所以作品星的滿分是 <b>8 關</b>（32⭐）。</span>
       <span class="block mt-1 text-slate-400">兩組<b>分開算、不相加</b> ——
         它們回答的是不同的問題：作品星是「做出來了沒」，概念星是「懂了沒」。</span>
     </p>
@@ -265,10 +268,23 @@ function renderStages(){
             <h3 class="font-black text-lg mt-2 ${open ? '' : 'text-slate-400'}">${u.name}</h3>
           </div>
           <span class="text-right whitespace-nowrap leading-tight">
-            <span class="block text-base font-black ${needUp ? (s > 0 ? 'text-amber-500' : 'text-slate-300') : 'text-slate-400'}"
-                  title="${needUp ? '作品星：上傳程式作品，AI 批改給的' : '這一關沒有程式作品要交'}">
-              ${needUp ? '🧩 ' + (s > 0 ? '★'.repeat(s) + '☆'.repeat(3 - s) : '☆☆☆')
-                       : '<span class="text-[11px] font-bold">🧩 免交作品</span>'}
+            <span class="block text-base font-black ${needUp ? (s > 0 ? 'text-amber-500' : 'text-slate-300')
+                                                             : (done ? 'text-amber-500' : 'text-slate-300')}"
+                  title="${needUp ? '作品星：上傳程式作品，AI 批改給的'
+                                  : '這一關沒有程式作品要交，做完最後的實作體驗就算完成'}">
+              ${needUp
+                ? '🧩 ' + (s > 0 ? '★'.repeat(s) + '☆'.repeat(3 - s) : '☆☆☆')
+                /* ★★ 沒有作品要交的關卡（第 5、10 關）給一枚**體驗章**。
+                   ⚠️ 原本這一欄寫「🧩 免交作品」—— 那是在講**規則**，不是**成就**。
+                      同一排看過去，別關有 ★★★，它只有一句說明，
+                      學生會覺得那一關好像沒完成（老師 2026-08-17 指出）。
+                   ★ 為什麼不乾脆也給三顆星：那會變成**第三組**星星，
+                     hub 的分母、教師端的統計都要跟著改，
+                     而且「這顆星是誰給的」會說不清楚 —— 見 grading.js 的說明。
+                   ⇒ 用一枚章：完成前灰的「○ 體驗」，完成後金的「🏅 體驗完成」。
+                     位置和 ★★★ 對齊，一眼看得出差別，又不會被當成作品星。 */
+                : (done ? '<span class="text-[13px] font-black">🏅 體驗完成</span>'
+                        : '<span class="text-[13px] font-black">○ 體驗</span>')}
             </span>
             <span class="block text-base font-black ${q > 0 ? 'text-indigo-500' : 'text-slate-300'}"
                   title="概念星：概念檢測五題講到幾題，現算的">
