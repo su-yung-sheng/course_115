@@ -102,9 +102,11 @@ if(window.self!==window.top){var b=document.getElementById('back-to-hub');if(b)b
          所以要嘛兩組都講清楚，要嘛都不要提 —— 不能只講一半。 -->
     <p class="text-slate-500 text-xs sm:text-sm mt-2 text-center leading-relaxed">
       關卡<b class="text-orange-600">依序開放</b>：上傳作品拿到 <b>2⭐</b> 以上才會開下一關。<br>
-      <b class="text-amber-600">🧩 作品星</b> 每關最多 3⭐（滿 30），
-      再交程式錄影每關 <b>+1⭐</b>（最多 40）；
-      <b class="text-indigo-600">🧠 概念星</b> 每關最多 3⭐（滿 30）。
+      <b class="text-amber-600">🧩 作品星</b> 每關最多 3⭐，再交程式錄影每關 <b>+1⭐</b>；
+      <b class="text-indigo-600">🧠 概念星</b> 每關最多 3⭐（十關滿 30）。
+      <span class="block mt-1">⚠️ <b>第 5 關（排隊比高矮）沒有程式作品要交</b> ——
+        課本這一節是觀念導入，它的程式就是第 6、7 關。
+        所以作品星的滿分是 <b>9 關</b>（36⭐），那一關只有概念星。</span>
       <span class="block mt-1 text-slate-400">兩組<b>分開算、不相加</b> ——
         它們回答的是不同的問題：作品星是「做出來了沒」，概念星是「懂了沒」。</span>
     </p>
@@ -193,6 +195,10 @@ const GATE = (window.GRADING && window.GRADING.GATE) || {
   cleared:  function(){ return false; },
   openUpTo: function(){ return 0; },
   isOpen:   function(){ return false; },
+  /* ⚠️ 備援也要有 needsUpload —— 小卡會呼叫它。
+     少了的話 GRADING 載入失敗時整張地圖畫不出來（TypeError），
+     而原本只是「少開幾關」而已。備援的工作是**降級**，不是換一種壞法。 */
+  needsUpload: function(){ return true; },
   reason:   function(){ return '闖關規則沒有載入成功，請重新整理頁面；若一直這樣請找老師。'; }
 };
 /* 備課用的總開關（見 config.js 的 OPEN_ALL_UNITS）。
@@ -226,7 +232,19 @@ function renderStages(){
   }
   document.getElementById('stage-grid').innerHTML = UNITS.map(u => {
     const s = unitStars[u.id] || 0;
-    const done = s > 0;
+    /* ★★ 每一關要看得到**兩組**星星（2026-08-17 老師回報小卡上看不到概念星）。
+         🧩 作品星：Colab 批改給的，依序開放只看它
+         🧠 概念星：概念檢測的分數現算的，是成就不是通行證
+       ⚠️ 概念星**不存**，一定要現算 —— 存一份就會和 quiz 的分數不一致，
+          而且沒有人說得出哪一份才對。 */
+    const q = (window.GRADING && window.GRADING.quizStars)
+      ? window.GRADING.quizStars(quizDone, u.id) : 0;
+    /* ⚠️⚠️ 第 5 關**沒有作品要交**（觀念導入，見 GATE.NO_UPLOAD）——
+       它的作品星永遠是 0。用 s > 0 判「做完了沒」的話，
+       學生做完整關回到地圖，卡片還是灰的、還寫著「點進去開始」，
+       看起來像沒做完。⇒ 那幾關改看「實作體驗做完了沒」。 */
+    const needUp = !GATE || GATE.needsUpload(u.id);
+    const done = needUp ? (s > 0) : !!playDone[u.id];
     const open = u.no <= openTo;
     /* ★ 開放的關卡＝可以點進去的連結；沒開的維持一張不能點的卡。
        ⚠️ 「不畫連結」只是不方便，不是鎖 ——
@@ -246,15 +264,26 @@ function renderStages(){
             </span>
             <h3 class="font-black text-lg mt-2 ${open ? '' : 'text-slate-400'}">${u.name}</h3>
           </div>
-          <span class="font-black text-lg whitespace-nowrap ${done ? 'text-amber-500' : 'text-slate-300'}">
-            ${done ? '★'.repeat(s) : '☆☆☆'}
+          <span class="text-right whitespace-nowrap leading-tight">
+            <span class="block text-base font-black ${needUp ? (s > 0 ? 'text-amber-500' : 'text-slate-300') : 'text-slate-400'}"
+                  title="${needUp ? '作品星：上傳程式作品，AI 批改給的' : '這一關沒有程式作品要交'}">
+              ${needUp ? '🧩 ' + (s > 0 ? '★'.repeat(s) + '☆'.repeat(3 - s) : '☆☆☆')
+                       : '<span class="text-[11px] font-bold">🧩 免交作品</span>'}
+            </span>
+            <span class="block text-base font-black ${q > 0 ? 'text-indigo-500' : 'text-slate-300'}"
+                  title="概念星：概念檢測五題講到幾題，現算的">
+              🧠 ${q > 0 ? '★'.repeat(q) + '☆'.repeat(3 - q) : '☆☆☆'}
+            </span>
           </span>
         </div>
         <p class="mt-2 text-slate-600 text-sm leading-relaxed">${
           !open ? '完成前一關才會開啟'
                 : (u.desc || '<span class="text-slate-400">內容準備中</span>')}</p>
         <p class="mt-3 text-xs font-bold ${done ? 'text-emerald-600' : open ? 'text-orange-600' : 'text-slate-400'}">
-          ${done ? '✅ 已通關　點進去可以重做' : open ? '👉 點進去開始這一關' : '🔒 尚未開啟'}
+          ${done ? '✅ 已通關　點進去可以重做'
+                 : open ? (needUp ? '👉 點進去開始這一關'
+                                  : '👉 點進去開始（這一關做完最後的體驗就算完成）')
+                        : '🔒 尚未開啟'}
         </p>
       </${tag}>`;
   }).join('');

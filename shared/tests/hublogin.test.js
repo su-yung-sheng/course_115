@@ -93,24 +93,48 @@ section('★ hub 的 maxStars 對得上 GRADING.moduleMax()');
      '★★ 11502 的程式上限比十關全交少（' + MAX02.scratch + ' < ' + MAX.scratch +
      '）—— 第 5 關沒有作品要交');
 
-  const want = {
-    /* 11501 的程式設計卡把流程圖與 Scratch 合成一張（combines），
-       所以分母是兩個模組的上限相加。 */
-    '11501/hub.html': { listprog: MAX.flowchart + MAX.scratch },
-    '11502/hub.html': { scratch: MAX02.scratch }
-  };
-  Object.keys(want).forEach(f => {
-    const src = fs.readFileSync(path.join(root, f), 'utf8');
-    Object.keys(want[f]).forEach(id => {
-      /* 抓那張卡那一行的 maxStars。卡片是一行一個物件，所以用 id 定位。 */
-      const line = (src.split('\n').filter(l => l.indexOf("id:'" + id + "'") >= 0)[0]) || '';
-      const m = line.match(/maxStars:\s*(\d+)/);
-      ok(!!m, f + ' 的 ' + id + ' 卡片找得到 maxStars');
-      if (m) ok(Number(m[1]) === want[f][id],
-        '★ ' + f + ' 的 ' + id + ' maxStars = ' + m[1] +
-        '（應該是 ' + want[f][id] + ' —— 含老師審核的加分星）');
-    });
-  });
+  /* 11501 的程式設計卡把流程圖與 Scratch 合成一張（combines），
+     所以分母是兩個模組的上限相加。十關都要交作品，寫死沒問題。 */
+  {
+    const src = fs.readFileSync(path.join(root, '11501/hub.html'), 'utf8');
+    const line = (src.split('\n').filter(l => l.indexOf("id:'listprog'") >= 0)[0]) || '';
+    const m = line.match(/maxStars:\s*(\d+)/);
+    ok(!!m, '11501/hub.html 的 listprog 卡片找得到 maxStars');
+    if (m) ok(Number(m[1]) === MAX.flowchart + MAX.scratch,
+      '★ 11501 的 listprog maxStars = ' + m[1] +
+      '（應該是 ' + (MAX.flowchart + MAX.scratch) + '）');
+  }
+
+  /* ⚠️⚠️ 11502 **不可以寫死數字**。
+     作品星的滿分＝「要交作品的關卡數 × (3 + 錄影加分)」，
+     而那份名單是 GRADING.GATE.NO_UPLOAD 決定的
+     （第 5 關是觀念導入，沒有作品要交 → 9 關 × 4 = 36）。
+     ★ 老師 2026-08-17 問「第五關與第十關都沒有程式，總數是不是會改變」——
+       會。名單再改一關就變 32。
+     ⇒ 寫死的話那一天不會有人記得回來改，
+       而症狀是「進度條停在 32/36，怎麼做都到不了 100%」，
+       沒有人會回報這種事。所以要**現算**。 */
+  {
+    const src = fs.readFileSync(path.join(root, '11502/hub.html'), 'utf8');
+    const line = (src.split('\n').filter(l => l.indexOf("id:'scratch'") >= 0)[0]) || '';
+    ok(!/maxStars:\s*\d+/.test(line),
+       '★★ 11502 的 scratch 卡片**沒有寫死** maxStars');
+    ok(/maxStars:\s*scratchMax\(\)/.test(line),
+       '★★ 而是呼叫 scratchMax() 現算');
+    const fn = src.slice(src.indexOf('function scratchMax'),
+                         src.indexOf('const MODULES'));
+    ok(/GRADING\.moduleMax/.test(fn), '★ scratchMax() 走的是共用的 GRADING.moduleMax()');
+    ok(/CONFIG\.UNITS/.test(fn),
+       '★★ 而且**有把關卡代號傳進去** —— 不傳的話免交那幾關會被算進分母');
+
+    /* 真的跑一次，確認算出來的和 GRADING 一致 */
+    const W2 = {};
+    new Function('window', fs.readFileSync(path.join(root, '11502', 'config.js'), 'utf8'))(W2);
+    new Function('window', fs.readFileSync(path.join(root, 'shared', 'grading.js'), 'utf8'))(W2);
+    const f = new Function('window', fn + '; return scratchMax();');
+    ok(f(W2) === MAX02.scratch,
+       '★★ 實際算出來是 ' + f(W2) + '，和 GRADING.moduleMax() 的 ' + MAX02.scratch + ' 一致');
+  }
 
   /* 加分星要真的被算進卡片顯示的數字裡，不是只有分母變大。
      ⚠️ 只改分母的話，進度條會永遠差那幾顆，看起來像「怎麼樣都補不滿」。 */

@@ -93,6 +93,22 @@
     }
 
     // ===== 關卡定義（module ID 對應規格文件） =====
+    /* 程式設計那張卡的分母。
+       ⚠️⚠️ 這裡**不可以寫死數字**。
+          作品星的滿分＝「要交作品的關卡數 × (3 + 錄影加分)」，
+          而「要交作品的關卡」是 GRADING.GATE.NO_UPLOAD 決定的
+          （第 5 關是觀念導入，沒有程式作品要交）。
+          寫死的話，那份名單一改這裡不會跟 ——
+          進度條會停在 32/36 之類的數字，怎麼做都到不了 100%，
+          而且沒有人會回報「進度條怪怪的」。
+       ★ 2026-08-17 老師問「第五關與第十關都沒有程式，總數是不是會改變」——
+         會。所以改成現算。 */
+    function scratchMax() {
+      var ids = (window.CONFIG.UNITS || []).map(function (u) { return u[0]; });
+      return (window.GRADING && window.GRADING.moduleMax)
+        ? window.GRADING.moduleMax(ids.length || 10, ids).scratch
+        : 36;
+    }
     const MODULES = [
       // —— 四大主軸 ——
       { id:'ethics',    title:'媒體與社會議題',   tag:'法律倫理', icon:'⚖️', href:'social.html',    theme:'bg-pink-100 border-pink-300 text-pink-900',       tape:'bg-pink-500/25',    rot:'rotate-1',  desc:'第五、六章共 10 個章節（含 2 個整章挑戰），做完測驗給星。', maxStars:30, subLevels:10 },
@@ -107,7 +123,7 @@
          ★ 已達成：和 11501 一樣只有 4 張卡
            （媒體與社會議題／運算思維／程式設計／Arduino）。
            邏輯挑戰、排序、搜尋三張已經收進關卡 —— 見下面那一段。 */
-      { id:'scratch',   title:'Scratch 程式設計', tag:'程式設計', icon:'🐱', href:'scratch.html',   theme:'bg-orange-100 border-orange-300 text-orange-900',  tape:'bg-orange-500/25',  rot:'rotate-2',  desc:'把流程圖寫成 Scratch 積木程式並上傳作品。', maxStars:36, subLevels:10 },
+      { id:'scratch',   title:'Scratch 程式設計', tag:'程式設計', icon:'🐱', href:'scratch.html',   theme:'bg-orange-100 border-orange-300 text-orange-900',  tape:'bg-orange-500/25',  rot:'rotate-2',  desc:'把流程圖寫成 Scratch 積木程式並上傳作品。', maxStars:scratchMax(), subLevels:10 },
       /* ⚠️ maxStars 是進度條的分母，要和 GRADING.moduleMax() 對得起來。
          ⚠️⚠️ 2026-08-17：36 而不是 40。
             第 5 關（6-1-1 排隊比高矮）是觀念導入，**沒有程式作品要交**
