@@ -422,6 +422,17 @@
       if (at >= steps.length) {
         doneBox.className = 'dv-done';
         doneBox.innerHTML = data.done || '推導完成，接下來把它拼成積木。';
+        /* ⚠️⚠️ 2026-08-17 修：這裡原本只叫 opts.onPass，
+           但 level.html 傳進來的是 **onDone**（問題分析那一支用的就是 onDone）——
+           名字對不上，於是**推導做完之後什麼都不會發生**。
+           而推導那一步沒有「下一步」按鈕，回呼是唯一的出路
+           ⇒ 所有有推導的關卡（第 3、4、5 關）走到這裡就卡死。
+           老師 2026-08-17 在第 3 關實際卡住。
+           ★ 兩個都叫，而且兩個都不是必要的 ——
+             這種「模組叫 A、呼叫端傳 B」的錯完全不會報錯，
+             畫面上看起來就是「我明明做完了，它沒反應」。
+             shared/tests/stepflow.test.js 現在會比對兩邊的名字。 */
+        if (opts.onDone) opts.onDone();
         if (opts.onPass) opts.onPass();
       }
     }
