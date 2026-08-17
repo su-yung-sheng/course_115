@@ -80,11 +80,24 @@ section('★ hub 的 maxStars 對得上 GRADING.moduleMax()');
   new Function('window', fs.readFileSync(path.join(root, 'shared', 'grading.js'), 'utf8'))(W);
   const MAX = W.GRADING.moduleMax(10);
 
+  /* ⚠️⚠️ 11502 要**帶關卡代號**進去。
+     第 5 關（6-1-1）是觀念導入，沒有程式作品要交
+     （見 GRADING.GATE.NO_UPLOAD），那 4 顆星永遠拿不到 ——
+     算進分母的話學生會卡在 36/40，怎麼做都到不了 100%。
+     ★ 11501 十關都要交作品，所以照舊不帶。 */
+  const CFG = {};
+  new Function('window', fs.readFileSync(path.join(root, '11502', 'config.js'), 'utf8'))(CFG);
+  const ids02 = (CFG.CONFIG.UNITS || []).map(u => u[0]);
+  const MAX02 = W.GRADING.moduleMax(10, ids02);
+  ok(MAX02.scratch < MAX.scratch,
+     '★★ 11502 的程式上限比十關全交少（' + MAX02.scratch + ' < ' + MAX.scratch +
+     '）—— 第 5 關沒有作品要交');
+
   const want = {
     /* 11501 的程式設計卡把流程圖與 Scratch 合成一張（combines），
        所以分母是兩個模組的上限相加。 */
     '11501/hub.html': { listprog: MAX.flowchart + MAX.scratch },
-    '11502/hub.html': { scratch: MAX.scratch }
+    '11502/hub.html': { scratch: MAX02.scratch }
   };
   Object.keys(want).forEach(f => {
     const src = fs.readFileSync(path.join(root, f), 'utf8');

@@ -76,11 +76,27 @@ window.GRADING = {
   },
 
   /** 各模組的星數上限（教師端顯示 x / y 用；關卡數 × 每關上限） */
-  moduleMax: function (units) {
+  /**
+   * 各模組的星數上限（進度條的分母）。
+   *
+   * @param units    關卡數（預設 10）
+   * @param unitIds  ⚠️ 選填。給了的話會把「不必上傳」的關卡**扣掉** ——
+   *                 那幾關沒有作品可以批改，星星永遠拿不到，
+   *                 算進分母的話學生會卡在 36/40 永遠到不了 100%。
+   *                 不給就照 units 算（11501 十關都要交作品，不受影響）。
+   */
+  moduleMax: function (units, unitIds) {
     units = units || 10;
+    var scratchUnits = units;
+    if (unitIds && unitIds.length) {
+      var self = this;
+      scratchUnits = unitIds.filter(function (id) {
+        return self.GATE.needsUpload(id);
+      }).length;
+    }
     return {
       flowchart: units * (this.FLOWCHART_PER_UNIT + this.BONUS.img),
-      scratch:   units * (3 + this.BONUS.vid)      // AI 批改單關最高 3★
+      scratch:   scratchUnits * (3 + this.BONUS.vid)   // AI 批改單關最高 3★
     };
   },
 
@@ -283,13 +299,58 @@ window.GRADING = {
     PASS_STARS: 2,
 
     /**
+     * 沒有自己的程式作品、因此**不必上傳**的關卡。
+     *
+     * ⚠️⚠️ 2026-08-17 老師發現的死路：
+     *    第 5 關（6-1-1 排隊比高矮）是**觀念導入**，課本 6-1 不寫程式
+     *    （情境自己就寫著「這一關不寫程式，用點的就好」，也沒有程式拼圖）。
+     *    但依序開放只看作品星，作品星只有上傳批改才拿得到 ——
+     *    於是學生走到最後一步，畫面叫他「在 Scratch 做出來並上傳」，
+     *    而這一關**根本沒有指定要做什麼程式**。
+     *    ⇒ 不處理的話，全班會卡在第 5 關進不到第 6 關。
+     *
+     * ★ 為什麼是「跳過」而不是「改看別的條件」
+     *   概念檢測、實驗室徽章都是**學生端自己寫的**，按 F12 就能偽造；
+     *   拿它們當鑰匙等於沒有鎖。作品星只有 Colab 批改寫得動，
+     *   那條規則不能為了一關破例。
+     *   ⇒ 沒有作品可以批改的關卡，就**不當關卡**用 —— 直接視為完成。
+     *
+     * ⚠️ 代價要講清楚：第 5 關因此**不會擋住**第 6 關。
+     *    學生可以不做第 5 關就進第 6 關。
+     *    這是可以接受的 —— 第 5 關的程式本來就是第 6、7 關，
+     *    真正的檢核點在那兩關。
+     *
+     * ⚠️ 這份清單是**唯一的一份**。關卡頁靠它決定要不要畫「實作測試」那一步，
+     *    不可以自己再寫一份 —— 兩份會慢慢長得不一樣，
+     *    而症狀是「畫面叫他上傳，但系統不等他上傳」（或反過來，更糟）。
+     */
+    NO_UPLOAD: ['6-1-1'],
+
+    /** 這一關要不要上傳程式作品 */
+    needsUpload: function (unitId) {
+      return this.NO_UPLOAD.indexOf(String(unitId)) < 0;
+    },
+
+    /**
      * 這一關完成了嗎？
      *
      * flowDone 傳 null＝這個學期沒有「逐關流程圖」這件事，只看程式星數。
      *   （下學期的 flowchart.html 是一份綜合測驗，不是逐關排流程圖，
      *     沒有 per-unit 的完成紀錄可以查。）
      */
-    cleared: function (unitId, flowDone, unitStars) {
+    cleared: function (unitId, flowDone, unitStars, playDone) {
+      /* 沒有作品要交的關卡（第 5 關）：看「實作體驗」做完了沒。
+         ⚠️⚠️ 老實說清楚：這個紀錄是**學生端自己寫的**，按 F12 就能偽造。
+            系統裡真正防得住的鎖只有作品星（Colab 批改寫入）——
+            而這一關**沒有作品可以批改**，所以只有這個選項。
+         ★ 為什麼還是可以接受
+           偽造的代價只是「跳過一段體驗」，不會多拿到任何星數；
+           而第 6、7 關的程式作品照樣要交、照樣要批改。
+           ⇒ 這是一道**軟鎖**：擋得住順手亂點的，擋不住存心繞過的。
+              老師 2026-08-17 知情並選擇要擋。
+         ⚠️ 沒有傳 playDone 進來就當作沒做（回 false）——
+            寧可多擋，也不要「以為擋著其實沒擋」。 */
+      if (!this.needsUpload(unitId)) return !!(playDone || {})[unitId];
       var flow = (flowDone === null) ? true : !!(flowDone || {})[unitId];
       var stars = Number((unitStars || {})[unitId]) || 0;
       return flow && stars >= this.PASS_STARS;
@@ -306,18 +367,18 @@ window.GRADING = {
      * 回傳「第一個還沒完成的關卡編號」——那一關可以進，再下一關不行。
      * 全部完成就回傳總關數（都可以回去重看）。
      */
-    openUpTo: function (units, leadDone, flowDone, unitStars) {
+    openUpTo: function (units, leadDone, flowDone, unitStars, playDone) {
       if (!leadDone) return 0;
       units = units || [];
       for (var i = 0; i < units.length; i++) {
-        if (!this.cleared(units[i].id, flowDone, unitStars)) return i + 1;
+        if (!this.cleared(units[i].id, flowDone, unitStars, playDone)) return i + 1;
       }
       return units.length;
     },
 
     /** 第 no 關現在能不能進去（no 從 1 起算） */
-    isOpen: function (no, units, leadDone, flowDone, unitStars) {
-      return Number(no) <= this.openUpTo(units, leadDone, flowDone, unitStars);
+    isOpen: function (no, units, leadDone, flowDone, unitStars, playDone) {
+      return Number(no) <= this.openUpTo(units, leadDone, flowDone, unitStars, playDone);
     },
 
     /**
@@ -325,17 +386,21 @@ window.GRADING = {
      * 訊息要講「還缺什麼」，不是只說「被鎖住」——
      * 學生看到「被鎖住」只會來問老師，看到「還差程式作品」就知道要做什麼。
      */
-    reason: function (no, units, leadDone, flowDone, unitStars) {
+    reason: function (no, units, leadDone, flowDone, unitStars, playDone) {
       if (!leadDone) return '要先完成上面的前導教材「Scratch 清單學習機」，才能開始闖關。';
       no = Number(no);
-      if (this.isOpen(no, units, leadDone, flowDone, unitStars)) return '';
-      var open = this.openUpTo(units, leadDone, flowDone, unitStars);
+      if (this.isOpen(no, units, leadDone, flowDone, unitStars, playDone)) return '';
+      var open = this.openUpTo(units, leadDone, flowDone, unitStars, playDone);
       var u = units[open - 1] || {};
       var flow = (flowDone === null) ? true : !!(flowDone || {})[u.id];
       var stars = Number((unitStars || {})[u.id]) || 0;
-      var lack = !flow
-        ? '排出正確的流程圖'
-        : '上傳程式作品並拿到 ' + this.PASS_STARS + '⭐ 以上（目前 ' + stars + '⭐）';
+      /* ⚠️ 沒有作品要交的關卡，缺的不是星星而是「實作體驗」——
+         照原本那句寫的話，學生會去找一個根本不存在的上傳按鈕。 */
+      var lack = !this.needsUpload(u.id)
+        ? '把最後一步的「實作體驗」做完'
+        : (!flow
+            ? '排出正確的流程圖'
+            : '上傳程式作品並拿到 ' + this.PASS_STARS + '⭐ 以上（目前 ' + stars + '⭐）');
       return '關卡要照順序闖。請先完成第 ' + open + ' 關「' + (u.title || '') + '」：' + lack + '。';
     }
   }

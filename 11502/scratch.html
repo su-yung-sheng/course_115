@@ -199,12 +199,15 @@ const GATE = (window.GRADING && window.GRADING.GATE) || {
    ⚠️ 開著的時候畫面上一定要看得到橘色橫幅 ——
       安靜地全部打開，就等於哪天忘了關也不會有人發現。 */
 const OPEN_ALL = !!(window.GRADING && window.GRADING.openAll && window.GRADING.openAll(window.CONFIG));
-function openUpTo(){ return OPEN_ALL ? UNITS.length : GATE.openUpTo(UNITS, true, null, unitStars); }
-function unitOpen(no){ return OPEN_ALL ? true : GATE.isOpen(no, UNITS, true, null, unitStars); }
-function lockReason(no){ return OPEN_ALL ? '' : GATE.reason(no, UNITS, true, null, unitStars); }
+function openUpTo(){ return OPEN_ALL ? UNITS.length : GATE.openUpTo(UNITS, true, null, unitStars, playDone); }
+function unitOpen(no){ return OPEN_ALL ? true : GATE.isOpen(no, UNITS, true, null, unitStars, playDone); }
+function lockReason(no){ return OPEN_ALL ? '' : GATE.reason(no, UNITS, true, null, unitStars, playDone); }
 
 /* ===================== 狀態 ===================== */
 let unitStars = {};   // 作品星：{ '4-2-1': 3, … }　由 AI 批改寫入 11502-progress
+/* 第 5 關的「實作體驗」做完了沒。
+   ⚠️ 那一關沒有作品可以批改，開不開第 6 關全看這一筆 —— 見 GATE.cleared。 */
+let playDone = {};
 let quizDone  = {};   // 概念檢測成績：{ '4-2-1': { score: 4 } }　概念星由它現算
 let preDone   = {};   // { '4-2-1': true, ... }　思考關卡做完了沒（存在 modules.scratch.pre）
 let preStage  = 0;    // 目前在思考關卡的第幾步
@@ -318,13 +321,14 @@ function countdown(host, sec, label, done){
 /* 讀完 Firestore 的那支 module script 用這個把星數交進來。
    刻意包成函式而不是直接改變數：跨 script 改別人的變數不好追，
    也讓「拿到新星數就一定重畫」變成沒辦法忘記的事。 */
-window.applyStars = function (obj, pre, quiz) {
+window.applyStars = function (obj, pre, quiz, play) {
   /* ⚠️ 作品星和概念星分開放，不要合成一個數字。
      依序開放只看 unitStars（作品星）—— 概念檢測可以一直重寫到過為止，
      拿它當開關的鑰匙等於沒有鎖。 */
   unitStars = obj || {};
   quizDone = quiz || {};
   preDone = pre || {};
+  playDone = play || {};
   repaint();
 };
 
@@ -371,7 +375,8 @@ repaint();
 
       window.applyStars((mods.scratch && mods.scratch.unitStars) || {},
                         (mods.scratch && mods.scratch.pre) || {},
-                        (mods.scratch && mods.scratch.quiz) || {});
+                        (mods.scratch && mods.scratch.quiz) || {},
+                        (mods.scratch && mods.scratch.play) || {});
     } catch (e) {
       console.error('讀進度失敗', e);
       /* 讀不到就維持「只開第 1 關」。寧可少開，也不要因為連線問題整批放行。

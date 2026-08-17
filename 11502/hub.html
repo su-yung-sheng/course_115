@@ -107,9 +107,14 @@
          ★ 已達成：和 11501 一樣只有 4 張卡
            （媒體與社會議題／運算思維／程式設計／Arduino）。
            邏輯挑戰、排序、搜尋三張已經收進關卡 —— 見下面那一段。 */
-      { id:'scratch',   title:'Scratch 程式設計', tag:'程式設計', icon:'🐱', href:'scratch.html',   theme:'bg-orange-100 border-orange-300 text-orange-900',  tape:'bg-orange-500/25',  rot:'rotate-2',  desc:'把流程圖寫成 Scratch 積木程式並上傳作品。', maxStars:40, subLevels:10 },
+      { id:'scratch',   title:'Scratch 程式設計', tag:'程式設計', icon:'🐱', href:'scratch.html',   theme:'bg-orange-100 border-orange-300 text-orange-900',  tape:'bg-orange-500/25',  rot:'rotate-2',  desc:'把流程圖寫成 Scratch 積木程式並上傳作品。', maxStars:36, subLevels:10 },
       /* ⚠️ maxStars 是進度條的分母，要和 GRADING.moduleMax() 對得起來。
-         40 ＝ 10 關 × 3⭐（AI 批改）＋ 10 關 × 1⭐（交程式錄影的加分）。
+         ⚠️⚠️ 2026-08-17：36 而不是 40。
+            第 5 關（6-1-1 排隊比高矮）是觀念導入，**沒有程式作品要交**
+            （見 GRADING.GATE.NO_UPLOAD）——
+            那一關的 4 顆星永遠拿不到，算進分母的話學生會卡在 36/40，
+            怎麼做都到不了 100%。
+         36 ＝ **9 關** × 3⭐（AI 批改）＋ 9 關 × 1⭐（交程式錄影的加分）。
          2026-08-11 之前寫 30，漏掉加分那 10 顆 ——
          學生把加分拿滿的話進度條會超過 100%。
          ★ 🧠 概念星是**另一組**，不算在這裡（見 scratch.html 的說明）。

@@ -69,7 +69,12 @@ ok(!!l5 && !l5.goal, '第 5 關有內容但沒有 goal');
 ok(steps(l5).indexOf('blocks') < 0, '★ 所以它的步驟裡沒有拼圖（' + steps(l5).join('→') + '）');
    ok(/if \(lv && lv\.goal\)   out\.push/.test(lvHtml), '   程式裡確實是看有沒有 goal 才加拼圖');
    ok(/markPre\(\)/.test(lvHtml), '   沒有拼圖的關卡也要標記得了完成（markPre）');
-   ok(/out\.push\(\{ key:'test'/.test(lvHtml), '   一步都沒有時也還有實作測試，不會變空白');
+   /* ⚠️ 2026-08-17：最後一步不一定是 test 了。
+      沒有作品要交的關卡（第 5 關）是 play（100 人的實作體驗）。
+      ★ 要釘的是「**一定有最後一步**」—— 少了它，概念檢測過關會呼叫
+        advance()，at 走出範圍，畫面直接空掉。 */
+   ok(/key:'test'/.test(lvHtml) && /key:'play'/.test(lvHtml),
+      '   一步都沒有時也還有最後一步（test 或 play），不會變空白');
 
 /* ★ 哪幾關有互動實驗室。
    第 6 章那五關：那幾關的主角就是操作。

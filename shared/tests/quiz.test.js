@@ -354,7 +354,16 @@ ok(/window\.saveQuiz/.test(L) && /saveQuiz = async/.test(L), '★ saveQuiz 有�
 }
 ok(!/cappedStars/.test(L), '★ 關卡頁不再封頂（兩組星星各自算）');
 ok(/window\.GRADING\.quizStars/.test(L), '   重寫畫面顯示的是概念星');
-ok(!/[^.\w]GRADING\./.test(L.replace(/window\.GRADING\./g, 'window_G.')),
+/* ⚠️ 先去註解再比對。
+   2026-08-17 這條紅過一次，而程式**沒有壞** ——
+   我在註解裡寫了「名單只有一份，在 GRADING.GATE.NO_UPLOAD」，
+   那是給人看的說明，不是會執行的程式碼。
+   ★ 這個 repo 的鐵律：「不可以再出現 X」的檢查**一律先去註解**。
+     假警報比漏抓更容易毀掉一份測試 —— 下一個人只會把整條刪掉。 */
+ok(!/[^.\w]GRADING\./.test(
+     L.replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/^\s*\/\/[^\n]*/gm, ' ')
+      .replace(/window\.GRADING\./g, 'window_G.')),
    '★ 跨檔案的全域一律寫 window.GRADING（裸的全域在測試環境直接 ReferenceError，咬過四次）');
 const S = fs.readFileSync(path.join(root, '11502', 'scratch.html'), 'utf8');
 ok(!/cappedStars/.test(S) && /quizTotal/.test(S),

@@ -98,9 +98,13 @@ section('★★ 關卡頁：每一個步驟都要有橫幅（鍵不可以打錯�
   ok(keys.length >= 6, '抓得到步驟清單（' + keys.join('、') + '）');
   const goalSrc = SRC.slice(SRC.indexOf('const STEP_GOAL'), SRC.indexOf('function stepGoal'));
   keys.forEach(k => {
-    if (k === 'lab') {
+    /* ⚠️ lab 和 play 的標準都是**模組自己給**的，不在 STEP_GOAL 裡。
+       通過條件本來就是模組決定的，關卡頁抄一份就會不同步。
+         lab  → SORTLAB／SEARCHLAB／LOGICLAB／MINLAB 的 goal()
+         play → BIGFIND.goal()（第 5 關的 100 人體驗） */
+    if (k === 'lab' || k === 'play') {
       ok(!new RegExp('^\\s*' + k + ':', 'm').test(goalSrc),
-         '★★ lab **不在** STEP_GOAL 裡 —— 它的標準要問模組要，不可以抄一份');
+         '★★ ' + k + ' **不在** STEP_GOAL 裡 —— 它的標準要問模組要，不可以抄一份');
       return;
     }
     ok(new RegExp('^\\s*' + k + ':', 'm').test(goalSrc),

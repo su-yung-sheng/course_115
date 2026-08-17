@@ -97,6 +97,7 @@
 <script src="../shared/searchlab.js"></script>
 <script src="../shared/logiclab.js"></script>
 <script src="../shared/minlab.js"></script>
+<script src="../shared/bigfind.js"></script>
 <script src="../shared/answer.js"></script>
 <script src="../shared/quiz.js"></script>
 <script src="content/blocks.js"></script>
@@ -139,6 +140,9 @@ const lv = unit ? (window.BLOCK_LEVELS || {})[unit.id] : null;
 let unitStars = {};      // 作品星（批改給的）
 let quizDone = {};       // { '4-2-1': { score: 4 } }
 let preDone = {};        // 思考關卡做完了沒
+/* 第 5 關的「實作體驗」做完了沒。
+   ⚠️ 那一關沒有作品可以批改，第 6 關開不開全看這一筆 —— 見 GATE.cleared。 */
+let playDone = {};
 let at = 0;              // 現在第幾步
 let ready = { 1:false, 2:false, 3:false };   // 各步驟完成了沒（步驟 0、4 不必判定）
 let resumed = false;     // 這一次是不是從記錄點接回來的（要跟學生講一聲）
@@ -150,7 +154,7 @@ const GATE = (window.GRADING && window.GRADING.GATE) || null;
 const OPEN_ALL = !!(window.GRADING && window.GRADING.openAll && window.GRADING.openAll(window.CONFIG));
 function unitOpen(no) {
   if (OPEN_ALL) return true;
-  return GATE ? GATE.isOpen(no, UNITS, true, null, unitStars) : (no === 1);
+  return GATE ? GATE.isOpen(no, UNITS, true, null, unitStars, playDone) : (no === 1);
 }
 
 /* ── 五個步驟 ─────────────────────────────────────
@@ -203,7 +207,17 @@ function steps() {
     out.push({ key:'quiz', icon:'🧠', name:'概念檢測' });
   }
   if (lv && lv.goal)   out.push({ key:'blocks', icon:'🧩', name:'程式拼圖' });
-  out.push({ key:'test', icon:'🚀', name:'實作測試' });
+  /* ⚠️ 最後一步不一定是「實作測試」：
+     沒有程式作品要交的關卡（第 5 關，課本這一節是觀念導入）
+     換成「實作體驗」—— 100 個人的找最矮遊戲。
+     ★ 不可以直接把最後一步拿掉：概念檢測過關會呼叫 advance()，
+       沒有下一步的話 at 走出範圍，畫面直接空掉。
+     ⚠️ 名單只有一份，在 window.GRADING 的 GATE.NO_UPLOAD。
+        這裡不要自己再寫一份 —— 兩份會長得不一樣，
+        症狀是「畫面叫他上傳，但系統不等他上傳」。 */
+  const needUp = !GATE || GATE.needsUpload(unit.id);
+  out.push(needUp ? { key:'test', icon:'🚀', name:'實作測試' }
+                  : { key:'play', icon:'🎮', name:'實作體驗' });
   return out;
 }
 
@@ -480,6 +494,11 @@ const STEP_GOAL = {
 
 /** 這一步的目標與標準。實驗室一律問模組要，問不到就不畫。 */
 function stepGoal(key) {
+  /* 實作體驗的標準由 BIGFIND 自己給（和實驗室同一個道理：
+     通過條件是模組決定的，關卡頁抄一份就會不同步）。 */
+  if (key === 'play') {
+    return (window.BIGFIND && window.BIGFIND.goal) ? window.BIGFIND.goal({ n: 100 }) : null;
+  }
   if (key === 'lab') {
     const mod = labMod(lv && lv.lab);
     /* ⚠️ 模組沒有 goal() 就回 null（不畫），不要自己編一份 ——
@@ -667,6 +686,42 @@ function draw(s) {
     return;
   }
 
+  if (s.key === 'play') {
+    /* ★ 沒有作品要交的關卡（第 5 關）的最後一步。
+       ⚠️ 不是一頁「完成」——老師 2026-08-17 要的是真的有得玩的體驗：
+          100 個人、顯示身高，找最矮的／找下一個該搬的／和電腦比一次。
+       ★ 為什麼一定要 100 個
+         前面的實驗室只有 5 個人，而概念檢測寫著
+         「五個人你看一眼就好，五萬個人呢？」——
+         五個人證明不了那句話，一百個人才會痛。
+       ⚠️ 這一步**會擋**（做不完進不了第 6 關）。
+          紀錄是學生端自己寫的，按 F12 就能偽造 —— 見 GATE.cleared 的說明。 */
+    markPre();
+    body.innerHTML =
+      '<h2 class="text-xl font-black mb-1">🎮 實作體驗：一百個人</h2>' +
+      '<p class="text-sm text-slate-600 leading-relaxed mb-4">' +
+      '這一關<b>沒有程式要交</b> —— 課本這一節是觀念導入，' +
+      '你想清楚的做法，<b>第 6、7 關</b>才用 Scratch 寫出來。' +
+      '<br>先在這裡感受一件事：資料變多的時候，「用看的」為什麼不夠。</p>' +
+      '<div id="play-host"></div>';
+    if (window.BIGFIND) {
+      window.BIGFIND.mount($('play-host'), {
+        n: 100, big: true,
+        onPass: () => {
+          if (window.savePlay) window.savePlay(unit.id);
+          location.href = 'scratch.html';
+        }
+      });
+    } else {
+      /* ⚠️ 模組沒載進來也要留一條路，不然這一關就是死路。 */
+      $('play-host').innerHTML =
+        '<div class="bg-amber-50 border-2 border-amber-200 rounded-xl px-4 py-3 text-amber-900">' +
+        '體驗區載不出來（可能是網路問題）。請重新整理；還是不行就跟老師說。</div>';
+      nextBtn('先跳過，回地圖');
+    }
+    return;
+  }
+
   // 實作測試：共用的自評站
   markPre();
   body.innerHTML = `
@@ -705,10 +760,11 @@ window.addEventListener('message', (e) => {
       而畫面上的結果是：**每一關都停在「只開第 1 關」**。
       沒有紅字、沒有錯誤頁，只是永遠開不了第 2 關。
    ⚠️ 重畫時要保留學生走到第幾步（at），不然讀進度回來會把他踢回第 1 步。 */
-window.applyProgress = function (stars, pre, quiz, step) {
+window.applyProgress = function (stars, pre, quiz, step, play) {
   quizDone = quiz || {};
   unitStars = stars || {};
   preDone = pre || {};
+  playDone = play || {};
   /* ★ 記錄點：上次做到第幾步（2026-08-11）。
      ⚠️ 存的是「做完了幾步」，不是「停在第幾步」——
         停在第幾步會把「開著沒做」也記成進度。
@@ -760,7 +816,8 @@ render();
       window.applyProgress((mods.scratch && mods.scratch.unitStars) || {},
                            (mods.scratch && mods.scratch.pre) || {},
                            (mods.scratch && mods.scratch.quiz) || {},
-                           (mods.scratch && mods.scratch.step) || {});
+                           (mods.scratch && mods.scratch.step) || {},
+                           (mods.scratch && mods.scratch.play) || {});
     } catch (e) {
       /* 讀不到就維持「只開第 1 關」。寧可少開，也不要因為連線問題整批放行。 */
       console.error('讀進度失敗', e);
@@ -812,6 +869,24 @@ render();
       if (badge <= cur) return;
       await setDoc(ref, { modules: { scratch: { lab: { [unitId]: Number(badge) } } } }, { merge: true });
     } catch (e) { console.warn('實驗室徽章沒存成功（不影響闖關）', e); }
+  };
+
+  /* 實作體驗（第 5 關的最後一步）做完了沒。
+     ⚠️⚠️ 這一筆和其他存檔**不一樣**：它是通關條件的一部分
+        （沒有作品可以批改的關卡靠它決定第 6 關開不開）。
+        ⇒ 所以不能「存不進去也照樣放行」—— 存不進去要講出來，
+          不然學生下次回來會發現進度不見了。
+     ⚠️ 老實說：這一筆是學生端自己寫的，按 F12 就能偽造。
+        見 shared/grading.js 的 GATE.cleared —— 這是一道軟鎖。 */
+  window.savePlay = async function (unitId) {
+    if (!sid || !unitId) return;
+    try {
+      await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
+        { modules: { scratch: { play: { [unitId]: true } } } }, { merge: true });
+    } catch (e) {
+      console.warn('實作體驗沒存成功', e);
+      alert('這一步沒有存成功（可能是網路問題）。\n回到地圖如果發現第 6 關還沒開，請重新做一次這一步。');
+    }
   };
 
   /* 概念檢測的成績。
