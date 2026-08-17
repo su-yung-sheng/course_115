@@ -101,6 +101,59 @@ const click = (w, el) => el && el.dispatchEvent(new w.Event('click', { bubbles: 
      '★ 答一題還不會寫資料庫（一次挑戰可能作答幾十次，每次都寫會爆額度）');
 });
 
+/* ── ★★ 失焦遮罩與浮水印（老師 2026-08-17）──────────────
+   ⚠️⚠️ 這兩樣**擋不住瞬間截圖**：
+     · PrintScreen 由作業系統直接複製畫面，網頁收不到事件
+     · Win+Shift+S 是先把畫面凍結成圖才顯示選取介面
+   ★ 它們擋到的是「一邊開著題目、一邊在旁邊視窗跟 AI 打字」，
+     以及讓截出來的圖帶著班級座號。
+   ⇒ 這一段驗的是「該出現的時候出現、該收的時候收、不擋作答」。 */
+section('★★ 失焦遮罩與浮水印');
+{
+  const { w, $ } = boot('11502', 'social.js');
+  const chapters = [...w.document.querySelectorAll('.qz-open')];
+  click(w, chapters[0]);
+  click(w, $('start-quiz-btn'));
+
+  /* 浮水印 */
+  const mark = $('qz-mark');
+  ok(!!mark, '浮水印畫得出來');
+  ok(/801/.test(mark.textContent) && /01/.test(mark.textContent),
+     '★ 浮水印帶著班級座號（實得「' + mark.textContent.trim() + '」）');
+  const cssAll = [...w.document.querySelectorAll('style')].map(s => s.textContent).join('');
+  ok(/\.qz-mark\{[^}]*pointer-events:\s*none/.test(cssAll),
+     '★★ 浮水印不吃點擊（pointer-events:none）—— 不然選項會點不下去');
+
+  /* 遮罩：切走 → 蓋住；回來 → 收起 */
+  ok(!$('qz-veil'), '一開始沒有遮罩');
+  w.dispatchEvent(new w.Event('blur'));
+  ok(!!$('qz-veil'), '★★ 視窗失焦 → 題目被蓋住');
+  ok(/蓋起來/.test($('qz-veil').textContent), '　　而且講清楚發生什麼事');
+  ok(/答案和計時都留著/.test($('qz-veil').textContent),
+     '★ 講明「答案和計時都留著」—— 不然學生會以為自己被判作弊');
+  w.dispatchEvent(new w.Event('focus'));
+  ok(!$('qz-veil'), '★★ 點回來 → 遮罩收起');
+
+  /* ★ 遮罩不可以影響作答：蓋住再打開，題目與選的答案都還在 */
+  const before = $('question-container').innerHTML;
+  w.dispatchEvent(new w.Event('blur'));
+  w.dispatchEvent(new w.Event('focus'));
+  ok($('question-container').innerHTML === before,
+     '★★ 遮罩收起之後題目沒有被重畫（答案不會被清掉）');
+
+  /* 遮罩自己也可以點掉 —— 有些情況 focus 事件不會來 */
+  w.dispatchEvent(new w.Event('blur'));
+  const veil = $('qz-veil');
+  ok(!!veil, '再遮一次');
+  click(w, veil);
+  ok(!$('qz-veil'), '★ 點遮罩本身也收得起來（focus 事件不一定會來）');
+
+  /* ⚠️ 不在測驗畫面的時候不可以亂遮（例如還在教材頁） */
+  const r = boot('11501', 'ethics.js');
+  r.w.dispatchEvent(new r.w.Event('blur'));
+  ok(!r.$('qz-veil'), '★★ 還沒開始測驗就失焦 → 不會蓋出一個莫名其妙的遮罩');
+}
+
 /* ── ★ 這一條不可以拿掉（看起來和上面重複，其實不是）──────
    把 `global.QSTAT` 那個 bug 放回去實測：
      上面「送出答案不可以丟例外」→ **還是綠的**

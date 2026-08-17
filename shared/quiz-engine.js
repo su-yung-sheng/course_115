@@ -66,6 +66,31 @@
     + ".pass-card{background:#fff;border:4px solid #3b82f6;position:relative;overflow:hidden}"
     + ".pass-card::before{content:'PASSED';position:absolute;top:30px;right:-40px;transform:rotate(45deg);background:#10b981;color:#fff;padding:8px 50px;font-weight:900;font-size:1rem;box-shadow:0 4px 6px rgba(0,0,0,.1);z-index:10}"
     + ".study-note-box{background:#fffdf5;border-left:6px solid #f59e0b}"
+    /* ── 失焦遮罩與浮水印（老師 2026-08-17）────────────────────
+       ⚠️⚠️ 先說清楚它**不能**做什麼：
+         · PrintScreen 由作業系統直接複製畫面，網頁收不到任何事件
+         · Win+Shift+S 是**先把畫面凍結成圖**才顯示選取介面 ——
+           等瀏覽器收到失焦事件，那張圖早就拍好了
+         ⇒ 這兩樣**擋不住瞬間截圖**。網路上教的「偵測 PrintScreen 就遮住」
+           在 Win+Shift+S 面前是無效的，不要以為裝了就安全。
+       ★ 它們真正擋到的是：
+         · 遮罩：「一邊開著題目、一邊在旁邊視窗跟 AI 打字問答」——
+           切走題目就沒了，要切回來重看
+         · 浮水印：截圖會連班級座號一起拍進去（嚇阻＋可追溯）
+       ⚠️ 浮水印一定要 pointer-events:none —— 不然它會吃掉選項的點擊，
+          那就從「防作弊」變成「這題點不下去」。 */
+    + "#quiz-screen{position:relative}"
+    + ".qz-mark{position:absolute;inset:0;pointer-events:none;z-index:5;overflow:hidden;"
+    +   "display:flex;align-items:center;justify-content:center;"
+    +   "font-weight:900;font-size:clamp(28px,7vw,64px);letter-spacing:.12em;"
+    +   "color:rgba(100,116,139,.10);transform:rotate(-22deg);white-space:nowrap;"
+    +   "user-select:none;-webkit-user-select:none}"
+    + ".qz-veil{position:absolute;inset:0;z-index:20;border-radius:1.5rem;"
+    +   "background:rgba(248,250,252,.98);backdrop-filter:blur(6px);"
+    +   "display:flex;flex-direction:column;align-items:center;justify-content:center;"
+    +   "gap:10px;text-align:center;padding:24px}"
+    + ".qz-veil b{font-size:20px;color:#334155}"
+    + ".qz-veil span{font-size:14px;color:#64748b;line-height:1.9}"
     + ".study-note-box h4{color:#b45309;font-weight:900;margin-top:1rem;margin-bottom:.5rem;font-size:1.1rem}"
     + ".study-note-box ul{list-style-type:disc;padding-left:1.5rem;margin-bottom:1rem}"
     + ".study-note-box p{margin-bottom:.5rem}"
@@ -205,6 +230,8 @@
     +       '<div id="timer" class="text-red-500 font-mono font-black text-2xl bg-red-50 px-4 py-1 rounded-lg border border-red-100">00:00</div>'
     +     '</div>'
     +     '<div id="question-container" class="min-h-[300px]"></div>'
+    /* 浮水印與遮罩都掛在 quiz-screen 裡（它是 position:relative） */
+    +     '<div id="qz-mark" class="qz-mark"></div>'
     +     '<div class="mt-10 flex justify-end">'
     +       '<button id="next-btn" class="px-10 py-4 ' + MAIN.bg + ' text-white font-black rounded-xl shadow-xl ' + MAIN.bgHover + ' transition transform active:scale-95">送出答案</button>'
     +     '</div>'
@@ -402,6 +429,7 @@
     pool = shuffle(n.questions.slice());
     streak = 0; score = 0; wrong = 0; seconds = 0; runStat = {};
     behav = { t: [], copy: 0, away: 0 };
+    paintMark();                 // 浮水印：班級座號＋時間
     hide('study-screen'); show('quiz-screen');
     $('current-chapter-title').textContent = n.title;
     startTimer(); loadQuestion();
@@ -457,8 +485,52 @@
   });
   /* 切出視窗（換分頁、切到別的 App）。同樣只記次數，不做任何處置。 */
   document.addEventListener('visibilitychange', function () {
-    if (document.hidden && isQuizOn()) behav.away++;
+    if (document.hidden && isQuizOn()) { behav.away++; veil(true); }
+    else if (!document.hidden) veil(false);
   });
+
+  /* ── 失焦遮罩 ─────────────────────────────────────────
+     ⚠️⚠️ 它**擋不住瞬間截圖**（見上面 CSS 那一段的說明）。
+        擋到的是「一邊開著題目、一邊在旁邊的視窗跟 AI 打字」——
+        切走題目就被蓋住，要切回來重看。
+     ⚠️ 誤判是刻意容忍的：點到工作列、跳出通知、切輸入法都會遮起來。
+        代價只有「點回來」一個動作，而反過來（漏掉）就完全沒有效果。
+     ★ 遮罩**不擋作答**：它只蓋住畫面，不會清掉選的答案、不會停計時、
+       更不會判定作弊。學生點回來就繼續。 */
+  function veil(on) {
+    var host = document.getElementById('quiz-screen');
+    if (!host || host.classList.contains('hidden')) return;
+    var el = document.getElementById('qz-veil');
+    if (on) {
+      if (el) return;
+      el = document.createElement('div');
+      el.id = 'qz-veil';
+      el.className = 'qz-veil';
+      el.innerHTML = '<b>👀 題目先蓋起來了</b>' +
+        '<span>你切到別的視窗去了。<br>' +
+        '點一下這裡就繼續 —— <b>答案和計時都留著</b>。</span>';
+      /* 點遮罩本身也能收起來（有些情況 focus 事件不會來，例如點到別的分頁再回來） */
+      el.addEventListener('click', function () { veil(false); });
+      host.appendChild(el);
+    } else if (el) {
+      el.remove();
+    }
+  }
+  window.addEventListener('blur', function () { if (isQuizOn()) { behav.away++; veil(true); } });
+  window.addEventListener('focus', function () { veil(false); });
+
+  /* ── 浮水印 ───────────────────────────────────────────
+     截圖會連它一起拍進去。它不阻止任何事 —— 作用是「這張圖上有我的座號」。
+     ⚠️ pointer-events:none 寫在 CSS 裡，這裡不要再加任何會吃掉點擊的東西。 */
+  function paintMark() {
+    var el = document.getElementById('qz-mark');
+    if (!el) return;
+    var t = new Date();
+    var stamp = String(t.getMonth() + 1) + '/' + t.getDate() + ' ' +
+                String(t.getHours()).padStart(2, '0') + ':' +
+                String(t.getMinutes()).padStart(2, '0');
+    el.textContent = (user.cls || '') + '班 ' + (user.no || '') + '號　' + stamp;
+  }
 
   /** 把每題的秒數濃縮成兩個數字 —— 不存整個陣列（history 有長度上限） */
   function pace() {
@@ -492,6 +564,7 @@
     });
     $('question-container').innerHTML = html + '</div>';
     qStart = Date.now();          // ★ 這一題從現在開始計時
+    paintMark();                  // 時間會變，每題重畫一次
   }
 
   function selectOption(i) {

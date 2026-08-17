@@ -136,9 +136,17 @@ section('★★ 複製的每一條出口都要擋到');
      '★★ 沒有攔 contextmenu（右鍵選單裡有朗讀與翻譯，而複製那條路已經擋了）');
   /* ⚠️ 要去掉註解再看 —— 註解裡正好寫著「刻意不用 user-select:none」，
      連著註解一起掃的話這一條永遠紅（第一版就是這樣）。
-     ★ 這是「不可以出現 X」型的檢查最常見的自傷方式：講到它的那句話本身。 */
-  ok(!/user-select\s*:\s*none/.test(src),
-     '★★ 沒有用 user-select:none（那會讓螢幕朗讀器一起失效）');
+     ★ 這是「不可以出現 X」型的檢查最常見的自傷方式：講到它的那句話本身。
+     ⚠️⚠️ 而且要**切到題目那幾條 CSS**：浮水印（.qz-mark）用
+        user-select:none 是對的 —— 它是裝飾，朗讀器把「801班01號 8/18 07:25」
+        唸出來只是干擾。整份檔案掃的話，加了浮水印就會誤報（第二版就是這樣）。
+     ⇒ 挖掉 .qz-mark 那一條再看。 */
+  const cssNoMark = src.replace(/\.qz-mark\{[^}]*\}/g, ' ')
+                       .replace(/"\.qz-mark[^"]*"/g, ' ');
+  ok(!/user-select\s*:\s*none/.test(cssNoMark),
+     '★★ 題目那幾條 CSS 沒有 user-select:none（那會讓螢幕朗讀器一起失效）');
+  ok(/\.qz-mark[^}]*pointer-events\s*:\s*none/.test(src),
+     '★ 浮水印不吃點擊（pointer-events:none）');
 }
 
 section('★★ 題庫不可以整批留在 window 上');
