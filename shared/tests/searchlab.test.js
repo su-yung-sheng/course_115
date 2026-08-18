@@ -373,7 +373,16 @@ section('★ 大比拼沒有挑戰，跑完就放行');
   while (host.querySelector('[data-cut]') && g0++ < 60) host.querySelector('[data-cut]').onclick();
   ok(!!host.querySelector('[data-race]'), '★★ 砍完之後出現「讓兩種搜尋比一場」');
   S.SIZES.forEach(runSize);
-  is(badge, 0, '★ 大比拼四種資料量都砍完＋都比過一場才放行（徽章 0 —— 它沒有挑戰）');
+  /* ★ 2026-08-17 又多一關：最後「資料大爆炸」要先猜一個數字。
+     ⚠️ 猜**錯**照樣過 —— 要的是他先給一個數字，
+        才會對「2300 萬人只要 25 次」這個答案有反應。 */
+  is(badge, 'x', '★★ 四種都跑完但還沒猜 → 還不放行');
+  const guess = v => {
+    const box = host.querySelector('#qs-boom-in');
+    if (box) { box.value = String(v); host.querySelector('[data-boom]').onclick(); }
+  };
+  guess(25);
+  is(badge, 0, '★ 四種都跑完＋猜過一次才放行（徽章 0 —— 它沒有挑戰）');
   ok(/放慢/.test(host.textContent),
      '★★ 畫面上講明動畫是放慢的（不然學生會以為電腦搜尋要跑好幾秒）');
   ok(/比例是真的/.test(host.textContent), '　　但強調比例是真的');
@@ -637,7 +646,11 @@ section('★ 大比拼：四種資料量都要跑過');
     raceBtn().onclick();
     if (n !== 1024) is(done, 0, '   還沒跑完全部 → 不放行');
   });
-  is(done, 1, '★ 四種都砍完＋都比過一場 → 放行');
+  is(done, 0, '★★ 四種都跑完但還沒猜「資料大爆炸」→ 還不放行');
+  const box = host.querySelector('#qs-boom-in');
+  box.value = '25';
+  host.querySelector('[data-boom]').onclick();
+  is(done, 1, '★ 四種都砍完＋都比過一場＋猜過 → 放行');
   is(host.querySelectorAll('.qs-tbl tr').length - 1, 4, '對照表累積了四列');
   ok(/1024/.test(host.querySelector('.qs-tbl').textContent) &&
      /11/.test(host.querySelector('.qs-tbl').textContent),
@@ -713,6 +726,70 @@ section('★★ 賽跑：時間感是這一步唯一要給的東西');
   const iS = code.indexOf('function startSize');
   ok(iS > 0 && /clearInterval/.test(code.slice(iS, iS + 260)),
      '★ 換資料量也會把上一輪的賽跑停掉');
+  host.remove();
+}
+
+section('★★ 資料大爆炸：數字要真的爆起來');
+{
+  /* ★ 老師 2026-08-17：「數字太小不符合關卡名稱『資料大爆炸』」。
+     1024 對 11 稱不上爆炸 —— 學生只會覺得「喔，比較少」。
+     真正的震撼：全台灣 2300 萬人，二元搜尋只要 25 次；
+     全世界 80 億人也才 33 次 —— 資料量 348 倍，次數只多 8 次。 */
+  ok(S._worstBinary(23000000) === 25, '★★ 2300 萬筆 → 二元搜尋 25 次');
+  ok(S._worstBinary(8000000000) === 33, '★★ 80 億筆 → 33 次');
+  ok(S._worstBinary(8000000000) - S._worstBinary(23000000) === 8,
+     '★★ 資料量變成 348 倍，次數只多 8 次 —— 這一關要的就是這個對比');
+
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  S.mount(host, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  const run = n => {
+    host.querySelector('[data-size="' + n + '"]').onclick();
+    let g = 0;
+    while (host.querySelector('[data-cut]') && g++ < 60) host.querySelector('[data-cut]').onclick();
+    host.querySelector('[data-race]').onclick();
+  };
+  ok(!/資料大爆炸/.test(host.textContent),
+     '★ 還沒跑完四種資料量之前不出現 —— 先有小數字的直覺，大數字才震撼');
+  S.SIZES.forEach(run);
+  ok(/資料大爆炸/.test(host.textContent), '★★ 四種都跑完之後才出現');
+  ok(/2300 萬/.test(host.textContent), '　　問的是全台灣 2300 萬人');
+  ok(!/25/.test(host.querySelector('.qs-boom').textContent),
+     '★★ 還沒猜之前不可以先把答案 25 印在畫面上');
+
+  /* 空白不可以按過去 */
+  host.querySelector('[data-boom]').onclick();
+  ok(!/答案是/.test(host.textContent), '★ 沒填數字就送出 → 擋下來');
+
+  /* 猜得離譜 → 給一次修正機會，不是直接揭曉 */
+  const guess = v => {
+    host.querySelector('#qs-boom-in').value = String(v);
+    host.querySelector('[data-boom]').onclick();
+  };
+  guess(50000);
+  ok(/再猜一次/.test(host.textContent),
+     '★★ 猜得離譜（5 萬 vs 25）→ 請他再猜一次，不是直接公布');
+  guess(30);
+  const t = host.querySelector('.qs-boom').textContent;
+  ok(/答案是/.test(t) && /25/.test(t), '★★ 第二次就揭曉 —— 猜錯也過，重點是猜過');
+
+  /* 自己填任意數字 */
+  ok(/全世界/.test(t), '★ 有快捷鈕可以跳到全世界 80 億');
+  host.querySelector('[data-boomn="8000000000"]').onclick();
+  const t2 = host.querySelector('.qs-boom').textContent;
+  ok(/8,000,000,000/.test(t2), '★★ 80 億印出來有千分位（不然是一串看不懂的 0）');
+  ok(/33 次/.test(t2), '★★ 而且算得出 33 次');
+  ok(/小時|分鐘/.test(t2),
+     '★ 換算成時間 —— 80 億筆循序搜尋要跑好幾小時，那才是「爆炸」的實感');
+  ok(/每秒比一百萬次/.test(t2),
+     '★★ 而且寫明時間是怎麼換算的（不寫的話那個秒數是憑空冒出來的）');
+  ok(/比例是真的/.test(t2), '　　但強調比例是真的');
+
+  /* 自己填一個數字 */
+  host.querySelector('#qs-boom-n').value = '1000000';
+  host.querySelector('[data-boomn="0"]').onclick();
+  ok(/1,000,000/.test(host.querySelector('.qs-boom').textContent),
+     '★ 自己填 100 萬也算得出來');
   host.remove();
 }
 

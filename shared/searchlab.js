@@ -452,6 +452,40 @@
     '.qs-lane.done .nm{color:#166534}',
     '.qs-race .note{font-size:11.5px;color:#94a3b8;line-height:1.7;margin-top:6px}',
     '.qs-race .win{font-size:13.5px;line-height:1.85;color:#166534;font-weight:700;margin-top:7px}',
+    /* ── 資料大爆炸 ─────────────────────────────────────
+       ⚠️ 這一段的數字要**大**：關卡叫「資料大爆炸」，
+          而 1024 對 11 稱不上爆炸（老師 2026-08-17）。
+          真正的震撼是 2300 萬 → 25 次。 */
+    '.qs-boom{margin-top:14px;background:#fff7ed;border:2px solid #fdba74;',
+    '  border-radius:12px;padding:12px 14px}',
+    '.qs-boom .bh{font-size:14px;font-weight:900;color:#9a3412;margin-bottom:8px}',
+    '.qs-boom .bq{font-size:13.5px;line-height:1.9;color:#7c2d12}',
+    '.qs-boom .bq b{color:#9a3412}',
+    '.qs-boom .sub{font-size:12px;color:#b45309}',
+    '.qs-boom .brow{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}',
+    '.qs-boom input{width:150px;padding:7px 10px;border:2px solid #fdba74;border-radius:9px;',
+    '  font-size:14px;font-weight:700;font-family:inherit}',
+    '.qs-boom button{background:#f97316;color:#fff;border:0;border-radius:9px;padding:7px 15px;',
+    '  font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}',
+    '.qs-boom button:hover{background:#ea580c}',
+    '.qs-boom .bmsg{margin-top:8px;font-size:13px;line-height:1.8;color:#92400e}',
+    '.qs-boom .bwin{font-size:14px;line-height:1.95;color:#7c2d12;font-weight:700}',
+    '.qs-boom .bwin b{font-size:20px;color:#c2410c}',
+    '.bpick{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:11px}',
+    '.bpick button{background:#fff;border:2px solid #fdba74;color:#9a3412;padding:6px 12px;',
+    '  font-size:13px}',
+    '.bpick button.on{background:#fed7aa}',
+    '.bres{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}',
+    '.bres .one{flex:1;min-width:110px;background:#fff;border:1px solid #fed7aa;',
+    '  border-radius:10px;padding:8px 11px}',
+    '.bres .lb{display:block;font-size:11px;font-weight:900;color:#b45309}',
+    '.bres .vl{display:block;font-size:19px;font-weight:900;color:#9a3412;line-height:1.3}',
+    '.bres .sub{display:block;font-size:11.5px;color:#c2410c}',
+    '.bres .one.hot{border-color:#fca5a5;background:#fef2f2}',
+    '.bres .one.hot .vl{color:#b91c1c}',
+    '.bres .one.cool{border-color:#6ee7b7;background:#f0fdf4}',
+    '.bres .one.cool .vl{color:#047857}',
+    '.bnote{font-size:11.5px;color:#b45309;line-height:1.7;margin-top:7px}',
     '.qs-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}',
     '.qs-tbl th,.qs-tbl td{border:1px solid #e2e8f0;padding:6px 9px;text-align:center}',
     '.qs-tbl th{background:#f1f5f9;color:#475569;font-size:12px}',
@@ -556,6 +590,26 @@
           不是看 table（按完砍一半只算走了一半）。 */
     var raceN = 0, raceSeq = 0, raceBin = 0, raceOn = 0, raceTimer = null;
     var raced = {};
+    /* ── 資料大爆炸（老師 2026-08-17：「數字太小不符合關卡名稱」）──
+       ★ 13～1024 筆稱不上爆炸：1024 對 11，學生還會覺得「喔，比較少」。
+         真正的震撼在這裡 ——
+           全台灣 2300 萬人 → 二元搜尋只要 **25 次**
+           全世界 80 億人   → 只要 **33 次**
+         資料量變成 348 倍，比較次數只多 8 次。
+       ★ 而且要**先讓他猜**：直接揭曉他是被動接收，
+         猜錯的那一下比任何動畫都深刻（第 8、9 關的驗收挑戰用的也是這一招）。
+       ⚠️ 這幾個人口數字是概數，畫面上要寫「約」—— 教材不可以假裝精確。 */
+    var BOOM = [
+      { n: 900,        label: '全校',   note: '約 900 人' },
+      { n: 2700000,    label: '高雄市', note: '約 270 萬人' },
+      { n: 23000000,   label: '全台灣', note: '約 2300 萬人' },
+      { n: 8000000000, label: '全世界', note: '約 80 億人' }
+    ];
+    /* 猜的那一題固定用全台灣 —— 學生對這個數字最有感。 */
+    var BOOM_ASK = BOOM[2];
+    var boomGuess = null;     // 猜了幾次（null＝還沒猜）
+    var boomDone = false;     // 猜過了沒（猜錯也算，重點是猜過）
+    var boomN = 0;            // 自己填的資料量（0＝還沒填）
     /* 每比一次停幾毫秒。★ 這個數字決定 1024 筆要等多久（1024×6ms ≈ 6 秒）。
        ⚠️ 不要調到太快 —— 那個等待就是這一步要給的東西。
        ⚠️ opts.stepMs = 0 是**測試用**的：0 就同步跑完，不開計時器。
@@ -890,8 +944,75 @@
           out += raceHtml();
         }
       }
-      return out + tableHtml();
+      return out + tableHtml() + boomHtml();
     }
+
+    /* ── 資料大爆炸：先猜再揭曉，然後自己填 ─────────────
+       ⚠️ 這一段在四種資料量都跑完之後才出現 ——
+          先有小數字的直覺，大數字才會震撼。 */
+    function boomHtml() {
+      var allRaced = sizes.every(function (n) { return raced[n]; });
+      if (!allRaced) return '';
+      var ans = worstBinary(BOOM_ASK.n);
+      var out = '<div class="qs-boom"><div class="bh">💥 資料大爆炸</div>';
+
+      if (!boomDone) {
+        /* ★ 先猜。⚠️ 不給選項 —— 選項會把答案的量級洩漏出去。 */
+        out += '<div class="bq">' + BOOM_ASK.label + '有 <b>' + BOOM_ASK.note.replace('約 ', '') +
+               '</b>。如果全部照身高排好，用<b>二元搜尋</b>找一個人，' +
+               '最多要比<b>幾次</b>？<br><span class="sub">先猜一個數字 —— 猜錯沒關係，這一題就是要你猜。</span></div>' +
+               '<div class="brow"><input id="qs-boom-in" type="number" min="1" placeholder="你猜幾次？">' +
+               '<button data-boom="guess">送出</button></div>';
+        if (boomGuess != null) {
+          var diff = boomGuess > ans ? Math.round(boomGuess / ans) : 0;
+          out += '<div class="bmsg">你猜 <b>' + comma(boomGuess) + '</b> 次。' +
+                 (diff >= 10 ? '差得有點多喔 —— 再猜一次，往**小**的想。' : '接近了，再試一次。') +
+                 '</div>';
+        }
+      } else {
+        out += '<div class="bwin">答案是 <b>' + ans + '</b> 次。' +
+               (boomGuess != null ? '（你猜 ' + comma(boomGuess) + ' 次）' : '') +
+               '<br>' + BOOM_ASK.note + '，一個一個找最多要比 <b>' + comma(BOOM_ASK.n) +
+               '</b> 次；每次砍一半，<b>' + ans + ' 次</b>就找到了。</div>' +
+               boomTable();
+      }
+      return out + '</div>';
+    }
+
+    /* 自己填任意資料量 —— 想多大就多大 */
+    function boomTable() {
+      var n = boomN || BOOM_ASK.n;
+      var seq = worstSequential(n), bin = worstBinary(n);
+      /* ⚠️ 時間換算的前提要寫出來：假設電腦每秒比一百萬次。
+         不寫的話，這幾個秒數就是憑空冒出來的數字。 */
+      var PER_SEC = 1000000;
+      var fmt = function (times) {
+        var sec = times / PER_SEC;
+        if (sec < 0.001) return '不到千分之一秒';
+        if (sec < 1) return (sec * 1000).toFixed(1) + ' 毫秒';
+        if (sec < 60) return sec.toFixed(1) + ' 秒';
+        if (sec < 3600) return (sec / 60).toFixed(1) + ' 分鐘';
+        return (sec / 3600).toFixed(1) + ' 小時';
+      };
+      return '<div class="bpick">' +
+        BOOM.map(function (b) {
+          return '<button data-boomn="' + b.n + '"' + (n === b.n ? ' class="on"' : '') + '>' +
+                 b.label + '</button>';
+        }).join('') +
+        '<input id="qs-boom-n" type="number" min="1" placeholder="自己填一個數字" value="' + n + '">' +
+        '<button data-boomn="0">算算看</button></div>' +
+        '<div class="bres">' +
+        '<div class="one"><span class="lb">資料量</span><span class="vl">' + comma(n) + '</span></div>' +
+        '<div class="one hot"><span class="lb">循序搜尋</span><span class="vl">' + comma(seq) + ' 次</span>' +
+          '<span class="sub">' + fmt(seq) + '</span></div>' +
+        '<div class="one cool"><span class="lb">二元搜尋</span><span class="vl">' + bin + ' 次</span>' +
+          '<span class="sub">' + fmt(bin) + '</span></div>' +
+        '</div>' +
+        '<div class="bnote">⚠️ 時間是假設電腦<b>每秒比一百萬次</b>換算出來的，' +
+        '不同電腦會差很多 —— 但<b>兩邊的比例是真的</b>。</div>';
+    }
+
+    function comma(x) { return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 
     /* ── 賽跑：同一批資料，兩種搜尋同時起跑 ──────────────
        ⚠️ 二元那一邊幾乎瞬間結束，循序那一邊要爬很久 ——
@@ -972,6 +1093,20 @@
       });
       [].forEach.call(b.querySelectorAll('[data-race]'), function (el) {
         el.onclick = startRace;
+      });
+      [].forEach.call(b.querySelectorAll('[data-boom]'), function (el) {
+        el.onclick = boomAnswer;
+      });
+      [].forEach.call(b.querySelectorAll('[data-boomn]'), function (el) {
+        el.onclick = function () {
+          var v = Number(el.dataset.boomn);
+          if (!v) {
+            var box = b.querySelector('#qs-boom-n');
+            v = Math.max(1, Math.min(1e12, Math.floor(Number(box && box.value) || 0)));
+            if (!v) return;
+          }
+          boomN = v; body();
+        };
       });
     }
 
@@ -1172,6 +1307,28 @@
                   (hi - lo + 1) + ' 筆）—— 再算一次位置。');
     }
 
+    /* 猜的那一題：★ 猜錯不擋 —— 它的作用是「猜過」，不是「猜對」。
+       ⚠️ 但也不能一按就過：空白或亂填要擋，不然學生按兩下就跳過去了。 */
+    function boomAnswer() {
+      var box = host.querySelector('#qs-boom-in');
+      var v = Math.floor(Number(box && box.value) || 0);
+      if (!v || v < 1) { say('bad', '先填一個數字再送出 —— 猜錯真的沒關係。'); return; }
+      var ans = worstBinary(BOOM_ASK.n);
+      boomGuess = v;
+      /* 猜得離譜（十倍以上）給一次修正的機會；再猜一次就揭曉。 */
+      if (Math.abs(v - ans) > ans * 9 && !boomDone && boomGuess !== null && !boomAnswer._retried) {
+        boomAnswer._retried = true;
+        body();
+        say('bad', '差滿多的 —— 再猜一次。提示：每比一次就少掉一半。');
+        return;
+      }
+      boomDone = true;
+      body();
+      say('good', BOOM_ASK.note + '，二元搜尋最多只要 <b>' + ans + '</b> 次。' +
+                  '<br>下面可以自己填數字 —— 填多大都行。');
+      maybePass();
+    }
+
     function maybePass() {
       /* ★ 挑戰開著的時候，走完一題要先結算挑戰。
          ⚠️ 放在 maybePass 開頭 —— 三個「這一題結束了」的出口都會經過這裡，
@@ -1190,6 +1347,13 @@
            原因就在這裡：砍一半只要按 11 下，那是**快的那一邊**，
            而循序搜尋那 1024 次學生一次都沒經歷過。
            ⇒ 要看著循序跑完一次才算走過這一種資料量。 */
+        /* ★ 最後一關卡：資料大爆炸那一題要猜過。
+           ⚠️ 猜「對」不是條件 —— 猜錯照樣過。要的是他先給一個數字，
+              才會對 25 這個答案有反應。 */
+        if (sizes.every(function (n) { return raced[n]; }) && !boomDone) {
+          say2('最後一件事：下面「💥 資料大爆炸」那一題先猜一個數字。');
+          return;
+        }
         var miss = sizes.filter(function (n) { return !raced[n]; });
         if (miss.length) {
           var cut0 = sizes.filter(function (n) { return table[n] && !raced[n]; });
@@ -1294,7 +1458,9 @@
                       '<br>⚠️ 砍一半你按 11 下就結束了，' +
                       '但循序搜尋那 1024 次是什麼感覺？**看它跑一次**。',
                  pass: '四種資料量（13、50、100、1024 筆）都要：' +
-                       '① 自己砍到範圍空掉　② 看兩種搜尋<b>比一場</b>。' };
+                       '① 自己砍到範圍空掉　② 看兩種搜尋<b>比一場</b>；' +
+                       '<br>③ 最後「💥 資料大爆炸」那一題<b>先猜一個數字</b>' +
+                       '（猜錯沒關係，重點是先猜過）。' };
       }
       var name = INFO[m].name;
       return {
