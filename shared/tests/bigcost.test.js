@@ -25,6 +25,7 @@ catch (e) { console.error('這份測試需要 jsdom：先執行  npm install jsd
 let pass = 0, fail = 0;
 const ok = (c, l) => { c ? pass++ : fail++; console.log((c ? '  ✅ ' : '  ❌ ') + l); };
 const section = t => console.log('\n── ' + t + ' ──');
+const eq = (a, b, l) => ok(JSON.stringify(a) === JSON.stringify(b), l + '（得到 ' + JSON.stringify(a) + '）');
 const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
 const dom = new JSDOM('<!DOCTYPE html><body></body>', { pretendToBeVisual: true });
@@ -115,99 +116,137 @@ function mount(opts) {
            txt: () => host.textContent, done: () => { sim.destroy(); host.remove(); } };
 }
 
-section('★ 四段走得完');
+section('★★ 兩段走得完（老師 2026-08-18：實作體驗太弱了）');
 {
+  /* ★★ 為什麼從四段變兩段
+     「動手試一次」被加厚之後（600 根長條的排序動畫、整排格子的搜尋動畫），
+     這一步原本的前三段就變成**實驗室的弱化重播**：
+       排序有多貴（100 筆 4,950 次）→ 排序大比拼選 100 筆就是這個數字
+       兩種排序比一比 → 大比拼三種資料長相跑完就是這件事
+       搜尋差幾倍 → 搜尋大比拼＋賽跑動畫
+     ⇒ 收斂成：把數字擺在一起（回顧）→ 用那些數字算一筆帳（結帳）。
+     ⚠️ 老師給的時間是「一節課的尾巴，5～10 分鐘」。 */
+  eq(B.STEPS.length, 2, '★★ 只剩兩段（原本四段，前三段和實驗室重複）');
+  eq(B.STEPS.map(s => s.key), ['recap', 'plan'], '★★ 回顧 → 結帳');
+  /* ⚠️ 資料量要和排序大比拼對齊 —— 這一步是拿學生剛量過的數字算帳，
+     數字對不上的話「你剛才量過」就是假的。 */
+  eq(B.SIZES, [10, 100, 600], '★★ 資料量和「排序大比拼」對齊（10／100／600）');
+
   const v = mount();
-  ok(v.s().at === 0 && /排序有多貴/.test(v.txt()), '從「排序有多貴」開始');
+  ok(v.s().at === 0 && /擺在一起/.test(v.txt()), '從「把四關的數字擺在一起」開始');
   ok(v.s().n === 100, '預設 100 筆');
+  /* 三個數字要同時看得到 —— 這一段的重點就是「擺在一起」 */
+  const t0 = v.txt();
+  ok(/4,950/.test(t0), '★★ 看得到排序的成本（100 筆 4,950 次）');
+  ok(/循序搜尋/.test(t0) && /二元搜尋/.test(t0), '★★ 兩種搜尋也在同一個畫面上');
 
-  /* ① 排序有多貴 */
-  v.put(99); v.act('ans');
-  ok(!v.s().cleared.sort, '★ 答 99（那是找一個最小值）→ 不算對');
-  ok(/找一個/.test(v.txt()), '★★ 而且指出那是第 5 關「找一個」的次數');
-  v.put(4950); v.act('ans');
-  ok(v.s().cleared.sort, '★ 答 4950 → 過');
-  ok(/做 99 遍|遍/.test(v.txt()), '★ 解釋：排序＝把「找最小值」做很多遍');
-  v.act('next');
+  /* ⚠️ 這一段不問答，但也不可以一鍵跳過：
+     只看 10 筆的話 45 對 9 —— 學生會覺得「好像也沒差多少」。 */
+  ok(!v.host.querySelector('[data-a="recapdone"]'),
+     '★★ 只看過一種資料量 → 還不能往下（不然那個「跳法」他沒看到）');
+  ok(/沒看過/.test(v.txt()), '　　而且畫面上寫著還差哪幾種');
+  v.size(10); v.size(600);
+  ok(!!v.host.querySelector('[data-a="recapdone"]'), '★★ 三種都看過 → 出現「開始結帳」');
+  ok(/179,700/.test(v.txt()), '★ 600 筆的排序成本是 179,700 次（和排序大比拼同一個數字）');
+  v.act('recapdone'); v.act('next');
 
-  /* ② 兩種排序 */
-  ok(v.s().at === 1, '走到第 ② 段');
-  v.act('sel');
-  ok(!v.s().cleared.twosort, '★ 答「選擇排序比較省」→ 不算對');
-  v.act('tie');
-  ok(v.s().cleared.twosort, '★★ 答「一樣」→ 過（最壞情況兩種一樣）');
-  ok(/本來就排好/.test(v.txt()), '★ 而且補上真正的差別：插入排序的最好情況');
-  v.act('next');
+  /* ── 結帳 ─────────────────────────────────────── */
+  ok(v.s().at === 1, '走到「結帳」');
+  ok(/要查幾次以上/.test(v.txt()), '★★ 先問一個他沒被問過的問題：查幾次以上先排序才划算');
+  ok(!v.host.querySelector('[data-k]'), '★ 還沒猜之前不給拉檔位（先猜再揭曉）');
+  const be = B.breakEven(600);
+  v.put(3); v.act('guess');
+  ok(v.s().guess === 3, '★ 猜錯照樣往下 —— 要的是他先給一個數字');
+  ok(v.txt().indexOf(String(be)) >= 0,
+     '★★ 揭曉真正的分界點（600 筆是 ' + be + ' 次）');
 
-  /* ③ 搜尋差幾倍 */
-  ok(v.s().at === 2, '走到第 ③ 段');
-  v.put(50); v.act('ans');
-  ok(!v.s().cleared.search, '答錯不算');
-  v.put(7); v.act('ans');
-  ok(v.s().cleared.search, '★ 答 7 → 過');
-  ok(/倍/.test(v.txt()), '★ 講出差幾倍');
-  ok(/但是|但先別急/.test(v.txt()),
-     '★★ 而且**先擋一句**：別急著說二元比較好 —— 下一段就是那個「但是」');
-  v.act('next');
-
-  /* ④ 先排序划不划算：兩個情境 */
-  ok(v.s().at === 3, '走到第 ④ 段');
-  ok(v.s().planK === null, '第一題是「查 1 次」');
-  v.act('sorted');
-  ok(!v.s().cleared.plan, '★ 查 1 次答「先排序」→ 不對');
-  v.act('plain');
-  const want2 = B.breakEven(100) * 2;
-  ok(v.s().planK === want2,
-     '★★ 答對第一題 → 自動換成「查 ' + want2 + ' 次」的情境（現算，不是寫死 50）');
-  ok(!v.s().cleared.plan, '   但還沒過（要兩題都對）');
-  v.act('plain');
-  ok(!v.s().cleared.plan, '★ 查 ' + want2 + ' 次答「不排」→ 不對');
-  v.act('sorted');
-  ok(v.s().cleared.plan, '★★ 兩題都對 → 過');
-  ok(v.s().done, '★ 四段全過');
+  /* ★★ 兩邊各贏一次才算走完 */
+  const ks = [...v.host.querySelectorAll('[data-k]')].map(b => Number(b.dataset.k));
+  ok(ks.length >= 4, '★ 給了幾個「查幾次」的檔位（' + ks.join('／') + '）');
+  ok(ks.indexOf(be) >= 0 && ks.indexOf(be - 1) >= 0,
+     '★★ 分界點**兩側**各有一格 —— 差一次就換邊，那一下最有感');
+  const pick = k => { v.host.querySelector('[data-k="' + k + '"]').onclick(); };
+  pick(1);
+  ok(!v.s().cleared.plan, '★★ 只看到「不排序比較省」還不算走完');
+  ok(/不排序比較省/.test(v.txt()), '　　而且直說是哪一邊贏');
+  pick(be * 2);
+  ok(v.s().cleared.plan, '★★ 兩邊都看到 → 過');
   ok(/答案卻不一樣/.test(v.txt()),
-     '★★ 而且點破：同一批資料、同樣兩種方法，答案卻不一樣');
+     '★★ 點破：同一批資料、同樣兩種做法，答案卻不一樣');
+  ok(v.s().done, '★ 兩段全過');
   v.done();
 }
 
-section('★★ 換資料量要重答（不然用 10 筆過關就看不到差距）');
+section('★★ 換資料量要重來（分界點會跟著跑）');
 {
   const v = mount();
-  v.put(4950); v.act('ans');
-  ok(v.s().cleared.sort, '100 筆答對了');
-  v.size(1000);
-  ok(!v.s().cleared.sort,
-     '★★ 換成 1000 筆 → 那一段要重答（不然學生用小資料過關，' +
-     '就看不到「資料愈多愈可怕」那件事）');
-  ok(v.s().n === 1000, '   資料量真的換了');
-  v.put(499500); v.act('ans');
-  ok(v.s().cleared.sort, '★ 1000 筆答 499500 → 過');
+  v.size(10); v.size(600);
+  v.act('recapdone'); v.act('next');
+  v.put(1); v.act('guess');
+  ok(v.s().guess === 1, '猜過了');
+  v.size(10);
+  /* ⚠️ 10 筆的分界點是 8 次、600 筆是 3,004 次 ——
+     換了資料量還留著上一輪的猜測，等於用錯的答案過關。 */
+  ok(v.s().guess === null, '★★ 換資料量 → 猜過的不算數（分界點跟著資料量跑）');
+  ok(!v.s().cleared.plan, '   那一段也要重走');
+  ok(B.breakEven(10) !== B.breakEven(600),
+     '★ 兩種資料量的分界點真的不一樣（' + B.breakEven(10) + ' vs ' +
+     B.breakEven(600) + '）');
   v.done();
 }
 
 section('★★ 完成之後要把四關綁起來');
 {
+  /* 走完整條路的捷徑（後面幾段共用） */
+  const walk = v => {
+    v.size(10); v.size(600);
+    v.act('recapdone'); v.act('next');
+    v.put(1); v.act('guess');
+    const be = B.breakEven(v.s().n);
+    v.host.querySelector('[data-k="1"]').onclick();
+    v.host.querySelector('[data-k="' + (be * 2) + '"]').onclick();
+  };
   const v = mount();
-  v.put(4950); v.act('ans'); v.act('next');
-  v.act('tie'); v.act('next');
-  v.put(7); v.act('ans'); v.act('next');
-  v.act('plain'); v.act('sorted');
-  ok(v.s().done, '四段都過了');
+  walk(v);
+  ok(v.s().done, '兩段都過了');
   const t = v.txt();
   ok(/看你要查幾次/.test(t), '★★ 結論是「看你要查幾次」');
   ok(/不必排序/.test(t) && /先排序划算/.test(t), '★ 兩種情況都講');
   ok(/第 6、7 關/.test(t), '★★ 而且接回排序那兩關 —— 這一段的工作就是把四關綁起來');
   ok(!!v.btn(/完成/), '出現「完成，回闖關地圖」');
 
+  /* ★ 結論要畫螢光筆（老師 2026-08-18）——
+     ⚠️ 但最多兩三處：這一塊是收尾，畫成一片黃就沒有重點了。 */
+  const done = v.host.querySelector('.bc-done');
+  const marks = done.querySelectorAll('.hl, .hl-b').length;
+  ok(marks >= 2, '★★ 結論畫了螢光筆（' + marks + ' 處）');
+  ok(marks <= 4, '★★ 而且沒有畫成一片黃');
+  ok(!/\.hl\s*\{/.test(read('shared/bigcost.js').replace(/',\s*'/g, '')),
+     '★★ 模組沒有自己再寫一份 .hl（樣式只能有一份，在 theme.css）');
+
   let passed = false;
   const v2 = mount({ onPass: () => { passed = true; } });
-  v2.put(4950); v2.act('ans'); v2.act('next');
-  v2.act('tie'); v2.act('next');
-  v2.put(7); v2.act('ans'); v2.act('next');
-  v2.act('plain'); v2.act('sorted');
+  walk(v2);
   v2.act('finish');
   ok(passed, '★★ 按完成才呼叫 onPass（那一步會寫紀錄、開下一關）');
   v.done(); v2.done();
+}
+
+section('★★ 不可以再重複實驗室做過的事');
+{
+  /* ⚠️ 這一條是這次改版的**理由本身**，所以要釘住：
+     哪天有人「順手把那三段加回來」，這裡要紅。
+     ★ 判的是**步驟**，不是字眼 —— 回顧那一段本來就會出現
+       「排序」「搜尋」這些字，掃字串會誤殺。 */
+  const keys = B.STEPS.map(s => s.key);
+  ok(keys.indexOf('sort') < 0 && keys.indexOf('twosort') < 0 && keys.indexOf('search') < 0,
+     '★★ 沒有「排序有多貴／兩種排序比一比／搜尋差幾倍」那三段' +
+     '（動手試一次已經用動畫做過了）');
+  const g = B.goal();
+  ok(/要不要先排序|算出來/.test(g.why),
+     '★★ 橫幅講的是「要不要先排序」這筆帳，不是再講一次成本');
+  ok(/都找出來|兩種畫面/.test(g.pass),
+     '★★ 過關標準寫明「兩邊都要看到」');
 }
 
 section('★★ 第 10 關的關卡設定');
