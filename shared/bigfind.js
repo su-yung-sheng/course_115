@@ -430,7 +430,11 @@
       var t = task();
       var b = [];
       if (allDone()) {
-        b.push('<button class="bf-btn" data-a="finish">完成，回闖關地圖 →</button>');
+        /* ⚠️ 和 bigcost 同一條規則（老師 2026-08-18）：
+           按鈕上的字要說出**按下去會發生什麼**，而模組不知道自己後面還有沒有東西。
+           ⇒ 由關卡頁傳進來。第 5 關目前後面沒有期末檢核，所以維持預設。 */
+        b.push('<button class="bf-btn" data-a="finish">' +
+               (opts.nextLabel || '完成，回闖關地圖 →') + '</button>');
       } else if (cleared[t.key]) {
         b.push('<button class="bf-btn" data-a="next">下一題 →</button>');
       } else if (t.key === 'race') {

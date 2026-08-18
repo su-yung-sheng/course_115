@@ -232,6 +232,27 @@
     '.bc-bill.win .br.tot span:last-child{color:#166534}',
     '.bc-bill .bw{font-size:12.5px;font-weight:900;color:#166534;text-align:right;',
     '  margin-top:4px;min-height:19px}',
+    /* ── 目標橫幅（老師 2026-08-18：「太開放式了，感覺會亂按」）──
+       ★ 「還差幾次」要現算 —— 有數字在跳，學生才知道自己在往哪裡走。 */
+    '.bc-goal{display:flex;justify-content:space-between;align-items:center;gap:10px;',
+    '  background:#eef2ff;border:2px solid #c7d2fe;border-radius:12px;',
+    '  padding:10px 14px;margin-bottom:11px;font-size:13.5px;color:#3730a3;',
+    '  flex-wrap:wrap}',
+    '.bc-goal b{color:#4338ca}',
+    '.bc-goal .left{font-size:13px;font-weight:900;background:#fff;border-radius:9999px;',
+    '  padding:4px 12px;white-space:nowrap}',
+    '.bc-goal .left b{font-size:17px;color:#4338ca}',
+    '.bc-goal.done{background:#ecfdf5;border-color:#6ee7b7;color:#065f46}',
+    '.bc-goal.done b{color:#166534}',
+    /* 建議按哪一顆 —— 只是加亮，不鎖住其他顆 */
+    '.bc-kbar button.hint{background:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.28)}',
+    '.bc-kbar button.hint:hover{background:#d97706}',
+    /* 資料量：看過的打勾、還沒看的標出來（同一個道理） */
+    '.bc-sizes button.ok{border-color:#86efac;background:#f0fdf4;color:#166534}',
+    '.bc-sizes button.todo{border-color:#f59e0b;background:#fffbeb;color:#92400e}',
+    '.bc-sizes button .tag{font-size:10px;font-weight:900;margin-left:5px;',
+    '  background:#fde68a;color:#92400e;border-radius:9999px;padding:1px 6px}',
+    '.bc-sizes button.on .tag{background:#fff;color:#4338ca}',
     /* 「＋ 再查幾次」那一排 */
     '.bc-kbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:11px}',
     '.bc-kbar .lb{font-size:13px;font-weight:800;color:#334155;margin-right:2px}',
@@ -369,10 +390,17 @@
              '</div><ul>' + rows.join('') + '</ul></div>';
     }
 
+    /* ⚠️ 老師 2026-08-18：「兩個階段目前太開放式了，感覺會亂按，
+       是不是有個目標式的按鍵引導。」
+       ★ 三顆一樣的按鈕不會告訴學生「下一顆該按哪一顆」——
+         看過的打勾、還沒看的加提示，路就只剩一條。 */
     function sizesHTML() {
       return '<div class="bc-sizes">' + SIZES.map(function (v) {
-        return '<button data-n="' + v + '" class="' + (v === n ? 'on' : '') + '">' +
-               comma(v) + ' 筆</button>';
+        var now = (v === n), done = !!seen[v];
+        var cls = now ? 'on' : (done ? 'ok' : 'todo');
+        return '<button data-n="' + v + '" class="' + cls + '">' +
+               (done && !now ? '✓ ' : '') + comma(v) + ' 筆' +
+               (!done ? '<span class="tag">還沒看</span>' : '') + '</button>';
       }).join('') + '</div>';
     }
 
@@ -531,10 +559,34 @@
          ⚠️ 哪天資料量加大（分界點跑到上千），這裡要再加一格 ——
             不然學生又會落到「按到煩」那一邊。 */
       var STEPS_K = [1, 10, 100];
-      return sizesHTML() +
+
+      /* ── 目標橫幅（老師 2026-08-18：「太開放式了，感覺會亂按，
+           是不是有個目標式的按鍵引導」）─────────────────────
+         ⚠️ 前一版畫面上只有三顆「＋」和兩張收據 ——
+            學生不知道要按到什麼時候，也不知道按下去要看什麼，
+            那就只能亂按。
+         ★ 給一個**看得到終點的目標**：讓「先排序」那一張變便宜。
+           而且把「還差幾次」現算出來 —— 有數字在跳，就不是亂按。
+         ⚠️ 不要直接把分界點寫出來（那是最後一題的答案）——
+            只講「還差幾次」，他自己按到 0 的時候就知道答案了。 */
+      var be = breakEven(n);
+      var left = Math.max(0, be - kk);
+      var goalBar = won.sorted
+        ? '<div class="bc-goal done">🎯 目標達成！你已經看過<b>兩邊各贏一次</b> —— ' +
+          '下面最後一題就是問這個。</div>'
+        : '<div class="bc-goal">🎯 <b>目標：讓「先排序」那一張變便宜</b>' +
+          '<span class="left">還差 <b>' + comma(left) + '</b> 次</span></div>';
+
+      /* ★ 建議按哪一顆：還差很多就推 ＋100，快到了就推 ＋1。
+         ⚠️ 只是**加亮**，不是鎖住其他顆 —— 自己亂按也要能玩。 */
+      var pick = left >= 100 ? 100 : (left >= 10 ? 10 : 1);
+
+      return sizesHTML() + goalBar +
         '<div class="bc-kbar"><span class="lb">你要查 <b>' + comma(kk) + '</b> 次</span>' +
         STEPS_K.map(function (v) {
-          return '<button data-add="' + v + '">＋' + comma(v) + ' 次</button>';
+          var hint = (!won.sorted && v === pick);
+          return '<button data-add="' + v + '"' + (hint ? ' class="hint"' : '') + '>' +
+                 (hint ? '👉 ' : '') + '＋' + comma(v) + ' 次</button>';
         }).join('') +
         '<button data-add="reset" class="ghost">↺ 回到 1 次</button></div>' +
         '<div class="bc-bills">' +
@@ -603,7 +655,17 @@
     }
 
     function footHTML() {
-      if (allDone()) return '<div class="bc-bar"><button class="bc-btn" data-a="finish">完成，回闖關地圖 →</button></div>';
+      /* ⚠️⚠️ 老師 2026-08-18：「實作體驗結束後，為什麼是『完成，回闖關地圖』？
+         不是應該進入 🏁 期末檢核？」
+         —— 行為是對的（關卡頁會 advance 到期末檢核），**字是錯的**。
+         ★ 這種錯最傷：學生照著字判斷「這一關結束了」，
+           按下去卻跳到一個他以為不存在的步驟；
+           或者更糟 —— 他以為按了會離開，所以不敢按。
+         ⇒ 按鈕的字由呼叫端決定（它才知道後面還有沒有東西）。 */
+      if (allDone()) {
+        return '<div class="bc-bar"><button class="bc-btn" data-a="finish">' +
+               (opts.nextLabel || '完成，回闖關地圖 →') + '</button></div>';
+      }
       if (cleared[step().key]) return '<div class="bc-bar"><button class="bc-btn" data-a="next">下一段 →</button></div>';
       return '';
     }

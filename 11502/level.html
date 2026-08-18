@@ -825,14 +825,22 @@ function draw(s) {
       '<h2 class="text-xl font-black mb-1">🎮 實作體驗</h2>' +
       '<p class="text-sm text-slate-600 leading-relaxed mb-4">' + intro + '</p>' +
       '<div id="play-host"></div>';
+    /* ⚠️⚠️ 老師 2026-08-18：「實作體驗結束後，為什麼是『完成，回闖關地圖』？
+       不是應該進入 🏁 期末檢核？」
+       —— 行為本來就是對的（下面 onPass 會 advance），**錯的是按鈕上的字**。
+       ★ 這種錯很傷：學生照著字判斷「這一關結束了」，
+         按下去卻跳到一個他以為不存在的步驟；
+         更糟的是他以為按了會離開，所以**不敢按**。
+       ⚠️ 模組不知道自己後面還有沒有東西 —— 那是關卡頁才知道的事，
+          所以字要由這裡傳進去。 */
+    const hasFinal = !!(lv && lv.finalTest && window.FINALTEST && window.FINAL_BANK);
     if (fmod) {
       fmod.mount($('play-host'), Object.assign({}, lv.finish, {
         big: true,
+        nextLabel: hasFinal ? '完成，進入 🏁 期末檢核 →' : '完成，回闖關地圖 →',
         onPass: () => {
           if (window.savePlay) window.savePlay(unit.id);
-          /* ⚠️ 有期末檢核的關卡不可以在這裡就回地圖 ——
-             那樣最後一步永遠不會有人走到。 */
-          if (lv && lv.finalTest && window.FINALTEST && window.FINAL_BANK) { advance(); return; }
+          if (hasFinal) { advance(); return; }
           location.href = 'scratch.html';
         }
       }));
