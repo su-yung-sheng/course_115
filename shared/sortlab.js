@@ -581,7 +581,13 @@
     var cmpN = 10, cmpShape = '', cmpItems = [];
     var cmpSel = 0, cmpIns = 0, cmpOn = 0, cmpTimer = null, cmpTable = {};
     var cmpAt = 0;      // 排序過程播到第幾格（兩邊共用同一個計時器）
-    var CMP_MS = (opts.stepMs != null) ? Number(opts.stepMs) : 22;
+    /* 排序過程每一格停多久。
+       ⚠️ 2026-08-18 老師：「怎麼找不到可以看動畫的位置？」
+          原本是 22 毫秒 —— 10 筆資料約 88 格，整段「不到 2 秒」就結束了，
+          學生還在看說明，長條已經全綠。畫面上就只剩「結果」，沒有「過程」。
+       ★ 60 毫秒 → 約 5 秒，看得到一根一根被比、一根一根變綠。
+       ⚠️ opts.stepMs = 0 是測試用的：0 就同步跑完，不開計時器。 */
+    var CMP_MS = (opts.stepMs != null) ? Number(opts.stepMs) : 60;
 
     host.className = 'sl' + (opts.big ? ' sl-big' : '');
     render();
@@ -653,7 +659,14 @@
       var insP = plan(cmpItems, 'insertion', 'asc');
       var sel = selP.compares, ins = insP.compares;
       if (!cmpOn) {
-        out += '<div class="sl-side"><button data-cmp="1">⚖️ 讓兩種排序各排一次</button></div>';
+        /* ★ 2026-08-18 老師：「怎麼找不到可以看動畫的位置？」
+           ⚠️ 原本只有一顆按鈕，按鈕上寫「各排一次」——
+              從字面上看不出按下去會有**動畫**，也看不出要看什麼。
+           ⇒ 按鈕寫成「播放」，下面一句話講清楚等一下會看到什麼。 */
+        out += '<div class="sl-side"><button data-cmp="1">▶ 播放排序過程（兩種排法同時跑）</button></div>' +
+               '<div class="sl-hint2">按下去之後，上面這排數字會變成<b>兩排長條</b>，' +
+               '一根一根被比、一根一根排好 —— 看誰先排完。' +
+               (cmpTable[cmpShape] ? '（這一種你看過了，可以再看一次）' : '') + '</div>';
       } else {
         /* ★★ 老師 2026-08-17：「第十關能有真實的排序過程嗎？
              模擬散亂的資料，一個一個排好的過程？」
@@ -681,7 +694,7 @@
               : '選擇 <b>' + sel + '</b> 次、插入 <b>' + ins + '</b> 次 —— 插入少了 <b>' +
                 (sel - ins) + '</b> 次。') +
             '<br>⚠️ 注意看：<b>選擇排序永遠是 ' + sel + ' 次</b>，三種資料長相都一樣。</div>' +
-            '<div class="sl-side"><button data-cmp="1">↺ 再看一次</button></div>';
+            '<div class="sl-side"><button data-cmp="1">↺ 再放一次動畫</button></div>';
         }
         out += '</div>';
       }
@@ -1128,7 +1141,11 @@
       return {
         why: '第 6、7 關你各排過一次，但<b>沒有把兩種放在一起比過</b>。' +
              '同一批資料、同一個結果，兩種排序法要比的次數卻不一樣 ——' +
-             '<br>而且差別不在演算法本身，在<b>資料本來長什麼樣</b>。',
+             '<br>而且差別不在演算法本身，在<b>資料本來長什麼樣</b>。' +
+             /* ★ 2026-08-18 老師：「怎麼找不到可以看動畫的位置？」
+                ⇒ 入口寫在最上面的橫幅，不要只留在按鈕上。 */
+             '<br>🎬 <b>動畫在哪裡</b>：先選一種資料長相，' +
+             '再按「▶ 播放排序過程」—— 兩排長條會同時開始排，一根一根比給你看。',
         pass: '三種資料長相（🎲 隨機、✅ 已經排好、🔄 完全相反）' +
               '<b>都要讓兩種排序法比一場</b>。'
       };

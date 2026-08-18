@@ -976,13 +976,69 @@ section('★★ 看得到「一整排資料」發生什麼事');
   ok(goneSeq >= 12, '★★ 循序那一排幾乎整排都走過了（' + goneSeq + '／13）');
   ok(goneBin >= 12, '★★ 二元那一排也刷掉了 —— 但它只比了 4 次（' + goneBin + '／13）');
 
-  /* ⚠️ 大資料量畫不下，不可以畫（1024 個格子是一片灰） */
+  /* ★★ 老師 2026-08-18：「只有一個動畫嗎？」
+     ⚠️ 舊規則是「大資料量不畫格子」—— 結果四種資料量裡只有 13 筆有畫面，
+        另外三種只剩兩條進度條。學生走到 1024 那一格會以為動畫沒了。
+     ⇒ 改成**一格代表好幾筆**：格數封頂，四種都畫得出同一種畫面。
+     ⚠️ 但一定要講「一格 = 幾筆」——
+        不講的話學生會以為一百萬筆真的只有 60 個。 */
   host.querySelector('[data-size="1000000"]').onclick();
   let k = 0;
   while (host.querySelector('[data-cut]') && k++ < 60) host.querySelector('[data-cut]').onclick();
   host.querySelector('[data-race]').onclick();
-  ok(!host.querySelector('.qs-cells'),
-     '★★ 一百萬筆不畫格子（擠成一片反而看不出東西）');
+  const big = host.querySelector('.qs-cells');
+  ok(!!big, '★★ 一百萬筆也畫得出格子（壓縮成一格代表好幾筆）');
+  const bigRows = big.querySelectorAll('.row');
+  is(bigRows.length, 2, '　　一樣是兩排');
+  const bn = bigRows[0].querySelectorAll('.c').length;
+  ok(bn > 1 && bn <= 60, '★★ 格數封頂（實得 ' + bn + ' 格，不是一百萬格）');
+  is(bigRows[1].querySelectorAll('.c').length, bn,
+     '★★ 兩排格數一樣 —— 不一樣的話「誰刷掉比較多」沒得比');
+  ok(/一格 = /.test(big.textContent),
+     '★★ 有寫「一格 = 幾筆」（不寫的話一百萬看起來只有 ' + bn + ' 個）');
+  host.remove();
+}
+
+section('★★ 動畫要慢到看得見，而且不是只能看一次');
+{
+  /* ★★ 老師 2026-08-18：「怎麼找不到可以看動畫的位置？只有一個動畫嗎？」
+     ⚠️ 診斷不是「沒有動畫」—— 動畫一直都在跑，只是：
+        ① 13 筆 × 6 毫秒 = 0.08 秒　整段在眨眼之前就結束，畫面只留下最後一格
+        ② 而 13 筆偏偏是唯一畫得出格子的那一種 → 唯一有畫面的也是唯一看不到的
+        ③ 跑完就停在結果，沒有任何「再看一次」的入口
+        ④ 換一種資料量再換回來，cuts 被清成 0 —— 要重按二十幾下才回得去
+     ★ 這四件事單獨看都不像 bug，合起來就是「找不到動畫」。 */
+  ok(S.CELL_MS >= 150,
+     '★★ 逐次動畫每一步至少 150 毫秒（實得 ' + S.CELL_MS + '）—— 6 毫秒是看不見的');
+  const total = 13 * S.CELL_MS;
+  ok(total >= 2000,
+     '★★ 13 筆整段至少 2 秒（實得 ' + (total / 1000).toFixed(1) + ' 秒）');
+  /* ⚠️ 這一條要**跟著 CELL_MAX 走**：畫得出格子的那幾種資料量都要慢下來，
+     不然哪天 CELL_MAX 調大，又會出現「有格子但看不到」的那一種。 */
+  ok(S.RACE_MAX >= S.CELL_MAX,
+     '★ 逐次模式的範圍涵蓋畫得出格子的資料量（' + S.RACE_MAX + ' ≥ ' + S.CELL_MAX + '）');
+
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  S.mount(host, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  host.querySelector('[data-size="13"]').onclick();
+  let g = 0;
+  while (host.querySelector('[data-cut]') && g++ < 60) host.querySelector('[data-cut]').onclick();
+  host.querySelector('[data-race]').onclick();
+  ok(!!host.querySelector('[data-race]'),
+     '★★ 跑完之後還有「再放一次」的按鈕（原本跑完就沒有入口了）');
+  ok(/再放一次/.test(host.textContent), '　　而且按鈕上寫得出來是在放動畫');
+
+  /* ★★ 換走再換回來：不可以要學生重按一次砍一半 */
+  host.querySelector('[data-size="1024"]').onclick();
+  host.querySelector('[data-size="13"]').onclick();
+  ok(!host.querySelector('[data-cut]'),
+     '★★ 換回跑過的資料量，不用重按一次「砍掉一半」');
+  ok(!!host.querySelector('[data-race]'),
+     '★★ 而且看得到「再放一次」—— 不是一片空白的格子');
+  const back = host.querySelector('.qs-cells');
+  ok(back && back.querySelectorAll('.c.gone').length > 0,
+     '★ 格子停在「已經跑完」的樣子（不是被清成全新的一排）');
   host.remove();
 }
 

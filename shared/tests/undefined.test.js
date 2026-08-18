@@ -114,26 +114,34 @@ ORDER.forEach(id => {
   h.remove();
 });
 
+/* ⚠️ 一關可以掛**兩個**實驗室（第 10 關：先比排序、再比搜尋）——
+   lv.lab 那時候是一個**陣列**，lab.kind 會是 undefined。
+   ★ 2026-08-18 查到這一份就是這樣紅著的：第 10 關的實驗室從頭到尾
+     沒有被掃過，而那正是最近改最多的一關。
+   ⇒ 一律攤平成一份清單再掃。 */
+const labsOf = lab => (!lab ? [] : (Array.isArray(lab) ? lab : [lab]));
+
 section('★★ 互動實驗室：每一種模式都畫一次');
 {
   const MODS = { sort: W.SORTLAB, search: W.SEARCHLAB, logic: W.LOGICLAB, min: W.MINLAB };
   ORDER.forEach(id => {
-    const lab = L[id].lab;
-    if (!lab) return;
-    const mod = MODS[lab.kind];
-    ok(!!mod, id + ' 的實驗室模組載得到（' + lab.kind + '）');
-    if (!mod) return;
-    const h = host();
-    let err = '';
-    let sim = null;
-    try { sim = mod.mount(h, Object.assign({}, lab, { onPass: function () {} })); }
-    catch (e) { err = e.message; }
-    ok(!err, id + ' 的實驗室畫得出來' + (err ? '（' + err + '）' : ''));
-    const bad = leaksIn(h.innerHTML);
-    ok(bad.length === 0, '★★ ' + id + ' 的實驗室沒有漏值' +
-       (bad.length ? '\n       ' + bad.join('\n       ') : ''));
-    if (sim && sim.destroy) sim.destroy();
-    h.remove();
+    labsOf(L[id].lab).forEach((lab, n) => {
+      const tag = id + (Array.isArray(L[id].lab) ? '（第 ' + (n + 1) + ' 個）' : '');
+      const mod = MODS[lab.kind];
+      ok(!!mod, tag + ' 的實驗室模組載得到（' + lab.kind + '）');
+      if (!mod) return;
+      const h = host();
+      let err = '';
+      let sim = null;
+      try { sim = mod.mount(h, Object.assign({}, lab, { onPass: function () {} })); }
+      catch (e) { err = e.message; }
+      ok(!err, tag + ' 的實驗室畫得出來' + (err ? '（' + err + '）' : ''));
+      const bad = leaksIn(h.innerHTML);
+      ok(bad.length === 0, '★★ ' + tag + ' 的實驗室沒有漏值' +
+         (bad.length ? '\n       ' + bad.join('\n       ') : ''));
+      if (sim && sim.destroy) sim.destroy();
+      h.remove();
+    });
   });
 }
 
@@ -143,14 +151,15 @@ section('★★ 每一步的「目標＋過關標準」橫幅');
      一樣可能漏值。 */
   const MODS = { sort: W.SORTLAB, search: W.SEARCHLAB, logic: W.LOGICLAB, min: W.MINLAB };
   ORDER.forEach(id => {
-    const lab = L[id].lab;
-    if (!lab) return;
-    const g = MODS[lab.kind] && MODS[lab.kind].goal(lab);
-    ok(!!g, id + ' 的實驗室給得出 goal()');
-    if (!g) return;
-    const bad = leaksIn(g.why + ' ' + g.pass);
-    ok(bad.length === 0, '★★ ' + id + ' 的橫幅沒有漏值' +
-       (bad.length ? '　' + bad.join('；') : ''));
+    labsOf(L[id].lab).forEach((lab, n) => {
+      const tag = id + (Array.isArray(L[id].lab) ? '（第 ' + (n + 1) + ' 個）' : '');
+      const g = MODS[lab.kind] && MODS[lab.kind].goal(lab);
+      ok(!!g, tag + ' 的實驗室給得出 goal()');
+      if (!g) return;
+      const bad = leaksIn(g.why + ' ' + g.pass);
+      ok(bad.length === 0, '★★ ' + tag + ' 的橫幅沒有漏值' +
+         (bad.length ? '　' + bad.join('；') : ''));
+    });
   });
   const SRC = read('11502/level.html');
   const goalSrc = SRC.slice(SRC.indexOf('const STEP_GOAL'), SRC.indexOf('function stepGoal'));

@@ -174,11 +174,26 @@
   /* 逐次動畫跑得動的上限。★ 超過就改用「時間比例」的賽跑 ——
      一百萬次逐次畫要 100 分鐘，那不是慢，是根本跑不完。 */
   var RACE_MAX = 2000;
-  /* 一排格子最多畫幾個。★ 超過就只剩進度條 ——
-     1024 個格子擠在一起是一片灰，看不出「砍掉一半」。 */
+  /* 一排格子畫幾個。★ 資料量超過這個數就**一格代表好幾筆** ——
+     1024 個格子擠在一起是一片灰，看不出「砍掉一半」。
+     ⚠️ 但也不可以因此就不畫（那是 2026-08-18 老師說「只有一個動畫嗎」的原因：
+        四種資料量裡只有 13 筆畫得出格子，另外三種只剩兩條進度條）。 */
   var CELL_MAX = 60;
   /* 賽跑總長（秒）：大資料量沒辦法逐次畫，改成「總共跑這麼久」。 */
   var RACE_SEC = 6;
+  /* ★★ 逐次畫的時候，每一次比較要停多久。
+     ⚠️ 2026-08-18 老師：「怎麼找不到可以看動畫的位置？」
+        —— 動畫其實有跑，但 13 筆 × 6 毫秒 = **0.08 秒**，
+           整段格子動畫在眨眼之前就結束了，畫面上只留下最後一格。
+        ★ 而且偏偏只有 13 筆畫得出格子 → 唯一有畫面的那一種，也是唯一看不到的。
+     ⇒ 逐次模式改用這個速度（13 筆 ≈ 3 秒）。
+        大資料量仍然走 RACE_SEC 的時間比例，不受這個數影響。 */
+  var CELL_MS = 240;
+  /* 二元那一邊至少要跑這麼久。
+     ⚠️ 一億筆的二元只有 27 次 —— 照循序的步進畫完只要 0.16 秒，
+        「每次砍一半」那幾刀學生一次都沒看到。
+     ★ 它仍然遠比循序早結束（1.8 秒 vs 6 秒），那個落差還在。 */
+  var BIN_SEC = 1.8;
   /* 時間換算的前提：假設電腦每秒比這麼多次。
      ⚠️ 這個數字要出現在畫面上 —— 不寫的話那些秒數是憑空冒出來的。
      ★ 放模組頂層有兩個理由：① 設定集中，改一個地方
@@ -560,6 +575,9 @@
     '  transition:background .15s}',
     '.qs-cells .c.gone{background:#e2e8f0}',
     '.qs-cells .c.now{background:#f59e0b}',
+    /* 一格代表好幾筆的時候要講出來 —— 不講的話學生會以為「一億筆只有 60 個」 */
+    '.qs-cells .scale{font-size:11px;font-weight:700;color:#0369a1;',
+    '  background:#f0f9ff;border-radius:6px;padding:3px 7px;margin-bottom:6px;display:inline-block}',
     '.qs-race .rh{font-size:12.5px;font-weight:900;color:#475569;margin-bottom:8px}',
     '.qs-lane{margin-bottom:9px}',
     '.qs-lane .nm{display:flex;justify-content:space-between;align-items:baseline;',
@@ -1272,9 +1290,16 @@
              循序 —— 一格一格往右走，走過的變灰
              二元 —— 跳到中間，被砍掉的那一半整片變灰
            那個「一次刷掉一半」的畫面，是進度條給不了的。
-         ⚠️ 大資料量畫不下（1024 個格子擠成一片），所以只在 ≤ CELL_MAX 時畫。 */
-      if (raceN <= CELL_MAX) {
+         ⚠️ 大資料量一筆一格畫不下（一億格）——
+            但**不畫**的結果是四種資料量裡只有 13 筆有畫面
+            （2026-08-18 老師：「只有一個動畫嗎？」）。
+         ⇒ 改成一格代表好幾筆，四種資料量都畫得出同一種畫面。 */
+      {
+        var per = cellSpan(raceN);
         out += '<div class="qs-cells">' +
+          (per > 1 ? '<div class="scale">一格 = ' + comma(per) + ' ' +
+                     sceneOf(raceN).unit + '（' + comma(raceN) + ' ' +
+                     sceneOf(raceN).unit + '畫成 ' + Math.ceil(raceN / per) + ' 格）</div>' : '') +
           '<div class="cl"><span class="nm">循序搜尋：一個一個看</span>' +
           cellsSeq(raceN, raceSeq) + '</div>' +
           '<div class="cl"><span class="nm">二元搜尋：每次砍一半</span>' +
@@ -1286,30 +1311,49 @@
       if (raceOn === 2) {
         out += '<div class="win">跑完了：循序 <b>' + comma(seqMax) + '</b> 次、二元 <b>' + binMax +
                '</b> 次 —— 差 <b>' + comma(Math.round(seqMax / binMax)) + '</b> 倍。' +
-               '<br>你剛才按 ' + cuts + ' 下就結束了；循序那一條，你等了多久？</div>';
+               '<br>你剛才按 ' + cuts + ' 下就結束了；循序那一條，你等了多久？</div>' +
+        /* ★ 2026-08-18 老師：「怎麼找不到可以看動畫的位置？」
+           ⚠️ 跑完之後畫面就停在最後一格，而且沒有任何再看一次的入口 ——
+              換一種資料量再換回來也只剩靜止的結果。
+              一段只能看一次、而且要 15 下才走得到的動畫，等於沒有。 */
+          '<div class="qs-side"><button data-race="1">↺ 再放一次動畫</button></div>';
       }
       /* ⚠️⚠️ 這一句一定要在：不講的話學生會以為電腦搜尋真的要跑好幾秒。 */
       out += big
         ? ('<div class="note">⚠️ ' + comma(raceN) + ' 筆沒辦法一次一次畫給你看 ——' +
            '循序那一條要跑 ' + comma(seqMax) + ' 次，' +
-           '照前面的速度得畫 <b>' + Math.round(seqMax * STEP_MS / 60000) + ' 分鐘</b>。' +
+           '照前面 13 筆的速度得畫 <b>' +
+           Math.round(seqMax * CELL_MS / 3600000) + ' 小時</b>。' +
            '<br>所以這一條是<b>照時間比例快轉</b>的：兩邊誰先到、差多少，都是真的。</div>')
-        : ('<div class="note">⚠️ 這裡把每一次比較放慢成 ' + STEP_MS +
+        : ('<div class="note">⚠️ 這裡把每一次比較放慢成 ' + CELL_MS +
            ' 毫秒，你才看得到它在跑。真的電腦一秒可以比<b>幾百萬次</b> —— ' +
            '但<b>兩邊的比例是真的</b>。</div>');
       return out + '</div>';
     }
 
-    /* 一排格子：循序搜尋走到第 k 格 */
-    function cellsSeq(n, k) {
-      var out = '<div class="row">';
-      for (var i = 1; i <= n; i++) {
-        var cls = i < k ? 'gone' : (i === k ? 'now' : '');
-        out += '<span class="c ' + cls + '"></span>';
+    /** 一格代表幾筆資料。★ 小資料量一格一筆；大資料量壓縮成 CELL_MAX 格。 */
+    function cellSpan(n) { return n <= CELL_MAX ? 1 : Math.ceil(n / CELL_MAX); }
+
+    /* 把一排格子畫出來。cls(lo, hi) 收「這一格涵蓋第 lo～hi 筆」，回傳樣式。
+       ⚠️ 兩種搜尋共用同一支 —— 兩排的格子數與寬度一定要一樣，
+          不然「循序走了三格、二元已經砍掉一半」這件事沒得比。 */
+    function cellRow(n, cls) {
+      var per = cellSpan(n), cnt = Math.ceil(n / per), out = '<div class="row">';
+      for (var i = 0; i < cnt; i++) {
+        var lo = i * per + 1, hi = Math.min(n, (i + 1) * per);
+        out += '<span class="c ' + cls(lo, hi) + '"></span>';
       }
       return out + '</div>';
     }
-    /* 一排格子：二元搜尋比到第 k 次時，範圍剩哪一段 */
+
+    /* 一排格子：循序搜尋走到第 k 筆（走過的變灰，正在看的那一格亮起來） */
+    function cellsSeq(n, k) {
+      return cellRow(n, function (lo, hi) {
+        if (hi < k) return 'gone';
+        return (k >= lo && k <= hi) ? 'now' : '';
+      });
+    }
+    /* 一排格子：二元搜尋比到第 k 次時，範圍剩哪一段（被砍掉的整片變灰） */
     function cellsBin(n, k) {
       var lo = 1, hi = n, mid = 0;
       for (var t = 0; t < k && lo <= hi; t++) {
@@ -1317,35 +1361,49 @@
         /* 最倒楣的情況：目標一直在右半（和 worstBinary 的算法一致） */
         lo = mid + 1;
       }
-      var out = '<div class="row">';
-      for (var i = 1; i <= n; i++) {
-        var cls = (i < lo || i > hi) ? 'gone' : (i === mid ? 'now' : '');
-        out += '<span class="c ' + cls + '"></span>';
-      }
-      return out + '</div>';
+      return cellRow(n, function (a, b) {
+        if (b < lo || a > hi) return 'gone';
+        return (mid >= a && mid <= b) ? 'now' : '';
+      });
+    }
+
+    /** 這一種資料量是「一次一次畫」還是「照時間比例快轉」 */
+    function slowRace(n) { return n <= RACE_MAX; }
+    /** 逐次模式每一步停多久（測試把 stepMs 設成 0 時整段同步跑完） */
+    function raceMs(n) {
+      if (!STEP_MS) return 0;
+      return slowRace(n) ? CELL_MS : STEP_MS;
     }
 
     function startRace() {
       if (!size || raceTimer) return;
       raceN = size; raceSeq = 0; raceBin = 0; raceOn = 1;
       var seqMax = worstSequential(raceN), binMax = table[raceN] || worstBinary(raceN);
-      if (!STEP_MS) {                       // 測試用：直接跑完
+      var ms = raceMs(raceN);
+      if (!ms) {                            // 測試用：直接跑完
         raceSeq = seqMax; raceBin = binMax; raceOn = 2; raced[raceN] = true;
         body(); maybePass(); return;
       }
       /* ★ 一次要往前跳幾次比較。
          小資料量：1（真的一次一次畫，那個等待就是重點）。
          大資料量：一百萬次逐次畫要 100 分鐘 —— 那不是慢，是跑不完。
-         ⇒ 改成「總共跑 RACE_SEC 秒」，每一幀跳一大段。
-         ⚠️ 兩邊用**同一個**步進比例，誰先到、差多少才會是真的。 */
-      var frames = Math.max(1, Math.round(RACE_SEC * 1000 / STEP_MS));
-      var stepSeq = raceN > RACE_MAX ? Math.ceil(seqMax / frames) : 1;
-      var stepBin = raceN > RACE_MAX ? Math.max(1, binMax / frames) : 1;
-      /* 二元那一邊比較次數少很多，所以它會先跑完 —— 這是刻意的。
-         ⚠️ 兩邊用同一個計時器：不然「同時起跑」這件事會不成立。 */
+         ⇒ 改成「總共跑 RACE_SEC 秒」，每一幀跳一大段。 */
+      var frames = Math.max(1, Math.round(RACE_SEC * 1000 / ms));
+      var stepSeq = slowRace(raceN) ? 1 : seqMax / frames;
+      /* ★★ 二元那一邊**不跟循序同一個步進**。
+         ⚠️ 跟同一個的話，一億筆的 27 次會在 0.16 秒內走完 ——
+            「每次砍一半」那幾刀根本看不到，而那正是要給的畫面。
+         ⇒ 給它自己的一段時間（BIN_SEC），仍然遠早於循序結束。 */
+      var binFrames = Math.max(1, Math.round(BIN_SEC * 1000 / ms));
+      var stepBin = slowRace(raceN) ? 1 : binMax / binFrames;
+      /* ⚠️ 步進可能小於 1（例如 27／300）——
+         直接對 raceBin 做 Math.round(raceBin + 0.09) 的話它永遠停在 0。
+         ⇒ 用浮點累加器記真正的進度，畫面上才取整數。 */
+      var accSeq = 0, accBin = 0;
+      /* ⚠️ 兩邊用同一個計時器：不然「同時起跑」這件事會不成立。 */
       raceTimer = setInterval(function () {
-        if (raceSeq < seqMax) raceSeq = Math.min(seqMax, raceSeq + stepSeq);
-        if (raceBin < binMax) raceBin = Math.min(binMax, Math.round(raceBin + stepBin));
+        accSeq = Math.min(seqMax, accSeq + stepSeq); raceSeq = Math.round(accSeq);
+        accBin = Math.min(binMax, accBin + stepBin); raceBin = Math.round(accBin);
         if (raceSeq >= seqMax && raceBin >= binMax) {
           clearInterval(raceTimer); raceTimer = null;
           raceOn = 2; raced[raceN] = true;
@@ -1354,7 +1412,7 @@
           return;
         }
         body();
-      }, STEP_MS);
+      }, ms);
       body();
     }
 
@@ -1405,9 +1463,26 @@
       if (raceTimer) { clearInterval(raceTimer); raceTimer = null; }
       raceOn = 0; raceSeq = 0; raceBin = 0;
       size = n; left = n; cuts = 0;
+      /* ⚠️ 點回一種**已經砍完**的資料量時，這裡把 cuts 清成 0 ——
+         等於要學生把 27 下重按一遍才回得到賽跑那一段。
+         而賽跑的狀態也被清成 0，畫面上會出現一組**空的**格子與進度條。
+         ⇒ 砍完過就還原成砍完的樣子；跑完過就還原成跑完的樣子，
+           「↺ 再放一次」才有東西可回。 */
+      if (table[n]) { cuts = table[n]; left = 0; }
+      if (raced[n]) {
+        raceN = n; raceOn = 2;
+        raceSeq = worstSequential(n); raceBin = table[n] || worstBinary(n);
+      }
       body();
-      say('bad', '假設最倒楣的情況：目標在最後才找到，或根本不在裡面。' +
-                 '<br>一直按下去，看看要按幾下才砍完 <b>' + comma(n) + '</b> 筆。');
+      if (raced[n]) {
+        say('good', '這一種你跑過了。想再看一次動畫的話，按下面的' +
+                    '<b>「↺ 再放一次動畫」</b>。');
+      } else if (table[n]) {
+        say('good', '這一種你砍完了，還沒看賽跑 —— 按下面的<b>「🏁 讓兩種搜尋比一場」</b>。');
+      } else {
+        say('bad', '假設最倒楣的情況：目標在最後才找到，或根本不在裡面。' +
+                   '<br>一直按下去，看看要按幾下才砍完 <b>' + comma(n) + '</b> 筆。');
+      }
     }
 
     function cut() {
@@ -1742,11 +1817,22 @@
     goal: function (lab) {
       var m = (lab && lab.mode) || 'sequential';
       if (m === 'compare') {
+        /* ⚠️ 這幾個數字要跟著 SIZES 走 —— 2026-08-18 查到這裡還寫著
+           「13、50、100、1024」，那是**改資料量之前**的舊名單。
+           橫幅是學生最先看到的一段，寫錯等於一開始就指錯路。
+           ⇒ 直接從 SIZES 印出來，不要再手打一份。 */
         return { why: '循序和二元到底差多少？用<b>同一批資料</b>跑兩種搜尋，' +
                       '資料愈多差距愈明顯 —— 這一步是要你親眼看到那個差距。' +
-                      '<br>⚠️ 砍一半你按 11 下就結束了，' +
-                      '但循序搜尋那 1024 次是什麼感覺？<b>看它跑一次</b>。',
-                 pass: '四種資料量（13、50、100、1024 筆）都要：' +
+                      '<br>⚠️ 砍一半你按二十幾下就結束了，' +
+                      '但循序搜尋那幾百萬次是什麼感覺？<b>看它跑一次</b>。' +
+                      /* ★ 2026-08-18 老師：「怎麼找不到可以看動畫的位置？」
+                         ⇒ 在最上面的橫幅就把入口講出來。 */
+                      '<br>🎬 <b>動畫在哪裡</b>：選一個資料量 → 一直按「✂️ 比一次，砍掉一半」' +
+                      '直到範圍空掉 → 這時會出現「🏁 讓兩種搜尋比一場」，按下去就會播。',
+                 pass: '四種資料量（' +
+                       SIZES.map(function (n) {
+                         return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                       }).join('、') + ' 筆）都要：' +
                        '① 自己砍到範圍空掉　② 看兩種搜尋<b>比一場</b>；' +
                        '<br>③ 最後「💥 資料大爆炸」那一題<b>先猜一個數字</b>' +
                        '（猜錯沒關係，重點是先猜過）。' };
@@ -1766,6 +1852,11 @@
     _worstBinary: worstBinary,
     _worstSequential: worstSequential,
     SIZES: SIZES,
+    /* 動畫的節奏 —— 測試要驗「慢到看得見」，所以要拿得到。 */
+    CELL_MS: CELL_MS,
+    CELL_MAX: CELL_MAX,
+    RACE_MAX: RACE_MAX,
+    RACE_SEC: RACE_SEC,
     _makeCase: makeCase,
     _isSorted: isSorted
   };

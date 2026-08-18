@@ -665,8 +665,47 @@ console.log('\n── ★★ 排序大比拼：選擇 vs 插入 ──');
   ok(/排好了/.test(h2.textContent), '★ 排完會說「排好了」');
   /* 每一步都要有一句解說 —— 只有長條在跳的話，學生不知道發生什麼事 */
   ok(h2.querySelectorAll('.sl-lane .say').length === 2, '★★ 兩排各有一句解說');
+  ok(/再放一次動畫/.test(h2.textContent),
+     '★ 跑完之後放得了第二次（按鈕上要寫得出來那是動畫）');
   h2.remove();
   host.remove();
+}
+
+console.log('\n── ★★ 動畫要慢到看得見，入口也要看得出是動畫 ──');
+{
+  const S2 = W.SORTLAB;
+  /* ★★ 老師 2026-08-18：「怎麼找不到可以看動畫的位置？」
+     ⚠️ 排序這邊動畫一直都在，問題是**速度**和**招牌**：
+        ① 10 筆資料約 88 格 × 22 毫秒 = 不到 2 秒 ——
+           學生還在讀上面的說明，長條已經全綠，畫面上只剩結果。
+        ② 按鈕寫「⚖️ 讓兩種排序各排一次」——
+           從字面上看不出按下去會**動**，也看不出要看什麼。
+     ⇒ 放慢到 5 秒左右，按鈕改成「播放」，並在旁邊講清楚會看到什麼。 */
+  const rand = [5, 3, 9, 1, 7, 2, 8, 4, 6, 10];
+  const frames = Math.max(S2._plan(rand, 'selection', 'asc').frames.length,
+                          S2._plan(rand, 'insertion', 'asc').frames.length);
+  const src = fs.readFileSync(path.join(__dirname, '..', 'sortlab.js'), 'utf8')
+                .replace(/\/\*[\s\S]*?\*\//g, ' ');   /* ⚠️ 先去註解 —— 註解裡正好寫著舊的 22 */
+  const m = src.match(/stepMs[\s\S]{0,40}?:\s*(\d+)\s*;/);
+  ok(!!m, '拿得到預設的每格毫秒數');
+  const ms = m ? Number(m[1]) : 0;
+  ok(ms >= 45, '★★ 每一格至少 45 毫秒（實得 ' + ms + '）—— 22 毫秒是看不見的');
+  ok(frames * ms >= 4000,
+     '★★ 整段至少 4 秒（' + frames + ' 格 × ' + ms + ' 毫秒 = ' +
+     (frames * ms / 1000).toFixed(1) + ' 秒）');
+
+  const h3 = document.createElement('div');
+  document.body.appendChild(h3);
+  S2.mount(h3, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  h3.querySelector('[data-shape="rand"]').onclick();
+  const btn = h3.querySelector('[data-cmp]');
+  ok(/播放/.test(btn.textContent), '★★ 按鈕上寫「播放」（不是「各排一次」）');
+  ok(/長條/.test(h3.textContent), '★ 旁邊先講清楚按下去會看到什麼');
+  h3.remove();
+
+  /* 最上面的橫幅也要指路 —— 學生最先看到的是那一段 */
+  const g = S2.goal({ mode: 'compare' });
+  ok(/動畫在哪裡/.test(g.why), '★★ 目標橫幅直接寫出動畫在哪裡');
 }
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
