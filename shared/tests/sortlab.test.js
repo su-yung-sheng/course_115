@@ -869,8 +869,14 @@ console.log('\n── ★★ 挑戰要換題就自己換（老師 2026-08-18）�
   ok(/猜中了/.test(tsay()), '★★ 猜題目上那一組的次數 → 過（題目和答案是同一組）');
   ok(/已經換了一組/.test(tsay()), '★★ 而且直說「已經換了一組」，不是叫他自己去按');
   const now = [...cells()].map(x => x.textContent).join(',');
-  ok(now.split(',').length === arr1.length,
-     '★★ 第 2 關的資料是完整的一組（不是剛才排到一半的殘局）');
+  /* ⚠️ 不可以拿「筆數和第 1 關一樣」當作「完整」的判準 ——
+     2026-08-18 之後筆數本身就是**會變**的（老師：「每次都是 6 筆？」）。
+     ⇒ 判「是不是一組沒排過的完整資料」：6～10 筆、而且沒有一項已經就位。 */
+  const n2 = now.split(',').length;
+  ok(n2 >= 6 && n2 <= 10,
+     '★★ 第 2 關是一組完整的資料（' + n2 + ' 筆，不是剛才排到一半的殘局）');
+  ok(h.querySelectorAll('#sl-body .sl-cell.done').length === 0,
+     '★ 而且一項都還沒排好');
   ok(now !== arr1.join(','), '★★ 而且和第 1 關那一組不一樣');
 
   /* ★ 換題保證不重複 —— 連按 20 次都不該拿到和上一組一樣的 */
@@ -881,6 +887,131 @@ console.log('\n── ★★ 挑戰要換題就自己換（老師 2026-08-18）�
     if ([...cells()].map(x => x.textContent).join(',') === before) same++;
   }
   eq(same, 0, '★★ 連按 20 次「換一題」，沒有一次拿到和上一組一樣的');
+  h.remove();
+}
+
+console.log('\n── ★★ 手排的筆數要會變（老師 2026-08-18）──');
+{
+  /* ★★ 老師：「插入排序法每次都是 6 筆？沒有變化？6-10」
+             「選擇排序每次都是 6 筆？沒有變化？」
+     ⚠️ 原本寫死 `opts.size || 6` —— 換一題只換數字、不換**筆數**：
+        每一輪的長度、回合數、比較次數的量級都一模一樣，
+        學生第二次是在重複同一個動作，不是在遇到新情況。
+     ★ 而且第 1 關「這一組要比幾次」永遠是同一個答案
+       （選擇排序 6 筆永遠 15 次）—— 背一次就過了。 */
+  const S2 = W.SORTLAB;
+  const seen = {};
+  for (let i = 0; i < 2000; i++) seen[S2._makeItems(undefined, 'asc').length] = 1;
+  eq(Object.keys(seen).map(Number).sort((a, b) => a - b), [6, 7, 8, 9, 10],
+     '★★ 沒指定筆數時抽 6～10（不再固定 6）');
+  /* ⚠️ 上限 10 是刻意的：手排要一格一格點，再多就變成考耐心。 */
+  ok(!seen[11] && !seen[5], '★ 而且不會跑出 6～10 以外的');
+  /* opts.size 指定時要照做 —— 測試和挑戰都靠它 */
+  eq(S2._makeItems(6, 'asc').length, 6, '★ 有指定就照指定的來');
+
+  ['selection', 'insertion'].forEach(mode => {
+    const h = document.createElement('div');
+    document.body.appendChild(h);
+    S2.mount(h, { mode: mode, order: 'asc', onPass: () => {} });
+    const n = () => h.querySelectorAll('#sl-body .sl-row')[0]
+      .querySelectorAll('[data-i]').length;
+    const got = [];
+    for (let i = 0; i < 12; i++) { h.querySelector('#sl-new').onclick(); got.push(n()); }
+    /* ★★ 這一條比「有沒有變」更嚴：**連續兩次不可以一樣**。
+       ⚠️ 只驗「12 次裡有不同的」的話，換題若只是偶爾變一下也會過，
+          而學生的體感是「這次和上次一樣嗎」。 */
+    let rep = 0;
+    for (let i = 1; i < got.length; i++) if (got[i] === got[i - 1]) rep++;
+    eq(rep, 0, '★★ ' + mode + '：連按 12 次換一題，沒有一次筆數和上一次相同（' +
+       got.join(',') + '）');
+  });
+}
+
+console.log('\n── ★★ 氣泡排序是補充，要標出來也要說明（老師 2026-08-18）──');
+{
+  /* ★ 老師：「『🫧 氣泡排序法』不在課程內，在旁加個補充介紹的按鈕，
+     會有浮動視窗顯示簡介說明。」「剛才的介紹這裡應該也是相同。」
+     ⚠️ 課本第 6 章只教選擇與插入。氣泡在自動播放那一區和另外兩顆
+        長得一模一樣 —— 學生會以為它也要考，或以為自己漏學了一種。
+     ★ 這一區是第 6、7 關**共用**的，所以兩關都要有（改一次兩邊都到）。 */
+  const S2 = W.SORTLAB;
+  ['selection', 'insertion'].forEach(mode => {
+    const h = document.createElement('div');
+    document.body.appendChild(h);
+    S2.mount(h, { mode: mode, order: 'asc', size: 6, onPass: () => {} });
+    /* 手排完自動播放才出現（刻意的：先自己做過再看） */
+    for (let g = 0; g < 80; g++) {
+      if (mode === 'selection') {
+        const c = [...h.querySelectorAll('#sl-body .sl-row')[0].querySelectorAll('[data-i]')];
+        if (!c.length) break;
+        const v = c.map(x => Number(x.textContent));
+        c[v.indexOf(Math.min(...v))].onclick();
+      } else {
+        const card = h.querySelector('.sl-cell.card');
+        if (!card) break;
+        card.onclick();
+        let moved = false;
+        for (const s of [...h.querySelectorAll('[data-slot]')]) {
+          const b = h.querySelectorAll('.sl-cell.done').length;
+          s.onclick();
+          if (h.querySelectorAll('.sl-cell.done').length > b) { moved = true; break; }
+        }
+        if (!moved) break;
+      }
+    }
+    const bub = h.querySelector('[data-algo="bubble"]');
+    ok(!!bub, mode + ' 關：自動播放裡看得到氣泡排序法');
+    ok(/補充/.test(bub.textContent),
+       '★★ ' + mode + ' 關：氣泡那一顆標著「補充」（另外兩顆沒有）');
+    const other = h.querySelector('[data-algo="selection"]');
+    ok(!/補充/.test(other.textContent), '　　選擇排序沒有被標成補充');
+    const why = h.querySelector('[data-why="bubble"]');
+    ok(!!why, '★★ ' + mode + ' 關：旁邊有一顆補充介紹的按鈕');
+    h.remove();
+  });
+
+  /* ── 浮動視窗本身 ───────────────────────────────── */
+  const h = document.createElement('div');
+  document.body.appendChild(h);
+  S2.mount(h, { mode: 'selection', order: 'asc', size: 6, onPass: () => {} });
+  for (let g = 0; g < 80; g++) {
+    const c = [...h.querySelectorAll('#sl-body .sl-row')[0].querySelectorAll('[data-i]')];
+    if (!c.length) break;
+    const v = c.map(x => Number(x.textContent));
+    c[v.indexOf(Math.min(...v))].onclick();
+  }
+  ok(!h.querySelector('.sl-modal'), '★ 一開始不會自己跳出來');
+  h.querySelector('[data-why="bubble"]').onclick();
+  const m = h.querySelector('.sl-modal');
+  ok(!!m, '★★ 按下去會開浮動視窗');
+  const txt = m.textContent;
+  /* ⚠️ 補充教材的第一句就要說「不考」——
+     不講的話學生會把它當成第三種要背的排序法。 */
+  ok(/不會考/.test(txt), '★★ 開頭就講明「不在範圍、不會考」');
+  ok(/相鄰/.test(txt) && /交換/.test(txt), '★ 講得出它怎麼排（比相鄰的兩個、交換）');
+  ok(/氣泡/.test(txt) && /浮/.test(txt), '★ 也講了名字的由來');
+  /* ★ 要接回他**已經學過**的兩種，不要另開一套詞彙 */
+  ok(/選擇排序法/.test(txt) && /插入排序法/.test(txt),
+     '★★ 而且接回課本教過的那兩種（不是另外講一套）');
+
+  /* ⚠️ 三條關得掉的路，少一條它就是個關不掉的東西 */
+  ok(!!m.querySelector('.x'), '★★ 有看得見的關閉鈕');
+  m.querySelector('.x').onclick();
+  ok(!h.querySelector('.sl-modal'), '　　按 ✕ 關得掉');
+  h.querySelector('[data-why="bubble"]').onclick();
+  /* ⚠️ dom 是那個 else 區塊裡的區域變數，這裡拿不到 ——
+     用 window 上的 KeyboardEvent（global.window 在 else 區塊已經設好了）。 */
+  document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+  ok(!h.querySelector('.sl-modal'), '★★ Esc 也關得掉');
+  h.querySelector('[data-why="bubble"]').onclick();
+  const m2 = h.querySelector('.sl-modal');
+  m2.onclick({ target: m2 });
+  ok(!h.querySelector('.sl-modal'), '★★ 點黑幕也關得掉');
+
+  /* ⚠️ 這個模組被掛在關卡頁的一塊 div 裡 —— 樣式不可以蓋掉整個網站 */
+  const src = fs.readFileSync(path.join(__dirname, '..', 'sortlab.js'), 'utf8')
+                .replace(/',\s*'/g, '');
+  ok(/\.sl-modal\{[^}]*z-index/.test(src), '★ 浮動視窗有 z-index（不會被別的東西壓住）');
   h.remove();
 }
 

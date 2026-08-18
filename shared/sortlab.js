@@ -101,8 +101,20 @@
   }
 
   /** 隨機出題 —— 一開始就排好的話等於白玩，所以排好了就重抽 */
+  /* ── 手動挑戰每一題有幾筆 ────────────────────────────
+     ★★ 老師 2026-08-18：「插入排序法每次都是 6 筆？沒有變化？6-10」
+        「選擇排序每次都是 6 筆？沒有變化？」
+     ⚠️ 原本寫死 `opts.size || 6` —— 換一題只換數字、不換**筆數**，
+        於是每一輪的長度、回合數、比較次數的量級都一模一樣。
+        學生第二次排的時候是在**重複同一個動作**，不是在遇到新情況。
+     ★ 而且筆數固定的話，第 1 關「這一組要比幾次」永遠是同一個答案
+       （選擇排序 6 筆永遠 15 次）—— 背一次就過了。
+     ⇒ 6～10 隨機。上限 10 是因為手排要一格一格點，
+       再多就變成在考耐心，不是考規則。 */
+  var HAND_SIZES = [6, 7, 8, 9, 10];
+
   function makeItems(n, order) {
-    n = n || 6;
+    n = n || HAND_SIZES[Math.floor(Math.random() * HAND_SIZES.length)];
     for (var t = 0; t < 30; t++) {
       var a = [];
       var seen = {};
@@ -397,6 +409,36 @@
     worstAns: function (n) { return n * (n - 1) / 2; }
   };
 
+  /* ── 補充教材：課本沒教、但畫面上看得到的東西 ──────────
+     ★ 老師 2026-08-18：「『🫧 氣泡排序法』不在課程內，
+       在旁加個補充介紹的按鈕，會有浮動視窗顯示簡介說明。」
+     ⚠️ 補充的第一句話就要說「這一段不考」——
+        不講的話，學生會把它當成第三種要背的排序法。
+     ⚠️ 內容要接回他**已經學過**的兩種，不要另開一套詞彙。 */
+  var WHY = {
+    bubble: {
+      icon: '🫧', name: '氣泡排序法',
+      html:
+        '<p class="lead">⚠️ 這一段<b>不在第 6 章的範圍</b>，也<b>不會考</b> —— ' +
+        '放在這裡是因為它常常和另外兩種一起被提到，看一眼就好。</p>' +
+        '<p><b>怎麼排</b>：從第 1 項開始，只比<b>相鄰的兩個</b>，' +
+        '順序不對就交換；一路比到最後，' +
+        '整排最大的那一個就會被「推」到最後面。<br>' +
+        '再從頭來一次，第二大的就位……重複到全部排好。</p>' +
+        '<p><b>名字的由來</b>：大的數字像氣泡一樣，一輪一輪往後浮上去。</p>' +
+        '<p><b>和課本那兩種的關係</b><br>' +
+        '· 和<b>選擇排序法</b>一樣：不管資料本來長什麼樣，' +
+        '最壞都要比 <b>n×(n−1)÷2</b> 次。<br>' +
+        '· 但選擇排序<b>每一回合只搬一次</b>；' +
+        '氣泡排序一路換過去，<b>交換的次數多很多</b>。<br>' +
+        '· 和<b>插入排序法</b>一樣：資料本來就接近排好的時候會比較快' +
+        '（可以加一個「這一輪都沒換過就提早結束」的判斷）。</p>' +
+        '<p class="note">🎒 生活裡的樣子：體育課排隊，老師說' +
+        '「看旁邊的同學，比較高的往後站」—— 大家兩兩互換，' +
+        '一輪下來最高的就到最後面了。</p>'
+    }
+  };
+
   /* ── 三種排序法的說明（沿用 sort.html 原本的文案）───── */
   /* ── 三種資料長相（排序大比拼用）────────────────────
      ★ 老師 2026-08-17：「2. 動手試一次 就只有搜尋，沒有排序 …
@@ -638,6 +680,36 @@
     '.sl-btn{background:#6366f1;color:#fff;border:0;border-radius:9px;padding:8px 15px;',
     '  font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:10px}',
     '.sl-btn:hover{background:#4f46e5}',
+    /* ── 補充教材：標記與浮動視窗（老師 2026-08-18）──────
+       ⚠️ 「補充」這兩個字一定要在按鈕上 —— 藏在說明裡的話，
+          學生看到的還是三顆長得一樣的按鈕。 */
+    '.sl-ctrl button .ex,.sl-card .ex{font-size:9.5px;font-weight:900;margin-left:4px;',
+    '  background:#fde68a;color:#92400e;border-radius:9999px;padding:1px 5px;vertical-align:middle}',
+    '.sl-why{background:#fff;border:2px solid #fcd34d;color:#92400e;border-radius:9999px;',
+    '  width:26px;height:26px;padding:0;font-size:13px;font-weight:900;cursor:pointer;',
+    '  font-family:inherit;margin-left:-4px}',
+    '.sl-why:hover{background:#fffbeb;border-color:#f59e0b}',
+    /* ⚠️ 蓋在 host 上（position:absolute），不是 fixed ——
+       這個模組會被掛在關卡頁的一塊 div 裡，fixed 會蓋掉整個網站。 */
+    '.sl-modal{position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.55);',
+    '  display:flex;align-items:center;justify-content:center;padding:18px}',
+    '.sl-card{background:#fff;border-radius:16px;max-width:520px;width:100%;',
+    '  max-height:82vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.28)}',
+    '.sl-card .hd{display:flex;justify-content:space-between;align-items:center;',
+    '  padding:13px 16px;border-bottom:1px solid #e2e8f0;font-size:16px;font-weight:900;',
+    '  color:#334155;position:sticky;top:0;background:#fff}',
+    '.sl-card .x{background:none;border:0;font-size:18px;color:#94a3b8;cursor:pointer;',
+    '  font-family:inherit;padding:2px 6px}',
+    '.sl-card .x:hover{color:#334155}',
+    '.sl-card .bd{padding:14px 16px;font-size:13.5px;line-height:2;color:#334155}',
+    '.sl-card .bd p{margin:0 0 10px}',
+    '.sl-card .bd b{color:#4338ca}',
+    '.sl-card .bd .lead{background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;',
+    '  padding:9px 12px;color:#92400e;font-size:13px}',
+    '.sl-card .bd .lead b{color:#92400e}',
+    '.sl-card .bd .note{background:#f8fafc;border-radius:10px;padding:9px 12px;',
+    '  font-size:12.5px;color:#64748b}',
+    '.sl-card .ft{padding:0 16px 14px;text-align:right}',
     /* ── 播放動畫的那顆按鈕 ────────────────────────────
        ⚠️⚠️ 老師 2026-08-18：「▶ 播放 600 筆的排序過程 這個也太不明顯了，找很久才發現」。
           查下來原因很難堪：`.sl-side` **從頭到尾沒有任何 CSS** ——
@@ -758,7 +830,9 @@
     var order = opts.order || 'asc';
     var info = INFO[mode] || INFO.selection;
 
-    var items = (opts.items && opts.items.length) ? opts.items.slice() : makeItems(opts.size || 6, order);
+    /* ⚠️ 不要寫 `opts.size || 6` —— 那就是老師 2026-08-18 指出的
+       「每次都是 6 筆」。沒指定就交給 makeItems 抽 6～10。 */
+    var items = (opts.items && opts.items.length) ? opts.items.slice() : makeItems(opts.size, order);
     var unsorted = items.slice(), done = [];        // 選擇排序用
     var arr = items.slice(), boundary = 1, sel = null;  // 氣泡／插入用
     var round = 0, passed = false;
@@ -835,8 +909,12 @@
       var was = items.join(',');
       var a = null;
       for (var t = 0; t < 12; t++) {
-        a = makeItems(opts.size || 6, order);
-        if (a.join(',') !== was) break;
+        /* ⚠️ opts.size 沒指定就讓 makeItems 自己抽 6～10 ——
+           不可以再寫 `opts.size || 6`，那就是「每次都 6 筆」的來源。 */
+        a = makeItems(opts.size, order);
+        /* ★ 筆數也要換得動：只有數字不同、長度一樣的話，
+           學生看到的還是「同一種題目」。抽到同長度就再抽一次。 */
+        if (a.join(',') !== was && a.length !== items.length) break;
       }
       items = a;
       unsorted = items.slice(); done = []; arr = items.slice();
@@ -1627,9 +1705,21 @@
            不固定的話按一下「下一步」整頁就往上下彈一格。 */
         '<div class="sl-say" id="sl-say">' + (f.note || '　') + '</div>' +
         '<div class="sl-ctrl">' +
+        /* ★★ 老師 2026-08-18：「『🫧 氣泡排序法』不在課程內，
+             在旁加個補充介紹的按鈕，會有浮動視窗顯示簡介說明。」
+             （第 6、7 關都要 —— 這一區兩關共用，所以改一次兩邊都有。）
+           ⚠️ 課本第 6 章只教選擇與插入。氣泡放在這裡是**補充**，
+              但畫面上和另外兩顆長得一模一樣 ——
+              學生會以為它也是要考的，或是以為自己漏學了一種。
+           ⇒ 標一個「補充」，旁邊給一顆 ❓ 打開說明。 */
         ['selection', 'insertion', 'bubble'].map(function (m) {
-          return '<button data-algo="' + m + '"' + (m === algo ? ' class="on"' : '') + '>' +
-                 INFO[m].icon + ' ' + INFO[m].name + '</button>';
+          var extra = (m === 'bubble');
+          return '<button data-algo="' + m + '"' +
+                 (m === algo ? ' class="on"' : '') + '>' +
+                 INFO[m].icon + ' ' + INFO[m].name +
+                 (extra ? '<span class="ex">補充</span>' : '') + '</button>' +
+                 (extra ? '<button class="sl-why" data-why="bubble" ' +
+                          'title="氣泡排序法是什麼？">❓</button>' : '');
         }).join('') +
         (last ? '<button data-again="1">↺ 再看一次</button>'
               : '<button data-step="1">⏭ 下一步</button>' +
@@ -1646,6 +1736,47 @@
       if ((b = box.querySelector('[data-play]'))) b.onclick = toggle;
       if ((b = box.querySelector('[data-again]'))) b.onclick = function () { at = 0; auto(); };
       if ((b = box.querySelector('[data-new]'))) b.onclick = function () { stop(); pl = null; auto(); };
+      [].forEach.call(box.querySelectorAll('[data-why]'), function (el) {
+        el.onclick = function () { openWhy(el.dataset.why); };
+      });
+    }
+
+    /* ── 補充說明的浮動視窗 ────────────────────────────
+       ★ 老師 2026-08-18 指定：氣泡排序法不在課程內，要有補充介紹。
+       ⚠️ 用**模態**（蓋一層黑幕）而不是展開一段文字：
+          展開的話整頁會往下推，學生剛才在看的長條就跑掉了。
+       ⚠️ 三件事一定要做，不然它會變成一個關不掉的東西：
+          ① 黑幕點下去要能關　② Esc 要能關　③ 一定要有一顆看得見的關閉鈕
+       ⚠️ 而且要講清楚「這一段不考」—— 補充教材最怕的是學生以為要背。 */
+    /* ⚠️ 這一支用的是**裸的 document**，和 ensureStyle() 一樣 ——
+       不要寫 global.document：這個檔案裡的 global 是外面傳進來的 window，
+       在瀏覽器裡它剛好有 document，但在測試的替身 window 上沒有。
+       整份檔案只能有一種拿 document 的方式。 */
+    function openWhy(key) {
+      var d = WHY[key];
+      if (!d) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'sl-modal';
+      wrap.innerHTML =
+        '<div class="sl-card" role="dialog" aria-modal="true">' +
+        '<div class="hd"><span>' + d.icon + ' ' + d.name +
+        '<span class="ex">補充</span></span>' +
+        '<button class="x" data-close="1" aria-label="關閉">✕</button></div>' +
+        '<div class="bd">' + d.html + '</div>' +
+        '<div class="ft"><button class="sl-btn" data-close="1">知道了</button></div></div>';
+      var close = function () {
+        if (wrap.parentNode) wrap.parentNode.removeChild(wrap);
+        document.removeEventListener('keydown', onKey);
+      };
+      var onKey = function (e) { if (e.key === 'Escape') close(); };
+      wrap.onclick = function (e) { if (e.target === wrap) close(); };
+      [].forEach.call(wrap.querySelectorAll('[data-close]'), function (el) {
+        el.onclick = close;
+      });
+      document.addEventListener('keydown', onKey);
+      host.appendChild(wrap);
+      var x = wrap.querySelector('.x');
+      if (x && x.focus) x.focus();
     }
 
     /* 走一步 —— 按鈕和自動播放共用同一條路，不會有兩套走法。 */

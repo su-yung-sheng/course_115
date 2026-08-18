@@ -828,7 +828,10 @@
                   ⇒ 課本用同一列示範兩次，這裡照走一遍
          之後　　 隨機出題（三分之一是找不到的） */
     function nextCase() {
-      if (opts.course && !usedMiss) {
+      /* ⚠️ 課本那一題（同一列資料、找得到／找不到各一次）只在**自由玩**出現。
+         挑戰開始之後再回到課本那一列，學生會覺得「怎麼又是這題」——
+         而且那一列他剛剛才走過兩遍。 */
+      if (opts.course && !usedMiss && !lvNow) {
         usedMiss = true;
         reset(makeCase({ mode: mode, course: 'miss' }));
       } else {
@@ -853,10 +856,18 @@
       var o = {};
       for (var k in opts) if (k !== 'course') o[k] = opts[k];
       var now = (items || []).join(',') + '|' + target;
+      var wasN = (items || []).length;
       var c = null;
       for (var t = 0; t < 12; t++) {
         c = makeCase(o);
-        if (c.items.join(',') + '|' + c.target !== now) return c;
+        /* ★★ 老師 2026-08-18：「搜尋的換一題問題還是在，通關後是同樣數量」。
+           ⚠️ 只比「整組資料一不一樣」是不夠的：
+              數字全換、但**筆數一樣**的話，畫面上格子數不變、
+              二元搜尋的第一個中間位置也不變 ——
+              學生看到的就是「同一種題目換了幾個數字」。
+              而「這一題有幾筆」正是這兩關要他每次重新算的東西。
+           ⇒ 筆數也要換得動。抽不到就算了（下面的上限），卡住比重複更糟。 */
+        if (c.items.join(',') + '|' + c.target !== now && c.items.length !== wasN) return c;
       }
       return c;
     }

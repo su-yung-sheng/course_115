@@ -1542,6 +1542,30 @@ section('★★ 挑戰要換題就自己換（老師 2026-08-18）');
       if (tag() === b) same++;
     }
     is(same, 0, '　　連按 20 次「換一題」，沒有一次和上一題完全相同');
+
+    /* ★★ 老師 2026-08-18：「搜尋的換一題問題還是在，**通關後是同樣數量**，
+       未闖關會順利換數量。」
+       ⚠️ 只保證「整組資料不一樣」是不夠的 ——
+          數字全換、但**筆數一樣**的話，格子數不變、
+          二元搜尋第一個中間位置也不變，看起來就是「同一種題目換幾個數字」。
+          而「這一題有幾筆」正是這兩關要他每次重新算的東西。
+       ★ 這一條盯**連續兩次**：學生的體感是「這次和上次一樣嗎」，
+         不是「二十次裡有沒有出現過不同的」。 */
+    ['sequential', 'binary'].forEach(m => {
+      const hh = document.createElement('div');
+      document.body.appendChild(hh);
+      const s2 = S.mount(hh, { mode: m, course: 'hit', onPass: () => {} });
+      const got = [];
+      for (let i = 0; i < 15; i++) {
+        hh.querySelector('#qs-new').onclick();
+        got.push(s2._state().items.length);
+      }
+      let rep = 0;
+      for (let i = 1; i < got.length; i++) if (got[i] === got[i - 1]) rep++;
+      is(rep, 0, '★★ ' + m + '：連按 15 次換一題，沒有一次**筆數**和上一次相同（' +
+         got.join(',') + '）');
+      hh.remove();
+    });
     /* ⚠️⚠️ 上面那一條**擋不住任何東西**：數字是 1～99 隨機取 8～15 個，
        就算完全沒有防重複，連抽 20 次也幾乎不會撞到 ——
        突變測試把重抽整段拿掉，它照樣綠。
