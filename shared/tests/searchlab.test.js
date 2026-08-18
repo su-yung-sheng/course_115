@@ -774,15 +774,18 @@ section('★★ 砍一半的當下要有感（不是只有一行小字）');
   ok(bars1[0].className.indexOf('hit') >= 0, '★ 被砍的那一條會抖一下（震動特效）');
 
   /* ★★ 這一段的關鍵訊息：同樣按 N 下，兩邊差多少 */
-  ok(/才看到第 1 筆/.test(t1),
-     '★★ 當下就把對照講出來：「一個一個找的話，1 次才看到第 1 筆」');
+  /* ⚠️ 量詞跟著場景走（本書／首歌／位同學），不要寫死「筆」——
+     2026-08-17 加了場景之後，寫死「筆」的斷言就紅了。 */
+  ok(/才看到第 1 本書/.test(t1),
+     '★★ 當下就把對照講出來：「一個一個找的話，1 次才看到第 1 本書」');
+  ok(/📚|圖書館/.test(t1), '★★ 而且看得出現在的場景是圖書館藏書');
 
   /* 砍完 */
   let g = 0;
   while (host.querySelector('[data-cut]') && g++ < 60) host.querySelector('[data-cut]').onclick();
   const t2 = host.textContent;
-  ok(/你按 20 下就砍完了 1,000,000 筆/.test(t2.replace(/\s+/g, ' ')),
-     '★★ 砍完講「你按 20 下就砍完了 100 萬筆」');
+  ok(/你按 20 下就砍完了 1,000,000 本書/.test(t2.replace(/\s+/g, ' ')),
+     '★★ 砍完講「你按 20 下就砍完了 1,000,000 本書」');
   ok(/999,980/.test(t2),
      '★★ 而且講出對照：一個一個找 20 下之後還剩 999,980 筆沒看');
 
@@ -792,6 +795,44 @@ section('★★ 砍一半的當下要有感（不是只有一行小字）');
      '★★ 沒有音效（電腦教室一班三十台同時響會很吵）');
   ok(/prefers-reduced-motion/.test(src),
      '★★ 開了「減少動態效果」就不抖 —— 會暈車的人要能關掉');
+  host.remove();
+}
+
+section('★★ 場景要看得出來（老師：不然與所有字相同）');
+{
+  /* ★ 老師 2026-08-17：「排隊似乎不是實際應用例子，請改成適用大數量的
+     生活實例，並以明顯的標示 —— 不然與所有字相同，看不出目前操作的是
+     什麼場景應用中。」
+     ⚠️ 舊說法是「1000 個人按身高排好」——一億個人排隊給你找不是真實應用。
+     ★ 四種資料量各配一個**真的會這樣做**的場景（資料先排好所以查得快，
+       那正是資料庫索引在做的事）。 */
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  S.mount(host, { mode: 'compare', stepMs: 0, onPass: () => {} });
+
+  ok(!host.querySelector('.qs-scene'), '還沒選資料量之前不畫場景橫幅');
+  const scenes = [[13, '課本'], [1024, '座號'], [1000000, '圖書館'], [100000000, '音樂']];
+  scenes.forEach(([n, key]) => {
+    host.querySelector('[data-size="' + n + '"]').onclick();
+    const bar = host.querySelector('.qs-scene');
+    ok(!!bar, n.toLocaleString() + '：有場景橫幅');
+    ok(bar && bar.textContent.indexOf(key) >= 0,
+       '　　　場景是「' + key + '」（實得「' + (bar ? bar.querySelector('b').textContent : '') + '」）');
+  });
+
+  /* ★★ 「明顯」不是形容詞 —— 要真的和內文長得不一樣 */
+  const css = read('shared/searchlab.js');
+  ok(/\.qs-scene\{[^}]*background:#0e7490[^}]*color:#fff/.test(css),
+     '★★ 橫幅有底色（和內文長得不一樣，一眼看得出來）');
+  ok(/\.qs-scene b\{[^}]*font-size:16px/.test(css), '★ 場景名稱字級比內文大');
+
+  /* ⚠️ 舊的「排隊／身高」說法不可以留著 */
+  const w2 = {};
+  new Function('window', css)(w2);
+  const life = w2.SEARCHLAB.INFO.compare.life;
+  ok(!/排好隊|身高/.test(life),
+     '★★ 大比拼的生活例子不再是「一群人按身高排好」（那不是真實應用）');
+  ok(/歌|音樂/.test(life), '★ 換成音樂 App 的歌單（本來就照歌名排好）');
   host.remove();
 }
 

@@ -175,6 +175,35 @@
      一百萬次逐次畫要 100 分鐘，那不是慢，是根本跑不完。 */
   var RACE_MAX = 2000;
 
+  /* ── 每一種資料量的生活場景 ────────────────────────────
+     ★ 老師 2026-08-17：「排隊似乎不是實際應用例子，請改成適用大數量的
+       生活實例，並以明顯的標示 —— 不然與所有字相同，看不出目前操作的是
+       什麼場景應用中。」
+     ⚠️ 舊的說法是「在 1000 個人裡找一個人，大家按身高排好」——
+        一億個人排隊給你找？那不是真實應用，是為了舉例而舉例。
+     ★ 換成**真的會這樣做**的場景：這四個都是「資料先排好、
+       所以查得快」的日常例子（那正是資料庫索引在做的事）。
+     ⚠️ 每個場景要有自己的**量詞**：「1 億筆」很抽象，
+        「1 億首歌」學生一聽就知道那是什麼規模。 */
+  var SCENES = {
+    13:        { icon: '📖', name: '課本的例子',
+                 unit: '個數字', what: '課本 p.204 那一列 13 個數字',
+                 ask: '找出其中一個數字' },
+    1024:      { icon: '🏫', name: '全校座號表',
+                 unit: '位同學', what: '全校 1,024 位同學的座號表（已經照號碼排好）',
+                 ask: '找出某一個座號是誰' },
+    1000000:   { icon: '📚', name: '圖書館藏書',
+                 unit: '本書', what: '市立圖書館的 100 萬本藏書（照書名排好）',
+                 ask: '找出某一本書在哪一櫃' },
+    100000000: { icon: '🎵', name: '音樂 App',
+                 unit: '首歌', what: '音樂 App 裡的 1 億首歌（照歌名排好）',
+                 ask: '找出你要聽的那一首' }
+  };
+  function sceneOf(n) {
+    return SCENES[n] || { icon: '📦', name: '自己出的題', unit: '筆資料',
+                          what: '你自己填的 ' + n + ' 筆資料', ask: '找出其中一筆' };
+  }
+
   /**
    * 出題。
    *   course:'hit'  → 課本 p.204 那一題：8、5、10、1、7 找 10（第 3 回合找到）
@@ -381,8 +410,12 @@
             '直到範圍空掉 —— 按了幾下，就是二元搜尋最多要比幾次。',
       why: '循序搜尋最壞要把資料全部比一遍；二元搜尋每比一次就少掉一半。' +
            '資料愈多，兩者的差距愈誇張。',
-      life: '在 1000 個人裡找一個人：一個一個問，最多問 1000 次；' +
-            '如果大家按身高排好，用二元搜尋只要問 10 次。'
+      /* ⚠️ 2026-08-17 換掉舊的說法（「1000 個人排好隊」）——
+         一億個人排隊給你找不是真實應用，是為了舉例而舉例。
+         ★ 換成真的會這樣做的：音樂 App 的歌單本來就照歌名排好，
+           所以你打第一個字就跳出來。 */
+      life: '音樂 App 裡有 1 億首歌。一首一首聽過去要聽到明年；' +
+            '因為歌名**排好序**了，打幾個字就跳出來 —— 那就是二元搜尋在做的事。'
     }
   };
 
@@ -438,6 +471,14 @@
     /* ── 砍一半的畫面（2026-08-17：老師說點下去感受不夠強烈）────
        ★ 三件事：範圍條崩塌＋抖一下、大字報排除幾筆、循序搜尋的同步進度。
        ⚠️ 兩條用同一個量度（還剩幾筆沒找），不然沒得比。 */
+    /* 場景橫幅：★ 要一眼看出「現在在找什麼」。
+       ⚠️ 和內文一樣的字級等於沒有標示（老師 2026-08-17 指出的正是這件事）。 */
+    '.qs-scene{display:flex;gap:11px;align-items:center;background:#0e7490;color:#fff;',
+    '  border-radius:12px;padding:10px 14px;margin-bottom:11px}',
+    '.qs-scene .ic{font-size:30px;line-height:1;flex:0 0 auto}',
+    '.qs-scene .tx{display:flex;flex-direction:column;gap:2px;min-width:0}',
+    '.qs-scene b{font-size:16px;font-weight:900;letter-spacing:.02em}',
+    '.qs-scene .sub{font-size:12.5px;line-height:1.65;color:#cffafe}',
     '.qs-cut{margin-bottom:11px}',
     '.qs-cut .boom{font-size:20px;font-weight:900;color:#b45309;line-height:1.5;',
     '  margin-bottom:9px}',
@@ -960,16 +1001,28 @@
                  comma(n) + ' 筆' + (table[n] ? ' ✓' : '') + '</button>';
         }).join('') + '</div>';
 
+      /* ★★ 場景橫幅：老師 2026-08-17「看不出目前操作的是什麼場景應用中」。
+         ⚠️ 一定要**明顯**——底色、圖示、大字。
+            和內文一樣的字級等於沒有標示（那正是改版前的樣子）。 */
+      if (size) {
+        var sc = sceneOf(size);
+        out += '<div class="qs-scene"><span class="ic">' + sc.icon + '</span>' +
+               '<span class="tx"><b>' + sc.name + '</b>' +
+               '<span class="sub">' + sc.what + ' —— ' + sc.ask + '</span></span></div>';
+      }
+
       if (!size) {
-        out += '<div class="qs-left">先選一個資料量。</div>';
+        out += '<div class="qs-left">先選一個資料量 —— 每一種都是一個真實的場景。</div>';
       } else if (left > 0) {
         out += cutView() +
                '<div class="qs-side"><button data-cut="1">✂️ 比一次，砍掉一半</button></div>';
       } else {
         out += '<div class="qs-left">範圍空了 —— 二元搜尋最多比 <b>' + cuts + '</b> 次。</div>' +
-               '<div class="qs-cnt big">你按 <b>' + cuts + '</b> 下就砍完了 ' + comma(size) + ' 筆。' +
-               '<br>一個一個找的話，' + cuts + ' 下才看到第 ' + cuts + ' 筆 —— 還剩 <b>' +
-               comma(Math.max(0, size - cuts)) + '</b> 筆沒看。</div>';
+               '<div class="qs-cnt big">你按 <b>' + cuts + '</b> 下就砍完了 ' +
+               comma(size) + ' ' + sceneOf(size).unit + '。' +
+               '<br>一個一個找的話，' + cuts + ' 下才看到第 ' + cuts + ' ' + sceneOf(size).unit +
+               ' —— 還剩 <b>' + comma(Math.max(0, size - cuts)) + '</b> ' +
+               sceneOf(size).unit + '沒看。</div>';
         /* ★ 砍完之後不要就這樣結束：那 11 下太輕鬆了。
            讓循序搜尋當場跑一次，看它要跑多久。 */
         if (!raced[size]) {
@@ -999,27 +1052,29 @@
        ⚠️ 不做音效：一班三十台同時響會很吵，而且要多一個開關。
           震動只用 CSS 抖一下，而且 prefers-reduced-motion 要能關掉。 */
     function cutView() {
+      var sc = sceneOf(size);
+      var U = sc.unit;                               // 量詞跟著場景走（首歌／本書／位同學）
       var seqLeft = Math.max(0, size - cuts);        // 循序：按了幾下就只看了幾筆
       var pctBin = size ? left / size * 100 : 0;
       var pctSeq = size ? seqLeft / size * 100 : 0;
       var justCut = cuts > 0 ? Math.round(size / Math.pow(2, cuts - 1)) - left : 0;
       return '<div class="qs-cut">' +
         (cuts > 0
-          ? '<div class="boom">這一下排除了 <b>' + comma(justCut) + '</b> 筆</div>'
+          ? '<div class="boom">這一下排除了 <b>' + comma(justCut) + '</b> ' + U + '</div>'
           : '<div class="boom idle">按下去 —— 看它一口氣少掉多少</div>') +
         '<div class="qs-two">' +
           '<div class="row me">' +
-            '<div class="lb">你（每次砍一半）<span>還剩 ' + comma(left) + ' 筆</span></div>' +
+            '<div class="lb">你（每次砍一半）<span>還剩 ' + comma(left) + ' ' + U + '</span></div>' +
             '<div class="bar"><div class="fill' + (cuts > 0 ? ' hit' : '') +
               '" style="width:' + pctBin + '%"></div></div>' +
           '</div>' +
           '<div class="row seq">' +
-            '<div class="lb">一個一個找<span>還剩 ' + comma(seqLeft) + ' 筆</span></div>' +
+            '<div class="lb">一個一個找<span>還剩 ' + comma(seqLeft) + ' ' + U + '</span></div>' +
             '<div class="bar"><div class="fill" style="width:' + pctSeq + '%"></div></div>' +
           '</div>' +
         '</div>' +
         '<div class="qs-cnt">已經比了 <b>' + cuts + '</b> 次' +
-          (cuts > 0 ? '　—— 一個一個找的話，' + cuts + ' 次才看到第 ' + cuts + ' 筆' : '') +
+          (cuts > 0 ? '　—— 一個一個找的話，' + cuts + ' 次才看到第 ' + cuts + ' ' + U : '') +
         '</div></div>';
     }
 
