@@ -1019,6 +1019,17 @@ console.log('\n── ★★ 氣泡排序是補充，要標出來也要說明（
   const src = fs.readFileSync(path.join(__dirname, '..', 'sortlab.js'), 'utf8')
                 .replace(/',\s*'/g, '');
   ok(/\.sl-modal\{[^}]*z-index/.test(src), '★ 浮動視窗有 z-index（不會被別的東西壓住）');
+
+  /* ★ 老師 2026-08-18：「『補充 ⓘ』加上底色標示會更明顯。」
+     ⚠️ 淡底（#fef3c7 那種）在白色按鈕旁邊幾乎看不出來 ——
+        等於又回到同一天講過的第 4 點：「只有外框造型不同」。
+     ⇒ 實心螢光黃配深棕字，和全站螢光筆同一個色系。 */
+  ok(/\.sl-ex\{[^}]*background:#fcd34d/.test(src),
+     '★★ 補充標籤是**實心**的螢光黃底（不是淡到看不見的底色）');
+  ok(/\.sl-ex\{[^}]*color:#78350f/.test(src),
+     '★★ 配深棕字 —— 白字配黃底的對比不到 3:1，投影機一打就糊');
+  ok(/\.sl-ex\{[^}]*border-radius:9999px/.test(src),
+     '★ 維持藥丸形（形狀本身在說「我是附註，不是另一個選項」）');
   h.remove();
 }
 

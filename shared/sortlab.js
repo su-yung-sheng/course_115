@@ -690,11 +690,18 @@
        它和旁邊那排方形按鈕不同形狀也不同大小，夾著就是一個突出的小方塊。
        ⇒ 做成**標籤的樣子**：藥丸形、小一號、琥珀色、沒有粗框。
        ★ 形狀本身就在說「我是附註，不是另一個選項」。 */
-    '.sl-ex{background:#fef3c7;border:1px solid #fcd34d;color:#92400e;',
-    '  border-radius:9999px;padding:3px 9px;font-size:11px;font-weight:900;',
+    /* ⚠️ 老師 2026-08-18：「『補充 ⓘ』加上底色標示會更明顯。」
+       原本是 #fef7c7 那種很淡的底 —— 在白色按鈕旁邊幾乎看不出來，
+       等於又回到「只有外框造型不同」那個問題（同一天講過的第 4 點）。
+       ★ 改成**實心的螢光黃**（#fcd34d）配深棕字：
+         和全站螢光筆同一個色系（theme.css 的 --marker 就是 250,204,21），
+         深棕字在黃底上的對比夠高，投影出來也讀得到。
+       ⚠️ 不用白字：白字配黃底的對比不到 3:1，投影機一打就糊掉。 */
+    '.sl-ex{background:#fcd34d;border:1px solid #d97706;color:#78350f;',
+    '  border-radius:9999px;padding:3px 10px;font-size:11.5px;font-weight:900;',
     '  cursor:pointer;font-family:inherit;line-height:1.5;margin-left:-3px;',
-    '  align-self:center}',
-    '.sl-ex:hover{background:#fde68a;border-color:#f59e0b}',
+    '  align-self:center;box-shadow:0 1px 0 rgba(120,53,15,.25)}',
+    '.sl-ex:hover{background:#fbbf24;border-color:#b45309}',
     /* ⚠️ 蓋在 host 上（position:absolute），不是 fixed ——
        這個模組會被掛在關卡頁的一塊 div 裡，fixed 會蓋掉整個網站。 */
     '.sl-modal{position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.55);',
