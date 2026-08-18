@@ -605,6 +605,15 @@
     '.sl-slot{width:16px;height:38px;border:2px dashed #cbd5e1;border-radius:6px;',
     '  background:transparent;cursor:pointer;padding:0}',
     '.sl-slot:hover{border-color:#6366f1;background:#eef2ff}',
+    /* ★★ 最尾巴那一個插入點（老師 2026-08-18：「最大數排到最後不好表示」）。
+       ⚠️ 它和其他插入點長得一樣的話，「插在最後面」這個動作等於沒有畫面 ——
+          而那正是新牌比手上每一張都大時的**正確答案**。
+       ⇒ 畫寬一點、實線、帶一個往右的箭頭：看得出「這裡是尾巴」。 */
+    '.sl-slot.last{width:30px;border-style:solid;border-color:#a5b4fc;',
+    '  background:#eef2ff;position:relative}',
+    '.sl-slot.last::after{content:"→";position:absolute;inset:0;display:flex;',
+    '  align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#6366f1}',
+    '.sl-slot.last:hover{background:#e0e7ff;border-color:#6366f1}',
     '.sl-empty{font-size:12px;color:#cbd5e1}',
     '.sl-msg{margin-top:9px;font-size:13px;line-height:1.8;padding:8px 11px;border-radius:9px}',
     '.sl-msg.good{background:#dcfce7;color:#166534}',
@@ -802,7 +811,11 @@
     function body() {
       var b = host.querySelector('#sl-body');
       if (mode === 'compare') { b.innerHTML = cmpHtml(); wireCmp(b); return; }
-      if (mode === 'selection') b.innerHTML = selHtml(); else b.innerHTML = lineHtml();
+      /* ★ 兩種排序法都用**兩排** —— 選擇是「未排序／已排序」，
+         插入是「牌堆／手牌」。氣泡不是，它本來就在同一排上交換。 */
+      if (mode === 'selection') b.innerHTML = selHtml();
+      else if (mode === 'insertion') b.innerHTML = insHtml();
+      else b.innerHTML = lineHtml();
       [].forEach.call(b.querySelectorAll('[data-i]'), function (el) {
         el.onclick = function () { click(Number(el.dataset.i), el); };
       });
@@ -1262,7 +1275,54 @@
           : '<span class="sl-empty">（空的）</span>') + '</div>';
     }
 
-    /* 氣泡與插入：一整排，插入模式在已排好的那一段之間放插入點 */
+    /* ── 插入排序：兩排（老師 2026-08-18）────────────────
+       ★ 「插入排序的『動手試一次』應該也要使用兩排，
+         不然最大數排到最後不好表示。」—— 說得對，而且是兩個問題疊在一起：
+
+       ⚠️ 問題一：新牌**比手上每一張都大**的時候，正確的插入點是
+          已排好那一段的**最尾巴**，而它剛好緊貼在橘框新牌的左邊。
+          一整排的畫面上，那個插入點和「新牌本來的位置」看起來一模一樣 ——
+          學生做對了也感覺不出自己做了什麼，做錯了也看不出差在哪。
+
+       ⚠️ 問題二：一整排的排法讓「已排好」和「還沒抽」黏在一起，
+          而 INFO.insertion.life 講的是**兩疊牌**：
+          「蓋著的牌堆每次抽一張，插進手上已經排好的牌裡」。
+          畫面和比喻對不上，學生要自己在腦中翻譯一次。
+
+       ⇒ 拆成兩排，和選擇排序同一個版型（那一邊本來就是兩排）：
+           🖐️ 手上排好的牌　＋ 插入點（含**最尾巴**那一個）
+           🂠 還沒抽的牌堆　第一張＝這一回合的新牌（橘框）
+       ⚠️ 資料結構完全不動 —— 還是同一個 arr 和 boundary，
+          slot 的編號也照舊（0～boundary）。
+          動了資料結構的話，checkInsertion／doInsert／驗收挑戰都要跟著改。 */
+    function insHtml() {
+      var hand = '<div class="sl-row"><span class="sl-tag">🖐️ 手上排好的牌</span>';
+      for (var i = 0; i < boundary; i++) {
+        hand += '<button class="sl-slot" data-slot="' + i + '" title="插在這裡"></button>';
+        hand += '<button class="sl-cell done" data-i="' + i + '">' + esc(arr[i]) + '</button>';
+      }
+      /* ★★ 最尾巴那一個插入點 —— 老師指的「最大數排到最後」就靠它。
+         ⚠️ 它一定要**畫在手牌這一排的最後**，不是黏在新牌旁邊：
+            黏著的話又回到「看起來像沒動」的老問題。 */
+      hand += '<button class="sl-slot last" data-slot="' + boundary +
+              '" title="插在最後面（比手上每一張都大）"></button>';
+      if (!boundary) hand += '<span class="sl-empty">（還沒有牌）</span>';
+      hand += '</div>';
+
+      var pile = '<div class="sl-row"><span class="sl-tag">🂠 還沒抽的牌堆</span>';
+      if (boundary >= arr.length) {
+        pile += '<span class="sl-empty">（抽完了）</span>';
+      } else {
+        for (var k = boundary; k < arr.length; k++) {
+          var cls = 'sl-cell' + (k === boundary ? ' card' : '') + (sel === k ? ' sel' : '');
+          pile += '<button class="' + cls + '" data-i="' + k + '">' + esc(arr[k]) + '</button>';
+        }
+      }
+      pile += '</div>';
+      return '<div class="sl-round">第 ' + boundary + ' 張已經排好</div>' + pile + hand;
+    }
+
+    /* 氣泡：一整排（它本來就是在同一排上兩兩交換，拆成兩排反而不對） */
     function lineHtml() {
       var out = '<div class="sl-row">';
       arr.forEach(function (v, i) {

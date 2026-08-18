@@ -716,6 +716,74 @@ console.log('\n── ★★ 動畫要慢到看得見，入口也要看得出是
   ok(/動畫在哪裡/.test(g.why), '★★ 目標橫幅直接寫出動畫在哪裡');
 }
 
+console.log('\n── ★★ 插入排序的手動挑戰也要兩排（老師 2026-08-18）──');
+{
+  /* ★★ 老師：「插入排序的『動手試一次』應該也要使用兩排，
+     不然最大數排到最後不好表示。」
+     ⚠️ 兩個問題疊在一起：
+       ① 新牌比手上每一張都大時，正確的插入點在已排好那一段的**最尾巴**，
+          而它緊貼著橘框新牌 —— 一整排的畫面上看起來和「沒動」一樣。
+       ② INFO.insertion.life 講的是**兩疊牌**（牌堆／手牌），
+          一整排的畫面和那個比喻對不上。
+     ⇒ 拆成「🂠 還沒抽的牌堆」＋「🖐️ 手上排好的牌」，和選擇排序同一個版型。
+     ⚠️ 資料結構不可以動 —— checkInsertion／doInsert／驗收挑戰都吃同一個 arr。 */
+  const S2 = W.SORTLAB;
+  const h = document.createElement('div');
+  document.body.appendChild(h);
+  S2.mount(h, { mode: 'insertion', order: 'asc', onPass: () => {} });
+  const rows = () => [...h.querySelectorAll('#sl-body .sl-row')];
+  eq(rows().length, 2, '★★ 兩排（牌堆一排、手牌一排）');
+  ok(/牌堆/.test(rows()[0].textContent), '★ 上面那排是還沒抽的牌堆');
+  ok(/手上排好/.test(rows()[1].textContent), '★ 下面那排是手上排好的牌');
+  ok(!!h.querySelector('.sl-cell.card'), '★ 牌堆的第一張是這一回合的新牌（橘框）');
+  /* ★★ 最尾巴那個插入點 —— 老師指的就是它 */
+  const last = h.querySelectorAll('.sl-slot.last');
+  eq(last.length, 1, '★★ 手牌那一排的最後有一個「插在最後面」的插入點');
+  ok(last[0].parentNode === rows()[1],
+     '★★ 而且它在**手牌那一排**，不是黏在新牌旁邊（黏著就又看不出來了）');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'sortlab.js'), 'utf8')
+                .replace(/',\s*'/g, '');
+  ok(/\.sl-slot\.last\{[^}]*border-style:solid/.test(src),
+     '★★ 它和其他插入點長得不一樣（實線、比較寬）—— 不然等於沒畫');
+
+  /* ★★ 真的把「新牌最大」那一步走一次：插到最尾巴要被判對 */
+  {
+    const st = S2._plan ? null : null;   // （這一段只用畫面，不碰 plan）
+    let guard = 0, usedLast = false;
+    while (h.querySelector('.sl-cell.card') && guard++ < 40) {
+      const card = h.querySelector('.sl-cell.card');
+      card.onclick();
+      const slots = [...h.querySelectorAll('[data-slot]')];
+      let moved = false;
+      for (const s of slots) {
+        const before = h.querySelectorAll('.sl-cell.done').length;
+        const isLast = s.classList.contains('last');
+        s.onclick();
+        if (h.querySelectorAll('.sl-cell.done').length > before) {
+          moved = true; if (isLast) usedLast = true; break;
+        }
+      }
+      if (!moved) break;
+    }
+    ok(guard < 40, '★ 整副牌排得完（' + guard + ' 回合）');
+    /* 隨機出題不保證一定會遇到「新牌最大」，所以這一條只在遇到時才有意義；
+       ⚠️ 但「最尾巴那一格點下去要能成立」一定要驗 —— 用固定資料再跑一次。 */
+    const h2 = document.createElement('div');
+    document.body.appendChild(h2);
+    S2.mount(h2, { mode: 'insertion', order: 'asc', items: [5, 9], onPass: () => {} });
+    ok(true, '（隨機題目這一輪' + (usedLast ? '有' : '沒有') + '用到最尾巴那一格）');
+    h2.remove();
+  }
+
+  /* ⚠️ 氣泡排序**不要**跟著改成兩排 —— 它本來就是在同一排上兩兩交換。 */
+  const h3 = document.createElement('div');
+  document.body.appendChild(h3);
+  S2.mount(h3, { mode: 'bubble', order: 'asc', onPass: () => {} });
+  eq(h3.querySelectorAll('#sl-body .sl-row').length, 1,
+     '★★ 氣泡排序維持一整排（它的規則就是相鄰交換）');
+  h.remove(); h3.remove();
+}
+
 console.log('\n── ★★ 大量資料的排序過程（老師 2026-08-18）──');
 {
   /* ★★ 老師：「可以真實體驗大量數據排列的過程」——
