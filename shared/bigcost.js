@@ -289,10 +289,15 @@
     '.bc-plans .fee{font-size:19px;font-weight:900;color:#b45309;',
     '  font-family:ui-monospace,monospace}',
     '.bc-plans .sub{font-size:11.5px;color:#94a3b8;line-height:1.6}',
-    /* 範圍條（插入排序：它不是一個數字，是一段範圍）*/
+    /* ── 範圍條（插入排序：它不是一個數字，是一段範圍）──────
+       ⚠️ 老師 2026-08-18：「怎麼空白在前面？」——
+          兩段都**從 0 起算**、疊在一起畫，前面就不會空。
+          淡的那一段在下、實的那一段疊上去，交界處那條線就是「最好情況」。 */
     '.bc-line .track{position:relative}',
-    '.bc-line .fill.rng{position:absolute;top:0;bottom:0;opacity:.75}',
-    '.bc-line .dot{position:absolute;top:0;bottom:0;width:3px;border-radius:2px}',
+    '.bc-line .fill.soft{position:absolute;left:0;top:0;bottom:0;opacity:.30}',
+    '.bc-line .fill.hard{position:absolute;left:0;top:0;bottom:0}',
+    '.bc-line .edge{position:absolute;top:0;bottom:0;width:2px;background:#fff;',
+    '  box-shadow:0 0 0 1px rgba(15,23,42,.25)}',
     /* ── 目標橫幅（老師 2026-08-18：「太開放式了，感覺會亂按」）──
        ★ 「還差幾次」要現算 —— 有數字在跳，學生才知道自己在往哪裡走。 */
     '.bc-goal{display:flex;justify-content:space-between;align-items:center;gap:10px;',
@@ -530,18 +535,29 @@
          ⚠️ 插入排序沒有**一個**數字，它是一段範圍（n−1 ～ n(n−1)/2）——
             所以那一條畫成範圍條，不是一根實心的。
             寫一個平均值會讓學生以為它也是固定的，那正好是這一關要打破的。 */
-      /* 一段**範圍**的條（插入排序用）——
+      /* 一段**範圍**的條（插入排序用）。
          ⚠️ 不可以只畫最壞或只畫平均：
-            「它有一段範圍」本身就是第 7 關的答案。 */
+            「它有一段範圍」本身就是第 7 關的答案。
+         ⚠️⚠️ 老師 2026-08-18：「插入排序法的長條圖怎麼空白在前面？」
+            —— 第一版把它畫成**浮在中間的區段**（left: lo%），
+            於是最前面空一截，看起來像沒對齊。
+            而且那樣畫是**錯的**：成本是從 0 開始累加的，
+            浮在中間會讓人以為「它最少也要從那裡起跳」。
+         ⇒ 改成一條**從 0 開始**的兩段式：
+              實心那段 = 最好情況（一定要付的）
+              淡色那段 = 一路延伸到最壞情況（看資料長相）
+            交界處畫一條分隔線，看得出「這裡是最好情況」。 */
       var rangeRow = function (icon, name, from, lo, hi, max, color, note) {
-        var l = Math.max(0.6, lo / max * 100), h = Math.max(1.2, hi / max * 100);
+        var l = Math.max(1.5, lo / max * 100);      // 最好情況（實心）
+        var h = Math.max(l + 1, hi / max * 100);    // 最壞情況（淡色的盡頭）
         return '<div class="bc-line">' +
           '<div class="lh"><span class="nm">' + icon + ' ' + name + '</span>' +
           '<span class="src">' + from + '</span></div>' +
-          '<div class="lb2"><span class="track"><span class="fill rng" style="left:' +
-          l + '%;width:' + Math.max(0.6, h - l) + '%;background:' + color +
-          '"></span><span class="dot" style="left:' + l + '%;background:' + color +
-          '"></span></span>' +
+          '<div class="lb2"><span class="track">' +
+          '<span class="fill soft" style="width:' + h + '%;background:' + color + '"></span>' +
+          '<span class="fill hard" style="width:' + l + '%;background:' + color + '"></span>' +
+          '<span class="edge" style="left:' + l + '%"></span>' +
+          '</span>' +
           '<span class="vv">' + comma(lo) + '～' + comma(hi) + '</span></div>' +
           '<div class="nt">' + note + '</div></div>';
       };

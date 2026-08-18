@@ -157,8 +157,20 @@ section('★★ 兩段走得完（老師 2026-08-18：實作體驗太弱了）')
   eq(lines.length, 4, '★★ 四條橫條：選擇排序、插入排序、循序搜尋、二元搜尋');
   ok(/選擇排序/.test(lines[0].textContent) && /插入排序/.test(lines[1].textContent),
      '★★ 兩種排序法都有（第 6 關、第 7 關各一條）');
-  ok(!!lines[1].querySelector('.fill.rng'),
-     '★★ 插入排序那一條畫成**範圍**（不是一根實心的）');
+  /* ⚠️⚠️ 老師 2026-08-18：「插入排序法的長條圖怎麼空白在前面？」
+     第一版把它畫成**浮在中間的區段**（left: lo%）——
+     最前面空一截，看起來像沒對齊；而且那樣畫是**錯的**：
+     成本是從 0 開始累加的，浮在中間會讓人以為「它最少也要從那裡起跳」。
+     ⇒ 兩段都從 0 起算，疊著畫：實心＝最好情況、淡色＝一路到最壞。 */
+  const segs = [...lines[1].querySelectorAll('.fill')];
+  eq(segs.length, 2, '★★ 插入排序那一條是**兩段**（最好情況＋一路到最壞）');
+  ok(segs.every(x => !x.style.left || x.style.left === '0px' || x.style.left === '0'),
+     '★★ 兩段都**從 0 開始**（前面不可以留白）');
+  const wLo = parseFloat(segs.filter(x => /hard/.test(x.className))[0].style.width);
+  const wHi = parseFloat(segs.filter(x => /soft/.test(x.className))[0].style.width);
+  ok(wHi > wLo, '★ 淡色那段（最壞）比實心那段（最好）長');
+  ok(!!lines[1].querySelector('.edge'),
+     '★ 交界處有一條線 —— 看得出「這裡是最好情況」');
   ok(/99～4,950|99～4,950/.test(lines[1].querySelector('.vv').textContent),
      '★★ 而且標出兩端（' + lines[1].querySelector('.vv').textContent + '）');
   const w = i => parseFloat((lines[i].querySelector('.fill') || {}).style.width);
