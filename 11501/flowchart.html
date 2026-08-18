@@ -12,6 +12,42 @@
     .pop{animation:pop .35s ease-out both}
     @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
     .shake{animation:shake .3s}
+    /* ── 關卡小卡（2026-08-17：對齊下學期的層次，再補一點設計）──
+       ★ 克制為主：這一頁要投影、也要在手機上讀得到。
+         裝飾只做三件事 —— 左緣的關卡色帶、卡片進場的時間差、
+         完成時的綠色光暈。其餘留白。
+       ⚠️ 色帶用 border-left 就好，不要背景漸層 ——
+          投影機把淡色漸層打出來是一片糊的。 */
+    .unit-btn{border-left-width:6px}
+    .unit-btn.c-blue{border-left-color:#60a5fa}
+    .unit-btn.c-cyan{border-left-color:#22d3ee}
+    .unit-btn.c-purple{border-left-color:#a78bfa}
+    .unit-btn.c-green{border-left-color:#4ade80}
+    .unit-btn.c-orange{border-left-color:#fb923c}
+    .unit-btn.c-red{border-left-color:#f87171}
+    .unit-btn.c-indigo{border-left-color:#818cf8}
+    .unit-btn.c-slate{border-left-color:#94a3b8}
+    .unit-btn.c-yellow{border-left-color:#facc15}
+    .unit-btn.c-amber{border-left-color:#fbbf24}
+    .unit-btn.locked{border-left-color:#cbd5e1}
+    /* 進場的時間差：一張一張浮上來，不是十張同時閃出來。
+       ⚠️ 上限 10 —— 再多會讓最後一張等超過一秒，那就變成卡頓感。 */
+    .unit-btn{animation:pop .35s ease-out both}
+    .unit-btn:nth-child(1){animation-delay:.02s}
+    .unit-btn:nth-child(2){animation-delay:.05s}
+    .unit-btn:nth-child(3){animation-delay:.08s}
+    .unit-btn:nth-child(4){animation-delay:.11s}
+    .unit-btn:nth-child(5){animation-delay:.14s}
+    .unit-btn:nth-child(6){animation-delay:.17s}
+    .unit-btn:nth-child(7){animation-delay:.20s}
+    .unit-btn:nth-child(8){animation-delay:.23s}
+    .unit-btn:nth-child(9){animation-delay:.26s}
+    .unit-btn:nth-child(n+10){animation-delay:.29s}
+    /* ⚠️ 會暈車的人要能關掉 —— 系統設定裡開了「減少動態效果」就不要動。 */
+    @media (prefers-reduced-motion:reduce){
+      .unit-btn{animation:none}
+      .unit-btn:hover{transform:none}
+    }
   </style>
 <style>
 /* === 全站紙膠帶手作風套件（以 hub 為準，勿重複注入） === */
@@ -717,30 +753,63 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         const progStarTotal = Object.values(state.progStars||{}).reduce((a,b)=>a+(Number(b)||0),0);
         const progDoneCount = Object.values(state.progStars||{}).filter(v=>Number(v)>0).length;
         const openTo = openUpTo();
+        /* ── 關卡小卡 ─────────────────────────────────────────
+           ⚠️⚠️ 2026-08-17 老師：「比起 11502，11501 的入口小卡過於簡約，
+              少了資訊提示與設計感？」——查下來有一個現成的浪費：
+              **關卡資料裡本來就有一整段 desc**（「用『清單（陣列）』當成
+              班級置物櫃，練習清單專屬積木…」），而卡片只印了一行 subtitle，
+              還加了 truncate 會被截斷。★ 資訊早就在，只是沒放上去。
+           ★ 改成和下學期同一套層次（三層 ＋ 右側星星欄 ＋ 底部行動提示）：
+              ① 標籤列：第 N 關 · 代號
+              ② 標題 ＋ 完整說明（desc，不截斷）
+              ③ 右側兩軌星星，各自一列（🧩 流程圖／🐱 程式）
+              ④ 底部一句「現在該做什麼」
+           ★ 但**不是照抄**：11501 有三樣下學期沒有的東西要留著 ——
+              icon 方塊、關卡代號、還有「直接去程式設計」捷徑
+              （那個捷徑解決的是「流程圖排完了要去哪裡」這個真問題）。
+           ⚠️ 鎖住的卡仍然點得到 —— 點了要說明為什麼還沒開，
+              不是一張死掉的灰卡。 */
         const cards = UNITS.map(u=>{
           const done = !!state.done[u.id];
           const c = COLORS[u.color] || COLORS.purple;
           const open = u.no <= openTo;
-          const cleared = GATE.cleared(u.id, state.done, state.progStars);
-          // 鎖住的關卡仍然點得到（要顯示原因），只是變灰、不上浮
-          const shell = open
-            ? `bg-white ${cleared?'border-emerald-300':'border-slate-200'} shadow-sm hover:shadow-lg hover:-translate-y-1`
-            : 'bg-slate-100 border-slate-200 opacity-70 cursor-not-allowed';
+          const st = Number((state.progStars||{})[u.id]||0);
+          const both = done && st >= 2;          // 兩軌都完成（程式要 2⭐ 以上）
+          /* 外框：完成的關卡給綠框＋光暈，和下學期一致；沒開的維持灰卡。 */
+          const shell = !open
+            ? 'bg-slate-100 border-slate-200 opacity-70 cursor-not-allowed'
+            : both
+              ? 'bg-white border-emerald-300 ring-2 ring-emerald-100 shadow-sm hover:shadow-lg hover:-translate-y-1'
+              : 'bg-white border-slate-200 shadow-sm hover:border-purple-300 hover:shadow-lg hover:-translate-y-1';
+          /* 兩軌各一列。★ 右對齊成一欄，一眼看得出「這一關拿了幾顆」。 */
+          const track = (icon, label, on, txt, cls) =>
+            `<span class="block text-sm font-black whitespace-nowrap ${on?cls:'text-slate-300'}" title="${label}">${icon} ${txt}</span>`;
+          const progTxt = st>0 ? '★'.repeat(st)+'☆'.repeat(3-st)
+                        : (state.progDone[u.id] ? '未達 2⭐' : '☆☆☆');
+          /* 底部那一句：講「現在該做什麼」，不是講狀態。
+             ⚠️ 三種狀態三句話 —— 學生看的是下一步，不是形容詞。 */
+          const nextLine = !open ? '🔒 完成前一關才會開啟'
+            : both ? '✅ 兩軌都完成了，點進去可以重做'
+            : done ? '🐱 流程圖排好了 —— 接著去寫程式'
+                   : '👉 點進去排流程圖';
           return `
-            <button data-unit="${u.no}" class="unit-btn text-left rounded-2xl border-2 ${shell} transition p-4 flex items-center gap-4 relative overflow-hidden">
-              <div class="w-14 h-14 rounded-2xl ${open?c.split(' ').slice(0,2).join(' '):'bg-slate-200'} flex items-center justify-center text-2xl flex-shrink-0 border ${open?c.split(' ')[2]:'border-slate-300'}">${open?u.icon:'🔒'}</div>
-              <div class="flex-1 min-w-0">
-                <div class="text-[11px] text-slate-400 font-mono">第 ${u.no} 關 · ${u.id}</div>
-                <div class="font-black leading-tight ${open?'':'text-slate-400'}">${u.title}</div>
-                <div class="text-xs text-slate-500 truncate">${open?u.subtitle:'完成前一關才會開啟'}</div>
-                <div class="text-xs mt-0.5 font-bold flex flex-wrap gap-x-2">
-                  <span class="${done?'text-emerald-600':'text-slate-300'}">${done?`✓ 流程圖 +${STARS_PER_UNIT}⭐`:'○ 流程圖'}</span>
-                  ${(() => { const st = Number((state.progStars||{})[u.id]||0);
-                     if(st>0) return `<span class="text-orange-500">🐱 程式 ${'★'.repeat(st)} +${st}⭐</span>`;
-                     return `<span class="${state.progDone[u.id]?'text-amber-500':'text-slate-300'}">${state.progDone[u.id]?'🐱 程式未達 2⭐':'○ 程式'}</span>`; })()}
+            <button data-unit="${u.no}" class="unit-btn ${open?'c-'+u.color:'locked'} text-left rounded-2xl border-2 ${shell} transition p-4 relative overflow-hidden">
+              <span class="absolute right-3 top-2 text-5xl font-black text-slate-900/5 select-none pointer-events-none">${String(u.no).padStart(2,'0')}</span>
+              <div class="flex items-start gap-3">
+                <div class="w-12 h-12 rounded-2xl ${open?c.split(' ').slice(0,2).join(' '):'bg-slate-200'} flex items-center justify-center text-2xl flex-shrink-0 border ${open?c.split(' ')[2]:'border-slate-300'}">${open?u.icon:'🔒'}</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-[11px] text-slate-400 font-mono">第 ${u.no} 關 · ${u.id}</div>
+                  <div class="font-black text-lg leading-tight ${open?'':'text-slate-400'}">${u.title}</div>
                 </div>
-                ${(open && done)?`<span data-prog="${u.no}" class="go-prog inline-block mt-1.5 text-[11px] font-black bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1 rounded-full transition">🐱 直接去程式設計 →</span>`:''}
+                <div class="text-right flex-shrink-0 relative">
+                  ${track('🧩','流程圖：排對就 +'+STARS_PER_UNIT+'⭐',done,done?'★★★':'☆☆☆','text-emerald-500')}
+                  ${track('🐱','程式設計：上傳作品，AI 批改給的',st>0,progTxt,'text-amber-500')}
+                </div>
               </div>
+              <p class="mt-2 text-sm leading-relaxed ${open?'text-slate-600':'text-slate-400'}">${
+                open ? (u.desc || u.subtitle || '') : '完成前一關才會開啟'}</p>
+              <p class="mt-3 text-xs font-bold ${both?'text-emerald-600':open?'text-purple-600':'text-slate-400'}">${nextLine}</p>
+              ${(open && done && !both)?`<span data-prog="${u.no}" class="go-prog inline-block mt-2 text-[11px] font-black bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1 rounded-full transition">🐱 直接去程式設計 →</span>`:''}
             </button>`;
         }).join('');
         el.innerHTML = `
