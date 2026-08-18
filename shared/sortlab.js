@@ -596,9 +596,26 @@
           出錯一定要排最後，不然閃爍會被別的狀態蓋掉。 */
     '.sl-cell.done{border-color:#34d399;background:#dcfce7;color:#166534;cursor:default}',
     '.sl-cell.done:hover{background:#dcfce7}',
-    /* 橘框＝這一回合要處理的那一張新牌（INFO.insertion.rule 講的就是它） */
-    '.sl-cell.card{border-color:#f97316;background:#fff7ed;color:#9a3412}',
-    '.sl-cell.sel{border-color:#6366f1;background:#e0e7ff;color:#3730a3;transform:translateY(-3px)}',
+    /* ── 這一回合要處理的那一張新牌 ─────────────────────
+       ⚠️⚠️ 老師 2026-08-18：「『這一回合要處理的是橘框那一張新牌』
+          但是並沒有亮橘框，只有外框造型不同。」
+          —— 原本只是 2px 的橘邊＋很淡的底色（#fff7ed）。
+          那個底色和白色差不到哪裡去，在投影機上更是完全看不出來；
+          旁邊的「已排好」是**綠底**，對比之下橘的那張看起來只是「沒有顏色」。
+       ★ 訊息裡指名「橘框那一張」，畫面上就必須真的有一張是橘的 ——
+         **文字說的和畫面看到的要是同一件事**。
+       ⇒ 實心橘底、白字、加粗邊、微微浮起，而且掛一個「這張」的小標。 */
+    '.sl-cell.card{border-color:#c2410c;background:#f97316;color:#fff;',
+    '  box-shadow:0 3px 0 #c2410c;transform:translateY(-2px);position:relative}',
+    '.sl-cell.card:hover{background:#ea580c;border-color:#9a3412}',
+    /* 小標：告訴他「就是這一張」—— 顏色再明顯，也要有字說清楚 */
+    '.sl-cell.card::after{content:"這張";position:absolute;top:-15px;left:50%;',
+    '  transform:translateX(-50%);font-size:10px;font-weight:900;color:#c2410c;',
+    '  background:#ffedd5;border-radius:9999px;padding:1px 6px;white-space:nowrap}',
+    /* ⚠️ 這一條要把 .card 的橘色陰影也換掉 ——
+       只換底色的話，點下去會變成「靛藍的牌配橘色的影子」，看起來像沒畫完。 */
+    '.sl-cell.sel{border-color:#4338ca;background:#e0e7ff;color:#3730a3;',
+    '  transform:translateY(-3px);box-shadow:0 3px 0 #4338ca}',
     /* ⚠️ 出錯用**紅色**，不要用琥珀色 —— 琥珀和橘框太像，
        學生會分不出「這是要處理的那張」和「你點錯了」。 */
     '.sl-cell.bad{border-color:#ef4444;background:#fee2e2;color:#991b1b}',
@@ -797,15 +814,33 @@
       auto();
       var nb = host.querySelector('#sl-new');
       if (nb) nb.onclick = function () {
-        items = makeItems(opts.size || 6, order);
-        unsorted = items.slice(); done = []; arr = items.slice();
-        boundary = 1; sel = null; round = 0;
+        newItems();
         /* ⚠️ 挑戰開著的時候不要把 passed 清掉 ——
            清掉的話 finish() 會再跑一次 openTest()，挑戰就被重置了。 */
         if (!lvNow) passed = false;
         errs = 0;                    // 新的一題，失誤重新算
         render();
       };
+    }
+
+    /* ── 換一組新資料 ────────────────────────────────────
+       ⚠️⚠️ 老師 2026-08-18：搜尋那兩關「過了第一關後換題會是相同數字」，
+          「選擇排序法忘了加上這個規則」。
+       ★ 兩件事要一起做，少一件都還是會被學生看成「沒換」：
+         ① 新的一組**不可以和上一組一樣**（隨機沒有這個保證）
+         ② 挑戰要換題的時候**系統自己換** —— 見 finish() 裡的說明。
+       ⚠️ 重抽有次數上限：抽不到就算了。
+          寧可偶爾重複，也不要為了「一定不一樣」卡在迴圈裡。 */
+    function newItems() {
+      var was = items.join(',');
+      var a = null;
+      for (var t = 0; t < 12; t++) {
+        a = makeItems(opts.size || 6, order);
+        if (a.join(',') !== was) break;
+      }
+      items = a;
+      unsorted = items.slice(); done = []; arr = items.slice();
+      boundary = 1; sel = null; round = 0;
     }
 
     function body() {
@@ -1361,7 +1396,9 @@
           cleared[2] = true; lvNow = 3;
           tsay('good', '整題零失誤 ⭐⭐<br>最後一關：不必真的排，直接算給我看。');
         } else {
-          tsay('bad', '這一題點錯了 ' + errs + ' 次。按「🎲 換一題」再挑戰一次。');
+          var n = errs;
+          newItems(); errs = 0;      // 同上：系統自己換，不要叫他去按按鈕
+          tsay('bad', '這一題點錯了 ' + n + ' 次。<b>已經換了一組新的</b>，再挑戰一次。');
         }
         return;
       }
@@ -1423,6 +1460,16 @@
       freePassed = true;
       if (!global.LABTEST) { finishAll(); return; }
       lvNow = 1;
+      /* ⚠️⚠️ 開挑戰之前一定要換一組新的，有兩個理由：
+         ① 第 1 關問「上面那 N 筆用這個排序法要比幾次」——
+            但畫面上那一排是他**剛剛排好的結果**，不是原始順序。
+            對插入排序來說這兩個數字差很多（已排好只要 n−1 次），
+            題目和畫面指的不是同一件事，而**兩邊都沒有寫出來**。
+            （選擇排序剛好都是 n(n−1)/2，所以這個錯一直沒被發現。）
+         ② 他才剛用手排完那一組，次數等於是他自己數過的 —— 這一關就白出了。
+         ⇒ 換一組沒排過的，題目、畫面、自動播放三邊指的才是同一組資料。 */
+      newItems();
+      errs = 0;
       render();
     }
     function finishAll() {
@@ -1442,16 +1489,23 @@
       var head = '<div class="lt-box"><div class="h">' + L.icon +
                  ' 驗收挑戰 ' + lvNow + '／3　' + L.name + '（目前 ' + stars() + ' ★）</div>';
       if (lvNow === 1) {
+        /* ⚠️ 不可以寫「上面那 N 筆」——
+           插入排序的畫面是**兩排**（牌堆在上、手牌在下），
+           由上往下讀到的順序**不是**原始順序，
+           而這一關的答案跟原始順序有關（插入排序看資料長相）。
+           ⇒ 直接把那一組數字印出來，題目和畫面就不會各講各的。 */
         box.innerHTML = head +
-          '<div class="q">上面那 <b>' + items.length + '</b> 筆資料，用<b>' + info.name +
-          '</b>排好，總共要<b>比幾次</b>？' +
+          '<div class="q">這一組 <b>' + items.length + '</b> 筆資料：' +
+          '<b style="color:#4338ca">' + items.map(esc).join('、') + '</b><br>' +
+          '用<b>' + info.name + '</b>排好，總共要<b>比幾次</b>？' +
           '<br><span style="font-size:12.5px">想不出來？下面的自動播放會幫你數 ——' +
           '但先自己猜一個。</span></div>' +
           '<div class="row"><input id="sl-g" type="number" min="1" placeholder="次數">' +
           '<button data-g="1">送出預測</button></div></div>';
       } else if (lvNow === 2) {
         box.innerHTML = head +
-          '<div class="q">按「🎲 換一題」拿一組新的，<b>全程不能點錯</b>。' +
+          '<div class="q">這是<b>新的一組</b>（系統已經幫你換好了）。' +
+          '<b>全程不能點錯</b> —— 點錯的話排完會自動再換一組。' +
           '<br>目前這一題已經錯了 <b>' + errs + '</b> 次。</div></div>';
       } else {
         box.innerHTML = head +
@@ -1476,8 +1530,13 @@
         var real = plan(items, mode, order).compares;
         if (v === real) {
           cleared[1] = true; lvNow = 2; errs = 0;
+          /* ⚠️ 以前這裡寫「按🎲換一題拿一組新的」—— 叫學生自己去按。
+             他忘了按的話，手上那一題**已經排好了**，怎麼點都沒反應；
+             而畫面上寫著「全程不能點錯」，他只會覺得系統壞了。
+             ⇒ 系統自己換。訊息說換了，那就真的換了。 */
+          newItems();
           tsay('good', '猜中了 —— 真的是 <b>' + real + '</b> 次 ⭐<br>' +
-                       '下一關：按「🎲 換一題」拿一組新的，<b>全程不能點錯</b>。');
+                       '下一關：<b>已經換了一組新的</b>，這一次<b>全程不能點錯</b>。');
         } else {
           tsay('bad', '你猜 ' + v + '，實際是 <b>' + real + '</b> 次。' +
                       '<br>用下面的自動播放按「下一步」數一遍，看看差在哪 —— 然後再猜一次。');

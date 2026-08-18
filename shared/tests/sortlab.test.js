@@ -418,12 +418,23 @@ if (!JSDOM) {
     dom.window.document.body.appendChild(host);
     let badge = null;
     const sim = SL.mount(host, { mode: 'selection', order: 'asc', onPass: b => { badge = b; } });
-    const solve = () => { for (let k = 0; k < 40; k++) {
-      const c = [...host.querySelectorAll('[data-i]')];
-      if (!c.length) return;
-      const v = c.map(x => Number(x.textContent));
-      c[v.indexOf(Math.min(...v))].onclick(); } };
-
+    /* 排完**這一組**就停。
+       ⚠️ 2026-08-18 之後，挑戰每一關結束時系統會自己換一組
+          （老師：「選擇排序法忘了加上這個規則」那一條的修法）。
+          不停的話這個迴圈會把新的一組也排完 ——
+          於是「點錯了要擋下來」讀到的其實是下一組的零失誤訊息。
+       ★ 最可靠的停止訊號是**挑戰的回饋文字**：
+         它只在一關結算的那一刻才會變。 */
+    const tsay = () => (host.querySelector('#sl-tsay') || {}).textContent || '';
+    const solve = () => {
+      const was = tsay();
+      for (let k = 0; k < 40; k++) {
+        const c = [...host.querySelectorAll('#sl-body [data-i]')];
+        if (!c.length) return;
+        const v = c.map(x => Number(x.textContent));
+        c[v.indexOf(Math.min(...v))].onclick();
+        if (tsay() !== was) return;      // 這一關結算了 → 停
+      } };
     solve();
     ok(!!host.querySelector('.lt-box'), '★ 手動排完 → 挑戰出現');
     ok(/驗收挑戰 1／3/.test(host.textContent), '   從第 1 關開始');
@@ -467,11 +478,21 @@ if (!JSDOM) {
     dom.window.document.body.appendChild(host);
     let badge = null;
     const sim = SL.mount(host, { mode: 'selection', order: 'asc', onPass: b => { badge = b; } });
-    const solve = () => { for (let k = 0; k < 40; k++) {
-      const c = [...host.querySelectorAll('[data-i]')];
-      if (!c.length) return;
-      const v = c.map(x => Number(x.textContent));
-      c[v.indexOf(Math.min(...v))].onclick(); } };
+    /* 排完**這一組**就停 —— 挑戰每一關結算時系統會自己換一組
+       （老師 2026-08-18：「選擇排序法忘了加上這個規則」的修法）。
+       ★ 最可靠的停止訊號是**挑戰的回饋文字**：它只在結算那一刻才變。
+       ⚠️ 不停的話這個迴圈會把新的一組也排完，
+          「點錯了要擋下來」讀到的就會是下一組的零失誤訊息。 */
+    const tsay = () => (host.querySelector('#sl-tsay') || {}).textContent || '';
+    const solve = () => {
+      const was = tsay();
+      for (let k = 0; k < 40; k++) {
+        const c = [...host.querySelectorAll('#sl-body [data-i]')];
+        if (!c.length) return;
+        const v = c.map(x => Number(x.textContent));
+        c[v.indexOf(Math.min(...v))].onclick();
+        if (tsay() !== was) return;
+      } };
     solve();
     /* 過第 1 關 */
     host.querySelector('#sl-g').value = 1;
@@ -782,6 +803,114 @@ console.log('\n── ★★ 插入排序的手動挑戰也要兩排（老師 20
   eq(h3.querySelectorAll('#sl-body .sl-row').length, 1,
      '★★ 氣泡排序維持一整排（它的規則就是相鄰交換）');
   h.remove(); h3.remove();
+}
+
+console.log('\n── ★★ 挑戰要換題就自己換（老師 2026-08-18）──');
+{
+  /* ★★ 老師：「二元搜尋法過了第一關後，換題會是相同數字，這是 bug？
+     循序搜尋也是相同狀況。**選擇排序法忘了加上這個規則**。」
+     ⚠️ 病根不是亂數，是**畫面說了、系統沒做**：
+        訊息寫「按🎲換一題拿一組新的」，但系統自己不換。
+        學生忘了按 → 手上那一組**已經被他排好了** → 怎麼點都沒反應，
+        而畫面上寫著「全程不能點錯」—— 他只會覺得系統壞了。
+     ⇒ 每一關結算的時候系統自己換，而且新的一組不可以和舊的一樣。 */
+  /* ⚠️ 一定要用**載過 labtest.js 的那個 window** ——
+     檔案最上面那份 W 只有 sortlab，openTest() 看到 !LABTEST 就直接放行，
+     挑戰整段根本不會出現，而斷言只會說「挑戰沒出現」，
+     看起來像功能壞了，其實是環境沒備好。 */
+  const W3 = {};
+  ['shared/labtest.js', 'shared/sortlab.js'].forEach(f =>
+    new Function('window', fs.readFileSync(path.join(__dirname, '..', '..', f), 'utf8'))(W3));
+  W3.document = document;
+  const S2 = W3.SORTLAB;
+  const h = document.createElement('div');
+  document.body.appendChild(h);
+  S2.mount(h, { mode: 'selection', order: 'asc', onPass: () => {} });
+  const cells = () => [...h.querySelectorAll('#sl-body .sl-row')][0]
+    .querySelectorAll('[data-i]');
+  const tsay = () => (h.querySelector('#sl-tsay') || {}).textContent || '';
+  const solve = () => {
+    const was = tsay();
+    for (let k = 0; k < 40; k++) {
+      const c = [...cells()];
+      if (!c.length) return;
+      const v = c.map(x => Number(x.textContent));
+      c[v.indexOf(Math.min(...v))].onclick();
+      if (tsay() !== was) return;
+    } };
+  const listOf = () => {
+    const m = (h.querySelector('#sl-test .q') || {}).textContent || '';
+    return (m.match(/：([\d、]+)/) || ['', ''])[1];
+  };
+  solve();
+  ok(/驗收挑戰 1／3/.test(h.textContent), '自由玩排完 → 挑戰出現');
+
+  /* ⚠️ 第 1 關**不可以**用他剛剛排好的那一組：
+     ① 次數等於他自己剛數過的，這一關白出
+     ② 而且畫面上是**排好之後**的順序，題目問的卻是原始順序 ——
+        對插入排序來說那是兩個完全不同的數字。 */
+  const q1 = listOf();
+  ok(!!q1, '★★ 第 1 關把那一組數字**印出來**（不再說「上面那 N 筆」）');
+  const arr1 = q1.split('、').map(Number);
+  /* ⚠️⚠️ 這一條才是重點：**題目印的那一組，要和畫面上那一組是同一組**。
+     ★ 第一版寫成「題目那一組不是排好的」—— 那擋不住任何東西：
+       items 從頭到尾就是原始順序，手排只動 unsorted／done，
+       所以就算不換題，題目照樣印出一組沒排過的數字（突變測試才發現）。
+     ⇒ 沒換題的話，畫面上是**他剛排好的結果**、題目印的是**原始順序**，
+       兩邊對不起來 —— 而對插入排序來說那是兩個差很多的數字。 */
+  const onBoard = [...cells()].map(x => x.textContent).join('、');
+  eq(onBoard, q1,
+     '★★ 題目印的那一組，就是畫面上等他排的那一組（沒換題的話這兩個會不一樣）');
+  ok([...cells()].length === arr1.length,
+     '★ 而且是完整的一組（不是他剛排完剩下的空殼）');
+  const real = S2._plan(arr1, 'selection', 'asc').compares;
+  h.querySelector('#sl-g').value = real;
+  h.querySelector('[data-g="1"]').onclick();
+  ok(/猜中了/.test(tsay()), '★★ 猜題目上那一組的次數 → 過（題目和答案是同一組）');
+  ok(/已經換了一組/.test(tsay()), '★★ 而且直說「已經換了一組」，不是叫他自己去按');
+  const now = [...cells()].map(x => x.textContent).join(',');
+  ok(now.split(',').length === arr1.length,
+     '★★ 第 2 關的資料是完整的一組（不是剛才排到一半的殘局）');
+  ok(now !== arr1.join(','), '★★ 而且和第 1 關那一組不一樣');
+
+  /* ★ 換題保證不重複 —— 連按 20 次都不該拿到和上一組一樣的 */
+  let same = 0;
+  for (let i = 0; i < 20; i++) {
+    const before = [...cells()].map(x => x.textContent).join(',');
+    h.querySelector('#sl-new').onclick();
+    if ([...cells()].map(x => x.textContent).join(',') === before) same++;
+  }
+  eq(same, 0, '★★ 連按 20 次「換一題」，沒有一次拿到和上一組一樣的');
+  h.remove();
+}
+
+console.log('\n── ★★ 橘框要真的是橘的（老師 2026-08-18）──');
+{
+  /* ★ 老師：「『這一回合要處理的是橘框那一張新牌』，
+     但是並沒有亮橘框，只有外框造型不同。」
+     ⚠️ 原本只有 2px 橘邊＋幾乎看不出來的淡底（#fff7ed）；
+        旁邊的「已排好」是**綠底**，一比之下橘的那張看起來只是「沒顏色」。
+     ★ 訊息指名「橘框那一張」，畫面上就必須真的有一張是橘的 ——
+       **文字說的和畫面看到的要是同一件事**。 */
+  const src = fs.readFileSync(path.join(__dirname, '..', 'sortlab.js'), 'utf8')
+                .replace(/',\s*'/g, '');
+  ok(/\.sl-cell\.card\{[^}]*background:#f97316/.test(src),
+     '★★ 新牌是**實心橘底**（不是淡到看不見的底色）');
+  ok(/\.sl-cell\.card\{[^}]*color:#fff/.test(src), '★ 白字（實心底就要換字色）');
+  ok(/\.sl-cell\.card::after\{[^}]*content:"這張"/.test(src),
+     '★★ 而且掛一個「這張」的小標 —— 顏色再明顯也要有字說清楚');
+  /* ⚠️ 點選中（.sel）要排在 .card 後面，而且要把橘色陰影也換掉 */
+  ok(src.indexOf('.sl-cell.card{') < src.indexOf('.sl-cell.sel{'),
+     '★★ .sel 排在 .card 後面（不然點下去畫面不會變）');
+  ok(/\.sl-cell\.sel\{[^}]*box-shadow/.test(src),
+     '★ .sel 也換掉陰影（不然是靛藍的牌配橘色的影子）');
+
+  const S2 = W.SORTLAB;
+  const h = document.createElement('div');
+  document.body.appendChild(h);
+  S2.mount(h, { mode: 'insertion', order: 'asc', onPass: () => {} });
+  eq(h.querySelectorAll('.sl-cell.card').length, 1, '★ 畫面上剛好一張新牌');
+  h.remove();
 }
 
 console.log('\n── ★★ 大量資料的排序過程（老師 2026-08-18）──');

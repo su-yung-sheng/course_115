@@ -832,14 +832,33 @@
         usedMiss = true;
         reset(makeCase({ mode: mode, course: 'miss' }));
       } else {
-        /* ⚠️ 一定要把 course 拿掉，不然又回到同一題。 */
-        var o = {};
-        for (var k in opts) if (k !== 'course') o[k] = opts[k];
-        reset(makeCase(o));
+        reset(freshCase());
       }
       dAt = -1; dSteps = null;      // 換題就把示範收起來
       errs = 0;                     // 新的一題，失誤重新算
       render();
+    }
+
+    /* ── 一定要和「上一題」不一樣的新題目 ──────────────────
+       ⚠️⚠️ 老師 2026-08-18：「二元搜尋法過了第一關後，換題會是相同數字」
+          —— 兩個原因疊在一起：
+          ① 課本那一題會出現**兩次**（找得到／找不到用同一列資料，那是刻意的），
+             但那是給**自由玩**的。走到驗收挑戰還拿到它就變成「怎麼又是這題」。
+          ② 隨機出題完全沒有「不可以和上一題一樣」的保護 ——
+             資料量只有 6～15 種，抽到同一個長度、看起來就很像沒換。
+       ⇒ 這一支：把 course 拿掉（永遠隨機），而且和目前這一題比對，
+         一樣就重抽。重抽有次數上限 —— 抽不到就算了，
+         **卡住比重複更糟**（寧可偶爾重複，不要無窮迴圈）。 */
+    function freshCase() {
+      var o = {};
+      for (var k in opts) if (k !== 'course') o[k] = opts[k];
+      var now = (items || []).join(',') + '|' + target;
+      var c = null;
+      for (var t = 0; t < 12; t++) {
+        c = makeCase(o);
+        if (c.items.join(',') + '|' + c.target !== now) return c;
+      }
+      return c;
     }
 
     function render() {
@@ -896,8 +915,8 @@
           '</div>';
       } else if (lvNow === 2) {
         box.innerHTML = head +
-          '<div class="q">換一題，<b>全程不能點錯</b>。' +
-          '點錯一次就得重來（按「換一題」重新開始）。' +
+          '<div class="q">這是<b>新的一題</b>（系統已經幫你換好了）。' +
+          '<b>全程不能點錯</b> —— 點錯的話走完會自動再換一題。' +
           '<br>目前這一題已經錯了 <b>' + errs + '</b> 次。</div></div>';
       } else {
         /* ★★ 第 3 關是**實際的通關門檻**（onPass 只在這裡被扳動），
@@ -1002,16 +1021,38 @@
     function afterRound() {
       if (!lvNow || lvNow > 3) return;
       var real = realCount(mode, items, target);
+      /* ★ 每一關結束都自己換題 —— 訊息說「換一題」，那就真的換。
+         ⚠️ 叫學生自己去按按鈕，會發生兩件事：
+            ① 他忘了按 → 對著一題已經走完的題目，怎麼點都沒反應
+            ② 他猜完才按 → 猜的是舊題目、驗的是新題目，永遠判錯
+         ⚠️ 換題要在 tsay 之前做（tsay 會 render），
+            不然畫面會先畫舊題目再被蓋掉，閃一下。 */
+      var again = function () {
+        reset(freshCase());
+        dAt = -1; dSteps = null; errs = 0; guess = null;
+      };
       if (lvNow === 1) {
-        if (guess === null) return;          // 還沒預測就走完 → 不算
+        /* ⚠️⚠️ 還沒猜就把題目走完了 —— 原本這裡只是 `return`，
+           於是畫面**什麼都不會發生**：題目結束了、點不動了、
+           也沒有任何一句話告訴他為什麼。那是一條安靜的死路。
+           ★ 這一關本來就要「先猜再走」，所以走完＝這一題作廢，
+             換一題重來，並且把原因講出來。 */
+        if (guess === null) {
+          again();
+          tsay('info', '這一關要<b>先猜再走</b> —— 剛才那一題還沒猜就走完了，' +
+                       '所以不算。<br><b>已經換了一題</b>：先填上面的預測，再動手。');
+          return;
+        }
         if (guess === real) {
-          cleared[1] = true; lvNow = 2; guess = null;
+          cleared[1] = true; lvNow = 2;
+          again();
           tsay('good', '猜中了 —— 真的是 <b>' + real + '</b> 次 ⭐<br>' +
-                       '下一關：換一題，<b>全程不能點錯</b>。');
+                       '下一關：<b>已經換了一題</b>，這一次<b>全程不能點錯</b>。');
         } else {
-          tsay('bad', '你猜 ' + guess + '，實際是 <b>' + real + '</b> 次。' +
-                      '<br>換一題再試一次 —— 這一關可以一直重來。');
-          guess = null;
+          var g = guess;
+          again();
+          tsay('bad', '你猜 ' + g + '，實際是 <b>' + real + '</b> 次。' +
+                      '<br><b>已經換了一題</b>，再試一次 —— 這一關可以一直重來。');
         }
         return;
       }
@@ -1020,7 +1061,9 @@
           cleared[2] = true; lvNow = 3;
           tsay('good', '整題零失誤 ⭐⭐<br>最後一關：不必真的走，直接算給我看。');
         } else {
-          tsay('bad', '這一題點錯了 ' + errs + ' 次。換一題再挑戰一次。');
+          var n = errs;
+          again();
+          tsay('bad', '這一題點錯了 ' + n + ' 次。<b>已經換了一題</b>，再挑戰一次。');
         }
       }
     }
@@ -1801,6 +1844,15 @@
       if (mode === 'compare' || !global.LABTEST) { finishAll(); return; }
       lvNow = 1;
       aidN = TESTS[mode] ? TESTS[mode].worstSize : 0; aidC = 0;
+      /* ⚠️⚠️ 挑戰第 1 關要學生「先別動手，猜這一題要比幾次」——
+         但走到這裡的時候，手上那一題**剛剛才被他走完**：
+           · 答案就寫在畫面上（他自己數過的次數），這一關等於白出
+           · 而且題目已經結束，「現在真的走一遍」根本走不了 ——
+             他只能去按「換一題」，然後拿**舊題目的猜測**去驗**新題目**，
+             於是一直被判錯，看起來就像「題目沒換／系統壞了」。
+         ⇒ 開挑戰的時候自己換一題。訊息說要換，那就真的換。 */
+      reset(freshCase());
+      dAt = -1; dSteps = null; errs = 0;
       render();
       /* ⚠️ 一定要講明這是**通關條件**。
          2026-08-17 老師試跑時卡住：自由玩走了三次還是不能往下一步，

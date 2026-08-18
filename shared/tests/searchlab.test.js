@@ -274,10 +274,19 @@ section('★★ 一個學生從自由玩一路挑戰到金牌');
   document.body.appendChild(host);
   let badge = null;
   const sim = S.mount(host, { mode: mode, course: 'hit', onPass: b => { badge = b; } });
+  /* 走完**這一題**就停。
+     ⚠️ 2026-08-18 之後，挑戰每一關結束時系統會自己換一題
+        （老師：「過了第一關後，換題會是相同數字」那一條的修法）——
+        走完一題之後 ended 會被重設成 false。
+        只看 ended 的話，這個迴圈會一路把下一關也走完，
+        於是「第 1 關過了沒」讀到的其實是第 2 關的訊息。
+     ⇒ 記住這一題是哪一題，題目一換就停。 */
   const walk = () => {
+    const tag = () => { const s = sim._state(); return s.items.join(',') + '|' + s.target; };
+    const mine = tag();
     for (let k = 0; k < 60; k++) {
       const st = sim._state();
-      if (st.ended) return;
+      if (st.ended || tag() !== mine) return;
       if (mode === 'binary') {
         if (st.phase === 'side') {
           const w = Number(st.items[st.mid - 1]) < Number(st.target) ? 'right' : 'left';
@@ -333,9 +342,14 @@ section('★ 猜錯不會擋死，可以一直重來');
   document.body.appendChild(host);
   let badge = null;
   const sim = S.mount(host, { mode: 'sequential', course: 'hit', onPass: b => { badge = b; } });
-  const walk = () => { for (let k = 0; k < 60; k++) {
-    const st = sim._state(); if (st.ended) return;
-    host.querySelectorAll('[data-i]')[st.next].onclick(); } };
+  /* 同上：題目一換就停（挑戰每一關結束都會自動換題）。 */
+  const walk = () => {
+    const tag = () => { const s = sim._state(); return s.items.join(',') + '|' + s.target; };
+    const mine = tag();
+    for (let k = 0; k < 60; k++) {
+      const st = sim._state(); if (st.ended || tag() !== mine) return;
+      host.querySelectorAll('[data-i]')[st.next].onclick();
+    } };
   const nextQ = () => host.querySelector('#qs-new').onclick();
   walk(); nextQ(); walk();
   for (let t = 0; t < 3; t++) {
@@ -1444,6 +1458,104 @@ section('★ level.html 接得上');
    2026-08-17 老師試跑第 9 關時回報的兩件事
    ═══════════════════════════════════════════════════════ */
 
+section('★★ 挑戰要換題就自己換（老師 2026-08-18）');
+{
+  /* ★★ 老師：「二元搜尋法過了第一關後，換題會是相同數字，這是 bug？
+     循序搜尋也是相同狀況。」
+     ⚠️ 病根有三層，缺一層都還是會被學生看成「題目沒換」：
+       ① 開挑戰的時候，手上那一題**剛剛才被他走完** ——
+          第 1 關要他「先別動手，猜這一題要比幾次」，可是答案就寫在畫面上，
+          而且題目已經結束，「現在真的走一遍」根本走不了。
+       ② 他只能去按「換一題」，於是拿**舊題目的猜測**驗**新題目** → 永遠判錯。
+       ③ 隨機出題沒有「不可以和上一題一樣」的保護。
+     ⇒ 每一關結算時系統自己換，而且保證和上一題不同。 */
+  ['sequential', 'binary'].forEach(mode => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const sim = S.mount(host, { mode: mode, course: 'hit', onPass: () => {} });
+    const tag = () => { const s = sim._state(); return s.items.join(',') + '|' + s.target; };
+    const walk = () => {
+      const mine = tag();
+      for (let k = 0; k < 60; k++) {
+        const st = sim._state();
+        if (st.ended || tag() !== mine) return;
+        if (mode === 'binary') {
+          if (st.phase === 'side') {
+            const w = Number(st.items[st.mid - 1]) < Number(st.target) ? 'right' : 'left';
+            host.querySelector('[data-side="' + w + '"]').onclick();
+            continue;
+          }
+          host.querySelectorAll('[data-i]')[Math.floor((st.lo + st.hi) / 2) - 1].onclick();
+        } else {
+          host.querySelectorAll('[data-i]')[st.next].onclick();
+        }
+      } };
+    walk(); host.querySelector('#qs-new').onclick(); walk();
+    ok(/驗收挑戰 1／3/.test(host.textContent), mode + '：自由玩過了 → 挑戰出現');
+    /* ★★ 挑戰一開始的那一題必須是**沒走過**的 */
+    ok(!sim._state().ended,
+       '★★ ' + mode + '：挑戰的第一題是新的、還沒走過的（不是他剛走完的那一題）');
+    const t1 = tag();
+    const real = S._realCount(mode, sim._state().items, sim._state().target);
+    host.querySelector('#qs-g').value = real;
+    host.querySelector('[data-g="1"]').onclick();
+    walk();
+    const box = host.querySelector('#qs-tsay').textContent;
+    ok(/猜中了/.test(box), '★★ ' + mode + '：猜的和驗的是同一題 → 過第 1 關');
+    ok(/已經換了一題/.test(box), '★★ 而且直說「已經換了一題」，不是叫他自己去按');
+    ok(tag() !== t1, '★★ 第 2 關真的是另一題（' + mode + '）');
+    ok(!sim._state().ended, '★ 而且是完整的一題，不是走到一半的殘局');
+    host.remove();
+  });
+
+  /* ★ 還沒猜就走完 —— 原本這裡是一條**安靜的死路**（只有 return）。 */
+  {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const sim = S.mount(host, { mode: 'sequential', course: 'hit', onPass: () => {} });
+    const tag = () => { const s = sim._state(); return s.items.join(',') + '|' + s.target; };
+    const walk = () => { const mine = tag();
+      for (let k = 0; k < 60; k++) { const st = sim._state();
+        if (st.ended || tag() !== mine) return;
+        host.querySelectorAll('[data-i]')[st.next].onclick(); } };
+    walk(); host.querySelector('#qs-new').onclick(); walk();
+    const before = tag();
+    walk();                                   // 不猜就直接走完
+    const msg = host.querySelector('#qs-tsay').textContent;
+    ok(/先猜再走/.test(msg),
+       '★★ 還沒猜就走完 → 講出原因（原本是安靜的死路，什麼都不會發生）');
+    ok(tag() !== before, '★★ 而且換一題讓他重來（不然題目結束了，點不動）');
+    host.remove();
+  }
+
+  /* ★ 不可以和上一題一樣 —— 連換 20 次都要不同 */
+  {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const sim = S.mount(host, { mode: 'binary', course: 'hit', onPass: () => {} });
+    const tag = () => { const s = sim._state(); return s.items.join(',') + '|' + s.target; };
+    host.querySelector('#qs-new').onclick();   // 課本第二題（同一列、不同目標，那是刻意的）
+    let same = 0;
+    for (let i = 0; i < 20; i++) {
+      const b = tag();
+      host.querySelector('#qs-new').onclick();
+      if (tag() === b) same++;
+    }
+    is(same, 0, '　　連按 20 次「換一題」，沒有一次和上一題完全相同');
+    /* ⚠️⚠️ 上面那一條**擋不住任何東西**：數字是 1～99 隨機取 8～15 個，
+       就算完全沒有防重複，連抽 20 次也幾乎不會撞到 ——
+       突變測試把重抽整段拿掉，它照樣綠。
+       ★ 統計式的斷言對「罕見事件」是無效的保護。
+       ⇒ 真正釘住這件事的是下面這一條：程式裡要有那個比對。 */
+    const src = read('shared/searchlab.js').replace(/\/\*[\s\S]*?\*\//g, ' ');
+    ok(/function freshCase/.test(src), '★★ 有一支專門「抽到不一樣為止」的 freshCase()');
+    ok(/!==\s*now/.test(src), '★★ 而且真的拿新題目和**目前這一題**比對過');
+    ok(/for \(var t = 0; t < 12/.test(src),
+       '★ 重抽有次數上限 —— 抽不到就算了，卡住比重複更糟');
+    host.remove();
+  }
+}
+
 section('★★ 換一題要真的換到不同的資料量');
 {
   /* ⚠️ 原本寫死 binary→13、sequential→8。
@@ -1496,10 +1608,19 @@ section('★★ 三關全過才放行 —— 這件事畫面上要講');
   const host = document.createElement('div');
   document.body.appendChild(host);
   const sim = S.mount(host, { mode: 'binary', course: 'hit' });
+  /* 走完**這一題**就停。
+     ⚠️ 2026-08-18 之後，挑戰每一關結束時系統會自己換一題
+        （老師：「過了第一關後，換題會是相同數字」那一條的修法）——
+        走完一題之後 ended 會被重設成 false。
+        只看 ended 的話，這個迴圈會一路把下一關也走完，
+        於是「第 1 關過了沒」讀到的其實是第 2 關的訊息。
+     ⇒ 記住這一題是哪一題，題目一換就停。 */
   const walk = () => {
+    const tag = () => { const s = sim._state(); return s.items.join(',') + '|' + s.target; };
+    const mine = tag();
     for (let k = 0; k < 60; k++) {
       const st = sim._state();
-      if (st.ended) return;
+      if (st.ended || tag() !== mine) return;
       if (st.phase === 'side') {
         const w = Number(st.items[st.mid - 1]) < Number(st.target) ? 'right' : 'left';
         host.querySelector('[data-side="' + w + '"]').onclick();
