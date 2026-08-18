@@ -744,6 +744,57 @@ section('★★ 賽跑：時間感是這一步唯一要給的東西');
   host.remove();
 }
 
+section('★★ 砍一半的當下要有感（不是只有一行小字）');
+{
+  /* ★ 老師 2026-08-17：「除了按幾下這個動作外…操作端也是點下去，
+     感受不夠強烈」——按鈕的手感是恆定的，變化全在一行小字裡。
+     ⇒ 三件事：範圍條崩塌、大字報排除幾筆、循序搜尋的同步進度。 */
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  S.mount(host, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  host.querySelector('[data-size="1000000"]').onclick();
+
+  ok(!!host.querySelector('.qs-cut'), '砍一半那一段畫得出來');
+  ok(/按下去/.test(host.textContent), '★ 還沒按之前先請他按下去看看');
+  const bars0 = host.querySelectorAll('.qs-two .fill');
+  ok(bars0.length === 2, '★★ 兩條進度：你的、和一個一個找的');
+  ok(/100%/.test(bars0[0].getAttribute('style')) &&
+     /100%/.test(bars0[1].getAttribute('style')),
+     '　　一開始兩條都是滿的（都還沒找）');
+
+  /* 砍第一下 */
+  host.querySelector('[data-cut]').onclick();
+  const t1 = host.textContent;
+  ok(/這一下排除了/.test(t1), '★★ 大字報「這一下排除了幾筆」');
+  ok(/500,000/.test(t1), '★★ 一百萬筆的第一下就排除 50 萬筆（而且有千分位）');
+  const bars1 = host.querySelectorAll('.qs-two .fill');
+  const wBin = parseFloat(bars1[0].style.width), wSeq = parseFloat(bars1[1].style.width);
+  ok(Math.round(wBin) === 50, '★★ 你那一條當場掉到一半（' + Math.round(wBin) + '%）');
+  ok(wSeq > 99.9, '★★ 而一個一個找的那一條幾乎沒動（' + wSeq.toFixed(4) + '%）');
+  ok(bars1[0].className.indexOf('hit') >= 0, '★ 被砍的那一條會抖一下（震動特效）');
+
+  /* ★★ 這一段的關鍵訊息：同樣按 N 下，兩邊差多少 */
+  ok(/才看到第 1 筆/.test(t1),
+     '★★ 當下就把對照講出來：「一個一個找的話，1 次才看到第 1 筆」');
+
+  /* 砍完 */
+  let g = 0;
+  while (host.querySelector('[data-cut]') && g++ < 60) host.querySelector('[data-cut]').onclick();
+  const t2 = host.textContent;
+  ok(/你按 20 下就砍完了 1,000,000 筆/.test(t2.replace(/\s+/g, ' ')),
+     '★★ 砍完講「你按 20 下就砍完了 100 萬筆」');
+  ok(/999,980/.test(t2),
+     '★★ 而且講出對照：一個一個找 20 下之後還剩 999,980 筆沒看');
+
+  /* ⚠️ 不做音效（一班三十台同時響會很吵），震動只用 CSS */
+  const src = read('shared/searchlab.js');
+  ok(!/new Audio|AudioContext|\.play\(\)/.test(src),
+     '★★ 沒有音效（電腦教室一班三十台同時響會很吵）');
+  ok(/prefers-reduced-motion/.test(src),
+     '★★ 開了「減少動態效果」就不抖 —— 會暈車的人要能關掉');
+  host.remove();
+}
+
 section('★★ 資料大爆炸：數字要真的爆起來');
 {
   /* ★ 老師 2026-08-17：「數字太小不符合關卡名稱『資料大爆炸』」。

@@ -435,6 +435,33 @@
     '.qs-pick button:hover{border-color:#06b6d4;background:#ecfeff}',
     '.qs-pick button.on{border-color:#06b6d4;background:#cffafe;color:#0e7490}',
     '.qs-pick button.ok{border-color:#86efac;background:#dcfce7;color:#166534}',
+    /* ── 砍一半的畫面（2026-08-17：老師說點下去感受不夠強烈）────
+       ★ 三件事：範圍條崩塌＋抖一下、大字報排除幾筆、循序搜尋的同步進度。
+       ⚠️ 兩條用同一個量度（還剩幾筆沒找），不然沒得比。 */
+    '.qs-cut{margin-bottom:11px}',
+    '.qs-cut .boom{font-size:20px;font-weight:900;color:#b45309;line-height:1.5;',
+    '  margin-bottom:9px}',
+    '.qs-cut .boom b{font-size:27px;color:#c2410c}',
+    '.qs-cut .boom.idle{font-size:14px;font-weight:700;color:#64748b}',
+    '.qs-two .row{margin-bottom:8px}',
+    '.qs-two .lb{display:flex;justify-content:space-between;align-items:baseline;',
+    '  font-size:12.5px;font-weight:800;color:#475569;margin-bottom:3px}',
+    '.qs-two .lb span{font-family:ui-monospace,monospace;font-size:13px;color:#334155}',
+    '.qs-two .bar{background:#e2e8f0;border-radius:7px;height:18px;overflow:hidden}',
+    '.qs-two .fill{height:100%;border-radius:7px;transition:width .38s cubic-bezier(.4,0,.2,1)}',
+    '.qs-two .me .fill{background:#06b6d4}',
+    '.qs-two .seq .fill{background:#f59e0b}',
+    /* 震動：範圍條被砍的時候抖一下。★ 每次重畫都是新元素，所以會自己重播。
+       ⚠️ 只抖 0.22 秒 —— 再久會拖慢節奏，而學生一節課要按幾十下。 */
+    '@keyframes qsHit{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}',
+    '  55%{transform:translateX(4px)}80%{transform:translateX(-2px)}}',
+    '.qs-two .fill.hit{animation:qsHit .22s ease-out}',
+    '.qs-cnt{font-size:13px;color:#475569;line-height:1.8}',
+    '.qs-cnt b{color:#0e7490;font-size:15px}',
+    '.qs-cnt.big{margin-top:9px;font-size:14px;font-weight:700;color:#155e75}',
+    /* ⚠️ 會暈車的人要能關掉 —— 系統設定裡開了「減少動態效果」就不要動。 */
+    '@media (prefers-reduced-motion:reduce){',
+    '  .qs-two .fill{transition:none}.qs-two .fill.hit{animation:none}}',
     '.qs-left{font-size:15px;font-weight:700;color:#155e75;margin-bottom:10px}',
     '.qs-left b{font-size:22px;color:#0e7490}',
     /* ── 賽跑（老師 2026-08-17）────────────────────────────
@@ -936,11 +963,13 @@
       if (!size) {
         out += '<div class="qs-left">先選一個資料量。</div>';
       } else if (left > 0) {
-        out += '<div class="qs-left">還要找的範圍：<b>' + comma(left) + '</b> 筆' +
-               '　（已經比了 ' + cuts + ' 次）</div>' +
+        out += cutView() +
                '<div class="qs-side"><button data-cut="1">✂️ 比一次，砍掉一半</button></div>';
       } else {
-        out += '<div class="qs-left">範圍空了 —— 二元搜尋最多比 <b>' + cuts + '</b> 次。</div>';
+        out += '<div class="qs-left">範圍空了 —— 二元搜尋最多比 <b>' + cuts + '</b> 次。</div>' +
+               '<div class="qs-cnt big">你按 <b>' + cuts + '</b> 下就砍完了 ' + comma(size) + ' 筆。' +
+               '<br>一個一個找的話，' + cuts + ' 下才看到第 ' + cuts + ' 筆 —— 還剩 <b>' +
+               comma(Math.max(0, size - cuts)) + '</b> 筆沒看。</div>';
         /* ★ 砍完之後不要就這樣結束：那 11 下太輕鬆了。
            讓循序搜尋當場跑一次，看它要跑多久。 */
         if (!raced[size]) {
@@ -955,6 +984,43 @@
         }
       }
       return out + tableHtml() + boomHtml();
+    }
+
+    /* ── 砍一半的當下：要看得到「一口氣少掉一半」──────────
+       ★ 老師 2026-08-17：「除了按幾下這個動作外…操作端也是點下去，
+         感受不夠強烈」——說得對，**按鈕的手感是恆定的**：
+         按第 1 下和第 20 下，手指感覺一樣，變化全在一行小字裡。
+       ⇒ 三件事一起上：
+         ① 範圍條當場崩塌（而且抖一下）—— 看到的是「消失一半」不是「數字變了」
+         ② 大字報「這一下排除了幾筆」—— 講動作的成果，不是剩下的狀態
+         ③ 旁邊擺**循序搜尋的同步進度** ← 這個最關鍵：
+            同樣按 N 下，你砍完了，循序才看到第 N 筆。
+            ⚠️ 兩條要用**同一個量度**（還剩幾筆沒找），不然沒得比。
+       ⚠️ 不做音效：一班三十台同時響會很吵，而且要多一個開關。
+          震動只用 CSS 抖一下，而且 prefers-reduced-motion 要能關掉。 */
+    function cutView() {
+      var seqLeft = Math.max(0, size - cuts);        // 循序：按了幾下就只看了幾筆
+      var pctBin = size ? left / size * 100 : 0;
+      var pctSeq = size ? seqLeft / size * 100 : 0;
+      var justCut = cuts > 0 ? Math.round(size / Math.pow(2, cuts - 1)) - left : 0;
+      return '<div class="qs-cut">' +
+        (cuts > 0
+          ? '<div class="boom">這一下排除了 <b>' + comma(justCut) + '</b> 筆</div>'
+          : '<div class="boom idle">按下去 —— 看它一口氣少掉多少</div>') +
+        '<div class="qs-two">' +
+          '<div class="row me">' +
+            '<div class="lb">你（每次砍一半）<span>還剩 ' + comma(left) + ' 筆</span></div>' +
+            '<div class="bar"><div class="fill' + (cuts > 0 ? ' hit' : '') +
+              '" style="width:' + pctBin + '%"></div></div>' +
+          '</div>' +
+          '<div class="row seq">' +
+            '<div class="lb">一個一個找<span>還剩 ' + comma(seqLeft) + ' 筆</span></div>' +
+            '<div class="bar"><div class="fill" style="width:' + pctSeq + '%"></div></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="qs-cnt">已經比了 <b>' + cuts + '</b> 次' +
+          (cuts > 0 ? '　—— 一個一個找的話，' + cuts + ' 次才看到第 ' + cuts + ' 筆' : '') +
+        '</div></div>';
     }
 
     /* ── 資料大爆炸：先猜再揭曉，然後自己填 ─────────────
