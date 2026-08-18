@@ -511,29 +511,30 @@
       /* ⚠️ 名字跟著範例檔（.sb3）走：原始資料／已排序資料。
          課本這一段寫「未排序數列／已排序數列」—— 意思一樣，
          但學生在 Scratch 裡看到的清單是前者。 */
-      why: '反覆從原始資料中找出「最小值」，把它加到已排序資料的最後一項，' +
-           '再從原始資料裡刪掉。重複到原始資料清空為止。',
+      why: '反覆從原始資料中找出<span class="hl">「最小值」</span>，把它加到已排序資料的最後一項，' +
+           '再從原始資料裡刪掉。<span class="hl">重複到原始資料清空為止。</span>',
       /* ⚠️ 生活案例照課本 6-2（華森向麗娜學理牌的兩種方法）。
          原本這裡寫的是「整理書箱」—— 我自己編的，課本沒有。
          ★ 兩種排序法要用**同一個情境**才看得出差別，
            那正是課本用同一副撲克牌示範兩次的用意。 */
-      life: '理牌方法一：在翻開的所有牌裡找出最小的那張，抽出來排好；'
+      life: '理牌方法一：<span class="hl">在翻開的所有牌裡找出最小的那張</span>，抽出來排好；'
           + '再從剩下的裡面找最小的，接在後面。'
     },
     bubble: {
       name: '氣泡排序法', icon: '🫧',
       rule: '只能交換<b>相鄰</b>的兩個。點一個，再點它旁邊那個。',
-      why: '從第一筆開始，逐一比較相鄰兩筆，順序有誤就交換。' +
-           '跑完一回合，最後一筆一定就位。',
-      life: '體育課排隊，老師說「看旁邊的同學，比較高的往後站」，大家兩兩互換。'
+      why: '從第一筆開始，<span class="hl">逐一比較相鄰兩筆，順序有誤就交換</span>。' +
+           '跑完一回合，<span class="hl">最後一筆一定就位</span>。',
+      life: '體育課排隊，老師說<span class="hl">「看旁邊的同學，比較高的往後站」</span>，大家兩兩互換。'
     },
     insertion: {
       name: '插入排序法', icon: '🃏',
       rule: '點<b>橘框</b>那張新牌，再點左邊已排好的那一段裡<b>該插進去的位置</b>。',
-      why: '逐一把新資料插進已排序好的資料中：和前面已排好的一一比較，找到對的位置插入。',
+      why: '逐一把新資料插進已排序好的資料中：<span class="hl">和前面已排好的一一比較</span>，'
+         + '<span class="hl">找到對的位置插入</span>。',
       /* 課本 6-2 的理牌方法二 —— 和選擇排序同一副牌，差別才看得出來。 */
       life: '理牌方法二：蓋著的牌堆每次抽一張，'
-          + '直接插進手上已經排好的牌裡該去的位置。'
+          + '<span class="hl">直接插進手上已經排好的牌裡該去的位置</span>。'
     }
   };
 
@@ -683,12 +684,17 @@
     /* ── 補充教材：標記與浮動視窗（老師 2026-08-18）──────
        ⚠️ 「補充」這兩個字一定要在按鈕上 —— 藏在說明裡的話，
           學生看到的還是三顆長得一樣的按鈕。 */
-    '.sl-ctrl button .ex,.sl-card .ex{font-size:9.5px;font-weight:900;margin-left:4px;',
+    '.sl-card .ex{font-size:9.5px;font-weight:900;margin-left:4px;',
     '  background:#fde68a;color:#92400e;border-radius:9999px;padding:1px 5px;vertical-align:middle}',
-    '.sl-why{background:#fff;border:2px solid #fcd34d;color:#92400e;border-radius:9999px;',
-    '  width:26px;height:26px;padding:0;font-size:13px;font-weight:900;cursor:pointer;',
-    '  font-family:inherit;margin-left:-4px}',
-    '.sl-why:hover{background:#fffbeb;border-color:#f59e0b}',
+    /* ⚠️ 老師 2026-08-18：❓ 那顆圓按鈕「會跑出格子，排版不良」——
+       它和旁邊那排方形按鈕不同形狀也不同大小，夾著就是一個突出的小方塊。
+       ⇒ 做成**標籤的樣子**：藥丸形、小一號、琥珀色、沒有粗框。
+       ★ 形狀本身就在說「我是附註，不是另一個選項」。 */
+    '.sl-ex{background:#fef3c7;border:1px solid #fcd34d;color:#92400e;',
+    '  border-radius:9999px;padding:3px 9px;font-size:11px;font-weight:900;',
+    '  cursor:pointer;font-family:inherit;line-height:1.5;margin-left:-3px;',
+    '  align-self:center}',
+    '.sl-ex:hover{background:#fde68a;border-color:#f59e0b}',
     /* ⚠️ 蓋在 host 上（position:absolute），不是 fixed ——
        這個模組會被掛在關卡頁的一塊 div 裡，fixed 會蓋掉整個網站。 */
     '.sl-modal{position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.55);',
@@ -1714,12 +1720,19 @@
            ⇒ 標一個「補充」，旁邊給一顆 ❓ 打開說明。 */
         ['selection', 'insertion', 'bubble'].map(function (m) {
           var extra = (m === 'bubble');
+          /* ⚠️ 老師 2026-08-18：「那個 ❓ 會跑出格子，排版不良，
+             『補充』標籤的型態可能比較適合。」
+             —— 原本是一顆圓的 ❓ 小按鈕：它和旁邊那排方形按鈕
+             既不同形狀也不同大小，夾在中間就變成一個突出的小方塊。
+             ⇒ 標籤**本身**就是按鈕：藥丸形、小一號、琥珀色，
+               形狀上明顯是「附註」而不是「另一個選項」。
+             ★ 這樣也少一個元素 —— 原本「靜態的補充字樣」和「❓ 按鈕」
+               其實在講同一件事，擺兩個只是把版面弄擠。 */
           return '<button data-algo="' + m + '"' +
                  (m === algo ? ' class="on"' : '') + '>' +
-                 INFO[m].icon + ' ' + INFO[m].name +
-                 (extra ? '<span class="ex">補充</span>' : '') + '</button>' +
-                 (extra ? '<button class="sl-why" data-why="bubble" ' +
-                          'title="氣泡排序法是什麼？">❓</button>' : '');
+                 INFO[m].icon + ' ' + INFO[m].name + '</button>' +
+                 (extra ? '<button class="sl-ex" data-why="bubble" ' +
+                          'title="氣泡排序法不在課程內 —— 點開看簡介">補充 ⓘ</button>' : '');
         }).join('') +
         (last ? '<button data-again="1">↺ 再看一次</button>'
               : '<button data-step="1">⏭ 下一步</button>' +

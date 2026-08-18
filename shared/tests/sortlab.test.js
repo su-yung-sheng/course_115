@@ -961,12 +961,19 @@ console.log('\n── ★★ 氣泡排序是補充，要標出來也要說明（
     }
     const bub = h.querySelector('[data-algo="bubble"]');
     ok(!!bub, mode + ' 關：自動播放裡看得到氣泡排序法');
-    ok(/補充/.test(bub.textContent),
-       '★★ ' + mode + ' 關：氣泡那一顆標著「補充」（另外兩顆沒有）');
-    const other = h.querySelector('[data-algo="selection"]');
-    ok(!/補充/.test(other.textContent), '　　選擇排序沒有被標成補充');
+    /* ⚠️ 老師 2026-08-18：「那個 ❓ 會跑出格子，排版不良，
+       『補充』標籤的型態可能比較適合。」
+       ⇒ 標籤本身就是按鈕（藥丸形），不再有一顆突出的圓 ❓，
+         演算法按鈕裡也不再塞一個靜態的小字 —— 那兩個原本在講同一件事。 */
     const why = h.querySelector('[data-why="bubble"]');
-    ok(!!why, '★★ ' + mode + ' 關：旁邊有一顆補充介紹的按鈕');
+    ok(!!why, '★★ ' + mode + ' 關：氣泡旁邊有一個「補充」標籤');
+    ok(/補充/.test(why.textContent), '★★ 標籤上寫的就是「補充」');
+    ok(!/❓/.test(h.textContent), '★★ 不再有那顆會跑出格子的圓 ❓');
+    ok(!/補充/.test(bub.textContent),
+       '★ 演算法按鈕本身乾淨（補充那件事由旁邊的標籤講）');
+    const other = h.querySelector('[data-algo="selection"]');
+    ok(!/補充/.test(other.textContent), '　　選擇排序旁邊沒有補充標籤');
+    ok(!h.querySelector('[data-why="selection"]'), '　　也沒有補充按鈕');
     h.remove();
   });
 

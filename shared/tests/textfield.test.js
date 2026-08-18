@@ -139,5 +139,95 @@ section('★★ 互動模組裡的字串也一樣');
   });
 }
 
+section('★★ 每一段解說都要畫重點（老師 2026-08-18）');
+{
+  /* ★★ 老師：「所有的解說欄位都要比照之前的畫重點，檢查一下十個關卡的所有階段。」
+     ⚠️ 「所有欄位都要畫」**不等於**「每一句都畫」——
+        既有的規矩是「一段最多兩三處，畫太多等於沒畫」。
+        所以這一份盯的是兩件事：
+          ① 每一個**夠長的解說欄位**至少有一處（沒有整段素著的）
+          ② 單一欄位不可以畫太多
+     ⚠️ 例外要寫清楚，不然下一個人只會覺得測試在找碴：
+        · quiz.hint／quiz.why 是 esc 出去的 —— 畫了只會看到一串標籤（見上面）
+        · build[] 是**操作步驟**（第幾步做什麼）—— 那是指示不是重點，
+          畫在指示上等於把真正的重點稀釋掉 */
+  /* ⚠️ 黃筆和藍筆要**分開數**。
+     黃（.hl）＝這一段的結論，多了就會變成一片黃 → 要有上限。
+     藍（.hl-b）＝數量，一段話裡有幾個數字就標幾個，
+     那不是「重點畫太多」，是資料本身就有那麼多個數字（第 10 關的情境就是）。 */
+  const y = t => (String(t || '').match(/class="hl"/g) || []).length;
+  const n = t => (String(t || '').match(/class="hl(-b)?"/g) || []).length;
+  const plain = t => String(t || '').replace(/<[^>]+>/g, '');
+  const MIN = 22;            // 超過這個字數才算「一段解說」
+  /* 黃筆的上限：每段 4 處；長段落每多 60 字可以多一處。
+     ★ 不是拍腦袋 —— 情境的 why 有的關卡三百字，
+       用同一個死上限的話，長段落會被逼成「只畫開頭」。 */
+  const capOf = t => Math.max(4, Math.ceil(plain(t).length / 60));
+
+  const bare = [], over = [];
+  ORDER.forEach((id, i) => {
+    const v = L[id], sc = v.scene || {}, dv = v.derive || {}, an = v.analysis || {};
+    const fields = [
+      ['scene.pre', sc.pre], ['scene.why', sc.why],
+      ['derive.intro', dv.intro], ['derive.done', dv.done],
+      ['analysis.intro', an.intro], ['analysis.write.q', (an.write || {}).q],
+      ['task', v.task]
+    ];
+    (sc.shots || []).forEach((x, k) => fields.push(['scene.shots[' + k + ']', x]));
+    fields.forEach(([k, t]) => {
+      if (!t || plain(t).length < MIN) return;
+      const tag = '第' + (i + 1) + '關 ' + k;
+      if (n(t) === 0) bare.push(tag);
+      if (y(t) > capOf(t)) {
+        over.push(tag + '（黃筆 ' + y(t) + ' 處／' + plain(t).length +
+                  ' 字，上限 ' + capOf(t) + '）');
+      }
+    });
+  });
+  ok(bare.length === 0,
+     '★★ 十關的每一段解說都有畫重點' +
+     (bare.length ? '　⚠️ 沒畫的：' + bare.join('、') : ''));
+  ok(over.length === 0,
+     '★★ 而且沒有一段畫太多（畫太多等於沒畫）' +
+     (over.length ? '　⚠️ ' + over.join('、') : ''));
+
+  /* ★ build[] 是操作步驟 —— 刻意**不**畫。
+     這一條反過來釘：哪天有人「順手補齊」，這裡要紅並且看得到理由。 */
+  const inBuild = ORDER.filter(id => (L[id].build || []).some(b => n(b) > 0));
+  ok(inBuild.length === 0,
+     '★★ 程式拼圖的**步驟**沒有畫重點（那是指示，不是重點）' +
+     (inBuild.length ? '　⚠️ ' + inBuild.join('、') : ''));
+
+  /* ── 互動模組的三行說明（老師貼的就是這一段）────────── */
+  const M = {};
+  ['shared/sortlab.js', 'shared/searchlab.js'].forEach(f =>
+    new Function('window', read(f))(M));
+  const modBare = [], modOver = [];
+  [['SORTLAB', M.SORTLAB], ['SEARCHLAB', M.SEARCHLAB]].forEach(([nm, mod]) => {
+    Object.keys(mod.INFO || {}).forEach(k => {
+      const o = mod.INFO[k];
+      const tot = n(o.rule) + n(o.why) + n(o.life);
+      if (tot === 0) modBare.push(nm + '.' + k);
+      if (tot > 4) modOver.push(nm + '.' + k + '（' + tot + ' 處）');
+      /* ★ 原理（why）那一行是這三行裡最該畫的 —— 規則是操作，案例是比喻。 */
+      if (n(o.why) === 0) modBare.push(nm + '.' + k + '.why');
+    });
+  });
+  ok(modBare.length === 0,
+     '★★ 每一種演算法的說明都畫了重點' +
+     (modBare.length ? '　⚠️ ' + modBare.join('、') : ''));
+  ok(modOver.length === 0,
+     '★★ 而且每一種最多四處' + (modOver.length ? '　⚠️ ' + modOver.join('、') : ''));
+
+  /* ⚠️ 樣式只能有一份（在 shared/theme.css）—— 模組不可以自己再寫。 */
+  ['shared/sortlab.js', 'shared/searchlab.js', 'shared/bigcost.js'].forEach(f => {
+    const css = read(f).replace(/',\s*'/g, '').replace(/\/\*[\s\S]*?\*\//g, ' ');
+    ok(!/\.hl\s*\{|\.hl-b\s*\{/.test(css), '　' + f + ' 沒有自己寫一份 .hl');
+  });
+  const theme = read('shared/theme.css');
+  ok(/\.hl\s*\{/.test(theme) && /\.hl-b\s*\{/.test(theme),
+     '★★ 兩支筆都在 theme.css（不然畫的線是隱形的）');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
