@@ -150,45 +150,80 @@ section('★★ 兩段走得完（老師 2026-08-18：實作體驗太弱了）')
   ok(/179,700/.test(v.txt()), '★ 600 筆的排序成本是 179,700 次（和排序大比拼同一個數字）');
   v.act('recapdone'); v.act('next');
 
-  /* ── 結帳 ─────────────────────────────────────── */
+  /* ── 結帳：兩張收據，一次加一筆 ──────────────────────
+     ★★ 老師 2026-08-18：「🧾 結帳還是不太會操作，總覺得流程不太順手，
+       公式也不太好理解，操作後還是不太理解。」
+     ⚠️ 前一版壞在兩件事：
+       ① 一進來就要他猜「查幾次以上先排序才划算」——
+          那是兩條直線的交點，國中生手上沒有可以依靠的直覺，
+          只能亂填一個數字然後被告知答案。**猜不出來的猜測沒有教學功能。**
+       ② 畫面上是「4,950 ＋ 7 × 100 ＝ 5,650」這種算式 ——
+          那是**結果**的寫法，不是**過程**的寫法。
+     ⇒ 兩張並排的收據，按「＋」一次加一筆；分界點那一題搬到最後。 */
   ok(v.s().at === 1, '走到「結帳」');
-  ok(/要查幾次以上/.test(v.txt()), '★★ 先問一個他沒被問過的問題：查幾次以上先排序才划算');
-  ok(!v.host.querySelector('[data-k]'), '★ 還沒猜之前不給拉檔位（先猜再揭曉）');
-  const be = B.breakEven(600);
-  v.put(3); v.act('guess');
-  ok(v.s().guess === 3, '★ 猜錯照樣往下 —— 要的是他先給一個數字');
-  ok(v.txt().indexOf(String(be)) >= 0,
-     '★★ 揭曉真正的分界點（600 筆是 ' + be + ' 次）');
+  const bills = () => [...v.host.querySelectorAll('.bc-bill')];
+  eq(bills().length, 2, '★★ 兩張收據並排（不排序一張、先排序一張）');
+  const billTxt = v.txt();
+  ok(/排序費/.test(billTxt) && /查詢費/.test(billTxt),
+     '★★ 帳單拆成「排序費」和「查詢費」兩筆（不是一條算式）');
+  ok(/只付一次/.test(billTxt),
+     '★★ 而且直接寫「只付一次」—— 那正是學生看不出來的地方');
+  ok(!v.host.querySelector('#bc-g'),
+     '★★ 一開始**不問**分界點（沒按過的話，那一題只能亂猜）');
+  ok(!!v.host.querySelector('[data-add="1"]'), '★ 有「＋1 次」');
+  ok(!!v.host.querySelector('[data-add="100"]'),
+     '★★ 也有「＋100 次」—— 只有 ＋1 的話要按五十幾下才看得到換邊');
 
-  /* ★★ 兩邊各贏一次才算走完 */
-  const ks = [...v.host.querySelectorAll('[data-k]')].map(b => Number(b.dataset.k));
-  ok(ks.length >= 4, '★ 給了幾個「查幾次」的檔位（' + ks.join('／') + '）');
-  ok(ks.indexOf(be) >= 0 && ks.indexOf(be - 1) >= 0,
-     '★★ 分界點**兩側**各有一格 —— 差一次就換邊，那一下最有感');
-  const pick = k => { v.host.querySelector('[data-k="' + k + '"]').onclick(); };
-  pick(1);
-  ok(!v.s().cleared.plan, '★★ 只看到「不排序比較省」還不算走完');
-  ok(/不排序比較省/.test(v.txt()), '　　而且直說是哪一邊贏');
-  pick(be * 2);
-  ok(v.s().cleared.plan, '★★ 兩邊都看到 → 過');
-  ok(/答案卻不一樣/.test(v.txt()),
-     '★★ 點破：同一批資料、同樣兩種做法，答案卻不一樣');
+  /* 查 1 次：不排序贏（排序費還沒被攤平） */
+  ok(/不排序比較省/.test(v.txt()), '★★ 查 1 次 → 不排序比較省');
+  ok(/還沒被攤平|划不來/.test(v.txt()),
+     '★★ 而且講出**為什麼**（那筆排序費還沒被攤平）');
+  ok(!v.host.querySelector('#bc-g'), '　　這時候還沒有最後那一題');
+
+  /* 一路加上去，看它換邊 */
+  const add = k => { const el = v.host.querySelector('[data-add="' + k + '"]'); if (el) el.onclick(); };
+  /* ⚠️ 回顧那一段最後停在 600 筆，它的分界點是 305 ——
+     用 ＋10 按十次只到 101，永遠等不到換邊（第一版就是這樣紅的）。
+     ★ 這也正好說明「＋100」那一顆為什麼非有不可。 */
+  let flip = '';
+  for (let i = 0; i < 10 && !flip; i++) {
+    add(100);
+    const m = v.host.querySelector('.bc-msg');
+    if (m && /換邊/.test(m.textContent)) flip = m.textContent;
+  }
+  ok(!!flip, '★★ 按「＋」按到換邊（不必按到煩）');
+  ok(/你要查幾次/.test(flip), '　　而且點破：差別只在你要查幾次');
+  ok(/先排序比較省/.test(v.txt()), '★ 換邊之後是先排序比較省');
+  ok(/查愈多次賺愈多|降到/.test(v.txt()),
+     '★★ 也講出**為什麼**（排序費只付一次，但每次查詢都變便宜）');
+
+  /* ★★ 兩邊都看過了 → 最後一題才出現 */
+  ok(!!v.host.querySelector('#bc-g'),
+     '★★ 兩邊各贏過一次之後，最後那一題才出現');
+  ok(/最後一題/.test(v.txt()), '　　而且標明是最後一題');
+  const be = B.breakEven(v.s().n);
+  v.put(be + 5); v.act('guess');          // ±20 都算對
+  ok(/對了/.test(v.txt()), '★★ 答在分界點附近就算對（±20，不必算到剛好那一格）');
   ok(v.s().done, '★ 兩段全過');
   v.done();
 }
 
 section('★★ 換資料量要重來（分界點會跟著跑）');
 {
+  /* ⚠️ 10 筆的分界點是 8 次、600 筆是 305 次 ——
+     換了資料量還留著上一輪按到的次數與結論，等於用錯的帳單過關。 */
   const v = mount();
   v.size(10); v.size(600);
   v.act('recapdone'); v.act('next');
-  v.put(1); v.act('guess');
-  ok(v.s().guess === 1, '猜過了');
+  const add = k => { const el = v.host.querySelector('[data-add="' + k + '"]'); if (el) el.onclick(); };
+  for (let i = 0; i < 6; i++) add(100);
+  ok(v.s().won.sorted, '按到「先排序比較省」了');
   v.size(10);
-  /* ⚠️ 10 筆的分界點是 8 次、600 筆是 3,004 次 ——
-     換了資料量還留著上一輪的猜測，等於用錯的答案過關。 */
-  ok(v.s().guess === null, '★★ 換資料量 → 猜過的不算數（分界點跟著資料量跑）');
-  ok(!v.s().cleared.plan, '   那一段也要重走');
+  ok(!v.s().won.sorted && !v.s().won.plain,
+     '★★ 換資料量 → 兩邊各贏一次的紀錄要清掉（帳單整份換了）');
+  ok(v.s().planK === 1, '★★ 查詢次數回到 1（不然帶著上一輪的次數看新帳單）');
+  ok(v.s().guess === null, '★ 猜過的分界點也不算數');
+  ok(!v.s().cleared.plan, '   那一段要重走');
   ok(B.breakEven(10) !== B.breakEven(600),
      '★ 兩種資料量的分界點真的不一樣（' + B.breakEven(10) + ' vs ' +
      B.breakEven(600) + '）');
@@ -197,14 +232,14 @@ section('★★ 換資料量要重來（分界點會跟著跑）');
 
 section('★★ 完成之後要把四關綁起來');
 {
-  /* 走完整條路的捷徑（後面幾段共用） */
+  /* 走完整條路的捷徑（後面幾段共用）：
+     回顧切三種資料量 → 結帳按到換邊 → 回答分界點。 */
   const walk = v => {
     v.size(10); v.size(600);
     v.act('recapdone'); v.act('next');
-    v.put(1); v.act('guess');
-    const be = B.breakEven(v.s().n);
-    v.host.querySelector('[data-k="1"]').onclick();
-    v.host.querySelector('[data-k="' + (be * 2) + '"]').onclick();
+    const add = k => { const el = v.host.querySelector('[data-add="' + k + '"]'); if (el) el.onclick(); };
+    for (let i = 0; i < 10 && !v.s().won.sorted; i++) add(100);
+    v.put(B.breakEven(v.s().n)); v.act('guess');
   };
   const v = mount();
   walk(v);

@@ -181,6 +181,39 @@
     '.bc-msg.info{background:#f1f5f9;color:#475569}',
     '.bc-done{background:#ecfdf5;border:2px solid #6ee7b7;border-radius:14px;',
     '  padding:14px 16px;font-size:14px;line-height:1.95;color:#065f46}',
+    /* ── 兩張收據（老師 2026-08-18：「公式也不太好理解」）──────
+       ★ 把 4,950 ＋ 7 × 100 拆成看得懂的兩行：
+         排序費（只付一次）／查詢費（每查一次加一筆）。
+       ⚠️ 兩張要**並排**，不是上下 —— 上下排的話沒辦法一眼比大小，
+          而「哪一張比較便宜」正是這一段唯一要看的事。
+       ⚠️ 手機上放不下兩欄 → 自動變成上下，但總計那一行加粗留住對比。 */
+    '.bc-bills{display:flex;gap:10px;margin-bottom:11px;flex-wrap:wrap}',
+    '.bc-bill{flex:1;min-width:190px;background:#fff;border:2px solid #e2e8f0;',
+    '  border-radius:14px;padding:11px 13px}',
+    '.bc-bill.win{border-color:#22c55e;background:#f0fdf4;box-shadow:0 2px 10px rgba(34,197,94,.18)}',
+    '.bc-bill .bh{font-size:13px;font-weight:900;color:#334155;margin-bottom:8px;',
+    '  padding-bottom:6px;border-bottom:1px dashed #e2e8f0}',
+    '.bc-bill .br{display:flex;justify-content:space-between;align-items:baseline;',
+    '  font-size:13px;color:#475569;font-weight:700}',
+    '.bc-bill .br span:last-child{font-family:ui-monospace,monospace;font-size:14.5px;',
+    '  font-weight:900;color:#334155}',
+    /* 每一筆下面那一行小字：講「這筆錢是怎麼來的」 */
+    '.bc-bill .bn{font-size:11px;color:#94a3b8;margin:1px 0 7px;line-height:1.6}',
+    '.bc-bill .br.tot{border-top:2px solid #cbd5e1;margin-top:4px;padding-top:7px;font-size:14px}',
+    '.bc-bill .br.tot span:last-child{font-size:19px;color:#4338ca}',
+    '.bc-bill.win .br.tot span:last-child{color:#166534}',
+    '.bc-bill .bw{font-size:12.5px;font-weight:900;color:#166534;text-align:right;',
+    '  margin-top:4px;min-height:19px}',
+    /* 「＋ 再查幾次」那一排 */
+    '.bc-kbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:11px}',
+    '.bc-kbar .lb{font-size:13px;font-weight:800;color:#334155;margin-right:2px}',
+    '.bc-kbar .lb b{color:#4338ca;font-size:16px}',
+    '.bc-kbar button{background:#4f46e5;color:#fff;border:0;border-radius:9px;',
+    '  padding:8px 14px;font-size:13.5px;font-weight:900;cursor:pointer;font-family:inherit}',
+    '.bc-kbar button:hover{background:#4338ca}',
+    '.bc-kbar button.ghost{background:#fff;border:2px solid #cbd5e1;color:#64748b;',
+    '  font-weight:700}',
+    '.bc-big .bc-bill .br.tot span:last-child{font-size:22px}',
     /* 「查幾次」的檔位 —— 結帳那一段真正在玩的東西 */
     '.bc-ks{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:11px}',
     '.bc-ks .lb{font-size:12px;font-weight:700;color:#64748b}',
@@ -232,6 +265,9 @@
     var guess = null;           // 結帳：猜的損益兩平點（null＝還沒猜）
     var planK = null;           // 結帳：現在在算「查幾次」
     var won = {};               // 結帳：哪一邊已經贏過了（plain／sorted）
+    /* 「換邊了」那句話只講一次 —— 每按一下都跳同一句的話，
+       學生會停止讀它，而那句正是這一段的結論。 */
+    var msgShownFlip = false;
 
     function step() { return STEPS[at]; }
     function allDone() { return STEPS.every(function (s) { return cleared[s.key]; }); }
@@ -287,13 +323,17 @@
                  ' 看過 ' + comma(v) + ' 筆的三個數字</li>';
         });
       } else {
+        /* ★ 順序就是流程：先按到兩邊各贏一次，最後才回答分界點。
+           ⚠️ 清單的順序要和畫面上的順序一樣 ——
+              不一樣的話學生會照清單去找，但畫面上還沒出現那一題。 */
         rows = [
-          '<li class="' + (guess !== null ? 'ok' : '') + '">' + (guess !== null ? '✅' : '⬜') +
-          ' 先猜一次：查幾次以上，先排序才划算</li>',
           '<li class="' + (won.plain ? 'ok' : '') + '">' + (won.plain ? '✅' : '⬜') +
-          ' 看到一次<b>不排序比較省</b></li>',
+          ' 看到一次<b>不排序比較省</b>（查很少次的時候）</li>',
           '<li class="' + (won.sorted ? 'ok' : '') + '">' + (won.sorted ? '✅' : '⬜') +
-          ' 看到一次<b>先排序比較省</b></li>'
+          ' 看到一次<b>先排序比較省</b>（按「＋」把次數加上去）</li>',
+          '<li class="' + (guess !== null ? 'ok' : '') + '">' + (guess !== null ? '✅' : '⬜') +
+          ' 最後一題：分界點大概在哪裡' +
+          (won.plain && won.sorted ? '' : '<span>（兩邊都看過才會出現）</span>') + '</li>'
         ];
       }
       var done = rows.filter(function (r) { return r.indexOf('✅') >= 0; }).length;
@@ -347,59 +387,105 @@
       }
 
       /* ── ② 結帳 ─────────────────────────────────────
-         ★ 這一段是這一步唯一不重複實驗室的東西，所以做深：
-           先猜損益兩平點 → 揭曉 → 自己拉「查幾次」看兩條長條交叉。 */
-      if (k === 'plan') return planHTML();
+         ★ 兩張收據，一次加一筆。
+           ⚠️ 「先猜分界點」那一題搬到**最後**（老師 2026-08-18 選的）——
+              先按到自己看見換邊，才有東西可以猜。 */
+      if (k === 'plan') {
+        return planHTML() + (won.plain && won.sorted ? guessHTML() : '');
+      }
 
       return '';
     }
 
-    /* ── 結帳 ────────────────────────────────────────
-       ★ 三段：① 先猜損益兩平點 ② 揭曉 ③ 自己拉「查幾次」看兩條長條交叉。
-       ⚠️ 一定要讓他看到**兩邊各贏一次**。只看到一邊的話，
-          這一步會被記成「先排序比較好」或「不要排比較好」—— 兩個都是錯的。 */
+    /* ── 結帳：兩張收據 ────────────────────────────────
+       ★★ 老師 2026-08-18：「🧾 結帳還是不太會操作，總覺得流程不太順手，
+         公式也不太好理解，操作後還是不太理解。」
+       ⚠️ 前一版壞在**開場**和**呈現**兩件事：
+         ① 一進來就要他猜「查幾次以上先排序才划算」——
+            那是兩條直線的交點。國中生手上沒有任何可以依靠的直覺，
+            只能亂填一個數字，然後被告知答案。猜不出來的猜測沒有教學功能。
+         ② 畫面上是「4,950 ＋ 7 × 100 ＝ 5,650」這種算式。
+            那是**結果**的寫法，不是**過程**的寫法 ——
+            學生看不出 4,950 為什麼只出現一次、7 為什麼要乘。
+       ⇒ 改成兩張並排的收據，一次加一筆：
+           排序費　只在「先排序」那一張出現，而且**只付一次**
+           查詢費　每查一次就往上加一筆
+         按「＋ 再查一次」兩張的總計各自往上跳，換邊的那一刻標出來。
+       ★ 沒有乘法算式 —— 只有一直加上去的數字。
+         「排序費只付一次、查詢費每次都要付」這件事，用收據看一眼就懂。 */
     function planHTML() {
-      var be = breakEven(n);
-      var out = sizesHTML();
-
-      if (guess === null) {
-        /* ⚠️ 不給選項 —— 選項會把答案的量級洩漏出去（和搜尋那邊同一個做法）。 */
-        return out +
-          '<div class="bc-ask">' +
-          '這批 <b>' + comma(n) + '</b> 筆資料：<br>' +
-          '· 不排序，每次都循序找 —— 一次 ' + comma(seqWorst(n)) + ' 次<br>' +
-          '· 先排序（' + comma(selCompares(n)) + ' 次），之後每次二元找 —— 一次 ' +
-          binWorst(n) + ' 次<br><br>' +
-          '<b>要查幾次以上，「先排序」才開始划算？</b>' +
-          '<br><span style="font-size:12px">💡 先猜一個數字 —— 猜錯沒關係，這一題就是要你猜。</span>' +
-          '<div class="yn"><input class="bc-in" id="bc-g" type="number" min="1" placeholder="查幾次">' +
-          '<button class="bc-btn" data-a="guess">送出</button></div></div>';
-      }
-
-      var kk = planK === null ? 1 : planK;
+      var kk = planK || 1;
+      var sortFee = selCompares(n);          // 排序費：只付一次
+      var perPlain = seqWorst(n);            // 不排序：每查一次的價錢
+      var perSorted = binWorst(n);           // 先排序：每查一次的價錢
+      var totPlain = costPlain(n, kk);
+      var totSorted = costSorted(n, kk);
       var side = better(n, kk);
-      var mx = Math.max(costPlain(n, kk), costSorted(n, kk));
-      /* 「查幾次」的幾個檔位：1 次、剛好在分界點兩側、以及遠遠超過。
-         ★ 分界點兩側各給一個 —— 那一格差一次就換邊，最有感。 */
-      var KS = [1, Math.max(1, be - 1), be, be * 2, be * 10];
-      out += '<div class="bc-ks"><span class="lb">你要查幾次</span>' +
-        KS.map(function (v) {
-          return '<button data-k="' + v + '"' + (v === kk ? ' class="on"' : '') + '>' +
-                 comma(v) + ' 次</button>';
-        }).join('') + '</div>' +
-        '<div class="bc-bars">' +
-          bar('不排序，每次循序找', costPlain(n, kk), mx, '#f59e0b') +
-          bar('先排序，之後二元找', costSorted(n, kk), mx, '#22c55e') +
+
+      var bill = function (cls, name, fee, per, tot, win) {
+        return '<div class="bc-bill ' + cls + (win ? ' win' : '') + '">' +
+          '<div class="bh">' + name + '</div>' +
+          '<div class="br"><span>排序費</span><span>' +
+            (fee ? comma(fee) : '0') + '</span></div>' +
+          '<div class="bn">' + (fee ? '只付一次' : '不用排序') + '</div>' +
+          '<div class="br"><span>查詢費</span><span>' + comma(per * kk) + '</span></div>' +
+          '<div class="bn">一次 ' + comma(per) + ' × ' + comma(kk) + ' 次</div>' +
+          '<div class="br tot"><span>總計</span><span>' + comma(tot) + '</span></div>' +
+          '<div class="bw">' + (win ? '✅ 比較便宜' : '　') + '</div></div>';
+      };
+
+      /* ⚠️ 加幾次的按鈕要跨好幾個量級 —— 只有 ＋1 的話，
+         100 筆要按五十幾下才看得到換邊，那不是體驗是懲罰。
+         ★ 三種資料量的分界點分別是 8／54／305，
+           所以 ＋100 按三下之內一定看得到換邊。
+         ⚠️ 哪天資料量加大（分界點跑到上千），這裡要再加一格 ——
+            不然學生又會落到「按到煩」那一邊。 */
+      var STEPS_K = [1, 10, 100];
+      return sizesHTML() +
+        '<div class="bc-kbar"><span class="lb">你要查 <b>' + comma(kk) + '</b> 次</span>' +
+        STEPS_K.map(function (v) {
+          return '<button data-add="' + v + '">＋' + comma(v) + ' 次</button>';
+        }).join('') +
+        '<button data-add="reset" class="ghost">↺ 回到 1 次</button></div>' +
+        '<div class="bc-bills">' +
+          bill('plain', '🚶 不排序，每次循序找', 0, perPlain, totPlain, side === 'plain') +
+          bill('sorted', '📚 先排序，之後二元找', sortFee, perSorted, totSorted, side === 'sorted') +
         '</div>' +
-        '<div class="bc-ask">查 <b>' + comma(kk) + '</b> 次的話：' +
-        '<br>· 不排序＝' + comma(seqWorst(n)) + ' × ' + comma(kk) + ' ＝ ' +
-        hlb(comma(costPlain(n, kk))) + ' 次' +
-        '<br>· 先排序＝' + comma(selCompares(n)) + ' ＋ ' + binWorst(n) + ' × ' + comma(kk) +
-        ' ＝ ' + hlb(comma(costSorted(n, kk))) + ' 次' +
-        '<br>⇒ ' + (side === 'same'
-          ? hl('剛好一樣 —— 這就是分界點')
-          : hl(side === 'plain' ? '不排序比較省' : '先排序比較省')) + '。</div>';
-      return out;
+        '<div class="bc-ask">' + planSay(kk, side, totPlain, totSorted) + '</div>';
+    }
+
+    /** 收據下面那一句話 —— 講**剛剛發生了什麼**，不是講公式 */
+    function planSay(kk, side, tp, ts) {
+      if (side === 'same') {
+        return '查 <b>' + comma(kk) + '</b> 次的話，兩邊' + hl('剛好一樣貴') +
+               ' —— 這就是分界點。再多查一次，先排序就開始划算了。';
+      }
+      if (side === 'plain') {
+        return '查 <b>' + comma(kk) + '</b> 次：' + hl('不排序比較省') +
+               '（' + hlb(comma(tp)) + ' 對 ' + hlb(comma(ts)) + '）。' +
+               '<br>⚠️ 因為那筆<b>排序費</b>還沒被攤平 —— 查太少次，先付的錢划不來。' +
+               '<br>👉 按上面的「＋」再多查幾次看看。';
+      }
+      return '查 <b>' + comma(kk) + '</b> 次：' + hl('先排序比較省') +
+             '（' + hlb(comma(ts)) + ' 對 ' + hlb(comma(tp)) + '）。' +
+             '<br>★ 排序費只付了一次，但它幫你把<b>每一次</b>的查詢費從 ' +
+             comma(seqWorst(n)) + ' 降到 ' + binWorst(n) + ' —— 查愈多次賺愈多。';
+    }
+
+    /* ── 最後才問分界點 ──────────────────────────────
+       ★ 老師 2026-08-18 選的：「拿掉，改成最後才問」——
+         先讓他按到自己看見換邊，再問「那分界點大概在哪裡？」。
+       ⚠️ 有過經驗才猜得出來。一開場就問，他只能亂填一個數字。 */
+    function guessHTML() {
+      var be = breakEven(n);
+      return '<div class="bc-ask"><b>最後一題：</b>' +
+        '你剛才看到兩邊換邊了。' +
+        '這批 <b>' + comma(n) + '</b> 筆資料，' +
+        '<b>查幾次以上</b>，先排序才開始划算？' +
+        '<br><span style="font-size:12px">💡 用「＋」把次數調到剛好換邊的那一格，就看得出來。' +
+        '答案在 ' + comma(Math.max(1, be - 20)) + ' ～ ' + comma(be + 20) + ' 之間都算對。</span>' +
+        '<div class="yn"><input class="bc-in" id="bc-g" type="number" min="1" placeholder="查幾次">' +
+        '<button class="bc-btn" data-a="guess">送出</button></div></div>';
     }
 
     function numsHTML(rows) {
@@ -442,28 +528,14 @@
              ⚠️ 損益兩平點也跟著資料量跑（10 筆是 8 次、600 筆是 3,004 次），
                 猜過的答案不能算數。 */
           cleared[step().key] = false;
-          if (step().key === 'plan') { guess = null; planK = null; won = {}; }
+          if (step().key === 'plan') { guess = null; planK = 1; won = {}; msgShownFlip = false; }
           tries = 0; msg = ''; kind = 'info';
           render();
         };
       });
-      /* 「查幾次」的檔位 —— 這是結帳那一段真正在玩的東西 */
-      [].forEach.call(host.querySelectorAll('[data-k]'), function (el) {
-        el.onclick = function () {
-          planK = Number(el.dataset.k);
-          var side = better(n, planK);
-          /* ⚠️ 'same'（剛好在分界點）兩邊都不算贏 ——
-             那一格是「一樣」，把它算成任一邊都會讓結論變成半個。 */
-          if (side === 'plain' || side === 'sorted') won[side] = true;
-          if (won.plain && won.sorted && !cleared.plan) {
-            cleared.plan = true;
-            say('good', '兩邊你都看到了 —— ' +
-                hl('同一批資料、同樣兩種做法，答案卻不一樣') +
-                '。<br>差別只在<b>你要查幾次</b>。');
-            return;
-          }
-          msg = ''; render();
-        };
+      /* 「＋ 再查幾次」—— 這是結帳那一段真正在玩的東西 */
+      [].forEach.call(host.querySelectorAll('[data-add]'), function (el) {
+        el.onclick = function () { act('add:' + el.dataset.add); };
       });
       [].forEach.call(host.querySelectorAll('[data-a]'), function (el) {
         el.onclick = function () { act(el.dataset.a); };
@@ -489,21 +561,37 @@
         return;
       }
 
-      /* ── 結帳：先猜損益兩平點 ───────────────────────── */
+      /* ── 結帳：加次數 ──────────────────────────────
+         ★ 一次加一筆 —— 沒有公式，只有一直加上去的數字。 */
+      if (key === 'plan' && a && a.indexOf('add:') === 0) {
+        var d = a.slice(4);
+        planK = (d === 'reset') ? 1 : (planK || 1) + Number(d);
+        var side = better(n, planK);
+        if (side === 'plain' || side === 'sorted') won[side] = true;
+        if (won.plain && won.sorted && !msgShownFlip) {
+          msgShownFlip = true;
+          say('good', '看到了嗎？' + hl('同一批資料、同樣兩種做法，答案換邊了') +
+                      '。<br>差別只在<b>你要查幾次</b> —— 下面最後一題就是問這個。');
+          return;
+        }
+        msg = ''; render(); return;
+      }
+
+      /* ── 結帳的最後一題：分界點 ─────────────────────
+         ⚠️ 這一題**猜錯也不擋** —— 它要的是他先給一個數字，
+            而且答案給一個區間（±20），不是要他算到剛好那一格。 */
       if (key === 'plan' && a === 'guess') {
         var v = num('#bc-g');
         if (v === null) return;
         var be = breakEven(n);
         guess = v;
-        planK = 1;                        // 揭曉後從「查 1 次」開始自己拉
-        won = {};
-        var off = v > be ? Math.round(v / be) : 0;
+        var near = Math.abs(v - be) <= 20;
+        cleared.plan = true;
         say('good',
-            '答案是 ' + hl('查 ' + comma(be) + ' 次以上') + '（' + comma(n) + ' 筆的話）。' +
-            '（你猜 ' + comma(v) + ' 次）' +
-            (off >= 10 ? '<br>差得有點多 —— 排序那筆帳比想像中好還。' : '') +
-            '<br>★ 現在自己拉拉看「要查幾次」，' +
-            '把<b>兩邊各贏一次</b>的畫面都找出來。');
+            (near ? '對了 —— ' : '答案是 ') + hl('查 ' + comma(be) + ' 次以上') +
+            '（' + comma(n) + ' 筆的話）。' + (near ? '' : '（你猜 ' + comma(v) + ' 次）') +
+            '<br>★ 在那之前，排序費還沒被攤平；在那之後，' +
+            '每多查一次都在賺 ' + comma(seqWorst(n) - binWorst(n)) + ' 次。');
         return;
       }
 
@@ -543,10 +631,12 @@
            /* ⚠️ 這一句一定要留著：課本那句「二元搜尋比較快」如果不先擋，
               學生會把整章記成那五個字，而排序的成本就被當成免費的。 */
            '<br>⚠️ 所以結論<b>不是</b>「二元搜尋比較快」—— 那句話是有前提的。',
+      /* ⚠️ 過關標準的順序要和畫面上的順序一樣（老師 2026-08-18 反映流程不順）——
+         不一樣的話學生會照著標準去找，但畫面上那一題還沒出現。 */
       pass: '① 三種資料量的數字都看過；<br>' +
-            '② <b>先猜</b>一次「查幾次以上先排序才划算」；<br>' +
-            '③ 自己拉「查幾次」，把<b>不排序比較省</b>和<b>先排序比較省</b>' +
-            '兩種畫面<b>都找出來</b>。'
+            '② 按「<b>＋ 再查幾次</b>」，把<b>不排序比較省</b>和' +
+            '<b>先排序比較省</b>兩種畫面<b>都找出來</b>；<br>' +
+            '③ 最後回答：<b>查幾次以上</b>先排序才划算（答在附近就算對）。'
     };
   }
 
