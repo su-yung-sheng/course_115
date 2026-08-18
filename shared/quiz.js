@@ -189,11 +189,32 @@
       /* 實驗室的規則寫在模組裡（SORTLAB／SEARCHLAB 的 INFO），
          不在關卡資料裡 —— 抄一份到這邊的話，改規則就會有一邊忘記。
          ⚠️ 模組不一定載得到（單元測試就沒有），所以要有退路。 */
-      var mod = (lv.lab.kind === 'search') ? global.SEARCHLAB
-              : (lv.lab.kind === 'logic') ? global.LOGICLAB : global.SORTLAB;
-      var info = mod && mod.INFO && mod.INFO[lv.lab.mode];
+      /* ⚠️⚠️ 一關可以掛**兩個**實驗室（第 10 關：先比排序、再比搜尋）——
+         那時候 lv.lab 是**陣列**，lv.lab.kind 是 undefined，
+         於是這裡會掉進 SORTLAB、再拿 INFO[undefined] 拿到空的，
+         最後安靜地退回情境解說。⇒ 第 10 關 Q3 引用的其實是**情境**，
+         而那一題問的正好是「排序的成本要不要算進搜尋裡」——
+         兩個實驗室的規則才是它的依據。
+         ⚠️ 這是同一個陣列坑的第三處（level.html、undefined.test.js、這裡）。 */
+      var labs = Array.isArray(lv.lab) ? lv.lab : [lv.lab];
+      var modOf = function (l) {
+        return (l.kind === 'search') ? global.SEARCHLAB
+             : (l.kind === 'logic') ? global.LOGICLAB : global.SORTLAB;
+      };
+      var mod = modOf(labs[0]);
       label = '🕹️ 你在「動手試一次」做過的';
-      body = info ? (info.rule + '<br>' + info.why) : '';
+      /* 一個實驗室 → 規則＋原理；兩個 → 各給一句規則。
+         ⚠️ 兩個都給規則＋原理的話有四句，而 brief() 只取前兩句 ——
+            第二個實驗室會整個被截掉，等於沒引用到。 */
+      if (labs.length > 1) {
+        body = labs.map(function (l) {
+          var m = modOf(l), inf = m && m.INFO && m.INFO[l.mode];
+          return inf ? inf.rule : '';
+        }).filter(Boolean).join('<br>');
+      } else {
+        var info = mod && mod.INFO && mod.INFO[labs[0].mode];
+        body = info ? (info.rule + '<br>' + info.why) : '';
+      }
       /* ⚠️ 邏輯實驗室（第 4 關）沒有 INFO —— 它的說明長在 FORMS 裡，
          一種條件一條。整份端出來太長，取「且／或」那兩條就夠 ——
          第 4 關的條件題問的就是它們。 */

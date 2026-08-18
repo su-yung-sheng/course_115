@@ -897,5 +897,51 @@ console.log('\n── ★★ 播放鈕要看得到、結論要畫線（老師 20
   h3.remove(); h4.remove();
 }
 
+console.log('\n── ★★ 開場那三行也要畫重點（老師 2026-08-18）──');
+{
+  /* ★ 老師：「⚖️ 排序大比拼／📝／🎒 …這裡面要加上畫重點標注」。
+     ⚠️ 這三行是學生進到這一步看到的**第一段字**，而讀純文字時眼睛是滑過去的。
+     ⚠️ 但畫太多等於沒畫 —— 上限比「有沒有畫」更重要。 */
+  const I = W.SORTLAB.INFO.compare;
+  const cnt = t => (String(t).match(/class="hl(-b)?"/g) || []).length;
+  const total = cnt(I.rule) + cnt(I.why) + cnt(I.life);
+  ok(cnt(I.rule) >= 1, '★★ 規則那一行有畫（' + cnt(I.rule) + ' 處）');
+  ok(cnt(I.why) >= 1, '★★ 原理那一行有畫（' + cnt(I.why) + ' 處）');
+  ok(cnt(I.life) >= 1, '★ 生活案例那一行也有（' + cnt(I.life) + ' 處）');
+  ok(total <= 4, '★★ 整段最多四處（實得 ' + total + '）—— 畫太多等於沒畫');
+  /* ★ 畫的要是**重點**，不是操作指示。
+     「各排一次」「三種都要跑過」是叫他做什麼，不是這一段在講什麼。 */
+  const marked = (I.rule + I.why + I.life).match(/class="hl(-b)?">([^<]*)</g) || [];
+  ok(!marked.some(m => /各排一次|都要跑過|按一下/.test(m)),
+     '★★ 沒有把操作指示畫起來（那是指示，不是重點）');
+  ok(marked.some(m => /不管資料長什麼樣|接近排好/.test(m)),
+     '★★ 畫的是兩種排序真正的差別（選擇不看資料／插入看資料）');
+
+  /* ── 引用框：第 10 關掛了兩個實驗室 ──────────────────
+     ⚠️⚠️ lv.lab 是**陣列**時 lv.lab.kind 是 undefined ——
+        quiz.js 會掉進 SORTLAB、拿 INFO[undefined] 拿到空的，
+        最後安靜地退回「情境解說」。第 10 關 Q3 引用的其實是情境，
+        而那一題問的正好是「排序的成本要不要算進搜尋裡」。
+     ★ 這是同一個陣列坑的第三處（level.html、undefined.test.js、quiz.js）。 */
+  /* ⚠️ 自己備一份 window：檔案最上面那份只載了 sortlab，
+     直接寫 `if (W.QUIZ)` 的話這三條會**安靜地跳過** ——
+     那比紅字更糟，因為看起來像通過了。 */
+  {
+    const R = path.join(__dirname, '..', '..');
+    const V2 = {};
+    ['shared/sortlab.js', 'shared/searchlab.js', 'shared/quiz.js',
+     '11502/content/blocks.js'].forEach(f =>
+      new Function('window', fs.readFileSync(path.join(R, f), 'utf8'))(V2));
+    ok(!!V2.QUIZ && !!V2.BLOCK_LEVELS, '（引用框那三條的環境備好了）');
+    const box = V2.QUIZ._refBox(V2.BLOCK_LEVELS['6-3-3'], 'lab');
+    ok(/排序/.test(box) && /砍掉一半/.test(box),
+       '★★ 第 10 關的引用框同時給得出**兩個**實驗室的規則');
+    ok(/動手試一次/.test(box), '★★ 而且標題是「你在動手試一次做過的」');
+    /* 單一實驗室那條路不可以被改壞 —— 它給的是規則＋原理 */
+    const one = V2.QUIZ._refBox(V2.BLOCK_LEVELS['6-2-1'], 'lab');
+    ok(/最小/.test(one), '★ 只掛一個實驗室的關卡照舊（第 6 關：選擇排序的規則）');
+  }
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

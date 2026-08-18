@@ -178,8 +178,22 @@ section('★ quiz.js 真的認得 derive');
                 .replace(/\/\*[\s\S]*?\*\//g, ' ');   /* ⚠️ 先去註解，不然註解掩護 */
   ok(/ref === 'derive'/.test(src), "★★ refBox 有處理 ref === 'derive'");
   ok(/lv\.derive\.done/.test(src), '★ 引的是推導的收尾（done），不是步驟裡的答案');
-  ok(/lab\.kind === 'logic'/.test(src),
-     '★ 邏輯實驗室（第 4 關）也接上了 —— 之前它會掉進 SORTLAB 的分支拿到空的');
+  /* ⚠️ 這一條本來寫成 /lab\.kind === 'logic'/ —— 盯的是**變數叫什麼名字**。
+     2026-08-18 把那段抽成 modOf(l) 之後（為了處理第 10 關的兩個實驗室），
+     變數從 lab 改叫 l，行為完全沒變，測試卻紅了。
+     ★ 斷言要盯「它做得到什麼」，不是「原始碼長什麼樣」——
+       盯字面的斷言會在每一次重構時假警報，而假警報久了就會被無視。 */
+  const V = {};
+  ['shared/sortlab.js', 'shared/searchlab.js', 'shared/logiclab.js',
+   'shared/quiz.js', '11502/content/blocks.js'].forEach(f =>
+    new Function('window', fs.readFileSync(path.join(ROOT, f), 'utf8'))(V));
+  const box4 = V.QUIZ._refBox(L['4-3-1'], 'lab');
+  ok(/「且」|「或」/.test(box4),
+     '★ 邏輯實驗室（第 4 關）真的引得到「且／或」—— 之前它會掉進 SORTLAB 拿到空的');
+  /* 第 10 關掛的是**兩個**實驗室（陣列）—— 兩邊的規則都要引得到 */
+  const box10 = V.QUIZ._refBox(L['6-3-3'], 'lab');
+  ok(/排序/.test(box10) && /砍掉一半/.test(box10),
+     '★★ 第 10 關兩個實驗室的規則都引得到（lv.lab 是陣列那條路）');
 }
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);

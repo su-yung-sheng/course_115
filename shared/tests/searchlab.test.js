@@ -1078,6 +1078,21 @@ section('★★ 入口要看得到、結論要畫線（老師 2026-08-18）');
   ok(win.querySelectorAll('.hl').length >= 1, '★ 黃筆畫在結論（差幾倍）上');
   ok(win.querySelectorAll('.hl-b').length >= 1, '★ 藍筆畫數量');
   host.remove();
+
+  /* ── 開場那三行也要畫（老師 2026-08-18）─────────────
+     ⚠️ 那是學生進到這一步看到的第一段字，讀純文字時眼睛是滑過去的。
+     ⚠️ 但上限比「有沒有畫」更重要 —— 畫太多等於沒畫。 */
+  const I = S.INFO.compare;
+  const cnt = t => (String(t).match(/class="hl(-b)?"/g) || []).length;
+  const total = cnt(I.rule) + cnt(I.why) + cnt(I.life);
+  ok(cnt(I.rule) >= 1, '★★ 規則那一行有畫（' + cnt(I.rule) + ' 處）');
+  ok(cnt(I.why) >= 1, '★★ 原理那一行有畫（' + cnt(I.why) + ' 處）');
+  ok(cnt(I.life) >= 1, '★ 生活案例（音樂 App）那一行也有（' + cnt(I.life) + ' 處）');
+  ok(total <= 4, '★★ 整段最多四處（實得 ' + total + '）');
+  const marked = (I.rule + I.why + I.life).match(/class="hl(-b)?">([^<]*)</g) || [];
+  ok(marked.some(m => /少掉一半|全部比一遍/.test(m)),
+     '★★ 畫的是兩種搜尋真正的差別（全部比一遍／每次少一半）');
+  ok(marked.some(m => /1 億/.test(m)), '★ 數量用藍筆（1 億首歌）');
 }
 
 section('★★ 資料大爆炸：數字要真的爆起來');
