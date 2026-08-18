@@ -233,8 +233,14 @@ section('★★ 第 10 關的關卡設定');
   ok(/control\.untilfound/.test(g8),
      '★★ 第 8 關的拼圖現在是**完整版**（兩個停止條件）');
   ok(/sensing\.ask/.test(g8), '   含「詢問」那一段');
-  ok(/control\.iffound/.test(g8) && /children2/.test(g8),
-     '★ 而且是「如果…否則」—— 否則那格要把位置往下移');
+  /* ⚠️ 2026-08-17 依老師的範例檔改寫第 8 關之後，判斷從迴圈**裡面**
+     搬到迴圈**外面**：原本是 control.iffound（相等就說找到了、否則往下移），
+     現在是 control.ifover（位置超過長度嗎 → 沒有／找到了）。
+     ★ 這一條紅了一段時間我才發現 —— 那次我沒跑 bigcost。
+       教訓：改關卡資料要跑**所有**讀那份資料的測試，不是印象中相關的幾支。 */
+  ok(/control\.ifover/.test(g8) && /children2/.test(g8),
+     '★★ 而且報告結果在迴圈**外面**（找不到也要說話）');
+  ok(/looks\.saynone/.test(g8), '   有「沒有符合的數字」那一句');
   ok(L['6-3-1'].palette.indexOf('control.until') >= 0,
      '★★ 只有一個條件的舊版留在調色盤裡當**誘餌**');
   ok(/永遠停不下來|無窮迴圈/.test(JSON.stringify(L['6-3-1'].tips)),

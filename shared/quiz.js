@@ -213,7 +213,24 @@
       body = (a.qs[ref].q || '') + (a.qs[ref].hint ? '<br>' + a.qs[ref].hint : '');
     }
     if (!body) return '';
+    /* ★★ 節錄，不要整段貼（老師 2026-08-17：「第十關概念檢測每一個提示都一樣？」）
+       ⚠️ 情境解說是一整段（第 10 關那一段有好幾百字）。
+          六題各自的 hint 明明不同，但底下都掛著同一大段 ——
+          那塊佔了八成版面，看起來就是「每一題都一樣」。
+       ★ 只取前兩句：夠學生想起「喔，那裡講過」，
+         真要看完整的，情境解說就在同一關的第 1 步。 */
+    body = brief(body);
     return '<div class="qz-ref"><b>' + label + '：</b><br>' + body + '</div>';
+  }
+
+  /** 取前兩句（以 <br> 或句號斷），超過就補「…」 */
+  function brief(html) {
+    var parts = String(html).split(/<br\s*\/?>|(?<=。)/).filter(function (t) {
+      return t.replace(/<[^>]+>/g, '').trim().length > 0;
+    });
+    if (parts.length <= 2) return html;
+    return parts.slice(0, 2).join('<br>') +
+           '<br><span class="qz-more">…（完整說明在「情境解說」那一步）</span>';
   }
 
   function run(host, items, opts, lv) {
@@ -399,6 +416,7 @@
             shared/answer.js 的連續字串比對。這一行擋的是
             「順手反白貼上」那個動作，而那才是多數學生會做的事。 */
       '.qz-hintbox,.qz-ref{user-select:none;-webkit-user-select:none}',
+      '.qz-more{color:#94a3b8;font-size:12px}',
       '.qz-ref{margin-top:8px;padding-top:8px;border-top:1px dashed #c7d2fe;font-size:12.5px;line-height:1.85}',
       '.qz-fb:not(:empty){margin-top:8px;border-radius:11px;padding:9px 12px;font-size:13px;line-height:1.85}',
       '.qz-fb.full{background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46}',

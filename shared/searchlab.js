@@ -174,6 +174,14 @@
   /* 逐次動畫跑得動的上限。★ 超過就改用「時間比例」的賽跑 ——
      一百萬次逐次畫要 100 分鐘，那不是慢，是根本跑不完。 */
   var RACE_MAX = 2000;
+  /* 賽跑總長（秒）：大資料量沒辦法逐次畫，改成「總共跑這麼久」。 */
+  var RACE_SEC = 6;
+  /* 時間換算的前提：假設電腦每秒比這麼多次。
+     ⚠️ 這個數字要出現在畫面上 —— 不寫的話那些秒數是憑空冒出來的。
+     ★ 放模組頂層有兩個理由：① 設定集中，改一個地方
+        ② 宣告在任何 render()／body() 之前 —— 那是 undefined.test.js 在盯的規則
+          （常數宣告在第一次繪製之後，畫面上就會出現「最少 undefined 字」那種東西）。 */
+  var PER_SEC = 1000000;
 
   /* ── 每一種資料量的生活場景 ────────────────────────────
      ★ 老師 2026-08-17：「排隊似乎不是實際應用例子，請改成適用大數量的
@@ -1198,9 +1206,8 @@
     function boomTable() {
       var n = boomN || BOOM_ASK.n;
       var seq = worstSequential(n), bin = worstBinary(n);
-      /* ⚠️ 時間換算的前提要寫出來：假設電腦每秒比一百萬次。
+      /* ⚠️ 時間換算的前提要寫出來：假設電腦每秒比一百萬次（PER_SEC）。
          不寫的話，這幾個秒數就是憑空冒出來的數字。 */
-      var PER_SEC = 1000000;
       var fmt = function (times) {
         var sec = times / PER_SEC;
         if (sec < 0.001) return '不到千分之一秒';
@@ -1279,7 +1286,6 @@
          大資料量：一百萬次逐次畫要 100 分鐘 —— 那不是慢，是跑不完。
          ⇒ 改成「總共跑 RACE_SEC 秒」，每一幀跳一大段。
          ⚠️ 兩邊用**同一個**步進比例，誰先到、差多少才會是真的。 */
-      var RACE_SEC = 6;
       var frames = Math.max(1, Math.round(RACE_SEC * 1000 / STEP_MS));
       var stepSeq = raceN > RACE_MAX ? Math.ceil(seqMax / frames) : 1;
       var stepBin = raceN > RACE_MAX ? Math.max(1, binMax / frames) : 1;

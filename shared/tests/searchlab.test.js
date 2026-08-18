@@ -424,7 +424,28 @@ section('★ 第 8 關（6-3-1）的關卡資料');
      '★ 宣告了 lab —— level.html 靠它決定要不要有「動手試一次」那一步');
   ok(!!S.INFO[lv.lab.mode], '   lab.mode 在 SEARCHLAB.INFO 裡查得到');
   ok((lv.quiz || []).length >= 6, '概念檢測 ' + lv.quiz.length + ' 題（抽 5，要 6 題以上）');
-  ok(lv.quiz.every(q => q.ref !== undefined), '每一題都指得回來源（ref）');
+  /* ⚠️⚠️ 2026-08-17 老師：「為什麼第十關概念檢測每一個提示都一樣？
+     不是應該配合題目調整重點就好嗎？」
+     原因不是 hint（那幾題本來就不同），是**引用框**：
+     多數題目寫同一個 ref，refBox 就把同一段內容貼在每一題底下 ——
+     那塊比 hint 長得多，看起來就一模一樣。
+     ★ 所以規則從「每一題都要有 ref」改成：
+       ① 至少要有幾題指得回來源（不是全部都不給）
+       ② **不可以多數題目指同一個來源**
+     ⚠️ 沒有 ref 是可以的 —— 有些題目的線索就在 hint 裡，
+        硬指一個來源只會讓提示變得又長又重複。 */
+  {
+    const refs = lv.quiz.map(q => q.ref);
+    const has = refs.filter(r => r !== undefined && r !== null);
+    ok(has.length >= 2, '　　至少兩題指得回來源（' + has.length + '／' + refs.length + '）');
+    const cnt = {};
+    refs.forEach(r => { const k = String(r); cnt[k] = (cnt[k] || 0) + 1; });
+    const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+    ok(top[1] <= Math.ceil(refs.length * 0.7),
+       '★★ 沒有多數題目指同一個來源（最多的是 ' + top[0] + '：' +
+       top[1] + '／' + refs.length + '）—— 那會讓每一題的提示長得一樣');
+  }
+
   ok(lv.quiz.every(q => (q.need || []).every(n => (n.any || []).length >= 3)),
      '★ 每個概念群至少 3 種同義說法 —— 寧可放過，不可錯殺');
   ok(lv.quiz.every(q => q.min && q.hint && q.why), '每一題都有 min／hint／why');
@@ -509,7 +530,28 @@ section('★ 第 9 關（6-3-2）的關卡資料');
   is(lv.lab, { kind: 'search', mode: 'binary', course: 'hit' }, '★ 宣告了 binary 的 lab');
   ok(!!S.INFO[lv.lab.mode], '   lab.mode 在 SEARCHLAB.INFO 裡查得到');
   ok((lv.quiz || []).length >= 6, '概念檢測 ' + lv.quiz.length + ' 題');
-  ok(lv.quiz.every(q => q.ref !== undefined), '每一題都指得回來源');
+  /* ⚠️⚠️ 2026-08-17 老師：「為什麼第十關概念檢測每一個提示都一樣？
+     不是應該配合題目調整重點就好嗎？」
+     原因不是 hint（那幾題本來就不同），是**引用框**：
+     多數題目寫同一個 ref，refBox 就把同一段內容貼在每一題底下 ——
+     那塊比 hint 長得多，看起來就一模一樣。
+     ★ 所以規則從「每一題都要有 ref」改成：
+       ① 至少要有幾題指得回來源（不是全部都不給）
+       ② **不可以多數題目指同一個來源**
+     ⚠️ 沒有 ref 是可以的 —— 有些題目的線索就在 hint 裡，
+        硬指一個來源只會讓提示變得又長又重複。 */
+  {
+    const refs = lv.quiz.map(q => q.ref);
+    const has = refs.filter(r => r !== undefined && r !== null);
+    ok(has.length >= 2, '　　至少兩題指得回來源（' + has.length + '／' + refs.length + '）');
+    const cnt = {};
+    refs.forEach(r => { const k = String(r); cnt[k] = (cnt[k] || 0) + 1; });
+    const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+    ok(top[1] <= Math.ceil(refs.length * 0.7),
+       '★★ 沒有多數題目指同一個來源（最多的是 ' + top[0] + '：' +
+       top[1] + '／' + refs.length + '）—— 那會讓每一題的提示長得一樣');
+  }
+
   ok(lv.quiz.every(q => (q.need || []).every(n => (n.any || []).length >= 3)),
      '★ 每個概念群至少 3 種同義說法');
 
@@ -991,7 +1033,28 @@ section('★ 第 10 關（6-3-3）的關卡資料');
   is(lv.lab, { kind: 'search', mode: 'compare' }, '★ 宣告了 compare 的 lab');
   ok(!!S.INFO[lv.lab.mode], '   lab.mode 在 SEARCHLAB.INFO 裡查得到');
   ok((lv.quiz || []).length >= 6, '概念檢測 ' + lv.quiz.length + ' 題');
-  ok(lv.quiz.every(q => q.ref !== undefined), '每一題都指得回來源');
+  /* ⚠️⚠️ 2026-08-17 老師：「為什麼第十關概念檢測每一個提示都一樣？
+     不是應該配合題目調整重點就好嗎？」
+     原因不是 hint（那幾題本來就不同），是**引用框**：
+     多數題目寫同一個 ref，refBox 就把同一段內容貼在每一題底下 ——
+     那塊比 hint 長得多，看起來就一模一樣。
+     ★ 所以規則從「每一題都要有 ref」改成：
+       ① 至少要有幾題指得回來源（不是全部都不給）
+       ② **不可以多數題目指同一個來源**
+     ⚠️ 沒有 ref 是可以的 —— 有些題目的線索就在 hint 裡，
+        硬指一個來源只會讓提示變得又長又重複。 */
+  {
+    const refs = lv.quiz.map(q => q.ref);
+    const has = refs.filter(r => r !== undefined && r !== null);
+    ok(has.length >= 2, '　　至少兩題指得回來源（' + has.length + '／' + refs.length + '）');
+    const cnt = {};
+    refs.forEach(r => { const k = String(r); cnt[k] = (cnt[k] || 0) + 1; });
+    const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+    ok(top[1] <= Math.ceil(refs.length * 0.7),
+       '★★ 沒有多數題目指同一個來源（最多的是 ' + top[0] + '：' +
+       top[1] + '／' + refs.length + '）—— 那會讓每一題的提示長得一樣');
+  }
+
   ok(lv.quiz.every(q => (q.need || []).every(n => (n.any || []).length >= 3)),
      '★ 每個概念群至少 3 種同義說法');
 

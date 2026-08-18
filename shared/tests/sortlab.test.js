@@ -156,7 +156,28 @@ if (!JSDOM) {
        '★ 掛的是選擇排序的手動挑戰，而且開著變數追蹤');
     ok(!!S.INFO[lv.lab.mode], '   lab.mode 在 SORTLAB.INFO 裡查得到');
     ok((lv.quiz || []).length >= 6, '概念檢測 ' + lv.quiz.length + ' 題');
-    ok(lv.quiz.every(q => q.ref !== undefined), '每一題都指得回來源');
+    /* ⚠️⚠️ 2026-08-17 老師：「為什麼第十關概念檢測每一個提示都一樣？
+       不是應該配合題目調整重點就好嗎？」
+       原因不是 hint（那幾題本來就不同），是**引用框**：
+       多數題目寫同一個 ref，refBox 就把同一段內容貼在每一題底下 ——
+       那塊比 hint 長得多，看起來就一模一樣。
+       ★ 所以規則從「每一題都要有 ref」改成：
+         ① 至少要有幾題指得回來源（不是全部都不給）
+         ② **不可以多數題目指同一個來源**
+       ⚠️ 沒有 ref 是可以的 —— 有些題目的線索就在 hint 裡，
+          硬指一個來源只會讓提示變得又長又重複。 */
+    {
+      const refs = lv.quiz.map(q => q.ref);
+      const has = refs.filter(r => r !== undefined && r !== null);
+      ok(has.length >= 2, '　　至少兩題指得回來源（' + has.length + '／' + refs.length + '）');
+      const cnt = {};
+      refs.forEach(r => { const k = String(r); cnt[k] = (cnt[k] || 0) + 1; });
+      const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+      ok(top[1] <= Math.ceil(refs.length * 0.7),
+         '★★ 沒有多數題目指同一個來源（最多的是 ' + top[0] + '：' +
+         top[1] + '／' + refs.length + '）—— 那會讓每一題的提示長得一樣');
+    }
+
     ok(lv.quiz.every(q => (q.need || []).every(n => (n.any || []).length >= 3)),
        '★ 每個概念群至少 3 種同義說法');
 
@@ -208,7 +229,28 @@ if (!JSDOM) {
     eq(lv.lab, { kind: 'sort', mode: 'insertion', order: 'asc' }, '★ 掛的是插入排序的手動挑戰');
     ok(!!S.INFO[lv.lab.mode], '   lab.mode 在 SORTLAB.INFO 裡查得到');
     ok((lv.quiz || []).length >= 6, '概念檢測 ' + lv.quiz.length + ' 題');
-    ok(lv.quiz.every(q => q.ref !== undefined), '每一題都指得回來源');
+    /* ⚠️⚠️ 2026-08-17 老師：「為什麼第十關概念檢測每一個提示都一樣？
+       不是應該配合題目調整重點就好嗎？」
+       原因不是 hint（那幾題本來就不同），是**引用框**：
+       多數題目寫同一個 ref，refBox 就把同一段內容貼在每一題底下 ——
+       那塊比 hint 長得多，看起來就一模一樣。
+       ★ 所以規則從「每一題都要有 ref」改成：
+         ① 至少要有幾題指得回來源（不是全部都不給）
+         ② **不可以多數題目指同一個來源**
+       ⚠️ 沒有 ref 是可以的 —— 有些題目的線索就在 hint 裡，
+          硬指一個來源只會讓提示變得又長又重複。 */
+    {
+      const refs = lv.quiz.map(q => q.ref);
+      const has = refs.filter(r => r !== undefined && r !== null);
+      ok(has.length >= 2, '　　至少兩題指得回來源（' + has.length + '／' + refs.length + '）');
+      const cnt = {};
+      refs.forEach(r => { const k = String(r); cnt[k] = (cnt[k] || 0) + 1; });
+      const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+      ok(top[1] <= Math.ceil(refs.length * 0.7),
+         '★★ 沒有多數題目指同一個來源（最多的是 ' + top[0] + '：' +
+         top[1] + '／' + refs.length + '）—— 那會讓每一題的提示長得一樣');
+    }
+
     ok(lv.quiz.every(q => (q.need || []).every(n => (n.any || []).length >= 3)),
        '★ 每個概念群至少 3 種同義說法');
 
