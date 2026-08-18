@@ -174,6 +174,9 @@
   /* 逐次動畫跑得動的上限。★ 超過就改用「時間比例」的賽跑 ——
      一百萬次逐次畫要 100 分鐘，那不是慢，是根本跑不完。 */
   var RACE_MAX = 2000;
+  /* 一排格子最多畫幾個。★ 超過就只剩進度條 ——
+     1024 個格子擠在一起是一片灰，看不出「砍掉一半」。 */
+  var CELL_MAX = 60;
   /* 賽跑總長（秒）：大資料量沒辦法逐次畫，改成「總共跑這麼久」。 */
   var RACE_SEC = 6;
   /* 時間換算的前提：假設電腦每秒比這麼多次。
@@ -548,6 +551,15 @@
           ★ 要強調的是：**兩邊的比例是真的**。 */
     '.qs-race{margin-top:12px;background:#f8fafc;border:1px solid #e2e8f0;',
     '  border-radius:12px;padding:11px 13px}',
+    /* 一整排資料：看得到「走到哪」與「砍掉哪一半」 */
+    '.qs-cells{margin-bottom:10px}',
+    '.qs-cells .cl{margin-bottom:7px}',
+    '.qs-cells .nm{display:block;font-size:11.5px;font-weight:800;color:#475569;margin-bottom:3px}',
+    '.qs-cells .row{display:flex;gap:2px}',
+    '.qs-cells .c{flex:1;height:20px;border-radius:3px;background:#bae6fd;',
+    '  transition:background .15s}',
+    '.qs-cells .c.gone{background:#e2e8f0}',
+    '.qs-cells .c.now{background:#f59e0b}',
     '.qs-race .rh{font-size:12.5px;font-weight:900;color:#475569;margin-bottom:8px}',
     '.qs-lane{margin-bottom:9px}',
     '.qs-lane .nm{display:flex;justify-content:space-between;align-items:baseline;',
@@ -1253,7 +1265,22 @@
                '<div class="track"><div class="fill" style="width:' + pct + '%"></div></div></div>';
       };
       var out = '<div class="qs-race"><div class="rh">🏁 ' + comma(raceN) +
-        ' 筆資料，最倒楣的情況</div>' +
+        ' 筆資料，最倒楣的情況</div>';
+      /* ★★ 老師 2026-08-17：「在一整排資料中找到資料？」
+         ⚠️ 進度條只講「比了幾次」，看不到**資料**發生什麼事。
+         ★ 資料量小的時候直接把整排畫出來：
+             循序 —— 一格一格往右走，走過的變灰
+             二元 —— 跳到中間，被砍掉的那一半整片變灰
+           那個「一次刷掉一半」的畫面，是進度條給不了的。
+         ⚠️ 大資料量畫不下（1024 個格子擠成一片），所以只在 ≤ CELL_MAX 時畫。 */
+      if (raceN <= CELL_MAX) {
+        out += '<div class="qs-cells">' +
+          '<div class="cl"><span class="nm">循序搜尋：一個一個看</span>' +
+          cellsSeq(raceN, raceSeq) + '</div>' +
+          '<div class="cl"><span class="nm">二元搜尋：每次砍一半</span>' +
+          cellsBin(raceN, raceBin) + '</div></div>';
+      }
+      out +=
         lane('bin', '二元搜尋（每次砍一半）', raceBin, binMax) +
         lane('seq', '循序搜尋（一個一個看）', raceSeq, seqMax);
       if (raceOn === 2) {
@@ -1270,6 +1297,31 @@
         : ('<div class="note">⚠️ 這裡把每一次比較放慢成 ' + STEP_MS +
            ' 毫秒，你才看得到它在跑。真的電腦一秒可以比<b>幾百萬次</b> —— ' +
            '但<b>兩邊的比例是真的</b>。</div>');
+      return out + '</div>';
+    }
+
+    /* 一排格子：循序搜尋走到第 k 格 */
+    function cellsSeq(n, k) {
+      var out = '<div class="row">';
+      for (var i = 1; i <= n; i++) {
+        var cls = i < k ? 'gone' : (i === k ? 'now' : '');
+        out += '<span class="c ' + cls + '"></span>';
+      }
+      return out + '</div>';
+    }
+    /* 一排格子：二元搜尋比到第 k 次時，範圍剩哪一段 */
+    function cellsBin(n, k) {
+      var lo = 1, hi = n, mid = 0;
+      for (var t = 0; t < k && lo <= hi; t++) {
+        mid = Math.floor((lo + hi) / 2);
+        /* 最倒楣的情況：目標一直在右半（和 worstBinary 的算法一致） */
+        lo = mid + 1;
+      }
+      var out = '<div class="row">';
+      for (var i = 1; i <= n; i++) {
+        var cls = (i < lo || i > hi) ? 'gone' : (i === mid ? 'now' : '');
+        out += '<span class="c ' + cls + '"></span>';
+      }
       return out + '</div>';
     }
 

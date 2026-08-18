@@ -648,6 +648,24 @@ console.log('\n── ★★ 排序大比拼：選擇 vs 插入 ──');
   ok((tbl.querySelectorAll('tr').length - 1) === 3, '　 三列');
   ok(/選擇排序永遠/.test(host.textContent),
      '★★ 而且點破「選擇排序永遠一樣」—— 那是這一段的結論');
+
+  /* ★★ 老師 2026-08-17：「第十關能有真實的排序過程嗎？
+     模擬散亂的資料，一個一個排好的過程？」
+     ⚠️ 原本只有兩條進度條 —— 那是**次數**不是**過程**。
+     ★ plan() 的每一格本來就帶著「這一刻的陣列長什麼樣、正在比哪兩個」，
+       大比拼卻只用了總次數。現在兩排長條同時排給他看。 */
+  const h2 = document.createElement('div');
+  document.body.appendChild(h2);
+  S2.mount(h2, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  h2.querySelector('[data-shape="rand"]').onclick();
+  h2.querySelector('[data-cmp]').onclick();
+  const bars = h2.querySelectorAll('.sl-bars2');
+  ok(bars.length === 2, '★★ 兩排長條（選擇一排、插入一排）');
+  ok(bars[0].querySelectorAll('.sl-bar').length === 10, '　　每排 10 根（資料有幾筆就幾根）');
+  ok(/排好了/.test(h2.textContent), '★ 排完會說「排好了」');
+  /* 每一步都要有一句解說 —— 只有長條在跳的話，學生不知道發生什麼事 */
+  ok(h2.querySelectorAll('.sl-lane .say').length === 2, '★★ 兩排各有一句解說');
+  h2.remove();
   host.remove();
 }
 

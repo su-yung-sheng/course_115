@@ -950,6 +950,42 @@ section('★★ 量級要看得出來（比例條會把它藏起來）');
   host.remove();
 }
 
+section('★★ 看得到「一整排資料」發生什麼事');
+{
+  /* ★ 老師 2026-08-17：「在一整排資料中找到資料？」
+     ⚠️ 進度條只講「比了幾次」，看不到資料本身怎麼被刷掉。
+     ⇒ 資料量小的時候把整排畫出來：
+         循序 —— 一格一格往右，走過的變灰
+         二元 —— 跳到中間，被砍掉的那一半整片變灰 */
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  S.mount(host, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  host.querySelector('[data-size="13"]').onclick();
+  let g = 0;
+  while (host.querySelector('[data-cut]') && g++ < 60) host.querySelector('[data-cut]').onclick();
+  host.querySelector('[data-race]').onclick();
+
+  const cells = host.querySelector('.qs-cells');
+  ok(!!cells, '★★ 13 筆會把整排資料畫出來');
+  const rows = cells.querySelectorAll('.row');
+  is(rows.length, 2, '　　兩排：循序一排、二元一排');
+  is(rows[0].querySelectorAll('.c').length, 13, '　　每排 13 格');
+  /* 跑完之後：循序整排都走過（灰），二元只剩幾格沒被砍 */
+  const goneSeq = rows[0].querySelectorAll('.c.gone').length;
+  const goneBin = rows[1].querySelectorAll('.c.gone').length;
+  ok(goneSeq >= 12, '★★ 循序那一排幾乎整排都走過了（' + goneSeq + '／13）');
+  ok(goneBin >= 12, '★★ 二元那一排也刷掉了 —— 但它只比了 4 次（' + goneBin + '／13）');
+
+  /* ⚠️ 大資料量畫不下，不可以畫（1024 個格子是一片灰） */
+  host.querySelector('[data-size="1000000"]').onclick();
+  let k = 0;
+  while (host.querySelector('[data-cut]') && k++ < 60) host.querySelector('[data-cut]').onclick();
+  host.querySelector('[data-race]').onclick();
+  ok(!host.querySelector('.qs-cells'),
+     '★★ 一百萬筆不畫格子（擠成一片反而看不出東西）');
+  host.remove();
+}
+
 section('★★ 資料大爆炸：數字要真的爆起來');
 {
   /* ★ 老師 2026-08-17：「數字太小不符合關卡名稱『資料大爆炸』」。

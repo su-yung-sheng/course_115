@@ -409,6 +409,20 @@
     '  font-size:12.5px;font-weight:800;color:#334155;margin-bottom:3px}',
     '.sl-lane .ct{font-family:ui-monospace,monospace;font-size:13px}',
     '.sl-lane .track{background:#e2e8f0;border-radius:7px;height:16px;overflow:hidden}',
+    /* ★ 真實的排序過程：一排長條，正在比的會亮、排好的變綠。
+       ⚠️ 高度固定 —— 每一格重畫的時候高度會跳，不固定的話整頁上下彈。 */
+    '.sl-bars2{display:flex;align-items:flex-end;gap:3px;height:78px;',
+    '  background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:5px 6px}',
+    '.sl-bars2 .sl-bar{flex:1;background:#cbd5e1;border-radius:3px 3px 0 0;position:relative;',
+    '  transition:height .12s linear,background .12s}',
+    '.sl-bars2 .sl-bar span{position:absolute;top:-15px;left:0;right:0;text-align:center;',
+    '  font-size:10.5px;font-weight:700;color:#64748b}',
+    '.sl-bars2 .sl-bar.cmp{background:#f59e0b}',
+    '.sl-bars2 .sl-bar.cmp span{color:#b45309}',
+    '.sl-bars2 .sl-bar.best{background:#8b5cf6}',
+    '.sl-bars2 .sl-bar.ok{background:#4ade80}',
+    '.sl-lane .say{font-size:12px;line-height:1.7;color:#64748b;min-height:34px;margin-top:5px}',
+    '.sl-lane .say b{color:#334155}',
     '.sl-lane .fill{height:100%;border-radius:7px;transition:width .1s linear}',
     '.sl-lane.sel .fill{background:#f59e0b}',
     '.sl-lane.ins .fill{background:#8b5cf6}',
@@ -566,6 +580,7 @@
           「選擇排序不看資料」這件事完全顯不出來。 */
     var cmpN = 10, cmpShape = '', cmpItems = [];
     var cmpSel = 0, cmpIns = 0, cmpOn = 0, cmpTimer = null, cmpTable = {};
+    var cmpAt = 0;      // 排序過程播到第幾格（兩邊共用同一個計時器）
     var CMP_MS = (opts.stepMs != null) ? Number(opts.stepMs) : 22;
 
     host.className = 'sl' + (opts.big ? ' sl-big' : '');
@@ -634,32 +649,56 @@
                return '<span class="sl-cell done">' + esc(v) + '</span>';
              }).join('') + '</div>';
 
-      var sel = plan(cmpItems, 'selection', 'asc').compares;
-      var ins = plan(cmpItems, 'insertion', 'asc').compares;
+      var selP = plan(cmpItems, 'selection', 'asc');
+      var insP = plan(cmpItems, 'insertion', 'asc');
+      var sel = selP.compares, ins = insP.compares;
       if (!cmpOn) {
-        out += '<div class="sl-side"><button data-cmp="1">⚖️ 讓兩種排序比一場</button></div>';
+        out += '<div class="sl-side"><button data-cmp="1">⚖️ 讓兩種排序各排一次</button></div>';
       } else {
-        var lane = function (cls, name, now, max) {
-          var pct = max ? Math.min(100, now / max * 100) : 0;
-          return '<div class="sl-lane ' + cls + (now >= max ? ' done' : '') + '">' +
-                 '<div class="nm"><span>' + name + '</span><span class="ct">' + now +
-                 ' / ' + max + ' 次' + (now >= max ? '　✅' : '') + '</span></div>' +
-                 '<div class="track"><div class="fill" style="width:' + pct + '%"></div></div></div>';
+        /* ★★ 老師 2026-08-17：「第十關能有真實的排序過程嗎？
+             模擬散亂的資料，一個一個排好的過程？」
+           ⚠️ 原本這裡只有兩條進度條 —— 那是**次數**，不是**過程**：
+              學生看到兩條線在跑，但不知道資料發生了什麼事。
+           ★ plan() 的每一格本來就帶著「這一刻的陣列長什麼樣、正在比哪兩個」，
+             大比拼卻只用了它的總次數，把過程丟掉了。
+           ⇒ 兩排長條同時排給他看：正在比的兩根會亮，排好的變綠。 */
+        var fs1 = selP.frames[Math.min(cmpAt, selP.frames.length - 1)];
+        var fs2 = insP.frames[Math.min(cmpAt, insP.frames.length - 1)];
+        var lane = function (cls, name, f, now, max, plen) {
+          return '<div class="sl-lane ' + cls + (cmpAt >= plen - 1 ? ' done' : '') + '">' +
+                 '<div class="nm"><span>' + name + '</span><span class="ct">比了 ' + f.n +
+                 ' 次' + (cmpAt >= plen - 1 ? '　✅ 排好了' : '') + '</span></div>' +
+                 '<div class="sl-bars2">' + barsOf(f) + '</div>' +
+                 '<div class="say">' + (f.note || '　') + '</div></div>';
         };
         out += '<div class="sl-race">' +
-          lane('sel', '選擇排序', cmpSel, sel) +
-          lane('ins', '插入排序', cmpIns, ins);
+          lane('sel', '🎯 選擇排序', fs1, cmpSel, sel, selP.frames.length) +
+          lane('ins', '🃏 插入排序', fs2, cmpIns, ins, insP.frames.length);
         if (cmpOn === 2) {
           out += '<div class="win">' +
             (sel === ins
               ? '兩邊一樣：都比了 <b>' + sel + '</b> 次。'
               : '選擇 <b>' + sel + '</b> 次、插入 <b>' + ins + '</b> 次 —— 插入少了 <b>' +
                 (sel - ins) + '</b> 次。') +
-            '<br>⚠️ 注意看：<b>選擇排序永遠是 ' + sel + ' 次</b>，三種資料長相都一樣。</div>';
+            '<br>⚠️ 注意看：<b>選擇排序永遠是 ' + sel + ' 次</b>，三種資料長相都一樣。</div>' +
+            '<div class="sl-side"><button data-cmp="1">↺ 再看一次</button></div>';
         }
         out += '</div>';
       }
       return out + cmpTable2();
+    }
+
+    /** 一格 frame → 一排長條（正在比的兩根會亮、排好的變綠） */
+    function barsOf(f) {
+      var max = Math.max.apply(null, f.arr);
+      return f.arr.map(function (v, i) {
+        var cls = 'sl-bar';
+        if (i < f.done) cls += ' ok';
+        else if (f.best === i) cls += ' best';
+        else if (f.cmp && (f.cmp[0] === i || f.cmp[1] === i)) cls += ' cmp';
+        return '<div class="' + cls + '" style="height:' +
+               Math.round(v / max * 100) + '%"><span>' + v + '</span></div>';
+      }).join('');
     }
 
     function shapeOf(k) {
@@ -697,7 +736,7 @@
 
     function startShape(k) {
       if (cmpTimer) { clearInterval(cmpTimer); cmpTimer = null; }
-      cmpShape = k; cmpOn = 0; cmpSel = 0; cmpIns = 0;
+      cmpShape = k; cmpOn = 0; cmpSel = 0; cmpIns = 0; cmpAt = 0;
       cmpItems = shapeOf(k).make(cmpN);
       body();
       /* ⚠️ say(ok, msg) 的第一個參數是**布林**（sortlab 和 searchlab 不一樣，
@@ -709,20 +748,27 @@
 
     function startCmp() {
       if (!cmpShape || cmpTimer) return;
-      var sel = plan(cmpItems, 'selection', 'asc').compares;
-      var ins = plan(cmpItems, 'insertion', 'asc').compares;
-      cmpOn = 1; cmpSel = 0; cmpIns = 0;
+      var selP = plan(cmpItems, 'selection', 'asc');
+      var insP = plan(cmpItems, 'insertion', 'asc');
+      var sel = selP.compares, ins = insP.compares;
+      /* ★ 兩邊用**同一個**計時器、同一個格數 —— 誰先排完才會是真的。
+         ⚠️ 各自跑各自的計時器，看起來就像兩支影片各播各的，
+            那個「插入排序早就排完了、選擇排序還在比」的畫面就不見了。 */
+      var last = Math.max(selP.frames.length, insP.frames.length) - 1;
+      cmpOn = 1; cmpAt = 0; cmpSel = 0; cmpIns = 0;
       if (!CMP_MS) {                       // 測試用：直接跑完
-        cmpSel = sel; cmpIns = ins; cmpOn = 2;
+        cmpAt = last; cmpSel = sel; cmpIns = ins; cmpOn = 2;
         cmpTable[cmpShape] = { sel: sel, ins: ins };
         body(); finishCmp(); return;
       }
       cmpTimer = setInterval(function () {
-        if (cmpSel < sel) cmpSel++;
-        if (cmpIns < ins) cmpIns++;
-        if (cmpSel >= sel && cmpIns >= ins) {
+        cmpAt++;
+        cmpSel = selP.frames[Math.min(cmpAt, selP.frames.length - 1)].n;
+        cmpIns = insP.frames[Math.min(cmpAt, insP.frames.length - 1)].n;
+        if (cmpAt >= last) {
           clearInterval(cmpTimer); cmpTimer = null;
-          cmpOn = 2; cmpTable[cmpShape] = { sel: sel, ins: ins };
+          cmpAt = last; cmpOn = 2;
+          cmpTable[cmpShape] = { sel: sel, ins: ins };
           body(); finishCmp(); return;
         }
         body();
