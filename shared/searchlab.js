@@ -490,6 +490,25 @@
     '.qs-side button{background:#fff;border:2px solid #06b6d4;color:#0e7490;border-radius:9px;',
     '  padding:8px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}',
     '.qs-side button:hover{background:#ecfeff}',
+    /* ── 「按這裡」的區塊（和 sortlab 的 .sl-go 是同一件事）──────
+       ⚠️ 老師 2026-08-18 是對排序那顆說「太不明顯，找很久才發現」，
+          但這一邊是同一種毛病、只是輕一級：
+          🏁 那顆和上面的「資料量」按鈕長得一模一樣（都是白底外框），
+          在一排看起來一樣的按鈕裡，主要動作等於沒有主要動作。
+       ★ 兩個實驗室是**上下疊在同一頁**的 —— 入口的樣子要一致，
+         不然學生在排序那邊學會的「找紫色大按鈕」，到搜尋這邊就失效了。 */
+    '.qs-go{background:#ecfeff;border:2px dashed #67e8f9;border-radius:14px;',
+    '  padding:15px 14px;margin:13px 0;text-align:center}',
+    '.qs-go button{background:#0891b2;color:#fff;border:0;border-radius:11px;',
+    '  padding:14px 26px;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;',
+    '  box-shadow:0 3px 0 #155e75;letter-spacing:.5px}',
+    '.qs-go button:hover{background:#0e7490}',
+    '.qs-go button:active{transform:translateY(2px);box-shadow:0 1px 0 #155e75}',
+    '.qs-go .cap{font-size:12.5px;font-weight:700;color:#0e7490;line-height:1.8;margin-top:9px}',
+    '@keyframes qs-breathe{0%,100%{box-shadow:0 3px 0 #155e75,0 0 0 0 rgba(8,145,178,.5)}',
+    '  50%{box-shadow:0 3px 0 #155e75,0 0 0 12px rgba(8,145,178,0)}}',
+    '.qs-go button{animation:qs-breathe 2.4s ease-out infinite}',
+    '@media (prefers-reduced-motion:reduce){.qs-go button{animation:none}}',
     /* 大比拼 */
     '.qs-pick{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap;align-items:center}',
     '.qs-pick .lb{font-size:12px;font-weight:700;color:#64748b}',
@@ -1099,10 +1118,9 @@
         if (!raced[size]) {
           out += raceOn
             ? raceHtml()
-            : '<div class="qs-side"><button data-race="1">🏁 讓兩種搜尋比一場</button></div>' +
-              '<div class="qs-left" style="font-size:13px;font-weight:600;margin-top:8px">' +
-              '你按 <b>' + cuts + '</b> 下就砍完了。那循序搜尋呢？它要一格一格走 ——' +
-              '<b>看它跑一次</b>。</div>';
+            : goBox('🏁 讓兩種搜尋比一場',
+                '你按 <b>' + cuts + '</b> 下就砍完了。那循序搜尋呢？' +
+                '它要一格一格走 —— <b>看它跑一次</b>。');
         } else {
           out += raceHtml();
         }
@@ -1223,10 +1241,11 @@
                  '</div>';
         }
       } else {
-        out += '<div class="bwin">答案是 <b>' + ans + '</b> 次。' +
+        /* ★ 這是整個第 10 關最重要的一句 —— 螢光筆就該畫在這裡。 */
+        out += '<div class="bwin">答案是 ' + hl(ans + ' 次') + '。' +
                (boomGuess != null ? '（你猜 ' + comma(boomGuess) + ' 次）' : '') +
-               '<br>' + BOOM_ASK.note + '，一個一個找最多要比 <b>' + comma(BOOM_ASK.n) +
-               '</b> 次；每次砍一半，<b>' + ans + ' 次</b>就找到了。</div>' +
+               '<br>' + BOOM_ASK.note + '，一個一個找最多要比 ' + hlb(comma(BOOM_ASK.n)) +
+               ' 次；每次砍一半，' + hlb(ans) + ' 次就找到了。</div>' +
                boomTable();
       }
       return out + '</div>';
@@ -1265,6 +1284,22 @@
     }
 
     function comma(x) { return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+    /* ── 螢光筆與「按這裡」──────────────────────────────
+       ★ 兩支筆的樣式在 shared/theme.css（黃＝結論、藍＝數量）——
+         這裡**不要**再寫一份，兩份會慢慢長得不一樣。
+       ⚠️ 一段最多兩三處。畫太多等於沒畫。 */
+    function hl(t) { return '<span class="hl">' + t + '</span>'; }
+    function hlb(t) { return '<span class="hl-b">' + t + '</span>'; }
+
+    /* ⚠️ 老師 2026-08-18 說排序那顆播放鈕「太不明顯，找很久才發現」——
+       這一顆是同一種毛病、只是輕一級：它和上面的資料量按鈕長得一模一樣。
+       ⇒ 主要動作要自己佔一塊，而且兩個實驗室的入口長得一樣
+         （學生在排序那邊學會的「找那個大按鈕」，到這邊要能繼續用）。 */
+    function goBox(label, cap) {
+      return '<div class="qs-go"><button data-race="1">' + label + '</button>' +
+             '<div class="cap">' + cap + '</div></div>';
+    }
 
     /* ── 賽跑：同一批資料，兩種搜尋同時起跑 ──────────────
        ⚠️ 二元那一邊幾乎瞬間結束，循序那一邊要爬很久 ——
@@ -1309,8 +1344,12 @@
         lane('bin', '二元搜尋（每次砍一半）', raceBin, binMax) +
         lane('seq', '循序搜尋（一個一個看）', raceSeq, seqMax);
       if (raceOn === 2) {
-        out += '<div class="win">跑完了：循序 <b>' + comma(seqMax) + '</b> 次、二元 <b>' + binMax +
-               '</b> 次 —— 差 <b>' + comma(Math.round(seqMax / binMax)) + '</b> 倍。' +
+        /* ★ 老師 2026-08-18：「結論要加上螢光筆畫線記號…這樣學生在看完大量資料後
+           才會更有感受。」→ 只畫三處：兩個次數（藍）＋ 那個倍數（黃）。
+           ⚠️ 倍數才是結論 —— 「1,000,000 和 20」是資料，「差 5 萬倍」才是意思。 */
+        out += '<div class="win">跑完了：循序 ' + hlb(comma(seqMax)) + ' 次、二元 ' +
+               hlb(binMax) + ' 次 —— ' +
+               hl('差 ' + comma(Math.round(seqMax / binMax)) + ' 倍') + '。' +
                '<br>你剛才按 ' + cuts + ' 下就結束了；循序那一條，你等了多久？</div>' +
         /* ★ 2026-08-18 老師：「怎麼找不到可以看動畫的位置？」
            ⚠️ 跑完之後畫面就停在最後一格，而且沒有任何再看一次的入口 ——

@@ -506,6 +506,12 @@
     '.sl-shape b{font-size:15px;font-weight:900}',
     '.sl-shape .sub{display:block;font-size:12px;color:#ddd6fe;line-height:1.6}',
     '.sl-mini .sl-cell{min-width:30px;font-size:13px;padding:3px 6px}',
+    /* 「排序前的資料」——⚠️ 一定要有標籤：沒有標籤的一排數字看起來就是殘骸
+       （老師 2026-08-18：「為什麼還要列一個數字小卡？是不是前一版沒改到？」） */
+    '.sl-before{margin-bottom:10px}',
+    '.sl-before .lb{display:block;font-size:11.5px;font-weight:800;color:#64748b;',
+    '  margin-bottom:4px}',
+    '.sl-before .sl-row{margin-bottom:0}',
     '.sl-race{margin-top:10px;background:#f8fafc;border:1px solid #e2e8f0;',
     '  border-radius:12px;padding:10px 13px}',
     '.sl-lane{margin-bottom:9px}',
@@ -598,6 +604,35 @@
     '.sl-btn{background:#6366f1;color:#fff;border:0;border-radius:9px;padding:8px 15px;',
     '  font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:10px}',
     '.sl-btn:hover{background:#4f46e5}',
+    /* ── 播放動畫的那顆按鈕 ────────────────────────────
+       ⚠️⚠️ 老師 2026-08-18：「▶ 播放 600 筆的排序過程 這個也太不明顯了，找很久才發現」。
+          查下來原因很難堪：`.sl-side` **從頭到尾沒有任何 CSS** ——
+          那顆是瀏覽器的預設灰按鈕，塞在一整頁配好色的內容中間，
+          眼睛會直接把它當成頁面邊角的雜物跳過去。
+       ★ 我前一輪只改了按鈕上的**字**（「各排一次」→「播放」），
+         以為那樣就叫「入口明顯」—— 字改得再好，沒有樣式一樣看不到。
+         ⇒ 這一次改的是它長什麼樣、佔多大、在不在視線上。
+       ⚠️ 主要動作（播放）和次要動作（再放一次）要分得開：
+          兩顆長一樣的話，等於又回到「一片按鈕裡找一顆」。 */
+    '.sl-go{background:#f5f3ff;border:2px dashed #c4b5fd;border-radius:14px;',
+    '  padding:15px 14px;margin:13px 0;text-align:center}',
+    '.sl-go button{background:#7c3aed;color:#fff;border:0;border-radius:11px;',
+    '  padding:14px 26px;font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;',
+    '  box-shadow:0 3px 0 #5b21b6;letter-spacing:.5px}',
+    '.sl-go button:hover{background:#6d28d9}',
+    '.sl-go button:active{transform:translateY(2px);box-shadow:0 1px 0 #5b21b6}',
+    '.sl-go .cap{font-size:12.5px;font-weight:700;color:#6d28d9;line-height:1.8;margin-top:9px}',
+    /* 呼吸一下 —— 投影出來時那圈光暈就是「按這裡」。
+       ⚠️ 系統開了「減少動態效果」要能關掉（會暈的人）。 */
+    '@keyframes sl-breathe{0%,100%{box-shadow:0 3px 0 #5b21b6,0 0 0 0 rgba(124,58,237,.5)}',
+    '  50%{box-shadow:0 3px 0 #5b21b6,0 0 0 12px rgba(124,58,237,0)}}',
+    '.sl-go button{animation:sl-breathe 2.4s ease-out infinite}',
+    '@media (prefers-reduced-motion:reduce){.sl-go button{animation:none}}',
+    /* 次要動作（再放一次）：看得到，但不搶主角 */
+    '.sl-side{display:flex;gap:9px;margin-top:10px;flex-wrap:wrap}',
+    '.sl-side button{background:#fff;border:2px solid #c4b5fd;color:#6d28d9;border-radius:9px;',
+    '  padding:9px 16px;font-size:13.5px;font-weight:800;cursor:pointer;font-family:inherit}',
+    '.sl-side button:hover{background:#f5f3ff}',
     /* 自動播放 */
     '.sl-auto{margin-top:16px;border-top:1px dashed #cbd5e1;padding-top:14px}',
     '.sl-auto h4{font-size:14px;font-weight:900;color:#4338ca;margin:0 0 4px}',
@@ -646,6 +681,10 @@
     '.sl-big .sl-sub{font-size:13.5px}',
     '.sl-big .sl-msg{font-size:15px;padding:12px 15px;min-height:50px}',
     '.sl-big .sl-btn{padding:11px 20px;font-size:15px}',
+    /* 投影用：這一步是主角，「按這裡」也要跟著放大 */
+    '.sl-big .sl-go{padding:18px}',
+    '.sl-big .sl-go button{padding:17px 34px;font-size:19px}',
+    '.sl-big .sl-go .cap{font-size:13.5px}',
     /* 自動播放的長條圖：150 → 300，資料量大的時候差距才看得出來 */
     '.sl-big .sl-bars{height:300px;padding:12px;gap:3px}',
     '.sl-big .sl-auto h4{font-size:16px}',
@@ -795,11 +834,23 @@
       out += '<div class="sl-shape"><span class="ic">' + sh.icon + '</span>' +
              '<span class="tx"><b>' + sh.name + '　' + comma(cmpN) + ' 筆</b>' +
              '<span class="sub">' + sh.note + '</span></span></div>';
-      /* ⚠️ 只有小資料量印得出每一個數字 —— 600 個數字擠在一起是一片噪音。 */
-      if (cmpN <= PLAN_MAX) {
-        out += '<div class="sl-row sl-mini">' + cmpItems.map(function (v) {
-          return '<span class="sl-cell done">' + esc(v) + '</span>';
-        }).join('') + '</div>';
+      /* ── 這一批資料長什麼樣 ────────────────────────────
+         ⚠️ 老師 2026-08-18：「10 筆資料為什麼還要列一個 41710892365 數字小卡？
+            是不是前一個版本沒有改到？」—— 看起來像殘骸，因為它**沒有標籤**，
+            而且動畫開始之後它還留在那裡，顯示的是**排序前**的順序，
+            旁邊的長條卻正在排 —— 兩個相衝突的畫面擺在一起。
+         ★ 它其實有用，但只在按下播放**之前**：
+           「✅ 已經排好」那一列會是 1 2 3 4 5…，一眼就看得出資料長相不同。
+         ⇒ 播放前才顯示，而且加上標籤說明它是什麼。 */
+      if (!cmpOn) {
+        out += '<div class="sl-before"><span class="lb">排序前的資料</span>' +
+          (cmpN <= PLAN_MAX
+            ? '<div class="sl-row sl-mini">' + cmpItems.map(function (v) {
+                return '<span class="sl-cell done">' + esc(v) + '</span>';
+              }).join('') + '</div>'
+            /* ⚠️ 600 個數字擠在一起是一片噪音 —— 大資料量改畫一排靜止的長條，
+               「已經排好」是一道斜坡、「完全相反」是反過來的斜坡，一眼可辨。 */
+            : '<div class="sl-bars2 big">' + barsFlat(cmpItems) + '</div>') + '</div>';
       }
 
       if (cmpN > PLAN_MAX) return out + cmpBigHtml() + cmpTable2();
@@ -812,10 +863,10 @@
            ⚠️ 原本只有一顆按鈕，按鈕上寫「各排一次」——
               從字面上看不出按下去會有**動畫**，也看不出要看什麼。
            ⇒ 按鈕寫成「播放」，下面一句話講清楚等一下會看到什麼。 */
-        out += '<div class="sl-side"><button data-cmp="1">▶ 播放排序過程（兩種排法同時跑）</button></div>' +
-               '<div class="sl-hint2">按下去之後，上面這排數字會變成<b>兩排長條</b>，' +
-               '一根一根被比、一根一根排好 —— 看誰先排完。' +
-               (cmpTable[cmpShape] ? '（這一種你看過了，可以再看一次）' : '') + '</div>';
+        out += goBox('▶ 播放排序過程',
+          '按下去之後，上面這排數字會變成<b>兩排長條</b>，' +
+          '一根一根被比、一根一根排好 —— 看誰先排完。' +
+          (cmpTable[cmpShape] ? '<br>（這一種你看過了，可以再看一次）' : ''));
       } else {
         /* ★★ 老師 2026-08-17：「第十關能有真實的排序過程嗎？
              模擬散亂的資料，一個一個排好的過程？」
@@ -839,9 +890,9 @@
         if (cmpOn === 2) {
           out += '<div class="win">' +
             (sel === ins
-              ? '兩邊一樣：都比了 <b>' + sel + '</b> 次。'
-              : '選擇 <b>' + sel + '</b> 次、插入 <b>' + ins + '</b> 次 —— 插入少了 <b>' +
-                (sel - ins) + '</b> 次。') +
+              ? '兩邊一樣：都比了 ' + hlb(sel) + ' 次。'
+              : '選擇 ' + hlb(sel) + ' 次、插入 ' + hlb(ins) + ' 次 —— 插入少了 ' +
+                hl((sel - ins) + ' 次') + '。') +
             '<br>⚠️ 注意看：<b>選擇排序永遠是 ' + sel + ' 次</b>，三種資料長相都一樣。</div>' +
             '<div class="sl-side"><button data-cmp="1">↺ 再放一次動畫</button></div>';
         }
@@ -862,13 +913,11 @@
            「你覺得哪一種先排完」是要他猜的，
            把另一個數字（哪怕是藏起來的）放進頁面就等於送答案。 */
         var pre = costOf(cmpItems, 'selection', 'asc');
-        return '<div class="sl-side"><button data-cmp="1">▶ 播放 ' + comma(cmpN) +
-               ' 筆的排序過程</button></div>' +
-               '<div class="sl-hint2">兩排各 ' + comma(cmpN) + ' 根長條，' +
-               '從<b>散亂</b>慢慢排成一道<b>斜坡</b>。' +
-               '<br>⚠️ 先想一下：這一批資料，你覺得哪一種先排完？' +
-               '（已知：選擇排序要比 ' + comma(pre.compares) + ' 次）' +
-               (rec(cmpShape) ? '<br>（這一種你看過了，可以再看一次）' : '') + '</div>';
+        return goBox('▶ 播放 ' + comma(cmpN) + ' 筆的排序過程',
+          '兩排各 ' + comma(cmpN) + ' 根長條，從<b>散亂</b>慢慢排成一道<b>斜坡</b>。' +
+          '<br>⚠️ 先想一下：這一批資料，你覺得哪一種先排完？' +
+          '（已知：選擇排序要比 ' + comma(pre.compares) + ' 次）' +
+          (rec(cmpShape) ? '<br>（這一種你看過了，可以再看一次）' : ''));
       }
       var lane = function (cls, name, r, tot) {
         var d = r.done(), fin = r.finished();
@@ -887,18 +936,29 @@
         lane('ins', '🃏 插入排序', rnIns, rnIns.compares());
       if (cmpOn === 2) {
         var s = rnSel.compares(), i = rnIns.compares();
+        /* ★ 螢光筆只畫三處：兩個次數（藍）＋ 那個倍數（黃）。
+           ⚠️ 倍數才是結論 —— 「179,700 和 599」是資料，「差 300 倍」才是意思。 */
         out += '<div class="win">' +
           (s === i
-            ? '兩邊一樣：都比了 <b>' + comma(s) + '</b> 次。'
-            : '選擇 <b>' + comma(s) + '</b> 次、插入 <b>' + comma(i) + '</b> 次 —— ' +
+            ? '兩邊一樣：都比了 ' + hlb(comma(s)) + ' 次。'
+            : '選擇 ' + hlb(comma(s)) + ' 次、插入 ' + hlb(comma(i)) + ' 次 —— ' +
               (i > 0 && s / i >= 2
-                ? '差了 <b>' + comma(Math.round(s / i)) + '</b> 倍。'
-                : '插入少了 <b>' + comma(s - i) + '</b> 次。')) +
+                ? hl('差了 ' + comma(Math.round(s / i)) + ' 倍') + '。'
+                : '插入少了 ' + hl(comma(s - i) + ' 次') + '。')) +
           '<br>⚠️ ' + comma(cmpN) + ' 筆資料，選擇排序<b>永遠</b>比 ' + comma(s) +
           ' 次 —— 換成哪一種資料長相都一樣。</div>' +
           '<div class="sl-side"><button data-cmp="1">↺ 再放一次動畫</button></div>';
       }
       return out + '</div>';
+    }
+
+    /** 靜止的一排長條（排序**前**的樣子）。★ 全部同色 —— 還沒開始排，沒有誰在比。 */
+    function barsFlat(a) {
+      var n = a.length, out = '';
+      for (var i = 0; i < n; i++) {
+        out += '<i style="height:' + Math.round(a[i] / n * 100) + '%"></i>';
+      }
+      return out;
     }
 
     /** 一台跑者的現況 → 一排細長條（大資料量用，不印數字） */
@@ -933,6 +993,29 @@
       var done = SHAPES.filter(function (sh) { return rec(sh.key); }).length + (ranBig ? 1 : 0);
       return '<div class="sl-todo"><div class="th">這一步要完成 ' + done + ' / ' +
              (SHAPES.length + 1) + '</div><ul>' + rows.join('') + '</ul></div>';
+    }
+
+    /* ── 「按這裡」的區塊 ──────────────────────────────
+       ⚠️⚠️ 老師 2026-08-18：「▶ 播放 600 筆的排序過程 這個也太不明顯了，找很久才發現」。
+          ★ 一顆按鈕再怎麼寫字，在一整頁內容裡就只是一顆按鈕。
+            要被找到的東西不能只是「有」，它得**佔位置**：
+            自己一塊、留白、虛線框、大字，還有一句「按下去會發生什麼」。
+       ⚠️ 這個區塊一次只能有一個 —— 兩個「主要動作」等於沒有主要動作。 */
+    /* ── 螢光筆 ────────────────────────────────────────
+       ★ 老師 2026-08-18：「結論要加上螢光筆畫線記號，之前也有使用過這個功能，
+         這樣學生在看完大量資料後才會更有感受。」
+       ★ 沿用全站既有的兩支筆（shared/theme.css）：
+           黃（.hl）＝這一段真正的結論　藍（.hl-b）＝數量
+       ⚠️ 樣式**不要**在這裡再寫一份 —— theme.css 已經有了，
+          兩份會慢慢長得不一樣，而且沒有人會發現是哪一天開始的
+          （levelpage.test.js 就在盯這一條）。
+       ⚠️ 一段最多兩三處。畫太多等於沒畫 —— 學生會略過所有黃色的東西。 */
+    function hl(t) { return '<span class="hl">' + t + '</span>'; }
+    function hlb(t) { return '<span class="hl-b">' + t + '</span>'; }
+
+    function goBox(label, cap) {
+      return '<div class="sl-go"><button data-cmp="1">' + label + '</button>' +
+             '<div class="cap">' + cap + '</div></div>';
     }
 
     /** 這一種資料長相跑過的紀錄（跑過就記，不分資料量） */

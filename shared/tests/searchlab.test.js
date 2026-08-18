@@ -1042,6 +1042,44 @@ section('★★ 動畫要慢到看得見，而且不是只能看一次');
   host.remove();
 }
 
+section('★★ 入口要看得到、結論要畫線（老師 2026-08-18）');
+{
+  /* ⚠️ 老師是對**排序**那顆播放鈕說「太不明顯，找很久才發現」，
+     但這一邊是同一種毛病、只是輕一級：
+     🏁 那顆和上面的「資料量」按鈕長得一模一樣（都是白底外框）。
+     ★ 兩個實驗室是上下疊在同一頁的 —— 入口的樣子要一致，
+       不然學生在排序那邊學會的「找那個大按鈕」，到這邊就失效了。 */
+  const src = read('shared/searchlab.js').replace(/',\s*'/g, '');
+  ok(/\.qs-go\{/.test(src), '★★ 賽跑的入口有自己的區塊樣式（.qs-go）');
+  ok(/\.qs-go button\{[^}]*background:#0891b2/.test(src),
+     '★ 主要動作是實心底色（和旁邊的白底選鈕分得開）');
+  ok(/prefers-reduced-motion/.test(src), '★★ 呼吸動畫可以關掉');
+
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  S.mount(host, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  host.querySelector('[data-size="13"]').onclick();
+  let g = 0;
+  while (host.querySelector('[data-cut]') && g++ < 60) host.querySelector('[data-cut]').onclick();
+  const go = host.querySelectorAll('.qs-go');
+  ok(go.length === 1, '★★ 砍完之後畫面上有一個（而且只有一個）「按這裡」');
+  ok(/比一場/.test(go[0].textContent), '　　那顆就是賽跑的入口');
+
+  /* ── 結論的螢光筆 ─────────────────────────────────
+     ★ 老師：「結論要加上螢光筆畫線記號…學生在看完大量資料後才會更有感受。」 */
+  ok(!/\.hl\s*\{|\.hl-b\s*\{/.test(src),
+     '★★ 模組沒有自己再寫一份 .hl（樣式只能有一份，在 theme.css）');
+  host.querySelector('[data-race]').onclick();
+  const win = host.querySelector('.qs-race .win');
+  ok(!!win, '賽跑跑完有結論');
+  const marks = win.querySelectorAll('.hl, .hl-b').length;
+  ok(marks > 0, '★★ 結論真的畫了螢光筆');
+  ok(marks <= 3, '★★ 最多三處（實得 ' + marks + '）—— 畫太多等於沒畫');
+  ok(win.querySelectorAll('.hl').length >= 1, '★ 黃筆畫在結論（差幾倍）上');
+  ok(win.querySelectorAll('.hl-b').length >= 1, '★ 藍筆畫數量');
+  host.remove();
+}
+
 section('★★ 資料大爆炸：數字要真的爆起來');
 {
   /* ★ 老師 2026-08-17：「數字太小不符合關卡名稱『資料大爆炸』」。

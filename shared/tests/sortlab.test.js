@@ -811,5 +811,91 @@ console.log('\n── ★★ 大量資料的排序過程（老師 2026-08-18）�
   h.remove(); h2.remove();
 }
 
+console.log('\n── ★★ 播放鈕要看得到、結論要畫線（老師 2026-08-18）──');
+{
+  const S2 = W.SORTLAB;
+  const src = fs.readFileSync(path.join(__dirname, '..', 'sortlab.js'), 'utf8');
+
+  /* ── ① 播放鈕本身要有樣式 ────────────────────────────
+     ⚠️⚠️ 老師：「▶ 播放 600 筆的排序過程 這個也太不明顯了，找很久才發現」。
+        查下來 `.sl-side` **一條 CSS 都沒有** —— 那顆是瀏覽器的預設灰按鈕。
+     ★ 前一輪我只改了按鈕上的**字**，就當作「入口變明顯了」——
+       字改得再好，沒有樣式一樣看不到。這一條盯的是「它長什麼樣」。 */
+  /* ⚠️ 這裡的比對要**連內容一起看**。第一版只寫 /\.sl-go\{/，
+     結果 `.sl-big .sl-go{padding:18px}` 也匹配 ——
+     把主樣式整條刪掉，測試照樣綠（突變測試才抓到）。
+     ★ 「某個名字有出現」幾乎永遠是不夠的斷言。 */
+  const css = src.replace(/',\s*'/g, '');
+  ok(/\.sl-go\{[^}]*border:2px dashed/.test(css),
+     '★★ 播放鈕自己佔一塊（虛線框的區塊，不是一顆裸按鈕）');
+  ok(/\.sl-side button\{[^}]*cursor:pointer/.test(css),
+     '★★ 連次要按鈕都有樣式了（原本 .sl-side 一條 CSS 都沒有）');
+  ok(/\.sl-go button\{[^}]*background:#7c3aed/.test(css),
+     '★ 主要動作是實心底色（不是白底外框 —— 那和旁邊的選鈕分不開）');
+  ok(/\.sl-go button\{[^}]*font-size:1[6-9]px/.test(css),
+     '★ 而且字夠大（投影出來看得到）');
+  ok(/prefers-reduced-motion/.test(src),
+     '★★ 呼吸動畫可以關掉（系統開了「減少動態效果」就不要動）');
+  /* ⚠️ 主要動作一次只能有一個 —— 兩顆一樣大的等於沒有主要動作 */
+  const h3 = document.createElement('div');
+  document.body.appendChild(h3);
+  S2.mount(h3, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  h3.querySelector('[data-size="600"]').onclick();
+  h3.querySelector('[data-shape="rand"]').onclick();
+  eq(h3.querySelectorAll('.sl-go').length, 1, '★★ 畫面上只有一個「按這裡」的區塊');
+  ok(/播放/.test(h3.querySelector('.sl-go button').textContent), '　　而且那顆就是播放鈕');
+  ok(/長條|斜坡/.test(h3.querySelector('.sl-go .cap').textContent),
+     '★ 按鈕底下講得出「按下去會看到什麼」');
+
+  /* ── ② 排序前的資料要有標籤 ─────────────────────────
+     ⚠️ 老師：「10 筆資料為什麼還要列一個 41710892365 數字小卡？
+        是不是前一個版本沒有改到？」——
+        沒有標籤的一排數字，看起來就是上一版留下來的殘骸。
+     ★ 而且它只該在**播放前**出現：動畫跑起來之後它顯示的是排序前的順序，
+       和旁邊正在排的長條互相打架。 */
+  const h4 = document.createElement('div');
+  document.body.appendChild(h4);
+  S2.mount(h4, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  h4.querySelector('[data-shape="rand"]').onclick();
+  ok(!!h4.querySelector('.sl-before'), '★★ 10 筆：排序前的資料有自己的區塊');
+  ok(/排序前的資料/.test(h4.querySelector('.sl-before').textContent),
+     '★★ 而且有標籤說明那是什麼（沒標籤就是殘骸）');
+  ok(!!h4.querySelector('.sl-mini'), '　　小資料量印得出每一個數字');
+  h4.querySelector('[data-cmp]').onclick();
+  ok(!h4.querySelector('.sl-before'),
+     '★★ 播放之後就收起來 —— 不然它顯示的是排序前的順序，和長條打架');
+  /* 大資料量：不印數字，改畫一排靜止的長條（看得出資料長相） */
+  h4.querySelector('[data-size="600"]').onclick();
+  h4.querySelector('[data-shape="sorted"]').onclick();
+  const before = h4.querySelector('.sl-before');
+  ok(!!before && !before.querySelector('.sl-mini'),
+     '★★ 600 筆不印 600 個數字（那是一片噪音）');
+  ok(!!before.querySelector('.sl-bars2.big i'), '★ 改畫一排靜止的長條');
+  ok(before.querySelectorAll('i.ok, i.cmp, i.best').length === 0,
+     '★ 而且全部同色 —— 還沒開始排，沒有誰在比');
+
+  /* ── ③ 結論要畫螢光筆 ───────────────────────────────
+     ★ 老師：「結論要加上螢光筆畫線記號，之前也有使用過這個功能，
+       這樣學生在看完大量資料後才會更有感受。」
+     ⚠️ 樣式**不可以**在模組裡再寫一份 —— theme.css 已經有了。
+        兩份會慢慢長得不一樣，而且沒有人會發現是哪一天開始的。 */
+  ok(!/\.hl\s*\{|\.hl-b\s*\{/.test(src.replace(/',\s*'/g, '')),
+     '★★ 模組沒有自己再寫一份 .hl（樣式只能有一份，在 theme.css）');
+  h4.querySelector('[data-cmp]').onclick();
+  const win = h4.querySelector('.win');
+  ok(!!win && win.querySelectorAll('.hl, .hl-b').length > 0,
+     '★★ 結論真的畫了螢光筆');
+  const marks = win.querySelectorAll('.hl, .hl-b').length;
+  ok(marks <= 3, '★★ 最多三處（實得 ' + marks + '）—— 畫太多等於沒畫');
+  ok(win.querySelectorAll('.hl').length >= 1,
+     '★ 黃筆畫在**結論**上（倍數／差多少），不是只有數字');
+  ok(win.querySelectorAll('.hl-b').length >= 1, '★ 藍筆畫數量');
+  /* theme.css 真的有那兩支筆 —— 沒有的話畫線是隱形的 */
+  const theme = fs.readFileSync(path.join(__dirname, '..', 'theme.css'), 'utf8');
+  ok(/\.hl\s*\{/.test(theme) && /\.hl-b\s*\{/.test(theme),
+     '★★ theme.css 有 .hl 與 .hl-b（不然這些標記是隱形的）');
+  h3.remove(); h4.remove();
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
