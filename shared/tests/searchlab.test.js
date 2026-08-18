@@ -1030,8 +1030,15 @@ section('★ 第 10 關（6-3-3）的關卡資料');
        改關卡結構的時候，**跑得慢的測試才是最容易被漏掉的那一個**。 */
   const lv = L['6-3-3'];
   ok(!!lv, '關卡存在');
-  is(lv.lab, { kind: 'search', mode: 'compare' }, '★ 宣告了 compare 的 lab');
-  ok(!!S.INFO[lv.lab.mode], '   lab.mode 在 SEARCHLAB.INFO 裡查得到');
+  /* ⚠️⚠️ 2026-08-17 老師：「動手試一次就只有搜尋，沒有排序。應該是兩個都要」
+     —— 第 6、7 關（排序）和第 8、9 關（搜尋）在前面是分開教的，
+     第 10 關才是把它們放在一起比的地方。⇒ lab 從一個物件變成**兩個**。
+     ★ 順序照課本：先排序再搜尋。 */
+  ok(Array.isArray(lv.lab) && lv.lab.length === 2,
+     '★★ 第 10 關掛**兩個**實驗室（排序大比拼＋搜尋大比拼）');
+  is(lv.lab[0], { kind: 'sort', mode: 'compare' }, '　　① 排序（第 6、7 關）');
+  is(lv.lab[1], { kind: 'search', mode: 'compare' }, '　　② 搜尋（第 8、9 關）');
+  ok(!!S.INFO[lv.lab[1].mode], '   搜尋那一個的 mode 在 SEARCHLAB.INFO 裡查得到');
   ok((lv.quiz || []).length >= 6, '概念檢測 ' + lv.quiz.length + ' 題');
   /* ⚠️⚠️ 2026-08-17 老師：「為什麼第十關概念檢測每一個提示都一樣？
      不是應該配合題目調整重點就好嗎？」
@@ -1266,9 +1273,18 @@ section('★ level.html 接得上');
      測試變紅，但**程式其實沒壞**。
      ★ 這種「加註解害測試變紅」的假警報最傷：
        下一個人會直接把檢查刪掉，而不是把範圍調寬。 */
-  const seg = src.slice(i, i + 2200);
+  const seg = src.slice(i, i + 3200);
   ok(/onPass/.test(seg), '★ 通過條件交給模組決定（不然模組和關卡頁會各有一套規則）');
   ok(/advance\(\)/.test(seg), '通過之後會往下一步走');
+  /* ★★ 兩個實驗室的話，要**都**過了才往下走。
+     ⚠️ 在第一個的 onPass 裡就 advance 的話，第二個等於沒有人做 ——
+        那正是老師 2026-08-17 指出的缺口。 */
+  /* ⚠️ 不可以只找「labDone 和 every 都出現過」——
+     突變測試證明：把 `if (labs.every(…)) advance();` 換成 `advance();`
+     之後，兩個字仍然分別存在於別的地方，測試照樣綠。
+     ★ 要比對的是**那一整句**：兩個都完成了才走。 */
+  ok(/labs\.every\([^;]{0,80}advance\(\)/.test(seg.replace(/\s+/g, ' ')),
+     '★★ 兩個實驗室都過了才 advance（不是第一個過就走）');
 
   /* ★ 操作要排在概念檢測前面 —— 題目問的就是他在實驗室看到的事。
      順序反了，他只能猜系統想看什麼字。 */

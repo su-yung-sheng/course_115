@@ -184,8 +184,19 @@ function finishMod(fin) {
   return null;
 }
 
+/* ★★ 一關可以有**兩個**實驗室（第 10 關：先比排序、再比搜尋）。
+   ⚠️ 老師 2026-08-17：「動手試一次就只有搜尋，沒有排序 …
+      應該是兩個都要」—— 第 6、7 關（排序）和第 8、9 關（搜尋）
+      在前面是分開教的，第 10 關才是把它們放在一起比的地方。
+   ⇒ lv.lab 可以是一個物件，也可以是一個陣列。 */
+function labList(lab) {
+  if (!lab) return [];
+  return Array.isArray(lab) ? lab.slice() : [lab];
+}
+
 function labMod(lab) {
   if (!lab) return null;
+  if (Array.isArray(lab)) return labMod(lab[0]);
   if (lab.kind === 'search') return window.SEARCHLAB || null;
   if (lab.kind === 'sort')   return window.SORTLAB   || null;
   if (lab.kind === 'logic')  return window.LOGICLAB  || null;
@@ -517,6 +528,21 @@ function stepGoal(key) {
   }
   if (key === 'lab') {
     const mod = labMod(lv && lv.lab);
+    /* 兩個實驗室的話，目標與過關標準要**兩份都講** ——
+       只講第一個的話，學生做完第一個會以為可以往下走了。 */
+    const labs = labList(lv && lv.lab);
+    if (labs.length > 1) {
+      const gs = labs.map(l => {
+        const m = labMod(l);
+        return (m && typeof m.goal === 'function') ? m.goal(l) : null;
+      }).filter(Boolean);
+      if (gs.length) {
+        return {
+          why: gs.map((g, i) => '<b>' + (i + 1) + '.</b> ' + g.why).join('<br><br>'),
+          pass: gs.map((g, i) => '<b>' + (i + 1) + '.</b> ' + g.pass).join('<br>')
+        };
+      }
+    }
     /* ⚠️ 模組沒有 goal() 就回 null（不畫），不要自己編一份 ——
        編出來的和模組真正的判定不一樣的話，比不寫更糟。 */
     return (mod && typeof mod.goal === 'function') ? mod.goal(lv.lab) : null;
@@ -594,12 +620,32 @@ function draw(s) {
          反過來的話，他只能猜我想看什麼字。
        ⚠️ 通過條件由模組自己決定（例如搜尋要找得到、找不到各走一次）——
           寫在這裡的話，模組和關卡頁會各有一套規則。 */
+    const labs = labList(lv.lab);
     const mod = labMod(lv.lab);
+    /* ★★ 一關可以掛**兩個**實驗室（第 10 關：先比排序、再比搜尋）。
+       ⚠️ 兩個都做完才往下走 —— 只要第一個過就 advance 的話，
+          第二個等於沒有人做（那正是老師 2026-08-17 指出的缺口：
+          「動手試一次就只有搜尋，沒有排序」）。 */
+    const multiLab = labs.length > 1;
+    const labTitle = l => {
+      const m = labMod(l);
+      const info = (m && m.INFO && m.INFO[l.mode]) || {};
+      return (info.icon || '🕹️') + ' ' + (info.name || '動手試一次');
+    };
     body.innerHTML =
       '<h2 class="text-xl font-black mb-1">🕹️ 動手試一次</h2>' +
       '<p class="text-sm text-slate-600 leading-relaxed mb-4">' +
-      '先自己跑一遍這個演算法。等一下的題目問的就是你在這裡看到的事。</p>' +
-      '<div id="lab-host"></div>';
+      (multiLab
+        ? '這一關要比<b>兩組</b>：前面第 6、7 關的<b>排序</b>，' +
+          '和第 8、9 關的<b>搜尋</b>。兩組都比過才算走完。'
+        : '先自己跑一遍這個演算法。等一下的題目問的就是你在這裡看到的事。') +
+      '</p>' +
+      labs.map((l, i) =>
+        (multiLab
+          ? '<div class="text-sm font-black text-indigo-600 mt-6 mb-2">' +
+            (i + 1) + '／' + labs.length + '　' + labTitle(l) + '</div>'
+          : '') +
+        '<div id="lab-host' + i + '"></div>').join('');
     /* ★ big:true —— 這一步是這幾關的主角，畫面上就該長得像主角。
        ⚠️ 放大的是**高度和字級**，不是頁寬。
           頁寬和闖關地圖一樣是 4xl（見上面版面容器那段說明）——
@@ -609,16 +655,27 @@ function draw(s) {
        ⚠️ 放大的規格寫在各模組自己的 CSS（.qs-big／.sl-big／.lg-big），
           不寫在這一頁：尺寸和它畫的東西要放在一起，
           分開的話改了一邊另一邊不會跟。 */
-    mod.mount($('lab-host'), Object.assign({}, lv.lab, {
-      big: true,
-      /* onPass 會帶回挑戰拿到幾顆星（0～3）。
-         ⚠️⚠️ 這**不是**系統的星數。系統只有兩組，各有唯一的寫入者：
-              🧩 作品星 unitStars（Colab 批改）、🧠 概念星（quiz 現算）。
-              再開第三組會讓 hub 的分母錯掉，也會讓「這顆星是誰給的」說不清楚。
-         ⇒ 這裡只存到 modules.scratch.lab 給老師看，不進任何星數統計。
-            存不進去照樣放行（和其他存檔一樣）。 */
-      onPass: (badge) => { if (window.saveLab) window.saveLab(unit.id, badge); advance(); }
-    }));
+    /* ★ 每一個實驗室各自 mount，各自回報。
+       ⚠️ 兩個都過才 advance —— 用一個計數器收，不要在第一個的 onPass 裡就走。 */
+    const labDone = {};
+    labs.forEach((l, i) => {
+      const m = labMod(l);
+      if (!m) return;
+      m.mount($('lab-host' + i), Object.assign({}, l, {
+        big: true,
+        /* onPass 會帶回挑戰拿到幾顆星（0～3）。
+           ⚠️⚠️ 這**不是**系統的星數。系統只有兩組，各有唯一的寫入者：
+                🧩 作品星 unitStars（Colab 批改）、🧠 概念星（quiz 現算）。
+                再開第三組會讓 hub 的分母錯掉，也會讓「這顆星是誰給的」說不清楚。
+           ⇒ 這裡只存到 modules.scratch.lab 給老師看，不進任何星數統計。
+              存不進去照樣放行（和其他存檔一樣）。 */
+        onPass: (badge) => {
+          labDone[i] = true;
+          if (window.saveLab) window.saveLab(unit.id, badge);
+          if (labs.every((_, k) => labDone[k])) advance();
+        }
+      }));
+    });
     /* ⚠️ 這裡不設倒數也不給跳過 —— 過關條件就是「真的做完」，
        再加時間限制是雙重處罰（和套餐工廠同一個道理）。 */
     return;

@@ -603,5 +603,53 @@ if (!JSDOM) {
   }
 }
 
+/* ── ★★ 排序大比拼（第 10 關的前半）────────────────────
+   ⚠️ 老師 2026-08-17：「2. 動手試一次 就只有搜尋，沒有排序 …
+      應該是兩個都要，比較 搜尋的循序與二元速度差、
+      排序的選擇與插入速度差。這個在前面都是分開的單元吧？」
+   ★ 這一段唯一要給的東西：
+       選擇排序**永遠 45 次**（不看資料長相）
+       插入排序 9～45 都有（看資料本來長怎樣）
+     那正是第 7 關的核心，也是這一關概念檢測第 2 題在問的。 */
+console.log('\n── ★★ 排序大比拼：選擇 vs 插入 ──');
+{
+  const S2 = W.SORTLAB;
+  ok(!!S2.INFO.compare, '★ SORTLAB 有 compare 模式');
+
+  /* 先驗數字 —— 畫面畫得再好，數字錯了整段就是錯的 */
+  const asc = a => S2._plan(a, 'insertion', 'asc').compares;
+  const sel = a => S2._plan(a, 'selection', 'asc').compares;
+  const rand = [5, 3, 9, 1, 7, 2, 8, 4, 6, 10];
+  const sorted = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const rev = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
+  eq(sel(rand), 45, '★★ 選擇排序：隨機 45 次');
+  eq(sel(sorted), 45, '★★ 　　　　　已排好也是 45 次');
+  eq(sel(rev), 45, '★★ 　　　　　完全相反還是 45 次 —— 它不看資料長相');
+  eq(asc(sorted), 9, '★★ 插入排序：已排好只要 9 次');
+  eq(asc(rev), 45, '★★ 　　　　　完全相反要 45 次');
+  ok(asc(rand) > 9 && asc(rand) < 45, '　　　　　隨機介於中間（' + asc(rand) + ' 次）');
+
+  /* 畫面：三種資料長相都要跑過才算走完 */
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  let passed = null;
+  S2.mount(host, { mode: 'compare', stepMs: 0, onPass: b => { passed = b; } });
+  ok(/資料長相/.test(host.textContent), '★ 一進來先選資料長相');
+  const shapes = ['rand', 'sorted', 'rev'];
+  shapes.forEach((k, i) => {
+    host.querySelector('[data-shape="' + k + '"]').onclick();
+    ok(!!host.querySelector('.sl-shape'), k + '：看得出現在跑的是哪一種資料');
+    host.querySelector('[data-cmp]').onclick();
+    if (i < 2) ok(passed === null, '　　還沒跑完三種 → 不放行');
+  });
+  ok(passed !== null, '★★ 三種都跑完 → 放行');
+  const tbl = host.querySelector('.sl-tbl');
+  ok(!!tbl, '★ 累積成一張對照表');
+  ok((tbl.querySelectorAll('tr').length - 1) === 3, '　 三列');
+  ok(/選擇排序永遠/.test(host.textContent),
+     '★★ 而且點破「選擇排序永遠一樣」—— 那是這一段的結論');
+  host.remove();
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

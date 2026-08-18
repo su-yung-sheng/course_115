@@ -308,7 +308,49 @@
   };
 
   /* ── 三種排序法的說明（沿用 sort.html 原本的文案）───── */
+  /* ── 三種資料長相（排序大比拼用）────────────────────
+     ★ 老師 2026-08-17：「2. 動手試一次 就只有搜尋，沒有排序 …
+       應該是兩個都要，比較 搜尋的循序與二元速度差、
+       排序的選擇與插入速度差。這個在前面都是分開的單元吧？」
+       —— 對，第 6、7 關（排序）和第 8、9 關（搜尋）是分開教的，
+       第 10 關才是把它們放在一起比的地方，而原本只比了搜尋。
+     ★ 這三種情境是這一段的全部重點：
+         🎲 隨機　　選擇 45／插入 24
+         ✅ 已排好　選擇 45／插入 **9**
+         🔄 完全相反 選擇 45／插入 45
+       **選擇排序永遠 45 次**（不看資料長相），插入排序 9～45 都有。
+       那正是第 7 關的核心，也是這一關概念檢測第 2 題在問的。 */
+  var SHAPES = [
+    { key: 'rand', icon: '🎲', name: '隨機',
+      note: '一般情況 —— 資料本來就亂七八糟',
+      make: function (n) { return shuffled(n); } },
+    { key: 'sorted', icon: '✅', name: '已經排好',
+      note: '最好的情況 —— 資料本來就是照順序的',
+      make: function (n) { var a = []; for (var i = 1; i <= n; i++) a.push(i); return a; } },
+    { key: 'rev', icon: '🔄', name: '完全相反',
+      note: '最壞的情況 —— 資料剛好是倒過來的',
+      make: function (n) { var a = []; for (var i = n; i >= 1; i--) a.push(i); return a; } }
+  ];
+  function shuffled(n) {
+    var a = [];
+    for (var i = 1; i <= n; i++) a.push(i);
+    for (var j = a.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var t = a[j]; a[j] = a[k]; a[k] = t;
+    }
+    return a;
+  }
+
   var INFO = {
+    compare: {
+      name: '排序大比拼', icon: '⚖️',
+      rule: '同一批資料，讓<b>選擇排序</b>和<b>插入排序</b>各排一次，' +
+            '看誰比得少 —— 三種資料長相都要跑過。',
+      why: '選擇排序不管資料長什麼樣，都要比 n(n-1)/2 次；' +
+           '插入排序會因為「資料本來就接近排好」而變快很多。',
+      life: '整理手上的撲克牌：牌本來就差不多順的時候，你插幾張就好；' +
+            '牌全部倒著排的話，怎麼整理都一樣累。'
+    },
     selection: {
       name: '選擇排序法', icon: '🎯',
       rule: '每一回合從<b>未排序</b>裡點出最小的，它會被搬到<b>已排序</b>的最後一項。',
@@ -345,6 +387,40 @@
 
   var CSS = [
     '.sl{font-family:"Noto Sans TC",system-ui,sans-serif;color:#1e293b}',
+    /* ── 排序大比拼（第 10 關）───────────────────────── */
+    '.sl-pick{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:11px}',
+    '.sl-pick .lb{font-size:12px;font-weight:700;color:#64748b}',
+    '.sl-pick button{background:#fff;border:2px solid #cbd5e1;color:#334155;border-radius:9px;',
+    '  padding:6px 13px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}',
+    '.sl-pick button:hover{border-color:#8b5cf6;background:#f5f3ff}',
+    '.sl-pick button.on{border-color:#8b5cf6;background:#ede9fe;color:#6d28d9}',
+    '.sl-pick button.ok{border-color:#86efac;background:#dcfce7;color:#166534}',
+    /* 現在在跑哪一種資料 —— 要一眼看出來（和搜尋那邊同一個做法） */
+    '.sl-shape{display:flex;gap:11px;align-items:center;background:#6d28d9;color:#fff;',
+    '  border-radius:12px;padding:9px 13px;margin-bottom:9px}',
+    '.sl-shape .ic{font-size:26px;line-height:1}',
+    '.sl-shape b{font-size:15px;font-weight:900}',
+    '.sl-shape .sub{display:block;font-size:12px;color:#ddd6fe;line-height:1.6}',
+    '.sl-mini .sl-cell{min-width:30px;font-size:13px;padding:3px 6px}',
+    '.sl-race{margin-top:10px;background:#f8fafc;border:1px solid #e2e8f0;',
+    '  border-radius:12px;padding:10px 13px}',
+    '.sl-lane{margin-bottom:9px}',
+    '.sl-lane .nm{display:flex;justify-content:space-between;align-items:baseline;',
+    '  font-size:12.5px;font-weight:800;color:#334155;margin-bottom:3px}',
+    '.sl-lane .ct{font-family:ui-monospace,monospace;font-size:13px}',
+    '.sl-lane .track{background:#e2e8f0;border-radius:7px;height:16px;overflow:hidden}',
+    '.sl-lane .fill{height:100%;border-radius:7px;transition:width .1s linear}',
+    '.sl-lane.sel .fill{background:#f59e0b}',
+    '.sl-lane.ins .fill{background:#8b5cf6}',
+    '.sl-lane.done .nm{color:#166534}',
+    '.sl-race .win{font-size:13.5px;line-height:1.9;color:#166534;font-weight:700;margin-top:6px}',
+    '.sl-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}',
+    '.sl-tbl th,.sl-tbl td{border:1px solid #e2e8f0;padding:6px 9px;text-align:center}',
+    '.sl-tbl th{background:#f1f5f9;color:#475569;font-size:12px}',
+    '.sl-tbl td.same{color:#b45309;font-weight:700}',
+    '.sl-tbl td.vary{color:#6d28d9;font-weight:700}',
+    '.sl-hint2{font-size:12.5px;color:#64748b;line-height:1.85;margin-top:8px}',
+    '.sl-hint2 b{color:#6d28d9}',
     '.sl-tip{background:#eef2ff;border:1px solid #c7d2fe;border-radius:12px;padding:11px 14px;',
     '  font-size:13.5px;line-height:1.9;margin-bottom:12px}',
     '.sl-tip b{color:#4338ca}',
@@ -482,6 +558,15 @@
        ⚠️ 一定要在 render() 之前宣告 —— render() 會叫 auto()，
           而 var 只提升宣告不提升賦值，放在後面的話 algo 會是 undefined。 */
     var pl = null, at = 0, timer = null, algo = mode, speed = 60;
+    /* ── 排序大比拼（第 10 關）────────────────────────
+       cmpN：這一批有幾筆　cmpShape：現在跑的是哪一種資料長相
+       cmpSel／cmpIns：兩邊各比到第幾次（動畫用）
+       cmpOn：0 還沒跑、1 跑到一半、2 跑完　cmpTable：跑完的紀錄
+       ⚠️ 三種長相都要跑過才算走完 —— 只跑隨機的話，
+          「選擇排序不看資料」這件事完全顯不出來。 */
+    var cmpN = 10, cmpShape = '', cmpItems = [];
+    var cmpSel = 0, cmpIns = 0, cmpOn = 0, cmpTimer = null, cmpTable = {};
+    var CMP_MS = (opts.stepMs != null) ? Number(opts.stepMs) : 22;
 
     host.className = 'sl' + (opts.big ? ' sl-big' : '');
     render();
@@ -516,6 +601,7 @@
 
     function body() {
       var b = host.querySelector('#sl-body');
+      if (mode === 'compare') { b.innerHTML = cmpHtml(); wireCmp(b); return; }
       if (mode === 'selection') b.innerHTML = selHtml(); else b.innerHTML = lineHtml();
       [].forEach.call(b.querySelectorAll('[data-i]'), function (el) {
         el.onclick = function () { click(Number(el.dataset.i), el); };
@@ -523,6 +609,141 @@
       [].forEach.call(b.querySelectorAll('[data-slot]'), function (el) {
         el.onclick = function () { slot(Number(el.dataset.slot)); };
       });
+    }
+
+    /* ── 排序大比拼 ───────────────────────────────────
+       ★ 一次比兩種排序法，資料完全一樣 —— 唯一的變因是「資料本來長怎樣」。 */
+    function cmpHtml() {
+      var out = '<div class="sl-pick"><span class="lb">資料長相</span>' +
+        SHAPES.map(function (sh) {
+          var cls = (sh.key === cmpShape) ? ' class="on"'
+                  : (cmpTable[sh.key] ? ' class="ok"' : '');
+          return '<button data-shape="' + sh.key + '"' + cls + '>' +
+                 sh.icon + ' ' + sh.name + (cmpTable[sh.key] ? ' ✓' : '') + '</button>';
+        }).join('') + '</div>';
+
+      if (!cmpShape) {
+        out += '<div class="sl-hint2">先選一種資料長相 —— 三種都要跑過。</div>';
+        return out + cmpTable2();
+      }
+      var sh = shapeOf(cmpShape);
+      out += '<div class="sl-shape"><span class="ic">' + sh.icon + '</span>' +
+             '<span class="tx"><b>' + sh.name + '</b><span class="sub">' + sh.note +
+             '</span></span></div>' +
+             '<div class="sl-row sl-mini">' + cmpItems.map(function (v) {
+               return '<span class="sl-cell done">' + esc(v) + '</span>';
+             }).join('') + '</div>';
+
+      var sel = plan(cmpItems, 'selection', 'asc').compares;
+      var ins = plan(cmpItems, 'insertion', 'asc').compares;
+      if (!cmpOn) {
+        out += '<div class="sl-side"><button data-cmp="1">⚖️ 讓兩種排序比一場</button></div>';
+      } else {
+        var lane = function (cls, name, now, max) {
+          var pct = max ? Math.min(100, now / max * 100) : 0;
+          return '<div class="sl-lane ' + cls + (now >= max ? ' done' : '') + '">' +
+                 '<div class="nm"><span>' + name + '</span><span class="ct">' + now +
+                 ' / ' + max + ' 次' + (now >= max ? '　✅' : '') + '</span></div>' +
+                 '<div class="track"><div class="fill" style="width:' + pct + '%"></div></div></div>';
+        };
+        out += '<div class="sl-race">' +
+          lane('sel', '選擇排序', cmpSel, sel) +
+          lane('ins', '插入排序', cmpIns, ins);
+        if (cmpOn === 2) {
+          out += '<div class="win">' +
+            (sel === ins
+              ? '兩邊一樣：都比了 <b>' + sel + '</b> 次。'
+              : '選擇 <b>' + sel + '</b> 次、插入 <b>' + ins + '</b> 次 —— 插入少了 <b>' +
+                (sel - ins) + '</b> 次。') +
+            '<br>⚠️ 注意看：<b>選擇排序永遠是 ' + sel + ' 次</b>，三種資料長相都一樣。</div>';
+        }
+        out += '</div>';
+      }
+      return out + cmpTable2();
+    }
+
+    function shapeOf(k) {
+      for (var i = 0; i < SHAPES.length; i++) if (SHAPES[i].key === k) return SHAPES[i];
+      return SHAPES[0];
+    }
+
+    /* 累積的對照表 —— 三列擺在一起，「選擇那一欄都一樣」才看得出來 */
+    function cmpTable2() {
+      var rows = SHAPES.filter(function (sh) { return cmpTable[sh.key]; });
+      if (!rows.length) return '';
+      return '<table class="sl-tbl"><tr><th>資料長相</th><th>選擇排序<br>比幾次</th>' +
+             '<th>插入排序<br>比幾次</th></tr>' +
+        rows.map(function (sh) {
+          var r = cmpTable[sh.key];
+          return '<tr><td>' + sh.icon + ' ' + sh.name + '</td>' +
+                 '<td class="same">' + r.sel + '</td>' +
+                 '<td class="vary">' + r.ins + '</td></tr>';
+        }).join('') + '</table>' +
+        (rows.length === SHAPES.length
+          ? '<div class="sl-hint2">★ 選擇排序那一欄<b>三列都一樣</b>；插入排序那一欄' +
+            '從 <b>' + cmpTable.sorted.ins + '</b> 到 <b>' + cmpTable.rev.ins + '</b> —— ' +
+            '那就是兩種排序真正的差別。</div>'
+          : '');
+    }
+
+    function wireCmp(b) {
+      [].forEach.call(b.querySelectorAll('[data-shape]'), function (el) {
+        el.onclick = function () { startShape(el.dataset.shape); };
+      });
+      [].forEach.call(b.querySelectorAll('[data-cmp]'), function (el) {
+        el.onclick = startCmp;
+      });
+    }
+
+    function startShape(k) {
+      if (cmpTimer) { clearInterval(cmpTimer); cmpTimer = null; }
+      cmpShape = k; cmpOn = 0; cmpSel = 0; cmpIns = 0;
+      cmpItems = shapeOf(k).make(cmpN);
+      body();
+      /* ⚠️ say(ok, msg) 的第一個參數是**布林**（sortlab 和 searchlab 不一樣，
+         那一支收的是 'good'／'bad' 字串）。傳字串的話 'bad' 是 truthy，
+         會顯示成綠色的成功訊息 —— 不會報錯，只是顏色一直是對的。 */
+      say(true, '這一批資料是「' + shapeOf(k).name + '」的。' +
+                '兩種排序法各排一次，看誰比得少。');
+    }
+
+    function startCmp() {
+      if (!cmpShape || cmpTimer) return;
+      var sel = plan(cmpItems, 'selection', 'asc').compares;
+      var ins = plan(cmpItems, 'insertion', 'asc').compares;
+      cmpOn = 1; cmpSel = 0; cmpIns = 0;
+      if (!CMP_MS) {                       // 測試用：直接跑完
+        cmpSel = sel; cmpIns = ins; cmpOn = 2;
+        cmpTable[cmpShape] = { sel: sel, ins: ins };
+        body(); finishCmp(); return;
+      }
+      cmpTimer = setInterval(function () {
+        if (cmpSel < sel) cmpSel++;
+        if (cmpIns < ins) cmpIns++;
+        if (cmpSel >= sel && cmpIns >= ins) {
+          clearInterval(cmpTimer); cmpTimer = null;
+          cmpOn = 2; cmpTable[cmpShape] = { sel: sel, ins: ins };
+          body(); finishCmp(); return;
+        }
+        body();
+      }, CMP_MS);
+      body();
+    }
+
+    function finishCmp() {
+      var miss = SHAPES.filter(function (sh) { return !cmpTable[sh.key]; });
+      if (miss.length) {
+        say(true, '記下來了。還有 ' +
+            miss.map(function (sh) { return sh.icon + ' ' + sh.name; }).join('、') +
+            ' 沒跑 —— 三種都跑過才看得出差別。');
+        return;
+      }
+      if (passed) return;
+      passed = true;
+      say(true, '三種都跑完了。<b>選擇排序永遠 ' + cmpTable.rand.sel + ' 次</b>，' +
+                  '插入排序從 ' + cmpTable.sorted.ins + ' 到 ' + cmpTable.rev.ins + ' —— ' +
+                  '差別在「資料本來長怎樣」。');
+      if (opts.onPass) opts.onPass(0);
     }
 
     function selHtml() {
@@ -856,6 +1077,16 @@
   function goal(lab) {
     var m = (lab && lab.mode) || 'selection';
     var name = (INFO[m] || {}).name || '排序法';
+    /* ★ 大比拼的目標和「手排一次」完全不同 —— 它不用排，它在比。 */
+    if (m === 'compare') {
+      return {
+        why: '第 6、7 關你各排過一次，但<b>沒有把兩種放在一起比過</b>。' +
+             '同一批資料、同一個結果，兩種排序法要比的次數卻不一樣 ——' +
+             '<br>而且差別不在演算法本身，在<b>資料本來長什麼樣</b>。',
+        pass: '三種資料長相（🎲 隨機、✅ 已經排好、🔄 完全相反）' +
+              '<b>都要讓兩種排序法比一場</b>。'
+      };
+    }
     return {
       why: '用手排一次' + name + '。' +
            '同一批資料、同一個結果，但<b>怎麼排</b>兩種方法完全不同 —— ' +
