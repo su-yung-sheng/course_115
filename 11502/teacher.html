@@ -56,7 +56,7 @@
   <!-- 全站主題樣式（單一來源，見 shared/theme.css）-->
   <link rel="stylesheet" href="../shared/theme.css">
 </head>
-<body class="bg-slate-50 font-sans min-h-screen flex flex-col">
+<body class="bg-gray-50 font-sans min-h-screen flex flex-col">
 
   <!-- 🌟 登入畫面 -->
   <div id="login-view" class="flex-1 flex items-center justify-center py-12 animate-fade-in-down min-h-screen relative z-50">
@@ -89,14 +89,14 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
-      <span id="toast-message" class="text-slate-800 font-medium">訊息</span>
+      <span id="toast-message" class="text-gray-800 font-medium">訊息</span>
     </div>
 
     <!-- Header -->
     <header class="bg-white border-b shadow-sm px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-40 relative">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">教師成績登錄系統</h1>
-        <p id="status-text" class="text-sm text-slate-500 mt-1">正準備載入資料...</p>
+        <h1 class="text-2xl font-bold text-gray-800">教師成績登錄系統</h1>
+        <p id="status-text" class="text-sm text-gray-500 mt-1">正準備載入資料...</p>
       </div>
       <button onclick="teacherLogout()" class="self-start sm:self-auto text-slate-400 hover:text-slate-700 flex items-center gap-1 text-xs bg-slate-50 px-3 py-1.5 rounded-md border border-slate-200 transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -107,7 +107,7 @@
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6 relative">
       
       <!-- Top Controls -->
-      <div class="sticky top-0 z-30 bg-slate-50 pt-2 pb-4 -mt-2">
+      <div class="sticky top-0 z-30 bg-gray-50 pt-2 pb-4 -mt-2">
         <div class="flex flex-col lg:flex-row gap-6">
           <div class="bg-white rounded-lg shadow-sm border p-2 flex-1 flex flex-wrap items-center justify-between gap-4">
             <div id="tabs-container" class="flex flex-wrap gap-2">
@@ -115,7 +115,7 @@
             </div>
             
             <div class="flex flex-wrap items-center gap-3 px-2">
-              <div class="flex items-center gap-2 text-sm text-slate-600 font-medium bg-blue-50 px-3 py-1.5 rounded-full">
+              <div class="flex items-center gap-2 text-sm text-gray-600 font-medium bg-blue-50 px-3 py-1.5 rounded-full">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                 </svg>
@@ -127,7 +127,7 @@
                 id="search-input"
                 placeholder="搜尋學號或姓名..."
                 oninput="handleSearch(this.value)"
-                class="px-4 py-2 border border-slate-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-36 sm:w-48 bg-slate-50"
+                class="px-4 py-2 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-36 sm:w-48 bg-gray-50"
               />
 
               <!-- 「進度分析」與「重算星星」已移除：
@@ -199,20 +199,20 @@
 
       <!-- Student Cards Grid Area -->
       <div class="relative min-h-[400px]">
-        <div id="loading-spinner" class="absolute inset-0 bg-slate-50/80 z-20 flex flex-col items-center justify-center hidden rounded-xl backdrop-blur-sm transition-all duration-300">
+        <div id="loading-spinner" class="absolute inset-0 bg-gray-50/80 z-20 flex flex-col items-center justify-center hidden rounded-xl backdrop-blur-sm transition-all duration-300">
            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mb-3"></div>
-           <p class="text-slate-700 font-bold tracking-wide animate-pulse">處理中...</p>
+           <p class="text-gray-700 font-bold tracking-wide animate-pulse">處理中...</p>
         </div>
         <div id="students-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6"></div>
-        <div id="no-data-msg" class="hidden py-20 text-center text-slate-500 bg-white border border-dashed border-slate-300 rounded-xl">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-3 text-slate-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <div id="no-data-msg" class="hidden py-20 text-center text-gray-500 bg-white border border-dashed border-gray-300 rounded-xl">
+          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-3 text-gray-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <p>沒有找到符合條件的學生資料。</p>
         </div>
       </div>
     </main>
 
     <!-- 星星任務輸入與折線圖 彈出視窗 (Modal) -->
-    <div id="task-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+    <div id="task-modal" class="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
       <div class="bg-white w-11/12 max-w-lg rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="task-modal-content">
         
         <!-- Modal Header -->
@@ -243,13 +243,13 @@
         </div>
 
         <!-- Modal Body (任務列表) -->
-        <div class="p-6 overflow-y-auto bg-slate-50 flex-1 relative">
+        <div class="p-6 overflow-y-auto bg-gray-50 flex-1 relative">
           <!-- 區塊A：任務評分 -->
           <div id="modal-tasks-container"></div>
           
           <!-- 區塊B：折線圖容器 -->
           <div id="modal-chart-container" class="hidden h-full flex flex-col items-center justify-center">
-            <div class="w-full h-64 relative bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div class="w-full h-64 relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                 <canvas id="student-progress-chart"></canvas>
             </div>
             <p class="text-sm text-slate-500 mt-4 text-center">此圖表顯示該學生歷次紀錄的總星數成長軌跡。<br>（需使用「進度分析」功能紀錄歷史資料才會顯示折線）</p>
@@ -260,16 +260,16 @@
         <div class="bg-white px-6 py-4 border-t flex justify-between items-center shrink-0">
           <div class="flex flex-col gap-1">
             <div class="flex gap-2">
-              <button onclick="navigateStudent('prev')" class="px-3 py-2 bg-slate-100 text-slate-600 font-medium rounded-lg hover:bg-slate-200 hover:text-blue-600 transition-colors shadow-sm focus:ring-2 focus:ring-slate-300 flex items-center gap-1 text-sm">
+              <button onclick="navigateStudent('prev')" class="px-3 py-2 bg-gray-100 text-gray-600 font-medium rounded-lg hover:bg-gray-200 hover:text-blue-600 transition-colors shadow-sm focus:ring-2 focus:ring-gray-300 flex items-center gap-1 text-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 上一位
               </button>
-              <button onclick="navigateStudent('next')" class="px-3 py-2 bg-slate-100 text-slate-600 font-medium rounded-lg hover:bg-slate-200 hover:text-blue-600 transition-colors shadow-sm focus:ring-2 focus:ring-slate-300 flex items-center gap-1 text-sm">
+              <button onclick="navigateStudent('next')" class="px-3 py-2 bg-gray-100 text-gray-600 font-medium rounded-lg hover:bg-gray-200 hover:text-blue-600 transition-colors shadow-sm focus:ring-2 focus:ring-gray-300 flex items-center gap-1 text-sm">
                 下一位
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
               </button>
             </div>
-            <span class="text-xs text-slate-400 hidden sm:block">💡 可使用鍵盤 ⬅️ ➡️ 鍵快速切換</span>
+            <span class="text-xs text-gray-400 hidden sm:block">💡 可使用鍵盤 ⬅️ ➡️ 鍵快速切換</span>
           </div>
           <button onclick="saveAndCloseModal()" class="px-8 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 text-lg">
             完成
@@ -279,7 +279,7 @@
     </div>
 
     <!-- 🌟 全班進度分析與紀錄管理 Modal -->
-    <div id="history-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+    <div id="history-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
       <div class="bg-white w-11/12 max-w-4xl rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="history-modal-content">
         
         <!-- Header -->
@@ -293,15 +293,15 @@
           </button>
         </div>
 
-        <div class="p-6 overflow-y-auto bg-slate-50 flex-1 space-y-6">
+        <div class="p-6 overflow-y-auto bg-gray-50 flex-1 space-y-6">
           
           <!-- 管理功能區 -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="md:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-indigo-100">
-              <h3 class="font-bold text-slate-800 text-lg mb-2">📸 新增進度快照</h3>
-              <p class="text-sm text-slate-500 mb-4">選擇日期並拍下目前的成績作為基準點，系統會自動繪製成長折線圖。</p>
+              <h3 class="font-bold text-gray-800 text-lg mb-2">📸 新增進度快照</h3>
+              <p class="text-sm text-gray-500 mb-4">選擇日期並拍下目前的成績作為基準點，系統會自動繪製成長折線圖。</p>
               <div class="flex flex-col sm:flex-row gap-3">
-                <input type="date" id="snapshot-date-input" class="border border-slate-300 px-3 py-2 rounded-xl flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700">
+                <input type="date" id="snapshot-date-input" class="border border-gray-300 px-3 py-2 rounded-xl flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-gray-700">
                 <button onclick="confirmSaveSnapshot()" class="px-5 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200 shrink-0 flex items-center justify-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
                   儲存目前進度
@@ -318,16 +318,16 @@
           </div>
 
           <!-- 班級折線圖 -->
-          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">本班平均進步折線圖</h3>
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">本班平均進步折線圖</h3>
             <div class="w-full h-64 relative">
               <canvas id="class-progress-chart"></canvas>
             </div>
           </div>
 
           <!-- 歷史紀錄清單 -->
-          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-            <h3 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+            <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2">
               📂 已儲存的紀錄清單 <span id="snapshot-count" class="text-sm font-normal bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">0</span>
             </h3>
             <div id="history-list-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -338,19 +338,19 @@
         </div>
 
         <div class="bg-white px-6 py-4 border-t flex justify-end items-center shrink-0">
-          <button onclick="closeHistoryModal()" class="px-6 py-2 bg-slate-200 text-slate-800 font-bold rounded-xl hover:bg-slate-300 transition-colors">關閉</button>
+          <button onclick="closeHistoryModal()" class="px-6 py-2 bg-gray-200 text-gray-800 font-bold rounded-xl hover:bg-gray-300 transition-colors">關閉</button>
         </div>
       </div>
     </div>
 
     <!-- 分類設定 Modal -->
-    <div id="settings-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+    <div id="settings-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
        <div class="bg-white w-11/12 max-w-2xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="settings-modal-content">
-        <div class="bg-slate-800 px-6 py-4 flex justify-between items-center text-white shrink-0">
+        <div class="bg-gray-800 px-6 py-4 flex justify-between items-center text-white shrink-0">
           <h2 class="text-xl font-bold flex items-center gap-2">⚙️ 自訂任務分類與歸屬</h2>
-          <button onclick="closeSettingsModal()" class="text-slate-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+          <button onclick="closeSettingsModal()" class="text-gray-300 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
         </div>
-        <div class="p-6 overflow-y-auto bg-slate-50 flex-1 space-y-6">
+        <div class="p-6 overflow-y-auto bg-gray-50 flex-1 space-y-6">
           
           <!-- 🌟 一鍵自動分類魔法 -->
           <div class="bg-indigo-50 p-4 rounded-xl shadow-sm border border-indigo-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -363,22 +363,22 @@
             </button>
           </div>
 
-          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">1. 管理分類名稱</h3>
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">1. 管理分類名稱</h3>
             <div class="flex gap-2 mb-4">
-              <input type="text" id="new-category-input" placeholder="輸入新分類名稱" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm" onkeypress="if(event.key === 'Enter') addCategoryFromInput()">
+              <input type="text" id="new-category-input" placeholder="輸入新分類名稱" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm" onkeypress="if(event.key === 'Enter') addCategoryFromInput()">
               <button onclick="addCategoryFromInput()" class="px-4 py-2 bg-blue-100 text-blue-700 font-medium rounded-lg text-sm">新增</button>
             </div>
             <div id="settings-categories-list" class="flex flex-wrap gap-2"></div>
           </div>
-          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">2. 任務指派</h3>
+          <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+            <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">2. 任務指派</h3>
             <div id="settings-tasks-list" class="space-y-2"></div>
           </div>
         </div>
         <div class="bg-white px-6 py-4 border-t flex justify-end gap-3 shrink-0">
-          <button onclick="closeSettingsModal()" class="px-5 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg">取消</button>
-          <button onclick="saveSettings()" class="px-5 py-2 bg-slate-800 text-white rounded-lg">儲存設定</button>
+          <button onclick="closeSettingsModal()" class="px-5 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg">取消</button>
+          <button onclick="saveSettings()" class="px-5 py-2 bg-gray-800 text-white rounded-lg">儲存設定</button>
         </div>
       </div>
     </div>
@@ -386,13 +386,13 @@
   </div> <!-- 🌟 結束 main-app 區塊 -->
 
   <!-- 🌟 共用確認/警告視窗 (Custom Dialog) -->
-  <div id="custom-dialog-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[70] hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+  <div id="custom-dialog-modal" class="fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-[70] hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
     <div class="bg-white w-11/12 max-w-sm rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 p-6 text-center" id="custom-dialog-content">
       <div id="custom-dialog-icon" class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100">
         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
       </div>
-      <h3 id="custom-dialog-title" class="text-xl font-bold text-slate-800 mb-2">提示</h3>
-      <p id="custom-dialog-msg" class="text-sm text-slate-500 mb-6 leading-relaxed whitespace-pre-wrap">訊息內容</p>
+      <h3 id="custom-dialog-title" class="text-xl font-bold text-gray-800 mb-2">提示</h3>
+      <p id="custom-dialog-msg" class="text-sm text-gray-500 mb-6 leading-relaxed whitespace-pre-wrap">訊息內容</p>
       <div class="flex gap-3 justify-center" id="custom-dialog-buttons">
         <!-- 按鈕將動態產生 -->
       </div>
@@ -400,7 +400,7 @@
   </div>
 
   <!-- 🌟 學生名冊管理 Modal -->
-  <div id="roster-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[65] hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+  <div id="roster-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[65] hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
     <div class="bg-white w-11/12 max-w-3xl rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="roster-modal-content">
       <div class="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-5 flex items-center justify-between flex-shrink-0">
         <h2 class="text-xl font-bold flex items-center gap-2">👥 學生名冊管理</h2>
@@ -409,28 +409,28 @@
       <div class="p-5 overflow-y-auto">
         <!-- 班級選擇 -->
         <div class="flex items-center gap-3 flex-wrap mb-4">
-          <span class="text-sm font-bold text-slate-600">班級：</span>
-          <select id="roster-class" onchange="renderRoster()" class="px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold bg-white cursor-pointer"></select>
-          <span id="roster-count" class="text-xs text-slate-400"></span>
+          <span class="text-sm font-bold text-gray-600">班級：</span>
+          <select id="roster-class" onchange="renderRoster()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm font-bold bg-white cursor-pointer"></select>
+          <span id="roster-count" class="text-xs text-gray-400"></span>
         </div>
         <!-- 新增單筆 -->
         <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
-            <div><label class="text-xs text-slate-500 font-bold">座號</label><input id="add-no" type="number" min="1" placeholder="1" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm"></div>
-            <div><label class="text-xs text-slate-500 font-bold">學號</label><input id="add-id" type="text" placeholder="14XXXXX" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm font-mono"></div>
-            <div><label class="text-xs text-slate-500 font-bold">姓名</label><input id="add-name" type="text" placeholder="姓名" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm"></div>
+            <div><label class="text-xs text-gray-500 font-bold">座號</label><input id="add-no" type="number" min="1" placeholder="1" class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"></div>
+            <div><label class="text-xs text-gray-500 font-bold">學號</label><input id="add-id" type="text" placeholder="14XXXXX" class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm font-mono"></div>
+            <div><label class="text-xs text-gray-500 font-bold">姓名</label><input id="add-name" type="text" placeholder="姓名" class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm"></div>
             <button onclick="addRosterStudent()" class="py-2 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-700 text-sm transition-colors">＋ 新增</button>
           </div>
-          <p class="text-[11px] text-slate-400 mt-2">座號預設 1–30，也可輸入更大的號碼。</p>
+          <p class="text-[11px] text-gray-400 mt-2">座號預設 1–30，也可輸入更大的號碼。</p>
         </div>
         <!-- 名冊表格 -->
-        <div id="roster-list" class="border border-slate-200 rounded-xl overflow-hidden"></div>
+        <div id="roster-list" class="border border-gray-200 rounded-xl overflow-hidden"></div>
         <!-- 批次匯入 -->
         <details class="mt-4">
-          <summary class="cursor-pointer text-sm font-bold text-slate-600 select-none">📋 批次匯入對照表（點開）</summary>
-          <p class="text-xs text-slate-400 mt-2">每行一位，格式：<code class="bg-slate-100 px-1 rounded">學號,姓名</code>（例：1410112,王小明）。逗號或 Tab 分隔皆可。<br><b>班級與座號會自動由學號推算</b>（後四碼＝班級序＋座號，例：1410112→801／12 號）。驗證碼由學生首次登入自設，重複匯入會保留原有驗證碼。</p>
-          <textarea id="roster-bulk" rows="5" class="w-full mt-2 p-2 border border-slate-300 rounded-lg text-sm font-mono" placeholder="1410112,王小明&#10;1410204,李小華"></textarea>
-          <button onclick="bulkImportRoster()" class="mt-2 px-4 py-2 bg-slate-800 text-white text-sm font-bold rounded-lg hover:bg-slate-700 transition-colors">匯入</button>
+          <summary class="cursor-pointer text-sm font-bold text-gray-600 select-none">📋 批次匯入對照表（點開）</summary>
+          <p class="text-xs text-gray-400 mt-2">每行一位，格式：<code class="bg-gray-100 px-1 rounded">學號,姓名</code>（例：1410112,王小明）。逗號或 Tab 分隔皆可。<br><b>班級與座號會自動由學號推算</b>（後四碼＝班級序＋座號，例：1410112→801／12 號）。驗證碼由學生首次登入自設，重複匯入會保留原有驗證碼。</p>
+          <textarea id="roster-bulk" rows="5" class="w-full mt-2 p-2 border border-gray-300 rounded-lg text-sm font-mono" placeholder="1410112,王小明&#10;1410204,李小華"></textarea>
+          <button onclick="bulkImportRoster()" class="mt-2 px-4 py-2 bg-gray-800 text-white text-sm font-bold rounded-lg hover:bg-gray-700 transition-colors">匯入</button>
         </details>
       </div>
     </div>
@@ -501,7 +501,7 @@
       if (options.showCancel) {
         const cancelBtn = document.createElement('button');
         cancelBtn.innerText = options.cancelText || '取消';
-        cancelBtn.className = "flex-1 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors";
+        cancelBtn.className = "flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors";
         cancelBtn.onclick = () => { closeCustomDialog(); if(options.onCancel) options.onCancel(); };
         btnContainer.appendChild(cancelBtn);
       }
@@ -849,7 +849,7 @@
         if (sheetName === activeSheet) {
           btn.className = 'px-6 py-2 rounded-full font-bold text-sm transition-all duration-200 bg-blue-600 text-white shadow-md transform hover:scale-105';
         } else {
-          btn.className = 'px-6 py-2 rounded-full font-medium text-sm transition-all duration-200 bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 hover:shadow-sm';
+          btn.className = 'px-6 py-2 rounded-full font-medium text-sm transition-all duration-200 bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 hover:shadow-sm';
         }
         btn.onclick = () => {
           activeSheet = sheetName; document.getElementById('search-input').value = ''; searchTerm = '';
@@ -892,12 +892,12 @@
 
         const coolColors = ['bg-blue-100 text-blue-600', 'bg-cyan-100 text-cyan-600', 'bg-teal-100 text-teal-600', 'bg-indigo-100 text-indigo-600'];
         const warmColors = ['bg-pink-100 text-pink-600', 'bg-rose-100 text-rose-600', 'bg-red-100 text-red-600', 'bg-orange-100 text-orange-600', 'bg-amber-100 text-amber-600'];
-        const neutralColors = ['bg-purple-100 text-purple-600', 'bg-emerald-100 text-emerald-600', 'bg-slate-100 text-slate-600'];
+        const neutralColors = ['bg-purple-100 text-purple-600', 'bg-emerald-100 text-emerald-600', 'bg-gray-100 text-gray-600'];
 
         let genderCode = student.id.length >= 3 ? student.id.charAt(2) : '';
         let hash = student.id.charCodeAt(student.id.length - 1) || 0;
         let colorClass = (genderCode === '1') ? coolColors[hash % coolColors.length] : (genderCode === '2') ? warmColors[hash % warmColors.length] : neutralColors[hash % neutralColors.length];
-        let cardBaseStyle = isMaxStars ? "bg-gradient-to-b from-yellow-50 to-white border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.4)]" : "bg-white border-slate-200 hover:border-blue-300";
+        let cardBaseStyle = isMaxStars ? "bg-gradient-to-b from-yellow-50 to-white border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.4)]" : "bg-white border-gray-200 hover:border-blue-300";
         let progressBarColor = getProgressBarColor(progressPercentage, isMaxStars);
 
         let snapshotData = null;
@@ -921,19 +921,19 @@
               ${isMaxStars ? '<div class="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-1 shadow-sm"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg></div>' : ''}
             </div>
             <div class="text-center w-full relative z-10">
-              <h3 class="font-bold text-slate-800 text-lg truncate" title="${student.name}">${student.name}</h3>
-              <p class="text-xs text-slate-500 font-mono mt-0.5">${student.id}</p>
+              <h3 class="font-bold text-gray-800 text-lg truncate" title="${student.name}">${student.name}</h3>
+              <p class="text-xs text-gray-500 font-mono mt-0.5">${student.id}</p>
             </div>
             <div class="mt-4 w-full relative z-10 px-1">
               <div class="flex items-center justify-between mb-1.5">
                 <div class="flex items-center gap-1.5">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="text-yellow-400"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                  <span class="text-sm font-bold ${isMaxStars ? 'text-yellow-600' : 'text-slate-700'}">${totalStars} <span class="text-xs text-slate-400 font-normal">/ ${maxPossibleStars}</span></span>
+                  <span class="text-sm font-bold ${isMaxStars ? 'text-yellow-600' : 'text-gray-700'}">${totalStars} <span class="text-xs text-gray-400 font-normal">/ ${maxPossibleStars}</span></span>
                   ${diffHTML}
                 </div>
-                <span class="text-xs font-bold ${isMaxStars ? 'text-yellow-600' : 'text-slate-400'}">${Math.round(progressPercentage)}%</span>
+                <span class="text-xs font-bold ${isMaxStars ? 'text-yellow-600' : 'text-gray-400'}">${Math.round(progressPercentage)}%</span>
               </div>
-              <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner">
+              <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden shadow-inner">
                 <div class="${progressBarColor} h-full rounded-full transition-all duration-700 ease-out" style="width: ${progressPercentage}%"></div>
               </div>
             </div>
@@ -1427,9 +1427,9 @@
         if (h.copy) bits.push(`⧉ ${h.copy}`);
         if (h.away) bits.push(`↗ ${h.away}`);
         const beh = bits.length
-          ? `<span class="text-slate-400 ml-2" title="作答過程參考：想的秒數／複製次數／切出視窗次數（不是作弊判定）">${bits.join('　')}</span>`
+          ? `<span class="text-gray-400 ml-2" title="作答過程參考：想的秒數／複製次數／切出視窗次數（不是作弊判定）">${bits.join('　')}</span>`
           : '';
-        return `<div class="text-xs text-slate-600 px-3 py-1.5 border-b border-slate-50 flex justify-between gap-2"><span class="font-medium">${i + 1}. ${what}${sc}${beh}</span><span class="text-slate-400 flex-shrink-0">${dt}</span></div>`;
+        return `<div class="text-xs text-gray-600 px-3 py-1.5 border-b border-gray-50 flex justify-between gap-2"><span class="font-medium">${i + 1}. ${what}${sc}${beh}</span><span class="text-gray-400 flex-shrink-0">${dt}</span></div>`;
       }).join('');
     }
 
@@ -1448,7 +1448,7 @@
         const isGroupComplete = (groupTotalStars === groupMaxStars && groupMaxStars > 0);
 
         html += `
-          <div class="mb-6 bg-white rounded-2xl shadow-sm border ${isGroupComplete ? 'border-yellow-300' : 'border-slate-200'} overflow-hidden transition-colors">
+          <div class="mb-6 bg-white rounded-2xl shadow-sm border ${isGroupComplete ? 'border-yellow-300' : 'border-gray-200'} overflow-hidden transition-colors">
             <div class="${isGroupComplete ? 'bg-yellow-50' : 'bg-blue-50'} px-5 py-3 border-b ${isGroupComplete ? 'border-yellow-200' : 'border-blue-100'} flex justify-between items-center transition-colors">
               <h4 class="font-bold ${isGroupComplete ? 'text-yellow-700' : 'text-blue-800'} text-lg flex items-center gap-2">
                 ${isGroupComplete ? '🏆' : '📁'} ${groupName}
@@ -1480,15 +1480,15 @@
             let starsHTML = '';
             for (let i = 1; i <= 3; i++) {
               const isFilled = i <= currentStars;
-              const starClasses = isFilled ? 'text-yellow-400 fill-yellow-400 drop-shadow-sm' : 'text-slate-300 fill-transparent hover:text-yellow-200 hover:fill-yellow-200 transition-colors duration-200';
+              const starClasses = isFilled ? 'text-yellow-400 fill-yellow-400 drop-shadow-sm' : 'text-gray-300 fill-transparent hover:text-yellow-200 hover:fill-yellow-200 transition-colors duration-200';
               starsHTML += `<svg onclick="handleStarClick('${sub.key}', ${currentStars === i ? 0 : i}, this)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-10 h-10 cursor-pointer transition-all active:scale-90 ${starClasses}"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
             }
             controlHTML = starsHTML;
           }
           html += `
-            <div class="bg-slate-50 rounded-xl p-3 border border-slate-100 hover:bg-blue-50/50 hover:border-blue-200 transition-colors">
+            <div class="bg-gray-50 rounded-xl p-3 border border-gray-100 hover:bg-blue-50/50 hover:border-blue-200 transition-colors">
               <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-white shadow-sm text-slate-500 flex items-center justify-center font-bold text-xs border border-slate-200">${taskIndex + 1}</div><div><span class="font-bold text-slate-700 text-md">${sub.displayLabel}</span>${lvlNote}</div></div>
+                <div class="flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-white shadow-sm text-gray-500 flex items-center justify-center font-bold text-xs border border-gray-200">${taskIndex + 1}</div><div><span class="font-bold text-gray-700 text-md">${sub.displayLabel}</span>${lvlNote}</div></div>
                 <div class="flex items-center gap-1">${controlHTML}</div>
               </div>
               ${detailHTML}
@@ -1595,7 +1595,7 @@
       countEl.innerText = progressHistory.length;
 
       if (progressHistory.length === 0) {
-        container.innerHTML = `<p class="col-span-full text-center text-slate-400 py-4">暫無紀錄</p>`;
+        container.innerHTML = `<p class="col-span-full text-center text-gray-400 py-4">暫無紀錄</p>`;
         return;
       }
 
@@ -1604,12 +1604,12 @@
       sortedHistory.forEach((item) => {
         const originalIndex = progressHistory.indexOf(item);
         const div = document.createElement('div');
-        div.className = "flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200 hover:border-indigo-300 transition-colors";
+        div.className = "flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200 hover:border-indigo-300 transition-colors";
         
         div.innerHTML = `
           <div>
-            <div class="font-mono text-slate-700 font-bold">${item.date}</div>
-            <div class="text-xs text-slate-500 mt-1">已備份全班成績</div>
+            <div class="font-mono text-gray-700 font-bold">${item.date}</div>
+            <div class="text-xs text-gray-500 mt-1">已備份全班成績</div>
           </div>
           <button onclick="deleteSingleSnapshot(${originalIndex})" class="px-3 py-1.5 bg-white text-red-500 hover:text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors shadow-sm flex items-center gap-1 text-sm font-bold" title="刪除此週紀錄">
             🗑️ 刪除
@@ -1823,7 +1823,7 @@
       subjects.forEach(sub => {
         const currentSelected = tempTaskMap[sub.key] || tempCategories[0];
         const selectHTML = optionsHTML.replace(`value="${currentSelected}"`, `value="${currentSelected}" selected`);
-        html += `<div class="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-lg hover:border-blue-200 transition-colors"><span class="font-medium text-slate-700">${sub.label}</span><select onchange="updateTaskCategoryMap('${sub.key}', this.value)" class="ml-4 px-3 py-1.5 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 text-slate-700 cursor-pointer min-w-[120px]">${selectHTML}</select></div>`;
+        html += `<div class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-lg hover:border-blue-200 transition-colors"><span class="font-medium text-gray-700">${sub.label}</span><select onchange="updateTaskCategoryMap('${sub.key}', this.value)" class="ml-4 px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 text-gray-700 cursor-pointer min-w-[120px]">${selectHTML}</select></div>`;
       });
       container.innerHTML = html;
     }
@@ -1912,12 +1912,12 @@
       function paintRosterList(){
         const box = document.getElementById('roster-list');
         document.getElementById('roster-count').innerText = `共 ${rosterCache.length} 人`;
-        if (!rosterCache.length) { box.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">此班尚無資料，請用上方新增或批次匯入。</div>`; return; }
+        if (!rosterCache.length) { box.innerHTML = `<div class="p-6 text-center text-gray-400 text-sm">此班尚無資料，請用上方新增或批次匯入。</div>`; return; }
         box.innerHTML = `
           <table class="w-full text-sm">
             <thead class="bg-slate-50 text-slate-500 text-xs"><tr><th class="p-2 text-left w-14">座號</th><th class="p-2 text-left w-28">學號</th><th class="p-2 text-left">姓名</th><th class="p-2 text-left w-24">驗證碼</th><th class="p-2 w-44"></th></tr></thead>
             <tbody>${rosterCache.map(s => `
-              <tr class="border-t border-slate-100">
+              <tr class="border-t border-gray-100">
                 <td class="p-2">${esc(s.no)}</td>
                 <td class="p-2 font-mono">${esc(s.studentId)}</td>
                 <td class="p-2">${esc(s.name)}</td>
@@ -1925,17 +1925,17 @@
                   ${editingCodeId === s.studentId
                     ? `<input id="code-edit-${esc(s.studentId)}" value="${esc(s.code || '')}" maxlength="6" inputmode="numeric" placeholder="6 位數字" class="w-24 px-2 py-1 border border-blue-300 rounded text-sm font-mono tracking-widest">`
                     : (!s.code
-                        ? `<span class="font-mono tracking-widest text-slate-300">未設定</span>`
+                        ? `<span class="font-mono tracking-widest text-gray-300">未設定</span>`
                         : `<span class="inline-flex items-center gap-1.5">
                              <span class="font-mono tracking-widest text-blue-700 font-bold">${revealedCodes.has(s.studentId) ? esc(s.code) : '••••••'}</span>
-                             <button onclick="toggleRosterCode('${esc(s.studentId)}')" title="${revealedCodes.has(s.studentId) ? '隱藏驗證碼' : '顯示驗證碼'}" class="text-slate-400 hover:text-slate-700 text-sm leading-none">${revealedCodes.has(s.studentId) ? '🙈' : '👁'}</button>
+                             <button onclick="toggleRosterCode('${esc(s.studentId)}')" title="${revealedCodes.has(s.studentId) ? '隱藏驗證碼' : '顯示驗證碼'}" class="text-gray-400 hover:text-gray-700 text-sm leading-none">${revealedCodes.has(s.studentId) ? '🙈' : '👁'}</button>
                            </span>`)}
                 </td>
                 <td class="p-2 text-right whitespace-nowrap">
                   ${editingCodeId === s.studentId
                     ? `<button onclick="saveRosterCode('${esc(s.studentId)}','${esc(s.name)}')" class="text-emerald-600 hover:text-emerald-800 text-xs font-bold mr-2">儲存</button>
                        <button onclick="clearRosterCode('${esc(s.studentId)}','${esc(s.name)}')" class="text-amber-600 hover:text-amber-800 text-xs font-bold mr-2">清除</button>
-                       <button onclick="cancelEditCode()" class="text-slate-400 hover:text-slate-600 text-xs font-bold">取消</button>`
+                       <button onclick="cancelEditCode()" class="text-gray-400 hover:text-gray-600 text-xs font-bold">取消</button>`
                     : `<button onclick="editRosterCode('${esc(s.studentId)}')" class="text-blue-500 hover:text-blue-700 text-xs font-bold mr-2">改碼</button>
                        <button onclick="clearStudentProgress('${esc(s.studentId)}','${esc(s.name)}')" class="text-amber-600 hover:text-amber-800 text-xs font-bold mr-2" title="清除闖關進度與星星（不影響名冊）">清進度</button>
                        <button onclick="delRosterStudent('${esc(s.studentId)}','${esc(s.name)}')" class="text-red-500 hover:text-red-700 text-xs font-bold">刪除</button>`}

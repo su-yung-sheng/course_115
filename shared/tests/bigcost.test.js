@@ -112,7 +112,10 @@ function mount(opts) {
   const act = a => { const el = host.querySelector('[data-a="' + a + '"]'); if (el) el.onclick(); };
   const size = v => { const el = host.querySelector('[data-n="' + v + '"]'); if (el) el.onclick(); };
   const put = v => { const el = host.querySelector('#bc-g'); if (el) el.value = v; };
-  return { host, sim, btn, act, size, put, s: () => sim._s(),
+  /* ⚠️ 排序方案那三顆用的是 data-pick，不是 data-a ——
+     用 act() 去點是點不到的（第一版就是這樣紅了一輪）。 */
+  const pick = k => { const el = host.querySelector('[data-pick="' + k + '"]'); if (el) el.onclick(); };
+  return { host, sim, btn, act, size, put, pick, s: () => sim._s(),
            txt: () => host.textContent, done: () => { sim.destroy(); host.remove(); } };
 }
 
@@ -146,16 +149,26 @@ section('★★ 兩段走得完（老師 2026-08-18：實作體驗太弱了）')
         三個一樣大的數字正好把那件事藏起來
         （和搜尋那邊「進度條看不出量級」是同一個毛病）。
      ⇒ 按比例的橫條：排序滿出去，另外兩條擠在最左邊。 */
+  /* ★★ 老師 2026-08-18：「排序成本不是還有插入排序？」
+     ⚠️ 漏掉它等於把第 7 關的結論丟掉：插入排序的成本**看資料長相**。
+     ★ 而且它不是一個數字，是一段範圍（n−1 ～ n(n−1)/2）——
+       寫一個平均值會讓學生以為它也是固定的，那正是要打破的。 */
   const lines = [...v.host.querySelectorAll('.bc-line')];
-  eq(lines.length, 3, '★★ 三條橫條（排序、循序、二元）');
-  const w = i => parseFloat(lines[i].querySelector('.fill').style.width);
-  eq(w(0), 100, '★★ 排序那一條滿格（它是最大的那個）');
-  ok(w(1) < 5 && w(2) < 5,
-     '★★ 兩條搜尋擠在最左邊（' + w(1).toFixed(1) + '%／' + w(2).toFixed(1) +
+  eq(lines.length, 4, '★★ 四條橫條：選擇排序、插入排序、循序搜尋、二元搜尋');
+  ok(/選擇排序/.test(lines[0].textContent) && /插入排序/.test(lines[1].textContent),
+     '★★ 兩種排序法都有（第 6 關、第 7 關各一條）');
+  ok(!!lines[1].querySelector('.fill.rng'),
+     '★★ 插入排序那一條畫成**範圍**（不是一根實心的）');
+  ok(/99～4,950|99～4,950/.test(lines[1].querySelector('.vv').textContent),
+     '★★ 而且標出兩端（' + lines[1].querySelector('.vv').textContent + '）');
+  const w = i => parseFloat((lines[i].querySelector('.fill') || {}).style.width);
+  eq(w(0), 100, '★★ 選擇排序那一條滿格（它是最大的那個）');
+  ok(w(2) < 5 && w(3) < 5,
+     '★★ 兩條搜尋擠在最左邊（' + w(2).toFixed(1) + '%／' + w(3).toFixed(1) +
      '%）—— 那個對比就是這一段要給的');
   /* ⚠️ 最短的那一條不可以短到看不見：二元 7 次照比例是 0.14%，
      畫出來會是一條沒有寬度的線，學生會以為那一項沒有資料。 */
-  ok(w(2) >= 1, '★★ 但最短的那一條仍然看得見（實得 ' + w(2).toFixed(1) + '%）');
+  ok(w(3) >= 1, '★★ 但最短的那一條仍然看得見（實得 ' + w(3).toFixed(1) + '%）');
   /* 每一條要標出「這個數字是哪一關量到的」 */
   ok(lines.every(l => /第 \d/.test(l.querySelector('.src').textContent)),
      '★★ 每一條都標著它來自第幾關');
@@ -203,6 +216,25 @@ section('★★ 兩段走得完（老師 2026-08-18：實作體驗太弱了）')
           那是**結果**的寫法，不是**過程**的寫法。
      ⇒ 兩張並排的收據，按「＋」一次加一筆；分界點那一題搬到最後。 */
   ok(v.s().at === 1, '走到「結帳」');
+
+  /* ── 先選一個排序方案（老師 2026-08-18）────────────────
+     「這樣就可以在下一階段來組合，先讓學生選擇後再出現帳單比對。」
+     ⚠️ 之前帳單直接用選擇排序的成本，等於替學生做了決定 ——
+        而「用哪一種排序法、資料本來長什麼樣」正是第 6、7 關教的事。 */
+  ok(!v.host.querySelector('.bc-bill'), '★★ 還沒選方案之前**不出現**帳單');
+  const plans = [...v.host.querySelectorAll('[data-pick]')].filter(b => b.dataset.pick);
+  eq(plans.length, 3, '★★ 三個排序方案');
+  ok(plans.every(b => /排序費/.test(b.textContent)),
+     '★★ 每一個都看得到排序費 —— 那是這個決定的全部依據');
+  /* ★ 三個方案的排序費要差很多，分界點才會跟著差很多 */
+  const fees = B.PLANS.map(p => B.feeOf(100, p.key));
+  eq(fees, [4950, 2475, 99], '★★ 100 筆的三種排序費（選擇／插入很亂／插入接近排好）');
+  eq(B.PLANS.map(p => B.breakEvenBy(100, p.key)), [54, 27, 2],
+     '★★ 分界點跟著垮下來：54 → 27 → 2 次　←　這一章真正的結論');
+  v.pick('sel');
+  ok(!!v.host.querySelector('.bc-bill'), '★★ 選完才出現帳單');
+  ok(/選擇排序法/.test(v.txt()), '　　而且訊息說出他選了哪一個');
+
   const bills = () => [...v.host.querySelectorAll('.bc-bill')];
   eq(bills().length, 2, '★★ 兩張收據並排（不排序一張、先排序一張）');
   const billTxt = v.txt();
@@ -268,7 +300,7 @@ section('★★ 兩段走得完（老師 2026-08-18：實作體驗太弱了）')
   ok(!!v.host.querySelector('#bc-g'),
      '★★ 兩邊各贏過一次之後，最後那一題才出現');
   ok(/最後一題/.test(v.txt()), '　　而且標明是最後一題');
-  const be = B.breakEven(v.s().n);
+  const be = B.breakEvenBy(v.s().n, v.s().pick);
   v.put(be + 5); v.act('guess');          // ±20 都算對
   ok(/對了/.test(v.txt()), '★★ 答在分界點附近就算對（±20，不必算到剛好那一格）');
   ok(v.s().done, '★ 兩段全過');
@@ -282,10 +314,14 @@ section('★★ 換資料量要重來（分界點會跟著跑）');
   const v = mount();
   v.size(10); v.size(600);
   v.act('recapdone'); v.act('next');
+  v.pick('sel');
   const add = k => { const el = v.host.querySelector('[data-add="' + k + '"]'); if (el) el.onclick(); };
   for (let i = 0; i < 6; i++) add(100);
   ok(v.s().won.sorted, '按到「先排序比較省」了');
   v.size(10);
+  /* ⚠️ 方案也要清：排序費跟著資料量跑，
+     留著的話帳單上會是新的 n 配舊的排序費。 */
+  ok(v.s().pick === null, '★★ 換資料量 → 連選好的排序方案也清掉');
   ok(!v.s().won.sorted && !v.s().won.plain,
      '★★ 換資料量 → 兩邊各贏一次的紀錄要清掉（帳單整份換了）');
   ok(v.s().planK === 1, '★★ 查詢次數回到 1（不然帶著上一輪的次數看新帳單）');
@@ -304,9 +340,10 @@ section('★★ 完成之後要把四關綁起來');
   const walk = v => {
     v.size(10); v.size(600);
     v.act('recapdone'); v.act('next');
+    v.pick('sel');
     const add = k => { const el = v.host.querySelector('[data-add="' + k + '"]'); if (el) el.onclick(); };
     for (let i = 0; i < 10 && !v.s().won.sorted; i++) add(100);
-    v.put(B.breakEven(v.s().n)); v.act('guess');
+    v.put(B.breakEvenBy(v.s().n, 'sel')); v.act('guess');
   };
   const v = mount();
   walk(v);

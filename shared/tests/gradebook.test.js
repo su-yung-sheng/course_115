@@ -166,5 +166,56 @@ section('★ 11501 本來就對得起來（別在修 11502 的時候弄壞它）
   ok(/VALID/.test(t), '★ 11501 也有自動清理（11502 是照它抄的）');
 }
 
+section('★★ 兩學期的教師端要同一套配色（老師 2026-08-18）');
+{
+  /* ★ 老師：「教師端的介面配色有深淺不同，
+     將教師 11502 調整為教師 11501 的配色與背景。」
+     ⚠️ 病根是 Tailwind 的 gray 和 slate：slate 帶藍調、gray 是中性灰。
+        兩支頁面在**同樣的位置**各用一種，切過去就看得出深淺不一樣。
+     ⚠️⚠️ 不可以整份 slate → gray：11501 自己也大量用 slate
+        （登入鈕、次要文字…）。要換的只有「同一個位置各用一種」的那些。
+     ⇒ 這一條盯的是**對齊之後還有沒有殘留**，不是「有沒有 slate」。 */
+  const strip = h => {
+    const a = h.indexOf('<body'), b = h.indexOf('<script', a);
+    return h.slice(a, b).split('\n');
+  };
+  const A = strip(read('11501/teacher.html'));
+  const B2 = strip(read('11502/teacher.html'));
+  const TOK = /[\w/:[\].-]+/g;
+
+  /* 兩邊逐行對齊（只看「長度一樣、只差在色名」的那些行） */
+  const left = [];
+  const n = Math.min(A.length, B2.length);
+  let ai = 0, bi = 0;
+  while (ai < A.length && bi < B2.length) {
+    const a = A[ai], b = B2[bi];
+    /* 只在「把 slate 和 gray 視為同一個字之後就一模一樣」時才比 ——
+       其他行的差異是兩學期本來就不同的內容（科目數、標題…），不該管。 */
+    if (a.replace(/slate/g, 'gray') === b.replace(/slate/g, 'gray')) {
+      if (a !== b) {
+        const ta = a.match(TOK) || [], tb = b.match(TOK) || [];
+        for (let k = 0; k < Math.min(ta.length, tb.length); k++) {
+          if (ta[k] !== tb[k]) left.push('1501:' + ta[k] + ' ／ 1502:' + tb[k]);
+        }
+      }
+      ai++; bi++;
+    } else if (ai < bi) { ai++; } else { bi++; }
+  }
+  ok(left.length === 0,
+     '★★ 版面上沒有「同一個位置一邊 gray 一邊 slate」的殘留' +
+     (left.length ? '　⚠️ ' + left.slice(0, 4).join('、') : ''));
+
+  /* ⚠️ 反過來也要驗：不可以把 11502 的 slate 全部掃掉 ——
+     那會連 11501 自己也在用的那些一起換掉，變成另一種不一致。 */
+  const b502 = read('11502/teacher.html');
+  ok(/-slate-/.test(b502),
+     '★★ 但 11502 仍然保有 slate（11501 本來就有，全掃掉是另一種不一致）');
+  ok(/-gray-/.test(b502), '★ 也有 gray');
+  /* 兩支的底色要一樣 —— 那是最大面積、也最看得出來的一塊 */
+  const bodyOf = h => (h.match(/<body class="([^"]*)"/) || ['', ''])[1];
+  eq(bodyOf(b502).split(' ')[0], bodyOf(read('11501/teacher.html')).split(' ')[0],
+     '★★ 兩支的 <body> 底色一樣');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

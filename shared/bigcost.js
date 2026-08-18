@@ -94,6 +94,51 @@
     return -1;
   }
 
+  /* ── 三個「排序方案」（老師 2026-08-18）─────────────────
+     ★ 老師：「排序成本不是還有插入排序？這樣就可以在下一階段來組合，
+       先讓學生選擇後再出現帳單比對。」
+     ⚠️ 之前的帳單只有一種排序費（選擇排序）——
+        等於把第 7 關的結論整個丟掉：**插入排序的成本看資料長相**。
+     ★ 把「用哪一種排序法」和「資料本來長什麼樣」合成**一個軸**：
+       三個都是真實情境，而且排序費差很多，
+       於是「先排序划不划算」的分界點也跟著差很多 ——
+       100 筆的話：54 次 → 27 次 → 2 次。
+       那才是這一章真正要學生帶走的東西：**選對方法，門檻會整個垮下來**。
+     ⚠️ 不要拆成「排序法 × 資料長相」兩個軸：選擇排序的三種長相答案都一樣，
+        學生會覺得白選一次（老師也是這樣判斷的）。 */
+  var PLANS = [
+    { key: 'sel', icon: '🎯', name: '選擇排序法',
+      sub: '不管資料長什麼樣，都是這個數',
+      fee: function (n) { return selCompares(n); } },
+    { key: 'insRand', icon: '🃏', name: '插入排序法 · 資料很亂',
+      sub: '平均大約是選擇排序的一半',
+      /* ⚠️ 用 n(n−1)/4，不是真的去跑一次 ——
+         這裡要的是**一個學生算得出來的數**（「大約一半」），
+         而不是某一次隨機資料的實測值（每次都不一樣，沒辦法對答案）。 */
+      fee: function (n) { return Math.round(selCompares(n) / 2); } },
+    { key: 'insSorted', icon: '🃏', name: '插入排序法 · 資料已經接近排好',
+      sub: '每一筆只要比一次就找到位置',
+      fee: function (n) { return insBest(n); } }
+  ];
+  function planOf(key) {
+    for (var i = 0; i < PLANS.length; i++) if (PLANS[i].key === key) return PLANS[i];
+    return PLANS[0];
+  }
+  /** 這個方案的排序費 */
+  function feeOf(n, key) { return planOf(key).fee(n); }
+  /** 先排序的總成本（排序費由方案決定） */
+  function costSortedBy(n, k, key) { return feeOf(n, key) + k * binWorst(n); }
+  /** 哪一種划算（跟著方案跑） */
+  function betterBy(n, k, key) {
+    var a = costPlain(n, k), b = costSortedBy(n, k, key);
+    return a < b ? 'plain' : (b < a ? 'sorted' : 'same');
+  }
+  /** 這個方案的分界點 */
+  function breakEvenBy(n, key) {
+    for (var k = 1; k <= 1000000; k++) if (betterBy(n, k, key) === 'sorted') return k;
+    return -1;
+  }
+
   /* ⚠️ 資料量要和「排序大比拼」對齊（SORTLAB 的 10／100／600）——
      這一步是拿學生剛才量過的數字來算帳，
      數字對不上的話「你剛才量過」這句話就是假的。 */
@@ -232,6 +277,22 @@
     '.bc-bill.win .br.tot span:last-child{color:#166534}',
     '.bc-bill .bw{font-size:12.5px;font-weight:900;color:#166534;text-align:right;',
     '  margin-top:4px;min-height:19px}',
+    /* ── 三個排序方案的選擇（老師 2026-08-18）──────────
+       ★ 每一顆要看得到**排序費** —— 那是這個決定的全部依據。
+       ⚠️ 三顆並排、字級一樣：這是三個平行的選項，不是三個難度。 */
+    '.bc-plans{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:11px}',
+    '.bc-plans button{flex:1;min-width:200px;background:#fff;border:2px solid #cbd5e1;',
+    '  border-radius:14px;padding:12px 14px;cursor:pointer;font-family:inherit;',
+    '  text-align:left;display:flex;flex-direction:column;gap:3px}',
+    '.bc-plans button:hover{border-color:#6366f1;background:#eef2ff}',
+    '.bc-plans .nm{font-size:14px;font-weight:900;color:#334155}',
+    '.bc-plans .fee{font-size:19px;font-weight:900;color:#b45309;',
+    '  font-family:ui-monospace,monospace}',
+    '.bc-plans .sub{font-size:11.5px;color:#94a3b8;line-height:1.6}',
+    /* 範圍條（插入排序：它不是一個數字，是一段範圍）*/
+    '.bc-line .track{position:relative}',
+    '.bc-line .fill.rng{position:absolute;top:0;bottom:0;opacity:.75}',
+    '.bc-line .dot{position:absolute;top:0;bottom:0;width:3px;border-radius:2px}',
     /* ── 目標橫幅（老師 2026-08-18：「太開放式了，感覺會亂按」）──
        ★ 「還差幾次」要現算 —— 有數字在跳，學生才知道自己在往哪裡走。 */
     '.bc-goal{display:flex;justify-content:space-between;align-items:center;gap:10px;',
@@ -317,6 +378,9 @@
     /* 「換邊了」那句話只講一次 —— 每按一下都跳同一句的話，
        學生會停止讀它，而那句正是這一段的結論。 */
     var msgShownFlip = false;
+    /* 結帳：學生選的排序方案（null＝還沒選）。
+       ★ 老師 2026-08-18：「先讓學生選擇後再出現帳單比對」。 */
+    var pick = null;
 
     function step() { return STEPS[at]; }
     function allDone() { return STEPS.every(function (s) { return cleared[s.key]; }); }
@@ -376,6 +440,9 @@
            ⚠️ 清單的順序要和畫面上的順序一樣 ——
               不一樣的話學生會照清單去找，但畫面上還沒出現那一題。 */
         rows = [
+          '<li class="' + (pick ? 'ok' : '') + '">' + (pick ? '✅' : '⬜') +
+          ' 選一種<b>排序方式</b>' +
+          (pick ? '<span>' + planOf(pick).name + '</span>' : '') + '</li>',
           '<li class="' + (won.plain ? 'ok' : '') + '">' + (won.plain ? '✅' : '⬜') +
           ' 看到一次<b>不排序比較省</b>（查很少次的時候）</li>',
           '<li class="' + (won.sorted ? 'ok' : '') + '">' + (won.sorted ? '✅' : '⬜') +
@@ -426,7 +493,7 @@
            ⚠️ 「先猜分界點」那一題搬到**最後**（老師 2026-08-18 選的）——
               先按到自己看見換邊，才有東西可以猜。 */
       if (k === 'plan') {
-        return planHTML() + (won.plain && won.sorted ? guessHTML() : '');
+        return planHTML() + (pick && won.plain && won.sorted ? guessHTML() : '');
       }
 
       return '';
@@ -458,11 +525,35 @@
           '<span class="vv">' + comma(val) + '</span></div>' +
           '<div class="nt">' + note + '</div></div>';
       };
+      /* ★★ 老師 2026-08-18：「排序成本不是還有插入排序？」——
+         對，而且漏掉它等於把第 7 關的結論丟掉。
+         ⚠️ 插入排序沒有**一個**數字，它是一段範圍（n−1 ～ n(n−1)/2）——
+            所以那一條畫成範圍條，不是一根實心的。
+            寫一個平均值會讓學生以為它也是固定的，那正好是這一關要打破的。 */
+      /* 一段**範圍**的條（插入排序用）——
+         ⚠️ 不可以只畫最壞或只畫平均：
+            「它有一段範圍」本身就是第 7 關的答案。 */
+      var rangeRow = function (icon, name, from, lo, hi, max, color, note) {
+        var l = Math.max(0.6, lo / max * 100), h = Math.max(1.2, hi / max * 100);
+        return '<div class="bc-line">' +
+          '<div class="lh"><span class="nm">' + icon + ' ' + name + '</span>' +
+          '<span class="src">' + from + '</span></div>' +
+          '<div class="lb2"><span class="track"><span class="fill rng" style="left:' +
+          l + '%;width:' + Math.max(0.6, h - l) + '%;background:' + color +
+          '"></span><span class="dot" style="left:' + l + '%;background:' + color +
+          '"></span></span>' +
+          '<span class="vv">' + comma(lo) + '～' + comma(hi) + '</span></div>' +
+          '<div class="nt">' + note + '</div></div>';
+      };
+      var insLo = insBest(n), insHi = insWorst(n);
       var out = sizesHTML() +
         '<div class="bc-lines"><div class="hd">同樣 <b>' + comma(n) +
         '</b> 筆資料，要比幾次？</div>' +
-        row('🔢', '排好序（選擇排序）', '第 6、7 關', sortN, '#f59e0b',
-            '排一次的成本 —— 但排完之後就不用再排') +
+        row('🎯', '選擇排序法', '第 6 關', sortN, '#f59e0b',
+            '不管資料長什麼樣都一樣 —— 這是它的固定價') +
+        rangeRow('🃏', '插入排序法', '第 7 關', insLo, insHi, mx, '#a855f7',
+                 '看資料本來長什麼樣：已經接近排好只要 ' + comma(insLo) +
+                 ' 次，完全相反才要 ' + comma(insHi) + ' 次') +
         row('🚶', '循序搜尋（最壞）', '第 8 關', seqN, '#0ea5e9',
             '每查一次都要付這麼多') +
         row('✂️', '二元搜尋（最壞）', '第 9 關', binN, '#22c55e',
@@ -531,14 +622,36 @@
          按「＋ 再查一次」兩張的總計各自往上跳，換邊的那一刻標出來。
        ★ 沒有乘法算式 —— 只有一直加上去的數字。
          「排序費只付一次、查詢費每次都要付」這件事，用收據看一眼就懂。 */
+    /* ── 先選一個排序方案 ────────────────────────────
+       ★ 老師 2026-08-18：「排序成本不是還有插入排序？
+         這樣就可以在下一階段來組合，先讓學生選擇後再出現帳單比對。」
+       ⚠️ 之前帳單直接用選擇排序的成本，等於替學生做了決定 ——
+          而「用哪一種排序法、資料本來長什麼樣」正是第 6、7 關教的事。
+       ★ 三個方案的排序費差很多，於是分界點也差很多（100 筆：54／27／2）——
+         選完之後那張帳單才是**他自己的**帳單。 */
+    function pickHTML() {
+      return sizesHTML() +
+        '<div class="bc-ask">先決定一件事：這批 <b>' + comma(n) +
+        '</b> 筆資料，你要<b>用哪一種方式把它排好</b>？' +
+        '<br><span style="font-size:12px;color:#94a3b8">' +
+        '⚠️ 選不同的方式，排序費差很多 —— 之後那張帳單就會不一樣。</span></div>' +
+        '<div class="bc-plans">' + PLANS.map(function (p) {
+          return '<button data-pick="' + p.key + '">' +
+            '<span class="nm">' + p.icon + ' ' + p.name + '</span>' +
+            '<span class="fee">排序費 ' + comma(p.fee(n)) + '</span>' +
+            '<span class="sub">' + p.sub + '</span></button>';
+        }).join('') + '</div>';
+    }
+
     function planHTML() {
+      if (!pick) return pickHTML();
       var kk = planK || 1;
-      var sortFee = selCompares(n);          // 排序費：只付一次
+      var sortFee = feeOf(n, pick);          // 排序費：只付一次，跟著方案跑
       var perPlain = seqWorst(n);            // 不排序：每查一次的價錢
       var perSorted = binWorst(n);           // 先排序：每查一次的價錢
       var totPlain = costPlain(n, kk);
-      var totSorted = costSorted(n, kk);
-      var side = better(n, kk);
+      var totSorted = costSortedBy(n, kk, pick);
+      var side = betterBy(n, kk, pick);
 
       var bill = function (cls, name, fee, per, tot, win) {
         return '<div class="bc-bill ' + cls + (win ? ' win' : '') + '">' +
@@ -569,7 +682,7 @@
            而且把「還差幾次」現算出來 —— 有數字在跳，就不是亂按。
          ⚠️ 不要直接把分界點寫出來（那是最後一題的答案）——
             只講「還差幾次」，他自己按到 0 的時候就知道答案了。 */
-      var be = breakEven(n);
+      var be = breakEvenBy(n, pick);
       var left = Math.max(0, be - kk);
       var goalBar = won.sorted
         ? '<div class="bc-goal done">🎯 目標達成！你已經看過<b>兩邊各贏一次</b> —— ' +
@@ -578,20 +691,26 @@
           '<span class="left">還差 <b>' + comma(left) + '</b> 次</span></div>';
 
       /* ★ 建議按哪一顆：還差很多就推 ＋100，快到了就推 ＋1。
-         ⚠️ 只是**加亮**，不是鎖住其他顆 —— 自己亂按也要能玩。 */
-      var pick = left >= 100 ? 100 : (left >= 10 ? 10 : 1);
+         ⚠️ 只是**加亮**，不是鎖住其他顆 —— 自己亂按也要能玩。
+         ⚠️⚠️ 這個變數本來叫 pick，和外層「學生選的排序方案」撞名 ——
+            var 會提升到函式最上面，於是 `if (!pick) return pickHTML()`
+            永遠看到 undefined，選完方案畫面還是停在選單。
+            ★ 而且完全不會報錯：待辦清單那邊用的是外層的 pick，
+              所以打勾了、畫面卻沒換 —— 看起來像「按鈕沒反應」。 */
+      var suggest = left >= 100 ? 100 : (left >= 10 ? 10 : 1);
 
       return sizesHTML() + goalBar +
         '<div class="bc-kbar"><span class="lb">你要查 <b>' + comma(kk) + '</b> 次</span>' +
         STEPS_K.map(function (v) {
-          var hint = (!won.sorted && v === pick);
+          var hint = (!won.sorted && v === suggest);
           return '<button data-add="' + v + '"' + (hint ? ' class="hint"' : '') + '>' +
                  (hint ? '👉 ' : '') + '＋' + comma(v) + ' 次</button>';
         }).join('') +
-        '<button data-add="reset" class="ghost">↺ 回到 1 次</button></div>' +
+        '<button data-add="reset" class="ghost">↺ 回到 1 次</button>' +
+        '<button data-pick="" class="ghost">🔄 換一種排序方式</button></div>' +
         '<div class="bc-bills">' +
           bill('plain', '🚶 不排序，每次循序找', 0, perPlain, totPlain, side === 'plain') +
-          bill('sorted', '📚 先排序，之後二元找', sortFee, perSorted, totSorted, side === 'sorted') +
+          bill('sorted', planOf(pick).icon + ' 先排序，之後二元找', sortFee, perSorted, totSorted, side === 'sorted') +
         '</div>' +
         '<div class="bc-ask">' + planSay(kk, side, totPlain, totSorted) + '</div>';
     }
@@ -619,10 +738,11 @@
          先讓他按到自己看見換邊，再問「那分界點大概在哪裡？」。
        ⚠️ 有過經驗才猜得出來。一開場就問，他只能亂填一個數字。 */
     function guessHTML() {
-      var be = breakEven(n);
+      var be = breakEvenBy(n, pick);
       return '<div class="bc-ask"><b>最後一題：</b>' +
         '你剛才看到兩邊換邊了。' +
         '這批 <b>' + comma(n) + '</b> 筆資料，' +
+        '用<b>' + planOf(pick).name + '</b>來排的話，' +
         '<b>查幾次以上</b>，先排序才開始划算？' +
         '<br><span style="font-size:12px">💡 用「＋」把次數調到剛好換邊的那一格，就看得出來。' +
         '答案在 ' + comma(Math.max(1, be - 20)) + ' ～ ' + comma(be + 20) + ' 之間都算對。</span>' +
@@ -680,7 +800,11 @@
              ⚠️ 損益兩平點也跟著資料量跑（10 筆是 8 次、600 筆是 3,004 次），
                 猜過的答案不能算數。 */
           cleared[step().key] = false;
-          if (step().key === 'plan') { guess = null; planK = 1; won = {}; msgShownFlip = false; }
+          if (step().key === 'plan') {
+            /* ⚠️ 方案也要清：排序費跟著資料量跑，
+               留著的話帳單上會是新的 n 配舊的排序費。 */
+            pick = null; guess = null; planK = 1; won = {}; msgShownFlip = false;
+          }
           tries = 0; msg = ''; kind = 'info';
           render();
         };
@@ -688,6 +812,9 @@
       /* 「＋ 再查幾次」—— 這是結帳那一段真正在玩的東西 */
       [].forEach.call(host.querySelectorAll('[data-add]'), function (el) {
         el.onclick = function () { act('add:' + el.dataset.add); };
+      });
+      [].forEach.call(host.querySelectorAll('[data-pick]'), function (el) {
+        el.onclick = function () { act('pick:' + el.dataset.pick); };
       });
       [].forEach.call(host.querySelectorAll('[data-a]'), function (el) {
         el.onclick = function () { act(el.dataset.a); };
@@ -713,12 +840,37 @@
         return;
       }
 
+      /* ── 結帳：選一個排序方案 ───────────────────────
+         ⚠️ 換方案要把按到的次數與結論**整個清掉** ——
+            分界點跟著方案跑（100 筆：54／27／2），
+            留著上一個方案的進度等於用錯的帳單過關。 */
+      if (key === 'plan' && a && a.indexOf('pick:') === 0) {
+        var pk = a.slice(5);
+        pick = pk || null;
+        planK = 1; won = {}; msgShownFlip = false; guess = null;
+        cleared.plan = false;
+        /* ⚠️ 剛選完的時候畫面上已經是「查 1 次」的帳單了 ——
+           那一格通常是「不排序比較省」，而學生**確實看到了**。
+           不記下來的話，他按到換邊之後系統還在等一個他早就看過的畫面
+           （最後一題永遠不出現）。★ 畫面上發生過的事就要算數。 */
+        if (pick) {
+          var s0 = betterBy(n, 1, pick);
+          if (s0 === 'plain' || s0 === 'sorted') won[s0] = true;
+        }
+        if (pick) {
+          say('good', '選好了：<b>' + planOf(pick).name + '</b>，排序費 ' +
+                      hlb(comma(feeOf(n, pick))) + ' 次。' +
+                      '<br>★ 這筆錢<b>只付一次</b> —— 下面就來看它划不划算。');
+        } else { msg = ''; render(); }
+        return;
+      }
+
       /* ── 結帳：加次數 ──────────────────────────────
          ★ 一次加一筆 —— 沒有公式，只有一直加上去的數字。 */
       if (key === 'plan' && a && a.indexOf('add:') === 0) {
         var d = a.slice(4);
         planK = (d === 'reset') ? 1 : (planK || 1) + Number(d);
-        var side = better(n, planK);
+        var side = betterBy(n, planK, pick);
         if (side === 'plain' || side === 'sorted') won[side] = true;
         if (won.plain && won.sorted && !msgShownFlip) {
           msgShownFlip = true;
@@ -735,7 +887,7 @@
       if (key === 'plan' && a === 'guess') {
         var v = num('#bc-g');
         if (v === null) return;
-        var be = breakEven(n);
+        var be = breakEvenBy(n, pick);
         guess = v;
         var near = Math.abs(v - be) <= 20;
         cleared.plan = true;
@@ -762,7 +914,7 @@
     return {
       destroy: function () { host.innerHTML = ''; },
       _s: function () {
-        return { at: at, cleared: cleared, n: n, planK: planK, done: allDone(),
+        return { at: at, cleared: cleared, n: n, planK: planK, done: allDone(), pick: pick,
                  /* 測試要看得到這三個：猜過沒、看過哪幾種資料量、哪一邊贏過 */
                  guess: guess, seen: seen, won: won };
       }
@@ -805,6 +957,11 @@
     costSorted: costSorted,
     better: better,
     breakEven: breakEven,
+    PLANS: PLANS,
+    feeOf: feeOf,
+    costSortedBy: costSortedBy,
+    betterBy: betterBy,
+    breakEvenBy: breakEvenBy,
     SIZES: SIZES,
     STEPS: STEPS
   };
