@@ -99,6 +99,13 @@
 <script src="../shared/minlab.js"></script>
 <script src="../shared/bigfind.js"></script>
 <script src="../shared/bigcost.js"></script>
+<!-- 期末檢核（第 10 關最後一步）。
+     ⚠️ anskey.js 一定要排在 finaltest.js **前面** ——
+        判分走 ANSKEY.check，載得比較晚的話那時候它還是 undefined，
+        而且不會報錯，只會每一題都判成錯。 -->
+<script src="../shared/anskey.js"></script>
+<script src="../shared/finaltest.js"></script>
+<script src="content/final.js"></script>
 <script src="../shared/answer.js"></script>
 <script src="../shared/quiz.js"></script>
 <script src="content/blocks.js"></script>
@@ -244,6 +251,14 @@ function steps() {
   const needUp = !GATE || GATE.needsUpload(unit.id);
   out.push(needUp ? { key:'test', icon:'🚀', name:'實作測試' }
                   : { key:'play', icon:'🎮', name:'實作體驗' });
+  /* ★★ 期末檢核（老師 2026-08-18）——「既然是整個課程的最後」。
+     ⚠️ 只有宣告 finalTest 的關卡有（目前只有第 10 關）。
+        每一關都放的話，這一步就從「期末」變成「每關都要考一次」。
+     ⚠️ 排在**最後一步之後** —— 它要考的東西（實作體驗算的那筆帳）
+        必須先做過，不然第一題就在考他還沒看過的內容。 */
+  if (lv && lv.finalTest && window.FINALTEST && window.FINAL_BANK) {
+    out.push({ key:'final', icon:'🏁', name:'期末檢核' });
+  }
   return out;
 }
 
@@ -525,6 +540,13 @@ function stepGoal(key) {
   if (key === 'play') {
     const mod = finishMod(lv && lv.finish);
     return (mod && typeof mod.goal === 'function') ? mod.goal(lv.finish) : null;
+  }
+  /* 期末檢核的門檻寫在模組裡（十題全對／4 題以下重置）——
+     ⚠️ 這一頁不要再抄一份：抄的那一份和真正的判定不一樣的話，
+        學生看到的會是**錯的那一份**，而且是最嚴的那一條規則。 */
+  if (key === 'final') {
+    return (window.FINALTEST && typeof window.FINALTEST.goal === 'function')
+      ? window.FINALTEST.goal() : null;
   }
   if (key === 'lab') {
     const mod = labMod(lv && lv.lab);
@@ -808,6 +830,9 @@ function draw(s) {
         big: true,
         onPass: () => {
           if (window.savePlay) window.savePlay(unit.id);
+          /* ⚠️ 有期末檢核的關卡不可以在這裡就回地圖 ——
+             那樣最後一步永遠不會有人走到。 */
+          if (lv && lv.finalTest && window.FINALTEST && window.FINAL_BANK) { advance(); return; }
           location.href = 'scratch.html';
         }
       }));
@@ -818,6 +843,41 @@ function draw(s) {
         '體驗區載不出來（可能是網路問題）。請重新整理；還是不行就跟老師說。</div>';
       nextBtn('先跳過，回地圖');
     }
+    return;
+  }
+
+  /* ── 🏁 期末檢核（整門課的最後一步）─────────────────
+     ★ 老師 2026-08-18 指定：十題全對才過；只對 4 題以下要重走第 10 關；
+       過了發證書（和第 5 關一樣）。規則與警語寫在模組裡（見 shared/finaltest.js）。
+     ⚠️ 這一步**不給星星** —— 系統只有兩組，各有唯一的寫入者。
+        成績存到 modules.scratch.final 給老師看（教師端的闖關明細會列出來）。 */
+  if (s.key === 'final') {
+    markPre();
+    body.innerHTML =
+      '<h2 class="text-xl font-black mb-1">🏁 期末檢核</h2>' +
+      '<p class="text-sm text-slate-600 leading-relaxed mb-4">' +
+      '第 6 章的四個演算法 —— <b>循序／二元搜尋</b>、<b>選擇／插入排序</b> —— ' +
+      '這一步一起考一次。<br>題目都是你前面做過的事：實驗室量過、概念檢測寫過、' +
+      '實作體驗算過。</p>' +
+      '<div id="final-host"></div>';
+    window.FINALTEST.mount($('final-host'), {
+      bank: window.FINAL_BANK,
+      big: true,
+      /* 每次交卷都存 —— 沒過也要存，那才看得出他考了幾次、卡在哪一類。 */
+      onScore: (score, res) => { if (window.saveFinal) window.saveFinal(unit.id, score, res); },
+      onPass: () => { location.href = 'scratch.html'; },
+      /* ⚠️⚠️ 重置：學生自己按下去才會發生（模組裡先列清楚會清掉什麼）。
+         這一筆和其他存檔**相反** —— 失敗要講出來。
+         畫面說重置了、伺服器沒重置的話，他下次回來會看到一個不認得的狀態。 */
+      onReset: async () => {
+        const okd = window.resetLevel ? await window.resetLevel(unit.id) : false;
+        if (!okd) {
+          alert('重置沒有成功（可能是網路問題）。\n請重新整理再試一次，或跟老師說。');
+          return;
+        }
+        location.href = 'level.html?unit=' + encodeURIComponent(unit.id);
+      }
+    });
     return;
   }
 
@@ -900,7 +960,9 @@ render();
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
   import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  /* ⚠️ deleteField 是重置那一支要用的（window.resetLevel）——
+     忘了 import 的話它會是 undefined，而錯誤要到學生真的按下重置那一刻才出現。 */
+  import { getFirestore, doc, getDoc, setDoc, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
   const app  = initializeApp(window.CONFIG.FIREBASE);
   const auth = getAuth(app);
@@ -1001,6 +1063,57 @@ render();
         { merge: true });
     } catch (e) { console.warn('概念檢測成績沒存成功（不影響闖關）', e); }
   };
+  /* ── 期末檢核的成績（老師 2026-08-18）─────────────────
+     ⚠️ 存**最好的一次**，不是最後一次 —— 學生重考拿比較差，
+        不該把已經拿到的紀錄蓋掉（和實驗室徽章同一條規則）。
+     ⚠️ tries 要**累加**：考了幾次是老師最想看的一個數字
+        （一次全對 vs 考了六次才全對，是兩件完全不同的事）。
+     ★ 這裡不碰任何星數。第 5、10 關的通關證明本來就不是星星。 */
+  window.saveFinal = async function (unitId, score, res) {
+    if (!sid || !unitId) return;
+    try {
+      const ref = doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid);
+      const snap = await getDoc(ref);
+      const cur = ((((snap.exists() && snap.data().modules) || {}).scratch || {}).final || {})[unitId] || {};
+      const total = (res && res.total) || 10;
+      const best = Math.max(Number(cur.best) || 0, Number(score) || 0);
+      await setDoc(ref, { modules: { scratch: { final: { [unitId]: {
+        best: best, total: total,
+        pass: best >= total,
+        tries: (Number(cur.tries) || 0) + 1,
+        at: new Date().toISOString().slice(0, 16)
+      } } } } }, { merge: true });
+    } catch (e) { console.warn('期末檢核成績沒存成功', e); }
+  };
+
+  /* ── 重置一關的步驟進度 ───────────────────────────────
+     ⚠️⚠️ 這是整個系統裡**唯一會刪東西**的函式，所以三件事要說清楚：
+       ① 只清「步驟進度」：pre／step／play／lab。
+          **不動** quiz（概念星）、不動 unitStars（作品星）、不動別關。
+       ② 回傳成功與否 —— 呼叫端要在失敗時擋下來並講出來。
+          其他存檔都是「失敗不擋」，這一支相反：
+          畫面說重置了、伺服器沒重置的話，學生下次回來會看到一個不認得的狀態。
+       ③ 用 deleteField()，不是寫 false ——
+          寫 false 的話那些鍵會一直留著，之後很難分辨
+          「他沒做過」和「他做過但被重置了」。 */
+  window.resetLevel = async function (unitId) {
+    if (!sid || !unitId) return false;
+    try {
+      await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid), {
+        modules: { scratch: {
+          pre:  { [unitId]: deleteField() },
+          step: { [unitId]: deleteField() },
+          play: { [unitId]: deleteField() },
+          lab:  { [unitId]: deleteField() }
+        } }
+      }, { merge: true });
+      return true;
+    } catch (e) {
+      console.error('重置第 ' + unitId + ' 關失敗', e);
+      return false;
+    }
+  };
+
   window.saveNote = async function (unitId, text) {
     if (!sid || !unitId) return;
     try {

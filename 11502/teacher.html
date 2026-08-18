@@ -1323,10 +1323,57 @@
     };
 
     // 某模組的星星明細（過關歷程）
+    /* ── 闖關過程裡「不是星星」的那幾筆 ──────────────────
+       ⚠️⚠️ 老師 2026-08-18：「第五關與第十關的通關證明教師端看得到嗎？」
+          —— 本來**看不到**。這幾筆一直有寫進 Firestore
+          （modules.scratch.play／lab／final），但這一頁只畫星星和「已完成 N 關」，
+          它們從來沒有被印出來過。★ 有存 ≠ 看得到。
+       ★ 為什麼它們不是星星
+         系統只有兩組星，各有唯一的寫入者（🧩 Colab 批改／🧠 概念檢測現算）。
+         第 5、10 關沒有作品可以批改，它們的完成證明是「體驗章／證書」——
+         刻意不做成星星，不然 hub 的分母會錯掉。
+       ⇒ 所以要在這裡另外列一行，不然老師只能看到那兩關是 0 顆星。 */
+    function scratchExtraHtml(student) {
+      const sc = (student.__modules && student.__modules.scratch) || {};
+      const play = sc.play || {}, lab = sc.lab || {}, fin = sc.final || {};
+      const rows = [];
+      /* 第 5 關：實作體驗（bigfind）—— 它同時是第 6 關的開門條件 */
+      rows.push(['🎮 第 5 關 實作體驗',
+        play['6-1-1'] ? '✅ 完成' : '—',
+        play['6-1-1'] ? 'text-emerald-600' : 'text-slate-400']);
+      /* 第 10 關：實作體驗（bigcost 結帳） */
+      rows.push(['🧾 第 10 關 實作體驗',
+        play['6-3-3'] ? '✅ 完成' : '—',
+        play['6-3-3'] ? 'text-emerald-600' : 'text-slate-400']);
+      /* 第 10 關：期末檢核（十題全對才算過） */
+      const f = fin['6-3-3'] || {};
+      rows.push(['🏁 第 10 關 期末檢核',
+        f.pass ? `✅ 通過（${f.best}/${f.total} 題，考了 ${f.tries || 1} 次）`
+               : (f.best != null ? `未通過　最佳 ${f.best}/${f.total} 題（考了 ${f.tries || 1} 次）` : '—'),
+        f.pass ? 'text-emerald-600' : (f.best != null ? 'text-amber-600' : 'text-slate-400')]);
+      /* 實驗室的挑戰徽章（0～3）—— 哪幾關做到第幾級 */
+      const labs = Object.keys(lab).filter(k => lab[k] > 0)
+        .sort().map(k => `${k}:${'★'.repeat(lab[k])}`);
+      rows.push(['🕹️ 實驗室挑戰徽章',
+        labs.length ? labs.join('　') : '—',
+        labs.length ? 'text-slate-600' : 'text-slate-400']);
+      return '<div class="border-b border-slate-100">' + rows.map(r =>
+        `<div class="text-xs px-3 py-1.5 flex justify-between gap-2">
+           <span class="font-medium text-slate-600">${r[0]}</span>
+           <span class="${r[2]} font-bold text-right">${r[1]}</span>
+         </div>`).join('') +
+        `<div class="text-[11px] text-slate-400 px-3 pb-2 leading-relaxed">
+           ⚠️ 這幾筆是<b>學生端</b>寫的（按 F12 可以偽造），和作品星不同 ——
+           它們是「有沒有走完」的紀錄，不是成績。
+         </div></div>`;
+    }
+
     function moduleHistoryHtml(moduleKey, student) {
+      /* 闖關（scratch）多一塊：那兩關的通關證明不是星星，只能另外列 */
+      const extra = (moduleKey === 'scratch') ? scratchExtraHtml(student) : '';
       const items = (student.history || []).filter(h => h.module === moduleKey).slice().sort((a, b) => (a.at || 0) - (b.at || 0));
-      if (!items.length) return '<div class="text-xs text-slate-400 px-3 py-2">尚無逐筆明細（可能是舊資料或以「重算星星」產生，僅有總星數）。</div>';
-      return items.map((h, i) => {
+      if (!items.length) return extra + '<div class="text-xs text-slate-400 px-3 py-2">尚無逐筆明細（可能是舊資料或以「重算星星」產生，僅有總星數）。</div>';
+      return extra + items.map((h, i) => {
         const dt = h.at ? new Date(h.at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
         const what = h.chapter ? `章節 ${h.chapter}` : (h.challenge != null ? `第 ${h.challenge} 關` : '完成一項');
         const sc = (h.score != null) ? `　正確率 ${h.score}%` : '';

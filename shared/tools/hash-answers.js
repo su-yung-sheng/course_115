@@ -27,7 +27,10 @@ const ANSKEY = require(path.join(ROOT, 'shared', 'anskey.js'));
 
 const FILES = [
   '11501/content/ethics.js',
-  '11502/content/social.js'
+  '11502/content/social.js',
+  /* 第 6 章期末檢核（第 10 關最後一步）—— 結構不一樣（types/questions），
+     但每一題還是同一個單行 JSON 物件，所以同一支工具吃得下。 */
+  '11502/content/final.js'
 ];
 
 const write = process.argv.indexOf('--write') >= 0;
@@ -86,6 +89,10 @@ FILES.forEach(rel => {
       if (c.challenge) walk(c.challenge.questions);
       (c.sections || []).forEach(s => walk(s.questions));
     });
+    /* ⚠️ 期末檢核的題庫是另一種結構（FINAL_BANK.types[].questions[]）。
+       不走這一段的話，寫回之後的檢查會報「0 題」——
+       那不是「沒問題」，是「什麼都沒驗到」，而且看起來一模一樣。 */
+    ((w.FINAL_BANK || {}).types || []).forEach(t => walk(t.questions));
     console.log('  ' + (n === ok ? '✅' : '❌') +
                 ' 寫回後檢查：' + n + ' 題，反查得回答案的 ' + ok + ' 題');
     if (n !== ok) bad++;

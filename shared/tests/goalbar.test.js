@@ -102,7 +102,11 @@ section('★★ 關卡頁：每一個步驟都要有橫幅（鍵不可以打錯�
        通過條件本來就是模組決定的，關卡頁抄一份就會不同步。
          lab  → SORTLAB／SEARCHLAB／LOGICLAB／MINLAB 的 goal()
          play → BIGFIND.goal()（第 5 關的 100 人體驗） */
-    if (k === 'lab' || k === 'play') {
+    /* ⚠️ 2026-08-18 加上 final（期末檢核）—— 同一條規則：
+       門檻（十題全對／4 題以下重置）寫在 FINALTEST.goal() 裡。
+       關卡頁抄一份的話，學生看到的會是**抄的那一份**，
+       而這一步的規則是全課程最嚴的，抄錯的代價也最大。 */
+    if (k === 'lab' || k === 'play' || k === 'final') {
       ok(!new RegExp('^\\s*' + k + ':', 'm').test(goalSrc),
          '★★ ' + k + ' **不在** STEP_GOAL 裡 —— 它的標準要問模組要，不可以抄一份');
       return;
