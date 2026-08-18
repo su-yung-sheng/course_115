@@ -136,7 +136,18 @@
        best     目前找到的最小值位置（只有選擇排序用）
        done     第 done 項之前都排好了（畫成綠色）
        n        到這一刻為止比了幾次 */
+  /* ⚠️⚠️ plan() 會把**每一格畫面的整個陣列**都留下來。
+     600 筆用選擇排序要比 179,700 次 → 三十幾萬份 600 格的複本，
+     瀏覽器會直接卡死。大資料量一定要走 runner()（見下面），它只留現在這一份。
+     ★ 這個上限寫成會噴錯的守衛，而不是註解 ——
+       註解擋不住「順手把資料量調大」這種改法。 */
+  var PLAN_MAX = 40;
+
   function plan(items, mode, order) {
+    if (items.length > PLAN_MAX) {
+      throw new Error('plan() 只能用在 ' + PLAN_MAX + ' 筆以內（' + items.length +
+                      ' 筆請用 runner()，不然每一格都存一份陣列會爆掉）');
+    }
     var a = items.slice().map(Number), n = a.length, frames = [], cmp = 0;
     /* ★ 每一格都要帶一句「這一步發生了什麼」。
        ⚠️ 只有動畫沒有解說的話，學生看到的是一堆長條在跳 ——
@@ -222,6 +233,85 @@
     }
     shot(null, null, n, '沒有東西可以挑了 —— <b>排好了</b>。總共比了 ' + cmp + ' 次。');
     return { frames: frames, compares: cmp };
+  }
+
+  /* ── 大量資料的排序過程 ─────────────────────────────
+     ★ 老師 2026-08-18：「可以真實體驗大量數據排列的過程」——
+       搜尋那邊已經做到了（一整排格子，被砍掉的整片變灰），
+       排序這邊卻還停在 10 筆。10 筆看得清楚「在比哪兩根」，
+       但看不到「一整片散亂的資料慢慢長成一道斜坡」那個畫面。
+
+     ⚠️ 不能用 plan()：它把每一格的陣列都存下來（見 PLAN_MAX）。
+     ⇒ runner() 是一台**只有現在**的機器：
+        advance(k) 往前走 k 步，arr 就地被改，不留歷史。
+        代價是沒有「上一步」可以回看 —— 那本來就是小資料量在做的事。
+
+     ★ 兩邊要用**同一個 k**：一次都走 k 步，
+       「插入排序早就排完、選擇排序還在爬」那個畫面才是真的。
+
+     一步（step）＝ 最多一次比較。有些步只是搬東西（不算比較次數）。 */
+  function runner(items, mode, order) {
+    var a = items.slice().map(Number), n = a.length, cmp = 0, fin = (n <= 1);
+    var better = function (x, y) { return order === 'desc' ? x > y : x < y; };
+    /* 選擇：s＝已排好幾項、q＝掃到哪、best＝目前最小的位置
+       插入：i＝正在插第幾張、key＝那張牌、p＝往左比到哪 */
+    var s = 0, q = 1, best = 0;
+    var i = 1, key = (n > 1 ? a[1] : 0), p = 0;
+
+    function stepSel() {
+      if (q < n) {
+        cmp++;
+        if (better(a[q], a[best])) best = q;
+        q++;
+        return;
+      }
+      /* 這一回合結束：把最小的搬到已排序那一段的最後面（和 plan() 同一種做法） */
+      var v = a.splice(best, 1)[0];
+      a.splice(s, 0, v);
+      s++;
+      if (s >= n - 1) { s = n; fin = true; return; }
+      best = s; q = s + 1;
+    }
+    function stepIns() {
+      if (i >= n) { fin = true; return; }
+      if (p >= 0) {
+        cmp++;
+        /* ⚠️ 比不過就**停** —— 那一次「沒有比較小」的比較也要算，
+           不算的話已排好的資料會變成 0 次，和 plan() 對不起來。 */
+        if (better(key, a[p])) { a[p + 1] = a[p]; p--; return; }
+      }
+      a[p + 1] = key;
+      i++;
+      if (i >= n) { fin = true; return; }
+      key = a[i]; p = i - 1;
+    }
+
+    return {
+      arr: a,
+      compares: function () { return cmp; },
+      /* 左邊有幾項已經定案（畫成綠色） */
+      done: function () { return mode === 'insertion' ? i : s; },
+      /* 現在正在動的位置（畫成橘色） */
+      at: function () { return mode === 'insertion' ? Math.max(0, p) : Math.min(n - 1, q); },
+      best: function () { return mode === 'insertion' ? i : best; },
+      finished: function () { return fin; },
+      advance: function (k) {
+        for (var t = 0; t < k && !fin; t++) {
+          if (mode === 'insertion') stepIns(); else stepSel();
+        }
+      }
+    };
+  }
+
+  /** 這一批資料用這種排法要比幾次、要走幾步（先算好，動畫才知道一次該跳多少） */
+  function costOf(items, mode, order) {
+    var r = runner(items, mode, order), n = items.length, steps = 0;
+    /* ⚠️ 上限抓 n²+4n：選擇是 n(n−1)/2 次比較加上每回合一次搬移，
+       插入最壞也是 n(n−1)/2 次比較加上搬移 —— 都在這個界內。
+       抓太小的話會回報一個「還沒排完」的次數，而那不會報錯，只會是錯的。 */
+    var cap = n * n + 4 * n + 16;
+    while (!r.finished() && steps < cap) { r.advance(1); steps++; }
+    return { compares: r.compares(), steps: steps, sorted: r.finished() };
   }
 
   /* ── 變數追蹤：電腦怎麼找出最小值 ───────────────────
@@ -320,6 +410,20 @@
          🔄 完全相反 選擇 45／插入 45
        **選擇排序永遠 45 次**（不看資料長相），插入排序 9～45 都有。
        那正是第 7 關的核心，也是這一關概念檢測第 2 題在問的。 */
+  /* ── 排序大比拼的資料量 ─────────────────────────────
+     ★ 老師 2026-08-18：「可以真實體驗大量數據排列的過程」。
+       10 筆看得清楚「現在在比哪兩根」，但那不叫「大量資料」——
+       600 筆才看得到一整片散亂的長條慢慢長成一道斜坡。
+     ⚠️ 兩種畫面**都要**，不是二選一：
+        10 筆解釋「怎麼排」，600 筆解釋「排起來有多久」。
+     ★ 600 筆的數字剛好接得上搜尋那一邊：
+        已排好的資料 → 選擇 179,700 次、插入 599 次（300 倍）。 */
+  var CMP_SIZES = [10, 100, 600];
+  /* 「大資料量」從哪一個開始算（過關條件要求至少跑一次大的） */
+  var CMP_BIG = 100;
+  /* 大資料量整段跑多久（秒）—— 逐格畫的話 18 萬次要跑三小時。 */
+  var BIG_SEC = 8;
+
   var SHAPES = [
     { key: 'rand', icon: '🎲', name: '隨機',
       note: '一般情況 —— 資料本來就亂七八糟',
@@ -421,6 +525,29 @@
     '.sl-bars2 .sl-bar.cmp span{color:#b45309}',
     '.sl-bars2 .sl-bar.best{background:#8b5cf6}',
     '.sl-bars2 .sl-bar.ok{background:#4ade80}',
+    /* ── 大量資料的那一排（老師 2026-08-18）─────────────
+       ⚠️ 600 根長條不可以有 gap、不可以有圓角、不可以有 transition：
+          · gap 3px × 600 = 1800px，長條本身就被擠沒了
+          · 每秒重畫十幾次 × 600 個 transition，舊電腦會掉幀
+       ★ 也不印數字 —— 600 個數字疊在一起是一片黑。 */
+    '.sl-bars2.big{gap:0;height:96px;padding:4px}',
+    '.sl-bars2.big i{flex:1;min-width:0;background:#cbd5e1;align-self:flex-end}',
+    '.sl-bars2.big i.cmp{background:#f59e0b}',
+    '.sl-bars2.big i.best{background:#8b5cf6}',
+    '.sl-bars2.big i.ok{background:#4ade80}',
+    /* 資料量那一排：和「資料長相」分得開，不然兩排按鈕看起來是同一組 */
+    '.sl-size{padding-bottom:9px;border-bottom:1px dashed #e2e8f0;margin-bottom:10px}',
+    '.sl-size .tip{font-size:11.5px;color:#64748b;font-weight:600}',
+    '.sl-size button.on{border-color:#0ea5e9;background:#e0f2fe;color:#0369a1}',
+    /* 還差什麼 —— 條件有幾項就有幾個勾（第三次踩同一個坑之後加的） */
+    '.sl-todo{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;',
+    '  padding:9px 12px;margin-bottom:11px}',
+    '.sl-todo .th{font-size:12px;font-weight:900;color:#475569;margin-bottom:5px}',
+    '.sl-todo ul{list-style:none;margin:0;padding:0}',
+    '.sl-todo li{display:flex;justify-content:space-between;align-items:baseline;',
+    '  font-size:12.5px;line-height:1.9;color:#64748b}',
+    '.sl-todo li.ok{color:#166534;font-weight:700}',
+    '.sl-todo li span{font-size:11.5px;color:#94a3b8}',
     '.sl-lane .say{font-size:12px;line-height:1.7;color:#64748b;min-height:34px;margin-top:5px}',
     '.sl-lane .say b{color:#334155}',
     '.sl-lane .fill{height:100%;border-radius:7px;transition:width .1s linear}',
@@ -578,9 +705,14 @@
        cmpOn：0 還沒跑、1 跑到一半、2 跑完　cmpTable：跑完的紀錄
        ⚠️ 三種長相都要跑過才算走完 —— 只跑隨機的話，
           「選擇排序不看資料」這件事完全顯不出來。 */
-    var cmpN = 10, cmpShape = '', cmpItems = [];
+    var cmpN = CMP_SIZES[0], cmpShape = '', cmpItems = [];
     var cmpSel = 0, cmpIns = 0, cmpOn = 0, cmpTimer = null, cmpTable = {};
     var cmpAt = 0;      // 排序過程播到第幾格（兩邊共用同一個計時器）
+    /* ── 大量資料（老師 2026-08-18：「可以真實體驗大量數據排列的過程」）──
+       ⚠️ 大資料量走的是另一條路：runner() 就地排、不留歷史（見 PLAN_MAX）。
+          所以這一輪不是「播到第幾格」，而是「兩台機器各走了幾步」。
+       rnSel／rnIns：兩台跑者　ranBig：有沒有用大資料量跑過（過關條件之一） */
+    var rnSel = null, rnIns = null, ranBig = false;
     /* 排序過程每一格停多久。
        ⚠️ 2026-08-18 老師：「怎麼找不到可以看動畫的位置？」
           原本是 22 毫秒 —— 10 筆資料約 88 格，整段「不到 2 秒」就結束了，
@@ -635,13 +767,25 @@
     /* ── 排序大比拼 ───────────────────────────────────
        ★ 一次比兩種排序法，資料完全一樣 —— 唯一的變因是「資料本來長怎樣」。 */
     function cmpHtml() {
-      var out = '<div class="sl-pick"><span class="lb">資料長相</span>' +
+      /* ★ 資料量那一排擺在最上面：學生要先決定「看幾筆」，再決定「什麼長相」。
+         ⚠️ 兩排按鈕長得一樣的話會分不清在選什麼 → 各自帶標籤。 */
+      var out = '<div class="sl-pick sl-size"><span class="lb">資料量</span>' +
+        CMP_SIZES.map(function (n) {
+          return '<button data-size="' + n + '"' + (n === cmpN ? ' class="on"' : '') + '>' +
+                 comma(n) + ' 筆' + (n >= CMP_BIG ? '　💥' : '') + '</button>';
+        }).join('') +
+        '<span class="tip">' +
+        (cmpN >= CMP_BIG
+          ? '大量資料 —— 看的是「整片資料怎麼被排好」'
+          : '小資料量 —— 看得清楚現在在比哪兩根') + '</span></div>';
+
+      out += '<div class="sl-pick"><span class="lb">資料長相</span>' +
         SHAPES.map(function (sh) {
-          var cls = (sh.key === cmpShape) ? ' class="on"'
-                  : (cmpTable[sh.key] ? ' class="ok"' : '');
+          var r = rec(sh.key);
+          var cls = (sh.key === cmpShape) ? ' class="on"' : (r ? ' class="ok"' : '');
           return '<button data-shape="' + sh.key + '"' + cls + '>' +
-                 sh.icon + ' ' + sh.name + (cmpTable[sh.key] ? ' ✓' : '') + '</button>';
-        }).join('') + '</div>';
+                 sh.icon + ' ' + sh.name + (r ? ' ✓' : '') + '</button>';
+        }).join('') + '</div>' + todoHtml();
 
       if (!cmpShape) {
         out += '<div class="sl-hint2">先選一種資料長相 —— 三種都要跑過。</div>';
@@ -649,11 +793,16 @@
       }
       var sh = shapeOf(cmpShape);
       out += '<div class="sl-shape"><span class="ic">' + sh.icon + '</span>' +
-             '<span class="tx"><b>' + sh.name + '</b><span class="sub">' + sh.note +
-             '</span></span></div>' +
-             '<div class="sl-row sl-mini">' + cmpItems.map(function (v) {
-               return '<span class="sl-cell done">' + esc(v) + '</span>';
-             }).join('') + '</div>';
+             '<span class="tx"><b>' + sh.name + '　' + comma(cmpN) + ' 筆</b>' +
+             '<span class="sub">' + sh.note + '</span></span></div>';
+      /* ⚠️ 只有小資料量印得出每一個數字 —— 600 個數字擠在一起是一片噪音。 */
+      if (cmpN <= PLAN_MAX) {
+        out += '<div class="sl-row sl-mini">' + cmpItems.map(function (v) {
+          return '<span class="sl-cell done">' + esc(v) + '</span>';
+        }).join('') + '</div>';
+      }
+
+      if (cmpN > PLAN_MAX) return out + cmpBigHtml() + cmpTable2();
 
       var selP = plan(cmpItems, 'selection', 'asc');
       var insP = plan(cmpItems, 'insertion', 'asc');
@@ -701,6 +850,96 @@
       return out + cmpTable2();
     }
 
+    /* ── 大量資料的排序過程 ────────────────────────────
+       ★ 老師 2026-08-18：「可以真實體驗大量數據排列的過程」。
+       ⚠️ 這一段和小資料量長得像，但底下完全不同：
+          小的是「播放事先算好的每一格」，大的是「兩台機器現在正在排」。
+          所以這裡沒有 note 可以印 —— 一次跳一千多次比較，
+          逐句解說反而是假的。改成講「現在排到哪裡」。 */
+    function cmpBigHtml() {
+      if (!cmpOn) {
+        /* ⚠️ 只講選擇排序的次數，**不要**先算插入的 ——
+           「你覺得哪一種先排完」是要他猜的，
+           把另一個數字（哪怕是藏起來的）放進頁面就等於送答案。 */
+        var pre = costOf(cmpItems, 'selection', 'asc');
+        return '<div class="sl-side"><button data-cmp="1">▶ 播放 ' + comma(cmpN) +
+               ' 筆的排序過程</button></div>' +
+               '<div class="sl-hint2">兩排各 ' + comma(cmpN) + ' 根長條，' +
+               '從<b>散亂</b>慢慢排成一道<b>斜坡</b>。' +
+               '<br>⚠️ 先想一下：這一批資料，你覺得哪一種先排完？' +
+               '（已知：選擇排序要比 ' + comma(pre.compares) + ' 次）' +
+               (rec(cmpShape) ? '<br>（這一種你看過了，可以再看一次）' : '') + '</div>';
+      }
+      var lane = function (cls, name, r, tot) {
+        var d = r.done(), fin = r.finished();
+        return '<div class="sl-lane ' + cls + (fin ? ' done' : '') + '">' +
+               '<div class="nm"><span>' + name + '</span><span class="ct">比了 ' +
+               comma(r.compares()) + ' 次' + (fin ? '　✅ 排好了' : '') + '</span></div>' +
+               '<div class="sl-bars2 big">' + barsBig(r) + '</div>' +
+               '<div class="say">' +
+               (fin ? '排好了 —— 總共比了 <b>' + comma(tot) + '</b> 次。'
+                    : '已經排好 <b>' + comma(d) + '</b> 項，還剩 ' +
+                      comma(cmpN - d) + ' 項。') +
+               '</div></div>';
+      };
+      var out = '<div class="sl-race">' +
+        lane('sel', '🎯 選擇排序', rnSel, rnSel.compares()) +
+        lane('ins', '🃏 插入排序', rnIns, rnIns.compares());
+      if (cmpOn === 2) {
+        var s = rnSel.compares(), i = rnIns.compares();
+        out += '<div class="win">' +
+          (s === i
+            ? '兩邊一樣：都比了 <b>' + comma(s) + '</b> 次。'
+            : '選擇 <b>' + comma(s) + '</b> 次、插入 <b>' + comma(i) + '</b> 次 —— ' +
+              (i > 0 && s / i >= 2
+                ? '差了 <b>' + comma(Math.round(s / i)) + '</b> 倍。'
+                : '插入少了 <b>' + comma(s - i) + '</b> 次。')) +
+          '<br>⚠️ ' + comma(cmpN) + ' 筆資料，選擇排序<b>永遠</b>比 ' + comma(s) +
+          ' 次 —— 換成哪一種資料長相都一樣。</div>' +
+          '<div class="sl-side"><button data-cmp="1">↺ 再放一次動畫</button></div>';
+      }
+      return out + '</div>';
+    }
+
+    /** 一台跑者的現況 → 一排細長條（大資料量用，不印數字） */
+    function barsBig(r) {
+      var a = r.arr, n = a.length, d = r.done(), at = r.at(), bs = r.best();
+      var out = '';
+      for (var i = 0; i < n; i++) {
+        /* ⚠️ 一根一根拼字串，不要 map().join()：
+           600 根 × 每秒十幾次重畫，中間陣列是白花的。 */
+        var cls = (i < d) ? ' class="ok"'
+                : (i === bs) ? ' class="best"'
+                : (i === at) ? ' class="cmp"' : '';
+        out += '<i' + cls + ' style="height:' + Math.round(a[i] / n * 100) + '%"></i>';
+      }
+      return out;
+    }
+
+    /* ── 還差什麼 ──────────────────────────────────────
+       ⚠️ 過關條件有幾項，畫面上就要有幾個勾。
+          （這是第三次踩同一個坑：第 9 關的實驗室、第 10 關的搜尋，
+            兩次都是我把條件加嚴、卻只用一行小字提示。） */
+    function todoHtml() {
+      var rows = SHAPES.map(function (sh) {
+        var r = rec(sh.key);
+        return '<li class="' + (r ? 'ok' : '') + '">' + (r ? '✅' : '⬜') + ' ' +
+               sh.icon + ' ' + sh.name +
+               '<span>' + (r ? '跑過了（' + comma(r.n) + ' 筆）' : '還沒跑') + '</span></li>';
+      });
+      rows.push('<li class="' + (ranBig ? 'ok' : '') + '">' + (ranBig ? '✅' : '⬜') +
+                ' 💥 至少用 <b>' + comma(CMP_BIG) + ' 筆以上</b>跑一次' +
+                '<span>' + (ranBig ? '完成' : '看大量資料被排好的樣子') + '</span></li>');
+      var done = SHAPES.filter(function (sh) { return rec(sh.key); }).length + (ranBig ? 1 : 0);
+      return '<div class="sl-todo"><div class="th">這一步要完成 ' + done + ' / ' +
+             (SHAPES.length + 1) + '</div><ul>' + rows.join('') + '</ul></div>';
+    }
+
+    /** 這一種資料長相跑過的紀錄（跑過就記，不分資料量） */
+    function rec(k) { return cmpTable[k] || null; }
+
+    function comma(x) { return String(x).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
     /** 一格 frame → 一排長條（正在比的兩根會亮、排好的變綠） */
     function barsOf(f) {
       var max = Math.max.apply(null, f.arr);
@@ -719,23 +958,35 @@
       return SHAPES[0];
     }
 
-    /* 累積的對照表 —— 三列擺在一起，「選擇那一欄都一樣」才看得出來 */
+    /* 累積的對照表 —— 三列擺在一起，「選擇那一欄都一樣」才看得出來
+       ⚠️ 加了資料量之後，這張表一定要有**資料量**那一欄：
+          隨機跑 10 筆、已排好跑 600 筆的話，選擇那一欄當然不會一樣 ——
+          沒有這一欄的話，那張表看起來就只是「數字對不上」。
+       ★ 而「三列都一樣」這句結論只有在**同一個資料量**下才成立，
+         所以要先看同一個 n 的三列都齊了沒。 */
     function cmpTable2() {
       var rows = SHAPES.filter(function (sh) { return cmpTable[sh.key]; });
       if (!rows.length) return '';
-      return '<table class="sl-tbl"><tr><th>資料長相</th><th>選擇排序<br>比幾次</th>' +
-             '<th>插入排序<br>比幾次</th></tr>' +
+      var out = '<table class="sl-tbl"><tr><th>資料長相</th><th>資料量</th>' +
+             '<th>選擇排序<br>比幾次</th><th>插入排序<br>比幾次</th></tr>' +
         rows.map(function (sh) {
           var r = cmpTable[sh.key];
           return '<tr><td>' + sh.icon + ' ' + sh.name + '</td>' +
-                 '<td class="same">' + r.sel + '</td>' +
-                 '<td class="vary">' + r.ins + '</td></tr>';
-        }).join('') + '</table>' +
-        (rows.length === SHAPES.length
-          ? '<div class="sl-hint2">★ 選擇排序那一欄<b>三列都一樣</b>；插入排序那一欄' +
-            '從 <b>' + cmpTable.sorted.ins + '</b> 到 <b>' + cmpTable.rev.ins + '</b> —— ' +
-            '那就是兩種排序真正的差別。</div>'
-          : '');
+                 '<td>' + comma(r.n) + '</td>' +
+                 '<td class="same">' + comma(r.sel) + '</td>' +
+                 '<td class="vary">' + comma(r.ins) + '</td></tr>';
+        }).join('') + '</table>';
+      var sameN = rows.length === SHAPES.length &&
+                  rows.every(function (sh) { return cmpTable[sh.key].n === cmpTable[rows[0].key].n; });
+      if (sameN) {
+        out += '<div class="sl-hint2">★ 選擇排序那一欄<b>三列都一樣</b>；插入排序那一欄' +
+               '從 <b>' + comma(cmpTable.sorted.ins) + '</b> 到 <b>' +
+               comma(cmpTable.rev.ins) + '</b> —— 那就是兩種排序真正的差別。</div>';
+      } else if (rows.length === SHAPES.length) {
+        out += '<div class="sl-hint2">⚠️ 三列的<b>資料量不一樣</b>，次數當然對不起來。' +
+               '想看「選擇排序永遠一樣」的話，三種長相要用<b>同一個資料量</b>各跑一次。</div>';
+      }
+      return out;
     }
 
     function wireCmp(b) {
@@ -745,11 +996,28 @@
       [].forEach.call(b.querySelectorAll('[data-cmp]'), function (el) {
         el.onclick = startCmp;
       });
+      [].forEach.call(b.querySelectorAll('[data-size]'), function (el) {
+        el.onclick = function () { startSize(Number(el.dataset.size)); };
+      });
+    }
+
+    /** 換資料量。★ 已經選好的資料長相要留著 —— 換的是「幾筆」，不是「哪一種」。 */
+    function startSize(n) {
+      if (cmpTimer) { clearInterval(cmpTimer); cmpTimer = null; }
+      cmpN = n; cmpOn = 0; cmpSel = 0; cmpIns = 0; cmpAt = 0;
+      rnSel = rnIns = null;
+      if (cmpShape) cmpItems = shapeOf(cmpShape).make(cmpN);
+      body();
+      say(true, n >= CMP_BIG
+        ? '換成 <b>' + comma(n) + ' 筆</b>。這麼多資料印不出每一個數字了 —— ' +
+          '看的是整片長條怎麼慢慢排成一道斜坡。'
+        : '換成 <b>' + comma(n) + ' 筆</b>。這個量看得清楚每一根長條在比什麼。');
     }
 
     function startShape(k) {
       if (cmpTimer) { clearInterval(cmpTimer); cmpTimer = null; }
       cmpShape = k; cmpOn = 0; cmpSel = 0; cmpIns = 0; cmpAt = 0;
+      rnSel = rnIns = null;
       cmpItems = shapeOf(k).make(cmpN);
       body();
       /* ⚠️ say(ok, msg) 的第一個參數是**布林**（sortlab 和 searchlab 不一樣，
@@ -761,6 +1029,7 @@
 
     function startCmp() {
       if (!cmpShape || cmpTimer) return;
+      if (cmpN > PLAN_MAX) return startBig();
       var selP = plan(cmpItems, 'selection', 'asc');
       var insP = plan(cmpItems, 'insertion', 'asc');
       var sel = selP.compares, ins = insP.compares;
@@ -771,7 +1040,7 @@
       cmpOn = 1; cmpAt = 0; cmpSel = 0; cmpIns = 0;
       if (!CMP_MS) {                       // 測試用：直接跑完
         cmpAt = last; cmpSel = sel; cmpIns = ins; cmpOn = 2;
-        cmpTable[cmpShape] = { sel: sel, ins: ins };
+        record(sel, ins);
         body(); finishCmp(); return;
       }
       cmpTimer = setInterval(function () {
@@ -781,7 +1050,7 @@
         if (cmpAt >= last) {
           clearInterval(cmpTimer); cmpTimer = null;
           cmpAt = last; cmpOn = 2;
-          cmpTable[cmpShape] = { sel: sel, ins: ins };
+          record(sel, ins);
           body(); finishCmp(); return;
         }
         body();
@@ -789,19 +1058,102 @@
       body();
     }
 
+    /* ── 大量資料：兩台機器現在正在排 ───────────────────
+       ⚠️ 不可以先算好每一格（見 PLAN_MAX）——
+          600 筆選擇排序有十八萬次比較，存起來會爆掉。
+       ★ 兩邊每一拍走**同樣的步數**，
+         「插入排序早就排完、選擇排序還在爬」那個畫面才是真的。 */
+    function startBig() {
+      var cs = costOf(cmpItems, 'selection', 'asc');
+      var ci = costOf(cmpItems, 'insertion', 'asc');
+      rnSel = runner(cmpItems, 'selection', 'asc');
+      rnIns = runner(cmpItems, 'insertion', 'asc');
+      cmpOn = 1;
+      if (!CMP_MS) {                        // 測試用：直接跑完
+        rnSel.advance(cs.steps); rnIns.advance(ci.steps);
+        cmpOn = 2; record(cs.compares, ci.compares);
+        body(); finishCmp(); return;
+      }
+      /* 一拍要走幾步：整段跑 BIG_SEC 秒。
+         ⚠️ 用**兩邊比較長的那一個**算 —— 用短的算的話，
+            長的那一邊會被拖成好幾十秒。 */
+      /* ⚠️ 大資料量的一拍要比小資料量慢一點：
+         每一拍要重畫 1,200 根長條，教室那批舊電腦跟不上 60 毫秒的話，
+         畫面會變成一頓一頓的 —— 而學生只會覺得「這個網頁很卡」。
+         ★ 整段仍然是 BIG_SEC 秒（拍子變慢，一拍就走多一點）。 */
+      var ms = Math.max(CMP_MS, 70);
+      var ticks = Math.max(1, Math.round(BIG_SEC * 1000 / ms));
+      var per = Math.max(1, Math.ceil(Math.max(cs.steps, ci.steps) / ticks));
+      cmpTimer = setInterval(function () {
+        rnSel.advance(per); rnIns.advance(per);
+        if (rnSel.finished() && rnIns.finished()) {
+          clearInterval(cmpTimer); cmpTimer = null;
+          cmpOn = 2; record(rnSel.compares(), rnIns.compares());
+          body(); finishCmp(); return;
+        }
+        paintBig();
+      }, ms);
+      body();
+    }
+
+    /* ── 只重畫會動的那幾塊 ────────────────────────────
+       ⚠️ 每一拍都呼叫 body() 的話，整段大比拼都會被重建 ——
+          600 根 × 2 排 × 每秒十幾次，再加上按鈕、清單、對照表。
+          畫面不會壞，但舊電腦會卡，而「卡」看起來就像動畫在頓。
+       ★ 動的只有兩排長條和它們的次數 —— 只換那幾塊。
+       ⚠️ 找不到的時候要退回 body()：第一拍還沒畫出來就是這種情況。 */
+    function paintBig() {
+      var lanes = host.querySelectorAll('.sl-bars2.big');
+      if (lanes.length !== 2) { body(); return; }
+      var rs = [rnSel, rnIns];
+      for (var i = 0; i < 2; i++) {
+        lanes[i].innerHTML = barsBig(rs[i]);
+        var lane = lanes[i].parentNode;
+        var ct = lane.querySelector('.ct'), sy = lane.querySelector('.say');
+        if (ct) ct.innerHTML = '比了 ' + comma(rs[i].compares()) + ' 次' +
+                               (rs[i].finished() ? '　✅ 排好了' : '');
+        if (sy) sy.innerHTML = rs[i].finished()
+          ? '排好了 —— 總共比了 <b>' + comma(rs[i].compares()) + '</b> 次。'
+          : '已經排好 <b>' + comma(rs[i].done()) + '</b> 項，還剩 ' +
+            comma(cmpN - rs[i].done()) + ' 項。';
+        if (rs[i].finished()) lane.className = lane.className.replace(/ done$/, '') + ' done';
+      }
+    }
+
+    /** 記下這一輪的結果。★ 資料量要一起記 —— 對照表少了它就看不懂。 */
+    function record(sel, ins) {
+      cmpTable[cmpShape] = { sel: sel, ins: ins, n: cmpN };
+      if (cmpN >= CMP_BIG) ranBig = true;
+    }
+
     function finishCmp() {
       var miss = SHAPES.filter(function (sh) { return !cmpTable[sh.key]; });
-      if (miss.length) {
-        say(true, '記下來了。還有 ' +
-            miss.map(function (sh) { return sh.icon + ' ' + sh.name; }).join('、') +
-            ' 沒跑 —— 三種都跑過才看得出差別。');
+      /* ⚠️ 兩個條件要**一起**講。分兩次講的話，學生把三種長相跑完、
+         看到「還差大資料量」，會覺得系統又臨時加了一條。
+         ★ 上面的清單本來就一直看得到 —— 這裡只是把它唸出來。 */
+      if (miss.length || !ranBig) {
+        var todo = miss.map(function (sh) { return sh.icon + ' ' + sh.name; });
+        if (!ranBig) todo.push('💥 至少用 ' + comma(CMP_BIG) + ' 筆以上跑一次');
+        say(true, '記下來了。還差：' + todo.join('、') + '。' +
+                  (miss.length ? '' : '<br>三種長相都跑過了 —— ' +
+                   '剩下的是<b>大量資料</b>那一次：把資料量換成 ' + comma(CMP_BIG) +
+                   ' 筆以上，看整片資料被排好的樣子。'));
         return;
       }
       if (passed) return;
       passed = true;
-      say(true, '三種都跑完了。<b>選擇排序永遠 ' + cmpTable.rand.sel + ' 次</b>，' +
-                  '插入排序從 ' + cmpTable.sorted.ins + ' 到 ' + cmpTable.rev.ins + ' —— ' +
-                  '差別在「資料本來長怎樣」。');
+      /* ⚠️ 「選擇排序永遠 N 次」只有在三種長相用**同一個資料量**時才成立。
+         學生可以隨機跑 10 筆、已排好跑 600 筆 —— 那時候這句話是錯的。 */
+      var sameN = SHAPES.every(function (sh) {
+        return cmpTable[sh.key].n === cmpTable.rand.n;
+      });
+      say(true, '三種都跑完了，大量資料也看過了。' +
+                (sameN
+                  ? '<b>選擇排序永遠 ' + comma(cmpTable.rand.sel) + ' 次</b>，' +
+                    '插入排序從 ' + comma(cmpTable.sorted.ins) + ' 到 ' +
+                    comma(cmpTable.rev.ins) + ' —— 差別在「資料本來長怎樣」。'
+                  : '⚠️ 你三種用的<b>資料量不一樣</b>，所以次數不能直接比 —— ' +
+                    '想看「選擇排序永遠一樣」的話，用同一個資料量再跑一輪。'));
       if (opts.onPass) opts.onPass(0);
     }
 
@@ -1144,10 +1496,13 @@
              '<br>而且差別不在演算法本身，在<b>資料本來長什麼樣</b>。' +
              /* ★ 2026-08-18 老師：「怎麼找不到可以看動畫的位置？」
                 ⇒ 入口寫在最上面的橫幅，不要只留在按鈕上。 */
-             '<br>🎬 <b>動畫在哪裡</b>：先選一種資料長相，' +
-             '再按「▶ 播放排序過程」—— 兩排長條會同時開始排，一根一根比給你看。',
-        pass: '三種資料長相（🎲 隨機、✅ 已經排好、🔄 完全相反）' +
-              '<b>都要讓兩種排序法比一場</b>。'
+             '<br>🎬 <b>動畫在哪裡</b>：先選<b>資料量</b>和<b>資料長相</b>，' +
+             '再按「▶ 播放排序過程」—— 兩排長條會同時開始排，一根一根比給你看。' +
+             '<br>💥 資料量調到 <b>' + CMP_BIG + ' 筆以上</b>，看的就不是「哪兩根在比」，' +
+             '而是<b>一整片散亂的資料慢慢排成一道斜坡</b>。',
+        pass: '① 三種資料長相（🎲 隨機、✅ 已經排好、🔄 完全相反）' +
+              '<b>都要讓兩種排序法比一場</b>；' +
+              '<br>② 其中<b>至少一次</b>要用 <b>' + CMP_BIG + ' 筆以上</b>的資料量。'
       };
     }
     return {
@@ -1166,6 +1521,9 @@
     mount: mount,
     TESTS: TESTS,
     _plan: plan,
+    _runner: runner,
+    _costOf: costOf,
+    PLAN_MAX: PLAN_MAX,
     _traceMin: traceMin,
     TRACE_CODE: TRACE_CODE,
     _bestOf: bestOf,

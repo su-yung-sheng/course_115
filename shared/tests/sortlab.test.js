@@ -642,7 +642,15 @@ console.log('\n── ★★ 排序大比拼：選擇 vs 插入 ──');
     host.querySelector('[data-cmp]').onclick();
     if (i < 2) ok(passed === null, '　　還沒跑完三種 → 不放行');
   });
-  ok(passed !== null, '★★ 三種都跑完 → 放行');
+  /* ⚠️ 2026-08-18 老師選了「至少要跑一次大的」——
+     三種長相跑完**還不夠**，要再用大資料量跑一次才放行。
+     ★ 而且畫面上要看得到還差什麼（不是等他自己撞牆）。 */
+  ok(passed === null, '★★ 三種長相跑完但沒跑大的 → 還不放行');
+  ok(/至少用/.test(host.textContent), '★★ 而且清單上寫著還差「至少用 N 筆以上跑一次」');
+  host.querySelector('[data-size="600"]').onclick();
+  host.querySelector('[data-shape="rand"]').onclick();
+  host.querySelector('[data-cmp]').onclick();
+  ok(passed !== null, '★★ 補跑一次大資料量 → 放行');
   const tbl = host.querySelector('.sl-tbl');
   ok(!!tbl, '★ 累積成一張對照表');
   ok((tbl.querySelectorAll('tr').length - 1) === 3, '　 三列');
@@ -706,6 +714,101 @@ console.log('\n── ★★ 動畫要慢到看得見，入口也要看得出是
   /* 最上面的橫幅也要指路 —— 學生最先看到的是那一段 */
   const g = S2.goal({ mode: 'compare' });
   ok(/動畫在哪裡/.test(g.why), '★★ 目標橫幅直接寫出動畫在哪裡');
+}
+
+console.log('\n── ★★ 大量資料的排序過程（老師 2026-08-18）──');
+{
+  /* ★★ 老師：「可以真實體驗大量數據排列的過程」——
+     搜尋那邊已經做到（一整排格子，被砍掉的整片變灰），
+     排序這邊卻還停在 10 筆：看得清楚「在比哪兩根」，
+     但看不到「一整片散亂的資料慢慢長成一道斜坡」。 */
+  const S2 = W.SORTLAB;
+
+  /* ── ① 引擎：runner 的次數必須和 plan 一模一樣 ──────────
+     ⚠️ 這是整段最容易出錯的地方。plan 和 runner 是**兩份**排序實作，
+        數字對不上的話，畫面照樣會動，只是那個次數是假的 ——
+        而這一關的全部重點就是那個次數。 */
+  const mk = (kind, n) => {
+    const a = []; for (let i = 1; i <= n; i++) a.push(i);
+    if (kind === 'rev') a.reverse();
+    if (kind === 'rand') for (let j = a.length - 1; j > 0; j--) {
+      const k = Math.floor(Math.random() * (j + 1)); [a[j], a[k]] = [a[k], a[j]];
+    }
+    return a;
+  };
+  let mism = 0, cases = 0, unsorted = 0;
+  ['rand', 'sorted', 'rev'].forEach(kind => [2, 3, 6, 10, 25, 40].forEach(n => {
+    const a = mk(kind, n);
+    ['selection', 'insertion'].forEach(m => {
+      cases++;
+      const want = S2._plan(a.slice(), m, 'asc').compares;
+      const got = S2._costOf(a.slice(), m, 'asc');
+      if (want !== got.compares || !got.sorted) mism++;
+      const r = S2._runner(a.slice(), m, 'asc');
+      r.advance(n * n + 4 * n + 16);
+      if (!r.arr.every((v, i) => i === 0 || r.arr[i - 1] <= v)) unsorted++;
+    });
+  }));
+  ok(mism === 0, '★★ runner 的比較次數和 plan 完全一致（' + cases + ' 組，不合 ' + mism + '）');
+  ok(unsorted === 0, '★★ 而且真的排好了（不是只把次數算對）');
+
+  /* ── ② plan() 不可以被拿去跑大資料量 ─────────────────
+     ⚠️ plan 每一格都存一份陣列 —— 600 筆選擇排序有十八萬次比較，
+        存起來瀏覽器直接卡死。這個界線要會噴錯，不能只寫在註解裡。 */
+  let threw = '';
+  try { S2._plan(mk('rand', S2.PLAN_MAX + 1), 'selection', 'asc'); }
+  catch (e) { threw = e.message; }
+  ok(!!threw, '★★ plan() 超過 ' + S2.PLAN_MAX + ' 筆會擋下來（' + threw.slice(0, 20) + '…）');
+  ok(/runner/.test(threw), '　　而且訊息講得出該改用什麼');
+
+  /* ── ③ 600 筆真的畫得出兩排長條 ────────────────────── */
+  const h = document.createElement('div');
+  document.body.appendChild(h);
+  S2.mount(h, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  ok(!!h.querySelector('[data-size="600"]'), '★★ 選得到 600 筆');
+  h.querySelector('[data-size="600"]').onclick();
+  h.querySelector('[data-shape="rev"]').onclick();
+  ok(!/sl-mini/.test(h.innerHTML),
+     '★ 600 筆不印出每一個數字（600 個數字擠在一起是一片噪音）');
+  h.querySelector('[data-cmp]').onclick();
+  const lanes = h.querySelectorAll('.sl-bars2.big');
+  eq(lanes.length, 2, '★★ 兩排長條（選擇一排、插入一排）');
+  eq(lanes[0].querySelectorAll('i').length, 600, '★★ 每排真的 600 根');
+  eq(lanes[1].querySelectorAll('i').length, 600, '　　兩排一樣多');
+  /* 跑完之後整排都要是「排好」的綠色 —— 不然畫面說排好了、資料其實沒排好 */
+  ok(lanes[0].querySelectorAll('i.ok').length >= 599,
+     '★★ 跑完之後整排變綠（實得 ' + lanes[0].querySelectorAll('i.ok').length + '／600）');
+  /* 完全相反的資料：兩種都是 179,700 次 —— 那是最壞情況 */
+  ok(/179,700/.test(h.textContent),
+     '★★ 次數有印出來而且加了千分位（179,700 —— 沒有逗號的話沒人讀得出量級）');
+
+  /* ── ④ 已排好的 600 筆：300 倍的差距 ───────────────── */
+  const big = mk('sorted', 600);
+  const cs = S2._costOf(big.slice(), 'selection', 'asc').compares;
+  const ci = S2._costOf(big.slice(), 'insertion', 'asc').compares;
+  eq(cs, 179700, '★★ 600 筆選擇排序 179,700 次（n×(n−1)÷2，和資料長相無關）');
+  eq(ci, 599, '★★ 600 筆已排好的插入排序只要 599 次');
+  ok(Math.round(cs / ci) === 300, '★★ 差 300 倍 —— 這就是「大量資料」要給的那個數字');
+
+  /* ── ⑤ 對照表混了資料量要講出來 ─────────────────────
+     ⚠️ 三種長相各用不同的資料量跑，「選擇排序永遠一樣」就不成立了。
+        不講的話，那張表看起來只是「數字對不上」，
+        學生會以為是自己記錯，而不是比較的前提不同。 */
+  const h2 = document.createElement('div');
+  document.body.appendChild(h2);
+  S2.mount(h2, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  h2.querySelector('[data-shape="rand"]').onclick();
+  h2.querySelector('[data-cmp]').onclick();
+  h2.querySelector('[data-size="600"]').onclick();
+  ['sorted', 'rev'].forEach(k => {
+    h2.querySelector('[data-shape="' + k + '"]').onclick();
+    h2.querySelector('[data-cmp]').onclick();
+  });
+  ok(/資料量不一樣/.test(h2.textContent),
+     '★★ 三列的資料量不同時，畫面直說「資料量不一樣，次數當然對不起來」');
+  ok(h2.querySelectorAll('.sl-tbl th').length === 4,
+     '★★ 對照表有「資料量」那一欄（' + h2.querySelectorAll('.sl-tbl th').length + ' 欄）');
+  h.remove(); h2.remove();
 }
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
