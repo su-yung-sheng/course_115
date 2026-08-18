@@ -674,24 +674,39 @@
     }
 
     // 預設成績簿：首次沒有設定時，用 7 個課程模組當科目
+    /* ⚠️⚠️ 老師 2026-08-18：「11501 教師端是不是有配合學生端調整過單元與星星數了？
+       11502 還沒。」—— 對，這一份停在舊版。
+
+       ★ 學生端（11502/hub.html 的 MODULES）現在只有四張卡：
+           ⚖️ 媒體與社會議題 30★　🧠 運算思維 20★
+           🐱 Scratch 程式設計 36★　💡 Arduino 智慧專題（延伸體驗，**不計星**）
+       ⚠️ 而這裡原本列了八個，其中四個學生端根本不存在：
+           · flowchart　2026-08-11 移除（原 flowchart.html 已搬進 _archive）
+           · logic／search／sort　三支原檔已刪，玩法收進關卡裡的互動模組
+             （logiclab／sortlab —— 見 hub.html 那一段說明）
+           · arduino　是延伸體驗，maxStars:0，本來就不進成績簿
+       ⚠️ 這不是「多幾個空欄位」而已 —— subjMax 對認不得的鍵回傳 3，
+          於是分母被灌了 12 顆永遠拿不到的星，
+          **學生的百分比再怎麼做都到不了 100%**，而且和 hub 上的數字對不起來。
+       ⇒ 只留三個計星模組，和 11501 同一套做法（含下面的自動清理）。 */
     function defaultGradebook() {
       return {
         subjects: [
-          { key: 'ethics',    label: '媒體與社會議題', index: 0 },
-          { key: 'thinking',  label: '運算思維',       index: 1 },
-          { key: 'flowchart', label: '流程圖',         index: 2 },
-          { key: 'scratch',   label: 'Scratch 程式',   index: 3 },
-          { key: 'logic',     label: '邏輯挑戰',       index: 4 },
-          { key: 'search',    label: '線性搜尋',       index: 5 },
-          { key: 'sort',      label: '排序演算法',     index: 6 },
-          { key: 'arduino',   label: 'Arduino',        index: 7 }
+          { key: 'ethics',    label: '媒體與社會議題',   index: 0 },
+          { key: 'thinking',  label: '運算思維',         index: 1 },
+          { key: 'scratch',   label: 'Scratch 程式設計', index: 2 }
         ],
         customMapping: {
-          categories: ['法律倫理', '運算思維', '流程圖', '程式設計', '演算法'],
-          taskMap: { ethics: '法律倫理', thinking: '運算思維', flowchart: '流程圖', scratch: '程式設計', logic: '演算法', search: '演算法', sort: '演算法', arduino: '程式設計' }
+          categories: ['法律倫理', '運算思維', '程式設計'],
+          taskMap: { ethics: '法律倫理', thinking: '運算思維', scratch: '程式設計' }
         }
       };
     }
+
+    /* 這一學期真正有星數機制的模組。
+       ⚠️ 名單只有一份 —— 下面的自動清理和 defaultGradebook 都看它，
+          兩份會慢慢長得不一樣。 */
+    const VALID_SUBJECTS = ['ethics', 'thinking', 'scratch'];
 
     // 從 Firebase 讀取（取代原本的 Google 試算表；函式名保留以免動到呼叫處）
     async function fetchGoogleSheetData() {
@@ -702,6 +717,24 @@
         const gb = gbSnap.data();
         rawSubjects = gb.subjects;
         if (gb.customMapping) customMapping = gb.customMapping;
+
+        /* 🧹 自動清掉已淘汰的科目（和 11501 同一套做法）。
+           ⚠️ 只改 defaultGradebook 是**沒有用的** ——
+              雲端已經存過一份八個科目的設定，程式讀到就直接用，
+              永遠走不到 default 那一條路。所以一定要在這裡清。
+           ⚠️ 這只是不再顯示，**不會刪掉學生已經有的星數**：
+              舊資料還留在 Firestore，哪天要救得回來。 */
+        const cleaned = rawSubjects.filter(s => VALID_SUBJECTS.includes(s.key));
+        if (cleaned.length !== rawSubjects.length && cleaned.length) {
+          rawSubjects = cleaned.map((s, i) => ({ ...s, index: i }));
+          Object.keys(customMapping.taskMap || {}).forEach(k => {
+            if (!VALID_SUBJECTS.includes(k)) delete customMapping.taskMap[k];
+          });
+          try {
+            await extDb.collection('11502-config').doc('gradebook')
+              .set({ subjects: rawSubjects, customMapping }, { merge: true });
+          } catch (e) { console.warn('清理成績簿科目失敗', e); }
+        }
       } else {
         const def = defaultGradebook();
         rawSubjects = def.subjects; customMapping = def.customMapping;
@@ -768,15 +801,19 @@
     // 各模組星數上限（與 hub 一致）：運算思維 20、資訊倫理 30、其餘 3
     /* 流程圖與程式設計的上限含「繳交加分」，所以從 grading.js 算 ——
        加分權重只寫在那一支，這裡跟著變，不會兩邊各改各的。 */
-    const MODULE_MAX = Object.assign(
-      { ethics: 30, thinking: 20 },
-      /* ⚠️ 一定要把**關卡代號**帶進去：第 5 關沒有作品要交，
-         程式的分母要從 40 變 36（見 GRADING.GATE.NO_UPLOAD）。
-         不帶的話教師端算出來的百分比會比學生端低，兩邊對不起來。 */
-      (window.GRADING && GRADING.moduleMax)
-        ? GRADING.moduleMax(10, (window.CONFIG.UNITS || []).map(u => u[0]))
-        : { flowchart: 30, scratch: 36 }
-    );
+    /* ⚠️ 只取 scratch —— moduleMax 會一併回傳 flowchart，
+       但這一學期**沒有流程圖模組**（2026-08-11 移除）。
+       整包 Object.assign 進來的話，分母會多出 30 顆拿不到的星。
+       ⚠️ 一定要把**關卡代號**帶進去：第 5、10 關沒有作品要交，
+          程式的分母要從 40 變 36（見 GRADING.GATE.NO_UPLOAD）。
+          不帶的話教師端算出來的百分比會比學生端低，兩邊對不起來。 */
+    const MODULE_MAX = {
+      ethics: 30,
+      thinking: 20,
+      scratch: (window.GRADING && GRADING.moduleMax)
+        ? GRADING.moduleMax(10, (window.CONFIG.UNITS || []).map(u => u[0])).scratch
+        : 36
+    };
     function subjMax(key){ return MODULE_MAX[key] || 3; }
     function sumSubjMax(subjectList){ return subjectList.reduce((a, s) => a + subjMax(s.key), 0); }
 
