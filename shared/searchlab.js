@@ -189,9 +189,13 @@
     13:        { icon: '📖', name: '課本的例子',
                  unit: '個數字', what: '課本 p.204 那一列 13 個數字',
                  ask: '找出其中一個數字' },
-    1024:      { icon: '🏫', name: '全校座號表',
-                 unit: '位同學', what: '全校 1,024 位同學的座號表（已經照號碼排好）',
-                 ask: '找出某一個座號是誰' },
+    /* ⚠️ 2026-08-17 老師：「全校座號表？沒有這種實例」——說得對。
+       學校查座號是「幾年幾班幾號」直接定位，根本不必搜尋。
+       ★ 換成**紙本字典**：翻到中間看一眼、決定往前還是往後翻 ——
+         那是二元搜尋最經典、而且真的有人在做的生活實例。 */
+    1024:      { icon: '📕', name: '紙本字典',
+                 unit: '頁', what: '一本 1,024 頁的國語辭典（本來就照筆畫排好）',
+                 ask: '翻到某一個字在的那一頁' },
     1000000:   { icon: '📚', name: '圖書館藏書',
                  unit: '本書', what: '市立圖書館的 100 萬本藏書（照書名排好）',
                  ask: '找出某一本書在哪一櫃' },
@@ -497,6 +501,24 @@
     '@keyframes qsHit{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}',
     '  55%{transform:translateX(4px)}80%{transform:translateX(-2px)}}',
     '.qs-two .fill.hit{animation:qsHit .22s ease-out}',
+    /* 量級的參考尺：★ 那條細到看不見的線就是重點。 */
+    /* 還差什麼：★ 條件有幾項，畫面上就要有幾個勾。 */
+    '.qs-todo{background:#fff;border:2px solid #a5f3fc;border-radius:12px;',
+    '  padding:9px 13px;margin-bottom:11px}',
+    '.qs-todo .th{font-size:12.5px;font-weight:900;color:#0e7490;margin-bottom:5px}',
+    '.qs-todo ul{list-style:none;margin:0;padding:0}',
+    '.qs-todo li{display:flex;justify-content:space-between;gap:10px;align-items:baseline;',
+    '  font-size:13px;line-height:1.95;color:#64748b}',
+    '.qs-todo li span{font-size:11.5px;color:#94a3b8;flex:0 0 auto}',
+    '.qs-todo li.half{color:#b45309}',
+    '.qs-todo li.half span{color:#d97706;font-weight:700}',
+    '.qs-todo li.ok{color:#166534}',
+    '.qs-todo li.ok span{color:#16a34a}',
+    '.qs-scale{margin:2px 0 8px}',
+    '.qs-scale .mini{background:#f1f5f9;border-radius:5px;height:9px;overflow:hidden}',
+    '.qs-scale .seg{height:100%;background:#94a3b8;border-radius:5px;min-width:2px}',
+    '.qs-scale .cap{font-size:11.5px;color:#64748b;line-height:1.7;margin-top:3px}',
+    '.qs-scale .cap b{color:#b45309}',
     '.qs-cnt{font-size:13px;color:#475569;line-height:1.8}',
     '.qs-cnt b{color:#0e7490;font-size:15px}',
     '.qs-cnt.big{margin-top:9px;font-size:14px;font-weight:700;color:#155e75}',
@@ -1001,14 +1023,25 @@
                  comma(n) + ' 筆' + (table[n] ? ' ✓' : '') + '</button>';
         }).join('') + '</div>';
 
+      out += todoHtml();
+
       /* ★★ 場景橫幅：老師 2026-08-17「看不出目前操作的是什麼場景應用中」。
          ⚠️ 一定要**明顯**——底色、圖示、大字。
             和內文一樣的字級等於沒有標示（那正是改版前的樣子）。 */
       if (size) {
         var sc = sceneOf(size);
+        /* ★★ 老師 2026-08-17：「長條圖與『圖書館藏書』之間感受不到數量的變化」。
+           診斷：進度條是**比例** —— 1,024 和 100 萬都從滿格開始，長得一模一樣，
+           量級差異在那條圖上完全消失了。
+           ⇒ 兩個補救：① 橫幅直接講「是上一個場景的幾倍」
+                        ② 範圍條下面畫一條「上一個場景在這裡有多寬」 */
+        var pv = prevSize(size);
         out += '<div class="qs-scene"><span class="ic">' + sc.icon + '</span>' +
-               '<span class="tx"><b>' + sc.name + '</b>' +
-               '<span class="sub">' + sc.what + ' —— ' + sc.ask + '</span></span></div>';
+               '<span class="tx"><b>' + sc.name + '　' + comma(size) + ' ' + sc.unit + '</b>' +
+               '<span class="sub">' + sc.what + ' —— ' + sc.ask +
+               (pv ? '<br>📈 這是上一個場景（' + sceneOf(pv).name + ' ' + comma(pv) + ' ' +
+                     sceneOf(pv).unit + '）的 <b>' + comma(Math.round(size / pv)) + ' 倍</b>' : '') +
+               '</span></span></div>';
       }
 
       if (!size) {
@@ -1051,6 +1084,39 @@
             ⚠️ 兩條要用**同一個量度**（還剩幾筆沒找），不然沒得比。
        ⚠️ 不做音效：一班三十台同時響會很吵，而且要多一個開關。
           震動只用 CSS 抖一下，而且 prefers-reduced-motion 要能關掉。 */
+    /* ── 還差什麼（老師 2026-08-17 卡在這裡）────────────────
+       ⚠️⚠️ 「四個範例都看完了，怎麼不能進入下一階段？」——
+          因為通過條件被我加嚴了：每一種資料量要**砍完＋比一場賽跑**，
+          最後還要在「資料大爆炸」猜一次。
+          而畫面上只有一行小字在講還差什麼 —— 那等於沒講。
+       ★ 這是第二次犯同一個錯（第一次是第 9 關的實驗室，
+         那次的修法是加「目標＋過關標準」橫幅）。
+         ⇒ 條件有幾項，畫面上就要有幾個勾。 */
+    function todoHtml() {
+      var rows = sizes.map(function (n) {
+        var sc = sceneOf(n);
+        var st = raced[n] ? 'ok' : (table[n] ? 'half' : '');
+        var note = raced[n] ? '完成' : (table[n] ? '還沒比賽跑' : '還沒砍');
+        return '<li class="' + st + '">' + (raced[n] ? '✅' : '⬜') + ' ' +
+               sc.icon + ' ' + sc.name + '（' + comma(n) + ' ' + sc.unit + '）' +
+               '<span>' + note + '</span></li>';
+      });
+      var allRaced = sizes.every(function (n) { return raced[n]; });
+      rows.push('<li class="' + (boomDone ? 'ok' : '') + '">' +
+        (boomDone ? '✅' : '⬜') + ' 💥 資料大爆炸：猜一次' +
+        '<span>' + (boomDone ? '完成' : (allRaced ? '就差這個了' : '四種跑完才會出現')) +
+        '</span></li>');
+      var done = sizes.filter(function (n) { return raced[n]; }).length + (boomDone ? 1 : 0);
+      return '<div class="qs-todo"><div class="th">這一步要完成 ' +
+             done + ' / ' + (sizes.length + 1) + '</div><ul>' + rows.join('') + '</ul></div>';
+    }
+
+    /** 上一個（比較小的）資料量 —— 拿來當量級的參考尺 */
+    function prevSize(n) {
+      var i = sizes.indexOf(n);
+      return i > 0 ? sizes[i - 1] : 0;
+    }
+
     function cutView() {
       var sc = sceneOf(size);
       var U = sc.unit;                               // 量詞跟著場景走（首歌／本書／位同學）
@@ -1073,9 +1139,27 @@
             '<div class="bar"><div class="fill" style="width:' + pctSeq + '%"></div></div>' +
           '</div>' +
         '</div>' +
+        scaleHtml() +
         '<div class="qs-cnt">已經比了 <b>' + cuts + '</b> 次' +
           (cuts > 0 ? '　—— 一個一個找的話，' + cuts + ' 次才看到第 ' + cuts + ' ' + U : '') +
         '</div></div>';
+    }
+
+    /* ── 量級的參考尺 ─────────────────────────────────
+       ★ 進度條只表示「比例」，所以 1,024 和 100 萬看起來一樣長。
+         ⇒ 在同一條軸上畫出「上一個場景」有多寬 ——
+           在 100 萬本的圖書館裡，那本 1,024 頁的字典只有 0.1%，
+           細到幾乎看不見。**那條看不見的線就是量級差異本身。** */
+    function scaleHtml() {
+      var pv = prevSize(size);
+      if (!pv || !size) return '';
+      var pct = pv / size * 100;
+      var ps = sceneOf(pv);
+      return '<div class="qs-scale">' +
+        '<div class="mini"><div class="seg" style="width:' + Math.max(0.15, pct) + '%"></div></div>' +
+        '<div class="cap">↑ 上一個場景（' + ps.icon + ' ' + ps.name + ' ' + comma(pv) + ' ' +
+        ps.unit + '）在這條線上就這麼寬 —— <b>' +
+        (pct < 1 ? '不到 1%' : pct.toFixed(0) + '%') + '</b></div></div>';
     }
 
     /* ── 資料大爆炸：先猜再揭曉，然後自己填 ─────────────

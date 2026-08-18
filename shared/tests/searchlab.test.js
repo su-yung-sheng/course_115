@@ -811,7 +811,10 @@ section('★★ 場景要看得出來（老師：不然與所有字相同）');
   S.mount(host, { mode: 'compare', stepMs: 0, onPass: () => {} });
 
   ok(!host.querySelector('.qs-scene'), '還沒選資料量之前不畫場景橫幅');
-  const scenes = [[13, '課本'], [1024, '座號'], [1000000, '圖書館'], [100000000, '音樂']];
+  /* ⚠️ 2026-08-17 老師：「全校座號表？沒有這種實例」——
+     學校查座號是「幾年幾班幾號」直接定位，根本不必搜尋。
+     ★ 換成紙本字典：翻到中間、決定往前還往後 —— 那是真的有人在做的二元搜尋。 */
+  const scenes = [[13, '課本'], [1024, '字典'], [1000000, '圖書館'], [100000000, '音樂']];
   scenes.forEach(([n, key]) => {
     host.querySelector('[data-size="' + n + '"]').onclick();
     const bar = host.querySelector('.qs-scene');
@@ -836,6 +839,75 @@ section('★★ 場景要看得出來（老師：不然與所有字相同）');
   host.remove();
 }
 
+section('★★ 還差什麼要看得見（老師卡在這裡）');
+{
+  /* ⚠️⚠️ 老師 2026-08-17：「四個範例都看完了，怎麼不能進入下一階段？」
+     通過條件被加嚴了（每種資料量要砍完＋比賽跑，最後還要猜一次），
+     而畫面上只有一行小字在講還差什麼 —— 那等於沒講。
+     ★ 這是第二次犯同一個錯（第一次是第 9 關）。
+       ⇒ 條件有幾項，畫面上就要有幾個勾。 */
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  S.mount(host, { mode: 'compare', stepMs: 0, onPass: () => {} });
+
+  const todo = () => host.querySelector('.qs-todo');
+  ok(!!todo(), '★★ 一進來就看得到「這一步要完成」的清單');
+  is(todo().querySelectorAll('li').length, S.SIZES.length + 1,
+     '★★ 四種資料量 ＋ 資料大爆炸，一項一個勾');
+  ok(/0 \/ 5/.test(todo().textContent), '　　一開始 0／5');
+
+  /* 砍完但沒比賽跑 → 那一項要顯示「還沒比賽跑」，不是打勾 */
+  host.querySelector('[data-size="13"]').onclick();
+  let g = 0;
+  while (host.querySelector('[data-cut]') && g++ < 60) host.querySelector('[data-cut]').onclick();
+  ok(/還沒比賽跑/.test(todo().textContent),
+     '★★ 砍完了但沒比賽跑 → 清單上寫「還沒比賽跑」（這正是老師卡住的那一步）');
+  ok(/0 \/ 5/.test(todo().textContent), '　　而且還沒算完成');
+  host.querySelector('[data-race]').onclick();
+  ok(/1 \/ 5/.test(todo().textContent), '★ 比完賽跑才算 1／5');
+
+  /* 四種都跑完 → 清單上「資料大爆炸」變成「就差這個了」 */
+  S.SIZES.slice(1).forEach(n => {
+    host.querySelector('[data-size="' + n + '"]').onclick();
+    let k = 0;
+    while (host.querySelector('[data-cut]') && k++ < 60) host.querySelector('[data-cut]').onclick();
+    host.querySelector('[data-race]').onclick();
+  });
+  ok(/4 \/ 5/.test(todo().textContent), '★ 四種都跑完＝4／5');
+  ok(/就差這個了/.test(todo().textContent),
+     '★★ 而且明講「就差這個了」—— 老師就是在這一步卡住的');
+  host.remove();
+}
+
+section('★★ 量級要看得出來（比例條會把它藏起來）');
+{
+  /* ⚠️ 老師 2026-08-17：「長條圖與『圖書館藏書』之間感受不到數量的變化」。
+     診斷：進度條是**比例**，1,024 和 100 萬都從滿格開始，長得一模一樣 ——
+     量級差異在那條圖上完全消失了。 */
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  S.mount(host, { mode: 'compare', stepMs: 0, onPass: () => {} });
+  host.querySelector('[data-size="1000000"]').onclick();
+
+  const bar = host.querySelector('.qs-scene');
+  ok(/1,000,000 本書/.test(bar.textContent), '★ 橫幅直接寫總量（100 萬本書）');
+  ok(/976 倍|977 倍/.test(bar.textContent),
+     '★★ 而且講「是上一個場景的幾倍」（1,024 頁的字典 → 100 萬本書）');
+
+  const sc = host.querySelector('.qs-scale');
+  ok(!!sc, '★★ 範圍條下面有一把量級的參考尺');
+  ok(/字典/.test(sc.textContent), '　　標的是上一個場景');
+  ok(/不到 1%/.test(sc.textContent),
+     '★★ 那本字典在這條線上不到 1% —— 那條細到看不見的線就是量級差異本身');
+  const seg = sc.querySelector('.seg');
+  ok(parseFloat(seg.style.width) < 1, '　　寬度真的算出來是 ' + seg.style.width);
+
+  /* 最小的那一種沒有「上一個」，不可以畫出一把空的尺 */
+  host.querySelector('[data-size="13"]').onclick();
+  ok(!host.querySelector('.qs-scale'), '★ 第一種資料量沒有參考尺（沒有上一個場景）');
+  host.remove();
+}
+
 section('★★ 資料大爆炸：數字要真的爆起來');
 {
   /* ★ 老師 2026-08-17：「數字太小不符合關卡名稱『資料大爆炸』」。
@@ -856,8 +928,13 @@ section('★★ 資料大爆炸：數字要真的爆起來');
     while (host.querySelector('[data-cut]') && g++ < 60) host.querySelector('[data-cut]').onclick();
     host.querySelector('[data-race]').onclick();
   };
-  ok(!/資料大爆炸/.test(host.textContent),
+  /* ⚠️ 要看的是**那一段互動**（.qs-boom）在不在，不是整頁有沒有這五個字 ——
+     「還差什麼」的清單上本來就會列著「💥 資料大爆炸：猜一次」，
+     那是刻意的（學生要知道還有這一項）。整頁掃的話這一條會誤報。 */
+  ok(!host.querySelector('.qs-boom'),
      '★ 還沒跑完四種資料量之前不出現 —— 先有小數字的直覺，大數字才震撼');
+  ok(/資料大爆炸/.test(host.querySelector('.qs-todo').textContent),
+     '★ 但清單上要先列出來（學生要知道後面還有一項）');
   S.SIZES.forEach(run);
   ok(/資料大爆炸/.test(host.textContent), '★★ 四種都跑完之後才出現');
   ok(/2300 萬/.test(host.textContent), '　　問的是全台灣 2300 萬人');
