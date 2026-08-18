@@ -182,8 +182,15 @@ ok(!/warmup\.html/.test(catchBlock.slice(0, 900)),
    ⚠️ 2026-08-10 思考關卡搬到 level.html（一關一頁），所以改讀那一份 ——
       功能搬家了就把測試刪掉，是最容易在沒人發現的情況下失去保護的方式。 */
 const lvPage = fs.readFileSync(path.join(__dirname, '..', '..', '11502', 'level.html'), 'utf8');
-ok(/out\.push\(\{ key:'test'/.test(lvPage),
+/* ⚠️ 2026-08-17：第 5、10 關改成「沒有作品要交」之後，這一行變成
+   `out.push(needUp ? { key:'test'… } : { key:'play'… })` ——
+   原本的 regex 綁死了「out.push({ key:'test'」這個寫法，於是紅了。
+   ★ 要驗的是「**那條路還在**」，不是「那一行長什麼樣子」。
+     測試綁死寫法的話，每次重構都要回來改，而改的人不知道它在保護什麼。 */
+ok(/key:\s*'test'/.test(lvPage),
    '第 4～10 關「沒有關卡資料也走得到實作測試」那條路還在');
+ok(/key:\s*'play'/.test(lvPage),
+   '★ 而沒有作品要交的關卡（第 5、10 關）走的是「實作體驗」');
 
 /* ★ sessionStorage 不是「一定拿得到」—— 跨來源 iframe、無痕模式下讀寫都會 throw。
    教程頁那一行若炸掉，saveWarmup 就跑不到：五關全做完卻什麼都沒存。 */
