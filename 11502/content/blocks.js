@@ -2094,8 +2094,9 @@ window.BLOCK_LEVELS = {
          + '<br>· 排序（第 6、7 關）要比 <span class="hl">4950</span> 次'
          + '<br>· 循序搜尋（第 8 關）最多比 <span class="hl">100</span> 次'
          + '<br>· 二元搜尋（第 9 關）只要 <span class="hl">7</span> 次'
-         + '<br>資料再爆大一點 —— <span class="hl">1024 筆</span>：'
-         + '循序最多比 1024 次，二元<span class="hl">只多一次，變 11 次</span>。'
+         + '<br>資料再爆大一點 —— <span class="hl">一百萬筆</span>：'
+         + '循序最多比 100 萬次，二元<span class="hl">只要 20 次</span>。'
+         + '<br><span class="hl">一億筆也才 27 次。</span>'
          + '<br>看起來二元搜尋大獲全勝？'
          + '<span class="hl">可是它有一個前提 —— 資料要先排好。</span>'
          + '<br>那 4950 次是<span class="hl">先付掉的</span>。'
@@ -2103,7 +2104,8 @@ window.BLOCK_LEVELS = {
          + '<span class="hl">「你要查幾次？」</span>',
       shots: [
         '<b>實驗室</b>：一直按「比一次，砍掉一半」，'
-          + '<span class="hl">自己數</span>二元搜尋最多要比幾次。',
+          + '<span class="hl">自己數</span>二元搜尋最多要比幾次。'
+          + '13 筆按 4 下，<span class="hl">一百萬筆也只要 20 下</span>。',
         /* ⚠️ 2026-08-17 老師試跑：「一直按下一步就過了，沒有體驗到
            數字的差距與時間成本」——砍一半只要按 11 下，那是**快的那一邊**；
            循序的 1024 次學生一次都沒經歷過。⇒ 加了賽跑。 */

@@ -383,9 +383,13 @@ section('★ 大比拼沒有挑戰，跑完就放行');
   };
   guess(25);
   is(badge, 0, '★ 四種都跑完＋猜過一次才放行（徽章 0 —— 它沒有挑戰）');
-  ok(/放慢/.test(host.textContent),
-     '★★ 畫面上講明動畫是放慢的（不然學生會以為電腦搜尋要跑好幾秒）');
-  ok(/比例是真的/.test(host.textContent), '　　但強調比例是真的');
+  /* ⚠️ 2026-08-17 資料量加大之後，賽跑有兩種模式：
+       小資料量逐次畫 → 講「放慢成 N 毫秒」
+       大資料量快轉   → 講「照時間比例快轉」
+     所以這裡不可以只找「放慢」那一個詞（第一版就是這樣紅的）。 */
+  ok(/放慢|快轉/.test(host.textContent),
+     '★★ 畫面上講明動畫動過手腳（不然學生會以為電腦搜尋要跑好幾秒）');
+  ok(/比例是真的|都是真的/.test(host.textContent), '　　但強調比例是真的');
   ok(!host.querySelector('.lt-box'), '   畫面上也沒有挑戰區');
   host.remove();
 }
@@ -630,7 +634,15 @@ section('★ 大比拼：四種資料量都要跑過');
   const raceBtn = () => host.querySelector('[data-race]');
 
   ok(!!size, '四個資料量的按鈕都畫出來了');
-  is(S.SIZES, [13, 50, 100, 1024], '★ 資料量含課本習題問過的 50 與 1024');
+  /* ⚠️⚠️ 2026-08-17 老師：「數字太小不符合關卡名稱『資料大爆炸』」。
+     從 [13,50,100,1024] 換成 [13,1024,100萬,1億]——
+     最大那一檔要按 27 下才砍得完，而「按 20 下砍完一百萬筆」
+     是學生自己按出來的，比看動畫強得多。
+     ★ 13 留著：那是課本 p.204 的例子，概念檢測也在問它。 */
+  is(S.SIZES, [13, 1024, 1000000, 100000000],
+     '★★ 資料量夠大了（13 是課本的例子，後面三檔跳大）');
+  ok(S._worstBinary(1000000) === 20, '　　一百萬筆按 20 下就砍完');
+  ok(S._worstBinary(100000000) === 27, '　　一億筆也才 27 下');
 
   S.SIZES.forEach(n => {
     size(n);
@@ -652,9 +664,10 @@ section('★ 大比拼：四種資料量都要跑過');
   host.querySelector('[data-boom]').onclick();
   is(done, 1, '★ 四種都砍完＋都比過一場＋猜過 → 放行');
   is(host.querySelectorAll('.qs-tbl tr').length - 1, 4, '對照表累積了四列');
-  ok(/1024/.test(host.querySelector('.qs-tbl').textContent) &&
-     /11/.test(host.querySelector('.qs-tbl').textContent),
-     '★ 表格上看得到 1024 對 11 —— 那個對比不必解釋');
+  const tbl = host.querySelector('.qs-tbl').textContent;
+  ok(/100,000,000/.test(tbl) && /27/.test(tbl),
+     '★★ 表格上看得到 1 億對 27 —— 那個對比不必解釋');
+  ok(/1,000,000/.test(tbl), '★ 大數字有千分位（不然是一串看不懂的 0）');
   host.remove();
 }
 {
@@ -675,7 +688,9 @@ section('★ 大比拼：四種資料量都要跑過');
   const h2 = document.createElement('div');
   document.body.appendChild(h2);
   S.mount(h2, { mode: 'compare', stepMs: 0, onPass: () => {} });
-  h2.querySelector('[data-size="100"]').onclick();
+  /* ⚠️ 不要寫死資料量 —— 2026-08-17 把 100 換成一百萬之後，
+     這一行直接抓不到按鈕（是 crash 不是紅字）。★ 用 SIZES 拿。 */
+  h2.querySelector('[data-size="' + S.SIZES[1] + '"]').onclick();
   let g2 = 0;
   while (h2.querySelector('[data-cut]') && g2++ < 60) h2.querySelector('[data-cut]').onclick();
   ok(/比一場/.test(h2.textContent),

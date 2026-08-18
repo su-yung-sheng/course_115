@@ -163,7 +163,17 @@
 
   /* 大比拼要跑的幾種資料量。
      13 是課本 6-3-2 那一列；50 與 1024 是課本習題直接問過的數字。 */
-  var SIZES = [13, 50, 100, 1024];
+  /* ⚠️⚠️ 2026-08-17 老師：「數字太小不符合關卡名稱『資料大爆炸』」。
+     原本是 [13, 50, 100, 1024] —— 最大按 11 下就砍完，
+     學生只會覺得「喔，比較少」。
+     ★ 真正有意思的是**大數字**：一百萬筆按 20 下、一億筆按 27 下。
+       「按 20 下就砍完一百萬筆」是他自己按出來的，比看動畫強得多，
+       而 20～27 下也不會按到煩。
+     ★ 13 留著：那是課本的例子（p.204 那一列），概念檢測也在問它。 */
+  var SIZES = [13, 1024, 1000000, 100000000];
+  /* 逐次動畫跑得動的上限。★ 超過就改用「時間比例」的賽跑 ——
+     一百萬次逐次畫要 100 分鐘，那不是慢，是根本跑不完。 */
+  var RACE_MAX = 2000;
 
   /**
    * 出題。
@@ -920,13 +930,13 @@
         sizes.map(function (n) {
           var cls = (n === size) ? ' class="on"' : (table[n] ? ' class="ok"' : '');
           return '<button data-size="' + n + '"' + cls + '>' +
-                 n + ' 筆' + (table[n] ? ' ✓' : '') + '</button>';
+                 comma(n) + ' 筆' + (table[n] ? ' ✓' : '') + '</button>';
         }).join('') + '</div>';
 
       if (!size) {
         out += '<div class="qs-left">先選一個資料量。</div>';
       } else if (left > 0) {
-        out += '<div class="qs-left">還要找的範圍：<b>' + left + '</b> 筆' +
+        out += '<div class="qs-left">還要找的範圍：<b>' + comma(left) + '</b> 筆' +
                '　（已經比了 ' + cuts + ' 次）</div>' +
                '<div class="qs-side"><button data-cut="1">✂️ 比一次，砍掉一半</button></div>';
       } else {
@@ -1021,26 +1031,33 @@
           所以真正要等的只有 1024 那一次。 */
     function raceHtml() {
       var seqMax = worstSequential(raceN), binMax = table[raceN] || worstBinary(raceN);
+      var big = raceN > RACE_MAX;          // 大資料量：逐次跑不動，改看時間比例
       var lane = function (cls, name, now, max) {
         var pct = max ? Math.min(100, now / max * 100) : 0;
         return '<div class="qs-lane ' + cls + (now >= max ? ' done' : '') + '">' +
                '<div class="nm"><span>' + name + '</span>' +
-               '<span class="ct">' + now + ' / ' + max + ' 次' +
+               '<span class="ct">' + comma(now) + ' / ' + comma(max) + ' 次' +
                (now >= max ? '　✅' : '') + '</span></div>' +
                '<div class="track"><div class="fill" style="width:' + pct + '%"></div></div></div>';
       };
-      var out = '<div class="qs-race"><div class="rh">🏁 ' + raceN + ' 筆資料，最倒楣的情況</div>' +
+      var out = '<div class="qs-race"><div class="rh">🏁 ' + comma(raceN) +
+        ' 筆資料，最倒楣的情況</div>' +
         lane('bin', '二元搜尋（每次砍一半）', raceBin, binMax) +
         lane('seq', '循序搜尋（一個一個看）', raceSeq, seqMax);
       if (raceOn === 2) {
-        out += '<div class="win">跑完了：循序 <b>' + seqMax + '</b> 次、二元 <b>' + binMax +
-               '</b> 次 —— 差 <b>' + Math.round(seqMax / binMax) + '</b> 倍。' +
+        out += '<div class="win">跑完了：循序 <b>' + comma(seqMax) + '</b> 次、二元 <b>' + binMax +
+               '</b> 次 —— 差 <b>' + comma(Math.round(seqMax / binMax)) + '</b> 倍。' +
                '<br>你剛才按 ' + cuts + ' 下就結束了；循序那一條，你等了多久？</div>';
       }
       /* ⚠️⚠️ 這一句一定要在：不講的話學生會以為電腦搜尋真的要跑好幾秒。 */
-      out += '<div class="note">⚠️ 這裡把每一次比較放慢成 ' + STEP_MS +
-             ' 毫秒，你才看得到它在跑。真的電腦一秒可以比<b>幾百萬次</b> —— ' +
-             '但<b>兩邊的比例是真的</b>。</div>';
+      out += big
+        ? ('<div class="note">⚠️ ' + comma(raceN) + ' 筆沒辦法一次一次畫給你看 ——' +
+           '循序那一條要跑 ' + comma(seqMax) + ' 次，' +
+           '照前面的速度得畫 <b>' + Math.round(seqMax * STEP_MS / 60000) + ' 分鐘</b>。' +
+           '<br>所以這一條是**照時間比例快轉**的：兩邊誰先到、差多少，都是真的。</div>')
+        : ('<div class="note">⚠️ 這裡把每一次比較放慢成 ' + STEP_MS +
+           ' 毫秒，你才看得到它在跑。真的電腦一秒可以比<b>幾百萬次</b> —— ' +
+           '但<b>兩邊的比例是真的</b>。</div>');
       return out + '</div>';
     }
 
@@ -1052,11 +1069,20 @@
         raceSeq = seqMax; raceBin = binMax; raceOn = 2; raced[raceN] = true;
         body(); maybePass(); return;
       }
+      /* ★ 一次要往前跳幾次比較。
+         小資料量：1（真的一次一次畫，那個等待就是重點）。
+         大資料量：一百萬次逐次畫要 100 分鐘 —— 那不是慢，是跑不完。
+         ⇒ 改成「總共跑 RACE_SEC 秒」，每一幀跳一大段。
+         ⚠️ 兩邊用**同一個**步進比例，誰先到、差多少才會是真的。 */
+      var RACE_SEC = 6;
+      var frames = Math.max(1, Math.round(RACE_SEC * 1000 / STEP_MS));
+      var stepSeq = raceN > RACE_MAX ? Math.ceil(seqMax / frames) : 1;
+      var stepBin = raceN > RACE_MAX ? Math.max(1, binMax / frames) : 1;
       /* 二元那一邊比較次數少很多，所以它會先跑完 —— 這是刻意的。
          ⚠️ 兩邊用同一個計時器：不然「同時起跑」這件事會不成立。 */
       raceTimer = setInterval(function () {
-        if (raceSeq < seqMax) raceSeq++;
-        if (raceBin < binMax) raceBin++;
+        if (raceSeq < seqMax) raceSeq = Math.min(seqMax, raceSeq + stepSeq);
+        if (raceBin < binMax) raceBin = Math.min(binMax, Math.round(raceBin + stepBin));
         if (raceSeq >= seqMax && raceBin >= binMax) {
           clearInterval(raceTimer); raceTimer = null;
           raceOn = 2; raced[raceN] = true;
@@ -1078,8 +1104,8 @@
       return '<table class="qs-tbl"><tr><th>資料量</th>' +
              '<th>循序搜尋<br>最多比幾次</th><th>二元搜尋<br>最多比幾次</th></tr>' +
              done.map(function (n) {
-               return '<tr><td>' + n + ' 筆</td>' +
-                      '<td class="big">' + worstSequential(n) + '</td>' +
+               return '<tr><td>' + comma(n) + ' 筆</td>' +
+                      '<td class="big">' + comma(worstSequential(n)) + '</td>' +
                       '<td class="small">' + table[n] + '</td></tr>';
              }).join('') + '</table>';
     }
@@ -1118,7 +1144,7 @@
       size = n; left = n; cuts = 0;
       body();
       say('bad', '假設最倒楣的情況：目標在最後才找到，或根本不在裡面。' +
-                 '<br>一直按下去，看看要按幾下才砍完 <b>' + n + '</b> 筆。');
+                 '<br>一直按下去，看看要按幾下才砍完 <b>' + comma(n) + '</b> 筆。');
     }
 
     function cut() {
@@ -1127,16 +1153,16 @@
       left = afterCut(left);         // 比完中間那筆，剩下的不含它
       if (left > 0) {
         body();
-        say('good', '比了第 ' + cuts + ' 次，範圍剩 <b>' + left + '</b> 筆。');
+        say('good', '比了第 ' + cuts + ' 次，範圍剩 <b>' + comma(left) + '</b> 筆。');
         return;
       }
       table[size] = cuts;
       body();
       var seq = worstSequential(size);
-      say('good', '<b>' + size + '</b> 筆資料：循序搜尋最多要比 <b>' + seq + '</b> 次，' +
+      say('good', '<b>' + comma(size) + '</b> 筆資料：循序搜尋最多要比 <b>' + comma(seq) + '</b> 次，' +
                   '二元搜尋只要 <b>' + cuts + '</b> 次。' +
                   (seq >= cuts * 20
-                    ? '<br>⚠️ 資料量是比較次數的 <b>' + Math.round(seq / cuts) + '</b> 倍 —— ' +
+                    ? '<br>⚠️ 資料量是比較次數的 <b>' + comma(Math.round(seq / cuts)) + '</b> 倍 —— ' +
                       '那就是「每次砍一半」的威力。'
                     : ''));
       maybePass();
