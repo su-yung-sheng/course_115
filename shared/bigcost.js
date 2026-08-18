@@ -181,6 +181,34 @@
     '.bc-msg.info{background:#f1f5f9;color:#475569}',
     '.bc-done{background:#ecfdf5;border:2px solid #6ee7b7;border-radius:14px;',
     '  padding:14px 16px;font-size:14px;line-height:1.95;color:#065f46}',
+    /* ── 回顧那三條橫條（老師 2026-08-18：「調整為更有可讀性」）──
+       ⚠️ 前一版是三張並排的數字卡，4,950／100／7 **字級一樣大** ——
+          而這一段唯一要傳達的就是「排序遠比搜尋貴」。
+          三個一樣大的數字，正好把那件事藏起來。
+       ⇒ 按比例的橫條：排序那一條滿出去，另外兩條擠在最左邊。 */
+    '.bc-lines{background:#fff;border:2px solid #e2e8f0;border-radius:14px;',
+    '  padding:12px 14px;margin-bottom:11px}',
+    '.bc-lines .hd{font-size:13px;font-weight:900;color:#334155;margin-bottom:10px;',
+    '  padding-bottom:7px;border-bottom:1px dashed #e2e8f0}',
+    '.bc-line{margin-bottom:11px}',
+    '.bc-line:last-child{margin-bottom:0}',
+    '.bc-line .lh{display:flex;justify-content:space-between;align-items:baseline;',
+    '  font-size:12.5px;margin-bottom:3px}',
+    '.bc-line .nm{font-weight:900;color:#334155}',
+    '.bc-line .src{font-size:11px;font-weight:800;color:#6366f1;',
+    '  background:#eef2ff;border-radius:9999px;padding:1px 8px}',
+    '.bc-line .lb2{display:flex;align-items:center;gap:9px}',
+    '.bc-line .track{flex:1;background:#f1f5f9;border-radius:7px;overflow:hidden;height:22px}',
+    '.bc-line .fill{display:block;height:100%;border-radius:7px;transition:width .45s ease-out}',
+    '.bc-line .vv{flex:0 0 auto;min-width:74px;text-align:right;font-size:17px;',
+    '  font-weight:900;color:#334155;font-family:ui-monospace,monospace}',
+    '.bc-line .nt{font-size:11.5px;color:#94a3b8;line-height:1.6;margin-top:2px}',
+    /* 「和上一個資料量比」—— 切過去卻沒東西告訴他變多少，等於白切 */
+    '.bc-grow{background:#fffbeb;border:2px solid #fcd34d;border-radius:12px;',
+    '  padding:11px 13px;margin-bottom:11px;font-size:13px;line-height:1.95;color:#7c2d12;',
+    '  font-family:ui-monospace,"Noto Sans TC",monospace}',
+    '.bc-grow b{color:#92400e}',
+    '.bc-big .bc-line .vv{font-size:20px}',
     /* ── 兩張收據（老師 2026-08-18：「公式也不太好理解」）──────
        ★ 把 4,950 ＋ 7 × 100 拆成看得懂的兩行：
          排序費（只付一次）／查詢費（每查一次加一筆）。
@@ -363,28 +391,7 @@
          ⚠️ 這一段**不問答**（老師給的時間是一節課的尾巴）——
             但也不能一鍵跳過：只看 10 筆的話 45 對 9，
             學生會覺得「好像也沒差多少」。⇒ 要求切過兩種資料量。 */
-      if (k === 'recap') {
-        var out = sizesHTML() +
-          numsHTML([
-            ['排好序（選擇排序）', comma(selCompares(n)), '次比較　← 第 6、7 關', 'hot'],
-            ['循序搜尋（最壞）', comma(seqWorst(n)), '次比較　← 第 8 關', 'hot'],
-            ['二元搜尋（最壞）', comma(binWorst(n)), '次比較　← 第 9 關', 'cool']
-          ]) +
-          '<div class="bc-ask">同樣 <b>' + comma(n) + '</b> 筆資料。' +
-          '<br>搜尋那兩個差 ' + hlb(comma(Math.round(seqWorst(n) / binWorst(n))) + ' 倍') +
-          '，可是<b>排序那一個比兩邊都大得多</b> —— ' +
-          '而二元搜尋非得先排好不可。' +
-          '<br><span style="font-size:12px;color:#94a3b8">' +
-          '⚠️ 這三個數字你在「動手試一次」都量過，這裡只是擺在一起。</span></div>';
-        var left = SIZES.filter(function (v) { return !seen[v]; });
-        out += left.length
-          ? '<div class="bc-msg info">還有 ' +
-            left.map(function (v) { return comma(v) + ' 筆'; }).join('、') +
-            ' 沒看過 —— 切過去看看那三個數字怎麼變。</div>'
-          : goBox('🧾 開始結帳', '三種資料量都看過了。' +
-              '現在用這些數字算一筆你沒算過的帳：<b>到底要不要先排序？</b>', 'recapdone');
-        return out;
-      }
+      if (k === 'recap') return recapHTML();
 
       /* ── ② 結帳 ─────────────────────────────────────
          ★ 兩張收據，一次加一筆。
@@ -395,6 +402,89 @@
       }
 
       return '';
+    }
+
+    /* ── 回顧：三條橫條 ────────────────────────────────
+       ★★ 老師 2026-08-18：「📋 把四關的數字擺在一起，這個部份也調整為更有可讀性。」
+       ⚠️ 前一版是三張並排的數字卡：4,950 / 100 / 7 三個數字**字級一樣大**，
+          可是這一段唯一要傳達的就是「排序遠比搜尋貴」——
+          而那件事在三張一樣大的卡片上完全看不出來。
+          （這和搜尋那邊「進度條看不出量級」是同一個毛病。）
+       ⇒ 改成三條**按比例**的橫條：排序那一條長到滿出來，另外兩條幾乎看不見。
+       ★★ 而且補上這一段本來缺的東西：**切資料量時「變了多少」**。
+          原本切過去只是數字換了，沒有任何東西告訴他差多少 ——
+          而「排序漲 36 倍、二元只多 3 次」正是要他看的。 */
+    function recapHTML() {
+      var sortN = selCompares(n), seqN = seqWorst(n), binN = binWorst(n);
+      var mx = Math.max(sortN, seqN, binN);
+      var row = function (icon, name, from, val, color, note) {
+        /* ⚠️ 最小寬度給 1.2% —— 二元搜尋只有 7 次，
+           照比例算出來是 0.14%，畫出來會是一條看不見的線，
+           學生會以為那一項「沒有資料」。 */
+        var w = Math.max(1.2, val / mx * 100);
+        return '<div class="bc-line">' +
+          '<div class="lh"><span class="nm">' + icon + ' ' + name + '</span>' +
+          '<span class="src">' + from + '</span></div>' +
+          '<div class="lb2"><span class="track"><span class="fill" style="width:' + w +
+          '%;background:' + color + '"></span></span>' +
+          '<span class="vv">' + comma(val) + '</span></div>' +
+          '<div class="nt">' + note + '</div></div>';
+      };
+      var out = sizesHTML() +
+        '<div class="bc-lines"><div class="hd">同樣 <b>' + comma(n) +
+        '</b> 筆資料，要比幾次？</div>' +
+        row('🔢', '排好序（選擇排序）', '第 6、7 關', sortN, '#f59e0b',
+            '排一次的成本 —— 但排完之後就不用再排') +
+        row('🚶', '循序搜尋（最壞）', '第 8 關', seqN, '#0ea5e9',
+            '每查一次都要付這麼多') +
+        row('✂️', '二元搜尋（最壞）', '第 9 關', binN, '#22c55e',
+            '每查一次只要這麼多 —— 但資料得先排好') +
+        '</div>' +
+        '<div class="bc-ask">⚠️ ' + hl('排序那一條長到看不完') +
+        '，另外兩條擠在最左邊。' +
+        /* ⚠️ 兩條搜尋被壓到看不出差別 —— 600 筆時 600 對 10 也還是兩條短線。
+           ★ 不要為了「畫得出來」去動比例尺（那會讓排序那條的震撼消失）；
+             改成**把被壓掉的那個差距用字講出來**。
+             這一段要傳達的是「排序 ≫ 搜尋」，而不是「循序 ≈ 二元」。 */
+        '<br>（那兩條其實差 ' + hlb(comma(Math.round(seqN / binN)) + ' 倍') +
+        '，只是和排序比起來都太短了 —— <b>那正是重點</b>。）' +
+        '<br>可是<b>二元搜尋非得先排好不可</b> —— ' +
+        '那條最長的，就是它的入場費。' +
+        '<br><span style="font-size:12px;color:#94a3b8">' +
+        '這三個數字你在「動手試一次」都量過，這裡只是擺在一起。</span></div>';
+
+      /* ★★ 切了資料量就要看得到「變了多少」——
+         這一段的重點不是三個數字，是它們**長大的速度不一樣**。 */
+      out += growHTML();
+
+      var left = SIZES.filter(function (v) { return !seen[v]; });
+      out += left.length
+        ? '<div class="bc-msg info">還有 ' +
+          left.map(function (v) { return comma(v) + ' 筆'; }).join('、') +
+          ' 沒看過 —— 切過去，看那三條長度怎麼變。</div>'
+        : goBox('🧾 開始結帳', '三種資料量都看過了。' +
+            '現在用這些數字算一筆你沒算過的帳：<b>到底要不要先排序？</b>', 'recapdone');
+      return out;
+    }
+
+    /** 和**前一個**資料量比：誰長得快、誰幾乎不動 */
+    function growHTML() {
+      var i = SIZES.indexOf(n);
+      if (i <= 0 || !seen[SIZES[i - 1]]) return '';
+      var pv = SIZES[i - 1];
+      var f = function (a, b) {
+        var r = b / a;
+        return r >= 2 ? ('<b>' + comma(Math.round(r)) + ' 倍</b>')
+                      : ('只多 <b>' + comma(b - a) + '</b> 次');
+      };
+      return '<div class="bc-grow">📈 從 <b>' + comma(pv) + '</b> 筆變成 <b>' +
+        comma(n) + '</b> 筆（' + comma(Math.round(n / pv)) + ' 倍）：' +
+        '<br>· 排序　　' + comma(selCompares(pv)) + ' → ' + comma(selCompares(n)) +
+        '　' + hl(f(selCompares(pv), selCompares(n))) +
+        '<br>· 循序搜尋 ' + comma(seqWorst(pv)) + ' → ' + comma(seqWorst(n)) +
+        '　' + f(seqWorst(pv), seqWorst(n)) +
+        '<br>· 二元搜尋 ' + binWorst(pv) + ' → ' + binWorst(n) +
+        '　' + hl(f(binWorst(pv), binWorst(n))) + '</div>';
     }
 
     /* ── 結帳：兩張收據 ────────────────────────────────
