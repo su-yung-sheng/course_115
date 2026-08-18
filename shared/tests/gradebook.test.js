@@ -213,8 +213,43 @@ section('★★ 兩學期的教師端要同一套配色（老師 2026-08-18）')
   ok(/-gray-/.test(b502), '★ 也有 gray');
   /* 兩支的底色要一樣 —— 那是最大面積、也最看得出來的一塊 */
   const bodyOf = h => (h.match(/<body class="([^"]*)"/) || ['', ''])[1];
-  eq(bodyOf(b502).split(' ')[0], bodyOf(read('11501/teacher.html')).split(' ')[0],
+  const a501 = read('11501/teacher.html');
+  eq(bodyOf(b502).split(' ')[0], bodyOf(a501).split(' ')[0],
      '★★ 兩支的 <body> 底色一樣');
+
+  /* ⚠️⚠️ 老師 2026-08-18 第二次回報：「但是 11502 顏色比較深。」
+     —— 對齊 gray／slate 之後**還是深**，因為病根根本不在 class：
+     11502 的教師端載了 shared/theme.css，而它會強制蓋掉整頁底色
+       body{ background-color:#e7e5e4 !important }   ← 方格紙的米灰
+     11501 的教師端是 bg-gray-50（#f9fafb，接近白）。
+     底色一深，上面那排淡色藥丸按鈕的對比就整個變重 ——
+     ★ **按鈕的 class 兩邊一模一樣，深的是它們後面那張紙。**
+       看得到的差異不一定來自看得到的那個東西。
+     ⇒ 這一條盯的是「兩支載進來的樣式表一樣」，比逐個 class 比對強得多。 */
+  const sheets = h => (h.match(/<link[^>]+rel="stylesheet"[^>]*>/g) || [])
+    .map(t => (t.match(/href="([^"]*)"/) || ['', ''])[1]);
+  eq(sheets(b502), sheets(a501),
+     '★★ 兩支教師端載的樣式表完全一樣（theme.css 是「顏色比較深」的病根）');
+  /* ⚠️ 要先去掉 HTML 註解 —— 那一頁的註解裡正好寫著「這一頁不載 theme.css」，
+     連著註解一起掃的話這一條永遠紅。
+     ★ 「不可以出現 X」型的檢查，最常見的自傷方式就是**講到它的那句話本身**
+       （這個專案已經踩過三次：user-select、資料大爆炸、unitStars）。 */
+  const noComment = b502.replace(/<!--[\s\S]*?-->/g, ' ');
+  ok(!/theme\.css/.test(noComment),
+     '★★ 11502 教師端不載 theme.css（它會 !important 蓋掉整頁底色）');
+  /* 連格線也一起確認 —— 老師看到的是「比較灰，而且有格線」 */
+  ok(!/linear-gradient/.test(noComment.slice(0, noComment.indexOf('</head>'))),
+     '★★ 而且 <head> 裡沒有任何會畫格線的 background-image');
+
+  /* ⚠️ 但**學生端**要留著 —— 方格紙底是學生端的識別，而且那幾頁用得到 .hl。 */
+  /* ⚠️ 一樣要去註解：那幾頁的 <link> 上面就寫著「見 shared/theme.css」——
+     只找檔名的話，把 <link> 整條刪掉測試照樣綠（突變測試才發現）。
+     ⇒ 要找的是**真的載進來**那一條 link。 */
+  ['hub', 'level', 'scratch', 'thinking'].forEach(f => {
+    const h = read('11502/' + f + '.html').replace(/<!--[\s\S]*?-->/g, ' ');
+    ok(/<link[^>]+theme\.css/.test(h),
+       '　 11502/' + f + '.html 仍然**載進**theme.css（學生端的識別不要動到）');
+  });
 }
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);

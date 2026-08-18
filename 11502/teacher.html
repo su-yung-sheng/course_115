@@ -52,9 +52,21 @@
       background: #94a3b8; 
     }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <!-- 全站主題樣式（單一來源，見 shared/theme.css）-->
-  <link rel="stylesheet" href="../shared/theme.css">
+  <!-- ⚠️⚠️ 這一頁**不載** shared/theme.css（老師 2026-08-18）
+       「教師端的介面配色有深淺不同…但是 11502 顏色比較深。」
+       ★ 病根就是這一行。theme.css 會強制蓋掉整頁底色：
+           body{ background-color:#e7e5e4 !important }  ← 方格紙的米灰
+         而 11501 的教師端是 Tailwind 的 bg-gray-50（#f9fafb，接近白）。
+         底色一深，上面那排淡色藥丸按鈕（bg-teal-50／bg-sky-50…）
+         的對比就整個變重 —— **按鈕的 class 兩邊一模一樣，深的是它們後面那張紙**。
+       ⚠️ 我第一次修的時候只對齊了 gray／slate 的色階，那治不到這裡：
+          !important 的底色不會因為換一個 Tailwind class 就改變。
+          ★ 看得到的差異不一定來自看得到的那個東西。
+       ★ 方格紙底是**學生端**的識別（hub／level／scratch／thinking／warmup 都還留著）；
+         教師端是工作介面，兩學期本來就該長得一樣。
+       ⚠️ 順便拿掉 Noto Sans TC 的字型連結 ——
+          全站字型是 theme.css 指定的，theme.css 一走，
+          這一頁就沒有任何地方引用那個字型，只剩一個白下載的網路請求。 -->
 </head>
 <body class="bg-gray-50 font-sans min-h-screen flex flex-col">
 
