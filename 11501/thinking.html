@@ -109,15 +109,66 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
         // --- Firebase 資料庫設定與初始化 ---
         const fbStore = {
-            db: null, doc: null, getDoc: null, setDoc: null, arrayUnion: null, collection: null, getDocs: null
+            db: null, doc: null, getDoc: null, setDoc: null, arrayUnion: null, collection: null, getDocs: null,
+            query: null, where: null
         };
+
+
+        /* ── 班級進度：整批下載只做一次 ─────────────────────────
+           ⚠️⚠️ 2026-08-19 老師問：「一個一個測，不確定同時 30 個會怎樣。」
+              這一頁就是那個地方。本來有兩處直接 getDocs 整個
+              artifacts/comp-think-app/public/data/progress 集合，
+              而且其中一處的 useEffect 相依陣列是
+                  [selectedChallenge, user, completedChallenges]
+              ——「換一題」「完成一題」都會再整批下載一次。
+
+              一個人測：10 題 ≈ 20 次 × 全班文件數 ≈ 兩千次讀取，毫無感覺。
+              30 個人同時上課：600 次 × 文件數 ——
+              那個集合是**跨班級、跨學年累積**的（路徑寫死 comp-think-app），
+              文件一多就直接吃掉 Firebase 免費額度的一天份（50,000 次讀取）。
+              ⚠️ 額度用完的症狀不是錯誤訊息，是「讀不到進度」——
+                 全班同時看起來像系統壞了，而且要等到隔天才會自己好。
+
+           ⇒ 三件事一起做：
+              ① 只抓自己班（where classRoom == 我的班），不要整包
+              ② 抓一次就快取，換題不重抓
+              ③ 自己完成一題時在本機更新那一筆，不重抓
+           ★ 這裡刻意**不設定時間過期**：同一堂課裡「本班已通關幾人」
+             晚幾分鐘更新沒有任何影響，而每一次重抓都是全班 ×30 的代價。 */
+        const classCache = { room: '', rows: null };
+
+        async function loadClassRows(classRoom, force) {
+            if (!classRoom) return [];
+            if (!force && classCache.room === classRoom && classCache.rows) return classCache.rows;
+            const ok = await initFB();
+            if (!ok) throw new Error("Firebase 未就緒");
+            const col = fbStore.collection(fbStore.db, 'artifacts', 'comp-think-app', 'public', 'data', 'progress');
+            /* where 是單一欄位相等比較，不需要另外建索引。
+               ⚠️ 舊資料若沒有 classRoom 欄位就抓不到 —— 那些本來也不該出現在別班的畫面上。 */
+            const q = (fbStore.query && fbStore.where)
+              ? fbStore.query(col, fbStore.where('classRoom', '==', classRoom)) : col;
+            const snap = await fbStore.getDocs(q);
+            const rows = [];
+            snap.forEach(d => { const v = d.data(); if (v.classRoom === classRoom) rows.push(v); });
+            classCache.room = classRoom; classCache.rows = rows;
+            return rows;
+        }
+
+        /** 自己剛通過一關：更新快取裡自己那一筆，不要再抓一次全班 */
+        function noteMyPass(classRoom, seatNo, challengeId) {
+            if (classCache.room !== classRoom || !classCache.rows) return;
+            let me = classCache.rows.find(r => String(r.seatNo) === String(seatNo));
+            if (!me) { me = { classRoom, seatNo, completed: [] }; classCache.rows.push(me); }
+            me.completed = me.completed || [];
+            if (!me.completed.includes(challengeId)) me.completed.push(challengeId);
+        }
 
         const initFB = async () => {
             if (fbStore.db) return true;
             try {
                 // 使用 new Function 包裝 import，防止 Babel 將 import() 編譯為 require()
                 const { initializeApp, getApps, getApp } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js')")();
-                const { getFirestore, doc, getDoc, setDoc, arrayUnion, collection, getDocs } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js')")();
+                const { getFirestore, doc, getDoc, setDoc, arrayUnion, collection, getDocs, query, where } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js')")();
                 const { getAuth, signInAnonymously, onAuthStateChanged } = await new Function("return import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js')")();
 
                 const firebaseConfig = window.CONFIG.FIREBASE;
@@ -140,6 +191,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 fbStore.arrayUnion = arrayUnion;
                 fbStore.collection = collection;
                 fbStore.getDocs = getDocs;
+                fbStore.query = query;
+                fbStore.where = where;
                 return true;
             } catch (err) {
                 console.error("Firebase 初始化失敗:", err);
@@ -161,17 +214,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         const ok = await initFB();
                         if (!ok) throw new Error("資料庫連線失敗");
 
-                        const progressCol = fbStore.collection(fbStore.db, 'artifacts', 'comp-think-app', 'public', 'data', 'progress');
-                        const snapshot = await fbStore.getDocs(progressCol);
-                        
-                        const data = [];
-                        snapshot.forEach(doc => {
-                            const d = doc.data();
-                            // 只抓取與當前使用者相同班級的資料
-                            if (d.classRoom === userClass) {
-                                data.push(d);
-                            }
-                        });
+                        /* 只抓自己班、而且走同一份快取（見 loadClassRows）。
+                           這是使用者按開的視窗，重新整理一次是合理的，
+                           所以 force = true；換題那一支就不重抓。 */
+                        const data = (await loadClassRows(userClass, true)).slice();
                         
                         data.sort((a, b) => parseInt(a.seatNo) - parseInt(b.seatNo));
                         setStudentsData(data);
@@ -724,20 +770,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     if (isMounted) setClassPassCount('...'); // 顯示計算中
                     
                     try {
-                        const ok = await initFB();
-                        if (!ok) throw new Error("Firebase 未就緒");
-                        
-                        const progressCol = fbStore.collection(fbStore.db, 'artifacts', 'comp-think-app', 'public', 'data', 'progress');
-                        const snapshot = await fbStore.getDocs(progressCol);
-                        
-                        let count = 0;
-                        snapshot.forEach(doc => {
-                            const d = doc.data();
-                            if (d.classRoom === user.classRoom && d.completed && d.completed.includes(selectedChallenge.id)) {
-                                count++;
-                            }
-                        });
-                        
+                        /* ★ 只在快取沒有的時候才連線；換題、完成一題都吃同一份。
+                           （本來這裡每次都整批下載一次整個集合 —— 見 loadClassRows 的說明） */
+                        const rows = await loadClassRows(user.classRoom, false);
+                        const count = rows.filter(d =>
+                            d.completed && d.completed.includes(selectedChallenge.id)).length;
                         if (isMounted) setClassPassCount(count);
                     } catch (err) {
                         console.error("無法取得通關人數:", err);
@@ -811,6 +848,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         } catch (err) {
                             console.error("寫入進度失敗:", err);
                         }
+                        /* 自己剛過的這一關要反映在「本班已通關 N 人」上，
+                           但**不要**為此再整批下載一次全班（那正是 30 人同時
+                           上課會爆額度的原因）—— 在快取裡更新自己那一筆就好。 */
+                        noteMyPass(user.classRoom, user.seatNo, challengeId);
                     }
 
                     // 🌟 回報到統一進度（11501-progress，供 hub 儀表板與每週成績使用）
