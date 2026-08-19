@@ -157,30 +157,53 @@ section('★★ 兩段走得完（老師 2026-08-18：實作體驗太弱了）')
   eq(lines.length, 4, '★★ 四條橫條：選擇排序、插入排序、循序搜尋、二元搜尋');
   ok(/選擇排序/.test(lines[0].textContent) && /插入排序/.test(lines[1].textContent),
      '★★ 兩種排序法都有（第 6 關、第 7 關各一條）');
+  /* ── 每一條要有「比較」和「搬動」兩量（老師 2026-08-18）──────
+     「實作體驗的『把四關的數字擺在一起』這裡就要加入搬移的成本概念了。」
+     ⚠️ 之前回顧只列比較次數，到了結帳才蹦出「搬動費」——
+        那是**憑空冒出來的一筆錢**，學生會覺得系統在硬拗。
+     ★ 排序要做兩件事：比較、搬動。兩件都要在這裡先看過一次。 */
+  const mt = i => [...lines[i].querySelectorAll('.bc-mt')];
+  eq(mt(0).map(m => m.querySelector('.k').textContent), ['比較', '搬動'],
+     '★★ 選擇排序有「比較」和「搬動」兩條');
+  eq(mt(1).map(m => m.querySelector('.k').textContent), ['比較', '搬動'],
+     '★★ 插入排序也是');
+  const valOf = (i, j) => {
+    const m = mt(i)[j];
+    const el = m.querySelector('.v') || m.querySelector('.no');
+    return el.textContent;
+  };
+  eq(valOf(0, 1), '99', '★★ 選擇排序搬 99 次（每回合只搬一次）');
+  eq(valOf(1, 1), '0～4,950', '★★ 插入排序搬 0～4,950 次（看資料長相）');
+  /* ⚠️ 搜尋那兩條**不可以留白** —— 要明講「搜尋不搬資料」。
+     ★ 那本身就是一句值得講的話，也解釋了帳單上為什麼只有排序有搬動費。 */
+  ok(/不會搬資料/.test(valOf(2, 1)), '★★ 循序搜尋那一格明講「搜尋只是看，不會搬資料」');
+  ok(/0 次/.test(valOf(3, 1)), '★ 二元搜尋也是 0 次');
+  ok(/兩種/.test(v.txt()) && /搬動/.test(v.txt()),
+     '★★ 而且說明裡點出「排序要付兩種錢」');
+
   /* ⚠️⚠️ 老師 2026-08-18：「插入排序法的長條圖怎麼空白在前面？」
      第一版把它畫成**浮在中間的區段**（left: lo%）——
      最前面空一截，看起來像沒對齊；而且那樣畫是**錯的**：
      成本是從 0 開始累加的，浮在中間會讓人以為「它最少也要從那裡起跳」。
      ⇒ 兩段都從 0 起算，疊著畫：實心＝最好情況、淡色＝一路到最壞。 */
-  const segs = [...lines[1].querySelectorAll('.fill')];
-  eq(segs.length, 2, '★★ 插入排序那一條是**兩段**（最好情況＋一路到最壞）');
+  const segs = [...mt(1)[0].querySelectorAll('.fill')];
+  eq(segs.length, 2, '★★ 插入排序的「比較」是**兩段**（最好情況＋一路到最壞）');
   ok(segs.every(x => !x.style.left || x.style.left === '0px' || x.style.left === '0'),
      '★★ 兩段都**從 0 開始**（前面不可以留白）');
-  const wLo = parseFloat(segs.filter(x => /hard/.test(x.className))[0].style.width);
-  const wHi = parseFloat(segs.filter(x => /soft/.test(x.className))[0].style.width);
-  ok(wHi > wLo, '★ 淡色那段（最壞）比實心那段（最好）長');
-  ok(!!lines[1].querySelector('.edge'),
+  ok(!!mt(1)[0].querySelector('.edge'),
      '★ 交界處有一條線 —— 看得出「這裡是最好情況」');
-  ok(/99～4,950|99～4,950/.test(lines[1].querySelector('.vv').textContent),
-     '★★ 而且標出兩端（' + lines[1].querySelector('.vv').textContent + '）');
-  const w = i => parseFloat((lines[i].querySelector('.fill') || {}).style.width);
-  eq(w(0), 100, '★★ 選擇排序那一條滿格（它是最大的那個）');
-  ok(w(2) < 5 && w(3) < 5,
-     '★★ 兩條搜尋擠在最左邊（' + w(2).toFixed(1) + '%／' + w(3).toFixed(1) +
+
+  const w = (i, j) => parseFloat((mt(i)[j].querySelector('.fill') || {}).style.width);
+  eq(w(0, 0), 100, '★★ 選擇排序的「比較」滿格（它是最大的那個）');
+  ok(w(2, 0) < 5 && w(3, 0) < 5,
+     '★★ 兩條搜尋擠在最左邊（' + w(2, 0).toFixed(1) + '%／' + w(3, 0).toFixed(1) +
      '%）—— 那個對比就是這一段要給的');
   /* ⚠️ 最短的那一條不可以短到看不見：二元 7 次照比例是 0.14%，
      畫出來會是一條沒有寬度的線，學生會以為那一項沒有資料。 */
-  ok(w(3) >= 1, '★★ 但最短的那一條仍然看得見（實得 ' + w(3).toFixed(1) + '%）');
+  ok(w(3, 0) >= 1, '★★ 但最短的那一條仍然看得見（實得 ' + w(3, 0).toFixed(1) + '%）');
+  /* ★ 搬動也要看得出差距：選擇 2%、插入滿格 */
+  ok(w(0, 1) < 5, '★★ 選擇排序的「搬動」條很短（' + w(0, 1).toFixed(1) + '%）');
+
   /* 每一條要標出「這個數字是哪一關量到的」 */
   ok(lines.every(l => /第 \d/.test(l.querySelector('.src').textContent)),
      '★★ 每一條都標著它來自第幾關');

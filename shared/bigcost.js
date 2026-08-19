@@ -314,6 +314,24 @@
     '.bc-line .nm{font-weight:900;color:#334155}',
     '.bc-line .src{font-size:11px;font-weight:800;color:#6366f1;',
     '  background:#eef2ff;border-radius:9999px;padding:1px 8px}',
+    /* ── 一條「量」（比較／搬動）───────────────────────
+       ★ 老師 2026-08-18：「這裡就要加入搬移的成本概念了。」
+         排序要付兩種錢，兩條都要在回顧就看過 ——
+         不然結帳那一行「搬動費」是憑空冒出來的。 */
+    '.bc-mt{display:flex;align-items:center;gap:8px;margin-top:4px}',
+    '.bc-mt .k{flex:0 0 34px;font-size:11.5px;font-weight:900;color:#64748b}',
+    '.bc-mt .track{flex:1;position:relative;background:#f1f5f9;border-radius:6px;',
+    '  overflow:hidden;height:16px}',
+    '.bc-mt .fill{display:block;height:100%;border-radius:6px;transition:width .45s ease-out}',
+    '.bc-mt .fill.soft{position:absolute;left:0;top:0;bottom:0;opacity:.30}',
+    '.bc-mt .fill.hard{position:absolute;left:0;top:0;bottom:0}',
+    '.bc-mt .edge{position:absolute;top:0;bottom:0;width:2px;background:#fff;',
+    '  box-shadow:0 0 0 1px rgba(15,23,42,.25)}',
+    '.bc-mt .v{flex:0 0 auto;min-width:86px;text-align:right;font-size:14px;',
+    '  font-weight:900;color:#334155;font-family:ui-monospace,monospace}',
+    /* 搜尋沒有搬動 —— 那一格要**明講**，不是留白 */
+    '.bc-mt .no{flex:1;font-size:11.5px;color:#94a3b8;font-weight:700}',
+    '.bc-big .bc-mt .v{font-size:16px}',
     '.bc-line .lb2{display:flex;align-items:center;gap:9px}',
     '.bc-line .track{flex:1;background:#f1f5f9;border-radius:7px;overflow:hidden;height:22px}',
     '.bc-line .fill{display:block;height:100%;border-radius:7px;transition:width .45s ease-out}',
@@ -609,87 +627,79 @@
           而「排序漲 36 倍、二元只多 3 次」正是要他看的。 */
     function recapHTML() {
       var sortN = selCompares(n), seqN = seqWorst(n), binN = binWorst(n);
-      var mx = Math.max(sortN, seqN, binN);
-      var row = function (icon, name, from, val, color, note) {
-        /* ⚠️ 最小寬度給 1.2% —— 二元搜尋只有 7 次，
-           照比例算出來是 0.14%，畫出來會是一條看不見的線，
-           學生會以為那一項「沒有資料」。 */
-        var w = Math.max(1.2, val / mx * 100);
-        return '<div class="bc-line">' +
-          '<div class="lh"><span class="nm">' + icon + ' ' + name + '</span>' +
-          '<span class="src">' + from + '</span></div>' +
-          '<div class="lb2"><span class="track"><span class="fill" style="width:' + w +
-          '%;background:' + color + '"></span></span>' +
-          '<span class="vv">' + comma(val) + '</span></div>' +
-          '<div class="nt">' + note + '</div></div>';
-      };
-      /* ★★ 老師 2026-08-18：「排序成本不是還有插入排序？」——
-         對，而且漏掉它等於把第 7 關的結論丟掉。
-         ⚠️ 插入排序沒有**一個**數字，它是一段範圍（n−1 ～ n(n−1)/2）——
-            所以那一條畫成範圍條，不是一根實心的。
-            寫一個平均值會讓學生以為它也是固定的，那正好是這一關要打破的。 */
-      /* 一段**範圍**的條（插入排序用）。
-         ⚠️ 不可以只畫最壞或只畫平均：
-            「它有一段範圍」本身就是第 7 關的答案。
-         ⚠️⚠️ 老師 2026-08-18：「插入排序法的長條圖怎麼空白在前面？」
-            —— 第一版把它畫成**浮在中間的區段**（left: lo%），
-            於是最前面空一截，看起來像沒對齊。
-            而且那樣畫是**錯的**：成本是從 0 開始累加的，
-            浮在中間會讓人以為「它最少也要從那裡起跳」。
-         ⇒ 改成一條**從 0 開始**的兩段式：
-              實心那段 = 最好情況（一定要付的）
-              淡色那段 = 一路延伸到最壞情況（看資料長相）
-            交界處畫一條分隔線，看得出「這裡是最好情況」。 */
-      var rangeRow = function (icon, name, from, lo, hi, max, color, note) {
-        var l = Math.max(1.5, lo / max * 100);      // 最好情況（實心）
-        var h = Math.max(l + 1, hi / max * 100);    // 最壞情況（淡色的盡頭）
-        return '<div class="bc-line">' +
-          '<div class="lh"><span class="nm">' + icon + ' ' + name + '</span>' +
-          '<span class="src">' + from + '</span></div>' +
-          '<div class="lb2"><span class="track">' +
+      var insLo = insBest(n), insHi = insWorst(n);
+      var mvSel = selMoves(n), mvInsHi = insHi;    // 插入最壞：每一筆都一路挪
+      var mx = Math.max(sortN, seqN, binN, mvSel, mvInsHi);
+
+      /* 一條「量」：名字＋比例條＋數字。lo 有值就畫成範圍。 */
+      var meter = function (label, lo, hi, color, faint) {
+        if (hi == null) {
+          return '<div class="bc-mt"><span class="k">' + label + '</span>' +
+            '<span class="track"><span class="fill" style="width:' +
+            Math.max(1.2, lo / mx * 100) + '%;background:' + color +
+            (faint ? ';opacity:.55' : '') + '"></span></span>' +
+            '<span class="v">' + comma(lo) + '</span></div>';
+        }
+        var l = Math.max(1.5, lo / mx * 100), h = Math.max(l + 1, hi / mx * 100);
+        return '<div class="bc-mt"><span class="k">' + label + '</span>' +
+          '<span class="track">' +
           '<span class="fill soft" style="width:' + h + '%;background:' + color + '"></span>' +
           '<span class="fill hard" style="width:' + l + '%;background:' + color + '"></span>' +
-          '<span class="edge" style="left:' + l + '%"></span>' +
-          '</span>' +
-          '<span class="vv">' + comma(lo) + '～' + comma(hi) + '</span></div>' +
-          '<div class="nt">' + note + '</div></div>';
+          '<span class="edge" style="left:' + l + '%"></span></span>' +
+          '<span class="v">' + comma(lo) + '～' + comma(hi) + '</span></div>';
       };
-      var insLo = insBest(n), insHi = insWorst(n);
+      var block = function (icon, name, from, body, note) {
+        return '<div class="bc-line"><div class="lh">' +
+          '<span class="nm">' + icon + ' ' + name + '</span>' +
+          '<span class="src">' + from + '</span></div>' +
+          body + '<div class="nt">' + note + '</div></div>';
+      };
+
+      /* ★★ 老師 2026-08-18：「這裡就要加入搬移的成本概念了。」
+         ⚠️ 之前回顧只列比較次數，到了結帳才蹦出「搬動費」——
+            那是**憑空冒出來的一筆錢**，學生會覺得系統在硬拗。
+         ★ 排序要做**兩件事**：比較、搬動。兩件都要在這裡先看過一次。
+         ★ 而搜尋只「看」不搬 —— 那本身就是一句值得講的話，
+           也解釋了為什麼帳單上只有排序有搬動費。 */
       var out = sizesHTML() +
         '<div class="bc-lines"><div class="hd">同樣 <b>' + comma(n) +
-        '</b> 筆資料，要比幾次？</div>' +
-        row('🎯', '選擇排序法', '第 6 關', sortN, '#f59e0b',
-            '不管資料長什麼樣都一樣 —— 這是它的固定價') +
-        rangeRow('🃏', '插入排序法', '第 7 關', insLo, insHi, mx, '#a855f7',
-                 '看資料本來長什麼樣：已經接近排好只要 ' + comma(insLo) +
-                 ' 次，完全相反才要 ' + comma(insHi) + ' 次') +
-        row('🚶', '循序搜尋（最壞）', '第 8 關', seqN, '#0ea5e9',
-            '每查一次都要付這麼多') +
-        row('✂️', '二元搜尋（最壞）', '第 9 關', binN, '#22c55e',
-            '每查一次只要這麼多 —— 但資料得先排好') +
+        '</b> 筆資料：要<b>比</b>幾次？要<b>搬</b>幾次？</div>' +
+        block('🎯', '選擇排序法', '第 6 關',
+          meter('比較', sortN, null, '#f59e0b') +
+          meter('搬動', mvSel, null, '#f59e0b', true),
+          '不管資料長什麼樣，比較都是這個數；而且<b>每一回合只搬一次</b>') +
+        block('🃏', '插入排序法', '第 7 關',
+          meter('比較', insLo, insHi, '#a855f7') +
+          meter('搬動', 0, mvInsHi, '#a855f7'),
+          '看資料本來長什麼樣：接近排好幾乎不用搬；' +
+          '完全相反的話<b>每插一張牌，前面的全要往右挪</b>') +
+        block('🚶', '循序搜尋（最壞）', '第 8 關',
+          meter('比較', seqN, null, '#0ea5e9') +
+          '<div class="bc-mt none"><span class="k">搬動</span>' +
+          '<span class="no">搜尋只是「看」，不會搬資料</span></div>',
+          '每查一次都要付這麼多') +
+        block('✂️', '二元搜尋（最壞）', '第 9 關',
+          meter('比較', binN, null, '#22c55e') +
+          '<div class="bc-mt none"><span class="k">搬動</span>' +
+          '<span class="no">同上 —— 0 次</span></div>',
+          '每查一次只要這麼多 —— 但資料得先排好') +
         '</div>' +
-        '<div class="bc-ask">⚠️ ' + hl('排序那一條長到看不完') +
-        '，另外兩條擠在最左邊。' +
-        /* ⚠️ 兩條搜尋被壓到看不出差別 —— 600 筆時 600 對 10 也還是兩條短線。
-           ★ 不要為了「畫得出來」去動比例尺（那會讓排序那條的震撼消失）；
-             改成**把被壓掉的那個差距用字講出來**。
-             這一段要傳達的是「排序 ≫ 搜尋」，而不是「循序 ≈ 二元」。 */
+        '<div class="bc-ask">⚠️ ' + hl('排序那兩條長到看不完') +
+        '，兩條搜尋擠在最左邊。' +
         '<br>（那兩條其實差 ' + hlb(comma(Math.round(seqN / binN)) + ' 倍') +
         '，只是和排序比起來都太短了 —— <b>那正是重點</b>。）' +
-        '<br>可是<b>二元搜尋非得先排好不可</b> —— ' +
-        '那條最長的，就是它的入場費。' +
+        '<br>★ 而且排序要付<b>兩種</b>錢：' + hl('比較') + '和' + hl('搬動') +
+        ' —— 兩種排序法在這兩欄上剛好<b>相反</b>。' +
         '<br><span style="font-size:12px;color:#94a3b8">' +
-        '這三個數字你在「動手試一次」都量過，這裡只是擺在一起。</span></div>';
+        '這些數字你在「動手試一次」都量過，這裡只是擺在一起。</span></div>';
 
-      /* ★★ 切了資料量就要看得到「變了多少」——
-         這一段的重點不是三個數字，是它們**長大的速度不一樣**。 */
       out += growHTML();
 
       var left = SIZES.filter(function (v) { return !seen[v]; });
       out += left.length
         ? '<div class="bc-msg info">還有 ' +
           left.map(function (v) { return comma(v) + ' 筆'; }).join('、') +
-          ' 沒看過 —— 切過去，看那三條長度怎麼變。</div>'
+          ' 沒看過 —— 切過去，看那幾條長度怎麼變。</div>'
         : goBox('🧾 開始結帳', '三種資料量都看過了。' +
             '現在用這些數字算一筆你沒算過的帳：<b>到底要不要先排序？</b>', 'recapdone');
       return out;
@@ -712,7 +722,14 @@
         '<br>· 循序搜尋 ' + comma(seqWorst(pv)) + ' → ' + comma(seqWorst(n)) +
         '　' + f(seqWorst(pv), seqWorst(n)) +
         '<br>· 二元搜尋 ' + binWorst(pv) + ' → ' + binWorst(n) +
-        '　' + hl(f(binWorst(pv), binWorst(n))) + '</div>';
+        '　' + hl(f(binWorst(pv), binWorst(n))) +
+        /* ★ 搬動也要看得到長大的速度 ——
+           選擇排序的搬動只跟著 n 走（線性），插入排序跟著 n² 走。
+           那正是結帳那一段「搬動費」的伏筆。 */
+        '<br>· 搬動（選擇）' + comma(selMoves(pv)) + ' → ' + comma(selMoves(n)) +
+        '　' + f(selMoves(pv), selMoves(n)) +
+        '<br>· 搬動（插入·最壞）' + comma(insWorst(pv)) + ' → ' + comma(insWorst(n)) +
+        '　' + hl(f(insWorst(pv), insWorst(n))) + '</div>';
     }
 
     /* ── 結帳：兩張收據 ────────────────────────────────
