@@ -679,6 +679,18 @@
   function paintBadges() {
     if (!window.REPORT) return Promise.resolve();
     return window.REPORT.get(C.moduleId).then(function (mod) {
+      /* ★ 2026-08-19 老師回報：「小卡顯示三星，點進去卻沒看到那一個單元獲得？」
+         2026-08-11 以前的舊章節測驗頁只寫 stars，沒有寫 units
+         （「哪一章過了」存在另一個集合，用班級座號姓名比對）。
+         hub 讀 stars 有三顆、這裡讀 units 是空的，兩邊各說各話。
+         ⇒ 先試著從 history 把 units 補回來（見 report.js 的 backfillUnits）。 */
+      var u0 = (mod && mod.units) || {};
+      if (Object.keys(u0).length || !mod || !(mod.stars > 0)) return mod;
+      if (!window.REPORT.backfillUnits || !window.GRADING) return mod;
+      return window.REPORT.backfillUnits(C.moduleId, window.GRADING.ethicsStar)
+        .then(function (fixed) { return fixed || mod; })
+        .catch(function (e) { console.error('補回章節明細失敗', e); return mod; });
+    }).then(function (mod) {
       var units = (mod && mod.units) || {}, done = 0;
       document.querySelectorAll('.qz-open').forEach(function (btn) {
         var id = btn.getAttribute('data-ch');
@@ -696,9 +708,17 @@
       });
       var info = $('chapter-progress');
       if (info) {
+        var st = (mod && mod.stars) || 0;
+        /* ⚠️ 有星星卻一個章節都對不上 —— 連 history 都救不回來的舊資料。
+           這時候**不可以**說「還沒有通關的章節」：那和小卡上的星數互相打臉，
+           學生會以為成績不見了。照實說：星數還在，明細找不到。 */
         info.innerHTML = done
-          ? '已通關 <span class="hl-b">' + done + '</span> / ' + ORDER.length + ' 個章節，累積 <span class="text-amber-500 font-black">⭐ ' + ((mod && mod.stars) || 0) + '</span>'
-          : '還沒有通關的章節，挑一個開始吧！';
+          ? '已通關 <span class="hl-b">' + done + '</span> / ' + ORDER.length + ' 個章節，累積 <span class="text-amber-500 font-black">⭐ ' + st + '</span>'
+          : (st > 0
+             ? '你已經有 <span class="text-amber-500 font-black">⭐ ' + st + '</span>，'
+               + '但這些是<b>舊版</b>留下的紀錄，查不到是哪幾章 —— '
+               + '<span class="hl">星數不會消失</span>，重做任何一章就會重新標記。'
+             : '還沒有通關的章節，挑一個開始吧！');
       }
     }).catch(function (e) { console.error('讀取進度失敗', e); });
   }

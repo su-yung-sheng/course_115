@@ -224,9 +224,84 @@
     var cur = await readDoc();
     return (cur.history || [])
       .filter(function (h) {
-        return h.module === moduleId && (unitId === undefined || h.unit === unitId);
+        return h.module === moduleId && (unitId === undefined || unitOf(h) === unitId);
       })
       .sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+  }
+
+  /* ── 舊資料相容 ───────────────────────────────────────────
+     ★ 2026-08-19 老師回報：「11501 資訊倫理學習系統小卡顯示三星，
+       點進去卻沒看到那一個單元獲得？」
+
+     ⚠️ 病根：2026-08-11 以前的舊章節測驗頁
+        （_archive/2026-08-11-舊版章節測驗頁/11501_cyberethics.html）
+        寫進 11501-progress 的是
+
+          modules.ethics = { status, score, stars, level, source, updatedAt }
+
+        **沒有 units**。「哪一章過了」它存在另一個集合 quiz_records，
+        而且是用「班級＋座號＋姓名」比對，不是用學號。
+        新的 quiz-engine 只認 modules.{id}.units ——
+        於是 hub 讀 stars（有 3 顆）、章節頁讀 units（空的），
+        兩邊各說各話。
+
+     ★ 幸好章節資訊沒有全丟：history 那一筆帶著 chapter。
+       欄位名不同（舊 chapter／新 unit），所以上面 unitOf() 兩個都認。 */
+  function unitOf(h) { return h && (h.unit || h.chapter); }
+
+  /**
+   * 從 history 把 units 補回來（只在 units 是空的時候做）。
+   * @param {string}   moduleId
+   * @param {Function} starOf  分數 → 星數（由呼叫端給，例如 GRADING.ethicsStar）
+   * @returns {Promise<Object|null>} 補完的模組資料；沒東西可補則回 null
+   */
+  async function backfillUnits(moduleId, starOf) {
+    if (!ready() || typeof starOf !== 'function') return null;
+    var cur = await readDoc();
+    var mod = (cur.modules && cur.modules[moduleId]) || {};
+    if (mod.units && Object.keys(mod.units).length) return mod;   // 有就不要動
+
+    /* ⚠️ 這裡**只能用 score 重算星數，不可以抄 history 的 stars**。
+       舊頁面那個欄位存的是「這次比上次多拿幾顆」（變數就叫 gained），
+       同一章重考第二次通常是 0 —— 直接抄會把三星章節記成 0 星。
+       這種欄位最危險：名字對、型別對、數字看起來也很合理。 */
+    var best = {};
+    (cur.history || []).forEach(function (h) {
+      if (h.module !== moduleId) return;
+      var id = unitOf(h);
+      if (!id) return;
+      var sc = Number(h.score) || 0;
+      if (!(id in best) || sc > best[id]) best[id] = sc;
+    });
+
+    var ids = Object.keys(best);
+    if (!ids.length) return null;              // 連 history 都沒有，救不回來
+
+    var units = {}, total = 0, done = 0, sumScore = 0;
+    ids.forEach(function (id) {
+      var st = Number(starOf(best[id])) || 0;
+      units[id] = { star: st, score: best[id] };
+      total += st; sumScore += best[id];
+      if (st > 0) done++;
+    });
+
+    /* ⚠️ 星數只准往上，不准往下。
+       history 有長度上限（HISTORY_CAP），而且是後來才開始寫的 ——
+       它不是完整的歷史，重算出來的總星數**可能比實際少**。
+       學生看到星星變少會以為系統把成績吃掉了，那比「明細不全」嚴重得多。
+       ⇒ 補 units 是為了讓畫面對得起來，不是為了重新打分數。 */
+    var cap  = MAX[moduleId] || 3;
+    var keep = Number(mod.stars) || 0;
+    var need = UNITS_TOTAL[moduleId] || 1;
+
+    return write(moduleId, {
+      units:  units,
+      level:  Math.max(Number(mod.level) || 0, done),
+      total:  need,
+      stars:  Math.max(keep, Math.min(total, cap)),
+      score:  done ? Math.round(sumScore / done) : (Number(mod.score) || 0),
+      backfilled: true          // ← 留個記號，之後查資料看得出來這是補的
+    });
   }
 
   global.REPORT = {
@@ -236,6 +311,7 @@
     qstat: qstat,
     get: get,
     history: history,
+    backfillUnits: backfillUnits,
     MAX: MAX,
     UNITS_TOTAL: UNITS_TOTAL,
     COLLECTION: COL
