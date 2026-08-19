@@ -106,6 +106,49 @@
        那才是這一章真正要學生帶走的東西：**選對方法，門檻會整個垮下來**。
      ⚠️ 不要拆成「排序法 × 資料長相」兩個軸：選擇排序的三種長相答案都一樣，
         學生會覺得白選一次（老師也是這樣判斷的）。 */
+  /* ── 搬動次數：帳單漏掉的另一半 ─────────────────────
+     ★★ 老師 2026-08-18：「但是以數字來說還是最大，這很難令人信服，
+       次數之外還有什麼背後的成本考量？不然學生會說都用插入排序就好了。」
+     ⚠️ 老師是對的，而且「保證價」那個說法**站不住**：
+        選擇排序保證 4,950，而插入排序**最壞也才** 4,950 ——
+        同樣的價錢卻常常更便宜，那當然是「都用插入排序就好」。
+        ★ 病根是帳單只算了**比較**。
+     ★ 漏掉的是**搬動**（把資料真的搬來搬去）：
+         選擇排序　每一回合只搬一次　→ 最多 n−1 次
+         插入排序　每插一張牌，前面比它大的**全部往右挪一格**
+                   → 很亂時約 n²/4、完全相反時 n(n−1)/2
+       100 筆很亂的資料實測：選擇搬 95 次、插入搬 2,483 次 —— **差 26 倍**。
+     ★ 而「搬一次有多貴」看資料本身有多大：
+         一個數字　→ 搬一次和比一次差不多
+         一整張照片→ 搬一次貴得多（要把整份資料複製過去）
+       ⇒ 這就是選擇排序真正存在的理由，也是課本層級的正確答案。
+     ⚠️ 搬動次數用**公式**，不是實測：
+        實測每次都不一樣，學生沒辦法對答案（和排序費同一個道理）。 */
+
+  /** 選擇排序的搬動次數：每一回合最多搬一次 */
+  function selMoves(n) { return Math.max(0, n - 1); }
+  /** 插入排序的搬動次數（跟著情境跑） */
+  function insMovesRand(n) { return Math.round(selCompares(n) / 2); }  // 約 n²/4
+  function insMovesSorted(n) { return 0; }                             // 已經排好就不用搬
+
+  /* 「搬一次」相當於「比幾次」——
+     ★ 這個倍率就是「一筆資料有多大」。
+     ⚠️ 10 倍不是隨便取的：整數比較是一個指令，
+        而搬一張照片要把好幾 MB 複製過去 —— 真實差距遠大於 10 倍，
+        這裡取一個學生算得動、又足以翻盤的數。 */
+  var SIZE_KINDS = [
+    { key: 'num', icon: '🔢', name: '一個數字', mul: 1,
+      sub: '搬一次和比一次差不多' },
+    { key: 'photo', icon: '🖼️', name: '一整張照片', mul: 10,
+      sub: '搬一次要複製好幾 MB —— 抵得上比 10 次' }
+  ];
+  function mulOf(key) {
+    for (var i = 0; i < SIZE_KINDS.length; i++) {
+      if (SIZE_KINDS[i].key === key) return SIZE_KINDS[i].mul;
+    }
+    return 1;
+  }
+
   /* ⚠️⚠️ 老師 2026-08-18 再問：「如果選擇排序法都是相同金額，
      為什麼要選這個選項？學生會有疑問吧？」—— 說得對，而且是**設計錯了**。
      ★ 前一版把三個選項寫成「你要用哪一種排序法」，
@@ -121,37 +164,50 @@
        國中生用「保證」兩個字就懂。 */
   var PLANS = [
     { key: 'sel', icon: '🎯', name: '資料很亂 · 用選擇排序法',
-      tag: '保證價',
-      sub: '不管資料多亂都是這個數 —— <b>不會更糟</b>，你事先就知道要付多少',
-      fee: function (n) { return selCompares(n); } },
+      tag: '很少搬動',
+      sub: '比較次數最多，但<b>每一回合只搬一次</b> —— 搬動只有 {moves} 次',
+      fee: function (n) { return selCompares(n); },
+      moves: selMoves },
     { key: 'insRand', icon: '🃏', name: '資料很亂 · 用插入排序法',
-      tag: '看運氣',
-      sub: '平均大約是選擇排序的一半，但<b>最壞會到 {worst} 次</b>（資料剛好完全相反的時候）',
+      tag: '比較少但搬很多',
+      sub: '比較次數大約少一半，但每插一張牌都要把前面的<b>往右挪</b> —— 搬動 {moves} 次',
       /* ⚠️ 用 n(n−1)/4，不是真的去跑一次 ——
          這裡要的是**一個學生算得出來的數**（「大約一半」），
          而不是某一次隨機資料的實測值（每次都不一樣，沒辦法對答案）。 */
-      fee: function (n) { return Math.round(selCompares(n) / 2); } },
+      fee: function (n) { return Math.round(selCompares(n) / 2); },
+      moves: insMovesRand },
     { key: 'insSorted', icon: '🃏', name: '資料本來就接近排好 · 用插入排序法',
       tag: '最省',
-      sub: '每一筆只要比一次就找到位置。⚠️ 前提是資料<b>真的</b>接近排好 —— 這不是你能選的，是資料本來就長那樣',
-      fee: function (n) { return insBest(n); } }
+      sub: '比一次就找到位置，而且<b>幾乎不用搬</b>。⚠️ 前提是資料<b>真的</b>接近排好 —— 這不是你能選的',
+      fee: function (n) { return insBest(n); },
+      moves: insMovesSorted }
   ];
   function planOf(key) {
     for (var i = 0; i < PLANS.length; i++) if (PLANS[i].key === key) return PLANS[i];
     return PLANS[0];
   }
-  /** 這個方案的排序費 */
+  /** 這個方案的**比較**次數 */
   function feeOf(n, key) { return planOf(key).fee(n); }
-  /** 先排序的總成本（排序費由方案決定） */
-  function costSortedBy(n, k, key) { return feeOf(n, key) + k * binWorst(n); }
+  /** 這個方案的**搬動**次數 */
+  function movesOf(n, key) { return planOf(key).moves(n); }
+  /** 排序的總成本＝比較 ＋ 搬動 × 一筆資料有多大 */
+  function sortCost(n, key, sizeKind) {
+    return feeOf(n, key) + movesOf(n, key) * mulOf(sizeKind);
+  }
+  /** 先排序的總成本（排序費由方案與資料大小決定） */
+  function costSortedBy(n, k, key, sizeKind) {
+    return sortCost(n, key, sizeKind) + k * binWorst(n);
+  }
   /** 哪一種划算（跟著方案跑） */
-  function betterBy(n, k, key) {
-    var a = costPlain(n, k), b = costSortedBy(n, k, key);
+  function betterBy(n, k, key, sizeKind) {
+    var a = costPlain(n, k), b = costSortedBy(n, k, key, sizeKind);
     return a < b ? 'plain' : (b < a ? 'sorted' : 'same');
   }
   /** 這個方案的分界點 */
-  function breakEvenBy(n, key) {
-    for (var k = 1; k <= 1000000; k++) if (betterBy(n, k, key) === 'sorted') return k;
+  function breakEvenBy(n, key, sizeKind) {
+    for (var k = 1; k <= 1000000; k++) {
+      if (betterBy(n, k, key, sizeKind) === 'sorted') return k;
+    }
     return -1;
   }
 
@@ -304,7 +360,20 @@
     '.bc-plans .nm{font-size:14px;font-weight:900;color:#334155}',
     '.bc-plans .fee{font-size:19px;font-weight:900;color:#b45309;',
     '  font-family:ui-monospace,monospace}',
+    '.bc-plans .cnt{font-size:11.5px;font-weight:800;color:#64748b;',
+    '  font-family:ui-monospace,monospace}',
     '.bc-plans .sub{font-size:11.5px;color:#94a3b8;line-height:1.6}',
+    /* ── 一筆資料有多大（老師 2026-08-18：「次數之外還有什麼成本」）──
+       ★ 切到照片，搬動變貴，選擇排序當場翻盤。 */
+    '.bc-kind{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:11px;',
+    '  background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:7px 10px}',
+    '.bc-kind .lb{font-size:12px;font-weight:800;color:#475569}',
+    '.bc-kind button{background:#fff;border:2px solid #cbd5e1;border-radius:9px;',
+    '  padding:5px 12px;font-size:13px;font-weight:800;color:#334155;cursor:pointer;',
+    '  font-family:inherit}',
+    '.bc-kind button:hover{border-color:#6366f1;background:#eef2ff}',
+    '.bc-kind button.on{background:#334155;border-color:#334155;color:#fff}',
+    '.bc-kind .tip{font-size:11.5px;font-weight:700;color:#94a3b8}',
     '.bc-plans .sub b{color:#64748b}',
     /* 小標：保證價／看運氣／最省 —— 一眼看出「它為什麼存在」 */
     '.bc-plans .tag{font-size:10px;font-weight:900;margin-left:6px;vertical-align:middle;',
@@ -406,6 +475,10 @@
     /* 結帳：學生選的排序方案（null＝還沒選）。
        ★ 老師 2026-08-18：「先讓學生選擇後再出現帳單比對」。 */
     var pick = null;
+    /* 一筆資料有多大（決定「搬一次」值幾次比較）。
+       ★ 老師 2026-08-18：「次數之外還有什麼背後的成本考量？」
+         —— 就是這個。切到照片，選擇排序當場翻盤。 */
+    var sizeKind = 'num';
 
     function step() { return STEPS[at]; }
     function allDone() { return STEPS.every(function (s) { return cleared[s.key]; }); }
@@ -667,6 +740,13 @@
          選完之後那張帳單才是**他自己的**帳單。 */
     function pickHTML() {
       return sizesHTML() +
+        '<div class="bc-kind"><span class="lb">一筆資料是</span>' +
+        SIZE_KINDS.map(function (sk) {
+          return '<button data-kind="' + sk.key + '"' +
+                 (sk.key === sizeKind ? ' class="on"' : '') + '>' +
+                 sk.icon + ' ' + sk.name + '</button>';
+        }).join('') +
+        '<span class="tip">搬一次 ≈ 比 ' + mulOf(sizeKind) + ' 次</span></div>' +
         '<div class="bc-ask">先決定一件事：這批 <b>' + comma(n) +
         '</b> 筆資料，<b>你手上的是哪一種情況</b>？' +
         '<br>⚠️ ' + hl('這不是「挑最便宜的」') +
@@ -678,33 +758,49 @@
           return '<button data-pick="' + p.key + '">' +
             '<span class="nm">' + p.icon + ' ' + p.name +
             '<span class="tag">' + p.tag + '</span></span>' +
-            '<span class="fee">排序費 ' + comma(p.fee(n)) + '</span>' +
+            '<span class="fee">排序費 ' + comma(sortCost(n, p.key, sizeKind)) + '</span>' +
+            '<span class="cnt">比較 ' + comma(p.fee(n)) + '　搬動 ' +
+            comma(p.moves(n)) + '</span>' +
             '<span class="sub">' +
-            p.sub.replace('{worst}', comma(selCompares(n))) + '</span></button>';
+            p.sub.replace('{worst}', comma(selCompares(n)))
+                 .replace('{moves}', comma(p.moves(n))) + '</span></button>';
         }).join('') + '</div>';
     }
 
     function planHTML() {
       if (!pick) return pickHTML();
       var kk = planK || 1;
-      var sortFee = feeOf(n, pick);          // 排序費：只付一次，跟著方案跑
+      var cmpFee = feeOf(n, pick);           // 排序：比較幾次
+      var mvCnt = movesOf(n, pick);          // 排序：搬動幾次
+      var mul = mulOf(sizeKind);             // 搬一次 = 比幾次
+      var mvFee = mvCnt * mul;
       var perPlain = seqWorst(n);            // 不排序：每查一次的價錢
       var perSorted = binWorst(n);           // 先排序：每查一次的價錢
       var totPlain = costPlain(n, kk);
-      var totSorted = costSortedBy(n, kk, pick);
-      var side = betterBy(n, kk, pick);
+      var totSorted = costSortedBy(n, kk, pick, sizeKind);
+      var side = betterBy(n, kk, pick, sizeKind);
 
-      var bill = function (cls, name, fee, per, tot, win) {
+      /* ⚠️ 帳單要**兩行排序費**（老師 2026-08-18）：
+         只算比較的話，插入排序永遠不比選擇排序差 ——
+         那學生當然會說「都用插入排序就好」。
+         搬動那一行才是選擇排序存在的理由。 */
+      var bill = function (cls, name, sorting, per, tot, win) {
         return '<div class="bc-bill ' + cls + (win ? ' win' : '') + '">' +
-          '<div class="bh">' + name + '</div>' +
-          '<div class="br"><span>排序費</span><span>' +
-            (fee ? comma(fee) : '0') + '</span></div>' +
-          '<div class="bn">' + (fee ? '只付一次' : '不用排序') + '</div>' +
+          '<div class="bh">' + name + '</div>' + sorting +
           '<div class="br"><span>查詢費</span><span>' + comma(per * kk) + '</span></div>' +
           '<div class="bn">一次 ' + comma(per) + ' × ' + comma(kk) + ' 次</div>' +
           '<div class="br tot"><span>總計</span><span>' + comma(tot) + '</span></div>' +
           '<div class="bw">' + (win ? '✅ 比較便宜' : '　') + '</div></div>';
       };
+      var noSort =
+        '<div class="br"><span>排序費</span><span>0</span></div>' +
+        '<div class="bn">不用排序</div>';
+      var withSort =
+        '<div class="br"><span>排序 · 比較</span><span>' + comma(cmpFee) + '</span></div>' +
+        '<div class="bn">只付一次</div>' +
+        '<div class="br"><span>排序 · 搬動</span><span>' + comma(mvFee) + '</span></div>' +
+        '<div class="bn">搬 ' + comma(mvCnt) + ' 次 × ' + mul + '（' +
+        (mul > 1 ? '照片搬一次抵比 ' + mul + ' 次' : '數字搬一次≈比一次') + '）</div>';
 
       /* ⚠️ 加幾次的按鈕要跨好幾個量級 —— 只有 ＋1 的話，
          100 筆要按五十幾下才看得到換邊，那不是體驗是懲罰。
@@ -723,7 +819,7 @@
            而且把「還差幾次」現算出來 —— 有數字在跳，就不是亂按。
          ⚠️ 不要直接把分界點寫出來（那是最後一題的答案）——
             只講「還差幾次」，他自己按到 0 的時候就知道答案了。 */
-      var be = breakEvenBy(n, pick);
+      var be = breakEvenBy(n, pick, sizeKind);
       var left = Math.max(0, be - kk);
       var goalBar = won.sorted
         ? '<div class="bc-goal done">🎯 目標達成！你已經看過<b>兩邊各贏一次</b> —— ' +
@@ -740,7 +836,22 @@
               所以打勾了、畫面卻沒換 —— 看起來像「按鈕沒反應」。 */
       var suggest = left >= 100 ? 100 : (left >= 10 ? 10 : 1);
 
-      return sizesHTML() + goalBar +
+      /* ── 一筆資料有多大（老師 2026-08-18）─────────────
+         ★ 「次數之外還有什麼成本」的答案就在這一排。
+           切到照片，搬動變貴，選擇排序當場翻盤 ——
+           ⚠️ **看得到的翻盤**比一句「資料很大時搬動比較貴」有用得多。 */
+      var sizeBar = '<div class="bc-kind"><span class="lb">一筆資料是</span>' +
+        SIZE_KINDS.map(function (sk) {
+          return '<button data-kind="' + sk.key + '"' +
+                 (sk.key === sizeKind ? ' class="on"' : '') + '>' +
+                 sk.icon + ' ' + sk.name + '</button>';
+        }).join('') +
+        '<span class="tip">' +
+        (mulOf(sizeKind) > 1
+          ? '搬一次 ≈ 比 ' + mulOf(sizeKind) + ' 次'
+          : '搬一次 ≈ 比 1 次') + '</span></div>';
+
+      return sizesHTML() + sizeBar + goalBar +
         '<div class="bc-kbar"><span class="lb">你要查 <b>' + comma(kk) + '</b> 次</span>' +
         STEPS_K.map(function (v) {
           var hint = (!won.sorted && v === suggest);
@@ -750,8 +861,8 @@
         '<button data-add="reset" class="ghost">↺ 回到 1 次</button>' +
         '<button data-pick="" class="ghost">🔄 換一種排序方式</button></div>' +
         '<div class="bc-bills">' +
-          bill('plain', '🚶 不排序，每次循序找', 0, perPlain, totPlain, side === 'plain') +
-          bill('sorted', planOf(pick).icon + ' 先排序，之後二元找', sortFee, perSorted, totSorted, side === 'sorted') +
+          bill('plain', '🚶 不排序，每次循序找', noSort, perPlain, totPlain, side === 'plain') +
+          bill('sorted', planOf(pick).icon + ' 先排序，之後二元找', withSort, perSorted, totSorted, side === 'sorted') +
         '</div>' +
         '<div class="bc-ask">' + planSay(kk, side, totPlain, totSorted) + '</div>';
     }
@@ -857,6 +968,9 @@
       [].forEach.call(host.querySelectorAll('[data-pick]'), function (el) {
         el.onclick = function () { act('pick:' + el.dataset.pick); };
       });
+      [].forEach.call(host.querySelectorAll('[data-kind]'), function (el) {
+        el.onclick = function () { act('kind:' + el.dataset.kind); };
+      });
       [].forEach.call(host.querySelectorAll('[data-a]'), function (el) {
         el.onclick = function () { act(el.dataset.a); };
       });
@@ -911,6 +1025,31 @@
           }[pick];
           say('good', '選好了：<b>' + planOf(pick).name + '</b>，排序費 ' +
                       hlb(comma(feeOf(n, pick))) + ' 次（只付一次）。<br>' + why);
+        } else { msg = ''; render(); }
+        return;
+      }
+
+      /* ── 結帳：換「一筆資料有多大」───────────────────
+         ⚠️ 換了之後分界點會跑（100 筆插入排序：54 → 293 次），
+            所以按到的次數與結論要重來 —— 不然是拿舊帳單配新價目表。 */
+      if (key === 'plan' && a && a.indexOf('kind:') === 0) {
+        sizeKind = a.slice(5);
+        planK = 1; won = {}; msgShownFlip = false; guess = null;
+        cleared.plan = false;
+        if (pick) {
+          var s1 = betterBy(n, 1, pick, sizeKind);
+          if (s1 === 'plain' || s1 === 'sorted') won[s1] = true;
+          var cheap = PLANS.map(function (p) {
+            return { k: p.key, c: sortCost(n, p.key, sizeKind) };
+          }).sort(function (a2, b2) { return a2.c - b2.c; })[0];
+          say('good', '換成<b>' + (mulOf(sizeKind) > 1 ? '一整張照片' : '一個數字') +
+              '</b>：搬一次抵比 ' + mulOf(sizeKind) + ' 次。' +
+              '<br>你這個方案的排序費變成 ' + hlb(comma(sortCost(n, pick, sizeKind))) +
+              ' 次。' +
+              (mulOf(sizeKind) > 1
+                ? '<br>★ ' + hl('搬動一變貴，最省的就換人了') + ' —— ' +
+                  '現在最便宜的是「' + planOf(cheap.k).name + '」。'
+                : ''));
         } else { msg = ''; render(); }
         return;
       }
@@ -1008,6 +1147,10 @@
     better: better,
     breakEven: breakEven,
     PLANS: PLANS,
+    SIZE_KINDS: SIZE_KINDS,
+    selMoves: selMoves,
+    movesOf: movesOf,
+    sortCost: sortCost,
     feeOf: feeOf,
     costSortedBy: costSortedBy,
     betterBy: betterBy,
