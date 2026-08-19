@@ -106,6 +106,33 @@ service cloud.firestore {
           && request.auth.token.email == 'qfm' + sid + DOMAIN();
     }
 
+    /* 這個學號在不在名冊裡。
+       ---------------------------------------------------------------
+       ★ 2026-08-19 老師問：「禁止不在名單內的使用者登入是無法實現？」
+         —— 做得到，但位置在**這裡**，不是前端。
+
+         hub.html 登入時本來就會查名冊、查不到就登出，可是那是前端：
+         學號存在 sessionStorage，按 F12 塞一個進去、直接開關卡頁，
+         guard.js 只看「有沒有 14 開頭的 7 碼」，就進得去了。
+         而規則這一層原本只問 isOwner(sid)（email 對得上學號），
+         也不看名冊 —— 於是任何一個學校 Google 帳號都寫得動自己那份進度。
+
+         ⇒ 把「名冊裡有這個人」變成寫入條件，才是真的擋住。
+           前端擋的是「走錯」，規則擋的是「硬闖」。
+
+       ★ 名冊是**跨學期共用**的 /roster/{學號}（2026-07-29 合併，
+         不是 {學期}-roster —— 那兩個是等著刪的舊集合）。
+
+       ⚠️ 代價一：exists() 是一次真正的文件讀取，每一次進度寫入都多一次
+          （算進免費額度的每日讀取量）。一堂課一個班大約多幾百次，還好。
+       ⚠️ 代價二：**名冊沒建好，全班就寫不進去**（permission-denied）。
+          症狀和「規則沒發布」長得一模一樣，都是主控台一行紅字。
+          所以開學前的順序是：先建名冊 → 再讓學生登入。
+          06_上線檢查表 那一條「名冊有全班學號」從此不是建議，是硬相依。 */
+    function inRoster(sid) {
+      return exists(/databases/$(database)/documents/roster/$(sid));
+    }
+
     /* ===== 學期鎖 =====
        學生只能寫「當學期」的進度。這是真正的防線 ——
        request.time 是伺服器時間，改前端、改電腦時鐘都繞不過去。
@@ -249,10 +276,10 @@ service cloud.firestore {
          兩條都要通過學期鎖；老師與測試帳號不受限。
          全面切換到 Google 之後，把 ② 整段刪掉，防呆條件也可以一起拿掉。 */
       allow create: if isTeacher()
-                    || (isOwner(sid) && bonusEmpty()
+                    || (isOwner(sid) && inRoster(sid) && bonusEmpty()
                         && (beforeSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
-                    || (isOwner(sid) && bonusUnchanged()
+                    || (isOwner(sid) && inRoster(sid) && bonusUnchanged()
                         && (beforeSpring() || isTestAccount(sid)));
 
       allow delete: if isTeacher();        // ❌ 避免有人清掉別人的成績
@@ -293,10 +320,10 @@ service cloud.firestore {
            ② 舊的匿名登入（動作幅度防呆）
          全面切換到 Google 之後，把 ② 整段刪掉。 */
       allow create: if isTeacher()
-                    || (isOwner(sid) && bonusEmpty()
+                    || (isOwner(sid) && inRoster(sid) && bonusEmpty()
                         && (afterSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
-                    || (isOwner(sid) && bonusUnchanged()
+                    || (isOwner(sid) && inRoster(sid) && bonusUnchanged()
                         && (afterSpring() || isTestAccount(sid)));
 
       allow delete: if isTeacher();

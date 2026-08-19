@@ -121,7 +121,37 @@ function block(name) {
   ok(new RegExp(lock + '\\(\\) \\|\\| isTestAccount\\(sid\\)').test(b),
      '   ' + col + ' 的學期鎖是 ' + lock + '()，測試帳號可以繞過');
   ok(/isOwner\(sid\)/.test(b), '   ' + col + ' 只有本人寫得動（isOwner）');
+
+  /* ★ 名冊＝寫入條件（2026-08-19）
+     老師問「禁止不在名單內的使用者登入是無法實現？」——
+     前端擋不住：學號存在 sessionStorage，按 F12 塞一個就進得去，
+     guard.js 只驗格式。isOwner() 也只問「email 對不對得上學號」，
+     所以任何一個學校 Google 帳號都寫得動自己那份進度。
+     這一條才是真的擋住的地方。 */
+  ok(/allow create:[\s\S]*?inRoster\(sid\)/.test(b),
+     '   ★ ' + col + ' 的 create 要 inRoster(sid)（不在名冊就建不了進度）');
+  ok(/allow update:[\s\S]*?inRoster\(sid\)/.test(b),
+     '   ★ ' + col + ' 的 update 也要 inRoster(sid)');
 });
+
+/* inRoster 指到的集合。
+   ⚠️ 這裡打錯字不會有錯誤訊息：規則照樣發布得上去，
+      只是 exists() 永遠是 false —— **全班都寫不進去**。
+   ★ 名冊是跨學期共用的 /roster（2026-07-29 合併）。
+      11501-roster / 11502-roster 是等著刪的舊集合，指過去等於全班卡住。
+   ⚠️ 只切函式本體來比對，不要對整份原始碼下判斷 ——
+      這份規則的註解裡就寫著那兩個舊集合名，
+      對整份檔案做「不可以出現 X」會被註解自己蓋掉（這個專案已經中過四次）。 */
+{
+  const m = CODE.match(/function inRoster\(sid\) \{([\s\S]*?)\}/);
+  ok(!!m, 'inRoster() 有函式本體（沒定義的話整份規則發布會編譯失敗）');
+  const body = (m && m[1]) || '';
+  ok(/exists\(/.test(body), '   用 exists() 判斷（不是 get().data）');
+  ok(/documents\/roster\/\$\(sid\)/.test(body),
+     '★ 指向跨學期共用的 /roster/{學號}');
+  ok(!/1150\d-roster/.test(body),
+     '★ 不可以指到 11501-roster／11502-roster —— 那是舊集合，指過去全班寫不進去');
+}
 
 /* imgUnits / vidUnits 的欄位名稱必須和 shared/grading.js 對得上。
    ⚠️ 這裡打錯字不會有任何錯誤訊息：規則照樣發布得上去，

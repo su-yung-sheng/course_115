@@ -489,8 +489,13 @@ AUTH.attachSession(auth, signInAnonymously, onAuthStateChanged)
 
 ```
 allow create: if isTeacher()
-              || (isOwner(sid) && (學期鎖 || isTestAccount(sid)));
+              || (isOwner(sid) && inRoster(sid) && (學期鎖 || isTestAccount(sid)));
 ```
+
+`inRoster(sid)` 是 2026-08-19 加的：名冊裡沒有這個學號就寫不進進度。
+前端（hub 登入時查名冊）擋的是「走錯」，這一條擋的是「按 F12 硬闖」。
+⚠️ 代價：**名冊沒建好 = 全班 permission-denied**，所以開學前一定是
+先建名冊、再讓學生登入。要封住一個帳號，把他從名冊移除就夠了。
 
 沒有第三條。`legacyAllowed`、`secret`、`session`、`hasCode`、
 以及匿名時代的「動作幅度」防呆（`starsNotReduced` 等）都已刪除 ——
