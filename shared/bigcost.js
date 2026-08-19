@@ -106,18 +106,34 @@
        那才是這一章真正要學生帶走的東西：**選對方法，門檻會整個垮下來**。
      ⚠️ 不要拆成「排序法 × 資料長相」兩個軸：選擇排序的三種長相答案都一樣，
         學生會覺得白選一次（老師也是這樣判斷的）。 */
+  /* ⚠️⚠️ 老師 2026-08-18 再問：「如果選擇排序法都是相同金額，
+     為什麼要選這個選項？學生會有疑問吧？」—— 說得對，而且是**設計錯了**。
+     ★ 前一版把三個選項寫成「你要用哪一種排序法」，
+       那就變成一道「挑最便宜的」的題目 ——
+       而選擇排序永遠最貴，於是它是一個**永遠不該選**的選項，
+       那個選擇本身就是假的。
+     ★ 真正的答案：**你不是在挑最便宜的，你是在看手上的資料長什麼樣**。
+       · 「資料已經接近排好」不是你能挑的，是資料本來就長那樣
+       · 插入排序在很亂的資料上是**平均** 2,475，最壞會到 4,950（看運氣）
+       · 選擇排序的價值是**可預測**：不管資料多爛都是 4,950，**不會更糟**
+     ⇒ 三個選項改寫成「你手上的資料是哪一種情況」，
+       而且把「保證價 vs 看運氣」講出來 —— 那是最壞情況與平均情況的差別，
+       國中生用「保證」兩個字就懂。 */
   var PLANS = [
-    { key: 'sel', icon: '🎯', name: '選擇排序法',
-      sub: '不管資料長什麼樣，都是這個數',
+    { key: 'sel', icon: '🎯', name: '資料很亂 · 用選擇排序法',
+      tag: '保證價',
+      sub: '不管資料多亂都是這個數 —— <b>不會更糟</b>，你事先就知道要付多少',
       fee: function (n) { return selCompares(n); } },
-    { key: 'insRand', icon: '🃏', name: '插入排序法 · 資料很亂',
-      sub: '平均大約是選擇排序的一半',
+    { key: 'insRand', icon: '🃏', name: '資料很亂 · 用插入排序法',
+      tag: '看運氣',
+      sub: '平均大約是選擇排序的一半，但<b>最壞會到 {worst} 次</b>（資料剛好完全相反的時候）',
       /* ⚠️ 用 n(n−1)/4，不是真的去跑一次 ——
          這裡要的是**一個學生算得出來的數**（「大約一半」），
          而不是某一次隨機資料的實測值（每次都不一樣，沒辦法對答案）。 */
       fee: function (n) { return Math.round(selCompares(n) / 2); } },
-    { key: 'insSorted', icon: '🃏', name: '插入排序法 · 資料已經接近排好',
-      sub: '每一筆只要比一次就找到位置',
+    { key: 'insSorted', icon: '🃏', name: '資料本來就接近排好 · 用插入排序法',
+      tag: '最省',
+      sub: '每一筆只要比一次就找到位置。⚠️ 前提是資料<b>真的</b>接近排好 —— 這不是你能選的，是資料本來就長那樣',
       fee: function (n) { return insBest(n); } }
   ];
   function planOf(key) {
@@ -289,6 +305,10 @@
     '.bc-plans .fee{font-size:19px;font-weight:900;color:#b45309;',
     '  font-family:ui-monospace,monospace}',
     '.bc-plans .sub{font-size:11.5px;color:#94a3b8;line-height:1.6}',
+    '.bc-plans .sub b{color:#64748b}',
+    /* 小標：保證價／看運氣／最省 —— 一眼看出「它為什麼存在」 */
+    '.bc-plans .tag{font-size:10px;font-weight:900;margin-left:6px;vertical-align:middle;',
+    '  border-radius:9999px;padding:2px 7px;background:#e0e7ff;color:#3730a3}',
     /* ── 範圍條（插入排序：它不是一個數字，是一段範圍）──────
        ⚠️ 老師 2026-08-18：「怎麼空白在前面？」——
           兩段都**從 0 起算**、疊在一起畫，前面就不會空。
@@ -648,14 +668,19 @@
     function pickHTML() {
       return sizesHTML() +
         '<div class="bc-ask">先決定一件事：這批 <b>' + comma(n) +
-        '</b> 筆資料，你要<b>用哪一種方式把它排好</b>？' +
+        '</b> 筆資料，<b>你手上的是哪一種情況</b>？' +
+        '<br>⚠️ ' + hl('這不是「挑最便宜的」') +
+        ' —— 你只能挑<b>符合你手上資料</b>的那一個。' +
         '<br><span style="font-size:12px;color:#94a3b8">' +
-        '⚠️ 選不同的方式，排序費差很多 —— 之後那張帳單就會不一樣。</span></div>' +
+        '★ 三個都是真的會遇到的情況，而排序費差很多 ——' +
+        '之後那張帳單就會不一樣。</span></div>' +
         '<div class="bc-plans">' + PLANS.map(function (p) {
           return '<button data-pick="' + p.key + '">' +
-            '<span class="nm">' + p.icon + ' ' + p.name + '</span>' +
+            '<span class="nm">' + p.icon + ' ' + p.name +
+            '<span class="tag">' + p.tag + '</span></span>' +
             '<span class="fee">排序費 ' + comma(p.fee(n)) + '</span>' +
-            '<span class="sub">' + p.sub + '</span></button>';
+            '<span class="sub">' +
+            p.sub.replace('{worst}', comma(selCompares(n))) + '</span></button>';
         }).join('') + '</div>';
     }
 
@@ -874,9 +899,18 @@
           if (s0 === 'plain' || s0 === 'sorted') won[s0] = true;
         }
         if (pick) {
+          /* ★ 每一個方案要回一句**它自己的**話 ——
+             同一句「選好了」三種情況都適用的話，那個選擇就白選了。 */
+          var why = {
+            sel: '★ 它最貴，但它是' + hl('保證價') + '：資料再亂也就是這個數。' +
+                 '<br>⚠️ 而插入排序運氣不好會到 ' + comma(selCompares(n)) + ' 次 —— 一樣貴。',
+            insRand: '★ 平均比選擇排序省一半，但這是' + hl('平均') + ' ——' +
+                     '資料剛好完全相反的話會到 ' + comma(selCompares(n)) + ' 次。',
+            insSorted: '★ 便宜得驚人 —— 但' + hl('前提是資料真的接近排好') + '。' +
+                       '<br>這不是你挑的，是你剛好拿到這種資料。'
+          }[pick];
           say('good', '選好了：<b>' + planOf(pick).name + '</b>，排序費 ' +
-                      hlb(comma(feeOf(n, pick))) + ' 次。' +
-                      '<br>★ 這筆錢<b>只付一次</b> —— 下面就來看它划不划算。');
+                      hlb(comma(feeOf(n, pick))) + ' 次（只付一次）。<br>' + why);
         } else { msg = ''; render(); }
         return;
       }
