@@ -970,7 +970,7 @@ render();
   import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
   /* ⚠️ deleteField 是重置那一支要用的（window.resetLevel）——
      忘了 import 的話它會是 undefined，而錯誤要到學生真的按下重置那一刻才出現。 */
-  import { getFirestore, doc, getDoc, setDoc, deleteField } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, deleteField, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
   const app  = initializeApp(window.CONFIG.FIREBASE);
   const auth = getAuth(app);
@@ -1065,10 +1065,30 @@ render();
   window.saveQuiz = async function (unitId, score) {
     if (!sid || !unitId) return;
     try {
-      await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
-        { modules: { scratch: { quiz: { [unitId]:
-          { score: Number(score) || 0, at: new Date().toISOString().slice(0, 16) } } } } },
-        { merge: true });
+      const ref = doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid);
+      /* ★ 2026-08-19 老師決定：概念星也要進「每週歷程」，比照加分那條規則。
+         ⚠️ history 的 stars 是「這一次**新增**幾顆」，不是這次拿幾顆 ——
+            概念檢測可以一直重寫到過為止，寫總數的話重寫一次就多算一次，
+            而每週分數是 60 ＋ 星×4，等於送分。
+         ⇒ 先讀出這一關原本的概念星，只把**進步的部分**寫進 history。
+         ★ 這裡仍然不碰 unitStars（作品星只有 Colab 批改寫得動）——
+           概念星是現算的，history 記的是「什麼時候拿到的」。 */
+      const snap = await getDoc(ref);
+      const quiz = ((((snap.exists() && snap.data().modules) || {}).scratch || {}).quiz) || {};
+      const before = (window.GRADING && window.GRADING.quizStars)
+        ? window.GRADING.quizStars(quiz, unitId) : 0;
+      const next = Object.assign({}, quiz);
+      next[unitId] = { score: Number(score) || 0, at: new Date().toISOString().slice(0, 16) };
+      const after = (window.GRADING && window.GRADING.quizStars)
+        ? window.GRADING.quizStars(next, unitId) : 0;
+      const gain = Math.max(0, after - before);
+
+      const payload = { modules: { scratch: { quiz: { [unitId]: next[unitId] } } } };
+      if (gain > 0) {
+        payload.history = arrayUnion({ module: 'scratch', unit: unitId, at: Date.now(),
+                                       stars: gain, score: Number(score) || 0, kind: 'quiz' });
+      }
+      await setDoc(ref, payload, { merge: true });
     } catch (e) { console.warn('概念檢測成績沒存成功（不影響闖關）', e); }
   };
   /* ── 期末檢核的成績（老師 2026-08-18）─────────────────

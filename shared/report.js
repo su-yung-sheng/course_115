@@ -164,6 +164,18 @@
       best[unitId] = { star: star, score: score };
     }
 
+    /* ★ history 的 stars 是「這一次**新增**了幾顆」，不是這次考幾顆。
+       ⚠️ 2026-08-19 老師問到每週歷程時發現的 bug：
+          這裡本來寫 stars: star（這次的星數），於是同一章重考一次
+          就再記一筆 3 顆 —— 總星數沒變（上面取最佳），
+          但**每週分數**是把 history 的 stars 加起來的（60 ＋ 星×4），
+          重考三章就多 36 分。而那是真的要登記的成績。
+       ★ 其他寫入者本來就是這個語意，只有這一支走鐘：
+          shared/grader.html   stars: Math.max(0, star - prev)  ← 差值
+          flowchart.html／thinking.html  只有第一次完成才寫
+       ⇒ 統一成差值。got 留著這次實際考幾顆，供日後查明細。 */
+    var gain = Math.max(0, star - ((prev && prev.star) || 0));
+
     var total = 0, done = 0, sumScore = 0;
     for (var k in best) {
       total += Number(best[k].star) || 0;
@@ -184,7 +196,7 @@
       total:  need,
       stars:  Math.min(total, cap),
       score:  done ? Math.round(sumScore / done) : 0
-    }, Object.assign({ stars: star, score: score, unit: unitId }, extra));
+    }, Object.assign({ stars: gain, got: star, score: score, unit: unitId }, extra));
   }
 
   /**

@@ -97,7 +97,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
          setPersistence, browserSessionPersistence }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, collection, getDocs, doc, setDoc }
+import { getFirestore, collection, getDocs, doc, setDoc, arrayUnion }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const C = window.CONFIG || {};
@@ -314,9 +314,22 @@ async function award(sid, kindKey, on) {
 
   state.busy = '寫入…'; render();
   try {
+    /* ★ 2026-08-19 老師決定：加分要進「每週歷程」，記在**老師審核的那一天**。
+       ⚠️ 本來這裡只寫 imgUnits／vidUnits，而每週分數是把 history 的 stars
+          加起來的（60 ＋ 星×4）—— 於是加分永遠不會出現在週成績裡，
+          學生交了作業、老師也給了分，那一週的分數卻一動也不動。
+       ⚠️ 取消加分要寫一筆**負的**，否則收回來的星星還留在那一週。
+          它會記在「取消的那一天」，和給分同一條規則。
+       ⚠️ 補審（例如隆假後一次審一整批）會全部堆在同一週 ——
+          這是選這條規則的已知代價，不是 bug。
+       ★ history 的 stars 一律是「這一次**增減**幾顆」，不是總數。
+         這一點和 report.js／grader.html 一致（見 report.js 的說明）。 */
+    const per = ((window.GRADING || {}).BONUS || {})[k.key] || 1;
     await setDoc(doc(db, PROGRESS, sid), {
       studentId: sid,
       modules: { [k.mod]: { [k.field]: map } },
+      history: arrayUnion({ module: k.mod, unit: unitId, at: Date.now(),
+                            stars: on ? per : -per, kind: 'bonus', by: state.who.email }),
       updatedAt: Date.now()
     }, { merge: true });
     // 本機也更新，畫面立刻反映（不必整批重讀）
