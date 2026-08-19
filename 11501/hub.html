@@ -30,6 +30,8 @@
 <!-- 學校 Google 帳號登入（單一來源，兩學期共用）-->
 <script src="../shared/auth.js"></script>
   <script src="../shared/grading.js"></script>
+  <!-- 課表與「這週有沒有上課日」的判定（教師端同一支）-->
+  <script src="../shared/schedule.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged,
@@ -41,6 +43,7 @@
     // 統一共用集合名稱（見「11501_資料格式規格」文件）
     const COLLECTION = window.CONFIG.COLLECTIONS.PROGRESS;
     const ROSTER = window.CONFIG.COLLECTIONS.ROSTER;
+    const CFG_COL = window.CONFIG.COLLECTIONS.CONFIG;   // {學期}-config（課表放這裡）
     // 記住登入學號的鍵（同一個分頁內免得重打；關閉瀏覽器就失效）
     const SAVED_KEY = 'sid11501';
 
@@ -116,6 +119,10 @@
     // ===== 全域狀態 =====
     let state = {
       status: 'loading',   // loading | login | main
+      /* 出席判定要用的兩份資料（老師 2026-08-19 的週分數規則）：
+         cls   = 這個學生哪一班（從名冊來）
+         sched = 課表（整班共用一份，登入後讀一次） */
+      cls: '', sched: null,
       authReady: false,
       studentId: '',
       studentName: '',
@@ -208,6 +215,25 @@
       }catch(e){ console.error('出席紀錄失敗', e); }
     }
 
+
+    /* 課表：整班共用一份文件，登入後讀**一次**就好。
+       ⚠️ 不要放在 render() 或每次切換畫面時讀 —— 30 個人一堂課會變成幾百次讀取
+          （這個專案 2026-08-19 才因為同樣的形狀差點吃掉一天的免費額度）。
+       ⚠️ {學期}-config 本來只有老師讀得到；為了這件事規則開了一個
+          「只限 schedule 這一份、只限單筆 get」的例外。
+          規則沒發布的話這裡會拿到 permission-denied，
+          出席一律判成 false ——「全班都缺席」就是那個症狀。 */
+    async function loadSchedule(){
+      try{
+        const s = await getDoc(doc(db, CFG_COL, 'schedule'));
+        const d = (s.exists() && s.data()) || {};
+        state.sched = { base: d.base||{}, off: d.off||{}, move: d.move||{} };
+      }catch(e){
+        console.warn('讀不到課表，本週成績卡會把出席當成「沒有」', e);
+        state.sched = { base:{}, off:{}, move:{} };
+      }
+      render();
+    }
     // 開始一段登入 session（驗證通過或 SSO 自動登入後呼叫）
     function startSession(t){
       state.loginError=''; state.studentId=t; state.demo=false; state.status='main'; state.data=null;
@@ -228,7 +254,7 @@
       render();
       recordAttendance(t);   // 記錄今天的首次登入時間（當作出席）
       // 取名冊姓名顯示（親切辨識）
-      getDoc(doc(db, ROSTER, t)).then(s=>{ if(s.exists()){ state.studentName = s.data().name || ''; render(); } }).catch(()=>{});
+      getDoc(doc(db, ROSTER, t)).then(s=>{ if(s.exists()){ const r=s.data(); state.studentName = r.name || ''; state.cls = String(r.cls||''); render(); loadSchedule(); } }).catch(()=>{});
       const ref = doc(db, COLLECTION, t);
       if(unsub) unsub();
       unsub = onSnapshot(ref, snap=>{
@@ -306,6 +332,15 @@
         if(i === curIdx && st > 0) bySrc[ev.module] = (bySrc[ev.module]||0) + st;
       });
       const thisWeekStars = weeks[curIdx] || 0;
+      /* ★ 老師 2026-08-19：「這週有登入但沒拿星才給 60 分，缺席維持零分。」
+         「有登入」＝ 該班**上課日**有登入（不是那週隨便哪天）——
+         定義與算法都在 shared/schedule.js，教師端呼叫同一支。
+         ⚠️ 讀不到課表（規則沒發布、或還沒建課表）時 attended() 會是 false，
+            看起來就是「全班都缺席」。所以那份規則一定要發布。 */
+      const hereThisWeek = !!(window.SCHEDULE && state.cls && state.sched &&
+        SCHEDULE.attended(state.sched, state.cls,
+                          new Date(start + curIdx*7*86400000),
+                          (data && data.attendance) || {}));
       // 0 星＝這週還沒有任何進度 → 0 分（有星星才套用 60+星×4，避免誤以為沒做也有分）
       const recent = [];         // 近 8 週
       for(let i = Math.max(0, curIdx-7); i <= curIdx; i++) recent.push({ no:i+1, stars: weeks[i]||0 });
@@ -313,7 +348,10 @@
       return {
         curWeekNo: curIdx+1,
         thisWeekStars,
-        thisWeekScore: thisWeekStars > 0 ? Math.min(100, WK_BASE + thisWeekStars*WK_PER) : 0,
+        thisWeekScore: window.SCHEDULE
+          ? SCHEDULE.weekScore(thisWeekStars, hereThisWeek, WK_BASE, WK_PER)
+          : (thisWeekStars > 0 ? Math.min(100, WK_BASE + thisWeekStars*WK_PER) : 0),
+        hereThisWeek,
         recent, best, bySrc,
         totalWeeks: Object.keys(weeks).length
       };
@@ -454,7 +492,13 @@
                 <div class="text-xs font-black text-amber-600 tracking-widest">第 ${wk.curWeekNo} 週 · 本週成績卡</div>
                 <div class="text-6xl my-2">${medal}</div>
                 <div class="text-5xl font-black ${wk.thisWeekStars>0?'text-amber-500':'text-slate-300'} tracking-wider">⭐ ${wk.thisWeekStars}</div>
-                <div class="mt-2 inline-block ${wk.thisWeekStars>0?'bg-amber-500 text-white':'bg-slate-200 text-slate-500'} font-black text-2xl px-5 py-1.5 rounded-full shadow">${wk.thisWeekScore} 分</div>
+                <div class="mt-2 inline-block ${wk.thisWeekScore>0?'bg-amber-500 text-white':'bg-slate-200 text-slate-500'} font-black text-2xl px-5 py-1.5 rounded-full shadow">${wk.thisWeekScore} 分</div>
+                <!-- ★ 0 星的兩種情況要分開講（老師 2026-08-19 的規則）：
+                     人有來、也登入了 → 給基本分；整週沒出現 → 0 分。
+                     ⚠️ 不講清楚的話，兩個 0 星的同學看到不同分數會以為系統壞了。 -->
+                ${wk.thisWeekStars>0 ? '' : (wk.hereThisWeek
+                  ? `<div class="text-xs text-slate-500 mt-1">這週有來上課（基本分）—— 拿到星星就會往上加</div>`
+                  : `<div class="text-xs text-slate-400 mt-1">這週還沒有登入紀錄</div>`)}
                 <p class="text-sm font-bold text-slate-600 mt-3">${praise}</p>
                 <p class="text-[11px] text-slate-400 mt-1">${wk.thisWeekStars>0 ? '分數 ＝ 60 ＋ 星數 × 4（滿分 100）' : '本週還沒有星星，先完成一個小關卡就會開始計分'}</p>
               </div>

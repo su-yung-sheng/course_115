@@ -263,6 +263,15 @@ service cloud.firestore {
     // 課程設定（成績簿／換算／快照／上課日）
     match /11501-config/{docId} {
       allow read, write: if isTeacher();
+      /* ★ 2026-08-19：課表要開一個小口給學生端。
+         老師定的規則是「這週有登入但沒拿星 → 60 分，缺席 → 0 分」，
+         而「出席」是照**該班上課日**判定的 —— 學生端的本週成績卡
+         得自己算一次，就必須讀得到課表。
+         ⚠️ 只開 schedule 這一份、只開單筆 get（不給 list）——
+            其他 config（gradebook、snapshots）維持只有老師。
+         ⚠️ 沒發布這份規則的話，學生端拿到 permission-denied，
+            症狀是「本週成績卡永遠當成缺席」，不會有錯誤訊息。 */
+      allow get: if docId == 'schedule' && isSignedIn();
     }
 
     // 統一進度／星星（hub 儀表板；闖關紀錄也在這裡的 history）
@@ -309,6 +318,15 @@ service cloud.firestore {
 
     match /11502-config/{docId} {
       allow read, write: if isTeacher();
+      /* ★ 2026-08-19：課表要開一個小口給學生端。
+         老師定的規則是「這週有登入但沒拿星 → 60 分，缺席 → 0 分」，
+         而「出席」是照**該班上課日**判定的 —— 學生端的本週成績卡
+         得自己算一次，就必須讀得到課表。
+         ⚠️ 只開 schedule 這一份、只開單筆 get（不給 list）——
+            其他 config（gradebook、snapshots）維持只有老師。
+         ⚠️ 沒發布這份規則的話，學生端拿到 permission-denied，
+            症狀是「本週成績卡永遠當成缺席」，不會有錯誤訊息。 */
+      allow get: if docId == 'schedule' && isSignedIn();
     }
 
     match /11502-progress/{sid} {

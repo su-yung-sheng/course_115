@@ -18,6 +18,8 @@
   <!-- 老師 email 的判斷（與 shared/firestore.rules 的 isTeacher 同一份定義）-->
   <script src="../shared/auth.js"></script>
   <script src="../shared/grading.js"></script>
+  <!-- 課表與「這週有沒有上課日」的判定（學生端 hub 同一支）-->
+  <script src="../shared/schedule.js"></script>
 
   <style>
     @keyframes fade-in-down {
@@ -2977,15 +2979,12 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       }
     }
     // 供每週評分使用：某班在某一週實際的上課日期（可能多節；全部停課回傳空陣列）
+    /* ★ 2026-08-19：規則搬到 shared/schedule.js，這裡只轉呼叫。
+       學生端的本週成績卡也要判「這週有沒有上課日」——
+       複製一份過去就又多一個「同一個規則兩份實作」。
+       ⚠️ 上面那些 sc* 函式是**課表編輯畫面**在用的，維持原樣。 */
     function classDatesOfWeek(cls, weekStart){
-      const saveMon=_scMonday; _scMonday=scMondayOf(weekStart);
-      const dates=new Set();
-      for(let wd=1; wd<=5; wd++) for(let p=1;p<=SC_PERIODS;p++){
-        const info=scCellInfo(wd,p);
-        if(info.cls===cls && !info.off) dates.add(scKey(scDateOf(wd)));
-      }
-      _scMonday=saveMon;
-      return [...dates];
+      return window.SCHEDULE ? SCHEDULE.classDatesOfWeek(_sched, cls, weekStart) : [];
     }
     window.openSchedModal=openSchedModal; window.closeSchedModal=closeSchedModal;
     window.saveSchedule=saveSchedule; window.scRender=scRender; window.scWeek=scWeek;
@@ -2993,7 +2992,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
     window.scDragStart=scDragStart; window.scDrop=scDrop;
 
     // ===== 📅 每週評分 =====
-    let _wkyRows = [], _wkyWeeks = 0;
+    let _wkyRows = [], _wkyWeeks = 0, _wkyDates = [];
     async function openWeeklyModal() {
       const m = document.getElementById('weeklyModal');
       m.classList.remove('hidden'); m.classList.add('flex');
@@ -3042,29 +3041,56 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         const students = rs.docs.map(d => d.data()).sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
         if (!students.length) { box.textContent = '此班尚無名冊資料。'; return; }
 
+        /* ★ 2026-08-19 補上出席（下學期這張表本來完全沒有課表與出席，
+           是上學期那份的簡化版）。老師定的規則是
+           「這週有登入但沒拿星 → 基本分，缺席 → 0 分」，
+           而「出席」是照該班**上課日**判定的，所以得先有課表。 */
+        await loadSchedule();
+        const classDateList = Array.from({ length: weeks }, (_, i) =>
+          classDatesOfWeek(cls, new Date(start.getTime() + i * 7 * 86400000)));
+        const classDates = classDateList.map(a => a.length ? a[0] : null);
+
         _wkyRows = await Promise.all(students.map(async s => {
           const wk = new Array(weeks).fill(0);
+          const att = new Array(weeks).fill(false);
           try {
             const p = await _gdDb().collection('11502-progress').doc(s.studentId).get();
-            const hist = (p.exists && p.data().history) || [];
+            const data = (p.exists && p.data()) || {};
+            const hist = data.history || [];
             hist.forEach(ev => {
               const at = Number(ev.at); if (!at) return;
               const idx = Math.floor((at - start.getTime()) / (7 * 86400000));
               if (idx >= 0 && idx < weeks) wk[idx] += _evStars(ev);
             });
+            const attMap = data.attendance || {};
+            // 該週任何一次上課日有登入就算出席
+            classDateList.forEach((days, i) => { if (days.some(d => attMap[d])) att[i] = true; });
           } catch (e) {}
-          return { s, wk };
+          return { s, wk, att };
         }));
         _wkyWeeks = weeks;
+        _wkyDates = classDates;   // 匯出 CSV 時要知道哪幾週停課
 
-        const head = Array.from({ length: weeks }, (_, i) => `<th class="border border-slate-200 px-2 py-1 text-center">第${i + 1}週</th>`).join('');
-        const body = _wkyRows.map(({ s, wk }) => {
-          const tds = wk.map(st => {
-            // 教師端＝實際登記用的分數，一律 基本分 + 星數×每星加分（0 星就是基本分）
-            // 注意：學生端的「本週成績卡」在 0 星時故意顯示 0 分，避免學生以為沒做也有分數
-            const score = Math.min(100, base + st * per);
-            const cls2 = st === 0 ? 'text-slate-400' : (score >= 100 ? 'text-emerald-700 font-bold' : 'text-slate-700 font-bold');
-            return `<td class="border border-slate-200 px-2 py-1 text-center ${cls2}" title="${st} 星 → ${base} + ${st}×${per}">${score}</td>`;
+        const head = Array.from({ length: weeks }, (_, i) => {
+          const d = classDates[i];
+          return `<th class="border border-slate-200 px-2 py-1 text-center ${d ? '' : 'bg-slate-100 text-slate-400'}">第${i + 1}週${d ? `<div class="text-[10px] font-normal text-slate-400">${d.slice(5)}</div>` : '<div class="text-[10px] font-normal">停課</div>'}</th>`;
+        }).join('');
+        const body = _wkyRows.map(({ s, wk, att }) => {
+          const tds = wk.map((st, i) => {
+            /* ⚠️ 那一週整週停課就不打分 —— 不然「沒上課」會被算成缺席 0 分。 */
+            if (!classDates[i]) return `<td class="border border-slate-200 px-2 py-1 text-center bg-slate-50 text-slate-300">—</td>`;
+            /* ★ 規則收在 shared/schedule.js，學生端呼叫同一支。
+               本來這裡一律給 base（0 星也 60 分），學生端 0 星卻顯示 0 分 ——
+               同一個學生同一週，老師看到 60、學生看到 0。 */
+            const score = window.SCHEDULE
+              ? SCHEDULE.weekScore(st, att[i], base, per)
+              : Math.min(100, base + st * per);
+            const cls2 = score === 0 ? 'text-slate-300' : (st === 0 ? 'text-slate-400' : (score >= 100 ? 'text-emerald-700 font-bold' : 'text-slate-700 font-bold'));
+            const mark = att[i] ? '' : '<span class="text-red-400" title="該日未登入">·</span>';
+            const why = st > 0 ? `${st} 星 → ${base} + ${st}×${per}`
+                      : (att[i] ? `0 星，但該日有登入 → 基本分 ${base}`
+                                : '0 星，而且該日沒有登入 → 0 分');
+            return `<td class="border border-slate-200 px-2 py-1 text-center ${cls2}" title="${why}">${score}${mark}</td>`;
           }).join('');
           const totalStars = wk.reduce((a, b) => a + b, 0);
           return `<tr>
@@ -3081,7 +3107,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
             ${head}
             <th class="border border-slate-200 px-2 py-1">總星</th>
           </tr></thead><tbody>${body}</tbody></table>
-          <p class="text-[11px] text-slate-400 mt-2">表格內為<b>實際登記分數</b>＝ ${base} ＋ 星數×${per}（滑鼠移上去看計算過程）；灰色代表該週沒有新增星數，仍給基本分 ${base}。學生端當週看到的是 0 分。</p>`;
+          <p class="text-[11px] text-slate-400 mt-2">表格內為<b>實際登記分數</b>＝ ${base} ＋ 星數×${per}（滑鼠移上去看計算過程）；0 星但該日有登入 → 基本分 ${base}；0 星又沒有登入紀錄 → 0 分（紅點）；標「停課」的週不計分。學生端看到的是同一個數字。</p>`;
       } catch (e) {
         box.textContent = '計算失敗（需教師帳號登入）：' + e.message;
       }
@@ -3092,8 +3118,14 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       const per  = Math.max(1, Number(document.getElementById('wkyPer').value) || 4);
       const head = ['座號', '姓名', ...Array.from({ length: _wkyWeeks }, (_, i) => `第${i + 1}週`), '總星數'];
       const lines = [head.join(',')];
-      _wkyRows.forEach(({ s, wk }) => {
-        const scores = wk.map(st => Math.min(100, base + st * per));   // 登記用：0 星 = 基本分
+      /* ★ 這裡才是真正抄進成績簿的數字 —— 規則一定要和畫面同一支。
+         ⚠️ 2026-08-19：畫面改成「0 星＋缺席 = 0 分」的時候，
+            這一行如果沒跟著改，匯出的 CSV 會全部是基本分，
+            而老師是照 CSV 登記的 —— 錯的那一份才是會留下來的那一份。 */
+      _wkyRows.forEach(({ s, wk, att }) => {
+        const scores = wk.map((st, i) => !_wkyDates[i] ? ''            // 停課週留空
+          : (window.SCHEDULE ? SCHEDULE.weekScore(st, att[i], base, per)
+                             : Math.min(100, base + st * per)));
         lines.push([s.no || '', s.name || '', ...scores, wk.reduce((a, b) => a + b, 0)].join(','));
       });
       const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
