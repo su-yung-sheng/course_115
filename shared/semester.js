@@ -123,64 +123,93 @@
 
   global.SEMESTER.pageTerm = pageTerm;
 
-  /* ── 鎖：只在「學期資料夾底下的頁面」執行 ────────────────
-     推導不出學期就代表這是總入口或 shared/ 底下的工具頁，不鎖。 */
-  if (!LOCK) return;
-  if (global.self !== global.top) return;          // 嵌在 iframe 裡由外層頁負責
-
-  var mine = pageTerm();
-  if (!mine) return;
-  var active = current();
-  if (mine === active) return;                     // 正是當學期，放行
-
-  /* ── 還不知道你是誰的時候，不要擋 ────────────────
-     ⚠️ 2026-08-10 實際踩到：測試帳號被自己的學期鎖擋在門外。
-
-     原因是**順序**：
-       config.js → semester.js（這支，同步執行）→ auth.js（非同步登入）
-     這一段跑的時候，sessionStorage 裡還沒有 sid ——
-     登入根本還沒開始。於是 isTestAccount(null) 永遠是 false，
-     「測試帳號豁免」這個出口實際上打不開。
-
-     ⇒ 沒有 sid ＝ 還沒登入 ＝ 現在擋他沒有意義（他還不是任何人，
-       也還沒有進度可以記錯學期）。
-       等 auth.js 把 sid 寫進去，下一次頁面載入這道鎖才有判斷的依據。
-
-     ★ 這樣會不會放水？不會，因為要記錯進度得先登入：
-       · 沒登入 → guard.js 會把他送去登入
-       · 登入後 → sid 有了，這道鎖照常擋
-       · 而真正的防線本來就在 firestore.rules（用伺服器時間），
-         那一層改前端繞不過去。 */
-  var sid = null;
-  try { sid = sessionStorage.getItem('sid' + mine); } catch (e) {}
-  if (!sid) return;                                // 還沒登入，等下一次
-
-  /* 測試帳號豁免：開學前要驗下學期、學期中要回頭驗上學期，都需要這個出口。
-     ★ 2026-08-19 起 TEST_IDS 是空的 —— 這個出口留著（機制沒拆），
-       但現在沒有任何人走得進來。要重開只要把學號填回 TEST_IDS 與規則。 */
-  if (isTestAccount(sid)) {
-    console.warn('[SEMESTER] 測試帳號 ' + sid + '：略過學期鎖（現在是' + name(active) + '）');
-    return;
+  /** 擋下來的畫面。整頁換掉，順便切斷頁面自己的互動。 */
+  function showBlock(mine, active) {
+    function paint() {
+      document.body.innerHTML =
+        '<div style="max-width:520px;margin:16vh auto;padding:32px;background:#fff;'
+      + 'border:1px solid #e2e8f0;border-radius:20px;box-shadow:0 12px 32px rgba(0,0,0,.08);'
+      + 'font-family:\'Noto Sans TC\',system-ui,sans-serif;text-align:center">'
+      + '<div style="font-size:40px;margin-bottom:8px">📅</div>'
+      + '<h1 style="font-weight:900;font-size:20px;color:#1e293b;margin:0 0 12px">'
+      +   '現在是' + name(active) + '</h1>'
+      + '<p style="color:#475569;font-weight:700;line-height:1.8;margin:0 0 24px">'
+      +   '你開的是' + name(mine) + '的頁面。<br>'
+      +   '為了避免進度記到錯誤的學期，這裡先擋下來。</p>'
+      + '<a href="../' + active + '/hub.html" style="display:inline-block;padding:14px 28px;'
+      +   'background:#1e293b;color:#fff;font-weight:900;border-radius:14px;text-decoration:none">'
+      +   '前往' + name(active) + '的闖關基地 →</a>'
+      + '<p style="color:#94a3b8;font-size:12px;margin:20px 0 0;line-height:1.7">'
+      +   '要查看' + name(mine) + '的成績，請找老師從教師端查詢。</p>'
+      + '</div>';
+    }
+    // 這支跑在 <head> 裡，body 通常還不存在；登入後才呼叫的話就已經有了
+    if (document.body) paint();
+    else document.addEventListener('DOMContentLoaded', paint);
   }
 
-  // 走到這裡＝學生開錯學期了。擋下來並指路，不要讓他在這裡累積進度。
-  document.addEventListener('DOMContentLoaded', function () {
-    document.body.innerHTML =
-      '<div style="max-width:520px;margin:16vh auto;padding:32px;background:#fff;'
-    + 'border:1px solid #e2e8f0;border-radius:20px;box-shadow:0 12px 32px rgba(0,0,0,.08);'
-    + 'font-family:\'Noto Sans TC\',system-ui,sans-serif;text-align:center">'
-    + '<div style="font-size:40px;margin-bottom:8px">📅</div>'
-    + '<h1 style="font-weight:900;font-size:20px;color:#1e293b;margin:0 0 12px">'
-    +   '現在是' + name(active) + '</h1>'
-    + '<p style="color:#475569;font-weight:700;line-height:1.8;margin:0 0 24px">'
-    +   '你開的是' + name(mine) + '的頁面。<br>'
-    +   '為了避免進度記到錯誤的學期，這裡先擋下來。</p>'
-    + '<a href="../' + active + '/hub.html" style="display:inline-block;padding:14px 28px;'
-    +   'background:#1e293b;color:#fff;font-weight:900;border-radius:14px;text-decoration:none">'
-    +   '前往' + name(active) + '的闖關基地 →</a>'
-    + '<p style="color:#94a3b8;font-size:12px;margin:20px 0 0;line-height:1.7">'
-    +   '要查看' + name(mine) + '的成績，請找老師從教師端查詢。</p>'
-    + '</div>';
-  });
+  /* ── 鎖 ────────────────────────────────────────────────
+     只在「學期資料夾底下的頁面」執行；推導不出學期就代表這是總入口
+     或 shared/ 底下的工具頁，不鎖。
+
+     ★ 2026-08-19 老師問：「不是有學期鎖？為什麼還能登入 11502？
+       可以進到 hub.html 入口網（雖然不能點功能）。」—— 問得對，
+       那是這道鎖的一個洞，成因是**這支跑得比登入早**：
+
+         config.js → semester.js（同步）→ auth.js（非同步登入）
+
+       舊版寫「沒有 sid 就 return，等下一次載入」。可是 hub.html
+       正好就是**登入發生的那一頁** —— 進站時沒有 sid（鎖放行），
+       登入完成後 hub 自己接手畫面（onAdopt，不重新整理），
+       於是這一次載入的鎖早就跑完了，不會再跑第二次。
+       結果就是：登入畫面看得到、登入後選單也看得到，
+       要等到點進關卡頁（新的一次載入）才被擋。
+
+     ⇒ 兩邊一起補：
+       ① 清單是空的（現在這樣）→ **不必等身分**，進站就擋。
+          沒有測試帳號要放行，就沒有理由讓任何人先進到門內。
+       ② 清單有人（重開測試帳號時）→ 維持「等 sid」，
+          但由 auth.js 在寫進 sessionStorage 的當下呼叫 enforce()，
+          當場擋掉，不留到下一次載入。 */
+  function enforce(sid, opts) {
+    if (!LOCK) return false;
+    if (global.self !== global.top) return false;    // 嵌在 iframe 裡由外層頁負責
+
+    var mine = pageTerm();
+    if (!mine) return false;
+    var active = current();
+    if (mine === active) return false;               // 正是當學期，放行
+
+    if (sid === undefined || sid === null) {
+      try { sid = sessionStorage.getItem('sid' + mine); } catch (e) { sid = null; }
+    }
+
+    /* ── 還不知道你是誰的時候要不要擋？看清單空不空 ──
+       ⚠️ 2026-08-10 踩過的坑：測試帳號被自己的學期鎖擋在門外
+          （鎖跑的時候 sessionStorage 還沒有 sid，
+            isTestAccount(null) 永遠是 false，豁免出口打不開）。
+          那時的解法是「沒有 sid 就放行，等下一次」——
+          代價就是上面說的：hub.html 永遠是那個「下一次」還沒到的頁面。
+       ⇒ 只有在**真的有測試帳號要放行**的時候才需要那個寬限。 */
+    if (!sid && TEST_IDS.length) return false;
+
+    if (sid && isTestAccount(sid)) {
+      console.warn('[SEMESTER] 測試帳號 ' + sid + '：略過學期鎖（現在是' + name(active) + '）');
+      return false;
+    }
+
+    /* 走到這裡＝開錯學期了。
+       redirect：登入之後才發現的情況。頁面已經在跑自己的 render()，
+       畫上去的卡片會被它蓋掉，所以直接送回他自己的學期（也順便中斷 JS）。 */
+    if (opts && opts.redirect) {
+      console.warn('[SEMESTER] ' + (sid || '') + ' 登入了' + name(mine) + '的頁面，送回' + name(active));
+      try { location.replace('../' + active + '/hub.html'); return true; } catch (e) {}
+    }
+    showBlock(mine, active);
+    return true;
+  }
+
+  global.SEMESTER.enforce = enforce;
+  enforce();
 
 })(window);

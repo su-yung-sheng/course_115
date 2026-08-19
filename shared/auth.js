@@ -214,6 +214,19 @@
       sessionStorage.setItem('sid' + term, sid);
       sessionStorage.removeItem('me' + term);   // 姓名快取是前一個人的，一定要清
     } catch (e) {}
+
+    /* ★ 學期鎖要在**這一刻**再檢查一次。
+       semester.js 是同步跑的，執行的時候 sessionStorage 裡還沒有 sid
+       （登入根本還沒開始），所以那道鎖只能「等下一次載入」。
+       而 hub.html 正好就是登入發生的那一頁 —— 它永遠等不到下一次，
+       學生因此進得了非當學期的入口網（2026-08-19 老師回報）。
+       ⇒ sid 一寫進去就當場再問一次鎖。
+       ⚠️ 用 global.SEMESTER 的存在與否當開關：teacher.html 刻意不載入
+          semester.js（老師不受限），少了這個判斷會在教師端炸掉。 */
+    if (global.SEMESTER && global.SEMESTER.enforce) {
+      global.SEMESTER.enforce(sid, { redirect: true });
+    }
+
     return tabSid ? 'changed' : 'adopted';
   }
 

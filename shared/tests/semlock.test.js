@@ -47,8 +47,12 @@ function blocked(term, sid, src2) {
 }
 
 console.log('\n── 現在是上學期（11501），開下學期的頁面 ──');
-ok(!blocked('11502', null),
-   '★ 還沒登入（沒有 sid）不擋 —— 鎖跑在 auth.js 之前，那時候他還不是任何人');
+/* ★ 2026-08-19 老師回報：「不是有學期鎖？為什麼還能進到 hub.html？」
+   舊版是「沒有 sid 就放行，等下一次載入」，而 hub.html 正是登入發生的
+   那一頁 —— 它永遠等不到下一次。清單既然是空的，就沒有理由讓任何人
+   先進到門內：進站就擋，連登入畫面都不該出現。 */
+ok(blocked('11502', null),
+   '★ 還沒登入也擋 —— 清單是空的，沒有測試帳號要放行就不必等身分（hub 的洞在這裡）');
 ok(blocked('11502', '1410905'),
    '★ 1410905 也被擋 —— 2026-08-19 測試帳號已關閉，它現在就是一般學生');
 ok(blocked('11502', '1410112'),
@@ -73,11 +77,32 @@ ok(!blocked('11502', '1410905', reopened),
    '★ 填回學號就放行 —— 豁免機制沒被拆掉，只是現在沒人在清單裡');
 ok(blocked('11502', '1410112', reopened),
    '   而且填回去之後，別的學號還是擋著（不是整條鎖失效）');
+/* 寬限只在「有測試帳號要放行」的時候存在 —— 那是它唯一的理由。
+   ⚠️ 2026-08-10 的坑：鎖跑在 auth.js 之前，那時 isTestAccount(null)
+      永遠是 false，豁免出口打不開。所以清單有人的時候必須等 sid。 */
+ok(!blocked('11502', null, reopened),
+   '★ 清單有人的時候才「還沒登入先不擋」—— 不然測試帳號會被自己的鎖擋在門外');
+
+/* ── 登入的當下要當場再問一次（hub.html 的洞）────────────
+   ⚠️ 上面那條寬限一開，hub.html 就又有洞了：進站沒 sid（放行）、
+      登入後 hub 自己接手畫面不重新整理 → 這一次載入的鎖早就跑完。
+   ⇒ auth.js 寫進 sessionStorage 的當下要呼叫 SEMESTER.enforce()。 */
+console.log('\n── 登入當下的補檢查 ──');
+const authSrc = fs.readFileSync(path.join(__dirname, '..', 'auth.js'), 'utf8');
+ok(/SEMESTER\.enforce\(sid, \{ redirect: true \}\)/.test(authSrc),
+   '★ auth.js 寫入 sid 之後會呼叫 SEMESTER.enforce(sid, {redirect:true})');
+ok(/setItem\('sid' \+ term, sid\);[\s\S]{0,900}?SEMESTER\.enforce/.test(authSrc),
+   '   而且是**寫進 sessionStorage 之後**才問（順序反了就問到舊身分）');
+ok(/global\.SEMESTER && global\.SEMESTER\.enforce/.test(authSrc),
+   '★ 要先確認 SEMESTER 存在 —— teacher.html 刻意不載入 semester.js，少了這層會炸掉');
+ok(/typeof SEMESTER[\s\S]{0,80}enforce|enforce: enforce|SEMESTER\.enforce = enforce/.test(src),
+   '   semester.js 真的把 enforce 掛出去了（不然上面那行永遠是 undefined）');
 
 console.log('\n── 原始碼 ──');
-ok(/if \(!sid\) return;/.test(src),
-   '★ 沒有 sid 就 return —— 這一行是修掉「測試帳號被自己的鎖擋住」的關鍵');
-ok(/auth\.js（非同步登入）|非同步/.test(src), '   而且註解要講明為什麼（順序問題）');
+ok(/if \(!sid && TEST_IDS\.length\) return false;/.test(src),
+   '★ 寬限綁在 TEST_IDS.length 上 —— 清單空的時候不寬限，這是補掉 hub 那個洞的關鍵');
+ok(/auth\.js（非同步登入）|非同步|hub\.html 正好就是/.test(src),
+   '   而且註解要講明為什麼（順序問題）');
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
