@@ -167,5 +167,59 @@ is(/!window\.READHOLD/.test(sCode), true, '沒載到就放行，不是把學生�
      '   而且真的把它傳給倒數（不是算完就丟掉）');
 }
 
+/* ── 每一關顯示的星數，要和闖關基地那張卡對得起來 ────────────
+   ★ 2026-08-19 老師問：「程式設計的星星數不同，內頁關卡上的星數比較多，
+     是因為加分的因素嗎？」
+
+   ⚠️ 不是加分 —— 是這一頁把流程圖那一軌**寫死成三顆**：
+        done ? (三顆實心) : (三顆空心)
+      可是排對只給 FLOWCHART_PER_UNIT（2）顆，第三顆是交圖加分，
+      要老師審核過才有。於是逐關數起來每關多 1 顆、十關多 10 顆。
+      ★ 方向剛好相反：加分是闖關基地**多**算的那一份
+        （hub 走 GRADING.starsWithBonus），這一頁本來根本沒讀 imgUnits。
+
+   ⚠️⚠️ 註解掩護：下面幾條有「不可以出現寫死的三顆星」這種檢查，
+      而這段註解本身就在講那個符號 —— 直接對整份原始碼比對會被自己蓋掉
+      （這個專案已經中過四次）。所以一律先把註解剝掉再測。 */
+{
+  console.log('\n── 星數顯示（老師 2026-08-19）──');
+  /* 剝掉 /* *\/ 與 // 註解。夠用就好：這份檔案裡沒有含 // 的字串常值。 */
+  const code = s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const STAR3 = '★★★';
+
+  is(code.includes(STAR3), false,
+     '★ 程式碼裡不可以再有寫死的三顆實心星 —— 星數一律由實際數字產生');
+  is(/const bar = \(n, cap\)/.test(code), true,
+     '   改用 bar(實得, 上限) 產生星條');
+  is(/const flowSt = done \? STARS_PER_UNIT \+ \(imgOn\?B_IMG:0\) : 0;/.test(code), true,
+     '★ 流程圖那一軌 = 排對的 2 顆 ＋ 交圖加分（有審核過才加）');
+  is(/const progSt = st>0 \? st \+ \(vidOn\?B_VID:0\) : 0;/.test(code), true,
+     '★ 程式那一軌 = AI 批改的星 ＋ 錄影加分');
+  is(/bar\(flowSt, STARS_PER_UNIT \+ B_IMG\)/.test(code), true,
+     '   上限也要跟著規則走（2+1），不要寫死 3');
+
+  /* 加分值只能有一個來源。兩邊各訂一個數字的話，
+     「同一份成績兩個數字」會再發生一次，而且更難查。 */
+  is(/B_IMG = \(\(window\.GRADING \|\| \{\}\)\.BONUS \|\| \{\}\)\.img/.test(code), true,
+     '★ 加分值取自 GRADING.BONUS，不在這一頁另外訂');
+  is(/B_VID = \(\(window\.GRADING \|\| \{\}\)\.BONUS \|\| \{\}\)\.vid/.test(code), true,
+     '   錄影加分同上');
+
+  /* 讀得到加分，畫面才可能對得起來 */
+  is(/state\.imgUnits = \(mods\.flowchart && mods\.flowchart\.imgUnits\) \|\| \{\}/.test(code), true,
+     '★ 真的從進度文件把 imgUnits 讀進來（本來完全沒讀）');
+  is(/state\.vidUnits = \(mods\.scratch && mods\.scratch\.vidUnits\) \|\| \{\}/.test(code), true,
+     '   vidUnits 同上');
+  is(/state\.imgUnits=\{\}; state\.vidUnits=\{\}/.test(code), true,
+     '★ 登出要一起清掉 —— 電腦教室是共用的，殘留會讓下一位看到別人的加分');
+
+  /* 表頭要把「合計」講出來，那就是闖關基地那張卡的數字。 */
+  is(/const grand = doneCount\*STARS_PER_UNIT \+ progStarTotal \+ bonusAll;/.test(code), true,
+     '★ 合計 = 流程圖 ＋ 程式 ＋ 加分（和 hub 的 cardData 同一個算法）');
+  is(/bonusStars\(state\.imgUnits,'img'\)/.test(code)
+     && /bonusStars\(state\.vidUnits,'vid'\)/.test(code), true,
+     '   加分總數走 GRADING.bonusStars（hub、教師端、這裡同一支）');
+}
+
 console.log(`\n通過 ${pass}／失敗 ${fail}`);
 process.exit(fail?1:0);

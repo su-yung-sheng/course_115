@@ -84,6 +84,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     const ROSTER = window.CONFIG.COLLECTIONS.ROSTER;
     const SAVED_KEY = 'sid11501';
     const STARS_PER_UNIT = (window.GRADING && window.GRADING.FLOWCHART_PER_UNIT) || 2;   // 規則定義在 shared/grading.js
+    /* 加分星（老師人工審核給的）：交流程圖圖片 +1⭐、交程式錄影 +1⭐。
+       ⚠️ 這兩個數字也在 shared/grading.js（GRADING.BONUS），不要在這裡另外訂 ——
+          闖關基地那張卡是用 GRADING.starsWithBonus 算的，
+          兩邊用不同的加分值，就會出現「同一份成績兩個數字」。 */
+    const B_IMG = ((window.GRADING || {}).BONUS || {}).img || 1;
+    const B_VID = ((window.GRADING || {}).BONUS || {}).vid || 1;
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -352,7 +358,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     }
 
     let state = { status:'loading', studentId:'', studentName:'', tempId:'', tempCode:'', loginError:'', done:{}, progDone:{},
-                  progStars:{}, unit:null, candidates:[], selected:{}, selMsg:'', placed:[], pool:[], mistakes:0,
+                  progStars:{}, imgUnits:{}, vidUnits:{}, unit:null, candidates:[], selected:{}, selMsg:'', placed:[], pool:[], mistakes:0,
                   qIdx:0, qPicked:null, qScore:0, refOpen:false, leadOpen:false, graderOpen:false,
                   readLeft:0, hintUsed:false, hintLeft:0, selTries:0,
                   quizSet:[], quizPassed:false,
@@ -554,6 +560,13 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         state.progDone = {}; sunits.forEach(u=>state.progDone[u]=true);
         // 各單元的程式星數（由 AI 批改寫入）→ 有星數就代表這關的程式完成了
         state.progStars = (mods.scratch && mods.scratch.unitStars) || {};
+        /* 老師審核給的加分星（交流程圖圖片 +1⭐、交程式錄影 +1⭐）。
+           ★ 2026-08-19 老師問「內頁關卡上的星數比較多，是因為加分嗎？」——
+             不是，是這一頁本來就沒讀加分、卻把流程圖那一軌寫死成 ★★★。
+             現在兩件事一起修：星數照實算，加分也讀進來，
+             讓「逐關加總」和闖關基地那張卡對得起來。 */
+        state.imgUnits = (mods.flowchart && mods.flowchart.imgUnits) || {};
+        state.vidUnits = (mods.scratch && mods.scratch.vidUnits) || {};
         // 前導教材：hub 也讀同一個 modules.list
         state.leadDone = !!(mods.list && mods.list.status === 'pass');
       }catch(e){ console.error('讀進度失敗',e); }
@@ -631,7 +644,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     /* 登出要把「上一個人的進度」清乾淨。
        教室是共用電腦，殘留 progStars／leadDone 會讓下一位同學看到別人的解鎖狀態。 */
     function logout(){ sessionStorage.removeItem(SAVED_KEY); state.status='login'; state.studentId=''; state.studentName=''; state.tempId=''; state.tempCode='';
-      state.done={}; state.progDone={}; state.progStars={}; state.leadDone=false; state.gateMsg=''; state.leadOpen=false; render(); }
+      state.done={}; state.progDone={}; state.progStars={}; state.imgUnits={}; state.vidUnits={}; state.leadDone=false; state.gateMsg=''; state.leadOpen=false; render(); }
 
     // ===== 遊戲邏輯 =====
     function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
@@ -752,6 +765,13 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         // 程式設計：由 AI 批改星數認定（0 星不算通關）
         const progStarTotal = Object.values(state.progStars||{}).reduce((a,b)=>a+(Number(b)||0),0);
         const progDoneCount = Object.values(state.progStars||{}).filter(v=>Number(v)>0).length;
+        /* 加分星要一起顯示，否則交過作業的學生會看到
+           「闖關基地 55⭐、點進來 45⭐」——同一份成績兩個數字。
+           ★ 算法走 GRADING.bonusStars（和 hub、教師端同一支）。 */
+        const bonusImg = (window.GRADING ? window.GRADING.bonusStars(state.imgUnits,'img') : 0);
+        const bonusVid = (window.GRADING ? window.GRADING.bonusStars(state.vidUnits,'vid') : 0);
+        const bonusAll = bonusImg + bonusVid;
+        const grand = doneCount*STARS_PER_UNIT + progStarTotal + bonusAll;
         const openTo = openUpTo();
         /* ── 關卡小卡 ─────────────────────────────────────────
            ⚠️⚠️ 2026-08-17 老師：「比起 11502，11501 的入口小卡過於簡約，
@@ -784,8 +804,20 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
           /* 兩軌各一列。★ 右對齊成一欄，一眼看得出「這一關拿了幾顆」。 */
           const track = (icon, label, on, txt, cls) =>
             `<span class="block text-sm font-black whitespace-nowrap ${on?cls:'text-slate-300'}" title="${label}">${icon} ${txt}</span>`;
-          const progTxt = st>0 ? '★'.repeat(st)+'☆'.repeat(3-st)
-                        : (state.progDone[u.id] ? '未達 2⭐' : '☆☆☆');
+          /* ⚠️ 2026-08-19 修：流程圖那一軌本來寫死 `done?'★★★':'☆☆☆'`。
+             排對只有 FLOWCHART_PER_UNIT（2）顆，第三顆是**交圖加分**，
+             要老師審核過才有 —— 於是逐關數起來每關多 1 顆、10 關多 10 顆，
+             和闖關基地那張卡對不起來。（老師：「內頁關卡上的星數比較多」）
+             ★ 一律由實際星數產生，加分算進來，
+               這樣「逐關加總 ＝ 卡片上的數字」，學生怎麼數都一樣。 */
+          const bar = (n, cap) => '★'.repeat(Math.max(0,n)) + '☆'.repeat(Math.max(0,cap-n));
+          const imgOn = !!(state.imgUnits||{})[u.id];
+          const vidOn = !!(state.vidUnits||{})[u.id];
+          const flowSt = done ? STARS_PER_UNIT + (imgOn?B_IMG:0) : 0;
+          const progSt = st>0 ? st + (vidOn?B_VID:0) : 0;
+          const flowTxt = bar(flowSt, STARS_PER_UNIT + B_IMG);
+          const progTxt = st>0 ? bar(progSt, 3 + B_VID)
+                        : (state.progDone[u.id] ? '未達 2⭐' : bar(0, 3 + B_VID));
           /* 底部那一句：講「現在該做什麼」，不是講狀態。
              ⚠️ 三種狀態三句話 —— 學生看的是下一步，不是形容詞。 */
           const nextLine = !open ? '🔒 完成前一關才會開啟'
@@ -802,8 +834,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                   <div class="font-black text-lg leading-tight ${open?'':'text-slate-400'}">${u.title}</div>
                 </div>
                 <div class="text-right flex-shrink-0 relative">
-                  ${track('🧩','流程圖：排對就 +'+STARS_PER_UNIT+'⭐',done,done?'★★★':'☆☆☆','text-emerald-500')}
-                  ${track('🐱','程式設計：上傳作品，AI 批改給的',st>0,progTxt,'text-amber-500')}
+                  ${track('🧩','流程圖：排對 +'+STARS_PER_UNIT+'⭐'+(imgOn?'，交圖加分 +'+B_IMG+'⭐':'，最後一顆是交圖加分'),done,flowTxt,'text-emerald-500')}
+                  ${track('🐱','程式設計：AI 批改最多 3⭐'+(vidOn?'，錄影加分 +'+B_VID+'⭐':'，最後一顆是錄影加分'),st>0,progTxt,'text-amber-500')}
                 </div>
               </div>
               <p class="mt-2 text-sm leading-relaxed ${open?'text-slate-600':'text-slate-400'}">${
@@ -823,6 +855,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 <span class="text-slate-300 mx-1 hidden sm:inline">|</span>
                 <span class="block sm:inline text-orange-600">🐱 程式設計完成 ${progDoneCount} / ${UNITS.length} 關　<span class="text-amber-500 text-lg">共 ${progStarTotal}⭐</span></span>
               </h1>
+              <p class="text-sm font-bold mt-1">
+                🎁 老師審核加分 <span class="text-amber-500">${bonusAll}⭐</span>
+                <span class="text-slate-400 font-normal">（交流程圖圖片 +${B_IMG}、交程式錄影 +${B_VID}，每關各一次）</span>
+                　｜　合計 <span class="text-amber-500 text-lg">${grand}⭐</span>
+                <span class="text-slate-400 font-normal">＝ 闖關基地那張卡的數字</span>
+              </p>
               <p class="text-slate-500 text-sm mt-1">關卡<b class="text-purple-600">依序開放</b>：排流程圖(+${STARS_PER_UNIT}⭐) → 寫程式拿到 <b>2⭐</b> 以上，才會開下一關。看不懂先讀 <a href="reference.html" class="text-purple-600 underline font-bold">參考說明</a>。</p>
             </header>
             ${OPEN_ALL ? `<div class="rounded-2xl px-4 py-3 mb-4 text-sm leading-relaxed"
