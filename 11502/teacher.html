@@ -770,6 +770,18 @@
         const student = { id: r.studentId || d.id, name: r.name || '', no: r.no };
         const mods = progMap[student.id] || {};
         rawSubjects.forEach(sub => { student[sub.key] = (mods[sub.key] && mods[sub.key].stars) || 0; });
+        /* 繳交加分（交流程圖圖片 +1⭐、交程式錄影 +1⭐）另外存一份。
+           ⚠️⚠️ **不可以**併進 student[sub.key] —— 那一格會被「儲存到雲端」
+              寫回 modules.{key}.stars（見 saveToCloud），
+              併進去的話下次讀出來再加一次就是雙重計算，
+              而且每存一次就多一份，數字會自己長大。
+           ★ 2026-08-19 盤點：加分本來只有 11501 闖關基地算進去，
+             教師端與 11502 全部漏掉 —— 分母含加分、分子不含，
+             於是進度條有天花板（11501 教師端最高 83%、11502 hub 程式卡 75%），
+             而「怎麼做都到不了 100%」不會有人回報。 */
+        const __b = (window.GRADING && GRADING.starsWithBonus)
+          ? GRADING.starsWithBonus({ modules: mods }) : {};
+        student.__bonusMap = { flowchart: __b.flowchartBonus || 0, scratch: __b.scratchBonus || 0 };
         student.__modules = mods;               // 各模組 meta（level/score…）供明細用
         student.history = histMap[student.id] || [];  // 過關歷程供明細分析
         sheets[cls].push(student);
@@ -829,12 +841,17 @@
     function subjMax(key){ return MODULE_MAX[key] || 3; }
     function sumSubjMax(subjectList){ return subjectList.reduce((a, s) => a + subjMax(s.key), 0); }
 
+    /* 這一科拿到幾顆加分星（老師在「繳交審核」給的）。
+       ⚠️ 只用在「顯示與百分比」，永遠不寫回 stars —— 見名冊載入那一段的說明。 */
+    function bonusOf(data, key) { return ((data && data.__bonusMap) || {})[key] || 0; }
+
     function calculateTotalStarsForData(studentData, subjectList = subjects) {
       let totalStars = 0;
       let displaySubjects = activeCategory === 'all' ? subjectList : subjectList.filter(sub => sub.group === activeCategory);
       displaySubjects.forEach(sub => {
         let val = parseInt(studentData[sub.key]);
         if (!isNaN(val) && val > 0) totalStars += val;  // 不再封頂 3，反映實際星數
+        totalStars += bonusOf(studentData, sub.key);   // ★ 加分也是星星：分母算了，分子就要算
       });
       return totalStars;
     }
@@ -1456,7 +1473,8 @@
         if (activeCategory !== 'all' && activeCategory !== groupName) return;
         const groupTasks = groupedSubjects[groupName];
         let groupTotalStars = 0; let groupMaxStars = groupTasks.reduce((a, s) => a + subjMax(s.key), 0);
-        groupTasks.forEach(sub => { let val = parseInt(student[sub.key]); if (!isNaN(val) && val > 0) groupTotalStars += val; });
+        groupTasks.forEach(sub => { let val = parseInt(student[sub.key]); if (!isNaN(val) && val > 0) groupTotalStars += val;
+          groupTotalStars += bonusOf(student, sub.key); });   // ★ 同上
         const isGroupComplete = (groupTotalStars === groupMaxStars && groupMaxStars > 0);
 
         html += `
@@ -1480,7 +1498,10 @@
           let lvlNote = '', detailHTML = '';
           if (max > 3) {
             // 自動累加型（運算思維／資訊倫理）：唯讀顯示星數 + 可展開明細
-            controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStars} <span class="text-xs text-slate-400 font-normal">/ ${max}</span></span><span class="text-[11px] text-slate-400 ml-2">自動</span>`;
+            const __bn = bonusOf(student, sub.key);
+            /* 顯示成「原始 + 加分」兩段，不要合成一個數字 ——
+               合起來就看不出加分給了沒，老師會找不到為什麼是這個數。 */
+controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStars}${__bn ? `<span class="text-emerald-600"> ＋${__bn} 加分</span>` : ''} <span class="text-xs text-slate-400 font-normal">/ ${max}</span></span><span class="text-[11px] text-slate-400 ml-2">自動</span>`;
             if (meta.level != null) lvlNote = `<div class="text-[11px] text-slate-400 mt-0.5">已完成 ${meta.level} ${sub.key === 'ethics' ? '章節' : '關'}</div>`;
             detailHTML = `
               <details class="mt-2">

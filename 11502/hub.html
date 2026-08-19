@@ -138,9 +138,10 @@
          2026-08-11 之前寫 30，漏掉加分那 10 顆 ——
          學生把加分拿滿的話進度條會超過 100%。
          ★ 🧠 概念星是**另一組**，不算在這裡（見 scratch.html 的說明）。
-         ⚠️ 下學期開學前要確認：這張卡讀的是 modules.scratch.stars，
-            而闖關地圖是用 unitStars 現算的 —— 兩邊要對得起來，
-            不然 hub 上的數字會和點進去看到的不一樣。 */
+         ✅ 2026-08-19 處理掉了（本來寫「下學期開學前要確認」）：
+            這張卡本來讀 modules.scratch.stars，闖關地圖卻是用 unitStars 現算的。
+            現在 cardData 也改成用 unitStars 現算，**而且把繳交加分加進來** ——
+            分母 32 含加分，分子本來不含，學生把作品星拿滿也只有 75%。 */
 
       /* ✅ 2026-08-12：邏輯挑戰／線性搜尋／排序大冒險三張卡不放在入口 —— 已經收進關卡裡了。
          ---------------------------------------------------------------
@@ -316,10 +317,35 @@
     // ===== 計算 =====
     function starStr(n){ n=Math.max(0,Math.min(3,n||0)); return '★'.repeat(n)+'☆'.repeat(3-n); }
     // 合併卡（combines）會加總多個模組的星數與狀態；一般卡直接讀自己的模組
+    /* 老師審核給的加分星（下學期只有「交程式錄影 +1⭐」，沒有逐關流程圖）。
+       ★ 2026-08-19 盤點補上 —— 這張卡的分母 scratchMax() 是 8 關 ×(3＋1)＝32，
+         **含加分**；分子卻只有 modules.scratch.stars（作品星，最多 24）。
+         於是學生把作品星全部拿滿也只有 75%，怎麼做都不會滿，
+         而「進度條怪怪的」不會有人回報。
+         ⚠️ 11501 的 hub 在 2026-08-11 就修過同樣的問題，這一支漏了。
+       ★ 算法一律走 GRADING.starsWithBonus（單一來源），不要在這裡自己加。 */
+    function bonusOf(mods, id){
+      if(!window.GRADING || !window.GRADING.starsWithBonus) return 0;
+      const b = window.GRADING.starsWithBonus({ modules: mods });
+      return id==='scratch' ? (b.scratchBonus||0)
+           : id==='flowchart' ? (b.flowchartBonus||0) : 0;
+    }
+
     function cardData(m, mods){
-      if(!m.combines){ const d = mods[m.id] || { status:'todo' }; return Object.assign({ levelSum: Number(d.level)||0 }, d); }
+      if(!m.combines){
+        const d = mods[m.id] || { status:'todo' };
+        let stars = Number(d.stars)||0;
+        /* 程式設計：由「各關星數」重算，不信任可能過時的匯總欄位 ——
+           闖關地圖也是用 unitStars 現算的，兩邊要對得起來。 */
+        if(m.id==='scratch' && d.unitStars){
+          stars = Object.values(d.unitStars).map(Number)
+                    .filter(v=>v>0).reduce((a,b)=>a+b,0);
+        }
+        stars += bonusOf(mods, m.id);
+        return Object.assign({ levelSum: Number(d.level)||0 }, d, { stars });
+      }
       let stars=0, level=0, levelSum=0; const sts=[];
-      m.combines.forEach(id=>{ const dd=mods[id]||{}; stars+=(dd.stars||0); levelSum+=(Number(dd.level)||0); if(dd.level) level=Math.max(level,dd.level); sts.push(dd.status||'todo'); });
+      m.combines.forEach(id=>{ const dd=mods[id]||{}; stars+=(dd.stars||0)+bonusOf(mods,id); levelSum+=(Number(dd.level)||0); if(dd.level) level=Math.max(level,dd.level); sts.push(dd.status||'todo'); });
       let status='todo';
       if(sts.every(s=>s==='pass')) status='pass';
       else if(sts.includes('pending')) status='pending';
