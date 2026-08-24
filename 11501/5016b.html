@@ -113,12 +113,78 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 .underline-doodle{background:linear-gradient(transparent 62%, rgba(250,204,21,.55) 62%)}
 </style>
   <!-- 身分守門：未從闖關基地登入者導回入口 -->
+  <!-- ⚠️ config.js 要排在 semester／guard **之前** ——
+       那兩支會優先讀 CONFIG.TERM，讀不到才從網址路徑猜。
+       這一頁本來沒載入它（所以也寫不了進度），2026-08-24 補上。 -->
+  <script src="config.js"></script>
   <script src="../shared/semester.js"></script>
 <script src="../shared/guard.js"></script>
   <!-- 第一節課的暖身關卡與三個檢核（老師 2026-08-24 定案）。
        ⚠️ ultralab 是**共用**的：第二節「迎賓走廊」也用超音波，直接呼叫同一支。 -->
   <script src="../shared/ultralab.js"></script>
   <script src="../shared/doorlab.js"></script>
+
+  <!-- ═══ 完成紀錄（老師 2026-08-24：「每次都要重玩? 要有記錄」）═══
+       ⚠️⚠️ **不計星**。寫的是 modules.arduino.{單元}.{warm|checks}，
+          絕對不可以碰 modules.arduino.stars ——
+          hub 的 summary() 是 stars += d.stars、maxTotal += m.maxStars，
+          而 arduino 卡的 maxStars 是 0：分子加了、分母沒加，
+          整體進度就會超過 100%。
+       ⚠️ 也不可以用 REPORT.unit()／REPORT.pass()：那兩支會自己算 stars。
+          這裡用最樸素的 setDoc(merge)。
+       ★ 讀不到雲端（沒登入、斷網、規則沒發布）時退回 sessionStorage ——
+          至少同一節課裡重新整理不會從頭來。
+          ⚠️ 用 sessionStorage 不用 localStorage：教室是共用電腦，
+             關掉瀏覽器就該消失（和全站的身分規則一致）。 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc }
+      from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const CFG  = window.CONFIG || {};
+    const COL  = (CFG.COLLECTIONS && CFG.COLLECTIONS.PROGRESS) || '11501-progress';
+    const TERM = CFG.TERM || '11501';
+    let sid = '';
+    try { sid = sessionStorage.getItem('sid' + TERM) || ''; } catch (e) {}
+
+    let db = null;
+    try { if (CFG.FIREBASE && sid) db = getFirestore(initializeApp(CFG.FIREBASE)); }
+    catch (e) { console.warn('[LAB] Firebase 起不來，改用 sessionStorage', e); }
+
+    const localKey = 'lab' + TERM;
+    function localAll() {
+      try { return JSON.parse(sessionStorage.getItem(localKey) || '{}'); } catch (e) { return {}; }
+    }
+
+    window.LABSAVE = {
+      /** 讀這個單元做到哪 —— 回傳 { warm:{at,tries}, checks:{at,tries} } */
+      async load(unit) {
+        const mine = localAll()[unit] || {};
+        if (!db) return mine;
+        try {
+          const snap = await getDoc(doc(db, COL, sid));
+          const m = (snap.exists() && snap.data().modules) || {};
+          return Object.assign({}, mine, ((m.arduino || {})[unit]) || {});
+        } catch (e) { console.warn('[LAB] 讀取失敗，用本機的', e); return mine; }
+      },
+      /** 記一段完成。part 是 'warm' 或 'checks'。 */
+      async save(unit, part, info) {
+        const rec = Object.assign({ at: Date.now() }, info || {});
+        const all = localAll();
+        all[unit] = Object.assign({}, all[unit], { [part]: rec });
+        try { sessionStorage.setItem(localKey, JSON.stringify(all)); } catch (e) {}
+        if (!db) return;
+        try {
+          /* ⚠️ 只寫這一格。沒有 stars、沒有 status —— 這一頁不計星。 */
+          await setDoc(doc(db, COL, sid), {
+            studentId: sid,
+            modules: { arduino: { [unit]: { [part]: rec } } },
+            updatedAt: Date.now()
+          }, { merge: true });
+        } catch (e) { console.warn('[LAB] 寫入失敗（本機仍有紀錄）', e); }
+      }
+    };
+  </script>
 </head>
 <body class="text-slate-800">
 
@@ -1359,9 +1425,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             demoContainer.innerHTML = typeof data.demoHTML === 'function' ? data.demoHTML() : data.demoHTML;
             
             /* 🎯 動手檢核：暖身關卡過了才開三個檢核。
-               ⚠️ 這裡**不寫雲端、不計星**（老師 2026-08-24：完成狀態之後才做）。
-                  現在只在畫面上顯示完成，重新整理就從頭來 —— 先看效果再說。
-               ★ ?seed=1234 → 全班同一組題（老師在黑板上帶著對答案時用）。 */
+               ★ 老師 2026-08-24：「暖身關卡通關才會打開動手檢核? 每次都要重玩? 要有記錄」
+                 ⇒ 完成狀態寫進 modules.arduino（見 <head> 的 LABSAVE）。
+                   ⚠️ **不計星**。做完的人回來看到的是「✅ 已完成」＋可自願重做，
+                      而不是從第一個節點重來 —— 尤其暖身是檢核的鑰匙，
+                      每次重玩等於每次重新開鎖。
+               ⚠️ 先等讀取完再決定畫什麼。順序反過來（先掛互動、讀完再換掉）的話，
+                  已完成的學生會先看到第一題，手快的已經點下去了。
+               ★ ?seed=1234 → 全班同題（老師在黑板上帶著對答案時用）。 */
             const warmBox = document.getElementById('detail-warm');
             const labBox  = document.getElementById('detail-lab');
             if (data.lab === 'door1' && window.ULTRALAB && window.DOORLAB) {
@@ -1370,26 +1441,79 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 document.getElementById('warm-seed').textContent = seedTxt;
                 document.getElementById('lab-seed').textContent = seedTxt;
 
+                const UNIT   = 'u1';
+                const wrap   = document.getElementById('warm-box');
                 const checks = document.getElementById('lab-checks');
                 const locked = document.getElementById('lab-locked');
-                checks.innerHTML = '';
-                checks.classList.add('hidden');
-                locked.classList.remove('hidden');
+                const save   = window.LABSAVE || { load: () => Promise.resolve({}), save: () => {} };
 
-                ULTRALAB.mount(document.getElementById('warm-box'), {
-                    mode: 'warmup',
-                    seed: seed,
-                    onDone: function () {
-                        locked.classList.add('hidden');
-                        checks.classList.remove('hidden');
-                        DOORLAB.mount(checks, { seed: seed });
-                        /* ⚠️ 這裡**不自動捲到檢核**。暖身過了之後，
-                           學生應該往下讀模擬與虛擬碼，最後才做檢核 ——
-                           直接把他丟到最底下，中間那段教材就跳過去了。 */
-                    }
-                });
                 warmBox.classList.remove('hidden');
                 labBox.classList.remove('hidden');
+                wrap.innerHTML = '<div class="text-slate-400 font-bold text-sm py-6 text-center">讀取上次的紀錄…</div>';
+
+                /* 已完成的樣子：一張綠卡 ＋ 一個「再玩一次」。
+                   ⚠️ 重做**不覆寫紀錄** —— 老師看到的要是「第一次做完是什麼時候」，
+                      不是「最後一次點開是什麼時候」。 */
+                function doneCard(box, at, label, redo) {
+                    const when = at ? new Date(at).toLocaleString('zh-TW',
+                        { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                    box.innerHTML =
+                      '<div class="flex flex-wrap items-center gap-3 bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4">' +
+                        '<span class="text-2xl">✅</span>' +
+                        '<div class="flex-1 min-w-[180px]"><div class="font-black text-emerald-800">' + label + '</div>' +
+                        (when ? '<div class="text-xs text-emerald-600 font-bold mt-0.5">完成於 ' + when + '</div>' : '') +
+                        '</div>' +
+                        '<button class="redo bg-white border-2 border-emerald-400 text-emerald-700 font-black text-sm px-4 py-2 rounded-xl hover:bg-emerald-100">再玩一次</button>' +
+                      '</div>';
+                    box.querySelector('.redo').addEventListener('click', redo);
+                }
+
+                function openChecks(rec) {
+                    locked.classList.add('hidden');
+                    checks.classList.remove('hidden');
+                    if (rec && rec.checks) {
+                        doneCard(checks, rec.checks.at, '三個檢核都通過了', () => mountChecks(rec));
+                    } else {
+                        mountChecks(rec);
+                    }
+                }
+                function mountChecks(rec) {
+                    checks.innerHTML = '';
+                    DOORLAB.mount(checks, {
+                        seed: seed,
+                        onDone: function (info) {
+                            if (!(rec && rec.checks)) save.save(UNIT, 'checks', { tries: info && info.tries });
+                        }
+                    });
+                }
+                function mountWarm(rec) {
+                    wrap.innerHTML = '';
+                    ULTRALAB.mount(wrap, {
+                        mode: 'warmup',
+                        seed: seed,
+                        onDone: function (info) {
+                            if (!(rec && rec.warm)) save.save(UNIT, 'warm', { tries: info && info.tries });
+                            openChecks(rec);
+                            /* ⚠️ 這裡**不自動捲到檢核**。暖身過了之後，
+                               學生應該往下讀模擬與虛擬碼，最後才做檢核 ——
+                               直接把他丟到最底下，中間那段教材就跳過去了。 */
+                        }
+                    });
+                }
+
+                save.load(UNIT).then(function (rec) {
+                    rec = rec || {};
+                    if (rec.warm) {
+                        doneCard(wrap, rec.warm.at, '暖身關卡已通過（超音波原理）', () => mountWarm(rec));
+                        openChecks(rec);          // ★ 鑰匙已經拿過了，不必再拿一次
+                    } else {
+                        checks.innerHTML = '';
+                        checks.classList.add('hidden');
+                        locked.classList.remove('hidden');
+                        mountWarm(rec);
+                    }
+                    lucide.createIcons();
+                });
             } else {
                 warmBox.classList.add('hidden');
                 labBox.classList.add('hidden');

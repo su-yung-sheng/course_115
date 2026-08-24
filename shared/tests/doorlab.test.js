@@ -242,5 +242,57 @@ section('★ 聲音要畫成同心弧線，不是圓球（老師 2026-08-24）')
   ok(/prefers-reduced-motion/.test(src), '   會暈的人放慢，不是直接關掉（那就看不到了）');
 }
 
+
+section('★ 完成要有紀錄（老師 2026-08-24：「每次都要重玩? 要有記錄」）');
+{
+  const page = read('11501/5016b.html');
+  /* 剝掉註解再驗「不可以出現 X」型的條件 ——
+     ⚠️ 這個專案已經有五次是註解裡剛好講到 X，害檢查自傷。 */
+  const c = page
+    .replace(/(^|[\s;{(=])\/\*[\s\S]*?\*\//gm, '$1')
+    .replace(/^\s*\/\/.*$/gm, '')       /* ⚠️ 行註解也要剝：不剝的話「把那一行註解掉」這種
+                                            突變會穿過去（2026-08-24 突變測試當場抓到）。
+                                            只剝**整行**以 // 開頭的 —— 行內的 https:// 不能碰。 */
+    .replace(/<!--[\s\S]*?-->/g, '');
+
+  ok(/<script src="config\.js"><\/script>/.test(c),
+     '★ 這一頁載入 config.js —— 本來只有 guard.js（知道你是誰，卻寫不了東西）');
+  ok(c.indexOf('src="config.js"') < c.indexOf('shared/semester.js'),
+     '   而且排在 semester／guard 之前（那兩支要讀 CONFIG.TERM）');
+  ok(/window\.LABSAVE/.test(c), '   有 LABSAVE');
+
+  /* ⚠️⚠️ 最危險的一條：這一頁不計星。
+     寫進 stars 的話 hub 的整體進度會超過 100%（分子加了、分母沒加）。 */
+  ok(!/stars/.test(c.slice(c.indexOf('window.LABSAVE'), c.indexOf('</script>', c.indexOf('window.LABSAVE')))),
+     '★★ LABSAVE 完全不碰 stars —— arduino 卡的 maxStars 是 0，寫了星進度就爆表');
+  ok(!/REPORT\.(unit|pass)\(/.test(c), '★★ 不走 REPORT.unit()／pass()（那兩支會自己算星）');
+  ok(/modules: \{ arduino: \{/.test(c), '   寫在 modules.arduino 底下');
+  ok(/\{ merge: true \}/.test(c), '★ 用 merge 寫入 —— 不可以蓋掉學生其他科目的資料');
+
+  /* 教室是共用電腦：關掉瀏覽器就該消失（和全站身分規則一致）。 */
+  ok(!/localStorage/.test(c), '★★ 退路用 sessionStorage，不是 localStorage（共用電腦）');
+  ok(/sessionStorage\.setItem\(localKey/.test(c), '   斷網／規則沒發布時，本機至少記得住');
+
+  /* 重點：做完的人回來不必重玩。 */
+  ok(/if \(rec\.warm\)[\s\S]{0,300}openChecks\(rec\)/.test(c),
+     '★★ 暖身已通過 → 檢核直接是開的（鑰匙拿過就不必再拿一次）');
+  ok(/doneCard\(wrap, rec\.warm\.at/.test(c), '   暖身顯示「已完成」卡，不是第一題');
+  ok(/doneCard\(checks, rec\.checks\.at/.test(c), '   三個檢核也一樣');
+  ok(/再玩一次/.test(c), '★ 但要留一個「再玩一次」（想練的人可以練）');
+  ok(/if \(!\(rec && rec\.warm\)\) save\.save\(UNIT, 'warm'/.test(c) &&
+     /if \(!\(rec && rec\.checks\)\) save\.save\(UNIT, 'checks'/.test(c),
+     '★★ 重做**不覆寫**紀錄 —— 老師要看的是第一次做完是什麼時候');
+
+  /* ⚠️ 順序：先讀完再畫。反過來的話已完成的學生會先看到第一題。 */
+  ok(/save\.load\(UNIT\)\.then/.test(c) && /讀取上次的紀錄/.test(c),
+     '★ 讀取期間先顯示「讀取上次的紀錄…」，不先掛互動');
+  ok(!/ULTRALAB\.mount\([^)]*\)[\s\S]{0,80}save\.load/.test(c),
+     '   不是「先掛互動、讀完再換掉」');
+
+  /* 沒有 LABSAVE（例如 Firebase CDN 被擋）時整頁不可以死掉。 */
+  ok(/window\.LABSAVE \|\| \{ load: \(\) => Promise\.resolve\(\{\}\)/.test(c),
+     '★ LABSAVE 起不來時退成空實作 —— 課照上，只是沒紀錄');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
