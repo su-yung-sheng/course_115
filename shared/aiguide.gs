@@ -693,6 +693,31 @@ function coachPrompt_(text) {
 /* ── 概念檢測的覆核 ───────────────────────────────
    規則判定漏抓的說法，交給 AI 撿回來。**只能加分。** */
 
+/* 這一關在做什麼 —— 讓 AI 知道學生正在解什麼題，不然它問出來的話會飄。
+
+   ⚠️⚠️ 2026-08-24：這支函式**被呼叫、但從來沒有定義過**。
+      Apps Script 呼叫沒定義的函式會丟 ReferenceError，
+      而 action=judge 那一段整個包在 try/catch 裡 →
+      永遠回 { ok:true, results:[], skipped:'ai' }。
+      ★ 症狀是「AI 沒撿回來」，和「AI 認為他確實沒講到」**長得一模一樣** ——
+        所以壞了多久都不會有人發現，只會覺得「AI 判得好嚴」。
+      ⇒ 這也是為什麼下面這支**絕對不可以往外丟例外**：
+        丟出去就等於把整個覆核關掉，而且是安靜地關掉。
+
+   ★ 題目一律從 levels_() 來（就是學生頁面用的那一份 blocks.js），
+     不在這裡另抄一份 —— 抄了就會有第二個版本的題目。
+   ★ 找不到的單元回 null 是**正常**的：像 5016b 的檢核並不在 blocks.js 裡，
+     那時 judgePrompt_ 會自己填「（沒有提供）」，覆核照樣做得下去。 */
+function unitBrief_(unitId) {
+  try {
+    var list = (levels_() || {})[String(unitId || '')];
+    var task = list && list[0] && list[0].task;
+    return task ? { task: task } : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 function judgePrompt_(unitId, list) {
   var b = unitBrief_(unitId) || { task: '（沒有提供）' };
   var qs = list.map(function (x, n) {

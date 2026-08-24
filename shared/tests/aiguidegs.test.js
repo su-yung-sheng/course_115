@@ -68,5 +68,40 @@ delete props['GEMINI_KEY'];
 try { box.askGemini_('x'); ok(false, '沒有金鑰時應該報錯'); }
 catch (e) { ok(/GEMINI_KEY/.test(e.message), '沒有金鑰時的訊息要指名 GEMINI_KEY'); }
 
+
+/* ── ★★ 每一個被呼叫的 xxx_() 都要真的定義得出來 ────────────────
+   ⚠️ 2026-08-24 抓到：judgePrompt_ 呼叫了 unitBrief_()，而那支
+      **從來沒有定義過**。Apps Script 會丟 ReferenceError，
+      但 action=judge 整段包在 try/catch 裡 →
+      永遠回 { results: [], skipped: 'ai' }。
+      ★ 那個症狀和「AI 認為他確實沒講到」一模一樣，
+        所以 AI 覆核可能從上線第一天就沒有真的運作過，而沒有人會發現。
+
+   ⇒ 這一條盯的不是那一支函式，是**整個類別的錯**：
+     .gs 沒有模組系統、沒有編譯期檢查，打錯一個字或搬走一支函式，
+     要等到那條路徑被走到、而且沒被 try/catch 吃掉，才看得見。 */
+{
+  /* ⚠️ **只**剝註解，不要剝字串。
+     第一版連字串一起剝，結果引號在中文文案裡對不起來，
+     一路吃掉六支真的有定義的函式 —— 測試當場報「缺 provider_」，
+     而 provider_ 就定義在上面兩百行的地方。
+     ★ 這正是 accept="image/*" 那次的同一種病：剝東西的規則自己出錯，
+       症狀卻長得像「程式壞了」。 */
+  const strip = src
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/^\s*\/\/.*$/gm, ' ');
+  const defined = new Set([...strip.matchAll(/function\s+([A-Za-z0-9_$]*_)\s*\(/g)].map(m => m[1]));
+  /* ⚠️ 前面有點的是方法呼叫（obj.foo_()），不是這裡要管的。 */
+  const called = new Set([...strip.matchAll(/(^|[^\w.$])([A-Za-z][A-Za-z0-9_$]*_)\s*\(/g)].map(m => m[2]));
+  const missing = [...called].filter(n => !defined.has(n) && !/^(function|if|for|while|catch|switch|return|typeof|new)$/.test(n));
+  ok(missing.length === 0,
+     '★★ 沒有「呼叫了但沒定義」的函式' + (missing.length ? '（缺：' + missing.join('、') + '）' : ''));
+  ok(defined.has('unitBrief_'), '   unitBrief_ 有定義（judgePrompt_ 會叫它）');
+  /* ★ 而且它不可以往外丟例外 —— 丟了就等於安靜地把整個覆核關掉。 */
+  const ub = strip.slice(strip.indexOf('function unitBrief_'));
+  ok(/try \{[\s\S]*?catch \(e\) \{\s*return null;/.test(ub.slice(0, 400)),
+     '★★ unitBrief_ 抓不到題目時回 null，不丟例外（丟了＝覆核整個關掉）');
+}
+
 console.log('通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
