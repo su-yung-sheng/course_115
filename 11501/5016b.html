@@ -315,7 +315,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                              ⚠️ 沒有 apps 資料的單元整塊不畫（不要留空標題）。 -->
                         <div id="detail-apps" class="mt-6 hidden">
                             <h3 class="text-sm font-black text-slate-500 tracking-widest mb-3">🏠 生活中你看過的</h3>
-                            <div id="detail-apps-list" class="grid gap-3 sm:grid-cols-3 max-w-4xl"></div>
+                            <!-- ⚠️ 欄數跟著資料量走：兩張卡用 sm:grid-cols-3 會空一格、看起來像漏了一個。 -->
+                            <div id="detail-apps-list" class="grid gap-3 max-w-3xl"></div>
                             <p id="detail-apps-note" class="text-sm text-slate-600 mt-3 max-w-3xl leading-relaxed"></p>
                         </div>
                     </div>
@@ -437,19 +438,22 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 icon: "door-open",
                 desc: "用超音波量出「人離門多遠」，再決定馬達要不要轉、往哪邊轉、以及<span class=\"hl\">轉多久</span>。馬達沒有感測器告訴它門開到底了沒 —— 這節課的核心，就是<span class=\"hl\">用時間把「轉動」變成「開門」</span>這個動作。",
                 /* ★ 老師 2026-08-24 指定的第一個例子：「感應式鐵捲門(上下或左右)」。
-                   另外兩個挑「學生家裡／路上真的看得到」而且**三個概念都對得上**的：
-                     量距離 → 判斷要不要動 → 馬達轉固定時間 → 停
-                   ⚠️ 感應垃圾桶特別值得留 —— 它連「要記住蓋子開了沒」都對得上，
-                      而且學生按過。 */
+                   第二個挑感應垃圾桶 —— 它連「要記住蓋子開了沒」都對得上，而且學生按過。
+
+                   ⚠️ 停車場閘門拿掉了（老師 2026-08-24：「會使用另一個伺服馬達，
+                      所以前兩個應用就好」）。
+                      ★ 這是**教具與課程的一致性**問題，不是舉例好不好的問題：
+                        閘門的桿子是伺服馬達（直接轉到指定角度），
+                        而這一節教的是直流馬達「轉一段時間再停」。
+                        放進來的話，學生會拿一個「不必算時間」的東西
+                        來對照這節課「一定要算時間」的核心，剛好互相抵消。 */
                 apps: [
                     { icon: "🚪", name: "感應式鐵捲門",
                       how: "車子靠近就往上捲（或往旁邊拉開），開到定位就停；車走了再關回去。" },
                     { icon: "🗑️", name: "感應垃圾桶",
-                      how: "手一靠近蓋子就打開，手移開幾秒後自動蓋上。" },
-                    { icon: "🅿️", name: "停車場閘門",
-                      how: "車開到感應區，桿子抬起來；車過去之後桿子再放下。" }
+                      how: "手一靠近蓋子就打開，手移開幾秒後自動蓋上。" }
                 ],
-                appsNote: '這三個東西的做法<span class="hl">一模一樣</span>：先量出「東西離我多遠」，' +
+                appsNote: '這兩個東西的做法<span class="hl">一模一樣</span>：先量出「東西離我多遠」，' +
                           '再決定馬達<b>要不要轉、往哪邊轉、轉多久</b>。' +
                           '⚠️ 它們都<span class="hl">沒有眼睛</span> —— 鐵捲門不知道自己捲到頂了沒有，' +
                           '靠的是<span class="hl-b">時間</span>。這一節課要做的就是這件事。',
@@ -1220,7 +1224,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                ⚠️ 沒有資料就整塊隱藏 —— 留一個空的標題比沒有還糟。 */
             const appsBox = document.getElementById('detail-apps');
             if (data.apps && data.apps.length) {
-                document.getElementById('detail-apps-list').innerHTML = data.apps.map(a =>
+                const appsList = document.getElementById('detail-apps-list');
+                appsList.className = 'grid gap-3 max-w-3xl sm:grid-cols-' + Math.min(3, data.apps.length);
+                appsList.innerHTML = data.apps.map(a =>
                     `<div class="bg-white/70 border-2 border-slate-200 rounded-xl p-3">
                         <div class="text-2xl mb-1">${a.icon}</div>
                         <div class="font-black text-slate-800 text-sm">${a.name}</div>
