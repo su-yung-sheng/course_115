@@ -832,20 +832,20 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 colorText: "text-sky-400",
                 colorBg: "bg-sky-500",
                 icon: "lightbulb",
-                desc: "結合超音波感測器與 WS2812B 全彩燈條，創造出具科技感的迎賓走廊。我們不只做簡單的開關，還能依據「距離的遠近」來決定點亮幾顆燈珠，越靠近燈就亮越多！",
+                desc: "一樣是量距離，但這一次答案不再只有「開」和「關」。我們用「對應」把距離換算成燈條的表現：一種是<b>亮度</b>（整條一起變亮變暗），一種是<b>位置</b>（只亮一顆，位置會跟著跑）。同一個距離，換到不同的範圍，就是完全不同的效果。",
                 /* 🎯 這一節的暖身換成「換算」（老師 2026-08-24：「第二節先不要超音波，
                    重點改放在燈條上」）—— 超音波的原理第一節教過了，
                    距離在這裡只是輸入來源。
                    ⚠️ 三個檢核還沒做，所以 checks 先留 null。 */
                 lab: { unit: 'u2', warm: 'MAPLAB', checks: 'LIGHTLAB' },
                 apps: [
-                    { icon: "🅿️", name: "倒車距離指示燈條",
-                      how: "後面的障礙物越近，亮的那一格就越往前推 —— 一眼就看得出還剩多少空間。" },
+                    { icon: "✨", name: "迎賓燈",
+                      how: "客人從走廊那一頭走過來，燈就跟著亮起來迎接他 —— 越靠近，亮的位置越往門口推。" },
                     { icon: "🌙", name: "走廊感應夜燈",
                       how: "人越靠近燈越亮，走遠了就慢慢暗下來，不會整夜全亮。" }
                 ],
                 appsNote: '這兩個東西<span class="hl">用的是同一個距離</span>，' +
-                          '只是把它<b>換算成不同的東西</b>：一個換成「第幾格」，一個換成「多亮」。' +
+                          '只是把它<b>換算成不同的東西</b>：一個換成「第幾顆」，一個換成「多亮」。' +
                           '⚠️ 第一節的門只有<span class="hl-b">開和關</span>兩種答案；' +
                           '這一節的答案是<span class="hl">連續的</span> —— ' +
                           '所以需要一塊新積木：<b>對應</b>。',
@@ -996,6 +996,64 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                 那就變成「亮幾顆」而不是<span class="hl-b">亮哪一顆</span>了。
                             </p>
                         </div>
+                    </div>
+
+                    <!-- ══ 兩種效果，讓學生自己比 ══
+                         ★ 老師 2026-08-24：「因為程式是只亮一個燈，如果要保持燈條全亮的效果
+                           就放在程式的說明中，表示這是兩種效果，讓學生使用比較」
+                         ⚠️ 關鍵是：把上一顆留著**不是壞掉**，那是另一種做法。
+                            兩種都對，差別只在你想表達什麼。 -->
+                    <div class="mt-8 bg-slate-50 border-2 border-slate-300 rounded-2xl p-5">
+                        <div class="font-black text-slate-800 text-lg mb-1">🔍 同一段程式，兩種效果</div>
+                        <p class="text-sm text-slate-600 mb-4 leading-relaxed">
+                            上面那段位置模式，<span class="hl">只差最後一行</span>，
+                            做出來就是完全不同的東西。兩種都是對的 ——
+                            差別在你想讓人看到<span class="hl-b">什麼資訊</span>。
+                        </p>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="bg-white border-2 border-cyan-300 rounded-xl p-4">
+                                <div class="font-black text-cyan-800 mb-2">① 只亮一顆（位置）</div>
+                                <div class="flex gap-1 justify-center bg-slate-900 rounded-lg p-3 mb-3">
+                                    <span class="w-6 h-6 rounded-full bg-slate-700"></span>
+                                    <span class="w-6 h-6 rounded-full bg-slate-700"></span>
+                                    <span class="w-6 h-6 rounded-full bg-slate-700"></span>
+                                    <span class="w-6 h-6 rounded-full bg-amber-300 shadow-[0_0_10px_3px_rgba(251,191,36,.6)]"></span>
+                                    <span class="w-6 h-6 rounded-full bg-slate-700"></span>
+                                    <span class="w-6 h-6 rounded-full bg-slate-700"></span>
+                                    <span class="w-6 h-6 rounded-full bg-slate-700"></span>
+                                    <span class="w-6 h-6 rounded-full bg-slate-700"></span>
+                                </div>
+                                <p class="text-sm text-slate-700 leading-relaxed">
+                                    亮完<b>把它關掉</b>（就是上面那段程式）。<br>
+                                    看得出來的是<span class="hl">現在在哪裡</span>。
+                                </p>
+                            </div>
+                            <div class="bg-white border-2 border-amber-300 rounded-xl p-4">
+                                <div class="font-black text-amber-800 mb-2">② 亮到第 N 顆（長度）</div>
+                                <div class="flex gap-1 justify-center bg-slate-900 rounded-lg p-3 mb-3">
+                                    <span class="w-6 h-6 rounded-full bg-amber-300 shadow-[0_0_10px_3px_rgba(251,191,36,.6)]"></span>
+                                    <span class="w-6 h-6 rounded-full bg-amber-300 shadow-[0_0_10px_3px_rgba(251,191,36,.6)]"></span>
+                                    <span class="w-6 h-6 rounded-full bg-amber-300 shadow-[0_0_10px_3px_rgba(251,191,36,.6)]"></span>
+                                    <span class="w-6 h-6 rounded-full bg-amber-300 shadow-[0_0_10px_3px_rgba(251,191,36,.6)]"></span>
+                                    <span class="w-6 h-6 rounded-full bg-slate-700"></span>
+                                    <span class="w-6 h-6 rounded-full bg-slate-700"></span>
+                                    <span class="w-6 h-6 rounded-full bg-slate-700"></span>
+                                    <span class="w-6 h-6 rounded-full bg-slate-700"></span>
+                                </div>
+                                <p class="text-sm text-slate-700 leading-relaxed">
+                                    <b>不要關掉</b>（或用迴圈從第 1 顆亮到第 N 顆）。<br>
+                                    看得出來的是<span class="hl">有多近</span>。
+                                </p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-slate-700 mt-4 leading-relaxed">
+                            ⚠️ 所以「走過的燈都留著」<span class="hl">不一定是壞掉</span> ——
+                            要看你做的是哪一種。做<b>迎賓燈</b>時，
+                            ② 反而更有「客人越走越近、燈一路亮起來」的感覺；
+                            但如果你要的是<b>倒車還剩多少空間</b>那種指示，
+                            ① 才看得出「現在到哪一格」。<br>
+                            ★ <span class="hl-b">兩種都試一次</span>，再決定你的迎賓走廊要哪一種。
+                        </p>
                     </div>
                 `
             },
