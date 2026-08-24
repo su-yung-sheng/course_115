@@ -302,33 +302,30 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     </div>
                 </div>
 
-                <!-- Side-by-Side: Interactive Simulator & Code Logic -->
-                <div class="p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 bg-slate-100">
-                    
-                    <!-- Left: Interactive Simulator -->
-                    <!-- ⚠️ 2026-08-24 老師：「硬體行為模擬 為什麼會空白一大塊?」
-                         病根是 justify-between：左右兩欄同高，而右欄放了程式碼＋三張說明卡
-                         之後高很多，左欄被一起拉高 —— justify-between 就把多出來的高度
-                         全部塞成「標題」和「模擬器」中間的空白。
-                         ⇒ 改成 justify-start，並讓模擬器方塊 flex-1 撐滿剩下的高度，
-                           空白就變成方塊的一部分（內容仍置中）。 -->
-                    <div class="lg:col-span-6 flex flex-col justify-start space-y-6">
+                <!-- 模擬在上、解析在下（老師 2026-08-24）
+                     ⚠️ 本來是左右並排 6/6。同一列的兩欄一定同高，
+                        而「邏輯解析」有程式碼＋三張說明卡，遠比模擬器高 ——
+                        模擬器被拉高就出現一大塊空白（上一版用 flex-1 蓋過去），
+                        解析那一欄則只有半個版面寬，程式碼一直換行、三張卡擠成細長條。
+                     ⇒ 改成上下排：模擬器維持自己的高度，解析拿到整個寬度。 -->
+                <div class="p-8 space-y-8 bg-slate-100">
+
+                    <!-- 硬體行為模擬 -->
+                    <div class="space-y-4">
                         <div>
                             <span class="text-xs font-bold tracking-widest text-primary uppercase bg-primary/10 px-3 py-1 rounded-full">動態實作體驗區</span>
                             <h3 class="text-2xl font-bold text-slate-800 mt-3 mb-2">硬體行為模擬</h3>
                             <p class="text-slate-500 text-sm">操作下方模擬元件，觀察數值變化 —— 和 NKNU 5016B 模組上跑起來的行為一致。</p>
                         </div>
-                        
-                        <div id="interactive-playground" class="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-center items-center min-h-[300px] flex-1 relative">
+
+                        <div id="interactive-playground" class="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-center items-center min-h-[300px] relative">
                             <!-- Dynamic Simulation Loaded Here -->
                         </div>
                     </div>
 
-                    <!-- Right: Logic & Code block representation -->
-                    <div class="lg:col-span-6 flex flex-col">
-                        <div id="detail-demo-container" class="h-full">
-                            <!-- Code Displayed Here -->
-                        </div>
+                    <!-- 邏輯解析：整個寬度 -->
+                    <div id="detail-demo-container">
+                        <!-- Code Displayed Here -->
                     </div>
 
                 </div>
@@ -345,7 +342,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 <span class="text-xl font-bold text-slate-500 tracking-wider">智慧家居機電專題課程</span>
             </div>
             <p class="mb-2">機電整合微課程暨軟硬體線上模擬器（NKNU 5016B 教具模組）</p>
-            <p class="text-sm">© 2026 科技領域教學研究小組版權所有</p>
+            <p class="text-sm">© 2026 前峰國中科技領域版權所有</p>
         </div>
     </footer>
 
@@ -514,7 +511,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             <div class="w-3 h-3 rounded-full bg-green-500"></div>
                             <span class="ml-4 text-xs text-slate-500 font-mono">auto_door.block</span>
                         </div>
-                        <div class="p-4 sm:p-6 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-600">
+                        <div class="p-4 sm:p-6 overflow-x-auto text-sm sm:text-base font-mono leading-relaxed text-slate-600">
 <pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
 <span class="col-span-2 text-emerald-600">// ① 先記住門現在是開的還是關的</span>
 <span class="col-span-2"><span class="text-sky-600">變數</span> 門的狀態 <span class="text-rose-600">設為</span> <span class="text-indigo-600">「關」</span></span>
@@ -645,7 +642,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             <div class="w-3 h-3 rounded-full bg-green-500"></div>
                             <span class="ml-4 text-xs text-slate-500 font-mono">sensor_lights.block</span>
                         </div>
-                        <div class="p-4 sm:p-6 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-600">
+                        <div class="p-4 sm:p-6 overflow-x-auto text-sm sm:text-base font-mono leading-relaxed text-slate-600">
 <pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
 <span class="col-span-2"><span class="text-rose-600">無限重複執行</span></span>
 <span class="col-span-2">  <span class="text-sky-600">變數</span> 距離 <span class="text-rose-600">設為</span> <span class="text-amber-600">讀取超音波感測器</span></span>
@@ -767,7 +764,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             <div class="w-3 h-3 rounded-full bg-green-500"></div>
                             <span class="ml-4 text-xs text-slate-500 font-mono">manual_fan.block</span>
                         </div>
-                        <div class="p-4 sm:p-6 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-600">
+                        <div class="p-4 sm:p-6 overflow-x-auto text-sm sm:text-base font-mono leading-relaxed text-slate-600">
 <pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
 <span class="col-span-2"><span class="text-rose-600">無限重複執行</span></span>
 <span class="col-span-2">  <span class="text-sky-600">變數</span> 旋鈕值 <span class="text-rose-600">設為</span> <span class="text-amber-600">讀取類比腳位 A0</span></span><span class="text-emerald-600">// 範圍 0~1023</span>
@@ -858,7 +855,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             <div class="w-3 h-3 rounded-full bg-green-500"></div>
                             <span class="ml-4 text-xs text-slate-500 font-mono">mood_lighting.block</span>
                         </div>
-                        <div class="p-4 sm:p-6 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-600">
+                        <div class="p-4 sm:p-6 overflow-x-auto text-sm sm:text-base font-mono leading-relaxed text-slate-600">
 <pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
 <span class="col-span-2"><span class="text-rose-600">無限重複執行</span></span>
 <span class="col-span-2">  <span class="text-sky-600">變數</span> 旋鈕值 <span class="text-rose-600">設為</span> <span class="text-amber-600">讀取類比腳位 A1</span></span>
@@ -1089,7 +1086,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             <div class="w-3 h-3 rounded-full bg-green-500"></div>
                             <span class="ml-4 text-xs text-slate-500 font-mono">smart_home_hub.block</span>
                         </div>
-                        <div class="p-4 sm:p-6 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed text-slate-600">
+                        <div class="p-4 sm:p-6 overflow-x-auto text-sm sm:text-base font-mono leading-relaxed text-slate-600">
 <pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
 <span class="col-span-2"><span class="text-rose-600">如果</span> <span class="text-sky-600">目前模式</span> == <span class="text-indigo-600">"AUTO"</span> <span class="text-rose-600">則</span></span>
 <span class="col-span-2 text-emerald-600">  // 自動控制邏輯 (依賴超音波)</span>
