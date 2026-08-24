@@ -308,6 +308,16 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         </div>
                         <h2 id="detail-title" class="text-3xl md:text-4xl font-black text-slate-800 mb-4">單元標題</h2>
                         <p id="detail-desc" class="text-lg text-slate-600 leading-relaxed max-w-3xl">單元描述內容...</p>
+
+                        <!-- 🏠 生活應用：老師 2026-08-24「第一單元有什麼實際生活應用?
+                             這個應該是開頭要先寫出來的」——所以放在課程說明的正下方，
+                             學習目標與器材之前。先有「這是在做什麼」，再談要學什麼。
+                             ⚠️ 沒有 apps 資料的單元整塊不畫（不要留空標題）。 -->
+                        <div id="detail-apps" class="mt-6 hidden">
+                            <h3 class="text-sm font-black text-slate-500 tracking-widest mb-3">🏠 生活中你看過的</h3>
+                            <div id="detail-apps-list" class="grid gap-3 sm:grid-cols-3 max-w-4xl"></div>
+                            <p id="detail-apps-note" class="text-sm text-slate-600 mt-3 max-w-3xl leading-relaxed"></p>
+                        </div>
                     </div>
                 </div>
                 
@@ -426,6 +436,23 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 colorBg: "bg-emerald-500",
                 icon: "door-open",
                 desc: "用超音波量出「人離門多遠」，再決定馬達要不要轉、往哪邊轉、以及<span class=\"hl\">轉多久</span>。馬達沒有感測器告訴它門開到底了沒 —— 這節課的核心，就是<span class=\"hl\">用時間把「轉動」變成「開門」</span>這個動作。",
+                /* ★ 老師 2026-08-24 指定的第一個例子：「感應式鐵捲門(上下或左右)」。
+                   另外兩個挑「學生家裡／路上真的看得到」而且**三個概念都對得上**的：
+                     量距離 → 判斷要不要動 → 馬達轉固定時間 → 停
+                   ⚠️ 感應垃圾桶特別值得留 —— 它連「要記住蓋子開了沒」都對得上，
+                      而且學生按過。 */
+                apps: [
+                    { icon: "🚪", name: "感應式鐵捲門",
+                      how: "車子靠近就往上捲（或往旁邊拉開），開到定位就停；車走了再關回去。" },
+                    { icon: "🗑️", name: "感應垃圾桶",
+                      how: "手一靠近蓋子就打開，手移開幾秒後自動蓋上。" },
+                    { icon: "🅿️", name: "停車場閘門",
+                      how: "車開到感應區，桿子抬起來；車過去之後桿子再放下。" }
+                ],
+                appsNote: '這三個東西的做法<span class="hl">一模一樣</span>：先量出「東西離我多遠」，' +
+                          '再決定馬達<b>要不要轉、往哪邊轉、轉多久</b>。' +
+                          '⚠️ 它們都<span class="hl">沒有眼睛</span> —— 鐵捲門不知道自己捲到頂了沒有，' +
+                          '靠的是<span class="hl-b">時間</span>。這一節課要做的就是這件事。',
                 objectives: [
                     "認識超音波感測器 (Trig 發射 / Echo 接收) 的測距原理",
                     "用「正轉 / 反轉 / 停」三個狀態控制直流減速馬達",
@@ -1188,6 +1215,22 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                desc 是我們自己寫的內容（沒有使用者輸入），改用 innerHTML
                才能畫重點。objectives／materials 本來就是 innerHTML。 */
             document.getElementById('detail-desc').innerHTML = data.desc;
+
+            /* 🏠 生活應用（第一節先有，其餘各節等內容確認後補）。
+               ⚠️ 沒有資料就整塊隱藏 —— 留一個空的標題比沒有還糟。 */
+            const appsBox = document.getElementById('detail-apps');
+            if (data.apps && data.apps.length) {
+                document.getElementById('detail-apps-list').innerHTML = data.apps.map(a =>
+                    `<div class="bg-white/70 border-2 border-slate-200 rounded-xl p-3">
+                        <div class="text-2xl mb-1">${a.icon}</div>
+                        <div class="font-black text-slate-800 text-sm">${a.name}</div>
+                        <div class="text-xs text-slate-600 leading-relaxed mt-1">${a.how}</div>
+                     </div>`).join('');
+                document.getElementById('detail-apps-note').innerHTML = data.appsNote || '';
+                appsBox.classList.remove('hidden');
+            } else {
+                appsBox.classList.add('hidden');
+            }
             
             const bgIcon = document.getElementById('detail-bg-icon');
             bgIcon.setAttribute('data-lucide', data.icon);
