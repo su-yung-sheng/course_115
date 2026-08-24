@@ -88,8 +88,16 @@ ok(withLab.join() === '4-3-1,6-1-1,6-2-1,6-2-2,6-3-1,6-3-2,6-3-3',
    '★ 有實驗室的是這七關（實得：' + withLab.join('、') + '）');
 ok(['4-2-1', '4-2-2', '4-2-3'].every(id => !W.BLOCK_LEVELS[id].lab),
    '★ 第 4 章的前三關沒有實驗室 —— 它們的主角是程式拼圖');
-ok(withLab.every(id => ['sort', 'search', 'logic', 'min'].indexOf(W.BLOCK_LEVELS[id].lab.kind) >= 0),
+/* ⚠️ 2026-08-24 修：`lab` **可以是陣列** —— 第 10 關掛兩個（先比排序、再比搜尋），
+   那是老師 2026-08-17 指出「動手試一次就只有搜尋，沒有排序」之後加的。
+   這一條原本直接讀 `.lab.kind`，遇到陣列拿到 undefined 就紅了 ——
+   ★ 紅的是測試沒跟上，不是資料有問題。 */
+const KINDS = ['sort', 'search', 'logic', 'min'];
+ok(withLab.every(id => [].concat(W.BLOCK_LEVELS[id].lab)
+       .every(l => KINDS.indexOf(l.kind) >= 0)),
    '   每一個 lab 都指定得出要掛哪一支模組（sort／search／logic／min）');
+ok([].concat(W.BLOCK_LEVELS['6-3-3'].lab).length === 2,
+   '★ 第 10 關掛**兩個**實驗室（先比排序、再比搜尋）');
 /* ★★ 第 5 關：derive 和 lab **兩個都有**，但刻意不做同一件事。
    ⚠️ 2026-08-17 之前這裡斷言「不可以有 lab」，理由是
       「兩個都放的話學生會連續做兩次一模一樣的事」——
@@ -133,8 +141,13 @@ ok(/let materialOpen = false/.test(lvHtml), '   預設收合，展開才載');
       前後翻步驟會「跳一下」，看起來像兩個網站。
       （level.html 上面那段 <main> 的說明記著同一件事。） */
 {
+  /* ⚠️ 2026-08-24 修：原本是「從 s.key === 'lab' 起算 1400 個字」。
+     那一步後來加了「一關兩個實驗室」的處理，`big: true` 被推到 +2316 ——
+     ★ 於是測試紅在「沒傳 big」，而它明明就傳了。
+     ⇒ 改成切到**下一個 s.key 分支**為止：這一步變長也不會再假紅。 */
   const i = lvHtml.indexOf("s.key === 'lab'");
-  const seg = lvHtml.slice(i, i + 1400);
+  const next = lvHtml.indexOf("s.key === '", i + 20);
+  const seg = lvHtml.slice(i, next > i ? next : i + 4000);
   ok(/big: true/.test(seg), '★ 關卡頁掛實驗室時傳 big:true');
   ok(/不是頁寬|不是\*\*頁寬/.test(seg), '   而且註解寫明放大的不是頁寬');
   ok(/max-w-4xl/.test(lvHtml) && !/max-w-5xl|max-w-6xl/.test(lvHtml),
