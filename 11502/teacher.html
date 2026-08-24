@@ -231,7 +231,11 @@
 
     <!-- 星星任務輸入與折線圖 彈出視窗 (Modal) -->
     <div id="task-modal" class="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
-      <div class="bg-white w-11/12 max-w-lg rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh]" id="task-modal-content">
+      <!-- ★ 老師 2026-08-19：「面版可以寬一點，這在電腦螢幕上閱讀太窄，字太小了」
+           max-w-lg 只有 512px —— 那是給「一科一列」的舊版面用的，
+           改成四欄關卡矩陣之後每欄只剩一百多像素，字只好縮到看不清楚。
+           ⚠️ w-11/12 要留著：小螢幕（或投影）時才不會被 max-w 撐出畫面。 -->
+      <div class="bg-white w-11/12 max-w-6xl rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[92vh]" id="task-modal-content">
         
         <!-- Modal Header -->
         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 flex justify-between items-center text-white shrink-0">
@@ -272,7 +276,8 @@
           
           <!-- 區塊B：折線圖容器 -->
           <div id="modal-chart-container" class="hidden h-full flex flex-col items-center justify-center">
-            <div class="w-full h-64 relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+            <!-- 視窗變寬之後圖也可以高一點（老師 2026-08-19）-->
+            <div class="w-full h-80 relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                 <canvas id="student-progress-chart"></canvas>
             </div>
             <!-- ⚠️ 2026-08-19：這句本來寫「需使用『進度分析』功能紀錄歷史資料」，
@@ -1628,20 +1633,20 @@
       const rows = Math.max.apply(null, cols.map(c => c.units.length));
       const bar = (n, cap) => '★'.repeat(Math.max(0,n)) + '☆'.repeat(Math.max(0, cap - n));
 
-      let head = '<th class="px-2 py-1 text-xs text-slate-400 font-bold">關</th>';
+      let head = '<th class="px-3 py-2 text-sm text-slate-400 font-bold">關</th>';
       cols.forEach(c => {
         const got = c.units.reduce((a, u) => a + unitStarOf(student, c.key, u.id), 0);
         const max = c.units.length * c.cap;
-        head += `<th class="px-2 py-2 text-center border-l border-slate-100">
-            <div class="font-black text-slate-700">${c.name}</div>
-            <div class="text-[11px] font-bold ${got >= max ? 'text-emerald-600' : 'text-slate-400'}">${got} / ${max}⭐</div>
+        head += `<th class="px-3 py-2.5 text-center border-l border-slate-100">
+            <div class="font-black text-slate-700 text-lg">${c.name}</div>
+            <div class="text-sm font-bold ${got >= max ? 'text-emerald-600' : 'text-slate-400'}">${got} / ${max}⭐</div>
           </th>`;
       });
 
       let body = '';
       for (let i = 0; i < rows; i++) {
         body += `<tr class="${i % 2 ? 'bg-slate-50/60' : ''}">
-          <td class="px-2 py-1 text-center text-[11px] font-mono text-slate-400">${i + 1}</td>`;
+          <td class="px-3 py-1.5 text-center text-sm font-mono text-slate-400">${i + 1}</td>`;
         cols.forEach(c => {
           const u = c.units[i];
           if (!u) { body += '<td class="border-l border-slate-100"></td>'; return; }
@@ -1651,9 +1656,9 @@
           const tone = n >= c.cap ? 'text-amber-500 font-black'
                      : n > 0 ? 'text-amber-400'
                      : 'text-slate-300';
-          body += `<td class="px-2 py-1 border-l border-slate-100 whitespace-nowrap" title="${c.name}　${u.label}　${n} / ${c.cap}⭐">
-              <span class="text-[11px] font-mono text-slate-400 mr-1">${u.label}</span>
-              <span class="${tone} tracking-tight">${bar(n, c.cap)}</span>
+          body += `<td class="px-3 py-1.5 border-l border-slate-100 whitespace-nowrap" title="${c.name}　${u.label}　${n} / ${c.cap}⭐">
+              <span class="text-sm font-mono text-slate-400 mr-1.5">${u.label}</span>
+              <span class="${tone} text-xl tracking-tight">${bar(n, c.cap)}</span>
             </td>`;
         });
         body += '</tr>';
@@ -1662,10 +1667,10 @@
       return `
         <div class="mb-5 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div class="bg-slate-50 px-4 py-2 border-b border-slate-100 flex items-center justify-between">
-            <h4 class="font-black text-slate-700 text-sm">📊 各科關卡進度</h4>
-            <span class="text-[11px] text-slate-400">★ 含老師審核的加分；滑鼠移上去看該關明細</span>
+            <h4 class="font-black text-slate-700 text-base">📊 各科關卡進度</h4>
+            <span class="text-xs text-slate-400">★ 含老師審核的加分；滑鼠移上去看該關明細</span>
           </div>
-          <div class="overflow-x-auto"><table class="w-full text-sm border-collapse">
+          <div class="overflow-x-auto"><table class="w-full text-base border-collapse">
             <thead><tr class="border-b border-slate-200">${head}</tr></thead>
             <tbody>${body}</tbody>
           </table></div>
@@ -1720,7 +1725,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
             detailHTML = `
               <details class="mt-2">
                 <summary class="text-xs text-blue-500 cursor-pointer select-none">📋 查看星星明細與獲取歷程</summary>
-                <div class="mt-1 bg-white rounded-lg border border-slate-100 max-h-48 overflow-y-auto">${moduleHistoryHtml(sub.key, student)}</div>
+                <div class="mt-1 bg-white rounded-lg border border-slate-100 max-h-72 overflow-y-auto">${moduleHistoryHtml(sub.key, student)}</div>
               </details>`;
           } else {
             if (currentStars > 3) currentStars = 3;

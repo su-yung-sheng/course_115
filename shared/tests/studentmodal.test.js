@@ -98,5 +98,26 @@ FILES.forEach(f => {
      '   縱軸用真正的分母（本來寫 科目數×3，和實際上限差十倍）');
 });
 
+
+section('★ 視窗寬度與字級（老師 2026-08-19：太窄、字太小）');
+FILES.forEach(f => {
+  const c = code(f);
+  /* ⚠️ max-w-lg 只有 512px —— 那是「一科一列」舊版面的寬度。
+     改成四欄關卡矩陣之後每欄只剩一百多像素，字只能縮到看不清楚。
+     ⇒ 這一條擋的是「日後有人順手改回去」。 */
+  ok(!/max-w-lg[^"]*" id="task-modal-content"/.test(c),
+     f + ' 學生視窗不可以是 max-w-lg（512px，四欄擠不下）');
+  ok(/max-w-6xl[^"]*" id="task-modal-content"/.test(c),
+     '★ 用 max-w-6xl（1152px）');
+  ok(/class="bg-white w-11\/12 max-w-6xl/.test(c),
+     '   w-11/12 要留著 —— 小螢幕或投影時才不會被 max-w 撐出畫面');
+
+  /* 字級：星條是這張表最需要看清楚的東西 */
+  ok(/\$\{tone\} text-xl tracking-tight/.test(c), '★ 星條用 text-xl');
+  ok(/font-black text-slate-700 text-lg">\$\{c\.name\}/.test(c), '   欄名用 text-lg');
+  ok(!/text-\[11px\] font-mono text-slate-400 mr-1">/.test(c),
+     '   關卡代號不再是 11px');
+});
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
