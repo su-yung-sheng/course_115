@@ -248,6 +248,85 @@ section('★ 聲音要畫成同心弧線，不是圓球（老師 2026-08-24）')
 }
 
 
+section('★★ 檢核不可以是固定題目固定答案（老師 2026-08-24）');
+{
+  /* ⚠️ 原本 A 的距離序列寫死、門檻預設 10／20，正解**永遠是 2**：
+     學生連那排數字都不用看，填 2 就過。B 也是同一組壞程式、同一個正解。
+     ★ 換數字不夠 —— 要換**走法**，正解才會跟著變（0／2／4）。 */
+  const keys = {}, answers = {};
+  let broken = 0, notFragile = 0;
+  for (let i = 0; i < 200; i++) {
+    const rng = U.rngFrom('k' + i);
+    let prev = null;
+    for (let k = 0; k < 3; k++) {
+      const c = D.caseA(rng, prev); prev = c;
+      keys[c.key] = (keys[c.key] || 0) + 1;
+      answers[c.answer] = (answers[c.answer] || 0) + 1;
+      /* ① 用合理門檻，門的行為必須剛好符合這一種走法的目標 */
+      const r = D.runDoor(c.seq, D.IDEAL_NEAR, D.IDEAL_FAR);
+      if (r.opens !== c.goal.opens || r.closes !== c.goal.closes) broken++;
+      /* ② ★★ 設錯門檻**一定要**出事 —— 那是 A 唯一教到「門檻要拉開」的地方。
+         長不出這個性質的題目等於整關白做，而畫面上完全看不出來。 */
+      const line = c.key === 'pass' ? 30 : D.IDEAL_NEAR;
+      if (!(D.runDoor(c.seq, line, line + 1).opens > c.goal.opens)) notFragile++;
+    }
+  }
+  ok(Object.keys(keys).length === 3,
+     '★★ 三種走法都會抽到（' + Object.keys(keys).join('／') + '）');
+  ok(broken === 0, '★★ 每一題用合理門檻都剛好符合目標（沒有「怎麼設都過不了」的題目）');
+  ok(notFragile === 0, '★★ 每一題「門檻設錯真的會出事」—— 這是 A 的重點');
+  ok(Object.keys(answers).sort().join('／') === '0／2／4',
+     '★★ 正解不再永遠是 2（實得：' + Object.keys(answers).sort().join('／') + '）');
+
+  /* 答案不同，判定也要跟著不同 —— 不可以再寫死「乾淨的一開一關」。 */
+  const passSeq = (function () {
+    for (let i = 0; i < 60; i++) {
+      const c = D.caseA(U.rngFrom('p' + i), null);
+      if (c.key === 'pass') return c;
+    }
+  })();
+  ok(!!passSeq, '抽得到「路過」那一種');
+  if (passSeq) {
+    const r = D.runDoor(passSeq.seq, D.IDEAL_NEAR, D.IDEAL_FAR);
+    ok(D.judgeA(0, r, passSeq).predOk && D.judgeA(0, r, passSeq).cleanOk,
+       '★★ 路過那一種：門完全不開、答 0 才算過');
+    ok(!D.judgeA(2, r, passSeq).predOk, '   在這一種填 2 → 不過（傳答案破功）');
+  }
+  ok(!/乾淨地開一次、關一次/.test(read('shared/doorlab.js')),
+     '★ 題目不再寫死「乾淨地開一次、關一次」（那等於先告訴他答案）');
+
+  /* ── B 的三組情境 ── */
+  ok(D.CASES_B.length === 3, '★ B 有三組不同的東西壞掉（' +
+     D.CASES_B.map(c => c.thing).join('／') + '）');
+  ok(D.CASES_B.every(c => c.fixes.filter(f => f.good).length === 1 &&
+                          c.fixes.filter(f => f.good)[0].key === 'state'),
+     '★★ 每一組的正解都是「加一個變數記住狀態」—— 那是概念，沒得換');
+  ok(D.CASES_B.every(c => c.fixes.length === 3 &&
+                          c.fixes.every(f => f.after && f.after.length > 10)),
+     '★★ 每一組的三個選項都有「執行後會看到什麼」（猜錯的代價是眼見為憑）');
+  /* ⚠️ 錯的選項要是**這一組的情境**，不可以三組共用「門又轉了一次」。 */
+  ok(/燈/.test(D.CASES_B[1].fixes.map(f => f.after).join()) &&
+     /蓋/.test(D.CASES_B[2].fixes.map(f => f.after).join()),
+     '★ 錯的選項講的是那一組自己的東西（燈／蓋子），不是三組共用一句');
+  {
+    const rng = U.rngFrom('bb');
+    let prev = null, seen = {};
+    for (let i = 0; i < 30; i++) { prev = D.caseB(rng, prev); seen[prev.key] = 1; }
+    ok(Object.keys(seen).length === 3, '   三組都會抽到');
+    /* 換一組要真的換得掉（餵會重複的亂數） */
+    const stub = (() => { const v = [0, 0, 0.5]; let i = 0; return () => v[i++ % v.length]; })();
+    const p1 = D.caseB(stub, null), p2 = D.caseB(stub, p1);
+    ok(p1.key !== p2.key, '★★ 亂數吐同一個值時也換得掉（' + p1.key + ' → ' + p2.key + '）');
+  }
+  /* ★★ 抄襲比對要用**抽到的那一組**：寫死第一組的話，
+     抽到感應燈的人把「記住燈是亮的還是暗的」貼上去就過了。 */
+  const light = D.CASES_B[1];
+  ok(D.judgeSay(light.fixes[0].text, light).level === 'none',
+     '★★ 抄感應燈那一組的正解 → 不過（抄襲比對跟著情境走）');
+  ok(D.judgeSay(D.CASES_B[2].fixes[0].text, D.CASES_B[2]).level === 'none',
+     '   抄垃圾桶那一組的正解 → 也不過');
+}
+
 section('★ B 的「用自己的話說」真的要有判定（老師 2026-08-24：「這個填充沒有功能吧?」）');
 {
   /* ⚠️ 舊版的 #dl-say 從頭到尾沒有人讀它、沒有存檔、每次重畫就清空，
@@ -301,18 +380,57 @@ section('★ B 的「用自己的話說」真的要有判定（老師 2026-08-24
      '★ 太短**而且**什麼都沒沾到的不送（額度全班共用）');
 }
 
+section('★★ 答錯要換一題（重猜同一題只證明他記得剛才選什麼）');
+{
+  const box = W.document.getElementById('b');
+
+  /* A：猜錯次數 → 下一次應該是**另一種走法** */
+  {
+    const d = D.mount(box, { seed: 'aa' });
+    const before = d.aCase().key;
+    box.querySelector('#dl-near').value = D.IDEAL_NEAR;
+    box.querySelector('#dl-far').value = D.IDEAL_FAR;
+    /* 故意填一個一定錯的數字 */
+    box.querySelector('#dl-pred').value = d.aCase().answer + 1;
+    box.querySelector('#dl-runA').dispatchEvent(new W.Event('click', { bubbles: true }));
+    ok(d.step() === 'A', '   猜錯了還留在 A');
+    ok(d.aCase().key !== before,
+       '★★ A 猜錯 → 換一種走法（' + before + ' → ' + d.aCase().key + '）');
+  }
+
+  /* B：選錯 → 換一個東西壞掉 */
+  {
+    const d = D.mount(box, { seed: 'bb' });
+    box.querySelector('#dl-near').value = D.IDEAL_NEAR;
+    box.querySelector('#dl-far').value = D.IDEAL_FAR;
+    box.querySelector('#dl-pred').value = d.aCase().answer;
+    box.querySelector('#dl-runA').dispatchEvent(new W.Event('click', { bubbles: true }));
+    const before = d.bCase().key;
+    const wrong = d.bCase().fixes.filter(f => !f.good)[0].key;
+    box.querySelector('[data-fix="' + wrong + '"]')
+       .dispatchEvent(new W.Event('click', { bubbles: true }));
+    ok(d.step() === 'B', '   選錯了還留在 B');
+    ok(d.bCase().key !== before,
+       '★★ B 選錯 → 換一個東西壞掉（' + before + ' → ' + d.bCase().key + '）');
+    ok(/執行看看/.test(box.textContent),
+       '   而且先把「選錯會看到什麼」跑給他看，再換題');
+  }
+}
+
 section('★ B 的兩階段真的掛得起來');
 {
   const box = W.document.getElementById('b');
   let said = null;
   const d = D.mount(box, { seed: '1234', onSay: function (t, r) { said = { t: t, r: r }; } });
   box.querySelector('#dl-runA');            // A 還在最前面
-  /* 直接跳到 B：先把 A 做完 */
-  box.querySelector('#dl-near').value = 10;
-  box.querySelector('#dl-far').value = 20;
-  box.querySelector('#dl-pred').value = 2;
+  /* 直接跳到 B：先把 A 做完。
+     ⚠️ 正解不再是寫死的 2 —— 走法是抽的，答案是 0／2／4。
+        測試自己去問這一次抽到什麼（api.aCase()），不可以猜。 */
+  box.querySelector('#dl-near').value = D.IDEAL_NEAR;
+  box.querySelector('#dl-far').value = D.IDEAL_FAR;
+  box.querySelector('#dl-pred').value = d.aCase().answer;
   box.querySelector('#dl-runA').dispatchEvent(new W.Event('click', { bubbles: true }));
-  ok(d.step() === 'B', 'A 過了進到 B');
+  ok(d.step() === 'B', 'A 過了進到 B（走法：' + d.aCase().key + '）');
 
   box.querySelector('[data-fix="state"]').dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(d.step() === 'B', '★★ 選對了**還在 B** —— 因為還沒說');
