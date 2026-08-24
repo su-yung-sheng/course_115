@@ -199,13 +199,11 @@
           after: '手再靠近一點，蓋子又開了一次 —— 只是把那條線往前挪而已。' }
       ] }
   ];
-  /** 抽一組。★ 和上一次不一樣（重試同一組只證明他記得剛才選哪個）。 */
+  /** 抽一組。★ 和上一次不一樣（重試同一組只證明他記得剛才選哪個）。
+      ⚠️ 「換一題」的規矩統一在 labkit —— 它處理了「亂數一直吐同一個值」
+         那個坑（見 labkit.js 的註解）。各單元不要自己再寫一份迴圈。 */
   function caseB(rng, prev) {
-    for (var g = 0; g < 30; g++) {
-      var c = CASES_B[Math.floor(rng() * CASES_B.length) % CASES_B.length];
-      if (!prev || c.key !== prev.key) return c;
-    }
-    return CASES_B[0];
+    return LK().pick(rng, CASES_B, prev);
   }
   /* 舊名字留著：外面（測試、頁面）本來就在用 FIXES。 */
   var FIXES = CASES_B[0].fixes;
@@ -237,48 +235,26 @@
     min: 8,
     full: 1
   };
-  /** 判學生寫的那一段。⚠️ answer.js 沒載到時**放行**，不是擋住。 */
-  function judgeSay(text, c) {
-    var t = String(text == null ? '' : text).trim();
+  /** 這一組的作答規格（題目、抄襲來源都跟著抽到的情境走）。 */
+  function saySpec(c) {
     c = c || CASES_B[0];
     var good = c.fixes.filter(function (f) { return f.good; })[0] || {};
-    if (global.ANSWER && global.ANSWER.judge) {
-      return global.ANSWER.judge(t, {
-        need: SAY.need, full: SAY.full, min: SAY.min,
-        /* 題目與**這一組**的正確選項都算抄襲來源 ——
-           ⚠️ 抽到哪一組就比哪一組：寫死第一組的話，
-              抽到感應燈的人把「記住燈是亮的還是暗的」貼上去就過了。 */
-        src: ['為什麼要記住' + c.thing, good.text || '', good.after || '', c.symptom]
-      });
-    }
-    /* 退路：只看有沒有寫東西。
-       ⚠️ 這條路是「不要整頁壞掉」，不是第二套規則 —— 所以刻意寬鬆。 */
-    return t.length >= SAY.min
-      ? { level: 'full', got: [], miss: [], why: '你寫的：' + t }
-      : { level: 'none', got: [], miss: [], why: '再多寫一點 —— 至少 ' + SAY.min + ' 個字。' };
+    return { need: SAY.need, full: SAY.full, min: SAY.min,
+             q: '為什麼程式要記住「' + c.thing + '」？',
+             /* ⚠️ 抄到哪一組就比哪一組 —— 寫死第一組的話，
+                抽到感應燈的人把「記住燈是亮的還是暗的」貼上去就過了。 */
+             src: ['為什麼要記住' + c.thing, good.text || '', good.after || '', c.symptom] };
+  }
+  /** 判學生寫的那一段。★ 引擎在 shared/labkit.js，這裡只給題目。 */
+  function judgeSay(text, c) {
+    return LK().judgeSay(text, saySpec(c));
   }
   /** AI 覆核。★ 只會把「沒講到」翻成「講到了」，不會反過來。 */
   function reviewSay(text, res, opts, c) {
-    var noAI = Promise.resolve(res);
-    if (res.level !== 'none') return noAI;                 // 已經過了，加不上去
-    if (!(global.ASKAI && global.ASKAI.enabled && global.ASKAI.enabled() && global.ASKAI.judge))
-      return noAI;
-    /* ★ 太短又一個概念都沒沾到的不送 —— 沒有東西可以撿，
-       只是白花額度（額度全班共用），還會排在真正需要的人前面。 */
-    if (String(text).trim().length < SAY.min && !(res.got || []).length) return noAI;
-    return global.ASKAI.judge('5016b-u1-B', [{
-      i: 0, q: '為什麼程式要記住「' + ((c || CASES_B[0]).thing) + '」？',
-      need: SAY.need.map(function (g) { return g.name; }),
-      got: res.got || [], a: String(text).slice(0, 400)
-    }], opts && opts.student).then(function (list) {
-      var x = (list || [])[0];
-      var add = ((x && x.got) || []).filter(function (n) {
-        return SAY.need.some(function (g) { return g.name === n; });
-      });
-      if (!add.length) return res;
-      return { level: 'full', got: add, miss: [], byAI: true,
-               why: '你講到了：' + add.join('、') + '。' };
-    }).catch(function () { return res; });   // 覆核失敗＝沒撿回來，不是扣分
+    var spec = saySpec(c);
+    return LK().reviewSay(text, res, {
+      student: opts && opts.student, unit: '5016b-u1-B', q: spec.q, spec: spec
+    });
   }
 
   /* ── C：秒數校準 ─────────────────────────────────────
@@ -307,35 +283,18 @@
     return '請填一個數字（例如 1.2）。';
   }
 
-  /* ═══ 以下是畫面 ═══════════════════════════════════════ */
-  var CSS = '' +
-  '.dl-tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}' +
-  '.dl-tab{flex:1;min-width:150px;padding:9px 10px;border-radius:12px;border:2px solid #e2e8f0;background:#fff;font-weight:900;font-size:13px;color:#94a3b8}' +
-  '.dl-tab.on{border-color:#7c3aed;color:#5b21b6;background:#f5f3ff}' +
-  '.dl-tab.ok{border-color:#10b981;color:#047857;background:#ecfdf5}' +
-  '.dl-ask{font-size:16px;font-weight:900;color:#0f172a;margin:12px 0 8px;line-height:1.8}' +
-  '.dl-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}' +
-  '.dl-num{font-size:20px;font-weight:900;width:110px;padding:10px 12px;border:2px solid #cbd5e1;border-radius:12px;text-align:center}' +
-  '.dl-go{background:#7c3aed;color:#fff;font-weight:900;font-size:15px;padding:11px 22px;border:none;border-radius:12px;cursor:pointer}' +
-  '.dl-opt{display:block;width:100%;text-align:left;padding:12px 14px;margin-bottom:8px;border:2px solid #e2e8f0;border-radius:12px;background:#fff;font-size:15px;font-weight:700;cursor:pointer}' +
-  '.dl-opt:hover{border-color:#7c3aed;background:#f5f3ff}' +
-  '.dl-msg{margin-top:10px;padding:11px 13px;border-radius:12px;font-size:14px;font-weight:700;line-height:1.8}' +
-  '.dl-msg.bad{background:#fff7ed;border:2px solid #fdba74;color:#7c2d12}' +
-  '.dl-msg.good{background:#ecfdf5;border:2px solid #6ee7b7;color:#065f46}' +
-  '.dl-tape{display:flex;gap:2px;margin:10px 0;flex-wrap:wrap}' +
-  '.dl-cell{width:22px;height:34px;border-radius:5px;background:#e2e8f0;font-size:10px;text-align:center;line-height:34px;color:#64748b;font-weight:900}' +
-  '.dl-cell.open{background:#34d399;color:#064e3b}' +
-  '.dl-cell.close{background:#f87171;color:#7f1d1d}' +
-  '.dl-note{font-size:13px;color:#64748b;line-height:1.8;margin-top:6px}';
-
-  function ensureCss() {
-    if (document.getElementById('doorlab-css')) return;
-    var st = document.createElement('style');
-    st.id = 'doorlab-css'; st.textContent = CSS;
-    document.head.appendChild(st);
+  /* ═══ 以下是畫面 ═══════════════════════════════════════
+     ★ 版面、換一題、作答框、AI 覆核都在 shared/labkit.js ——
+       這一支只留**第一節自己的東西**（門的走法、三組壞程式、距離帶）。 */
+  function LK() {
+    /* ⚠️ labkit 沒載到就整個停下來說清楚，不要靜默半殘 ——
+       半殘的症狀是「按了沒反應」，那比錯誤訊息難查十倍。 */
+    if (!global.LABKIT) throw new Error('doorlab 需要 shared/labkit.js（請先載入它）');
+    return global.LABKIT;
   }
-  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function md(s){ return esc(s).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>'); }
+  function ensureCss() { LK().ensureCss(); }
+  function esc(s) { return LK().esc(s); }
+  function md(s) { return LK().md(s); }
 
   function tapeHtml(res) {
     return '<div class="dl-tape">' + res.events.map(function (e) {
@@ -363,11 +322,8 @@
     var bPicked = false, sayText = '', sayBusy = false, bFix = null;
 
     function tabs() {
-      var names = { A: 'A 感測→判斷', B: 'B 狀態', C: 'C 轉多久' };
-      return '<div class="dl-tabs">' + ['A','B','C'].map(function (k) {
-        var cls = done[k] ? 'ok' : (k === step ? 'on' : '');
-        return '<div class="dl-tab ' + cls + '">' + (done[k] ? '✅ ' : '') + names[k] + '</div>';
-      }).join('') + '</div>';
+      return LK().tabsHtml(['A', 'B', 'C'],
+        { A: 'A 感測→判斷', B: 'B 狀態', C: 'C 轉多久' }, step, done);
     }
 
     function view(inner, msg, cls) {
@@ -466,13 +422,7 @@
     }
     /* ★ 這一段以前是死的（沒有人讀 #dl-say）。現在真的判、真的存。 */
     function sayHtml() {
-      return '<div class="dl-ask" style="margin-top:16px">✍️ ' + esc(bq()) + '</div>' +
-        '<textarea id="dl-say" rows="2" style="width:100%;border:2px solid #cbd5e1;' +
-        'border-radius:12px;padding:10px;font-size:15px" ' +
-        'placeholder="寫幾句就好，講得沒那麼漂亮沒關係">' + esc(sayText) + '</textarea>' +
-        '<div class="dl-row"><button class="dl-go" id="dl-runB"' +
-        (sayBusy ? ' disabled' : '') + '>' + (sayBusy ? '看看你寫的…' : '送出') + '</button>' +
-        '<span class="dl-note">⚠️ 寫錯不會扣分，可以一直改。</span></div>';
+      return LK().sayHtml({ q: bq(), text: sayText, busy: sayBusy });
     }
     /** ② 送出預測 → 真的跑一次 → 比對。★ 修法對**而且**預測對才算過。 */
     function doPred(key) {

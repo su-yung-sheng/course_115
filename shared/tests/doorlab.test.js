@@ -33,6 +33,7 @@ function boot() {
         測試要盯的正是「AI 關著的時候，這一題照樣判得出來」。 */
   new Function('window', read('shared/ai-guide.js'))(w);
   new Function('window', read('shared/answer.js'))(w);
+  new Function('window', read('shared/labkit.js'))(w);
   new Function('window', read('shared/doorlab.js'))(w);
   return w;
 }
@@ -331,11 +332,19 @@ section('★ B 的「用自己的話說」真的要有判定（老師 2026-08-24
 {
   /* ⚠️ 舊版的 #dl-say 從頭到尾沒有人讀它、沒有存檔、每次重畫就清空，
      placeholder 卻寫著「老師會看」—— 那句話是假的。 */
-  const src = read('shared/doorlab.js');
+  /* ⚠️ 2026-08-24：引擎搬到 shared/labkit.js（老師：「之後的單元都使用單元一的架構」）。
+     ★ 這些條目盯的是「**系統裡**有這個保護」，不是「這個檔案裡有」——
+        所以兩支一起讀。
+     ⚠️ 不可以因為搬家就把條件放寬：搬過去的每一條，
+        在 labkit 裡被改壞一樣要變紅（下面的突變測試驗過）。 */
+  const src = read('shared/labkit.js') + '\n' + read('shared/doorlab.js');
   ok(!/老師會看，不會自動評分/.test(src),
      '★★ 不再宣稱「老師會看，不會自動評分」（那是假的：沒判也沒存）');
   ok(/global\.ANSWER && global\.ANSWER\.judge/.test(src),
      '★ 判定走 shared/answer.js —— 不在這裡另寫一套關鍵字規則');
+  /* ★ 而且各單元不可以自己再寫一套 —— 那樣「一直重複算不算命中」會有好幾個答案。 */
+  ok(!/global\.ANSWER/.test(read('shared/doorlab.js')),
+     '★★ doorlab 自己不碰 ANSWER，一律經過 labkit（免得長出第二套規則）');
 
   /* 講到任一個概念就算過（full: 1）。
      ⚠️ 兩個都要的話會出現「他明明講懂了、系統說他沒懂」，
@@ -366,7 +375,7 @@ section('★ B 的「用自己的話說」真的要有判定（老師 2026-08-24
      '   選對不再直接 done.B（那樣「能解釋」就沒地方測了）');
 
   /* 打的字不可以因為重畫就不見 */
-  ok(/var bPicked = false, sayText = ''/.test(src) && /esc\(sayText\)/.test(src),
+  ok(/var bPicked = false, sayText = ''/.test(src) && /esc\(o\.text \|\| ''\)/.test(src),
      '★ 作答留在變數裡並回填 —— 重畫（提示、覆核）不會清空');
   ok(/addEventListener\('input'/.test(src), '   打字時就記起來');
 
@@ -376,7 +385,7 @@ section('★ B 的「用自己的話說」真的要有判定（老師 2026-08-24
   ok(/\.catch\(function \(\) \{ return res; \}\)/.test(src),
      '★★ 覆核失敗＝沒撿回來，不是扣分');
   ok(/ASKAI\.enabled\(\)/.test(src), '   KEY 沒填時整塊不啟用（askai 自己判斷）');
-  ok(/\.length < SAY\.min && !\(res\.got \|\| \[\]\)\.length/.test(src),
+  ok(/\.length < \(spec\.min \|\| 8\) && !\(res\.got \|\| \[\]\)\.length/.test(src),
      '★ 太短**而且**什麼都沒沾到的不送（額度全班共用）');
 }
 
@@ -476,6 +485,60 @@ section('★ B 的兩階段真的掛得起來');
   box.querySelector('#dl-runB').dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(d.step() === 'C', '★ 說得出來 → B 完成，進到 C');
   ok(said && /記住門已經開過/.test(said.t), '★★ onSay 把**原文**交出去（老師要看的是他的說法）');
+}
+
+section('★★ 共用骨架（老師 2026-08-24：「之後的單元都使用單元一的架構」）');
+{
+  const kit  = read('shared/labkit.js');
+  const door = read('shared/doorlab.js');
+  const page = read('11501/5016b.html');
+
+  /* 載入順序：doorlab 一開場就會去拿 LABKIT。 */
+  ok(page.indexOf('shared/labkit.js') > 0 &&
+     page.indexOf('shared/labkit.js') < page.indexOf('shared/doorlab.js'),
+     '★ 頁面載入 labkit，而且排在 doorlab 之前');
+
+  /* ★★ 相依方向只能是單向：各單元 → labkit。
+     ⚠️ 反過來的話（labkit 去讀 DOORLAB 的東西），第二節就搬不動了 ——
+        而那正是抽這一支出來的目的。 */
+  ok(!/DOORLAB|CASES_B|WALKS/.test(kit),
+     '★★ labkit 完全不知道 doorlab 的存在（相依只能單向）');
+
+  /* 各單元不可以自己再接一次 ANSWER／ASKAI —— 那樣規矩會長出第二套。 */
+  ok(!/global\.ASKAI/.test(door),
+     '★★ doorlab 自己不碰 ASKAI，一律經過 labkit');
+
+  /* ⚠️ labkit 沒載到要**明確報錯**。
+     靜默半殘的症狀是「按了沒反應」，那比錯誤訊息難查十倍。 */
+  {
+    const dom = new JSDOM('<!DOCTYPE html><body><div id="x"></div></body>');
+    const w2 = dom.window;
+    const savedD = global.document, savedW = global.window;
+    global.document = w2.document; global.window = w2;
+    new Function('window', read('shared/doorlab.js'))(w2);
+    let err = '';
+    try { w2.DOORLAB.mount(w2.document.getElementById('x'), {}); }
+    catch (e) { err = e.message; }
+    global.document = savedD; global.window = savedW;
+    ok(/labkit\.js/.test(err),
+       '★★ 沒載入 labkit 時直接說清楚（實得：' + (err || '（完全沒報錯）') + '）');
+  }
+
+  /* ★ 共用模組裡不可以有沒人用的東西 —— 下一個人會以為它被測過。
+     ⚠️ 2026-08-24 就發生過：pick() 抽出來了卻沒接上，
+        把它改壞測試照樣綠。 */
+  {
+    /* ⚠️ 不可以用「行首四個空白」去抓名字 —— 那樣把兩個寫在同一行就躲掉了
+       （突變測試當場抓到）。改成把整個匯出區塊切出來再找。 */
+    const block = kit.slice(kit.indexOf('global.LABKIT = {'),
+                            kit.indexOf('};', kit.indexOf('global.LABKIT = {')));
+    const exported = [...block.matchAll(/(\w+)\s*:/g)].map(m => m[1])
+      .filter(n => n !== 'VERSION' && n !== 'CSS');
+    const dead = exported.filter(n => !new RegExp('\\b' + n + '\\s*\\(').test(door));
+    ok(dead.length === 0,
+       '★★ labkit 匯出的每一支都真的有人用' +
+       (dead.length ? '（沒人用：' + dead.join('、') + '）' : ''));
+  }
 }
 
 section('★ 完成要有紀錄（老師 2026-08-24：「每次都要重玩? 要有記錄」）');
