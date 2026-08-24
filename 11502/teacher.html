@@ -20,6 +20,10 @@
   <script src="../shared/grading.js"></script>
   <!-- 課表與「這週有沒有上課日」的判定（學生端 hub 同一支）-->
   <script src="../shared/schedule.js"></script>
+  <!-- 關卡清單（教師端的「各科關卡進度」矩陣要用）。
+       ⚠️ 只取清單與順序，題目本身用不到 —— 但這兩支就是清單的單一來源，
+          在教師端另抄一份的話，課程調整時這裡不會跟著改。 -->
+  <script src="content/social.js"></script>
 
   <style>
     @keyframes fade-in-down {
@@ -1543,13 +1547,142 @@
       }).join('');
     }
 
+
+    /* ═══ 關卡矩陣：橫式四欄，往下列出所有關卡 ═══════════════
+       ★ 老師 2026-08-19：「點選學生後的面版排列改為橫式
+         『法律倫理』『運算思維』『流程圖』『程式設計』，往下列出所有關卡，
+         這樣可以一眼看出每位學生的進度狀態。」
+
+       ⚠️ 各科的「第 N 關」不是同一件事（資訊倫理的第 5 個是整章挑戰），
+          所以每一格都印出**該科自己的代號**，不要只印第幾關。
+       ⚠️ 每一科的滿星上限也不一樣：
+            資訊倫理 3　運算思維 2　流程圖 2＋1 加分　程式設計 3＋1 加分
+          用同一個上限畫的話，流程圖永遠看起來差一顆。
+
+       ★ 關卡清單哪裡來（一律取現成的單一來源，不在這裡另抄一份）
+            資訊倫理 → content/{ethics|social}.js 的 QUIZ_CONTENT
+            流程圖   → content/flowchart.js 的 FLOW_UNITS
+            程式設計 → config.js 的 CONFIG.UNITS
+            運算思維 → 只有編號（題目清單寫在 thinking.html 裡面，
+                       沒有共用檔可讀）—— 所以顯示「第 N 題」。 */
+    function unitColumns() {
+      const cols = [];
+      const has = k => subjects.some(s => s.key === k);
+
+      if (has('ethics') && window.QUIZ_CONTENT) {
+        const list = [];
+        (QUIZ_CONTENT.chapters || []).forEach(ch => {
+          (ch.sections || []).forEach(s => list.push({ id: s.id, label: s.id }));
+          if (ch.challenge) list.push({ id: ch.challenge.id, label: '整章' });
+        });
+        cols.push({ key: 'ethics', name: (subjects.find(s=>s.key==='ethics')||{}).label || '資訊倫理',
+                    cap: 3, units: list });
+      }
+      if (has('thinking')) {
+        cols.push({ key: 'thinking', name: '運算思維', cap: 2,
+                    units: Array.from({ length: 10 }, (_, i) => ({ id: String(i+1), label: '第' + (i+1) + '題' })) });
+      }
+      if (has('flowchart') && window.FLOW_UNITS) {
+        cols.push({ key: 'flowchart', name: '流程圖',
+                    cap: (window.GRADING ? GRADING.FLOWCHART_PER_UNIT + GRADING.BONUS.img : 3),
+                    units: FLOW_UNITS.map(u => ({ id: u.id, label: u.id })) });
+      }
+      if (has('scratch')) {
+        cols.push({ key: 'scratch', name: '程式設計',
+                    cap: 3 + (window.GRADING ? GRADING.BONUS.vid : 1),
+                    units: (window.CONFIG.UNITS || []).map(u => ({ id: u[0], label: u[0] })) });
+      }
+      return cols;
+    }
+
+    /** 這個學生在這一科的這一關拿了幾顆（含加分） */
+    function unitStarOf(student, key, unitId) {
+      const m = (student.__modules) || {};
+      if (key === 'ethics') {
+        const u = ((m.ethics || {}).units || {})[unitId];
+        return Number(u && u.star) || 0;
+      }
+      if (key === 'thinking') {
+        /* 運算思維沒有 units，只有 history 裡的 challenge。
+           ⚠️ 每完成一題固定 2 顆（GRADING.thinkingStars 是 題數×2）。 */
+        const hit = (student.history || []).some(h => h.module === 'thinking'
+                       && String(h.challenge) === String(unitId));
+        return hit ? 2 : 0;
+      }
+      if (key === 'flowchart') {
+        const done = ((m.flowchart || {}).units || []).indexOf(unitId) >= 0;
+        const bonus = ((m.flowchart || {}).imgUnits || {})[unitId] ? (window.GRADING ? GRADING.BONUS.img : 1) : 0;
+        return done ? ((window.GRADING ? GRADING.FLOWCHART_PER_UNIT : 2) + bonus) : 0;
+      }
+      if (key === 'scratch') {
+        const st = Number(((m.scratch || {}).unitStars || {})[unitId]) || 0;
+        const bonus = ((m.scratch || {}).vidUnits || {})[unitId] ? (window.GRADING ? GRADING.BONUS.vid : 1) : 0;
+        return st + (st > 0 ? bonus : 0);
+      }
+      return 0;
+    }
+
+    function unitMatrixHtml(student) {
+      const cols = unitColumns();
+      if (!cols.length) return '';
+      const rows = Math.max.apply(null, cols.map(c => c.units.length));
+      const bar = (n, cap) => '★'.repeat(Math.max(0,n)) + '☆'.repeat(Math.max(0, cap - n));
+
+      let head = '<th class="px-2 py-1 text-xs text-slate-400 font-bold">關</th>';
+      cols.forEach(c => {
+        const got = c.units.reduce((a, u) => a + unitStarOf(student, c.key, u.id), 0);
+        const max = c.units.length * c.cap;
+        head += `<th class="px-2 py-2 text-center border-l border-slate-100">
+            <div class="font-black text-slate-700">${c.name}</div>
+            <div class="text-[11px] font-bold ${got >= max ? 'text-emerald-600' : 'text-slate-400'}">${got} / ${max}⭐</div>
+          </th>`;
+      });
+
+      let body = '';
+      for (let i = 0; i < rows; i++) {
+        body += `<tr class="${i % 2 ? 'bg-slate-50/60' : ''}">
+          <td class="px-2 py-1 text-center text-[11px] font-mono text-slate-400">${i + 1}</td>`;
+        cols.forEach(c => {
+          const u = c.units[i];
+          if (!u) { body += '<td class="border-l border-slate-100"></td>'; return; }
+          const n = unitStarOf(student, c.key, u.id);
+          /* ⚠️ 三種狀態要一眼分得出來：滿星／有進度／還沒開始。
+             只用顏色深淺的話，投影出來看不出差別。 */
+          const tone = n >= c.cap ? 'text-amber-500 font-black'
+                     : n > 0 ? 'text-amber-400'
+                     : 'text-slate-300';
+          body += `<td class="px-2 py-1 border-l border-slate-100 whitespace-nowrap" title="${c.name}　${u.label}　${n} / ${c.cap}⭐">
+              <span class="text-[11px] font-mono text-slate-400 mr-1">${u.label}</span>
+              <span class="${tone} tracking-tight">${bar(n, c.cap)}</span>
+            </td>`;
+        });
+        body += '</tr>';
+      }
+
+      return `
+        <div class="mb-5 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="bg-slate-50 px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+            <h4 class="font-black text-slate-700 text-sm">📊 各科關卡進度</h4>
+            <span class="text-[11px] text-slate-400">★ 含老師審核的加分；滑鼠移上去看該關明細</span>
+          </div>
+          <div class="overflow-x-auto"><table class="w-full text-sm border-collapse">
+            <thead><tr class="border-b border-slate-200">${head}</tr></thead>
+            <tbody>${body}</tbody>
+          </table></div>
+        </div>`;
+    }
+
     function renderModalTasks() {
       const container = document.getElementById('modal-tasks-container');
       const student = spreadsheetData[activeSheet].find(s => s.id === currentEditingStudentId);
       const groupedSubjects = {};
       subjects.forEach(sub => { if (!groupedSubjects[sub.group]) groupedSubjects[sub.group] = []; groupedSubjects[sub.group].push(sub); });
 
-      let html = '';
+      /* ★ 矩陣放最上面（老師 2026-08-19：「一眼看出每位學生的進度狀態」），
+         原本那幾張科目卡收進可展開的區塊 ——
+         它們還有用（可編輯的星星、逐筆歷程），只是不必一開啟就佔滿畫面。 */
+      let html = unitMatrixHtml(student);
+      let cards = '';
       Object.keys(groupedSubjects).forEach((groupName) => {
         if (activeCategory !== 'all' && activeCategory !== groupName) return;
         const groupTasks = groupedSubjects[groupName];
@@ -1558,7 +1691,7 @@
           groupTotalStars += bonusOf(student, sub.key); });   // ★ 同上
         const isGroupComplete = (groupTotalStars === groupMaxStars && groupMaxStars > 0);
 
-        html += `
+        cards += `
           <div class="mb-6 bg-white rounded-2xl shadow-sm border ${isGroupComplete ? 'border-yellow-300' : 'border-gray-200'} overflow-hidden transition-colors">
             <div class="${isGroupComplete ? 'bg-yellow-50' : 'bg-blue-50'} px-5 py-3 border-b ${isGroupComplete ? 'border-yellow-200' : 'border-blue-100'} flex justify-between items-center transition-colors">
               <h4 class="font-bold ${isGroupComplete ? 'text-yellow-700' : 'text-blue-800'} text-lg flex items-center gap-2">
@@ -1599,7 +1732,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
             }
             controlHTML = starsHTML;
           }
-          html += `
+          cards += `
             <div class="bg-gray-50 rounded-xl p-3 border border-gray-100 hover:bg-blue-50/50 hover:border-blue-200 transition-colors">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3"><div class="w-7 h-7 rounded-full bg-white shadow-sm text-gray-500 flex items-center justify-center font-bold text-xs border border-gray-200">${taskIndex + 1}</div><div><span class="font-bold text-gray-700 text-md">${sub.displayLabel}</span>${lvlNote}</div></div>
@@ -1609,8 +1742,15 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
             </div>
           `;
         });
-        html += `</div></div>`;
+        cards += `</div></div>`;
       });
+      html += `
+        <details class="mb-2">
+          <summary class="cursor-pointer select-none text-sm font-bold text-slate-500 hover:text-blue-600 px-1 py-2">
+            ▸ 各科總星數與逐筆歷程（可編輯）
+          </summary>
+          <div class="mt-2">${cards}</div>
+        </details>`;
       container.innerHTML = html;
     }
 
