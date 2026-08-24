@@ -58,6 +58,73 @@
       good: false, after: '等 3 秒只是拖慢速度。人一直站著，門就每 3 秒轉一次。' }
   ];
 
+  /* ── B 的後半：用自己的話說 ───────────────────────────
+     ★ 老師 2026-08-24：「這個填充沒有功能吧?」—— 對，之前那個 textarea
+       從頭到尾沒有人讀它、沒有存檔，而且每次重畫就清空，
+       placeholder 卻寫著「老師會看」。⇒ 現在真的判、真的存。
+
+     ⚠️ 為什麼選擇題選對了還不夠：B 測的是「**能解釋**」。
+        三選一測得出他選得對，測不出他知不知道為什麼 ——
+        那正是這一段要補的洞。
+
+     ★ 判定一律走 shared/answer.js（本機關鍵字、不連網、秒回、每次一致），
+       規則說「沒講到」時才送 AI 覆核，而**覆核只能加分**。
+       ⚠️ 這個方向是刻意的：AI 會失守、會過載、會額度用完，
+          那時只是「沒撿回來」，不會突然變成扣分。（同 shared/quiz.js）
+
+     ⚠️ full: 1 —— **講到任何一個就算過**。
+        兩個都要的話，會出現「他明明講懂了，系統說他沒懂」——
+        那是最傷的一種誤判，學生從此開始猜系統想看什麼字。 */
+  var SAY = {
+    need: [
+      { name: '程式要記住上一次的狀態',
+        any: ['記住', '記得', '記下', '狀態', '開過', '已經開', '變數', '記錄', '知道自己'] },
+      { name: '不記住就會重複做同一件事',
+        any: ['一直', '重複', '再開', '又開', '不停', '每次都', '一直轉', '轉個不停', '反覆'] }
+    ],
+    min: 8,
+    full: 1
+  };
+  /** 判學生寫的那一段。⚠️ answer.js 沒載到時**放行**，不是擋住。 */
+  function judgeSay(text) {
+    var t = String(text == null ? '' : text).trim();
+    if (global.ANSWER && global.ANSWER.judge) {
+      return global.ANSWER.judge(t, {
+        need: SAY.need, full: SAY.full, min: SAY.min,
+        /* 題目本身也算抄襲來源 —— 把題目倒著抄一遍不是「自己的話」。 */
+        src: ['為什麼要記住門開了沒', FIXES[0].text, FIXES[0].after]
+      });
+    }
+    /* 退路：只看有沒有寫東西。
+       ⚠️ 這條路是「不要整頁壞掉」，不是第二套規則 —— 所以刻意寬鬆。 */
+    return t.length >= SAY.min
+      ? { level: 'full', got: [], miss: [], why: '你寫的：' + t }
+      : { level: 'none', got: [], miss: [], why: '再多寫一點 —— 至少 ' + SAY.min + ' 個字。' };
+  }
+  /** AI 覆核。★ 只會把「沒講到」翻成「講到了」，不會反過來。 */
+  function reviewSay(text, res, opts) {
+    var noAI = Promise.resolve(res);
+    if (res.level !== 'none') return noAI;                 // 已經過了，加不上去
+    if (!(global.ASKAI && global.ASKAI.enabled && global.ASKAI.enabled() && global.ASKAI.judge))
+      return noAI;
+    /* ★ 太短又一個概念都沒沾到的不送 —— 沒有東西可以撿，
+       只是白花額度（額度全班共用），還會排在真正需要的人前面。 */
+    if (String(text).trim().length < SAY.min && !(res.got || []).length) return noAI;
+    return global.ASKAI.judge('5016b-u1-B', [{
+      i: 0, q: '為什麼程式要記住「門開了沒」？',
+      need: SAY.need.map(function (g) { return g.name; }),
+      got: res.got || [], a: String(text).slice(0, 400)
+    }], opts && opts.student).then(function (list) {
+      var x = (list || [])[0];
+      var add = ((x && x.got) || []).filter(function (n) {
+        return SAY.need.some(function (g) { return g.name === n; });
+      });
+      if (!add.length) return res;
+      return { level: 'full', got: add, miss: [], byAI: true,
+               why: '你講到了：' + add.join('、') + '。' };
+    }).catch(function () { return res; });   // 覆核失敗＝沒撿回來，不是扣分
+  }
+
   /* ── C：秒數校準 ─────────────────────────────────────
      N＝這台馬達要轉幾秒門才全開（不告訴學生）。
      ⚠️ 兩輪的差別才是重點：第一輪自由試誤是**學怎麼估**，
@@ -130,6 +197,10 @@
     var done = { A: false, B: false, C: false };
     var tries = { A: 0, B: 0, C: 0 };
     var cRound = 1, cN = caseC(rng, null), cGuess = '';
+    /* B 的兩個階段：先選對（bPicked），再說得出來。
+       ⚠️ sayText 一定要留在外面 —— 放在 DOM 裡的話，
+          每次重畫（提示、覆核回來）學生打的字就沒了。 */
+    var bPicked = false, sayText = '', sayBusy = false;
 
     function tabs() {
       var names = { A: 'A 感測→判斷', B: 'B 狀態', C: 'C 轉多久' };
@@ -175,31 +246,72 @@
       viewA(msg, 'bad', res);
     }
 
-    /* ── B ── */
+    /* ── B ──────────────────────────────────────────────
+       兩個階段：① 三選一修好它　② 用自己的話說為什麼。
+       ⚠️ 選對**不等於**完成 —— B 測的是「能解釋」，
+          而三選一測得出他選得對，測不出他知不知道為什麼。 */
+    var BQ = '用你自己的話說：為什麼程式要記住「門開了沒」？';
     function viewB(msg, cls, after) {
       var list = FIXES.slice().sort(function () { return rng() - 0.5; });
       view(
         '<div class="dl-ask">下面這段程式<b>少了「門的狀態」</b>：<br>' +
         '<span style="font-family:monospace;font-size:14px">重複無限次｜距離 &lt; 10 → 馬達 250、等 1.3 秒、馬達 0</span><br>' +
         '人站在門口不動，馬達就一直轉。你會怎麼修？</div>' +
-        list.map(function (f) {
-          return '<button class="dl-opt" data-fix="' + f.key + '">' + esc(f.text) + '</button>';
-        }).join('') +
+        (bPicked
+          /* 選對之後就不再讓他改選 —— 這時候的任務已經換成「說出來」了。 */
+          ? '<div class="dl-note">✅ 你選的是：<b>' + esc(FIXES[0].text) + '</b></div>'
+          : list.map(function (f) {
+              return '<button class="dl-opt" data-fix="' + f.key + '">' + esc(f.text) + '</button>';
+            }).join('')) +
         (after ? '<div class="dl-note">執行結果：' + esc(after) + '</div>' : '') +
-        '<div class="dl-ask" style="margin-top:16px">用你自己的話說：為什麼要記住「門開了沒」？</div>' +
-        '<textarea id="dl-say" rows="2" style="width:100%;border:2px solid #cbd5e1;border-radius:12px;padding:10px;font-size:15px" placeholder="（老師會看，不會自動評分）"></textarea>',
+        (bPicked ? sayHtml() : ''),
         msg, cls);
+    }
+    /* ★ 這一段以前是死的（沒有人讀 #dl-say）。現在真的判、真的存。 */
+    function sayHtml() {
+      return '<div class="dl-ask" style="margin-top:16px">✍️ ' + BQ + '</div>' +
+        '<textarea id="dl-say" rows="2" style="width:100%;border:2px solid #cbd5e1;' +
+        'border-radius:12px;padding:10px;font-size:15px" ' +
+        'placeholder="寫幾句就好，講得沒那麼漂亮沒關係">' + esc(sayText) + '</textarea>' +
+        '<div class="dl-row"><button class="dl-go" id="dl-runB"' +
+        (sayBusy ? ' disabled' : '') + '>' + (sayBusy ? '看看你寫的…' : '送出') + '</button>' +
+        '<span class="dl-note">⚠️ 寫錯不會扣分，可以一直改。</span></div>';
     }
     function doB(key) {
       tries.B++;
       var f = FIXES.filter(function (x) { return x.key === key; })[0];
       if (f && f.good) {
-        done.B = true; step = 'C';
-        viewC('✅ B 完成：' + f.after, 'good');
+        bPicked = true;
+        viewB('✅ 選對了：' + f.after + '　**最後一步**：說說看為什麼。', 'good');
         return;
       }
       viewB('⛔ 執行看看 —— ' + (f ? f.after : '') + '　再想一次：問題是「程式不知道自己已經開過門了」。',
             'bad', f && f.after);
+    }
+    /** 送出那一段話。★ 本機先判，規則說「沒講到」才送 AI 覆核（只加分）。 */
+    function doSay() {
+      var box = el.querySelector('#dl-say');
+      sayText = box ? box.value : '';
+      var res = judgeSay(sayText);
+      if (res.level !== 'none') return passB(res);
+      /* 還沒過 —— 先把畫面切成「看看你寫的…」，再等覆核。
+         ⚠️ 不可以讓他這時候重複按送出：額度是全班共用的。 */
+      sayBusy = true;
+      viewB('', 'bad');
+      reviewSay(sayText, res, opts).then(function (r2) {
+        sayBusy = false;
+        if (r2.level !== 'none') return passB(r2);
+        /* ⚠️ 不可以把「還差什麼」的名稱講出來 —— 那就是答案，
+           講了學生貼上去就過了（同 answer.js 的 whyOf）。 */
+        viewB('⚠️ 再想一次：門一直轉，是因為程式**少了什麼資訊**？' +
+              '　想想看，如果它知道「上一次已經開過了」，這次會怎麼做。', 'bad');
+      });
+    }
+    function passB(res) {
+      done.B = true; step = 'C';
+      if (typeof opts.onSay === 'function') opts.onSay(sayText, res);
+      viewC('✅ B 完成：' + (res.why || '你說得出為什麼要記住門的狀態。') +
+            (res.byAI ? '' : ''), 'good');
     }
 
     /* ── C ── */
@@ -247,15 +359,21 @@
         b.addEventListener('click', function () { doB(b.getAttribute('data-fix')); });
       });
       var c = el.querySelector('#dl-runC'); if (c) c.addEventListener('click', doC);
+      var s = el.querySelector('#dl-runB'); if (s) s.addEventListener('click', doSay);
+      /* 打字時就記起來 —— 不然按到別的按鈕重畫，字就沒了。 */
+      var t = el.querySelector('#dl-say');
+      if (t) t.addEventListener('input', function () { sayText = t.value; });
     }
 
     viewA('');
-    return { step: function () { return step; }, tries: function () { return tries; } };
+    return { step: function () { return step; }, tries: function () { return tries; },
+             say: function () { return sayText; } };
   }
 
   global.DOORLAB = {
-    SEQ: SEQ, TOL: TOL, FIXES: FIXES,
+    SEQ: SEQ, TOL: TOL, FIXES: FIXES, SAY: SAY,
     runDoor: runDoor, judgeA: judgeA, caseC: caseC, judgeC: judgeC, sayC: sayC,
+    judgeSay: judgeSay, reviewSay: reviewSay,
     mount: mount
   };
 

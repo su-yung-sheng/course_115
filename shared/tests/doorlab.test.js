@@ -28,6 +28,11 @@ function boot() {
   const w = dom.window;
   global.document = w.document; global.window = w;
   new Function('window', read('shared/ultralab.js'))(w);
+  /* ★ B 的開放式作答走這兩支（順序不可以反過來：answer 會呼叫 AIGUIDE.hitKeys）。
+     ⚠️ askai.js **故意不載** —— 沒有 KEY 的環境就是學生的預設狀態，
+        測試要盯的正是「AI 關著的時候，這一題照樣判得出來」。 */
+  new Function('window', read('shared/ai-guide.js'))(w);
+  new Function('window', read('shared/answer.js'))(w);
   new Function('window', read('shared/doorlab.js'))(w);
   return w;
 }
@@ -242,6 +247,85 @@ section('★ 聲音要畫成同心弧線，不是圓球（老師 2026-08-24）')
   ok(/prefers-reduced-motion/.test(src), '   會暈的人放慢，不是直接關掉（那就看不到了）');
 }
 
+
+section('★ B 的「用自己的話說」真的要有判定（老師 2026-08-24：「這個填充沒有功能吧?」）');
+{
+  /* ⚠️ 舊版的 #dl-say 從頭到尾沒有人讀它、沒有存檔、每次重畫就清空，
+     placeholder 卻寫著「老師會看」—— 那句話是假的。 */
+  const src = read('shared/doorlab.js');
+  ok(!/老師會看，不會自動評分/.test(src),
+     '★★ 不再宣稱「老師會看，不會自動評分」（那是假的：沒判也沒存）');
+  ok(/global\.ANSWER && global\.ANSWER\.judge/.test(src),
+     '★ 判定走 shared/answer.js —— 不在這裡另寫一套關鍵字規則');
+
+  /* 講到任一個概念就算過（full: 1）。
+     ⚠️ 兩個都要的話會出現「他明明講懂了、系統說他沒懂」，
+        那是最傷的一種誤判。 */
+  ok(D.SAY.full === 1, '★★ 講到**任一個**概念就算過（寧可放過，不可錯殺）');
+  ok(D.judgeSay('因為程式不知道自己已經開過門了').level !== 'none',
+     '   「不知道自己已經開過了」→ 過');
+  ok(D.judgeSay('要記住門是開的還是關的').level !== 'none', '   「記住狀態」→ 過');
+  ok(D.judgeSay('不然它會一直轉個不停').level !== 'none',
+     '★ 「一直轉個不停」→ 也過（講的是後果，一樣是懂了）');
+  ok(D.judgeSay('').level === 'none', '   空白 → 不過');
+  ok(D.judgeSay('我覺得就是這樣啊').level === 'none', '   空話 → 不過');
+  /* ★★ 抄來的不算。⚠️ 選項的文字裡本來就含有這一題想聽到的說法 ——
+     不擋的話「複製正確選項 → 貼上 → 過關」，這一段就白做了。 */
+  ok(D.judgeSay(D.FIXES[0].text).level === 'none',
+     '★★ 把正確選項複製貼上 → 不過（不然這一段等於白做）');
+  ok(D.judgeSay('為什麼要記住門開了沒').level === 'none', '   把題目倒著抄 → 不過');
+  ok(D.judgeSay(D.FIXES[0].after).level === 'none', '   把「執行結果」抄過來 → 也不過');
+  /* ⚠️ 提示裡不可以出現正解 —— 講了學生貼上去就過了。 */
+  const flow = src.slice(src.indexOf('function doSay'), src.indexOf('function passB'));
+  ok(!/記住|狀態/.test((flow.match(/viewB\('⚠️[^']*'/) || [''])[0]),
+     '★★ 沒過的提示裡不出現「記住／狀態」這些正解字眼');
+
+  /* ★★ 這一條是整段的重點：選對**不等於**完成。 */
+  ok(/bPicked = true;[\s\S]{0,200}最後一步/.test(src),
+     '★★ 三選一選對之後 B 還沒完成 —— 還要說得出為什麼');
+  ok(!/if \(f && f\.good\) \{\s*done\.B = true/.test(src),
+     '   選對不再直接 done.B（那樣「能解釋」就沒地方測了）');
+
+  /* 打的字不可以因為重畫就不見 */
+  ok(/var bPicked = false, sayText = ''/.test(src) && /esc\(sayText\)/.test(src),
+     '★ 作答留在變數裡並回填 —— 重畫（提示、覆核）不會清空');
+  ok(/addEventListener\('input'/.test(src), '   打字時就記起來');
+
+  /* AI 覆核只加分 */
+  ok(/if \(res\.level !== 'none'\) return noAI;/.test(src),
+     '★★ 規則已經判過的不送覆核 —— 覆核只能加分，加不上去了');
+  ok(/\.catch\(function \(\) \{ return res; \}\)/.test(src),
+     '★★ 覆核失敗＝沒撿回來，不是扣分');
+  ok(/ASKAI\.enabled\(\)/.test(src), '   KEY 沒填時整塊不啟用（askai 自己判斷）');
+  ok(/\.length < SAY\.min && !\(res\.got \|\| \[\]\)\.length/.test(src),
+     '★ 太短**而且**什麼都沒沾到的不送（額度全班共用）');
+}
+
+section('★ B 的兩階段真的掛得起來');
+{
+  const box = W.document.getElementById('b');
+  let said = null;
+  const d = D.mount(box, { seed: '1234', onSay: function (t, r) { said = { t: t, r: r }; } });
+  box.querySelector('#dl-runA');            // A 還在最前面
+  /* 直接跳到 B：先把 A 做完 */
+  box.querySelector('#dl-near').value = 10;
+  box.querySelector('#dl-far').value = 20;
+  box.querySelector('#dl-pred').value = 2;
+  box.querySelector('#dl-runA').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(d.step() === 'B', 'A 過了進到 B');
+
+  box.querySelector('[data-fix="state"]').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(d.step() === 'B', '★★ 選對了**還在 B** —— 因為還沒說');
+  ok(!!box.querySelector('#dl-say') && !!box.querySelector('#dl-runB'),
+     '   這時候才出現作答框與送出鈕');
+  ok(!box.querySelector('[data-fix]'), '   選過就不再讓他改選（任務換成「說出來」了）');
+
+  const ta = box.querySelector('#dl-say');
+  ta.value = '因為程式要記住門已經開過了';
+  box.querySelector('#dl-runB').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(d.step() === 'C', '★ 說得出來 → B 完成，進到 C');
+  ok(said && /記住門已經開過/.test(said.t), '★★ onSay 把**原文**交出去（老師要看的是他的說法）');
+}
 
 section('★ 完成要有紀錄（老師 2026-08-24：「每次都要重玩? 要有記錄」）');
 {

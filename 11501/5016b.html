@@ -122,6 +122,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
   <!-- 第一節課的暖身關卡與三個檢核（老師 2026-08-24 定案）。
        ⚠️ ultralab 是**共用**的：第二節「迎賓走廊」也用超音波，直接呼叫同一支。 -->
   <script src="../shared/ultralab.js"></script>
+  <!-- B 的開放式作答要用的判定引擎（老師 2026-08-24：「這個填充沒有功能吧?」）
+       ⚠️ 三支的分工不可以搞混：
+         ai-guide.js  關鍵字比對的**唯一**一份規則（answer.js 會呼叫它）
+         answer.js    本機判定：不連網、秒回、每次一致 —— 這是主力
+         askai.js     AI 覆核：**只能加分**，而且 config 的 KEY 空的時候整塊不啟用
+       ★ 順序：ai-guide 要排在 answer 之前。 -->
+  <script src="../shared/ai-guide.js"></script>
+  <script src="../shared/answer.js"></script>
+  <script src="../shared/askai.js"></script>
   <script src="../shared/doorlab.js"></script>
 
   <!-- ═══ 完成紀錄（老師 2026-08-24：「每次都要重玩? 要有記錄」）═══
@@ -1479,8 +1488,22 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 }
                 function mountChecks(rec) {
                     checks.innerHTML = '';
+                    let sid = '';
+                    try { sid = sessionStorage.getItem('sid' + ((window.CONFIG || {}).TERM || '11501')) || ''; } catch (e) {}
                     DOORLAB.mount(checks, {
                         seed: seed,
+                        student: sid,          // AI 覆核要記在誰頭上（額度是全班共用的）
+                        /* ★ B 那段「用自己的話說」要存起來 —— 老師看得到全班怎麼說。
+                           ⚠️ 舊版的 placeholder 寫著「老師會看」，但根本沒存，
+                              那句話是假的。存的是**原文**，不是判定結果：
+                              判定只是門檻，老師要看的是他自己的說法。 */
+                        onSay: function (text, res) {
+                            save.save(UNIT, 'say', {
+                                text: String(text || '').slice(0, 500),
+                                got: (res && res.got) || [],
+                                byAI: !!(res && res.byAI)
+                            });
+                        },
                         onDone: function (info) {
                             if (!(rec && rec.checks)) save.save(UNIT, 'checks', { tries: info && info.tries });
                         }
