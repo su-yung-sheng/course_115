@@ -169,6 +169,38 @@
     return isFinite(n) && String(ans).trim() !== '' && n === c.answer;
   }
 
+  /* ── 接回數學課 ──────────────────────────────────────
+     ★ 老師 2026-08-24：「暖身活動就是國中數學的正比與反比，
+       連結數學課學過的正比反比概念」
+
+     ⚠️⚠️ 但只有 ① 是正比。**② 不是反比。**
+        ② 是 對應(x, hi→0, 0→out)，也就是 y = out − (out/hi)·x ——
+        一條**往下走的直線**。反比是 y = k/x（雙曲線）。
+        實際數字（hi=50、out=100）：
+          我們的②：距離 10 → 80、距離 20 → 60　（每多 1 公分固定少 2）
+          真的反比：距離 10 → 80、距離 20 → 40　（距離兩倍，值變一半）
+        ★★ 而且「遞減＝反比」正是學生最常見的誤解之一 ——
+           教材寫成反比會**強化**那個錯誤，而不是修正它。
+
+     ⚠️ 老師 2026-08-24 補充：「還沒教到遞減，那只說明就好」
+        ⇒ **不可以用「遞減」「一次函數」這些名詞**（還沒教到），
+          但也**不可以說它是反比**（那是錯的）。
+          用他們已經有的語言講：「往下走的直線」「每多 1 公分固定少同樣多」。 */
+  function mathNote(node, c) {
+    if (node === 1)
+      return '★ 這就是數學課的**正比**：距離變兩倍，換算出來的值也變兩倍。';
+    if (node === 2) {
+      var step = c.out / c.hi;
+      var per = (step === Math.round(step))
+        ? '距離每多 1 公分，值就固定少 ' + step
+        : '距離每多 1 公分，值就固定少同樣多';
+      return '這一條也是**直線**，只是往下走：' + per + '。<br>' +
+             '⚠️ 注意：這**不是**數學課的反比。反比是「距離變兩倍，值變一半」；' +
+             '這裡是「每多 1 公分，少的量都一樣」—— 是兩回事。';
+    }
+    return '';
+  }
+
   /** 提示要**點破那個錯**，不可以直接給答案。 */
   function hintFor(node, c, ans) {
     var n = Number(String(ans).trim());
@@ -429,16 +461,18 @@
         if (node === 4) {
           el.innerHTML = '<div class="mp-wrap">' + dots(4, 4) +
             '<div class="mp-msg good">🎉 暖身完成！<br>' +
-            '你會了四件事：兩把尺**要對齊**、配對線**可以交叉**（那就是反向）、' +
+            '你會了四件事：兩把尺**要對齊**（那就是數學課的**正比**）、' +
+            '配對線**可以交叉**（那是往下走的直線，⚠️ 不是反比）、' +
             '「越近越亮」靠的就是那個交叉，' +
             '而**除不盡是常態** —— 機器會自己處理掉小數，你不必特地去取整數。<br>' +
             '⚠️ 記住：方向寫反了，燈**照樣會亮** —— 要靠近才看得出來。</div></div>';
           if (typeof opts.onDone === 'function') opts.onDone({ tries: tries });
           return;
         }
+        var note = mathNote(node, c);
         node++;
         c = caseFor(node, rng, c);
-        view('✅ 對了，進到下一個。', 'good');
+        view('✅ 對了！' + (note ? '<br>' + note : ''), 'good');
         return;
       }
       /* ★ 答錯換一題 —— 但先把這一題的答案畫出來，讓他看到尺是怎麼對的。 */
@@ -479,6 +513,7 @@
   global.MAPLAB = {
     mapv: mapv, RANGES: RANGES, rngFrom: rngFrom,
     caseFor: caseFor, optsFor: optsFor, optsD: optsD, realMap: realMap, REAL: REAL,
+    mathNote: mathNote,
     judge: judge, hintFor: hintFor,
     mount: mount
   };
