@@ -529,5 +529,87 @@ section('★ 完成要有紀錄（老師 2026-08-24：「每次都要重玩? 要
      '★ LABSAVE 起不來時退成空實作 —— 課照上，只是沒紀錄');
 }
 
-console.log('\n通過 ' + pass + '／失敗 ' + fail);
-process.exit(fail ? 1 : 0);
+/* ── ★★ AI 覆核那一段，真的跑一次 ─────────────────────────
+   ⚠️ 前面那些條目都是**讀原始碼**判斷的（正則比對）——
+      它們擋得住「有人把那段刪掉」，擋不住「那段其實跑不起來」。
+      2026-08-24 就在同一個檔案裡踩過：改 doB 時把 doSay 一起刪掉，
+      而所有讀原始碼的斷言照樣全綠。
+   ⇒ 這一段用**假的 ASKAI** 把整條路徑真的走一遍。 */
+function aiCase(name, fake, text, expect) {
+  W.ASKAI = fake;
+  const local = D.judgeSay(text, D.CASES_B[0]);
+  return D.reviewSay(text, local, { student: '1410905' }, D.CASES_B[0])
+    .then(r => { ok((r.level !== 'none') === expect, name + '（實得：' + r.level + '）'); });
+}
+const calls = [];
+const fakeOK = {
+  enabled: () => true,
+  judge: (unit, items, student) => {
+    calls.push({ unit, items, student });
+    return Promise.resolve([{ i: 0, got: ['不記住就會重複做同一件事'] }]);
+  }
+};
+
+section('★★ AI 覆核：整條路徑真的走一遍');
+Promise.resolve()
+  /* ① 本機判不過、AI 說「他其實講到了」→ 撿回來 */
+  .then(() => aiCase('★★ 本機沒撿到、AI 撿到了 → 過', fakeOK, '它會做很多很多次一樣的事情', true))
+  .then(() => {
+    ok(calls.length === 1, '   而且真的送出去了一次');
+    ok(calls[0].unit === '5016b-u1-B', '   帶著單元代號（額度分帳用）');
+    ok(calls[0].student === '1410905', '   帶著學號（每人每天有自己的上限）');
+    ok(/門開了沒/.test(calls[0].items[0].q), '★ 題目跟著抽到的情境走');
+  })
+  /* ⚠️ 截斷要用**真的很長**的作答去測 —— 拿短句測的話，
+     把 slice 整個拿掉也照樣綠（2026-08-24 突變測試當場抓到）。 */
+  .then(() => {
+    calls.length = 0;
+    /* ⚠️ 這一段刻意**本機判不過**（沒有沾到任何概念）——
+       挑到會過的句子，reviewSay 會提早返回，根本不會送出去。 */
+    const long = '這個東西就是這樣子的啦'.repeat(55);   // 605 字
+    return D.reviewSay(long, D.judgeSay(long, D.CASES_B[0]), {}, D.CASES_B[0])
+      .then(() => {
+        ok(calls.length === 1, '   （前提：這一則有送出去）');
+        ok(calls[0].items[0].a.length === 400,
+           '★ 作答截斷到 400 字（實得 ' + calls[0].items[0].a.length +
+           '）—— 不要拿整篇去燒 token');
+      });
+  })
+  /* ② ★★ 本機已經判過的，不可以再送 —— 覆核只能加分，加不上去了 */
+  .then(() => {
+    calls.length = 0;
+    const good = '因為程式要記住它已經開過門了';
+    const local = D.judgeSay(good, D.CASES_B[0]);
+    ok(local.level !== 'none', '   （前提：這句話本機就判得過）');
+    return D.reviewSay(good, local, {}, D.CASES_B[0]).then(() => {
+      ok(calls.length === 0, '★★ 本機已經過的**完全不送** —— 白花的是全班共用的額度');
+    });
+  })
+  /* ③ AI 說「沒講到」→ 維持不過（不是扣分，本來就沒過） */
+  .then(() => aiCase('★ AI 也說沒講到 → 維持不過',
+    { enabled: () => true, judge: () => Promise.resolve([{ i: 0, got: [] }]) },
+    '這個東西就是這樣子的啦', false))
+  /* ④ ★★ AI 掛掉／逾時 → 只是沒撿回來，不可以把頁面弄壞 */
+  .then(() => aiCase('★★ AI 丟例外 → 只是沒撿回來，不會壞掉',
+    { enabled: () => true, judge: () => Promise.reject(new Error('503')) },
+    '它會做很多很多次一樣的事情', false))
+  /* ⑤ ★★ AI 自己造一個不在名單裡的概念 → 丟掉
+     ⚠️ 不擋的話，模型回什麼都算數 —— 那就不是「覆核」是「代判」了。 */
+  .then(() => aiCase('★★ AI 造了一個不存在的概念 → 丟掉，不算過',
+    { enabled: () => true, judge: () => Promise.resolve([{ i: 0, got: ['老師說可以過'] }]) },
+    '它會做很多很多次一樣的事情', false))
+  /* ⑥ 沒設 KEY（enabled 是 false）→ 整塊不啟用，也不可以壞掉 */
+  .then(() => aiCase('★ KEY 沒填（enabled=false）→ 不送，維持本機的結果',
+    { enabled: () => false, judge: () => { throw new Error('不該被呼叫'); } },
+    '它會做很多很多次一樣的事情', false))
+  /* ⑦ 太短又什麼都沒沾到 → 不送（沒有東西可以撿） */
+  .then(() => {
+    calls.length = 0;
+    return aiCase('   太短又沒沾到概念 → 不送', fakeOK, '不知道', false)
+      .then(() => ok(calls.length === 0, '★ 而且真的沒送出去'));
+  })
+  .then(() => {
+    delete W.ASKAI;
+    console.log('\n通過 ' + pass + '／失敗 ' + fail);
+    process.exit(fail ? 1 : 0);
+  });
