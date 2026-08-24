@@ -90,6 +90,12 @@
           ★ 沒驗過的事就不要教。取小數 < 0.5 的題目，兩種取法答案一樣，
             這一關就不必替機器的實作方式背書。
        ② 小數太小（< 0.15）看起來像整數，學生會以為「本來就整除」。 */
+  /* ② 的拖曳體驗用這一把尺（老師 2026-08-24：「在反向的時候先給學生一個
+     互動體驗，拉動上方數值，下方數值會反向改變」）。
+     ⚠️ 它是**固定的示範尺**，而且下面出題時會把這一組排除 ——
+        不然學生只要在體驗裡拉到題目那個距離，答案就直接讀出來了。 */
+  var PLAY = { hi: 50, out: 100 };
+
   var REAL = { hi: 55, out: 8 };          // 課本那組：對應(距離, 55→1, 1→8)
   function realMap(d) { return mapv(d, REAL.hi, 1, 1, REAL.out); }
   function spotsD() {
@@ -116,6 +122,8 @@
         /* ③ 選出「越近越亮」的寫法。三個選項都是真的能執行的設定。 */
         c = { hi: r.hi, out: r.out, rev: true, answer: 'rev' };
       } else {
+        /* ⚠️ ② 不出「體驗用的那一把尺」—— 見 PLAY 的說明。 */
+        if (node === 2 && r.hi === PLAY.hi && r.out === PLAY.out) continue;
         var spots = cleanSpots(r.hi, r.out);
         if (!spots.length) continue;
         var d = spots[Math.floor(rng() * spots.length) % spots.length];
@@ -166,15 +174,16 @@
     var n = Number(String(ans).trim());
     if (node === 1) {
       if (isFinite(n) && n === Math.round(mapv(c.d, c.hi, 0, 0, c.out)))
-        return '你算的是**倒過來**的那一種。這一題的箭頭是 0→' + c.hi + '：距離越大，出來的數字也越大。';
+        return '你算的是**反向**的那一種。這一題是正向（0→' + c.hi + '，兩條配對線平行）：' +
+               '距離越大，出來的數字也越大。';
       return '兩把尺是對齊的：距離走了幾分之幾，出來的數字就走幾分之幾。' +
              '距離 ' + c.d + ' 走到 ' + c.hi + ' 的幾分之幾？';
     }
     if (node === 2) {
       if (isFinite(n) && n === Math.round(mapv(c.d, 0, c.hi, 0, c.out)))
-        return '⚠️ 這是**正向**的答案。這一題的箭頭轉過來了（' + c.hi + '→0）：' +
+        return '⚠️ 這是**正向**的答案。這一題是反向的（' + c.hi + '→0，配對線交叉）：' +
                '距離越大，出來的數字反而越小。';
-      return '箭頭轉過來了：距離 ' + c.hi + ' 對到 0，距離 0 對到 ' + c.out + '。' +
+      return '這一題是反向的：距離 ' + c.hi + ' 對到 0，距離 0 對到 ' + c.out + '。' +
              '那 ' + c.d + ' 會對到哪裡？';
     }
     if (node === 4) {
@@ -223,9 +232,11 @@
   '.mp-pin.out b{color:#4f46e5}' +
   '.mp-pin.ask b{color:#b45309}' +
   '.mp-pin.ask{background:#f59e0b}' +
-  /* ⚠️ 反向的時候要**看得出來**箭頭轉了 —— 只有數字的話學生不會發現。 */
-  '.mp-arrow{position:absolute;left:0;right:0;top:8px;height:14px;text-align:center;' +
-    'font-size:12px;font-weight:900;color:#64748b;letter-spacing:2px}' +
+  /* 兩把尺中間那塊連線。★ 反向 = 兩條配對線交叉成 X（見 rulersHtml 的說明）。 */
+  '.mp-link{display:block;width:100%;height:26px}' +
+  '.mp-pair{stroke:#94a3b8;stroke-width:2;stroke-dasharray:4 3;vector-effect:non-scaling-stroke}' +
+  '.mp-now{stroke:#0891b2;stroke-width:3;vector-effect:non-scaling-stroke}' +
+  '.mp-note{font-size:12px;font-weight:900;color:#64748b;text-align:center;margin:2px 0 6px}' +
   '.mp-rev{color:#b45309}' +
   '.mp-in{font-size:20px;font-weight:900;width:120px;padding:10px 12px;' +
     'border:2px solid #cbd5e1;border-radius:12px;text-align:center}' +
@@ -239,6 +250,13 @@
     'font-weight:700;line-height:1.9}' +
   '.mp-msg.bad{background:#fff7ed;border:2px solid #fdba74;color:#7c2d12}' +
   '.mp-msg.good{background:#ecfdf5;border:2px solid #6ee7b7;color:#065f46}' +
+  '.mp-play{width:100%;height:34px;margin:2px 0 4px;accent-color:#0891b2;cursor:pointer}' +
+  '.mp-tick{display:flex;justify-content:space-between;font-size:12px;font-weight:900;' +
+    'color:#94a3b8;margin-top:-4px}' +
+  '.mp-goal{display:flex;gap:8px;justify-content:center;margin:10px 0 4px;flex-wrap:wrap}' +
+  '.mp-goal span{font-size:13px;font-weight:900;padding:5px 12px;border-radius:999px;' +
+    'background:#f1f5f9;color:#94a3b8;border:2px solid #e2e8f0}' +
+  '.mp-goal span.ok{background:#ecfdf5;color:#047857;border-color:#6ee7b7}' +
   '.mp-dots{display:flex;gap:6px;margin-bottom:12px}' +
   '.mp-dot{flex:1;height:6px;border-radius:3px;background:#e2e8f0}' +
   '.mp-dot.on{background:#0891b2}.mp-dot.ok{background:#10b981}';
@@ -250,12 +268,33 @@
     document.head.appendChild(st);
   }
 
-  /** 兩把尺。value 是輸入值，show 是要不要把答案那一端畫出來。 */
+  /* 兩把尺 ＋ 中間的連線。
+     ★★ 老師 2026-08-24：「反向轉換也會有數線，這樣感覺會誤導理解?」
+       —— 對，而且不只是誤導：舊版把下面那把尺**倒過來標**（左 100、右 0），
+       指標卻還是照正向的位置畫 —— 畫面上的數字和它自己的刻度差了 40 個百分點。
+       ⚠️ 一旦刻度反了，位置的算法就得跟著反，那是個很容易漏掉的地方；
+          而且「左大右小」本身就和數學課教的數線衝突，學生要多花一層力氣。
+
+     ⇒ 兩把尺**一律左小右大**，反向改用**交叉的配對線**表示：
+         正向 → 0 接 0、hi 接 out，兩條線平行
+         反向 → 0 接 out、hi 接 0，兩條線交叉成 X
+       ★「交叉」就是反向的視覺標誌，而且刻度完全不必動。
+
+     ⚠️ 還沒作答的時候**不可以畫那條連線** —— 它落在哪裡就是答案。
+        這時只畫兩端的配對線（看得出方向），下面那把尺不放指標。 */
   function rulersHtml(c, showOut) {
     var pos = c.hi ? (c.d / c.hi) * 100 : 0;
-    var outPos = c.rev ? 100 - pos : pos;
-    /* 靠得太邊的時候換一種對齊方式（見 CSS 那一段的說明）。 */
+    var outP = c.out ? (c.answer / c.out) * 100 : 0;   // 兩把尺都是左小右大
     var edge = function (p) { return p < 12 ? ' at-l' : (p > 88 ? ' at-r' : ''); };
+    /* 兩端怎麼配對：正向平行、反向交叉。 */
+    var pair = c.rev
+      ? '<line x1="0" y1="0" x2="100" y2="26" class="mp-pair"/>' +
+        '<line x1="100" y1="0" x2="0" y2="26" class="mp-pair"/>'
+      : '<line x1="0" y1="0" x2="0" y2="26" class="mp-pair"/>' +
+        '<line x1="100" y1="0" x2="100" y2="26" class="mp-pair"/>';
+    var link = showOut
+      ? '<line x1="' + pos + '" y1="0" x2="' + outP + '" y2="26" class="mp-now"/>'
+      : '';
     return '<div class="mp-rulers">' +
       '<div class="mp-cap">距離（公分）</div>' +
       '<div class="mp-ruler">' +
@@ -264,18 +303,19 @@
         '<div class="mp-pin' + edge(pos) + '" style="left:' + pos + '%"><b>' +
           c.d + '</b></div>' +
       '</div>' +
-      '<div class="mp-arrow">' + (c.rev
-        ? '<span class="mp-rev">▼ 箭頭轉過來了：' + c.hi + ' 對到 0，0 對到 ' + c.out + ' ▼</span>'
-        : '▼ ▼ ▼') + '</div>' +
-      '<div class="mp-cap">換算出來的值</div>' +
+      '<svg class="mp-link" viewBox="0 0 100 26" preserveAspectRatio="none">' +
+        pair + link + '</svg>' +
+      '<div class="mp-note">' + (c.rev
+        ? '⚠️ <b>反向</b>：0 接到 ' + c.out + '、' + c.hi + ' 接到 0 —— 兩條線<b>交叉</b>了'
+        : '正向：0 接 0、' + c.hi + ' 接 ' + c.out + ' —— 兩條線是平行的') + '</div>' +
+      '<div class="mp-cap">換算出來的值' + (showOut ? '' : ' = ？') + '</div>' +
       '<div class="mp-ruler">' +
         '<div class="mp-line out"></div>' +
-        '<div class="mp-end l">' + (c.rev ? c.out : 0) + '</div>' +
-        '<div class="mp-end r">' + (c.rev ? 0 : c.out) + '</div>' +
-        '<div class="mp-pin out ' + (showOut ? '' : 'ask') +
-          edge(c.rev ? outPos : pos) + '" style="left:' +
-          (c.rev ? outPos : pos) + '%"><b>' +
-          (showOut ? c.answer : '？') + '</b></div>' +
+        '<div class="mp-end l">0</div><div class="mp-end r">' + c.out + '</div>' +
+        (showOut
+          ? '<div class="mp-pin out' + edge(outP) + '" style="left:' + outP + '%"><b>' +
+            c.answer + '</b></div>'
+          : '') +
       '</div>' +
     '</div>';
   }
@@ -292,6 +332,11 @@
     var esc = LK().esc, md = LK().md;
     var rng = rngFrom(opts.seed);
     var node = 1, tries = 0, c = caseFor(1, rng, null);
+    /* ② 進到填空之前，先讓他**拉一遍**（老師 2026-08-24）。
+       ⚠️ 要求兩端都碰過才放行 —— 拉一下就跳過的話，
+          「反向」這件事他根本沒看到全貌。 */
+    var played = false, touched = { lo: false, hi: false }, playD = Math.round(PLAY.hi / 2);
+
 
     function view(msg, cls, showOut) {
       var body;
@@ -322,9 +367,28 @@
                rulersHtml(c, false) +
                '<div><input class="mp-in" id="mp-ans" placeholder="?"> ' +
                '<button class="mp-go" id="mp-run">送出</button></div>';
+      } else if (node === 2 && !played) {
+        /* ── 拉桿體驗（不判對錯，只讓他看見）────────────── */
+        body = '<div class="mp-q">先<b>拉拉看</b>：這一把尺是<b>反向</b>的 —— ' +
+               '上面往右拉（距離變遠），下面的數字會往<b>左</b>跑（值變小）。<br>' +
+               '⚠️ 兩端都拉到，才能進到下一題。</div>' +
+               '<input type="range" class="mp-play" id="mp-slider" min="0" max="' +
+                 PLAY.hi + '" step="1" value="' + playD + '">' +
+               '<div class="mp-tick"><span>近 0</span><span>遠 ' + PLAY.hi + '</span></div>' +
+               '<div id="mp-stage">' + rulersHtml(playCase(), true) + '</div>' +
+               '<div class="mp-goal">' +
+                 '<span id="mp-g-lo" class="' + (touched.lo ? 'ok' : '') + '">' +
+                   (touched.lo ? '✅ ' : '') + '拉到最近</span>' +
+                 '<span id="mp-g-hi" class="' + (touched.hi ? 'ok' : '') + '">' +
+                   (touched.hi ? '✅ ' : '') + '拉到最遠</span>' +
+               '</div>' +
+               '<div style="text-align:center"><button class="mp-go" id="mp-done"' +
+                 (touched.lo && touched.hi ? '' : ' disabled') + '>我看懂了，出題</button></div>';
       } else {
-        body = '<div class="mp-q">這一次<b>箭頭轉過來了</b>：距離 ' + c.hi + ' 對到 <b>0</b>、' +
-               '距離 0 對到 <b>' + c.out + '</b>。<br>' +
+        /* ⚠️ 用詞要和畫面一致。舊版寫「箭頭轉過來了」，但畫面上已經沒有箭頭了 ——
+           現在是**交叉的配對線**。說明和圖對不起來，學生會去找一個不存在的東西。 */
+        body = '<div class="mp-q">這一次是<b>反向</b>的：距離 ' + c.hi + ' 對到 <b>0</b>、' +
+               '距離 0 對到 <b>' + c.out + '</b> —— 兩條配對線<b>交叉</b>了。<br>' +
                '⚠️ 那距離 <b>' + c.d + '</b> 的時候，換算出來是多少？</div>' +
                rulersHtml(c, false) +
                '<div><input class="mp-in" id="mp-ans" placeholder="?"> ' +
@@ -336,14 +400,37 @@
       bind();
     }
 
+    /** 體驗用的那一題（固定的示範尺，反向）。 */
+    function playCase() {
+      return { hi: PLAY.hi, out: PLAY.out, d: playD, rev: true,
+               answer: mapv(playD, PLAY.hi, 0, 0, PLAY.out) };
+    }
+    /* ⚠️ 拖曳時**只更新尺標那一塊**，不可以整個重畫 ——
+       重畫會讓拉桿失焦，手指還按著就斷掉了。 */
+    function onDrag(v) {
+      playD = Number(v);
+      var st = el.querySelector('#mp-stage');
+      if (st) st.innerHTML = rulersHtml(playCase(), true);
+      if (playD <= PLAY.hi * 0.1) touched.lo = true;
+      if (playD >= PLAY.hi * 0.9) touched.hi = true;
+      ['lo', 'hi'].forEach(function (k) {
+        var g = el.querySelector('#mp-g-' + k);
+        if (g && touched[k] && !/✅/.test(g.textContent)) {
+          g.className = 'ok'; g.textContent = '✅ ' + g.textContent;
+        }
+      });
+      var b = el.querySelector('#mp-done');
+      if (b) b.disabled = !(touched.lo && touched.hi);
+    }
+
     function answer(ans) {
       tries++;
       if (judge(node, c, ans)) {
         if (node === 4) {
           el.innerHTML = '<div class="mp-wrap">' + dots(4, 4) +
             '<div class="mp-msg good">🎉 暖身完成！<br>' +
-            '你會了四件事：兩把尺**要對齊**、箭頭**可以轉過來**、' +
-            '「越近越亮」靠的就是那個轉過來的箭頭，' +
+            '你會了四件事：兩把尺**要對齊**、配對線**可以交叉**（那就是反向）、' +
+            '「越近越亮」靠的就是那個交叉，' +
             '而**除不盡是常態** —— 機器會自己處理掉小數，你不必特地去取整數。<br>' +
             '⚠️ 記住：方向寫反了，燈**照樣會亮** —— 要靠近才看得出來。</div></div>';
           if (typeof opts.onDone === 'function') opts.onDone({ tries: tries });
@@ -371,6 +458,10 @@
     }
 
     function bind() {
+      var sl = el.querySelector('#mp-slider');
+      if (sl) sl.addEventListener('input', function () { onDrag(sl.value); });
+      var dn = el.querySelector('#mp-done');
+      if (dn) dn.addEventListener('click', function () { played = true; view('', ''); });
       var r = el.querySelector('#mp-run');
       if (r) r.addEventListener('click', function () {
         answer(el.querySelector('#mp-ans').value);

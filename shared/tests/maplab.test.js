@@ -28,6 +28,16 @@ global.document = W.document; global.window = W;
 ['shared/ultralab.js', 'shared/labkit.js', 'shared/maplab.js']
   .forEach(f => new Function('window', read(f))(W));
 const M = W.MAPLAB;
+/* ★ ② 進場先是拉桿體驗（老師 2026-08-24），要先把它走完才會出題。
+   ⚠️ 這個小工具讓後面每一段不必各自重寫一次。 */
+function passPlay(el) {
+  const sl = el.querySelector('#mp-slider');
+  if (!sl) return false;
+  sl.value = 0;  sl.dispatchEvent(new W.Event('input', { bubbles: true }));
+  sl.value = 50; sl.dispatchEvent(new W.Event('input', { bubbles: true }));
+  el.querySelector('#mp-done').dispatchEvent(new W.Event('click', { bubbles: true }));
+  return true;
+}
 
 section('換算本身');
 {
@@ -90,8 +100,8 @@ section('★★ 判定：方向錯不可以過');
 
   const c1 = M.caseFor(1, M.rngFrom('u'), null);
   ok(M.judge(1, c1, c1.answer) && !M.judge(1, c1, c1.answer + 1), '① 也是答對才過');
-  ok(/倒過來/.test(M.hintFor(1, c1, M.mapv(c1.d, c1.hi, 0, 0, c1.out))),
-     '   ① 答成反向時，提示點破「你算的是倒過來的那一種」');
+  ok(/反向/.test(M.hintFor(1, c1, M.mapv(c1.d, c1.hi, 0, 0, c1.out))),
+     '   ① 答成反向時，提示點破「你算的是反向的那一種」');
 }
 
 section('★★ ③ 選出「越近越亮」的寫法');
@@ -195,8 +205,13 @@ section('真的掛得起來');
   el.querySelector('#mp-ans').value = api.here().answer;
   el.querySelector('#mp-run').dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(api.node() === 2, '★ 答對進節點 2');
-  ok(/箭頭轉過來/.test(el.textContent), '★★ 節點 2 要明講「箭頭轉過來了」，不能只換數字');
+  /* ⚠️ 用詞要和畫面一致。舊版寫「箭頭轉過來了」，但畫面上已經沒有箭頭 ——
+     現在是交叉的配對線。說明和圖對不起來，學生會去找一個不存在的東西。 */
+  ok(/反向/.test(el.textContent), '★★ 節點 2 一進場就要講「反向」，不能只換數字');
+  ok(!/箭頭/.test(read('shared/maplab.js').replace(/\/\*[\s\S]*?\*\//g, '')),
+     '★★ 全篇不再出現「箭頭」—— 畫面上已經改成交叉線了');
 
+  ok(passPlay(el), '★★ ② 先是拉桿體驗（先體驗再作答）');
   el.querySelector('#mp-ans').value = api.here().answer;
   el.querySelector('#mp-run').dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(api.node() === 3, '★ 答對進節點 3');
@@ -209,6 +224,7 @@ section('真的掛得起來');
   W.document.body.appendChild(el2);
   const api2 = M.mount(el2, { seed: '77', onDone: info => { done = info; } });
   for (const node of [1, 2]) {
+    passPlay(el2);          // ② 要先把體驗走完
     el2.querySelector('#mp-ans').value = api2.here().answer;
     el2.querySelector('#mp-run').dispatchEvent(new W.Event('click', { bubbles: true }));
   }
@@ -235,6 +251,8 @@ section('★ 答錯的時候');
   ok(el.querySelectorAll('.mp-pin').length === 2 && !/？/.test(
        el.querySelector('.mp-pin.out').textContent),
      '★★ 而且那張圖要**把答案標出來** —— 只說「答錯了」學不到東西');
+  ok(el.querySelectorAll('.mp-now').length === 1,
+     '   連同「這一題是怎麼對過去的」那條線一起畫出來');
 }
 
 section('★★ 尺標上的字不可以互相重疊（老師 2026-08-24）');
@@ -272,14 +290,174 @@ section('★★ 尺標上的字不可以互相重疊（老師 2026-08-24）');
     W.document.body.appendChild(el);
     M.mount(el, { seed: 'e' + hit.i });
     const pins = [...el.querySelectorAll('.mp-pin')];
-    ok(pins.length === 2 && pins.every(p => /at-l|at-r/.test(p.className)),
-       '★★ 靠邊的題目，兩支指標都掛上了貼邊對齊');
+    /* ⚠️ 作答中只有**一支**指標（下面那把尺不放，放了就等於給答案）。 */
+    ok(pins.length === 1 && pins.every(p => /at-l|at-r/.test(p.className)),
+       '★★ 靠邊的題目，指標掛上了貼邊對齊');
     /* ★ cap 要在 .mp-rulers 底下、而不是包在 .mp-ruler 裡面 —— 那才是「自己一行」。 */
     ok(el.querySelectorAll('.mp-rulers > .mp-cap').length === 2,
        '★★ 兩個說明文字都在尺標**外面**（各自佔一行）');
     ok(el.querySelectorAll('.mp-ruler .mp-cap').length === 0,
        '   而且沒有任何一個還留在尺標裡面');
   }
+}
+
+section('★★ 反向不可以靠「把數線倒過來標」（老師 2026-08-24）');
+{
+  /* 老師：「反向轉換也會有數線，這樣感覺會誤導理解?」
+     ⚠️⚠️ 而且不只是誤導 —— 舊版把下面那把尺標成「左 100、右 0」，
+        指標卻還是照正向的位置畫：值 70 畫在 70%，而那裡照刻度讀是 30。
+        **畫面上的數字和它自己的刻度差了 40 個百分點。**
+     ★ 病根是「倒過來標刻度」本身：刻度一反，位置的算法就得跟著反，
+       那是很容易漏掉的地方；而且左大右小和數學課教的數線衝突。
+     ⇒ 兩把尺一律左小右大，反向改用**交叉的配對線**表示。 */
+  const src = read('shared/maplab.js');
+  ok(!/c\.rev \? c\.out : 0/.test(src) && !/c\.rev \? 0 : c\.out/.test(src),
+     '★★ 尺的兩端不再依方向對調 —— 刻度一律左小右大');
+
+  /* 逐題檢查：指標的位置一定要和刻度讀出來的一致。 */
+  let bad = 0, revs = 0;
+  for (let i = 0; i < 200; i++) {
+    for (const node of [1, 2]) {
+      const c = M.caseFor(node, M.rngFrom('r' + i), null);
+      if (c.rev) revs++;
+      const el = W.document.createElement('div');
+      W.document.body.appendChild(el);
+      /* 直接借用畫面：先答錯一次讓它把答案畫出來。 */
+      const api = M.mount(el, { seed: 'r' + i });
+      if (node === 2) { /* ② 要先過體驗那一關 */ }
+      const cur = api.here();
+      el.querySelector('#mp-ans').value = cur.answer + 1;
+      el.querySelector('#mp-run').dispatchEvent(new W.Event('click', { bubbles: true }));
+      const pin = el.querySelector('.mp-pin.out');
+      if (!pin) { bad++; continue; }
+      const at = parseFloat(pin.getAttribute('style').replace(/[^0-9.]/g, ''));
+      const should = cur.answer / cur.out * 100;
+      /* ★★ 這一條就是舊版會紅的地方（70% vs 30%）。 */
+      if (Math.abs(at - should) > 0.5) bad++;
+      if (pin.textContent.indexOf(String(cur.answer)) < 0) bad++;
+      el.remove();
+    }
+  }
+  ok(bad === 0, '★★ 指標畫的位置和刻度讀出來的值一致（400 題全查過）');
+  ok(revs > 0, '   （其中有反向題 ' + revs + ' 次）');
+
+  /* 交叉線：反向才交叉。 */
+  const rev = M.caseFor(2, M.rngFrom('cross'), null);
+  const fwd = M.caseFor(1, M.rngFrom('cross'), null);
+  const draw = (c, seed, node) => {
+    const el = W.document.createElement('div');
+    W.document.body.appendChild(el);
+    const api = M.mount(el, { seed: seed });
+    if (node === 2) { el.querySelector('#mp-ans').value = api.here().answer;
+      el.querySelector('#mp-run').dispatchEvent(new W.Event('click', { bubbles: true })); }
+    return el;
+  };
+  {
+    const el = draw(fwd, 'cross', 1);
+    const pair = [...el.querySelectorAll('.mp-pair')];
+    ok(pair.length === 2, '正向：畫出兩條端點配對線');
+    /* 正向 → 兩條都是垂直的（x1 === x2） */
+    ok(pair.every(l => l.getAttribute('x1') === l.getAttribute('x2')),
+       '★ 正向時兩條配對線**平行**（垂直往下）');
+    ok(/平行/.test(el.querySelector('.mp-note').textContent), '   而且文字也講「平行」');
+
+    const el2 = draw(rev, 'cross', 2);
+    const pair2 = [...el2.querySelectorAll('.mp-pair')];
+    ok(pair2.every(l => l.getAttribute('x1') !== l.getAttribute('x2')),
+       '★★ 反向時兩條配對線**交叉**（0 接到另一端）—— 這就是反向的視覺標誌');
+    ok(/交叉/.test(el2.querySelector('.mp-note').textContent), '   而且文字也講「交叉」');
+  }
+
+  /* ⚠️ 還沒作答時不可以把連線畫出來 —— 它落在哪裡就是答案。 */
+  {
+    const el = W.document.createElement('div');
+    W.document.body.appendChild(el);
+    M.mount(el, { seed: 'hide' });
+    ok(el.querySelectorAll('.mp-now').length === 0,
+       '★★ 還沒作答時不畫那條連線 —— 它落在哪裡就是答案');
+    ok(el.querySelectorAll('.mp-pin.out').length === 0, '   下面那把尺也不放指標');
+    ok(/？/.test(el.textContent), '   改成在標題寫「= ？」');
+  }
+}
+
+section('★★ ② 先拉一遍再答題（老師 2026-08-24 指定的互動體驗）');
+{
+  const el = W.document.createElement('div');
+  W.document.body.appendChild(el);
+  const api = M.mount(el, { seed: 'play' });
+  el.querySelector('#mp-ans').value = api.here().answer;
+  el.querySelector('#mp-run').dispatchEvent(new W.Event('click', { bubbles: true }));
+
+  ok(api.node() === 2 && !!el.querySelector('#mp-slider'),
+     '★ 進到 ② 先看到拉桿，不是直接出題');
+  ok(!el.querySelector('#mp-ans'), '★★ 這時候還沒有填空框 —— 先體驗再作答');
+
+  const sl = el.querySelector('#mp-slider');
+  const pins = () => [...el.querySelectorAll('.mp-pin')].map(p =>
+    ({ v: Number(p.querySelector('b').textContent),
+       at: parseFloat(p.getAttribute('style').replace(/[^0-9.]/g, '')) }));
+
+  sl.value = 5; sl.dispatchEvent(new W.Event('input', { bubbles: true }));
+  const near = pins();
+  sl.value = 45; sl.dispatchEvent(new W.Event('input', { bubbles: true }));
+  const far = pins();
+
+  /* ★★ 這就是整個體驗要讓他看見的事：上面往右，下面往左。 */
+  ok(near[0].at < far[0].at, '   上面那支：拉遠 → 往右跑');
+  ok(near[1].at > far[1].at, '★★ 下面那支：拉遠 → 往**左**跑（反向）');
+  ok(near[1].v > far[1].v, '★★ 而且數字變小（近 ' + near[1].v + ' → 遠 ' + far[1].v + '）');
+  ok(el.querySelectorAll('.mp-now').length === 1,
+     '★ 體驗時**要**畫那條連線（這裡不是考題，就是要他看見對應關係）');
+  ok([...el.querySelectorAll('.mp-pair')].every(l => l.getAttribute('x1') !== l.getAttribute('x2')),
+     '   而且兩條配對線是交叉的');
+
+  /* ⚠️ 兩端都碰過才放行 —— 拉一下就跳過的話，他沒看到全貌。 */
+  {
+    const el2 = W.document.createElement('div');
+    W.document.body.appendChild(el2);
+    const a2 = M.mount(el2, { seed: 'play2' });
+    el2.querySelector('#mp-ans').value = a2.here().answer;
+    el2.querySelector('#mp-run').dispatchEvent(new W.Event('click', { bubbles: true }));
+    ok(el2.querySelector('#mp-done').disabled, '★★ 還沒拉過 → 「出題」是鎖著的');
+    const s2 = el2.querySelector('#mp-slider');
+    /* ⚠️ 先拉**遠**的那一端。第一版先拉近端，結果「不管拉到哪裡都算碰過」
+       這種寫法照樣綠（突變測試當場抓到）——
+       因為近端本來就會被滿足，看不出判斷有沒有生效。 */
+    s2.value = 49; s2.dispatchEvent(new W.Event('input', { bubbles: true }));
+    ok(el2.querySelector('#mp-done').disabled, '★★ 只拉到遠端 → 還是鎖著（近端還沒碰）');
+    s2.value = 25; s2.dispatchEvent(new W.Event('input', { bubbles: true }));
+    ok(el2.querySelector('#mp-done').disabled, '   拉回中間也不算 —— 要真的碰到那一端');
+    s2.value = 2; s2.dispatchEvent(new W.Event('input', { bubbles: true }));
+    ok(!el2.querySelector('#mp-done').disabled, '★ 兩端都拉到 → 才解鎖');
+    el2.querySelector('#mp-done').dispatchEvent(new W.Event('click', { bubbles: true }));
+    ok(!!el2.querySelector('#mp-ans') && a2.node() === 2, '★ 按下去才出題');
+
+    /* ⚠️ 反過來再驗一次：只拉到**近**端。
+       兩端要各驗一次 —— 只驗一種順序的話，
+       「另一端不管拉到哪都算碰過」這種寫法會躲掉（突變測試抓到的）。 */
+    const el3 = W.document.createElement('div');
+    W.document.body.appendChild(el3);
+    const a3 = M.mount(el3, { seed: 'play3' });
+    el3.querySelector('#mp-ans').value = a3.here().answer;
+    el3.querySelector('#mp-run').dispatchEvent(new W.Event('click', { bubbles: true }));
+    const s3 = el3.querySelector('#mp-slider');
+    s3.value = 1; s3.dispatchEvent(new W.Event('input', { bubbles: true }));
+    ok(el3.querySelector('#mp-done').disabled, '★★ 只拉到近端 → 還是鎖著（遠端還沒碰）');
+  }
+
+  /* ⚠️⚠️ 出題那把尺不可以和體驗那把一樣 ——
+     不然學生在體驗裡拉到題目那個距離，答案直接讀出來。 */
+  let same = 0;
+  for (let i = 0; i < 200; i++) {
+    const c = M.caseFor(2, M.rngFrom('p' + i), null);
+    if (c.hi === 50 && c.out === 100) same++;
+  }
+  ok(same === 0, '★★ ② 出題永遠不用體驗那一把尺（50→100）—— 不然答案讀得到');
+
+  /* 拖曳時只換尺標那一塊：整個重畫會讓拉桿失焦，手指還按著就斷了。 */
+  const src = read('shared/maplab.js');
+  ok(/var st = el\.querySelector\('#mp-stage'\);[\s\S]{0,120}st\.innerHTML/.test(src),
+     '★★ 拖曳只更新尺標那一塊（整個重畫會讓拉桿失焦）');
 }
 
 section('★ 第二節真的接上頁面了');
