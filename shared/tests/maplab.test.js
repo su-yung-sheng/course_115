@@ -110,6 +110,48 @@ section('★★ ③ 選出「越近越亮」的寫法');
   ok(/輸出/.test(M.hintFor(3, c, 'half')), '   答錯 half 的提示要指出他動的是輸出那一邊');
 }
 
+section('★★ ④ 除不盡（老師 2026-08-24：「換算一定是整數嗎? 無法整除怎麼寫答案?」）');
+{
+  /* ⚠️ ①②③ 刻意只出整除的（那三關測的是方向，不是除法）——
+     但課本那組 55 個整數距離裡**只有頭尾兩個**算得出整數。
+     ★ 這個落差要正面講，不能靠學生自己在實機上撞到。 */
+  let clean = 0;
+  for (let d = 1; d <= M.REAL.hi; d++) if (Number.isInteger(M.realMap(d))) clean++;
+  ok(clean === 2, '★★ 課本那組（55→1、1→8）只有 ' + clean + ' 個距離算得出整數 —— 除不盡才是常態');
+
+  /* ⚠️⚠️ 出題只能取小數部分 < 0.5 的位置。
+     小數 > 0.5 的時候「無條件捨去」和「四捨五入」答案不同
+     （距離 2 → 7.870：一個 7、一個 8）。
+     老師回報「實機亮燈位置正確」，但沒說是哪一種取法 ——
+     ★ 沒驗過的事就不要教：取小數 < 0.5 的題目，兩種取法答案一樣。 */
+  let risky = 0, tooFlat = 0, n = 0, ds = new Set();
+  for (let i = 0; i < 300; i++) {
+    const c = M.caseFor(4, M.rngFrom('d' + i), null); n++;
+    ds.add(c.d);
+    const f = c.raw - Math.floor(c.raw);
+    if (Math.floor(c.raw) !== Math.round(c.raw)) risky++;
+    if (f < 0.1) tooFlat++;
+  }
+  ok(risky === 0,
+     '★★ 出的題「無條件捨去」和「四捨五入」答案一定相同 —— ' +
+     '不替機器沒驗過的實作方式背書（' + n + ' 題全查過）');
+  ok(tooFlat === 0, '★ 小數不會小到看起來像整數（不然學生以為本來就整除）');
+  ok(ds.size > 5, '   距離會換（' + ds.size + ' 種）');
+
+  const c = M.caseFor(4, M.rngFrom('q'), null);
+  ok(!Number.isInteger(c.raw), '★★ ④ 出的一定是除不盡的（' + c.d + ' → ' + c.raw.toFixed(3) + '）');
+  ok(M.judge(4, c, 'floor'), '★ 「機器自己把小數去掉」→ 過');
+  ok(!M.judge(4, c, 'none'), '★★ 「一顆都不亮」→ 不過');
+  ok(!M.judge(4, c, 'both'), '★ 「兩顆各亮一點點」→ 不過');
+  ok(M.optsD(c).length === 3, '   三個選項');
+  ok(M.optsD(c).filter(o => o.k === 'floor')[0].t.indexOf(String(Math.floor(c.raw))) >= 0,
+     '   正確選項要講出「亮第幾顆」');
+  /* 提示要點破，而且不可以講成「都不亮」那種學生已經被否定的話。 */
+  ok(/實機測過|照樣會亮/.test(M.hintFor(4, c, 'none')),
+     '★ 答「都不亮」的提示要直接否定它（老師實機測過位置是對的）');
+  ok(/亮一半|要嘛/.test(M.hintFor(4, c, 'both')), '   答「兩顆一起亮」的提示要講燈珠不能亮一半');
+}
+
 section('★ 換一題（重試同一題只證明他記得剛才的答案）');
 {
   /* ⚠️ 不可以用「跑很多次看有沒有撞到」—— 統計式斷言擋不住罕見事件。
@@ -159,6 +201,8 @@ section('真的掛得起來');
   el.querySelector('#mp-run').dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(api.node() === 3, '★ 答對進節點 3');
   ok(el.querySelectorAll('.mp-opt').length === 3, '   節點 3 是三選一');
+  el.querySelector('[data-k="rev"]').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(api.node() === 4, '★ 答對進節點 4');
 
   let done = null;
   const el2 = W.document.createElement('div');
@@ -169,7 +213,8 @@ section('真的掛得起來');
     el2.querySelector('#mp-run').dispatchEvent(new W.Event('click', { bubbles: true }));
   }
   el2.querySelector('[data-k="rev"]').dispatchEvent(new W.Event('click', { bubbles: true }));
-  ok(!!done, '★ 三個節點都過 → 回報 onDone');
+  el2.querySelector('[data-k="floor"]').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(!!done, '★ 四個節點都過 → 回報 onDone');
   ok(/照樣會亮/.test(el2.textContent),
      '★★ 結尾要再提醒一次：寫反了燈照樣會亮，要靠近才看得出來');
 }

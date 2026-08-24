@@ -7,10 +7,11 @@
    ⚠️ 這一節**不再教超音波原理**（第一節教過了）。距離只是輸入來源，
       這一關要練的是「拿到那個數字之後怎麼換算」。
 
-   三個節點，一路壓在同一件事上：
+   四個節點：
      ① 兩把尺要對齊　　正向，數字刻意好算
      ② 把箭頭轉過來　　反向，自己算出值
      ③ 哪一個才是「越近越亮」　選出正確寫法
+     ④ 除不盡的時候　　用課本真正那組（55→1、1→8）算一次
 
    ★★ 為什麼 ②③ 都在講反向
      真正的程式寫的是 對應(距離, 55→1, 1→200) —— **輸入範圍是倒過來的**。
@@ -18,8 +19,11 @@
      而畫面上「燈會亮」看起來像是成功了 ——
      ⚠️ 這種錯**自己看不出來**，只有把兩種寫法擺在一起才發現。
 
-   ⚠️ 暖身的數字一律取「整除」的組合。
+   ⚠️ ①②③ 的數字一律取「整除」的組合。
       第一節的教訓：出現 51 這種數字，學生會卡在除法，而不是卡在概念。
+   ★★ 但**第 ④ 個節點刻意除不盡**（老師 2026-08-24：
+      「暖身活動換算一定是整數嗎? 無法整除怎麼寫答案?」）——
+      ①②③ 的漂亮數字和實機不一樣，那個落差要正面講，不能靠學生自己撞。
    ===================================================================== */
 (function (global) {
   'use strict';
@@ -72,12 +76,43 @@
     return list;
   }
 
-  /** 出一題。node = 1／2／3；prev 是上一題（換一題時不要重複）。 */
+  /* ── ④ 除不盡的時候 ──────────────────────────────
+     ★ 老師 2026-08-24：「暖身活動換算一定是整數嗎? 無法整除怎麼寫答案?」
+       —— 不是。①②③ 刻意只出整除的（那三關要測的是**方向**，不是除法），
+       但課本那組 對應(距離, 55→1, 1→8) 的 55 個整數距離裡，
+       **只有頭尾兩個**算得出整數。⚠️ 暖身教出來的「漂亮世界」和實機不一樣，
+       這個落差遲早會在課堂上被問 —— 所以拿一個節點正面講它。
+
+     ⚠️⚠️ 出題只取**小數部分 0.15～0.45** 的距離。理由有兩個：
+       ① 小數 > 0.5 的時候，「無條件捨去」和「四捨五入」答案不同
+          （距離 2 → 7.870：一個是 7、一個是 8）。
+          老師 2026-08-24 回報「實機亮燈位置正確」，但沒說是哪一種取法 ——
+          ★ 沒驗過的事就不要教。取小數 < 0.5 的題目，兩種取法答案一樣，
+            這一關就不必替機器的實作方式背書。
+       ② 小數太小（< 0.15）看起來像整數，學生會以為「本來就整除」。 */
+  var REAL = { hi: 55, out: 8 };          // 課本那組：對應(距離, 55→1, 1→8)
+  function realMap(d) { return mapv(d, REAL.hi, 1, 1, REAL.out); }
+  function spotsD() {
+    var list = [];
+    for (var d = 2; d < REAL.hi; d++) {
+      var v = realMap(d), f = v - Math.floor(v);
+      if (f >= 0.15 && f <= 0.45) list.push(d);
+    }
+    return list;
+  }
+
+  /** 出一題。node = 1／2／3／4；prev 是上一題（換一題時不要重複）。 */
   function caseFor(node, rng, prev) {
     var c = null;
     for (var g = 0; g < 60; g++) {
       var r = RANGES[Math.floor(rng() * RANGES.length) % RANGES.length];
-      if (node === 3) {
+      if (node === 4) {
+        /* ④ 用**課本真正那組**出題 —— 這一關的重點就是「它除不盡」。 */
+        var ds = spotsD();
+        var dd = ds[Math.floor(rng() * ds.length) % ds.length];
+        c = { hi: REAL.hi, out: REAL.out, d: dd, rev: true, real: true,
+              raw: realMap(dd), answer: 'floor' };
+      } else if (node === 3) {
         /* ③ 選出「越近越亮」的寫法。三個選項都是真的能執行的設定。 */
         c = { hi: r.hi, out: r.out, rev: true, answer: 'rev' };
       } else {
@@ -109,7 +144,18 @@
     ];
   }
 
+  /** ④ 的三個選項。★ 兩個錯的都是學生真的會想到的。 */
+  function optsD(c) {
+    var n = Math.floor(c.raw);
+    return [
+      { k: 'floor', t: '機器會自己把小數去掉，亮第 ' + n + ' 顆' },
+      { k: 'none',  t: '一顆都不亮 —— 因為根本沒有「第 ' + c.raw.toFixed(1) + ' 顆」' },
+      { k: 'both',  t: '第 ' + n + ' 顆和第 ' + (n + 1) + ' 顆一起亮，各亮一點點' }
+    ];
+  }
+
   function judge(node, c, ans) {
+    if (node === 4) return String(ans) === 'floor';
     if (node === 3) return String(ans) === 'rev';
     var n = Number(String(ans).trim());
     return isFinite(n) && String(ans).trim() !== '' && n === c.answer;
@@ -130,6 +176,15 @@
                '距離越大，出來的數字反而越小。';
       return '箭頭轉過來了：距離 ' + c.hi + ' 對到 0，距離 0 對到 ' + c.out + '。' +
              '那 ' + c.d + ' 會對到哪裡？';
+    }
+    if (node === 4) {
+      if (String(ans) === 'none')
+        return '⚠️ 不會「都不亮」—— 燈條照樣會亮，老師實機測過位置是對的。' +
+               '再想想：機器拿到一個帶小數的編號時，最省事的做法是什麼？';
+      if (String(ans) === 'both')
+        return '燈珠沒辦法「亮一半」到隔壁那一顆 —— 它要嘛亮、要嘛不亮。' +
+               '所以那個小數一定要先變成一個**整數的編號**。';
+      return '燈條只有第 1、2、3… 顆。那個小數最後會變成哪一個編號？';
     }
     if (String(ans) === 'fwd')
       return '⚠️ 這一個是**越遠越亮**。⚠️ 注意：燈一樣會亮 —— ' +
@@ -212,7 +267,7 @@
   }
 
   function dots(node, done) {
-    return '<div class="mp-dots">' + [1, 2, 3].map(function (n) {
+    return '<div class="mp-dots">' + [1, 2, 3, 4].map(function (n) {
       return '<div class="mp-dot ' + (done >= n ? 'ok' : (node === n ? 'on' : '')) + '"></div>';
     }).join('') + '</div>';
   }
@@ -226,7 +281,19 @@
 
     function view(msg, cls, showOut) {
       var body;
-      if (node === 3) {
+      if (node === 4) {
+        var listD = optsD(c).slice().sort(function () { return rng() - 0.5; });
+        body = '<div class="mp-q">最後一題 —— 這次用<b>課本真正那組</b>：<br>' +
+               '<span style="font-family:monospace">對應（距離，55→1，1→8）</span>，' +
+               '量到的距離是 <b>' + c.d + '</b> 公分。<br>' +
+               '算出來是 <b style="color:#b45309">' + c.raw.toFixed(3) + '…</b>' +
+               '<span class="mp-rev">（除不盡）</span><br>' +
+               '⚠️ 可是燈條只有第 1、2、3… 顆，<b>沒有「第 ' + c.raw.toFixed(1) + ' 顆」</b>。' +
+               '那會發生什麼事？</div>' +
+               listD.map(function (o) {
+                 return '<button class="mp-opt" data-k="' + o.k + '">' + esc(o.t) + '</button>';
+               }).join('');
+      } else if (node === 3) {
         var list = optsFor(c).slice().sort(function () { return rng() - 0.5; });
         body = '<div class="mp-q">🔦 我們要做「<b>手越靠近，燈越亮</b>」。<br>' +
                '距離是 0～' + c.hi + ' 公分，亮度是 0～' + c.out + '。<br>' +
@@ -258,12 +325,13 @@
     function answer(ans) {
       tries++;
       if (judge(node, c, ans)) {
-        if (node === 3) {
-          el.innerHTML = '<div class="mp-wrap">' + dots(3, 3) +
+        if (node === 4) {
+          el.innerHTML = '<div class="mp-wrap">' + dots(4, 4) +
             '<div class="mp-msg good">🎉 暖身完成！<br>' +
-            '你會了三件事：兩把尺**要對齊**、箭頭**可以轉過來**、' +
-            '而「越近越亮」靠的就是那個轉過來的箭頭。<br>' +
-            '⚠️ 記住：寫反了燈**照樣會亮** —— 要靠近才看得出來。</div></div>';
+            '你會了四件事：兩把尺**要對齊**、箭頭**可以轉過來**、' +
+            '「越近越亮」靠的就是那個轉過來的箭頭，' +
+            '而**除不盡是常態** —— 機器會自己處理掉小數，你不必特地去取整數。<br>' +
+            '⚠️ 記住：方向寫反了，燈**照樣會亮** —— 要靠近才看得出來。</div></div>';
           if (typeof opts.onDone === 'function') opts.onDone({ tries: tries });
           return;
         }
@@ -305,7 +373,8 @@
 
   global.MAPLAB = {
     mapv: mapv, RANGES: RANGES, rngFrom: rngFrom,
-    caseFor: caseFor, optsFor: optsFor, judge: judge, hintFor: hintFor,
+    caseFor: caseFor, optsFor: optsFor, optsD: optsD, realMap: realMap, REAL: REAL,
+    judge: judge, hintFor: hintFor,
     mount: mount
   };
 
