@@ -115,6 +115,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
   <!-- 身分守門：未從闖關基地登入者導回入口 -->
   <script src="../shared/semester.js"></script>
 <script src="../shared/guard.js"></script>
+  <!-- 第一節課的暖身關卡與三個檢核（老師 2026-08-24 定案）。
+       ⚠️ ultralab 是**共用**的：第二節「迎賓走廊」也用超音波，直接呼叫同一支。 -->
+  <script src="../shared/ultralab.js"></script>
+  <script src="../shared/doorlab.js"></script>
 </head>
 <body class="text-slate-800">
 
@@ -369,6 +373,20 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         <!-- Code Displayed Here -->
                     </div>
 
+                    <!-- 🎯 動手檢核（目前只有第一節有；沒有 lab 的單元整塊隱藏）-->
+                    <div id="detail-lab" class="hidden">
+                        <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                            <h3 class="text-2xl font-bold text-slate-800">🎯 動手檢核</h3>
+                            <span id="lab-seed" class="text-xs text-slate-400 font-mono"></span>
+                        </div>
+                        <p class="text-slate-500 text-sm mb-4">
+                            每一關都要<b>先講你認為會怎樣，再執行</b> ——
+                            說對了才算過。答錯會換一組數字重來，不限次數。
+                        </p>
+                        <div id="lab-warm" class="bg-white p-5 rounded-2xl border-2 border-slate-200"></div>
+                        <div id="lab-checks" class="bg-white p-5 rounded-2xl border-2 border-slate-200 mt-4 hidden"></div>
+                    </div>
+
                 </div>
 
             </div>
@@ -509,6 +527,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         而這一節教的是直流馬達「轉一段時間再停」。
                         放進來的話，學生會拿一個「不必算時間」的東西
                         來對照這節課「一定要算時間」的核心，剛好互相抵消。 */
+                lab: 'door1',          // 🎯 動手檢核：暖身（超音波）＋ A／B／C
                 apps: [
                     { icon: "🚪", name: "感應式鐵捲門",
                       how: "車子靠近就往上捲（或往旁邊拉開），開到定位就停；車走了再關回去。" },
@@ -1319,6 +1338,33 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             const demoContainer = document.getElementById('detail-demo-container');
             demoContainer.innerHTML = typeof data.demoHTML === 'function' ? data.demoHTML() : data.demoHTML;
             
+            /* 🎯 動手檢核：暖身關卡過了才開三個檢核。
+               ⚠️ 這裡**不寫雲端、不計星**（老師 2026-08-24：完成狀態之後才做）。
+                  現在只在畫面上顯示完成，重新整理就從頭來 —— 先看效果再說。
+               ★ ?seed=1234 → 全班同一組題（老師在黑板上帶著對答案時用）。 */
+            const labBox = document.getElementById('detail-lab');
+            if (data.lab === 'door1' && window.ULTRALAB && window.DOORLAB) {
+                const seed = new URLSearchParams(location.search).get('seed');
+                document.getElementById('lab-seed').textContent =
+                    seed ? ('全班同題　seed = ' + seed) : '每個人的數字都不一樣';
+                const warm = document.getElementById('lab-warm');
+                const checks = document.getElementById('lab-checks');
+                checks.classList.add('hidden');
+                checks.innerHTML = '';
+                ULTRALAB.mount(warm, {
+                    mode: 'warmup',
+                    seed: seed,
+                    onDone: function () {
+                        checks.classList.remove('hidden');
+                        DOORLAB.mount(checks, { seed: seed });
+                        checks.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+                labBox.classList.remove('hidden');
+            } else {
+                labBox.classList.add('hidden');
+            }
+
             // Load interactive workspace playground
             const playground = document.getElementById('interactive-playground');
             data.initPlayground(playground);
