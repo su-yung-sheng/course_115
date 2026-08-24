@@ -134,6 +134,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
   <!-- ★ 檢核關卡的共用骨架（老師 2026-08-24：「之後的單元都使用單元一的架構」）
        ⚠️ 一定要排在 doorlab 之前 —— doorlab 開場就會去拿 LABKIT。 -->
   <script src="../shared/labkit.js"></script>
+  <script src="../shared/maplab.js"></script>
   <script src="../shared/doorlab.js"></script>
 
   <!-- ═══ 完成紀錄（老師 2026-08-24：「每次都要重玩? 要有記錄」）═══
@@ -625,7 +626,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         而這一節教的是直流馬達「轉一段時間再停」。
                         放進來的話，學生會拿一個「不必算時間」的東西
                         來對照這節課「一定要算時間」的核心，剛好互相抵消。 */
-                lab: 'door1',          // 🎯 動手檢核：暖身（超音波）＋ A／B／C
+                /* 🎯 暖身與檢核。★ 兩個**分開指定** ——
+                   第二節換了暖身（超音波 → 換算）但檢核還沒做，
+                   綁在一起的話那一節就什麼都掛不上。 */
+                lab: { unit: 'u1', warm: 'ULTRALAB', checks: 'DOORLAB' },
                 apps: [
                     { icon: "🚪", name: "感應式鐵捲門",
                       how: "車子靠近就往上捲（或往旁邊拉開），開到定位就停；車走了再關回去。" },
@@ -828,6 +832,22 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 colorBg: "bg-sky-500",
                 icon: "lightbulb",
                 desc: "結合超音波感測器與 WS2812B 全彩燈條，創造出具科技感的迎賓走廊。我們不只做簡單的開關，還能依據「距離的遠近」來決定點亮幾顆燈珠，越靠近燈就亮越多！",
+                /* 🎯 這一節的暖身換成「換算」（老師 2026-08-24：「第二節先不要超音波，
+                   重點改放在燈條上」）—— 超音波的原理第一節教過了，
+                   距離在這裡只是輸入來源。
+                   ⚠️ 三個檢核還沒做，所以 checks 先留 null。 */
+                lab: { unit: 'u2', warm: 'MAPLAB', checks: null },
+                apps: [
+                    { icon: "🅿️", name: "倒車距離指示燈條",
+                      how: "後面的障礙物越近，亮的那一格就越往前推 —— 一眼就看得出還剩多少空間。" },
+                    { icon: "🌙", name: "走廊感應夜燈",
+                      how: "人越靠近燈越亮，走遠了就慢慢暗下來，不會整夜全亮。" }
+                ],
+                appsNote: '這兩個東西<span class="hl">用的是同一個距離</span>，' +
+                          '只是把它<b>換算成不同的東西</b>：一個換成「第幾格」，一個換成「多亮」。' +
+                          '⚠️ 第一節的門只有<span class="hl-b">開和關</span>兩種答案；' +
+                          '這一節的答案是<span class="hl">連續的</span> —— ' +
+                          '所以需要一塊新積木：<b>對應</b>。',
                 objectives: [
                     "認識 WS2812B 的「定址」特性：一條線就能分別控制每一顆燈珠",
                     "應用數學映射 (Map) 概念：將距離數值 (例如 10~100cm) 轉換為燈珠數量 (1~8顆)",
@@ -1447,13 +1467,19 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                ★ ?seed=1234 → 全班同題（老師在黑板上帶著對答案時用）。 */
             const warmBox = document.getElementById('detail-warm');
             const labBox  = document.getElementById('detail-lab');
-            if (data.lab === 'door1' && window.ULTRALAB && window.DOORLAB) {
+            /* ★ 資料驅動：哪一節掛哪一支，寫在 courseData 的 lab 裡。
+               ⚠️ 暖身與檢核**分開判斷** —— 第二節換了暖身但檢核還沒做，
+                  綁在一起的話那一節會什麼都掛不上。 */
+            const labCfg  = data.lab || null;
+            const warmMod = labCfg && labCfg.warm   ? window[labCfg.warm]   : null;
+            const chkMod  = labCfg && labCfg.checks ? window[labCfg.checks] : null;
+            if (warmMod) {
                 const seed = new URLSearchParams(location.search).get('seed');
                 const seedTxt = seed ? ('全班同題　seed = ' + seed) : '每個人的數字都不一樣';
                 document.getElementById('warm-seed').textContent = seedTxt;
                 document.getElementById('lab-seed').textContent = seedTxt;
 
-                const UNIT   = 'u1';
+                const UNIT   = labCfg.unit;
                 const wrap   = document.getElementById('warm-box');
                 const checks = document.getElementById('lab-checks');
                 const locked = document.getElementById('lab-locked');
@@ -1483,6 +1509,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 function openChecks(rec) {
                     locked.classList.add('hidden');
                     checks.classList.remove('hidden');
+                    /* ⚠️ 這一節還沒有檢核（第二～五節陸續補）——
+                       說清楚「這一節到這裡」，不要留一塊空白讓學生以為沒載完。 */
+                    if (!chkMod) {
+                        checks.innerHTML =
+                          '<div class="bg-slate-50 border-2 border-dashed border-slate-300 ' +
+                          'rounded-2xl p-6 text-center text-slate-500 font-bold">' +
+                          '🚧 這一節的動手檢核還在準備中 —— 暖身完成就可以了。</div>';
+                        return;
+                    }
                     if (rec && rec.checks) {
                         doneCard(checks, rec.checks.at, '三個檢核都通過了', () => mountChecks(rec));
                     } else {
@@ -1490,10 +1525,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     }
                 }
                 function mountChecks(rec) {
+                    if (!chkMod) return;
                     checks.innerHTML = '';
                     let sid = '';
                     try { sid = sessionStorage.getItem('sid' + ((window.CONFIG || {}).TERM || '11501')) || ''; } catch (e) {}
-                    DOORLAB.mount(checks, {
+                    chkMod.mount(checks, {
                         seed: seed,
                         student: sid,          // AI 覆核要記在誰頭上（額度是全班共用的）
                         /* ★ B 那段「用自己的話說」要存起來 —— 老師看得到全班怎麼說。
@@ -1514,8 +1550,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 }
                 function mountWarm(rec) {
                     wrap.innerHTML = '';
-                    ULTRALAB.mount(wrap, {
-                        mode: 'warmup',
+                    warmMod.mount(wrap, {
+                        mode: 'warmup',          // ultralab 才看這個；maplab 會忽略
                         seed: seed,
                         onDone: function (info) {
                             if (!(rec && rec.warm)) save.save(UNIT, 'warm', { tries: info && info.tries });
@@ -1530,7 +1566,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 save.load(UNIT).then(function (rec) {
                     rec = rec || {};
                     if (rec.warm) {
-                        doneCard(wrap, rec.warm.at, '暖身關卡已通過（超音波原理）', () => mountWarm(rec));
+                        doneCard(wrap, rec.warm.at, '暖身關卡已通過', () => mountWarm(rec));
                         openChecks(rec);          // ★ 鑰匙已經拿過了，不必再拿一次
                     } else {
                         checks.innerHTML = '';
