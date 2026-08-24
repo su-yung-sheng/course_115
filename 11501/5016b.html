@@ -24,8 +24,19 @@
             }
         }
     </script>
+    <!-- 螢光筆（.hl 黃＝結論／.hl-b 藍＝數量）的定義只在 shared/theme.css，
+         這一頁不要再寫一份 —— 兩份顏色遲早會不一樣。 -->
+    <link rel="stylesheet" href="../shared/theme.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+        /* ⚠️ theme.css 會用 !important 把整頁蓋成方格紙底色。
+           11502 的學生頁都是那個樣子，但 11501 這幾頁不是 ——
+           只為了螢光筆就把這一頁的版面換掉，不是老師要的。
+           ⇒ 把底色還原回來（要跟 11502 一致的話，把這三行刪掉就好）。 */
+        body {
+            background-color: #ffffff !important;
+            background-image: none !important;
+        }
         body {
             font-family: 'Noto Sans TC', sans-serif;
             scroll-behavior: smooth;
@@ -107,7 +118,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">五節課微型課程</span>
                 </h1>
                 <p class="text-lg text-slate-500 leading-relaxed">
-                    本課程使用 <b>NKNU 5016B 教具模組</b>（元件都已固定在模組上，<b>不必接線</b>），運用超音波感測器與可變電阻，結合直流減速馬達與 RGB 燈條，學習自動感應與手動微調的機電邏輯，打造專屬的「智慧家庭控制系統」。
+                    本課程使用 <b>NKNU 5016B 教具模組</b>（元件都已固定在模組上，<span class="hl">不必接線</span>），運用超音波感測器與可變電阻，結合直流減速馬達與 RGB 燈條，學習自動感應與手動微調的機電邏輯，打造專屬的「智慧家庭控制系統」。
                 </p>
                 <div class="flex gap-4 pt-4">
                     <button onclick="scrollToCurriculum()" class="bg-primary text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:bg-emerald-600 hover:shadow-xl transition flex items-center gap-2">
@@ -295,14 +306,20 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 <div class="p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 bg-slate-100">
                     
                     <!-- Left: Interactive Simulator -->
-                    <div class="lg:col-span-6 flex flex-col justify-between space-y-6">
+                    <!-- ⚠️ 2026-08-24 老師：「硬體行為模擬 為什麼會空白一大塊?」
+                         病根是 justify-between：左右兩欄同高，而右欄放了程式碼＋三張說明卡
+                         之後高很多，左欄被一起拉高 —— justify-between 就把多出來的高度
+                         全部塞成「標題」和「模擬器」中間的空白。
+                         ⇒ 改成 justify-start，並讓模擬器方塊 flex-1 撐滿剩下的高度，
+                           空白就變成方塊的一部分（內容仍置中）。 -->
+                    <div class="lg:col-span-6 flex flex-col justify-start space-y-6">
                         <div>
                             <span class="text-xs font-bold tracking-widest text-primary uppercase bg-primary/10 px-3 py-1 rounded-full">動態實作體驗區</span>
                             <h3 class="text-2xl font-bold text-slate-800 mt-3 mb-2">硬體行為模擬</h3>
                             <p class="text-slate-500 text-sm">操作下方模擬元件，觀察數值變化 —— 和 NKNU 5016B 模組上跑起來的行為一致。</p>
                         </div>
                         
-                        <div id="interactive-playground" class="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-center items-center min-h-[300px] relative">
+                        <div id="interactive-playground" class="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-center items-center min-h-[300px] flex-1 relative">
                             <!-- Dynamic Simulation Loaded Here -->
                         </div>
                     </div>
@@ -357,11 +374,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 colorText: "text-emerald-400",
                 colorBg: "bg-emerald-500",
                 icon: "door-open",
-                desc: "用 HC-SR04 超音波量出「人離門多遠」，再決定馬達要不要轉、往哪邊轉、以及<b>轉多久</b>。馬達沒有感測器告訴它門開到底了沒——這節課的核心，就是用<b>時間</b>把「轉動」變成「開門」這個動作。",
+                desc: "用超音波量出「人離門多遠」，再決定馬達要不要轉、往哪邊轉、以及<span class=\"hl\">轉多久</span>。馬達沒有感測器告訴它門開到底了沒 —— 這節課的核心，就是<span class=\"hl\">用時間把「轉動」變成「開門」</span>這個動作。",
                 objectives: [
                     "認識超音波感測器 (Trig 發射 / Echo 接收) 的測距原理",
                     "用「正轉 / 反轉 / 停」三個狀態控制直流減速馬達",
-                    "★ 用『等待幾秒』決定馬達轉多久 —— 並實測出自己這組的秒數",
+                    "用『等待幾秒』決定<span class=\"hl\">馬達轉多久</span> —— 並實測出自己這組的秒數",
                     "用一個變數記住『門現在開著還是關著』，避免重複開門",
                     "認識門檻的『中間地帶』(10～20cm)：避免門一直開開關關"
                 ],
@@ -426,8 +443,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                 </div>
                             </div>
                             <p class="text-xs text-slate-500 text-center max-w-md leading-relaxed">
-                                走近到 <b>10cm 以內</b> 門會開；退到 <b>20cm 以外</b> 門才關。
-                                中間那段刻意不動作 —— 馬達每次只轉 <b>1.3 秒</b> 就停。
+                                走近到 <span class="hl-b">10cm</span> 以內門會開；退到 <span class="hl-b">20cm</span> 以外門才關。
+                                中間那段刻意不動作 —— <span class="hl">馬達每次只轉 1.3 秒就停</span>。
                             </p>
                         </div>
                     `;
@@ -525,15 +542,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     <div class="grid sm:grid-cols-3 gap-3 mt-5">
                       <div class="bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
                         <div class="font-black text-amber-800 mb-1">⏱️ 為什麼要「等 1.3 秒」？</div>
-                        <p class="text-sm text-amber-900 leading-relaxed">馬達<b>不知道門開到底了沒有</b>——它沒有眼睛。我們只能用<b>時間</b>來決定它轉多久。太短門開不完，太長馬達會一直推著門硬轉。</p>
+                        <p class="text-sm text-amber-900 leading-relaxed"><span class="hl">馬達不知道門開到底了沒有</span> —— 它沒有眼睛。我們只能用<b>時間</b>來決定它轉多久。太短門開不完，太長<span class="hl">馬達會一直推著門硬轉</span>。</p>
                       </div>
                       <div class="bg-sky-50 border-2 border-sky-200 rounded-xl p-4">
                         <div class="font-black text-sky-800 mb-1">🚪 為什麼要記「門的狀態」？</div>
-                        <p class="text-sm text-sky-900 leading-relaxed">人站在門口不動，距離一直小於 10。沒有這個變數的話，程式會<b>一直重複開門</b>，馬達就一直轉。記住「已經開了」，它才知道不用再開一次。</p>
+                        <p class="text-sm text-sky-900 leading-relaxed">人站在門口不動，距離一直小於 <span class="hl-b">10</span>。沒有這個變數的話，程式會<span class="hl">一直重複開門</span>，馬達就一直轉。記住「已經開了」，它才知道不用再開一次。</p>
                       </div>
                       <div class="bg-violet-50 border-2 border-violet-200 rounded-xl p-4">
                         <div class="font-black text-violet-800 mb-1">↔️ 為什麼開門看 10、關門看 20？</div>
-                        <p class="text-sm text-violet-900 leading-relaxed">中間那段 10～20 公分<b>故意什麼都不做</b>。不然人在 10 公分附近晃一下，門就會開開關關。就像冷氣不會到 26.0 度就立刻停一樣。</p>
+                        <p class="text-sm text-violet-900 leading-relaxed">中間那段 <span class="hl-b">10～20</span> 公分<span class="hl">故意什麼都不做</span>。不然人在 10 公分附近晃一下，門就會開開關關 —— 就像冷氣不會到 26.0 度就立刻停一樣。</p>
                       </div>
                     </div>
                 `
@@ -1111,7 +1128,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             // Setup meta text and theme indicators
             document.getElementById('detail-badge').textContent = data.badge;
             document.getElementById('detail-title').textContent = data.title;
-            document.getElementById('detail-desc').textContent = data.desc;
+            /* ⚠️ 這裡本來是 textContent —— desc 裡寫的 <b> 會原樣印在畫面上。
+               desc 是我們自己寫的內容（沒有使用者輸入），改用 innerHTML
+               才能畫重點。objectives／materials 本來就是 innerHTML。 */
+            document.getElementById('detail-desc').innerHTML = data.desc;
             
             const bgIcon = document.getElementById('detail-bg-icon');
             bgIcon.setAttribute('data-lucide', data.icon);
