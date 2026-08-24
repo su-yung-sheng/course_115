@@ -151,14 +151,21 @@
   '.ul-step{flex:1;min-width:120px;padding:8px 10px;border-radius:12px;border:2px solid #e2e8f0;background:#fff;font-weight:900;font-size:13px;color:#94a3b8}' +
   '.ul-step.on{border-color:#0891b2;color:#0e7490;background:#ecfeff}' +
   '.ul-step.ok{border-color:#10b981;color:#047857;background:#ecfdf5}' +
-  '.ul-stage{position:relative;height:120px;background:#f8fafc;border:2px solid #e2e8f0;border-radius:16px;overflow:hidden;margin:10px 0}' +
-  '.ul-sensor{position:absolute;left:8px;top:38px;font-size:32px}' +
-  '.ul-obj{position:absolute;top:38px;font-size:32px;transform:translateX(-50%)}' +
-  '.ul-pulse{position:absolute;left:44px;top:56px;width:14px;height:14px;border-radius:50%;background:#0891b2;opacity:0}' +
+  /* ★ 老師 2026-08-24：「動手檢核的高度不夠，有字『35 公分』沒有呈現出來」
+     ⚠️ 病根有兩個，缺一不可修：
+       ① 舞台只有 120px，而尺標貼在 bottom:12px、字又壓在線的**下面**（top:6px），
+          整行字剛好落在 overflow:hidden 的外面 —— 被裁掉。
+       ② 只把高度加大也沒用：字仍然在線的下緣，加多少都可能再被擠出去。
+     ⇒ 舞台加高到 150px，**而且把字移到線的上方**（bottom 而不是 top）。
+        字在線上方之後，它和舞台底部之間永遠有 30px 的緩衝。 */
+  '.ul-stage{position:relative;height:150px;background:#f8fafc;border:2px solid #e2e8f0;border-radius:16px;overflow:hidden;margin:10px 0}' +
+  '.ul-sensor{position:absolute;left:8px;top:34px;font-size:34px}' +
+  '.ul-obj{position:absolute;top:34px;font-size:34px;transform:translateX(-50%)}' +
+  '.ul-pulse{position:absolute;left:44px;top:54px;width:14px;height:14px;border-radius:50%;background:#0891b2;opacity:0}' +
   '.ul-pulse.go{animation:ulgo 1.6s ease-in-out forwards}' +
   '@keyframes ulgo{0%{opacity:1;left:44px}45%{opacity:1;left:calc(var(--to) - 20px)}55%{opacity:1;left:calc(var(--to) - 20px);background:#f97316}100%{opacity:1;left:44px;background:#f97316}}' +
-  '.ul-ruler{position:absolute;left:44px;bottom:12px;height:0;border-top:3px dashed #94a3b8}' +
-  '.ul-ruler span{position:absolute;left:50%;top:6px;transform:translateX(-50%);font-size:13px;font-weight:900;color:#475569;background:#f8fafc;padding:0 6px}' +
+  '.ul-ruler{position:absolute;left:44px;bottom:26px;height:0;border-top:3px dashed #94a3b8}' +
+  '.ul-ruler span{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);font-size:15px;font-weight:900;color:#334155;background:#f8fafc;padding:0 8px;white-space:nowrap}' +
   '.ul-ask{font-size:16px;font-weight:900;color:#0f172a;margin:12px 0 8px;line-height:1.7}' +
   '.ul-opt{display:block;width:100%;text-align:left;padding:12px 14px;margin-bottom:8px;border:2px solid #e2e8f0;border-radius:12px;background:#fff;font-size:15px;font-weight:700;cursor:pointer}' +
   '.ul-opt:hover{border-color:#0891b2;background:#ecfeff}' +

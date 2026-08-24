@@ -190,5 +190,29 @@ section('★ 頁面順序（老師 2026-08-24：「暖身活動不是應該在�
   ok(/id="lab-locked"/.test(page), '   檢核在暖身完成前顯示鎖住的提示');
 }
 
+
+section('★ 尺標的字不可以被裁掉（老師 2026-08-24）');
+{
+  /* ⚠️ jsdom 沒有版面計算，量不到「有沒有被裁掉」——
+     所以這裡盯的是**造成裁切的那兩個條件**：
+       ① 舞台高度要夠（overflow:hidden 之下，太矮就一定裁）
+       ② 字要在虛線的**上方**（bottom），不是下方（top）
+     只修高度不夠：字仍然貼在線的下緣，加多少都可能再被擠出去。 */
+  const css = read('shared/ultralab.js');
+  const h = (css.match(/\.ul-stage\{[^']*height:(\d+)px/) || [])[1];
+  ok(Number(h) >= 150, '★ 舞台至少 150px（現在 ' + h + 'px）');
+  ok(/\.ul-ruler span\{[^']*bottom:\d+px/.test(css),
+     '★★ 尺標的字定位在**線的上方**（bottom），不是下方');
+  ok(!/\.ul-ruler span\{[^']*top:\d+px/.test(css), '   而且沒有殘留的 top');
+  ok(/\.ul-ruler span\{[^']*white-space:nowrap/.test(css),
+     '   字不換行（「35 公分」不可以斷成兩行再被裁）');
+
+  /* 那個字真的要畫出來 —— 不是只有 CSS 對。 */
+  const box = W.document.getElementById('a');
+  U.mount(box, { mode: 'warmup', seed: '77' });
+  ok(/ul-ruler[\s\S]*?<span>[^<]*公分<\/span>/.test(box.innerHTML),
+     '★ 尺標上真的有「◯◯ 公分」這個字');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
