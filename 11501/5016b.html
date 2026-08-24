@@ -365,10 +365,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "用一個變數記住『門現在開著還是關著』，避免重複開門",
                     "認識門檻的『中間地帶』(10～20cm)：避免門一直開開關關"
                 ],
+                /* ⚠️ 2026-08-24 老師更正：「這個單元沒有使用到馬達驅動板 (如 L298N)」。
+                   控制板本身就有馬達接孔（積木寫的是「設定馬達 腳位2、3」），
+                   馬達直接插上去就能正轉／反轉，不必外接驅動板。
+                   ★ 寫成要準備 L298N，老師會多買一塊用不到的板子，
+                     學生也會在盒子裡找一個不存在的東西。 */
                 materials: [
-                    "Arduino 核心開發板",
-                    "HC-SR04 超音波感測器模組",
-                    "直流減速馬達與馬達驅動板 (如 L298N)"
+                    "控制板（內建馬達驅動，馬達接孔 腳位 2、3）",
+                    "HC-SR04 超音波感測器模組（Trig 接 A2、Echo 接 A3）",
+                    "直流減速馬達 ×1"
                 ],
                 initPlayground: function(container) {
                     container.innerHTML = `
@@ -611,10 +616,13 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "認識 PWM (Pulse Width Modulation) 數位模擬類比輸出的技術 (0~255)",
                     "實作將 0~1023 的類比輸入值映射至 0~255 的 PWM 輸出，控制馬達轉速"
                 ],
+                /* ⚠️ 同第一節課：馬達直接接控制板，沒有外接驅動板。
+                   ⚠️ 這一節還沒有依照實際器材確認過（老師 2026-08-24 只確認了第一節），
+                      上到這一課之前請再核對一次。 */
                 materials: [
-                    "Arduino 核心開發板",
+                    "控制板（內建馬達驅動，馬達接孔 腳位 2、3）",
                     "旋鈕式可變電阻 (Potentiometer, 10KΩ)",
-                    "直流減速馬達與馬達驅動板"
+                    "直流減速馬達 ×1"
                 ],
                 initPlayground: function(container) {
                     container.innerHTML = `
