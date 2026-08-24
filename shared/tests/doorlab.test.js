@@ -214,5 +214,33 @@ section('★ 尺標的字不可以被裁掉（老師 2026-08-24）');
      '★ 尺標上真的有「◯◯ 公分」這個字');
 }
 
+
+section('★ 聲音要畫成同心弧線，不是圓球（老師 2026-08-24）');
+{
+  /* ⚠️ 圓球傳達的是**錯的物理**：看起來像一顆飛出去的子彈，
+     學生會以為感測器射出了一個東西 —— 那正好是節點① 要破除的誤解。
+     ⇒ 同心弧線（HC-SR04 產品圖、Wi-Fi 圖示都是這個語彙）。 */
+  const src = read('shared/ultralab.js');
+  ok(!/ul-pulse/.test(src), '★★ 圓球（.ul-pulse）已經整個拿掉');
+  const box = W.document.getElementById('a');
+  U.mount(box, { mode: 'warmup', seed: '55' });
+  const go = box.querySelectorAll('.ul-arc.go').length;
+  const back = box.querySelectorAll('.ul-arc.back').length;
+  ok(go >= 3 && back >= 3, '★ 去程與回程各有三道弧線（' + go + '／' + back + '）');
+  ok(/\.ul-arc\.go\{[^']*border-right-color/.test(src) &&
+     /\.ul-arc\.back\{[^']*border-left-color/.test(src),
+     '★ 弧線用 border 只畫一邊（去程朝右、回程朝左）');
+  ok(/\.ul-arc\.go\{[^']*#0891b2/.test(src) && /\.ul-arc\.back\{[^']*#f97316/.test(src),
+     '★★ 去程與回程**不同顏色** —— 去回是同一個聲音，但回來那一趟才是節點② 要算的');
+
+  /* 去程在前半段、回程在後半段：加起來才是「一去一回」。 */
+  ok(/@keyframes ularc-back\{0%,48%\{opacity:0/.test(src),
+     '★ 回程的動畫要等去程走完才開始（不是兩邊同時噴）');
+
+  /* ⚠️ 這一段是理解的基礎，不可以「播一次就沒了」。 */
+  ok(/\.ul-arc\.go\{[^']*infinite/.test(src), '★★ 動畫是 infinite —— 學生看漏了還有下一次');
+  ok(/prefers-reduced-motion/.test(src), '   會暈的人放慢，不是直接關掉（那就看不到了）');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

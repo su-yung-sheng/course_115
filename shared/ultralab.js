@@ -132,13 +132,29 @@
     return esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
   }
 
+  /* ★ 老師 2026-08-24：「聲音為什麼用圓球? 有沒有其他更好的圖案選擇?」
+     ⚠️ 圓球傳達的是**錯的物理**：它看起來像一顆飛出去的子彈，
+        學生會以為感測器射出了一個東西 —— 那正好是節點① 要破除的誤解。
+        聲音是**一圈一圈擴散的波**。
+     ⇒ 改成同心弧線（HC-SR04 的產品圖、Arduino 教學、Wi-Fi 圖示都是這個語彙，
+        學生一看就認得）：去程三道藍弧往右擴散，回程三道橘弧往左回來。
+     ★ 顏色分兩段是刻意的：**去回是同一個聲音，但回來那一趟才是關鍵**。
+        節點② 要算的就是「一去一回」，這裡先讓他看見。 */
   function waveHtml(d, label) {
     var pct = Math.round((d - D_MIN) / (D_MAX - D_MIN) * 70) + 20;   // 20%～90%
+    function arcs(dir) {
+      var out = '';
+      for (var i = 0; i < 3; i++) {
+        out += '<span class="ul-arc ' + dir + '" style="animation-delay:' + (i * 0.18) + 's"></span>';
+      }
+      return out;
+    }
     return '' +
       '<div class="ul-stage">' +
         '<div class="ul-sensor">📡</div>' +
         '<div class="ul-obj" style="left:' + pct + '%">🧍</div>' +
-        '<div class="ul-pulse" style="--to:' + pct + '%"></div>' +
+        '<div class="ul-wave go"  style="--to:' + pct + '%">' + arcs('go') + '</div>' +
+        '<div class="ul-wave back" style="--to:' + pct + '%">' + arcs('back') + '</div>' +
         '<div class="ul-ruler" style="width:' + pct + '%">' +
           '<span>' + (label || (d + ' 公分')) + '</span>' +
         '</div>' +
@@ -161,9 +177,24 @@
   '.ul-stage{position:relative;height:150px;background:#f8fafc;border:2px solid #e2e8f0;border-radius:16px;overflow:hidden;margin:10px 0}' +
   '.ul-sensor{position:absolute;left:8px;top:34px;font-size:34px}' +
   '.ul-obj{position:absolute;top:34px;font-size:34px;transform:translateX(-50%)}' +
-  '.ul-pulse{position:absolute;left:44px;top:54px;width:14px;height:14px;border-radius:50%;background:#0891b2;opacity:0}' +
-  '.ul-pulse.go{animation:ulgo 1.6s ease-in-out forwards}' +
-  '@keyframes ulgo{0%{opacity:1;left:44px}45%{opacity:1;left:calc(var(--to) - 20px)}55%{opacity:1;left:calc(var(--to) - 20px);background:#f97316}100%{opacity:1;left:44px;background:#f97316}}' +
+  /* 同心弧線：用 border 只畫一邊，靠 scale 擴散。
+     ⚠️ 去程從感測器往右、回程從物體往左 —— 兩組各自定位，
+        不要用同一個元素「跑過去再跑回來」（那又變成子彈了）。 */
+  '.ul-wave{position:absolute;top:0;bottom:0;width:0;pointer-events:none}' +
+  '.ul-wave.go{left:46px}' +
+  '.ul-wave.back{left:calc(var(--to) - 14px)}' +
+  '.ul-arc{position:absolute;top:50%;width:22px;height:44px;margin-top:-22px;opacity:0;' +
+    'border:4px solid transparent;border-radius:50%}' +
+  '.ul-arc.go{border-right-color:#0891b2;animation:ularc-go 1.6s ease-out infinite}' +
+  '.ul-arc.back{border-left-color:#f97316;animation:ularc-back 1.6s ease-out infinite}' +
+  /* 去程在前半段、回程在後半段 —— 加起來剛好是「一去一回」。 */
+  '@keyframes ularc-go{0%{opacity:0;transform:scale(.4) translateX(0)}' +
+    '8%{opacity:1}40%{opacity:1;transform:scale(1.5) translateX(6px)}' +
+    '48%,100%{opacity:0;transform:scale(1.6) translateX(6px)}}' +
+  '@keyframes ularc-back{0%,48%{opacity:0;transform:scale(.4) translateX(0)}' +
+    '56%{opacity:1}88%{opacity:1;transform:scale(1.5) translateX(-6px)}' +
+    '96%,100%{opacity:0;transform:scale(1.6) translateX(-6px)}}' +
+  '@media (prefers-reduced-motion: reduce){.ul-arc{animation-duration:3.2s}}' +
   '.ul-ruler{position:absolute;left:44px;bottom:26px;height:0;border-top:3px dashed #94a3b8}' +
   '.ul-ruler span{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);font-size:15px;font-weight:900;color:#334155;background:#f8fafc;padding:0 8px;white-space:nowrap}' +
   '.ul-ask{font-size:16px;font-weight:900;color:#0f172a;margin:12px 0 8px;line-height:1.7}' +
@@ -228,8 +259,9 @@
         '<div class="ul-wrap">' + (demo ? '' : stepsHtml()) + body() +
         (msg ? '<div class="ul-msg ' + (cls || 'bad') + '">' + md(msg) + '</div>' : '') +
         '</div>';
-      var p = el.querySelector('.ul-pulse');
-      if (p) setTimeout(function () { p.classList.add('go'); }, 60);
+      /* 弧線用 CSS 的 infinite 動畫，不必再手動加 class ——
+         ⚠️ 舊版是「加一次 .go 播一次」，學生看漏了就沒有第二次機會。
+            這一段是**理解的基礎**，讓它一直循環播。 */
       bind();
     }
 
