@@ -118,7 +118,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">五節課微型課程</span>
                 </h1>
                 <p class="text-lg text-slate-500 leading-relaxed">
-                    本課程使用 <b>NKNU 5016B 教具模組</b>（元件都已固定在模組上，<span class="hl">不必接線</span>），運用超音波感測器與可變電阻，結合直流減速馬達與 RGB 燈條，學習自動感應與手動微調的機電邏輯，打造專屬的「智慧家庭控制系統」。
+                    本課程使用 <b>NKNU 5016B 教具模組</b>，運用超音波感測器與可變電阻，結合直流減速馬達與 RGB 燈條，學習自動感應與手動微調的機電邏輯，打造專屬的「智慧家庭控制系統」。
                 </p>
                 <div class="flex gap-4 pt-4">
                     <button onclick="scrollToCurriculum()" class="bg-primary text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:bg-emerald-600 hover:shadow-xl transition flex items-center gap-2">
@@ -391,9 +391,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                    設備都接在模組上了，但是腳位註解還是保留對照。全部都沒有使用 L298N。」
                    ⇒ 器材清單寫「模組」，不列零散元件與驅動板；
                      腳位（A2/A3、腳位 2、3、A0…）保留 —— 那是看程式時的對照表，
-                     不是要學生去接的線。 */
+                     不是要學生去接的線。
+                   ★ 2026-08-24 再修：「感測器與馬達皆已固定在模組上，不必接線」
+                     這句**不特別強調**（老師：「這是環境參數」）——
+                     教室裡本來就是這套設備，寫出來反而像在提醒有別的可能。 */
                 materials: [
-                    "NKNU 5016B 教具模組（感測器與馬達皆已固定在模組上，不必接線）",
+                    "NKNU 5016B 教具模組",
                     "超音波感測器（腳位對照：Trig = A2、Echo = A3）",
                     "直流減速馬達（腳位對照：馬達 腳位 2、3）"
                 ],
@@ -568,7 +571,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "撰寫迴圈 (For-Loop) 來動態更新燈條的點亮與熄滅狀態"
                 ],
                 materials: [
-                    "NKNU 5016B 教具模組（感測器與馬達皆已固定在模組上，不必接線）",
+                    "NKNU 5016B 教具模組",
                     "超音波感測器（腳位對照：Trig = A2、Echo = A3）",
                     "WS2812B RGB 全彩燈條（8 顆燈珠）"
                 ],
@@ -672,7 +675,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "實作將 0~1023 的類比輸入值映射至 0~255 的 PWM 輸出，控制馬達轉速"
                 ],
                 materials: [
-                    "NKNU 5016B 教具模組（感測器與馬達皆已固定在模組上，不必接線）",
+                    "NKNU 5016B 教具模組",
                     "旋鈕式可變電阻（腳位對照：類比 A0）",
                     "直流減速馬達（腳位對照：馬達 腳位 2、3）"
                 ],
@@ -791,7 +794,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "實現無段滑順變色的數位燈帶效果"
                 ],
                 materials: [
-                    "NKNU 5016B 教具模組（感測器與馬達皆已固定在模組上，不必接線）",
+                    "NKNU 5016B 教具模組",
                     "旋鈕式可變電阻（腳位對照：類比 A1）",
                     "WS2812B RGB 全彩燈條"
                 ],
@@ -883,8 +886,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "規劃自動／手動的切換流程，並完成一次完整的操作展示"
                 ],
                 materials: [
-                    "NKNU 5016B 教具模組（前四節用到的元件都在同一塊模組上）",
-                    "模式切換按鈕（模組上既有）",
+                    "NKNU 5016B 教具模組",
+                    "模式切換按鈕",
                     "紙筆：規劃自動／手動兩種模式的切換流程"
                 ],
                 initPlayground: function(container) {
