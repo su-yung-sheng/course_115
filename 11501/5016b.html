@@ -394,6 +394,30 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         }
 
         // --- Core curriculum database ---
+        /* ═══ 待辦：鎖單元（老師 2026-08-24 決定，**暫緩實作**）═══════
+           「不用計算星，但要設計為課程是否完成，之後會鎖上，完成才下一步。
+             但課程整理中，先不用。」
+             「之後會鎖單元，第一節課完成再開放第二節課。」
+
+           ⇒ 規格（先寫下來，等課程內容整理完再做）
+             · 鎖的層級是**節**：第一節完成才開第二節；節內活動自由順序
+             · **不計星** —— 完成狀態不是星星
+               （這個專案刻意只有兩組星星：作品星／概念星，不開第三組）
+             · 完成狀態記在 modules.arduino，教師端看得到誰做完哪一節
+
+           ⚠️⚠️ 實作時的兩個坑
+             ① **不可以用 REPORT.unit() / REPORT.pass() 記完成**。
+                那兩支會算 stars 寫進 modules.arduino.stars，
+                而 hub 的 summary() 是 stars += d.stars、maxTotal += m.maxStars，
+                arduino 卡的 maxStars 是 0 —— 分子加了、分母沒加，
+                整體進度會超過 100%。要另寫一支「只記完成、不給星」的。
+             ② 依序開放的老教訓：不留手動解鎖後門的代價是「寫入失敗就卡住」。
+                這一頁的活動是純前端判定，不會有 Colab 那種故障，
+                但**斷網導致沒寫進去**仍然會卡人，要先想好。
+
+           ★ 這一頁**有登入**（載入 shared/guard.js，沒有 sid 會被導回 hub），
+             但沒有載入 config.js 與 Firebase ——
+             知道學生是誰，卻寫不了任何東西。要記錄就得補這兩樣。 */
         const courseData = {
             1: {
                 title: "感應大門：超音波與馬達",
