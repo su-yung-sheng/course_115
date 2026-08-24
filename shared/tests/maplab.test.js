@@ -204,8 +204,8 @@ section('★ 第二節真的接上頁面了');
         而畫面上只是「那一塊不見了」，不會報錯。 */
   ok(/lab: \{ unit: 'u1', warm: 'ULTRALAB', checks: 'DOORLAB' \}/.test(page),
      '★ 第一節：暖身 ULTRALAB ＋ 檢核 DOORLAB');
-  ok(/lab: \{ unit: 'u2', warm: 'MAPLAB', checks: null \}/.test(page),
-     '★★ 第二節：暖身換成 MAPLAB，檢核先留 null（還沒做）');
+  ok(/lab: \{ unit: 'u2', warm: 'MAPLAB', checks: 'LIGHTLAB' \}/.test(page),
+     '★★ 第二節：暖身換成 MAPLAB、檢核是 LIGHTLAB');
   ok(!/data\.lab === 'door1'/.test(page),
      '★ 掛載邏輯不再寫死 door1（資料驅動，之後每一節只要填 lab）');
   /* ⚠️ 條件只能看暖身。寫成 warmMod && chkMod 的話，
