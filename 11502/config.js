@@ -86,7 +86,7 @@ window.CONFIG = {
          真正的防線是 GAS 那邊的 DAILY_CAP / PER_SID_CAP / DAILY_TOKEN_CAP。
        ⚠️ Gemini／Claude 的金鑰**絕對不要**寫在這裡。
          那些只放 GAS 的指令碼屬性，這個 repo 是公開的。 */
-    KEY: ''
+    KEY: 'scratch'
   },
 
   COLLECTIONS: {

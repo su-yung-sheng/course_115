@@ -106,8 +106,12 @@ window.CONFIG = {
         只是「用了沒收錄的說法」那種答案沒有人幫他撿回來。
         （狀態檢查頁的第 ⑥ 張卡會把這件事講出來。） */
   AIGUIDE: {
-    GAS_URL: '',
-    KEY: ''
+    /* ★ 和下學期**同一支部署** —— aiguide.gs 不分學期（參數只有 unit／qi／student），
+       所以兩學期共用一支，額度也共用一份。
+       ⚠️ 兩支 config.js 的這兩行要一模一樣，改一邊忘一邊的症狀是
+          「上學期問得到、下學期問不到」，而且完全沒有錯誤訊息。 */
+    GAS_URL: 'https://script.google.com/macros/s/AKfycbzK3CRfHHPgw8YbP5EBOtmxJQ4GbTt1NG5UqxqCsH17q0_gUvbP9kzNfSJc25J9PrrZBw/exec',
+    KEY: 'scratch'
   },
 
   /* 備課用的總開關：把「依序開放」整個關掉，十關全部打開。
