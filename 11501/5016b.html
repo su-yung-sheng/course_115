@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arduino 智慧家居控制 微課程與互動模擬器</title>
+    <title>智慧家居控制 微課程與互動模擬器｜NKNU 5016B</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -100,14 +100,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center gap-10 relative z-10">
             <div class="md:w-1/2 space-y-6">
                 <div class="inline-block bg-primary/20 text-emerald-400 border border-primary/30 px-3 py-1 rounded-full text-sm font-bold mb-2">
-                    Arduino 系統整合專題
+                    NKNU 5016B 系統整合專題
                 </div>
                 <h1 class="text-4xl md:text-5xl font-black leading-tight">
                     <span class="underline-doodle">打造自動化智慧家居</span> <br>
                     <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">五節課微型課程</span>
                 </h1>
                 <p class="text-lg text-slate-500 leading-relaxed">
-                    本課程將帶領學生運用超音波感測器與可變電阻，結合直流減速馬達與 RGB 燈條，學習自動感應與手動微調的機電邏輯，打造專屬的「智慧家庭控制系統」。
+                    本課程使用 <b>NKNU 5016B 教具模組</b>（元件都已固定在模組上，<b>不必接線</b>），運用超音波感測器與可變電阻，結合直流減速馬達與 RGB 燈條，學習自動感應與手動微調的機電邏輯，打造專屬的「智慧家庭控制系統」。
                 </p>
                 <div class="flex gap-4 pt-4">
                     <button onclick="scrollToCurriculum()" class="bg-primary text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:bg-emerald-600 hover:shadow-xl transition flex items-center gap-2">
@@ -299,7 +299,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         <div>
                             <span class="text-xs font-bold tracking-widest text-primary uppercase bg-primary/10 px-3 py-1 rounded-full">動態實作體驗區</span>
                             <h3 class="text-2xl font-bold text-slate-800 mt-3 mb-2">硬體行為模擬</h3>
-                            <p class="text-slate-500 text-sm">操作下方模擬元件，觀察數值變化，這與實體電路行為完全一致！</p>
+                            <p class="text-slate-500 text-sm">操作下方模擬元件，觀察數值變化 —— 和 NKNU 5016B 模組上跑起來的行為一致。</p>
                         </div>
                         
                         <div id="interactive-playground" class="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-center items-center min-h-[300px] relative">
@@ -327,7 +327,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 <i data-lucide="home" class="w-6 h-6 text-primary"></i>
                 <span class="text-xl font-bold text-slate-500 tracking-wider">智慧家居機電專題課程</span>
             </div>
-            <p class="mb-2">Arduino 機電整合微課程暨軟硬體線上模擬器</p>
+            <p class="mb-2">機電整合微課程暨軟硬體線上模擬器（NKNU 5016B 教具模組）</p>
             <p class="text-sm">© 2026 科技領域教學研究小組版權所有</p>
         </div>
     </footer>
@@ -370,10 +370,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                    馬達直接插上去就能正轉／反轉，不必外接驅動板。
                    ★ 寫成要準備 L298N，老師會多買一塊用不到的板子，
                      學生也會在盒子裡找一個不存在的東西。 */
+                /* ★ 2026-08-24 老師：「器材為 NKNU 5016B 教具模組，本設備教材不用接線，
+                   設備都接在模組上了，但是腳位註解還是保留對照。全部都沒有使用 L298N。」
+                   ⇒ 器材清單寫「模組」，不列零散元件與驅動板；
+                     腳位（A2/A3、腳位 2、3、A0…）保留 —— 那是看程式時的對照表，
+                     不是要學生去接的線。 */
                 materials: [
-                    "控制板（內建馬達驅動，馬達接孔 腳位 2、3）",
-                    "HC-SR04 超音波感測器模組（Trig 接 A2、Echo 接 A3）",
-                    "直流減速馬達 ×1"
+                    "NKNU 5016B 教具模組（感測器與馬達皆已固定在模組上，不必接線）",
+                    "超音波感測器（腳位對照：Trig = A2、Echo = A3）",
+                    "直流減速馬達（腳位對照：馬達 腳位 2、3）"
                 ],
                 initPlayground: function(container) {
                     /* ★ 2026-08-24 老師：「測量距離的拉吧相反了，配合程式，
@@ -541,14 +546,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 icon: "lightbulb",
                 desc: "結合超音波感測器與 WS2812B 全彩燈條，創造出具科技感的迎賓走廊。我們不只做簡單的開關，還能依據「距離的遠近」來決定點亮幾顆燈珠，越靠近燈就亮越多！",
                 objectives: [
-                    "認識 WS2812B 數位訊號定址特性與 FastLED/Adafruit 函式庫",
+                    "認識 WS2812B 的「定址」特性：一條線就能分別控制每一顆燈珠",
                     "應用數學映射 (Map) 概念：將距離數值 (例如 10~100cm) 轉換為燈珠數量 (1~8顆)",
                     "撰寫迴圈 (For-Loop) 來動態更新燈條的點亮與熄滅狀態"
                 ],
                 materials: [
-                    "Arduino 核心開發板",
-                    "HC-SR04 超音波感測器模組",
-                    "WS2812B RGB 全彩燈條 (8顆燈珠版本)"
+                    "NKNU 5016B 教具模組（感測器與馬達皆已固定在模組上，不必接線）",
+                    "超音波感測器（腳位對照：Trig = A2、Echo = A3）",
+                    "WS2812B RGB 全彩燈條（8 顆燈珠）"
                 ],
                 initPlayground: function(container) {
                     container.innerHTML = `
@@ -645,17 +650,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 icon: "fan",
                 desc: "自動控制很方便，但我們也需要手動微調的能力！本單元引入「可變電阻 (旋鈕)」，讀取其類比電壓值，並透過 PWM 脈衝寬度調變技術，精準控制直流馬達的轉速（如同家中的無段風扇）。",
                 objectives: [
-                    "了解可變電阻的分壓原理與 Arduino 類比輸入腳位 (A0~A5) 的 0~1023 解析度",
+                    "了解可變電阻的分壓原理與類比輸入腳位 (A0~A5) 的 0~1023 解析度",
                     "認識 PWM (Pulse Width Modulation) 數位模擬類比輸出的技術 (0~255)",
                     "實作將 0~1023 的類比輸入值映射至 0~255 的 PWM 輸出，控制馬達轉速"
                 ],
-                /* ⚠️ 同第一節課：馬達直接接控制板，沒有外接驅動板。
-                   ⚠️ 這一節還沒有依照實際器材確認過（老師 2026-08-24 只確認了第一節），
-                      上到這一課之前請再核對一次。 */
                 materials: [
-                    "控制板（內建馬達驅動，馬達接孔 腳位 2、3）",
-                    "旋鈕式可變電阻 (Potentiometer, 10KΩ)",
-                    "直流減速馬達 ×1"
+                    "NKNU 5016B 教具模組（感測器與馬達皆已固定在模組上，不必接線）",
+                    "旋鈕式可變電阻（腳位對照：類比 A0）",
+                    "直流減速馬達（腳位對照：馬達 腳位 2、3）"
                 ],
                 initPlayground: function(container) {
                     container.innerHTML = `
@@ -772,8 +774,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "實現無段滑順變色的數位燈帶效果"
                 ],
                 materials: [
-                    "Arduino 核心開發板",
-                    "旋鈕式可變電阻 (Potentiometer)",
+                    "NKNU 5016B 教具模組（感測器與馬達皆已固定在模組上，不必接線）",
+                    "旋鈕式可變電阻（腳位對照：類比 A1）",
                     "WS2812B RGB 全彩燈條"
                 ],
                 initPlayground: function(container) {
@@ -841,7 +843,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 <span class="col-span-2"><span class="text-rose-600">無限重複執行</span></span>
 <span class="col-span-2">  <span class="text-sky-600">變數</span> 旋鈕值 <span class="text-rose-600">設為</span> <span class="text-amber-600">讀取類比腳位 A1</span></span>
 <span class="col-span-2">  </span>
-<span class="col-span-2 text-emerald-600">  // 將 0~1023 轉換為色彩環角度 0~255 (FastLED格式)</span>
+<span class="col-span-2 text-emerald-600">  // 將 0~1023 轉換為色彩環角度 0~255</span>
 <span class="col-span-2">  <span class="text-sky-600">變數</span> 顏色值 <span class="text-rose-600">設為</span> <span class="text-amber-600">數值對應</span> (<span class="text-sky-600">旋鈕值</span>, <span class="text-indigo-600">0</span>, <span class="text-indigo-600">1023</span>, <span class="text-indigo-600">0</span>, <span class="text-indigo-600">255</span>)</span>
 <span class="col-span-2">  </span>
 <span class="col-span-2">  <span class="text-amber-600">將 燈條填滿 色相為</span> <span class="text-sky-600">顏色值</span> <span class="text-amber-600">的顏色</span></span>
@@ -861,12 +863,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 objectives: [
                     "實作狀態機 (State Machine) 概念：透過按鈕切換 Auto / Manual 變數狀態",
                     "將感測器(超音波)、輸入元件(可變電阻)、輸出元件(馬達與燈條) 完美整合於一個程式",
-                    "規劃實際應用的電路接線與外殼設計，完成最終成果"
+                    "規劃自動／手動的切換流程，並完成一次完整的操作展示"
                 ],
                 materials: [
-                    "前四堂課使用的所有電子元件",
-                    "模式切換按鈕 (Push Button)",
-                    "專題雷射切割外殼或環保紙板模型"
+                    "NKNU 5016B 教具模組（前四節用到的元件都在同一塊模組上）",
+                    "模式切換按鈕（模組上既有）",
+                    "紙筆：規劃自動／手動兩種模式的切換流程"
                 ],
                 initPlayground: function(container) {
                     container.innerHTML = `
