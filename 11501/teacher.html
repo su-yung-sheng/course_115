@@ -1385,6 +1385,11 @@
       setTimeout(() => {
         renderModalTasks();
         if (!containerChart.classList.contains('hidden')) renderStudentChart();
+        /* ⚠️ 2026-08-19：出席分頁開著的時候按「下一位」，本來不會重畫 ——
+           畫面上是新學生的名字，底下卻是前一位的出席表。
+           最難查的錯就是這種「看起來有更新」的。 */
+        const containerAttend = document.getElementById('modal-attend-container');
+        if (containerAttend && !containerAttend.classList.contains('hidden')) renderStudentAttendance();
         containerTasks.classList.remove('opacity-50', 'scale-95'); containerChart.classList.remove('opacity-50', 'scale-95');
       }, 150);
     };
@@ -1614,7 +1619,13 @@ const __bn = bonusOf(student, sub.key);
           options: {
               responsive: true,
               maintainAspectRatio: false,
-              scales: { y: { beginAtZero: true, suggestedMax: subjects.length * 3, ticks: { stepSize: 3 } } },
+              /* ⚠️ 縱軸上限本來寫 subjects.length * 3（＝科目數×3，11501 是 12），
+                 可是總星數的上限是各科分母加起來（11501 是 120、11502 是 82）。
+                 Chart.js 的 suggestedMax 不會截掉資料，所以不算錯 ——
+                 但刻度間距 3 配上 120 會擠出四十條線，滿分附近整片糊掉。
+                 ⇒ 用真正的分母，刻度也跟著資料量走。 */
+              scales: { y: { beginAtZero: true, suggestedMax: sumSubjMax(subjects),
+                             ticks: { maxTicksLimit: 8 } } },
               plugins: { legend: { display: false } }
           }
       });
@@ -1827,7 +1838,7 @@ const __bn = bonusOf(student, sub.key);
           options: {
               responsive: true,
               maintainAspectRatio: false,
-              scales: { y: { beginAtZero: true, suggestedMax: subjects.length * 3 } },
+              scales: { y: { beginAtZero: true, suggestedMax: sumSubjMax(subjects) } },   // 全班圖：同上，用真正的分母
               plugins: { legend: { display: false } }
           }
       });

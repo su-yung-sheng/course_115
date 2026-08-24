@@ -254,6 +254,11 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
             進度圖表
           </button>
+          <!-- 🗓️ 出席紀錄（2026-08-19 補上：上學期本來就有，下學期漏了）-->
+          <button onclick="switchStudentTab('attend')" id="tab-attend" class="font-bold text-indigo-400 border-b-4 border-transparent pb-2 hover:text-indigo-600 text-sm flex items-center gap-1.5 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+            出席紀錄
+          </button>
         </div>
 
         <!-- Modal Body (任務列表) -->
@@ -266,8 +271,14 @@
             <div class="w-full h-64 relative bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                 <canvas id="student-progress-chart"></canvas>
             </div>
-            <p class="text-sm text-slate-500 mt-4 text-center">此圖表顯示該學生歷次紀錄的總星數成長軌跡。<br>（需使用「進度分析」功能紀錄歷史資料才會顯示折線）</p>
+            <!-- ⚠️ 2026-08-19：這句本來寫「需使用『進度分析』功能紀錄歷史資料」，
+                 那是舊版的說法 —— 現在的資料來源是學生自己的 history（過關歷程），
+                 老師不必先做任何事。說明不對會讓人以為圖是空的因為沒設定。 -->
+            <p class="text-sm text-slate-500 mt-4 text-center">此圖表依該學生的<b>實際過關歷程</b>畫出星數成長曲線。<br>橫軸為有闖關的日期，縱軸為累積到當天的總星數。</p>
           </div>
+
+          <!-- 區塊C：出席紀錄 -->
+          <div id="modal-attend-container" class="hidden"></div>
         </div>
 
         <!-- Modal Footer -->
@@ -761,15 +772,17 @@
         extDb.collection(window.CONFIG.COLLECTIONS.ROSTER).get(),
         extDb.collection('11502-progress').get()
       ]);
-      const progMap = {}, histMap = {};
-      progressSnap.forEach(d => { const pd = d.data(); progMap[d.id] = pd.modules || {}; histMap[d.id] = pd.history || []; });
+      const progMap = {}, histMap = {}, attMap = {};
+      /* attendance = { 'YYYY-MM-DD': 首次登入時間 }，由 hub 每日寫一次。
+         ⚠️ 2026-08-19 補：本來沒有帶出來，所以「出席紀錄」那一頁做不出來。 */
+      progressSnap.forEach(d => { const pd = d.data(); progMap[d.id] = pd.modules || {}; histMap[d.id] = pd.history || []; attMap[d.id] = pd.attendance || {}; });
 
       const sheets = {};
       rosterSnap.forEach(d => {
         const r = d.data();
         const cls = String(r.cls || '未分班');
         if (!sheets[cls]) sheets[cls] = [];
-        const student = { id: r.studentId || d.id, name: r.name || '', no: r.no };
+        const student = { id: r.studentId || d.id, name: r.name || '', no: r.no, cls: cls };
         const mods = progMap[student.id] || {};
         rawSubjects.forEach(sub => { student[sub.key] = (mods[sub.key] && mods[sub.key].stars) || 0; });
         /* 繳交加分（交流程圖圖片 +1⭐、交程式錄影 +1⭐）另外存一份。
@@ -785,7 +798,8 @@
           ? GRADING.starsWithBonus({ modules: mods }) : {};
         student.__bonusMap = { flowchart: __b.flowchartBonus || 0, scratch: __b.scratchBonus || 0 };
         student.__modules = mods;               // 各模組 meta（level/score…）供明細用
-        student.history = histMap[student.id] || [];  // 過關歷程供明細分析
+        student.history = histMap[student.id] || [];
+        student.attendance = attMap[student.id] || {};  // 出席紀錄（日期 → 首次登入時間）  // 過關歷程供明細分析
         sheets[cls].push(student);
       });
       Object.keys(sheets).forEach(cls => sheets[cls].sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0)));
@@ -1288,23 +1302,83 @@
       });
     };
 
+    /* ★ 2026-08-19：改成和上學期一樣的三分頁寫法（表格驅動）。
+       本來是 if(tasks){…}else{…} 兩分頁 —— 加第三個分頁時，
+       那個 else 會把「不是 tasks」全部當成圖表。 */
     window.switchStudentTab = function(tabName) {
-      const containerTasks = document.getElementById('modal-tasks-container');
-      const containerChart = document.getElementById('modal-chart-container');
-      const tabTasks = document.getElementById('tab-tasks');
-      const tabChart = document.getElementById('tab-chart');
-
-      if (tabName === 'tasks') {
-        containerTasks.classList.remove('hidden'); containerChart.classList.add('hidden');
-        tabTasks.className = "font-bold text-blue-700 border-b-4 border-blue-600 pb-2 text-sm flex items-center gap-1.5 transition-colors";
-        tabChart.className = "font-bold text-indigo-400 border-b-4 border-transparent pb-2 hover:text-indigo-600 text-sm flex items-center gap-1.5 transition-colors";
-      } else {
-        containerTasks.classList.add('hidden'); containerChart.classList.remove('hidden');
-        tabChart.className = "font-bold text-blue-700 border-b-4 border-blue-600 pb-2 text-sm flex items-center gap-1.5 transition-colors";
-        tabTasks.className = "font-bold text-indigo-400 border-b-4 border-transparent pb-2 hover:text-indigo-600 text-sm flex items-center gap-1.5 transition-colors";
-        renderStudentChart(); 
-      }
+      const ON  = "font-bold text-blue-700 border-b-4 border-blue-600 pb-2 text-sm flex items-center gap-1.5 transition-colors";
+      const OFF = "font-bold text-indigo-400 border-b-4 border-transparent pb-2 hover:text-indigo-600 text-sm flex items-center gap-1.5 transition-colors";
+      const panes = { tasks:'modal-tasks-container', chart:'modal-chart-container', attend:'modal-attend-container' };
+      const tabs  = { tasks:'tab-tasks', chart:'tab-chart', attend:'tab-attend' };
+      Object.entries(panes).forEach(([k,id])=>{
+        const el=document.getElementById(id); if(el) el.classList.toggle('hidden', k!==tabName);
+      });
+      Object.entries(tabs).forEach(([k,id])=>{
+        const el=document.getElementById(id); if(el) el.className = (k===tabName? ON : OFF);
+      });
+      if (tabName === 'chart')  renderStudentChart();
+      if (tabName === 'attend') renderStudentAttendance();
     };
+
+    /* ★ 2026-08-19 補上（上學期本來就有，下學期漏了）。
+       ⚠️ 這一段和 11501/teacher.html 幾乎一模一樣 —— 兩學期的教師端
+          本來就是各自一份 HTML，這裡跟著現況走。
+          真正共用的規則（哪幾天上課）已經在 shared/schedule.js，
+          這裡只是把它畫成表格。 */
+    // 出席紀錄：依課表算出應到日期，比對學生的登入紀錄
+    async function renderStudentAttendance(){
+      const box = document.getElementById('modal-attend-container');
+      box.innerHTML = '<div class="text-sm text-slate-400 p-4">計算中…</div>';
+      const stu = (spreadsheetData[activeSheet]||[]).find(s => s.id === currentEditingStudentId);
+      if(!stu){ box.innerHTML='<div class="text-sm text-slate-400 p-4">找不到學生資料。</div>'; return; }
+
+      try{ await loadSchedule(); }catch(e){}
+      const att = stu.attendance || {};
+      const cls = String(stu.cls || activeSheet || '');
+      const START = new Date((localStorage.getItem('wky_start') || window.CONFIG.TERM_START) + 'T00:00:00');
+      const today = new Date(); today.setHours(23,59,59,999);
+
+      // 逐週推算應到日期（只算到今天）
+      const rows = [];
+      for(let i=0; i<25; i++){
+        const ws = new Date(START.getTime() + i*7*86400000);
+        if(ws.getTime() > today.getTime()) break;
+        const days = (typeof classDatesOfWeek==='function') ? classDatesOfWeek(cls, ws) : [];
+        if(!days.length){ rows.push({ week:i+1, date:null }); continue; }
+        days.filter(d => new Date(d+'T00:00:00').getTime() <= today.getTime())
+            .forEach(d => rows.push({ week:i+1, date:d, at:att[d]||0 }));
+      }
+      const should = rows.filter(r=>r.date).length;
+      const came   = rows.filter(r=>r.date && r.at).length;
+      const rate   = should ? Math.round(came/should*100) : 0;
+      const fmt = t => { const d=new Date(Number(t)); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+
+      box.innerHTML = `
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <div class="bg-sky-50 border border-sky-200 rounded-xl p-3 text-center">
+            <div class="text-xs font-bold text-sky-700">應到</div><div class="text-2xl font-black text-sky-600">${should}</div></div>
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+            <div class="text-xs font-bold text-emerald-700">實到</div><div class="text-2xl font-black text-emerald-600">${came}</div></div>
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+            <div class="text-xs font-bold text-amber-700">出席率</div><div class="text-2xl font-black text-amber-600">${rate}%</div></div>
+        </div>
+        ${rows.length ? `<table class="w-full text-sm border-collapse bg-white rounded-xl overflow-hidden">
+          <thead><tr class="bg-slate-50"><th class="border border-slate-200 px-2 py-1">週次</th>
+            <th class="border border-slate-200 px-2 py-1">上課日</th>
+            <th class="border border-slate-200 px-2 py-1">狀態</th>
+            <th class="border border-slate-200 px-2 py-1">登入時間</th></tr></thead>
+          <tbody>${rows.map(r=>{
+            if(!r.date) return `<tr class="text-slate-300"><td class="border border-slate-200 px-2 py-1 text-center">第${r.week}週</td>
+              <td class="border border-slate-200 px-2 py-1 text-center" colspan="3">停課</td></tr>`;
+            return `<tr><td class="border border-slate-200 px-2 py-1 text-center text-slate-500">第${r.week}週</td>
+              <td class="border border-slate-200 px-2 py-1 text-center font-mono">${r.date}</td>
+              <td class="border border-slate-200 px-2 py-1 text-center font-bold ${r.at?'text-emerald-600':'text-red-500'}">${r.at?'✓ 出席':'✗ 未登入'}</td>
+              <td class="border border-slate-200 px-2 py-1 text-center font-mono text-slate-500">${r.at?fmt(r.at):'—'}</td></tr>`;
+          }).join('')}</tbody></table>`
+        : '<div class="text-sm text-slate-400 p-4 text-center">尚未設定課表，或學期還沒開始。請先到「🗓️ 上課日設定」建立課表。</div>'}
+        <p class="text-[11px] text-slate-400 mt-3">出席以「當天是否登入闖關基地」判定，時間為當日<b>第一次登入</b>。停課日不列入應到。</p>`;
+    }
+    window.renderStudentAttendance = renderStudentAttendance;
 
     function openModal(studentId) {
       currentEditingStudentId = studentId;
@@ -1343,6 +1417,11 @@
       setTimeout(() => {
         renderModalTasks();
         if (!containerChart.classList.contains('hidden')) renderStudentChart();
+        /* ⚠️ 2026-08-19：出席分頁開著的時候按「下一位」，本來不會重畫 ——
+           畫面上是新學生的名字，底下卻是前一位的出席表。
+           最難查的錯就是這種「看起來有更新」的。 */
+        const containerAttend = document.getElementById('modal-attend-container');
+        if (containerAttend && !containerAttend.classList.contains('hidden')) renderStudentAttendance();
         containerTasks.classList.remove('opacity-50', 'scale-95'); containerChart.classList.remove('opacity-50', 'scale-95');
       }, 150);
     };
@@ -1535,20 +1614,39 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       container.innerHTML = html;
     }
 
+    /* ★ 2026-08-19：換成和上學期一樣、吃**學生自己的 history** 的版本。
+       ⚠️ 舊版畫的是 progressHistory —— 那是教師端手動建立的「快照」，
+          老師沒按過就只有一個點，所以說明裡才要寫
+          「需使用進度分析功能紀錄歷史資料」。
+       ★ 現在的資料來源和「每週評分」同一份（history.stars ＝ 當天新增幾顆），
+         所以曲線的爬升幅度就是那幾週的星數來源，兩個畫面對得起來。 */
     function renderStudentChart() {
       const canvas = document.getElementById('student-progress-chart');
       const ctx = canvas.getContext('2d');
       if (studentChartInstance) studentChartInstance.destroy();
 
-      const labels = progressHistory.map(h => h.date).concat(['目前進度']);
-      const dataPoints = progressHistory.map(h => {
-          const sheetData = h.data[activeSheet] || [];
-          const sData = sheetData.find(s => s.id === currentEditingStudentId);
-          return sData ? calculateTotalStarsForData(sData) : 0;
+      // 用學生真實的過關歷程（history）畫「星數成長曲線」：每一天累積到多少星
+      const stu = spreadsheetData[activeSheet].find(s => s.id === currentEditingStudentId) || {};
+      const hist = (stu.history || [])
+        .filter(h => Number(h.at))
+        .sort((a, b) => Number(a.at) - Number(b.at));
+
+      const byDay = {};                       // 日期 → 當天新增星數
+      hist.forEach(h => {
+        const d = new Date(Number(h.at));
+        const key = `${d.getMonth() + 1}/${d.getDate()}`;
+        byDay[key] = (byDay[key] || 0) + (Number(h.stars) || 0);
       });
 
-      const currentStudentData = spreadsheetData[activeSheet].find(s => s.id === currentEditingStudentId);
-      dataPoints.push(calculateTotalStars(currentStudentData));
+      const labels = Object.keys(byDay);
+      let run = 0;
+      const dataPoints = labels.map(k => (run += byDay[k]));
+
+      // 沒有歷程時，至少顯示目前總星數一個點
+      if (!labels.length) {
+        labels.push('目前');
+        dataPoints.push(calculateTotalStars(stu));
+      }
 
       studentChartInstance = new Chart(ctx, {
           type: 'line',
@@ -1572,7 +1670,13 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
           options: {
               responsive: true,
               maintainAspectRatio: false,
-              scales: { y: { beginAtZero: true, suggestedMax: subjects.length * 3, ticks: { stepSize: 3 } } },
+              /* ⚠️ 縱軸上限本來寫 subjects.length * 3（＝科目數×3，11501 是 12），
+                 可是總星數的上限是各科分母加起來（11501 是 120、11502 是 82）。
+                 Chart.js 的 suggestedMax 不會截掉資料，所以不算錯 ——
+                 但刻度間距 3 配上 120 會擠出四十條線，滿分附近整片糊掉。
+                 ⇒ 用真正的分母，刻度也跟著資料量走。 */
+              scales: { y: { beginAtZero: true, suggestedMax: sumSubjMax(subjects),
+                             ticks: { maxTicksLimit: 8 } } },
               plugins: { legend: { display: false } }
           }
       });
@@ -1785,7 +1889,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
           options: {
               responsive: true,
               maintainAspectRatio: false,
-              scales: { y: { beginAtZero: true, suggestedMax: subjects.length * 3 } },
+              scales: { y: { beginAtZero: true, suggestedMax: sumSubjMax(subjects) } },   // 全班圖：同上，用真正的分母
               plugins: { legend: { display: false } }
           }
       });
@@ -2379,7 +2483,12 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">學期開始日（第 1 週的星期一）</label>
-            <input id="wkyStart" type="date" value="2026-08-31" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5">
+            <!-- ⚠️⚠️ 2026-08-19：這裡本來寫死 value="2026-08-31" —— 那是**上學期**的第 1 週。
+                 下學期的 TERM_START 是 2027-02-08，差了五個多月：
+                 週次會從去年八月起算，下學期的紀錄全部落在第 23 週之後，
+                 而週數上限預設 10 → 整張表算出來會是全 0 星，看起來像「沒有資料」。
+                 ⇒ 預設值一律由 config.js 的 TERM_START 填（見 openWeeklyModal）。 -->
+            <input id="wkyStart" type="date" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-600 mb-1">基本分</label>
@@ -3005,10 +3114,13 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
           sel.innerHTML = [...set].sort().map(c => `<option value="${c}">${c} 班</option>`).join('');
         } catch (e) { sel.innerHTML = '<option value="">（讀取班級失敗）</option>'; }
       }
-      // 學期開始日：預設 115 學年下學期第 1 週的星期一（2026-08-31），可自行調整並記住
+      /* 學期開始日：預設值來自 config.js 的 TERM_START，可自行調整並記住。
+         ⚠️ 不可以寫死日期 —— 兩學期共用同一份程式碼樣板，
+            寫死的話下學期會沿用上學期的第 1 週（見上面 input 的說明）。
+         ⚠️ 這個值同時決定「出席紀錄」分頁的週次（它讀同一個 localStorage）。 */
       const saved = localStorage.getItem('wky_start');
       if (saved) document.getElementById('wkyStart').value = saved;
-      else document.getElementById('wkyStart').value = '2026-08-31';
+      else document.getElementById('wkyStart').value = window.CONFIG.TERM_START;
       const b = localStorage.getItem('wky_base'); if (b) document.getElementById('wkyBase').value = b;
       const pv = localStorage.getItem('wky_per'); if (pv) document.getElementById('wkyPer').value = pv;
     }
