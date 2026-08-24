@@ -200,16 +200,26 @@
   '.mp-wrap{font-size:15px}' +
   '.mp-q{font-size:16px;font-weight:900;color:#0f172a;line-height:1.9;margin-bottom:10px}' +
   '.mp-rulers{background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;padding:18px 16px 12px;margin:12px 0}' +
-  '.mp-ruler{position:relative;height:52px;margin:6px 0}' +
+  '.mp-ruler{position:relative;height:52px;margin:2px 0 6px}' +
   '.mp-line{position:absolute;left:0;right:0;top:26px;height:6px;border-radius:3px;background:#cbd5e1}' +
   '.mp-line.out{background:#a5b4fc}' +
-  '.mp-cap{position:absolute;left:0;top:2px;font-size:12px;font-weight:900;color:#64748b}' +
+  /* ⚠️⚠️ 老師 2026-08-24：「換算出來的值如果太靠近左邊會與提示說明的字重疊」
+     病根有**兩個**，只治一個沒用（第一節「35 公分被裁掉」就是這樣多修了一次）：
+       ① 說明文字本來是 position:absolute、left:0、top:2px ——
+          和尺標上那個數字（top:-16px ≈ y-2）**垂直本來就重疊**，
+          只差水平上有沒有撞到。⇒ 移出絕對定位那一層，自己佔一行。
+       ② 數字用 translateX(-50%)，pin 在 0% 的時候有一半跑到框外。
+          ⇒ 靠兩端時改成貼邊對齊（.at-l／.at-r）。 */
+  '.mp-cap{font-size:12px;font-weight:900;color:#64748b;margin-bottom:2px}' +
   '.mp-end{position:absolute;top:36px;font-size:12px;font-weight:900;color:#94a3b8}' +
   '.mp-end.l{left:0}.mp-end.r{right:0}' +
   '.mp-pin{position:absolute;top:14px;width:2px;height:30px;background:#0891b2}' +
   '.mp-pin.out{background:#4f46e5}' +
-  '.mp-pin b{position:absolute;left:50%;transform:translateX(-50%);top:-16px;' +
+  '.mp-pin b{position:absolute;left:50%;transform:translateX(-50%);top:-15px;' +
     'font-size:13px;font-weight:900;color:#0891b2;white-space:nowrap}' +
+  /* 靠左端／右端時不置中，改成貼齊那一邊 —— 不然一半會跑到框外。 */
+  '.mp-pin.at-l b{left:0;transform:none}' +
+  '.mp-pin.at-r b{left:auto;right:0;transform:none}' +
   '.mp-pin.out b{color:#4f46e5}' +
   '.mp-pin.ask b{color:#b45309}' +
   '.mp-pin.ask{background:#f59e0b}' +
@@ -244,22 +254,26 @@
   function rulersHtml(c, showOut) {
     var pos = c.hi ? (c.d / c.hi) * 100 : 0;
     var outPos = c.rev ? 100 - pos : pos;
+    /* 靠得太邊的時候換一種對齊方式（見 CSS 那一段的說明）。 */
+    var edge = function (p) { return p < 12 ? ' at-l' : (p > 88 ? ' at-r' : ''); };
     return '<div class="mp-rulers">' +
+      '<div class="mp-cap">距離（公分）</div>' +
       '<div class="mp-ruler">' +
-        '<div class="mp-cap">距離（公分）</div>' +
         '<div class="mp-line"></div>' +
         '<div class="mp-end l">0</div><div class="mp-end r">' + c.hi + '</div>' +
-        '<div class="mp-pin" style="left:' + pos + '%"><b>' + c.d + '</b></div>' +
+        '<div class="mp-pin' + edge(pos) + '" style="left:' + pos + '%"><b>' +
+          c.d + '</b></div>' +
       '</div>' +
       '<div class="mp-arrow">' + (c.rev
         ? '<span class="mp-rev">▼ 箭頭轉過來了：' + c.hi + ' 對到 0，0 對到 ' + c.out + ' ▼</span>'
         : '▼ ▼ ▼') + '</div>' +
+      '<div class="mp-cap">換算出來的值</div>' +
       '<div class="mp-ruler">' +
-        '<div class="mp-cap">換算出來的值</div>' +
         '<div class="mp-line out"></div>' +
         '<div class="mp-end l">' + (c.rev ? c.out : 0) + '</div>' +
         '<div class="mp-end r">' + (c.rev ? 0 : c.out) + '</div>' +
-        '<div class="mp-pin out ' + (showOut ? '' : 'ask') + '" style="left:' +
+        '<div class="mp-pin out ' + (showOut ? '' : 'ask') +
+          edge(c.rev ? outPos : pos) + '" style="left:' +
           (c.rev ? outPos : pos) + '%"><b>' +
           (showOut ? c.answer : '？') + '</b></div>' +
       '</div>' +

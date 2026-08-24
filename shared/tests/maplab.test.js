@@ -237,6 +237,51 @@ section('★ 答錯的時候');
      '★★ 而且那張圖要**把答案標出來** —— 只說「答錯了」學不到東西');
 }
 
+section('★★ 尺標上的字不可以互相重疊（老師 2026-08-24）');
+{
+  /* 老師回報：「換算出來的值如果太靠近左邊會與提示說明的字重疊」。
+     ⚠️ jsdom 沒有版面計算，量不到「有沒有重疊」——
+        所以這裡盯的是**造成重疊的那兩個條件**：
+          ① 說明文字（.mp-cap）和尺標上的數字**在同一層**
+             （cap 本來是 position:absolute、top:2px，數字在 top:-15px，
+              垂直本來就重疊，只差水平上有沒有撞到）
+          ② 數字用 translateX(-50%)，pin 在 0% 時有一半跑到框外
+        ★ 只治一個沒用 —— 第一節「35 公分被裁掉」就是這樣多修了一次。 */
+  const src = read('shared/maplab.js');
+
+  /* ① cap 不可以再是絕對定位 */
+  ok(!/\.mp-cap\{[^']*position:absolute/.test(src),
+     '★★ 說明文字不再是絕對定位 —— 它要自己佔一行，不跟數字擠在同一層');
+  ok(/\.mp-cap\{[^']*margin-bottom/.test(src), '   而且和下面那把尺留了間距');
+
+  /* ② 靠邊時要換對齊方式 */
+  ok(/\.mp-pin\.at-l b\{left:0;transform:none\}/.test(src) &&
+     /\.mp-pin\.at-r b\{left:auto;right:0;transform:none\}/.test(src),
+     '★★ 靠左端／右端時改成貼邊對齊（不然一半會跑到框外）');
+
+  /* 真的畫出來看看：找一題 pin 很靠左的，看有沒有掛上 at-l */
+  let hit = null;
+  for (let i = 0; i < 120 && !hit; i++) {
+    const c = M.caseFor(2, M.rngFrom('e' + i), null);
+    const pos = c.d / c.hi * 100;
+    if (pos < 12 || (100 - pos) < 12) hit = { i, c, pos };
+  }
+  ok(!!hit, '找得到「靠邊」的題目（' + (hit ? hit.c.d + '/' + hit.c.hi : '—') + '）');
+  if (hit) {
+    const el = W.document.createElement('div');
+    W.document.body.appendChild(el);
+    M.mount(el, { seed: 'e' + hit.i });
+    const pins = [...el.querySelectorAll('.mp-pin')];
+    ok(pins.length === 2 && pins.every(p => /at-l|at-r/.test(p.className)),
+       '★★ 靠邊的題目，兩支指標都掛上了貼邊對齊');
+    /* ★ cap 要在 .mp-rulers 底下、而不是包在 .mp-ruler 裡面 —— 那才是「自己一行」。 */
+    ok(el.querySelectorAll('.mp-rulers > .mp-cap').length === 2,
+       '★★ 兩個說明文字都在尺標**外面**（各自佔一行）');
+    ok(el.querySelectorAll('.mp-ruler .mp-cap').length === 0,
+       '   而且沒有任何一個還留在尺標裡面');
+  }
+}
+
 section('★ 第二節真的接上頁面了');
 {
   const page = read('11501/5016b.html');
