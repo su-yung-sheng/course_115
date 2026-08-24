@@ -165,5 +165,30 @@ section('真的掛得起來');
   ok(!!box.querySelector('#dl-pred'), '★ A 一開始就要先填「你猜幾次」');
 }
 
+
+section('★ 頁面順序（老師 2026-08-24：「暖身活動不是應該在最前面?」）');
+{
+  /* ⚠️ 暖身是**進場券**，不是複習：這一節後面全都建立在「那個距離數字」上。
+     放在最後的話，學生是先用了它、最後才知道它怎麼來的。
+     ⇒ 順序必須是 生活應用 → 目標／器材 → **暖身** → 模擬 → 解析 → 檢核。 */
+  const page = read('11501/5016b.html');
+  const at = k => page.indexOf(k);
+  const apps  = at('id="detail-apps"');
+  const goals = at('id="detail-objectives"');
+  const warm  = at('id="detail-warm"');
+  const sim   = at('id="interactive-playground"');
+  const demo  = at('id="detail-demo-container"');
+  const lab   = at('id="detail-lab"');
+  ok([apps, goals, warm, sim, demo, lab].every(x => x > 0), '六個區塊都在');
+  ok(apps < goals && goals < warm, '★ 暖身排在生活應用與學習目標之後');
+  ok(warm < sim && warm < demo, '★★ 暖身在**教材之前** —— 它是進場券，不是複習');
+  ok(demo < lab, '★ 三個檢核排在最後（學完才驗）');
+
+  /* 暖身過了之後不可以直接把學生丟到最底下 —— 中間那段教材就跳過去了。 */
+  ok(!/onDone: function \(\) \{[\s\S]{0,400}scrollIntoView/.test(page),
+     '★★ 暖身完成後不自動捲到檢核（中間的模擬與虛擬碼才是課）');
+  ok(/id="lab-locked"/.test(page), '   檢核在暖身完成前顯示鎖住的提示');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

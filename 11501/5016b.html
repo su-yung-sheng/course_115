@@ -347,6 +347,22 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     </div>
                 </div>
 
+                <!-- 🔥 暖身關卡：超音波原理（老師 2026-08-24：「暖身活動不是應該在最前面?」）
+                     ⚠️ 位置**在教材之前**是刻意的：這一節後面全都建立在
+                        「那個距離數字」上，學生得先知道它是怎麼來的。
+                        放在最後的話，它就變成複習，不是進場券。 -->
+                <div id="detail-warm" class="hidden p-8 border-b border-slate-200 bg-cyan-50/40">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+                        <h3 class="text-2xl font-bold text-slate-800">🔥 暖身關卡：超音波怎麼量距離</h3>
+                        <span id="warm-seed" class="text-xs text-slate-400 font-mono"></span>
+                    </div>
+                    <p class="text-slate-500 text-sm mb-4">
+                        三個小步驟，做完才開始這一節課 ——
+                        <b>先弄懂那個「距離」是怎麼來的</b>，後面的門檻和秒數才有意義。
+                    </p>
+                    <div id="warm-box" class="bg-white p-5 rounded-2xl border-2 border-cyan-200"></div>
+                </div>
+
                 <!-- 模擬在上、解析在下（老師 2026-08-24）
                      ⚠️ 本來是左右並排 6/6。同一列的兩欄一定同高，
                         而「邏輯解析」有程式碼＋三張說明卡，遠比模擬器高 ——
@@ -373,7 +389,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         <!-- Code Displayed Here -->
                     </div>
 
-                    <!-- 🎯 動手檢核（目前只有第一節有；沒有 lab 的單元整塊隱藏）-->
+                    <!-- 🎯 三個檢核（暖身過了才出現；沒有 lab 的單元整塊隱藏）
+                         ⚠️ 位置在最後**是刻意的**：學生要先讀完模擬與虛擬碼，
+                            才有東西可以被檢核。暖身則在最前面（見上面 #detail-warm）。 -->
                     <div id="detail-lab" class="hidden">
                         <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
                             <h3 class="text-2xl font-bold text-slate-800">🎯 動手檢核</h3>
@@ -383,8 +401,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             每一關都要<b>先講你認為會怎樣，再執行</b> ——
                             說對了才算過。答錯會換一組數字重來，不限次數。
                         </p>
-                        <div id="lab-warm" class="bg-white p-5 rounded-2xl border-2 border-slate-200"></div>
-                        <div id="lab-checks" class="bg-white p-5 rounded-2xl border-2 border-slate-200 mt-4 hidden"></div>
+                        <div id="lab-checks" class="bg-white p-5 rounded-2xl border-2 border-slate-200"></div>
+                        <div id="lab-locked" class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center text-slate-500 font-bold">
+                            🔒 先完成上面的<b>暖身關卡</b>，這裡才會打開。
+                        </div>
                     </div>
 
                 </div>
@@ -1342,26 +1362,36 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                ⚠️ 這裡**不寫雲端、不計星**（老師 2026-08-24：完成狀態之後才做）。
                   現在只在畫面上顯示完成，重新整理就從頭來 —— 先看效果再說。
                ★ ?seed=1234 → 全班同一組題（老師在黑板上帶著對答案時用）。 */
-            const labBox = document.getElementById('detail-lab');
+            const warmBox = document.getElementById('detail-warm');
+            const labBox  = document.getElementById('detail-lab');
             if (data.lab === 'door1' && window.ULTRALAB && window.DOORLAB) {
                 const seed = new URLSearchParams(location.search).get('seed');
-                document.getElementById('lab-seed').textContent =
-                    seed ? ('全班同題　seed = ' + seed) : '每個人的數字都不一樣';
-                const warm = document.getElementById('lab-warm');
+                const seedTxt = seed ? ('全班同題　seed = ' + seed) : '每個人的數字都不一樣';
+                document.getElementById('warm-seed').textContent = seedTxt;
+                document.getElementById('lab-seed').textContent = seedTxt;
+
                 const checks = document.getElementById('lab-checks');
-                checks.classList.add('hidden');
+                const locked = document.getElementById('lab-locked');
                 checks.innerHTML = '';
-                ULTRALAB.mount(warm, {
+                checks.classList.add('hidden');
+                locked.classList.remove('hidden');
+
+                ULTRALAB.mount(document.getElementById('warm-box'), {
                     mode: 'warmup',
                     seed: seed,
                     onDone: function () {
+                        locked.classList.add('hidden');
                         checks.classList.remove('hidden');
                         DOORLAB.mount(checks, { seed: seed });
-                        checks.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        /* ⚠️ 這裡**不自動捲到檢核**。暖身過了之後，
+                           學生應該往下讀模擬與虛擬碼，最後才做檢核 ——
+                           直接把他丟到最底下，中間那段教材就跳過去了。 */
                     }
                 });
+                warmBox.classList.remove('hidden');
                 labBox.classList.remove('hidden');
             } else {
+                warmBox.classList.add('hidden');
                 labBox.classList.add('hidden');
             }
 
