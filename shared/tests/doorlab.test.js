@@ -398,6 +398,31 @@ section('★★ 答錯要換一題（重猜同一題只證明他記得剛才選�
        '★★ A 猜錯 → 換一種走法（' + before + ' → ' + d.aCase().key + '）');
   }
 
+  /* ★★ B：**修法選對、但預測錯** → 一樣不過。
+     ⚠️ 這一條是「先講你認為會怎樣」在 B 的整個意義所在：
+        少了它，三選一兩次內必中（選一個 → 看結果 → 錯了再選下一個）。
+        A 有這一步（先猜開關幾次）、C 有（第二輪先寫下秒數），
+        2026-08-24 之前只有 B 沒有。 */
+  {
+    const d = D.mount(box, { seed: 'cc' });
+    box.querySelector('#dl-near').value = D.IDEAL_NEAR;
+    box.querySelector('#dl-far').value = D.IDEAL_FAR;
+    box.querySelector('#dl-pred').value = d.aCase().answer;
+    box.querySelector('#dl-runA').dispatchEvent(new W.Event('click', { bubbles: true }));
+    const before = d.bCase().key;
+    box.querySelector('[data-fix="state"]').dispatchEvent(new W.Event('click', { bubbles: true }));
+    /* 挑一個**不是**自己選的那個修法的結果 */
+    const wrongPred = d.bCase().fixes.filter(f => !f.good)[0].key;
+    box.querySelector('[data-pred="' + wrongPred + '"]')
+       .dispatchEvent(new W.Event('click', { bubbles: true }));
+    ok(!box.querySelector('#dl-say'),
+       '★★ 修法選對但**預測錯** → 不給寫，這一關還沒過');
+    ok(d.step() === 'B', '   還留在 B');
+    ok(d.bCase().key !== before, '   而且換一個東西壞掉（' + before + ' → ' + d.bCase().key + '）');
+    ok(/先想清楚再按/.test(box.textContent),
+       '★ 回饋要點破「你猜的不是這個」，而不是只說答錯');
+  }
+
   /* B：選錯 → 換一個東西壞掉 */
   {
     const d = D.mount(box, { seed: 'bb' });
@@ -409,10 +434,15 @@ section('★★ 答錯要換一題（重猜同一題只證明他記得剛才選�
     const wrong = d.bCase().fixes.filter(f => !f.good)[0].key;
     box.querySelector('[data-fix="' + wrong + '"]')
        .dispatchEvent(new W.Event('click', { bubbles: true }));
+    /* ★★ 這裡**還沒執行** —— 先問「你認為會發生什麼」（老師 2026-08-24）。 */
+    ok(d.bCase().key === before, '★★ 選了之後還沒換題 —— 因為還沒執行');
+    ok(!!box.querySelector('[data-pred]'), '★★ 先出現「執行之後會看到什麼」的預測題');
+    box.querySelector('[data-pred="' + wrong + '"]')
+       .dispatchEvent(new W.Event('click', { bubbles: true }));
     ok(d.step() === 'B', '   選錯了還留在 B');
     ok(d.bCase().key !== before,
-       '★★ B 選錯 → 換一個東西壞掉（' + before + ' → ' + d.bCase().key + '）');
-    ok(/執行看看/.test(box.textContent),
+       '★★ 預測完才執行、然後換一個東西壞掉（' + before + ' → ' + d.bCase().key + '）');
+    ok(/執行結果/.test(box.textContent),
        '   而且先把「選錯會看到什麼」跑給他看，再換題');
   }
 }
@@ -433,7 +463,10 @@ section('★ B 的兩階段真的掛得起來');
   ok(d.step() === 'B', 'A 過了進到 B（走法：' + d.aCase().key + '）');
 
   box.querySelector('[data-fix="state"]').dispatchEvent(new W.Event('click', { bubbles: true }));
-  ok(d.step() === 'B', '★★ 選對了**還在 B** —— 因為還沒說');
+  ok(!box.querySelector('#dl-say'), '★★ 選對了**還不能寫** —— 中間還有「先講會發生什麼」');
+  ok(box.querySelectorAll('[data-pred]').length === 3, '   預測題有三個候選結果');
+  box.querySelector('[data-pred="state"]').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(d.step() === 'B', '★★ 修法對＋預測對，**還在 B** —— 因為還沒說');
   ok(!!box.querySelector('#dl-say') && !!box.querySelector('#dl-runB'),
      '   這時候才出現作答框與送出鈕');
   ok(!box.querySelector('[data-fix]'), '   選過就不再讓他改選（任務換成「說出來」了）');

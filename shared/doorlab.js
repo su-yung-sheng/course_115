@@ -360,7 +360,7 @@
     /* B 的兩個階段：先選對（bPicked），再說得出來。
        ⚠️ sayText 一定要留在外面 —— 放在 DOM 裡的話，
           每次重畫（提示、覆核回來）學生打的字就沒了。 */
-    var bPicked = false, sayText = '', sayBusy = false;
+    var bPicked = false, sayText = '', sayBusy = false, bFix = null;
 
     function tabs() {
       var names = { A: 'A 感測→判斷', B: 'B 狀態', C: 'C 轉多久' };
@@ -419,21 +419,43 @@
     }
 
     /* ── B ──────────────────────────────────────────────
-       兩個階段：① 三選一修好它　② 用自己的話說為什麼。
-       ⚠️ 選對**不等於**完成 —— B 測的是「能解釋」，
-          而三選一測得出他選得對，測不出他知不知道為什麼。 */
+       三個階段：① 三選一修好它　② **先講**執行之後會看到什麼　③ 用自己的話說為什麼。
+
+       ★★ 老師 2026-08-24：「B 狀態的『說得出會發生什麼』的部份還是要」——
+         對照三個檢核，只有 B 缺這一步：A 先猜開關幾次、C 第二輪先寫下秒數，
+         而 B 是「選了就直接跑」。
+       ⚠️ 少了它，三選一**兩次內必中**：選一個 → 看結果 → 錯了再選下一個。
+          那正是「先講你認為會怎樣」這個骨架要堵的洞
+          （純做出來擋不住試誤，純答對擋不住猜）。
+
+       ★ 預測的選項就是三個 after —— 也就是「三種修法各自會發生什麼」。
+         ⚠️ 所以選錯修法的人也要預測：那才是最有價值的一次
+            「你認為改門檻會怎樣？」→ 猜 → 執行 → 親眼看到自己想錯了。 */
     function bq() { return '用你自己的話說：為什麼程式要記住「' + bCase.thing + '」？'; }
     function goodFix() {
       return bCase.fixes.filter(function (f) { return f.good; })[0];
     }
     function viewB(msg, cls, after) {
       var list = bCase.fixes.slice().sort(function () { return rng() - 0.5; });
-      view(
+      var head =
         '<div class="dl-ask">下面這段程式<b>少了「' + esc(bCase.thing) + '」這個資訊</b>：<br>' +
         '<span style="font-family:monospace;font-size:14px">' + bCase.code + '</span><br>' +
-        esc(bCase.symptom) + '你會怎麼修？</div>' +
+        esc(bCase.symptom) + '你會怎麼修？</div>';
+
+      /* ② 預測階段：修法已經選了，先講會發生什麼 */
+      if (bFix) {
+        var opts = bCase.fixes.slice().sort(function () { return rng() - 0.5; });
+        return view(head +
+          '<div class="dl-note">你選的是：<b>' + esc(bFix.text) + '</b></div>' +
+          '<div class="dl-ask" style="margin-top:14px">⚠️ 先講：<b>執行之後會看到什麼？</b></div>' +
+          opts.map(function (f) {
+            return '<button class="dl-opt" data-pred="' + f.key + '">' + esc(f.after) + '</button>';
+          }).join(''), msg, cls);
+      }
+
+      view(head +
         (bPicked
-          /* 選對之後就不再讓他改選 —— 這時候的任務已經換成「說出來」了。 */
+          /* 過了這一關就不再讓他改選 —— 這時候的任務已經換成「說出來」了。 */
           ? '<div class="dl-note">✅ 你選的是：<b>' + esc(goodFix().text) + '</b></div>'
           : list.map(function (f) {
               return '<button class="dl-opt" data-fix="' + f.key + '">' + esc(f.text) + '</button>';
@@ -452,23 +474,34 @@
         (sayBusy ? ' disabled' : '') + '>' + (sayBusy ? '看看你寫的…' : '送出') + '</button>' +
         '<span class="dl-note">⚠️ 寫錯不會扣分，可以一直改。</span></div>';
     }
-    function doB(key) {
-      tries.B++;
-      var f = bCase.fixes.filter(function (x) { return x.key === key; })[0];
-      if (f && f.good) {
+    /** ② 送出預測 → 真的跑一次 → 比對。★ 修法對**而且**預測對才算過。 */
+    function doPred(key) {
+      var f = bFix, predOk = (key === f.key);
+      bFix = null;
+      if (f.good && predOk) {
         bPicked = true;
-        viewB('✅ 選對了：' + f.after + '　**最後一步**：說說看為什麼。', 'good');
+        viewB('✅ 你不但修對了，也**說得出**會發生什麼：' + f.after +
+              '　**最後一步**：說說看為什麼。', 'good');
         return;
       }
-      var was = f && f.after;
-      /* ★ 選錯就換一個東西壞掉 —— 同一組再猜一次，三選一猜對的機率是二分之一。
+      /* 先把真正發生的事講出來 —— 猜錯的代價是眼見為憑，不是一句答錯。 */
+      var msg = '執行結果：' + f.after;
+      if (!predOk) msg += '　⚠️ 你猜的不是這個 —— **先想清楚再按**，這一關要的是「你知道會發生什麼」。';
+      if (!f.good) msg += '　問題是「程式不知道自己上一次做了什麼」。';
+      /* ★ 換一個東西壞掉 —— 同一組再來一次，三選一猜對的機率是二分之一。
          ⚠️ 換情境**不會**換掉正解（永遠是「加一個變數記住狀態」）——
             那件事就是這一節的概念，沒得換。擋猜的是「換一個題目重新認一次」。 */
       bCase = caseB(rng, bCase);
-      viewB('⛔ 執行看看 —— ' + (was || '') + '　再想一次：問題是「程式不知道自己上一次做了什麼」。' +
-            '　**換一個東西**試試看。', 'bad');
+      viewB(msg + '　**換一個東西**試試看。', 'bad');
     }
-    /** 送出那一段話。★ 本機先判，規則說「沒講到」才送 AI 覆核（只加分）。 */
+    function doB(key) {
+      tries.B++;
+      bFix = bCase.fixes.filter(function (x) { return x.key === key; })[0] || null;
+      /* ⚠️ 這裡**還不執行**。先問「你認為會發生什麼」——
+         直接跑的話，選錯的人只是被告知答案，沒有被要求想過。 */
+      viewB('', '');
+    }
+    /** ③ 送出那一段話。★ 本機先判，規則說「沒講到」才送 AI 覆核（只加分）。 */
     function doSay() {
       var box = el.querySelector('#dl-say');
       sayText = box ? box.value : '';
@@ -483,15 +516,14 @@
         if (r2.level !== 'none') return passB(r2);
         /* ⚠️ 不可以把「還差什麼」的名稱講出來 —— 那就是答案，
            講了學生貼上去就過了（同 answer.js 的 whyOf）。 */
-        viewB('⚠️ 再想一次：門一直轉，是因為程式**少了什麼資訊**？' +
-              '　想想看，如果它知道「上一次已經開過了」，這次會怎麼做。', 'bad');
+        viewB('⚠️ 再想一次：它一直重複做同一件事，是因為程式**少了什麼資訊**？' +
+              '　想想看，如果它知道「上一次已經做過了」，這次會怎麼做。', 'bad');
       });
     }
     function passB(res) {
       done.B = true; step = 'C';
       if (typeof opts.onSay === 'function') opts.onSay(sayText, res);
-      viewC('✅ B 完成：' + (res.why || '你說得出為什麼要記住門的狀態。') +
-            (res.byAI ? '' : ''), 'good');
+      viewC('✅ B 完成：' + (res.why || '你說得出為什麼要記住那個狀態。'), 'good');
     }
 
     /* ── C ── */
@@ -538,6 +570,9 @@
       el.querySelectorAll('[data-fix]').forEach(function (b) {
         b.addEventListener('click', function () { doB(b.getAttribute('data-fix')); });
       });
+      el.querySelectorAll('[data-pred]').forEach(function (b) {
+        b.addEventListener('click', function () { doPred(b.getAttribute('data-pred')); });
+      });
       var c = el.querySelector('#dl-runC'); if (c) c.addEventListener('click', doC);
       var s = el.querySelector('#dl-runB'); if (s) s.addEventListener('click', doSay);
       /* 打字時就記起來 —— 不然按到別的按鈕重畫，字就沒了。 */
@@ -550,7 +585,8 @@
              say: function () { return sayText; },
              /* 給測試看的：這一次抽到哪一種走法／哪一個情境。 */
              aCase: function () { return aCase; },
-             bCase: function () { return bCase; } };
+             bCase: function () { return bCase; },
+             bFix: function () { return bFix; } };
   }
 
   global.DOORLAB = {
