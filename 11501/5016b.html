@@ -41,6 +41,36 @@
             font-family: 'Noto Sans TC', sans-serif;
             scroll-behavior: smooth;
         }
+        /* ★ 老師 2026-08-24：「調整拉桿能放大嗎? 讓視覺更明顯，使用者更好操作」
+           ⚠️ 瀏覽器原生的 range 拉桿約 4px 軌道、16px 圓鈕 ——
+              投影出來幾乎看不見，滑鼠也不好抓。
+           ⚠️ accent-color 只能換顏色，改不了大小，一定要自己畫。
+           ★ 顏色用 --thumb 變數，各節課沿用原本的主題色（emerald／sky／amber…）。
+           ⚠️ -webkit- 與 -moz- 的 thumb 規則**不能寫在同一條**：
+              瀏覽器只要看到不認識的選擇器就會整條丟掉，寫在一起等於兩邊都沒效果。 */
+        .big-range {
+            -webkit-appearance: none; appearance: none;
+            height: 16px; border-radius: 9999px;
+            background: #e2e8f0; cursor: pointer;
+            border: 1px solid #cbd5e1;
+        }
+        .big-range:focus-visible { outline: 3px solid var(--thumb, #10b981); outline-offset: 3px; }
+        .big-range::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--thumb, #10b981);
+            border: 4px solid #fff;
+            box-shadow: 0 2px 8px rgba(15,23,42,.35);
+            cursor: grab;
+        }
+        .big-range::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.06); }
+        .big-range::-moz-range-thumb {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--thumb, #10b981);
+            border: 4px solid #fff;
+            box-shadow: 0 2px 8px rgba(15,23,42,.35);
+            cursor: grab;
+        }
         .unit-card:hover {
             transform: translateY(-5px);
         }
@@ -425,13 +455,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
                             <!-- Visuals -->
                             <div class="flex flex-col sm:flex-row items-center justify-around w-full mt-4 gap-8">
-                                <div class="flex flex-col items-center">
+                                <!-- ⚠️ 刻度那一列的寬度要和拉桿**同一個** class，
+                                     不然拉桿放大之後兩端的字會對不到頭尾。 -->
+                                <div class="flex flex-col items-center w-full max-w-md">
                                     <i data-lucide="waves" class="w-10 h-10 text-emerald-500 mb-2"></i>
-                                    <input type="range" id="ultra-slider" min="5" max="60" value="5" class="w-48 accent-emerald-500 h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer">
-                                    <div class="flex justify-between w-48 text-[10px] text-slate-400 mt-1">
+                                    <input type="range" id="ultra-slider" min="5" max="60" value="5" class="w-full big-range" style="--thumb:#10b981">
+                                    <div class="flex justify-between w-full text-xs text-slate-500 mt-2">
                                         <span>← 遠 (60cm)</span><span>近 (5cm) →</span>
                                     </div>
-                                    <span class="text-xs text-slate-500 mt-2">拖動：<b>往右＝人走近</b></span>
+                                    <span class="text-sm text-slate-600 mt-2">拖動：<b>往右＝人走近</b></span>
                                 </div>
 
                                 <div class="flex flex-col items-center">
@@ -580,7 +612,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                     <span>超音波偵測距離: <span id="u-led-dist-text" class="text-sky-400 font-bold text-lg">100</span> cm</span>
                                     <span>亮燈數: <span id="u-led-count-text" class="text-sky-400 font-bold text-lg">0</span> 顆</span>
                                 </div>
-                                <input type="range" id="u-led-slider" min="10" max="150" value="150" class="w-full accent-sky-500 bg-slate-100 h-2 rounded-lg cursor-pointer">
+                                <input type="range" id="u-led-slider" min="10" max="150" value="150" class="w-full big-range" style="--thumb:#0ea5e9">
                             </div>
                             
                             <!-- LED Strip Display -->
@@ -697,7 +729,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                         <div id="pot-knob-indicator" class="w-1 h-6 bg-amber-400 absolute top-2 rounded-full transform origin-bottom transition-transform duration-75"></div>
                                         <div class="w-6 h-6 bg-slate-50 rounded-full z-10"></div>
                                     </div>
-                                    <input type="range" id="pot-slider" min="0" max="1023" value="0" class="w-32 accent-amber-500 bg-slate-100 h-2 rounded-lg cursor-pointer">
+                                    <input type="range" id="pot-slider" min="0" max="1023" value="0" class="w-full max-w-xs big-range" style="--thumb:#f59e0b">
                                     <span class="text-xs text-slate-500 font-bold">轉動可變電阻</span>
                                 </div>
 
@@ -803,7 +835,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                     <span>旋鈕輸入 (Hue): <span id="color-pot-val" class="text-indigo-600 font-bold">0</span></span>
                                     <span>色相角: <span id="hue-val" class="text-indigo-600 font-bold">0°</span></span>
                                 </div>
-                                <input type="range" id="color-slider" min="0" max="1023" value="0" class="w-full bg-slate-100 h-3 rounded-lg cursor-pointer appearance-none" style="background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);">
+                                <input type="range" id="color-slider" min="0" max="1023" value="0" class="w-full big-range" style="--thumb:#a855f7; background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);">
                             </div>
                             
                             <!-- Large LED Display -->
@@ -910,7 +942,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                             <span><i data-lucide="waves" class="inline w-3 h-3 text-emerald-400"></i> 超音波距離:</span>
                                             <span id="hub-dist-val">150 cm</span>
                                         </div>
-                                        <input type="range" id="hub-dist-slider" min="10" max="200" value="150" class="w-full accent-emerald-500 bg-slate-100 h-2 rounded-lg cursor-pointer">
+                                        <input type="range" id="hub-dist-slider" min="10" max="200" value="150" class="w-full big-range" style="--thumb:#10b981">
                                     </div>
                                     
                                     <div class="space-y-2 opacity-50 transition-opacity" id="hub-manual-controls">
@@ -918,7 +950,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                             <span><i data-lucide="settings" class="inline w-3 h-3 text-amber-400"></i> 控制旋鈕:</span>
                                             <span id="hub-pot-val">0</span>
                                         </div>
-                                        <input type="range" id="hub-pot-slider" min="0" max="1023" value="0" class="w-full accent-amber-500 bg-slate-100 h-2 rounded-lg cursor-pointer" disabled>
+                                        <input type="range" id="hub-pot-slider" min="0" max="1023" value="0" class="w-full big-range" style="--thumb:#f59e0b" disabled>
                                     </div>
                                 </div>
                                 
