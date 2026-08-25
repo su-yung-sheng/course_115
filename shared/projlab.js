@@ -34,71 +34,67 @@
   }
 
   var MIN = 4;                   // 每一格至少幾個字
-  var LEDS = 8;
-  var NEAR = 30;                 // 自動模式：幾公分以內算「有人來了」
-  var FULL = 5;                  // 幾公分以內就算「貼著了」（全開）
-  var DIST_MIN = 2, DIST_MAX = 200;
-  var HUE_MAX = 359;
-  /* ⚠️⚠️ 老師 2026-08-25：「風扇轉速 42% 數值應該是 -250 ~ 250」。
-     ★ 對 —— 第三節的積木就是 類比對應(A7, −250, 250)，
-       這裡寫成百分比等於**自己發明了第五個範圍**
-       （這門課已經有 1023／255／359 三個容易混的了）。
-     ⇒ 手動：−250～250（中間停、兩邊反轉，就是第三節的 C 那一題）
-       自動：0～250（只往一邊轉 —— 第三節也講過「只往一邊的話 0 就是對的」） */
-  var SPD = 250;
 
   function norm(s) { return String(s == null ? '' : s).replace(/\s+/g, ''); }
-  function clamp(v, a, b) { return Math.max(a, Math.min(b, Number(v) || 0)); }
-
-  /* ── 兩種模式：同一組硬體，兩種玩法 ────────────────
-     ★ 自動＝超音波說了算；手動＝旋鈕說了算。
-     ⚠️ 兩種都只用「一個輸入 → 兩個輸出」，學生照著做得出來。 */
+  /* ── 兩種模式 ────────────────────────────────────────
+     ⚠️⚠️ 老師 2026-08-25：「前面複習已經有配合了，那後面的兩種模式目的是?」
+     ★ 問得對 —— 第一版這裡又放了一組滑桿讓學生拉，
+       和上面的複習盤在做**同一件事**（輸入動一動、看輸出）。
+       重複的互動不會多教到什麼，只會讓人以為自己走錯地方。
+     ⇒ 改成一張**對照表**，而且給它一個複習盤沒有的目的：
+       「**你的程式裡，條件判斷在哪裡？**」
+         自動：如果…那麼…否則…　—— 判斷寫在中間，這是第一節那一課
+         手動：直接換算，**沒有條件判斷** —— 所以要自己補一個
+     ★ 這正好接上成果發表第二句要寫的東西。 */
   var MODES = [
     { key: 'auto', t: '自動', by: '超音波距離感測器',
       d: '人一靠近就亮、就轉；走遠了自己停。',
-      good: '★ 好處：不用動手。⚠️ 代價：想要它「現在別亮」也做不到。' },
+      good: '★ 好處：不用動手。⚠️ 代價：想要它「現在別亮」也做不到。',
+      cond: '**有**條件判斷',
+      code: '如果　距離 < 30　那麼　亮燈\n否則　關燈',
+      note: '★ 那個 30 就是**你要自己決定的門檻**。' +
+            '⚠️ 「否則」不能省 —— 少了它，燈亮起來就再也不會暗（第一節那一課）。' },
     { key: 'manual', t: '手動', by: '可變電阻（旋鈕）',
       d: '轉到哪就是哪 —— 顏色和轉速都自己說了算。',
-      good: '★ 好處：完全可控。⚠️ 代價：得一直自己轉。' }
+      good: '★ 好處：完全可控。⚠️ 代價：得一直自己轉。',
+      cond: '⚠️ **沒有**條件判斷',
+      code: '轉速 ← 類比對應（A7，−250，250）\n設定馬達 = 轉速',
+      note: '⚠️ 這樣寫從頭到尾**沒有一個「如果」** —— 它只是照著換算。' +
+            '★ 所以做手動的組別要**自己補一個條件**，例如：' +
+            '「如果 旋鈕 < 5%，那麼 整個關掉」。' }
   ];
-  /* 自動模式：距離 → 亮幾顆／什麼顏色／轉多快。
-     ★ 越近越紅、越近越多顆、越近轉越快（接回第二節的反向換算）。 */
-  function autoOf(cm) {
-    var d = clamp(cm, DIST_MIN, DIST_MAX);
-    if (d > NEAR) return { on: 0, hue: 0, speed: 0, near: false };
-    /* ⚠️ 分母用的是 NEAR−FULL，不是 NEAR−DIST_MIN。
-       ★ 超音波在 2～3 公分附近本來就量不準，
-         把「全開」訂在 2 公分的話，學生**永遠拉不到整條亮**
-         （手不可能貼那麼近，實測只會亮到 7 顆）。
-       ⇒ 5 公分以內就算貼著了。 */
-    var k = Math.min(1, (NEAR - d) / (NEAR - FULL));  // 0（剛好 30cm）～1（貼著）
-    return { on: Math.max(1, Math.round(k * LEDS)),
-             hue: Math.round(120 - 120 * k),          // 綠 → 紅
-             /* 自動只往一邊轉 → 下限是 0（第三節 B 講過的那個對照）。 */
-             speed: Math.round(k * SPD), lo: 0, near: true };
-  }
-  /* 手動模式：旋鈕 → 顏色／第幾顆／轉速。 */
-  function manualOf(pct) {
-    var p = clamp(pct, 0, 100);
-    return { on: Math.round(1 + (LEDS - 1) * p / 100),
-             hue: Math.round(HUE_MAX * p / 100),
-             /* 旋鈕最左 −250、正中間 0（停）、最右 250 —— 第三節那一組。 */
-             speed: Math.round(-SPD + 2 * SPD * p / 100), lo: -SPD, near: true };
-  }
+
+  /* ⚠️ 原本這裡有 LEDS／NEAR／FULL／HUE_MAX／SPD 和 autoOf()／manualOf()
+     —— 那是給第二組滑桿算畫面用的。滑桿收掉之後它們就沒人用了。
+     ★ 留著死碼比刪掉更糟：下一個人會以為它被測過。
+     （那些換算現在只在複習盤 shared/planlab.js 裡，一份就好。） */
 
   /* ── 成果發表的三句 ────────────────────────────────
      ★ 老師指定，一字不改。 */
   var SHOW_Q = [
     { key: 's1', t: '我們要解決的問題是：', slots: ['problem'],
       ph: ['例：晚上回家玄關太暗，開燈要摸半天'] },
+    /* ★ 老師 2026-08-25：「加註 如果 那麼 或者 如果 那麼 否則
+       一定要有條件判斷」。
+       ⚠️ 這一句不是在描述「我們做了什麼」，它就是**程式裡那個判斷**。
+          寫不出條件的組別，通常是程式裡也沒有 —— 那才是要抓的。 */
     { key: 's2', t: '當＿＿＿＿時，系統會＿＿＿＿。', slots: ['when', 'then'],
-      ph: ['例：有人走到門口 30 公分內', '例：燈條慢慢亮成暖黃色'] },
+      hint: '＝ <b>如果</b>（條件）<b>那麼</b>（動作）；' +
+            '如果還要處理「不符合的時候」，就是 <b>如果…那麼…否則…</b>',
+      ph: ['例：距離小於 30 公分', '例：燈條亮成暖黃色，超過就關掉'] },
     { key: 's3', t: '我們遇到＿＿＿＿，最後用＿＿＿＿解決。', slots: ['trouble', 'fix'],
       ph: ['例：距離一直跳來跳去，燈會閃', '例：把門檻改成兩個數字（進 15 出 25）'] }
   ];
   /* ⚠️ 第三句最常見的敷衍就是「沒有遇到問題」。
      ★ 那句話一寫出來，這一節最有價值的部分（怎麼卡住、怎麼解掉）就沒了。 */
   var NO_TROUBLE = /^(沒有|沒|無|都很順利|很順利|沒問題|沒遇到|一切順利|none|no)/;
+  /* ★★ 老師 2026-08-25：「一定要有條件判斷」。
+     ⚠️ 「當我們做好的時候」不是條件 —— 條件要**看得出是拿什麼在比**。
+        ⇒ 要有數字，或一個比較／臨界的說法。
+     ⚠️ 刻意放寬到「靠近／碰到／轉到底」這種生活講法 ——
+        國中生講得出那個意思就算，不必寫成數學式。 */
+  var COND = new RegExp('[0-9０-９]|小於|大於|超過|低於|高於|以內|以下|以上|不到|' +
+                        '靠近|接近|太近|太遠|碰到|轉到|滿|到達|超出|距離|公分|%');
   function judgeShow(v) {
     /* ⚠️⚠️ 這一條要**排在長度檢查前面**。
        第一版先查長度 —— 但學生實際上打的就是「沒有」兩個字，
@@ -111,11 +107,18 @@
       if (norm(v[k]).length < MIN) miss.push(k);
     });
     if (miss.length) return { ok: false, how: 'short', miss: miss };
+    if (!COND.test(String(v.when || ''))) return { ok: false, how: 'nocond' };
     return { ok: true, how: 'fit' };
   }
   var LABEL = { problem: '要解決的問題', when: '當…時', then: '系統會…',
                 trouble: '我們遇到…', fix: '最後用…解決' };
   function sayShow(r) {
+    if (r.how === 'nocond')
+      return '⚠️ 第二句的「當＿＿時」要是一個**條件** —— ' +
+             '也就是程式裡那個「**如果**」。\n' +
+             '★ 條件要看得出**拿什麼在比**：' +
+             '「距離小於 30 公分」「旋鈕轉到底」「太近的時候」都可以；\n' +
+             '⚠️ 「當我們做好的時候」不算 —— 那不是程式判斷得出來的事。';
     if (r.how === 'notrouble')
       return '⛔ 「沒有遇到問題」不能算 —— 這一格是整段發表**最值錢**的地方。' +
              '★ 想想看：第一次燒錄成功了嗎？數字第一次就抓對了嗎？' +
@@ -281,6 +284,18 @@
   '.pj-t{flex:1;min-width:150px;font-size:15px;font-weight:800;padding:9px 12px;' +
     'border:2px solid #cbd5e1;border-radius:10px;box-sizing:border-box}' +
   '.pj-note{font-size:13px;color:#64748b;font-weight:700;line-height:1.8;margin-top:6px}' +
+  '.pj-hint{font-size:13px;font-weight:800;color:#7c3aed;background:#f5f3ff;' +
+    'border-radius:10px;padding:7px 10px;margin-top:5px;line-height:1.8}' +
+  /* 兩種模式的對照表 */
+  '.pj-cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}' +
+  '.pj-col{border:2px solid #e2e8f0;border-radius:14px;padding:13px;background:#fff}' +
+  '.pj-col.on{border-color:#7c3aed;background:#faf5ff;box-shadow:0 0 0 3px #ede9fe}' +
+  '.pj-col-h{font-size:17px;font-weight:900;color:#0f172a;margin-bottom:6px}' +
+  '.pj-col-b{font-size:14px;font-weight:800;color:#334155;line-height:1.8}' +
+  '.pj-code{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:10px 12px;' +
+    'font-family:monospace;font-size:13px;line-height:1.9;margin:8px 0}' +
+  '.pj-cond{font-size:14px;font-weight:900;color:#7c3aed;margin-bottom:4px}' +
+  '.pj-col-n{font-size:13px;font-weight:700;color:#64748b;line-height:1.8;margin-bottom:6px}' +
   '.pj-pick{background:#fffbeb;border:2px solid #fcd34d;border-radius:12px;padding:12px 14px;' +
     'margin:12px 0;font-weight:800;font-size:14px;color:#78350f;line-height:1.8}' +
   /* 成果卡 */
@@ -316,8 +331,6 @@
     var line = String(opts.line || '');
     var scene = (opts.plan && opts.plan.scene) || '我們的專題';
     var tab = 'demo';                 // demo（兩種模式）／show（成果發表）
-    var mode = 'auto';
-    var cm = 60, pct = 50;
     var f = Object.assign({ team: '', mode: '', problem: '', when: '', then: '',
                             trouble: '', fix: '' }, opts.work || {});
 
@@ -340,80 +353,30 @@
       bind();
     }
 
-    /* ── 兩種模式的展示 ── */
-    function state() { return mode === 'auto' ? autoOf(cm) : manualOf(pct); }
-    function stageHtml() {
-      var st = state(), col = LK().hexOf(LK().hueRgb(st.hue));
-      var leds = '';
-      for (var i = 1; i <= LEDS; i++) {
-        var on = st.on >= i && (mode === 'auto' ? st.near : true);
-        /* 手動只亮一顆（位置會跑）；自動是亮幾顆（越近越多） */
-        if (mode === 'manual') on = (i === st.on);
-        leds += '<div class="pj-led" style="background:' + (on ? col : '#1e293b') +
-          (on ? ';box-shadow:0 0 12px ' + col : '') + '"></div>';
-      }
-      var spd = st.speed, dirTxt = spd === 0 ? '停止'
-        : (spd > 0 ? '正轉' : '反轉');
-      return '<div class="pj-stage"><div class="pj-strip">' + leds + '</div>' +
-        '<div class="pj-fan">' + LK().fanHtml(spd, SPD) +
-          '<div><b>風扇轉速 ' + spd + '</b>' +
-          '<span style="display:block;font-size:12px;color:#94a3b8">' +
-            dirTxt + '　（範圍 ' + st.lo + ' ～ ' + SPD + '）</span></div></div>' +
-        '<div class="pj-read">' +
-          (mode === 'auto'
-            ? '距離 ' + cm + ' 公分　｜　' + (st.near ? '有人來了' : '沒人（超過 ' + NEAR + ' 公分）')
-            : '旋鈕 ' + pct + '%　｜　色相 ' + st.hue + '　｜　第 ' + st.on + ' 顆') +
-        '</div></div>';
-    }
+    /* ── 兩種模式：對照表（不再放第二組滑桿）── */
     function viewDemo(msg, cls) {
-      var m = MODES.filter(function (x) { return x.key === mode; })[0];
       view(
-        '<div class="pj-ask">🎛️ 同一組硬體，<b>兩種玩法</b>　—— ' +
-        '⚠️ 你的作品<b>挑一種做就好</b>，不用兩種都做。</div>' +
-        '<div class="pj-lv">' + MODES.map(function (x) {
-          return '<div class="pj-tab ' + (mode === x.key ? 'on' : '') +
-            '" data-mode="' + x.key + '">' + x.t + '模式<span>靠' + esc(x.by) + '</span></div>';
+        '<div class="pj-ask">🎛️ 同一組硬體，<b>兩種寫法</b>　—— ' +
+        '⚠️ 你的作品<b>挑一種做就好</b>。</div>' +
+        '<div class="pj-cmp">' + MODES.map(function (m) {
+          return '<div class="pj-col' + (f.mode === m.t ? ' on' : '') + '">' +
+            '<div class="pj-col-h">' + esc(m.t) + '模式</div>' +
+            '<div class="pj-col-b">靠 <b>' + esc(m.by) + '</b><br>' + esc(m.d) + '</div>' +
+            '<div class="pj-code">' + esc(m.code).replace(/\n/g, '<br>') + '</div>' +
+            '<div class="pj-cond">' + md(m.cond) + '</div>' +
+            '<div class="pj-col-n">' + md(m.note) + '</div>' +
+            '<div class="pj-col-n">' + md(m.good) + '</div>' +
+            '<button class="dl-go" data-pick="' + esc(m.t) + '"' +
+              (f.mode === m.t ? '' : ' style="background:#94a3b8"') + '>' +
+              (f.mode === m.t ? '✅ 我們做這一種' : '選這一種') + '</button>' +
+          '</div>';
         }).join('') + '</div>' +
-        '<div class="pj-note">' + esc(m.d) + '<br>' + md(m.good) + '</div>' +
-        '<div id="pj-stage">' + stageHtml() + '</div>' +
-        (mode === 'auto'
-          ? '<div id="pj-instage">' + LK().distStage(cm, DIST_MIN, DIST_MAX) + '</div>' +
-            '<div class="pj-sl"><label>距離</label>' +
-            '<input type="range" id="pj-cm" min="' + DIST_MIN + '" max="' + DIST_MAX +
-              '" value="' + cm + '"><b>' + cm + ' cm</b></div>' +
-            '<div class="pj-note">⚠️ 拉到 ' + NEAR + ' 公分以內才會有反應 —— ' +
-            '那個 ' + NEAR + ' 就是<b>你要自己決定的門檻</b>。<br>' +
-            '★ 這裡風扇只往一邊轉，所以下限寫 <b>0</b>（不是 −' + SPD + '）。</div>'
-          : '<div class="pj-sl"><label>旋鈕</label>' +
-            '<input type="range" id="pj-pct" min="0" max="100" value="' + pct + '"><b>' +
-              pct + ' %</b></div>' +
-            '<div class="pj-note">★ 這就是第三、四節的「類比對應」—— ' +
-            '同一個旋鈕，換算成<b>轉速</b>、<b>顏色</b>、<b>第幾顆</b>。<br>' +
-            '⚠️ 轉速的範圍是 <b>−' + SPD + ' ～ ' + SPD + '</b>：' +
-            '旋鈕轉到<b>正中間</b>剛好是 0（停），往兩邊各是正轉和反轉。</div>') +
-        '<div class="pj-pick">📝 想好了嗎？你的作品要做<b>' +
-          MODES.map(function (x) { return x.t; }).join('</b>還是<b>') + '</b>？' +
-          '<div class="pj-fill" style="margin-top:8px">' +
-            MODES.map(function (x) {
-              return '<button class="dl-go" data-pick="' + x.t + '"' +
-                (f.mode === x.t ? '' : ' style="background:#94a3b8"') + '>' +
-                (f.mode === x.t ? '✅ ' : '') + x.t + '模式</button>';
-            }).join(' ') +
-          '</div></div>' +
+        '<div class="pj-pick">🧩 <b>不管做哪一種，程式裡一定要有一個「如果」。</b><br>' +
+          '自動那一種本來就有；手動那一種要自己補 —— ' +
+          '想想看：<b>什麼情況下它應該整個停下來？</b><br>' +
+          '★ 這一句等一下就是成果發表的第二句。</div>' +
         '<div class="dl-row"><button class="dl-go" id="pj-go-show">去填成果發表 →</button></div>',
         msg, cls);
-    }
-    /* ⚠️ 拉滑桿時**只換舞台那一塊** —— 整頁重畫會讓滑桿失焦，
-       手指還按著就斷了（第三節踩過這個坑）。 */
-    function paint() {
-      var st = el.querySelector('#pj-stage');
-      if (st) st.innerHTML = stageHtml();
-      /* ⚠️ 那張「人走過來」的圖也要跟著動 —— 只換燈條的話，
-         拉滑桿時人站在原地不動，看起來就像壞掉。 */
-      var ins = el.querySelector('#pj-instage');
-      if (ins) ins.innerHTML = LK().distStage(cm, DIST_MIN, DIST_MAX);
-      var b = el.querySelector('.pj-sl b');
-      if (b) b.textContent = mode === 'auto' ? (cm + ' cm') : (pct + ' %');
     }
 
     /* ── 成果發表 ── */
@@ -425,7 +388,8 @@
         '<div class="pj-ask" style="margin-top:10px">1. 我們要解決的問題是：</div>' +
         '<div class="pj-fill"><input class="pj-t" id="pj-problem" value="' + esc(f.problem) +
           '" placeholder="' + esc(SHOW_Q[0].ph[0]) + '"></div>' +
-        '<div class="pj-ask" style="margin-top:10px">2. 當＿＿時，系統會＿＿。</div>' +
+        '<div class="pj-ask" style="margin-top:10px">2. 當＿＿時，系統會＿＿。' +
+          '<div class="pj-hint">' + SHOW_Q[1].hint + '</div></div>' +
         '<div class="pj-fill">當　<input class="pj-t" id="pj-when" value="' + esc(f.when) +
           '" placeholder="' + esc(SHOW_Q[1].ph[0]) + '">　時</div>' +
         '<div class="pj-fill">系統會　<input class="pj-t" id="pj-then" value="' + esc(f.then) +
@@ -487,30 +451,18 @@
           show(b.getAttribute('data-tab'));
         });
       });
-      el.querySelectorAll('[data-mode]').forEach(function (b) {
-        b.addEventListener('click', function () { mode = b.getAttribute('data-mode'); viewDemo('', ''); });
-      });
       el.querySelectorAll('[data-pick]').forEach(function (b) {
         b.addEventListener('click', function () { f.mode = b.getAttribute('data-pick'); viewDemo('', ''); });
       });
-      var sc = el.querySelector('#pj-cm');
-      if (sc) sc.addEventListener('input', function () { cm = Number(sc.value); paint(); });
-      var sp = el.querySelector('#pj-pct');
-      if (sp) sp.addEventListener('input', function () { pct = Number(sp.value); paint(); });
     }
 
     show('demo');
-    return { tab: function () { return tab; }, mode: function () { return mode; },
-             work: function () { return f; },
-             setCm: function (v) { cm = v; paint(); },
-             setPct: function (v) { pct = v; paint(); },
+    return { tab: function () { return tab; }, work: function () { return f; },
              show: show, card: function () { return cardHtml(f, meta()); } };
   }
 
   global.PROJLAB = {
-    MIN: MIN, LEDS: LEDS, NEAR: NEAR, FULL: FULL, HUE_MAX: HUE_MAX, SPD: SPD,
-    MODES: MODES, SHOW_Q: SHOW_Q,
-    autoOf: autoOf, manualOf: manualOf,
+    MIN: MIN, MODES: MODES, SHOW_Q: SHOW_Q,
     judgeShow: judgeShow, sayShow: sayShow,
     cardHtml: cardHtml, drawCard: drawCard, printCard: printCard, downloadPng: downloadPng,
     mount: mount

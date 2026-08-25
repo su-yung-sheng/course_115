@@ -68,52 +68,37 @@ section('★★ 設計單：填完了才算');
      '   旋鈕超過 100% 一樣點破');
 }
 
-section('★★ 兩種模式：同一組硬體，兩種玩法');
+section('★★ 兩種模式：改成對照表，而且有新的目的');
 {
-  ok(J.MODES.length === 2, '兩種模式');
-  ok(J.MODES.map(m => m.key).join() === 'auto,manual', '★★ 自動／手動');
+  /* ⚠️⚠️ 老師 2026-08-25：「前面複習已經有配合了，那後面的兩種模式目的是?」
+     ★ 問得對 —— 第一版這裡又放了一組滑桿，和複習盤在做**同一件事**。
+       重複的互動不會多教到什麼，只會讓人以為自己走錯地方。
+     ⇒ 改成對照表，並給它複習盤沒有的目的：
+       「**你的程式裡，條件判斷在哪裡？**」 */
+  ok(J.MODES.length === 2 && J.MODES.map(m => m.key).join() === 'auto,manual',
+     '★ 兩種：自動／手動');
   ok(/超音波/.test(J.MODES[0].by) && /可變電阻|旋鈕/.test(J.MODES[1].by),
      '★★ 自動靠超音波、手動靠旋鈕');
   /* ⚠️ 兩種都要講**代價**，不然學生只會覺得「自動比較厲害」。 */
   ok(J.MODES.every(m => /⚠️/.test(m.good) && /★/.test(m.good)),
-     '★★ 每一種都要講好處**和代價**（自動不用動手，但也叫不動它）');
-
-  /* 自動：越近越亮、越近越多顆、越近轉越快。 */
-  const far = J.autoOf(150), near = J.autoOf(5), edge = J.autoOf(J.NEAR + 1);
-  ok(!far.near && far.on === 0 && far.speed === 0, '★ 遠的時候什麼都不動');
-  ok(!edge.near, '★★ 剛好超過門檻（' + (J.NEAR + 1) + ' 公分）就不算「有人來了」');
-  ok(J.autoOf(J.NEAR).near, '   剛好在門檻上算');
-  /* ⚠️⚠️ 「貼著」不可以訂在感測器的最小值（2 公分）——
-     超音波在那附近本來就量不準，而且手不可能貼那麼近，
-     學生會**永遠拉不到整條亮**（第一版實測只亮到 7 顆）。 */
-  ok(near.on === J.LEDS && near.speed > 80, '★★ 貼著（5 公分）就整條亮、轉最快');
-  ok(J.autoOf(J.FULL).on === J.LEDS && J.autoOf(2).on === J.LEDS,
-     '★★ 比 ' + J.FULL + ' 公分更近一樣是整條（不會因為量不準就掉一顆）');
-  ok(J.autoOf(10).on > J.autoOf(25).on, '★ 越近亮越多顆（反向：距離小、數字大）');
-  ok(J.autoOf(5).hue < J.autoOf(28).hue, '★ 越近越紅（色相往 0 走）');
-  ok(J.autoOf(5).hue === 0, '   貼著的時候是純紅');
-
-  /* 手動：旋鈕直接對應。 */
-  ok(J.manualOf(0).on === 1 && J.manualOf(100).on === J.LEDS,
-     '★★ 旋鈕兩端 → 第 1 顆／第 ' + J.LEDS + ' 顆（八顆都到得了）');
-  ok(J.manualOf(0).hue === 0 && J.manualOf(100).hue === J.HUE_MAX,
-     '★★ 色環 0～' + J.HUE_MAX + '（和第四節同一組）');
-  /* ⚠️⚠️ 老師 2026-08-25：「風扇轉速 42% 數值應該是 -250 ~ 250」。
-     ★ 對 —— 第三節的積木就是 類比對應(A7, −250, 250)。
-       寫成百分比等於**自己發明了第五個範圍**
-       （這門課已經有 1023／255／359 三個容易混的了）。 */
-  ok(J.SPD === 250, '★ 轉速上限 250（第三節那一組）');
-  ok(J.manualOf(50).speed === 0, '★★ 旋鈕正中間 → 轉速 0（停）');
-  ok(J.manualOf(0).speed === -J.SPD && J.manualOf(100).speed === J.SPD,
-     '★★ 兩端是 −' + J.SPD + ' 和 ' + J.SPD + '（不是百分比）');
-  ok(J.manualOf(0).lo === -J.SPD, '★ 手動的下限是負的（要能反轉）');
-  /* ★ 自動只往一邊轉 → 下限 0（第三節 B 講過的那個對照）。 */
-  ok(J.autoOf(J.FULL).speed === J.SPD && J.autoOf(J.FULL).lo === 0,
-     '★★ 自動模式只往一邊轉，下限是 0');
-  ok(J.autoOf(150).speed === 0, '   遠的時候停著');
-  /* 夾住 —— 滑桿以外的值不可以爆掉。 */
-  ok(J.manualOf(-30).on === 1 && J.manualOf(300).on === J.LEDS, '   超出範圍會夾住');
-  ok(J.autoOf(-5).near && J.autoOf(9999).near === false, '   距離也夾得住');
+     '★★ 每一種都要講好處**和代價**');
+  /* ★★ 這一塊真正的目的：條件判斷在哪裡。 */
+  ok(/\*\*有\*\*條件判斷/.test(J.MODES[0].cond),
+     '★★ 自動：**有**條件判斷');
+  ok(/\*\*沒有\*\*條件判斷/.test(J.MODES[1].cond),
+     '★★ 手動：**沒有**條件判斷（所以要自己補一個）');
+  ok(/如果/.test(J.MODES[0].code) && /否則/.test(J.MODES[0].code),
+     '★★ 自動那一欄的骨架寫出「如果…那麼…否則」');
+  ok(/類比對應/.test(J.MODES[1].code) && !/如果/.test(J.MODES[1].code),
+     '★★ 手動那一欄的骨架**沒有一個「如果」**（那正是要點破的事）');
+  ok(/自己補一個條件/.test(J.MODES[1].note),
+     '★★ 而且明講「做手動的組別要自己補一個條件」');
+  ok(/否則.*不能省|少了它/.test(J.MODES[0].note),
+     '★ 自動那一欄提醒「否則」不能省（第一節那一課）');
+  /* ⚠️ 舊的滑桿與換算已經整段收掉 —— 不可以留死碼。 */
+  const src = read('shared/projlab.js').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/function autoOf|function manualOf|id="pj-cm"|id="pj-pct"/.test(src),
+     '★★ 第二組滑桿與它的換算整個清掉（留著死碼下一個人會以為它被測過）');
 }
 
 section('★★ ① 元件複習盤（老師：這一段要在最開始）');
@@ -274,7 +259,9 @@ section('★★ 成果發表：三句話（老師指定，文字不可改）');
   ok(/我們遇到.*最後用.*解決/.test(J.SHOW_Q[2].t), '★★ 第三句：我們遇到＿＿，最後用＿＿解決');
   ok(J.SHOW_Q.every(q => q.ph && q.ph.length === q.slots.length), '   每一格都有範例');
 
-  const v = { problem: '晚上回家玄關太暗', when: '有人走到門口一公尺內',
+  /* ⚠️ 第二句的「當…」現在要看得出是**條件**（老師 2026-08-25：
+     「一定要有條件判斷」）—— 範例本身也要合格。 */
+  const v = { problem: '晚上回家玄關太暗', when: '距離小於 30 公分',
               then: '燈條慢慢亮成暖黃色', trouble: '距離一直跳，燈會閃',
               fix: '把門檻改成進 15 出 25 兩個數字' };
   ok(J.judgeShow(v).ok, '填滿 → 過');
@@ -293,6 +280,27 @@ section('★★ 成果發表：三句話（老師指定，文字不可改）');
   });
   ok(/最值錢|燒錄|插錯/.test(J.sayShow({ how: 'notrouble' })),
      '★★ 而且要給他方向（燒錄、數字、接線都算）');
+
+  /* ★★ 老師 2026-08-25：「加註 如果 那麼 或者 如果 那麼 否則
+     一定要有條件判斷」。
+     ⚠️ 第二句不是在描述「我們做了什麼」，它就是**程式裡那個判斷**。
+        寫不出條件的組別，通常是程式裡也沒有 —— 那才是要抓的。 */
+  ok(/如果/.test(J.SHOW_Q[1].hint) && /那麼/.test(J.SHOW_Q[1].hint) &&
+     /否則/.test(J.SHOW_Q[1].hint),
+     '★★ 第二句旁邊加註「如果…那麼…否則…」');
+  ['當我們做好的時候', '大家一起努力', '完成之後'].forEach(t => {
+    const rr = J.judgeShow(Object.assign({}, v, { when: t }));
+    ok(!rr.ok && rr.how === 'nocond', '★★ 「' + t + '」不是條件 → 擋下來');
+  });
+  /* ⚠️ 但要**放寬到生活講法** —— 國中生講得出那個意思就算，
+     不必寫成數學式，不然會卡在措辭上。 */
+  ['距離小於 30 公分', '有人太近的時候', '旋鈕轉到底', '手靠近感測器', '超過 15 公分']
+    .forEach(t => {
+      ok(J.judgeShow(Object.assign({}, v, { when: t })).ok,
+         '★ 「' + t + '」算條件（生活講法也收）');
+    });
+  ok(/如果/.test(J.sayShow({ how: 'nocond' })) && /拿什麼在比/.test(J.sayShow({ how: 'nocond' })),
+     '★★ 擋下來的時候要說清楚「條件要看得出拿什麼在比」');
 }
 
 section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
@@ -343,45 +351,35 @@ section('★★ 走一遍：展示 → 成果卡');
   const click = id => el.querySelector('#' + id)
     .dispatchEvent(new W.Event('click', { bubbles: true }));
 
-  ok(api.tab() === 'demo', '★ 一進來是兩種模式的展示（複習，不是關卡）');
+  ok(api.tab() === 'demo', '★ 一進來是兩種模式的對照（不是關卡）');
   ok(/玄關迎賓燈/.test(el.textContent) && /15 公分/.test(el.textContent),
      '★★ 畫面上一直掛著設計單那一句');
   /* ⚠️ 老師：「第五課不用動手檢核」—— 兩塊都是開的，隨時可以來回。 */
   ok(!!el.querySelector('[data-tab="show"]'), '★★ 成果發表一開始就點得到（沒有鎖）');
-  ok(api.mode() === 'auto' && !!el.querySelector('#pj-cm'), '   自動模式：拉距離');
-  const litCount = () => [...el.querySelectorAll('.pj-led')]
-    .filter(d => !/#1e293b|rgb\(30, 41, 59\)/.test(d.style.background)).length;
-  /* ★ 自動模式也要看得到那張「人走過來」的圖。
-     ⚠️ 而且拉滑桿時人**要真的跟著移動** —— 只換燈條的話，
-        人站在原地不動，看起來就像壞掉（「找不到動畫」那一族）。 */
-  const man = () => Number((el.innerHTML.match(/lk-dist-o" style="left:([\d.]+)%/) || [])[1]);
-  ok(/lk-dist/.test(el.innerHTML) && /🧍/.test(el.innerHTML),
-     '★★ 自動模式也畫出感測器和人');
-  api.setCm(150);
-  const farMan = man();
-  ok(litCount() === 0, '★★ 拉遠 → **畫面上**全暗');
-  api.setCm(J.FULL);
-  ok(litCount() === J.LEDS, '★★ 拉近 → **畫面上**整條亮（實得 ' + litCount() + ' 顆）');
-  ok(man() > farMan,
-     '★★ 而且人真的跟著往右走（靠近感測器：' + farMan + '% → ' + man() + '%）');
-  ok(/風扇轉速/.test(el.textContent), '★ 而且風扇也轉起來了（一個輸入、兩個輸出）');
-  /* ⚠️ 拉滑桿時只換舞台那一塊 —— 整頁重畫會讓滑桿失焦（第三節踩過）。 */
-  ok(!!el.querySelector('#pj-cm'), '   拉完滑桿還在');
-  ok(/function paint\(\)[\s\S]{0,160}#pj-stage[\s\S]{0,60}innerHTML/.test(read('shared/projlab.js')),
-     '★★ 只換舞台那一塊，不整頁重畫');
-
-  el.querySelector('[data-mode="manual"]').dispatchEvent(new W.Event('click', { bubbles: true }));
-  ok(api.mode() === 'manual' && !!el.querySelector('#pj-pct'), '★ 切到手動：改拉旋鈕');
-  api.setPct(0);  ok(litCount() === 1, '★★ 手動只亮**一顆**（位置會跑，第二節那一招）');
-  api.setPct(100); ok(litCount() === 1, '   轉到底還是一顆');
-  ok(/色相/.test(el.textContent), '★ 而且顏色跟著換（第四節那一招）');
-
+  /* ★★ 這一塊的目的是「條件判斷在哪裡」，不是再拉一次滑桿。 */
+  ok(!el.querySelector('#pj-cm') && !el.querySelector('#pj-pct'),
+     '★★ 沒有第二組滑桿了（那和複習盤重複）');
+  ok(el.querySelectorAll('.pj-col').length === 2, '★ 兩欄對照表');
+  ok(/否則/.test(el.textContent), '★★ 自動那一欄看得到「否則」');
+  ok(/沒有.{0,2}條件判斷/.test(el.textContent),
+     '★★ 手動那一欄明講「沒有條件判斷」');
+  ok(/一定要有一個「如果」/.test(el.textContent),
+     '★★ 而且收尾要求：不管做哪一種，程式裡一定要有一個「如果」');
   /* ★ 學生要選一種當自己的作品。 */
   el.querySelector('[data-pick="手動"]').dispatchEvent(new W.Event('click', { bubbles: true }));
-  ok(api.work().mode === '手動', '★★ 挑一種模式當自己的作品（不必兩種都做）');
+  ok(api.work().mode === '手動', '★★ 挑一種模式當自己的作品');
 
   click('pj-go-show');
   ok(api.tab() === 'show' && !!el.querySelector('#pj-problem'), '★ 進到成果發表');
+  /* ⚠️⚠️ 加註**要真的出現在畫面上** —— 只放在資料裡沒有用。
+     ★ 第一版只查 SHOW_Q[1].hint 的內容，把渲染那一行拿掉照樣綠。 */
+  {
+    const hint = el.querySelector('.pj-hint');
+    ok(!!hint, '★★ 第二句旁邊真的印出那行加註');
+    const t = hint ? hint.textContent : '';
+    ok(/如果/.test(t) && /那麼/.test(t) && /否則/.test(t),
+       '★★ 而且「如果…那麼…否則…」三個字都在（老師 2026-08-25 指定）');
+  }
   set('pj-team', '二年三班第 4 組');
   set('pj-problem', '晚上回家玄關太暗，開燈要摸半天');
   set('pj-when', '有人走到門口三十公分內'); set('pj-then', '燈條慢慢亮成暖黃色');
@@ -416,10 +414,12 @@ section('★ 規矩');
   ok(!/PROJLAB/.test(plan), '★★ planlab 也不知道 projlab');
   ok(!/PLANLAB|PROJLAB/.test(read('shared/labkit.js')), '★★ labkit 不知道它們的存在');
   ok(!/stars/.test(plan) && !/stars/.test(proj), '★★ 不碰 stars —— 5016B 不計星');
-  /* ★ 顏色的算法在 labkit（第四、五節共用），不可以有兩份。 */
-  ok(/LK\(\)\.hueRgb\(/.test(proj) && /LK\(\)\.hueRgb\(/.test(read('shared/rgblab.js')),
+  /* ★ 顏色的算法在 labkit —— 第五節現在只有**複習盤**在用（燈條舞台收掉了）。 */
+  ok(/LK\(\)\.hueRgb\(/.test(read('shared/planlab.js')) &&
+     /LK\(\)\.hueRgb\(/.test(read('shared/rgblab.js')),
      '★★ 色相換顏色走 labkit（第四、五節同一份）');
-  ok(!/function hueRgb\(h\) \{\n    var x/.test(proj), '   projlab 自己不再寫一份');
+  ok(!/function hueRgb\(/.test(proj) && !/function hueRgb\(/.test(read('shared/planlab.js')),
+     '   兩支都沒有自己再寫一份');
 }
 
 section('★★ 第五節接上頁面了');
