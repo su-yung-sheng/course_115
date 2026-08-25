@@ -9,10 +9,14 @@
       逼他在動手之前**把要做什麼講清楚**。
       ★ 專題課最常見的卡關不是不會寫程式，是「還沒想好要做什麼」。
 
-   三個節點：
-     ① 選一個情境（可以自訂）
-     ② 選 1 個輸入 ＋ 1 個輸出
-     ③ 把「如果…那麼…」補完整（觸發條件 ＋ 輸出動作）
+   四個節點：
+     ① ★ 先複習：學過的四樣怎麼配（老師 2026-08-25：
+        「這一段應該在最開始的地方，提示學生目前學過了這四個，
+          可以相互組合，例如點選超音波配燈號順序等等，
+          讓學生先花一點時間複習元件」）
+     ② 選一個情境（可以自訂）
+     ③ 選 1 個輸入 ＋ 1 個輸出
+     ④ 把「如果…那麼…」補完整（觸發條件 ＋ 輸出動作）
 
    ⚠️⚠️ 元件清單只放**前四節真的用過**的那四樣（老師 2026-08-25 更正：
       超音波、可變電阻、RGB 燈條、直流馬達）。憑空多寫一個教具上沒有的，
@@ -59,9 +63,51 @@
   var OUTPUTS = [
     { key: 'strip', t: 'RGB 全彩燈條', from: '第二、四節',
       acts: ['整條亮起指定顏色', '只亮其中一顆（位置會跑）', '顏色跟著變'] },
-    { key: 'moto',  t: '直流馬達（風扇）', from: '第三節',
+    { key: 'moto',  t: '直流馬達', from: '第三節',
       acts: ['開始轉動', '停下來', '依比例調整轉速'] }
   ];
+
+  /* ── ① 元件複習盤 ─────────────────────────────────
+     ★ 老師 2026-08-25：「這一段應該在最開始的地方，提示學生
+       目前學過了這四個，可以相互組合，例如點選超音波配燈號順序等等，
+       讓學生先花一點時間複習元件」。
+     ⚠️ 所以這一關**不出題、不判對錯** —— 只要求「四種組合都親手試過」。
+        專題課的卡關多半是「我不知道這兩樣湊起來能幹嘛」，
+        講一遍沒有用，要自己拉滑桿看它動。
+     ★ 轉速用 −250～250（第三節那一組）—— 不可以自己發明百分比。 */
+  var SPD = 250, LEDS = 8, HUE_MAX = 359;
+  var ACTS = {
+    strip: [
+      { key: 'seq',  t: '燈號順序（只亮一顆，位置會跑）', from: '第二節',
+        can: '做成停車距離指示、樓梯夜燈 —— 位置本身就是資訊。' },
+      { key: 'bar',  t: '長條（越大亮越多顆）', from: '第二節',
+        can: '做成電量、音量、距離的「條」—— 一眼看得出多還是少。' },
+      { key: 'hue',  t: '整條變色（走完色環）', from: '第四節',
+        can: '做成氣氛燈、狀態燈 —— 綠色安全、紅色警告。' }
+    ],
+    moto: [
+      { key: 'onoff', t: '轉或停（過了門檻才轉）', from: '第一節的判斷',
+        can: '做成感應風扇、自動門 —— 最單純，先做這個一定會動。' },
+      { key: 'ratio', t: '依比例調轉速（−250～250）', from: '第三節',
+        can: '做成可調速電扇；負的代表**反轉**，中間是停。' }
+    ]
+  };
+  function actsOf(out) { return ACTS[out] || []; }
+  /* 輸入的原始值 → 這個做法會做出什麼。★ 只有這一個地方在算，畫面照著畫。 */
+  function effectOf(inKey, out, act, raw) {
+    /* 先把兩種輸入都換成 0～1 的「強度」——
+       ⚠️ 超音波是**越近越強**（反向，第二節那一課）。 */
+    var k = (inKey === 'us')
+      ? Math.max(0, Math.min(1, (60 - Math.max(2, Math.min(200, raw))) / 55))
+      : Math.max(0, Math.min(1, raw / 100));
+    if (out === 'moto') {
+      if (act === 'onoff') return { fan: k > 0.5 ? SPD : 0, lo: 0 };
+      return { fan: Math.round(-SPD + 2 * SPD * k), lo: -SPD };
+    }
+    if (act === 'seq') return { on: [Math.round(1 + (LEDS - 1) * k)], hue: 200 };
+    if (act === 'bar') return { n: Math.max(0, Math.round(k * LEDS)), hue: 140 };
+    return { all: true, hue: Math.round(HUE_MAX * k) };
+  }
 
   function byKey(list, k) {
     return list.filter(function (x) { return x.key === k; })[0] || null;
@@ -121,6 +167,21 @@
     'border:2px solid #cbd5e1;border-radius:12px;box-sizing:border-box}' +
   '.pl-row{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin:10px 0;' +
     'font-weight:900;font-size:15px}' +
+  '.pl-chip{padding:8px 12px;border:2px solid #e2e8f0;border-radius:12px;background:#fff;' +
+    'font-weight:900;font-size:14px;cursor:pointer;text-align:left;line-height:1.5}' +
+  '.pl-chip:hover{border-color:#7c3aed}' +
+  '.pl-chip.on{border-color:#7c3aed;background:#f5f3ff;box-shadow:0 0 0 3px #ede9fe}' +
+  '.pl-chip span{display:block;font-size:11px;color:#64748b;font-weight:800}' +
+  '.pl-sel{font-size:14px;font-weight:900;padding:8px 10px;border:2px solid #cbd5e1;' +
+    'border-radius:10px}' +
+  '.pl-stage{background:#0f172a;border-radius:14px;padding:16px;margin:10px 0;' +
+    'display:flex;flex-direction:column;align-items:center;gap:10px}' +
+  '.pl-strip{display:flex;gap:5px;justify-content:center}' +
+  '.pl-led{width:28px;height:28px;border-radius:50%;border:2px solid #334155}' +
+  '.pl-read{color:#e2e8f0;font-weight:900;font-size:15px;text-align:center}' +
+  '.pl-read span{display:block;font-size:12px;color:#94a3b8;font-weight:800}' +
+  '.pl-tip{background:#fffbeb;border:2px solid #fcd34d;border-radius:12px;padding:11px 13px;' +
+    'font-weight:800;font-size:14px;color:#78350f;line-height:1.8;margin-top:8px}' +
   '.pl-dots{display:flex;gap:6px;margin-bottom:12px}' +
   '.pl-dot{flex:1;height:6px;border-radius:3px;background:#e2e8f0}' +
   '.pl-dot.on{background:#7c3aed}.pl-dot.ok{background:#10b981}';
@@ -138,15 +199,86 @@
     ensureCss();
     var esc = LK().esc, md = LK().md;
     var node = 1, tries = 0;
+    /* ① 複習盤的狀態。⚠️ tried 記「哪幾種組合親手試過」。 */
+    var mx = { input: 'us', output: 'strip', act: 'seq', raw: 40, tried: {} };
     /* ★ 帶著上次的設計單回來（改主意很正常，不必從頭選）。 */
     var p = Object.assign({ scene: '', input: '', output: '', act: '',
                             value: '', dir: 'lt' }, opts.plan || {});
 
     function dots() {
-      return '<div class="pl-dots">' + [1, 2, 3].map(function (i) {
+      return '<div class="pl-dots">' + [1, 2, 3, 4].map(function (i) {
         return '<div class="pl-dot ' + (node > i ? 'ok' : (node === i ? 'on' : '')) + '"></div>';
       }).join('') + '</div>';
     }
+    /* ① 元件複習盤 */
+    function mixStage() {
+      var e = effectOf(mx.input, mx.output, mx.act, mx.raw);
+      if (mx.output === 'moto') {
+        return '<div class="pl-stage">' + LK().fanHtml(e.fan, SPD) +
+          '<div class="pl-read"><b>轉速 ' + e.fan + '</b>　' +
+          (e.fan === 0 ? '停止' : (e.fan > 0 ? '正轉' : '反轉')) +
+          '<span>範圍 ' + e.lo + ' ～ ' + SPD + '</span></div></div>';
+      }
+      var col = LK().hexOf(LK().hueRgb(e.hue)), leds = '';
+      for (var i = 1; i <= LEDS; i++) {
+        var on = e.all ? true : (e.on ? e.on.indexOf(i) >= 0 : i <= e.n);
+        leds += '<div class="pl-led" style="background:' + (on ? col : '#1e293b') +
+          (on ? ';box-shadow:0 0 12px ' + col : '') + '"></div>';
+      }
+      return '<div class="pl-stage"><div class="pl-strip">' + leds + '</div>' +
+        '<div class="pl-read">' +
+          (e.on ? '第 ' + e.on[0] + ' 顆' : (e.all ? '整條（色相 ' + e.hue + '）'
+                                                  : '亮 ' + e.n + ' 顆')) +
+        '</div></div>';
+    }
+    function mixHtml() {
+      var ins = PLIN(), a = actsOf(mx.output);
+      var act = a.filter(function (x) { return x.key === mx.act; })[0] || a[0];
+      var n = Object.keys(mx.tried).length;
+      return '<div class="pl-row">🔁 <b>第一步：先複習 —— 學過的就這四樣</b></div>' +
+        '<div style="font-size:14px;color:#475569;font-weight:700;margin-bottom:10px">' +
+        '★ 挑一個<b>輸入</b>配一個<b>輸出</b>，拉拉看下面的滑桿。<br>' +
+        '⚠️ <b>四種配法都要試過</b>（已試 ' + n + '／4）—— ' +
+        '知道每一樣能做什麼，等一下才想得出題目。</div>' +
+        '<div class="pl-row">輸入：' + ins.map(function (i) {
+          return '<button class="pl-chip' + (mx.input === i.key ? ' on' : '') +
+            '" data-mi="' + i.key + '">' + esc(i.t.replace(/（.*/, '')) +
+            '<span>' + esc(i.gives) + '</span></button>';
+        }).join('') + '</div>' +
+        '<div class="pl-row">輸出：' + OUTPUTS.map(function (o) {
+          return '<button class="pl-chip' + (mx.output === o.key ? ' on' : '') +
+            '" data-mo="' + o.key + '">' + esc(o.t) +
+            '<span>' + esc(o.from) + '用過</span></button>';
+        }).join('') + '</div>' +
+        '<div class="pl-row">做法：<select class="pl-sel" id="pl-mact">' +
+          a.map(function (x) {
+            return '<option value="' + x.key + '"' + (mx.act === x.key ? ' selected' : '') +
+              '>' + esc(x.t) + '</option>';
+          }).join('') + '</select></div>' +
+        '<div id="pl-mstage">' + mixStage() + '</div>' +
+        '<div class="pl-row"><label style="min-width:64px">' +
+          (mx.input === 'us' ? '距離' : '旋鈕') + '</label>' +
+          '<input type="range" id="pl-mraw" style="flex:1" ' +
+            (mx.input === 'us' ? 'min="2" max="200"' : 'min="0" max="100"') +
+            ' value="' + mx.raw + '"><b id="pl-mval" style="min-width:74px;text-align:right">' +
+            mx.raw + (mx.input === 'us' ? ' cm' : ' %') + '</b></div>' +
+        '<div class="pl-tip">💡 <b>' + esc(act.t) + '</b>（' + esc(act.from) + '）<br>' +
+          esc(act.can) + '</div>' +
+        '<div class="pl-row" style="justify-content:center;margin-top:14px">' +
+          '<button class="dl-go" id="pl-n0"' + (n < 4 ? ' style="background:#94a3b8"' : '') +
+          '>' + (n < 4 ? '還有 ' + (4 - n) + ' 種沒試過' : '四種都試過了，下一步') +
+          '</button></div>';
+    }
+    function PLIN() { return INPUTS; }
+    /* ⚠️ 拉滑桿時只換舞台那一塊 —— 整頁重畫會讓滑桿失焦。 */
+    function mixPaint() {
+      var st = el.querySelector('#pl-mstage');
+      if (st) st.innerHTML = mixStage();
+      var b = el.querySelector('#pl-mval');
+      if (b) b.textContent = mx.raw + (mx.input === 'us' ? ' cm' : ' %');
+    }
+    function markTried() { mx.tried[mx.input + '|' + mx.output] = 1; }
+
     function preview() {
       var line = planLine(p);
       return '<div class="pl-line">' +
@@ -158,8 +290,10 @@
     function view(msg, cls) {
       var body;
       if (node === 1) {
+        body = mixHtml();
+      } else if (node === 2) {
         body =
-          '<div class="pl-row">📋 <b>第一步：你想解決什麼問題？</b></div>' +
+          '<div class="pl-row">📋 <b>第二步：你想解決什麼問題？</b></div>' +
           '<div style="font-size:14px;color:#475569;font-weight:700;margin-bottom:10px">' +
           '⚠️ 先想「誰會用、什麼時候用」，不要先想程式怎麼寫。</div>' +
           '<div class="pl-grid">' +
@@ -175,10 +309,10 @@
             (SCENES.some(function (s) { return s.t === p.scene; }) ? '' : esc(p.scene)) + '">' +
           '<div class="pl-row" style="justify-content:center;margin-top:14px">' +
             '<button class="dl-go" id="pl-n1">下一步</button></div>';
-      } else if (node === 2) {
+      } else if (node === 3) {
         body =
           preview() +
-          '<div class="pl-row">🔌 <b>第二步：選 1 個輸入</b>　（系統靠什麼知道該動作了？）</div>' +
+          '<div class="pl-row">🔌 <b>第三步：選 1 個輸入</b>　（系統靠什麼知道該動作了？）</div>' +
           '<div class="pl-grid">' +
             INPUTS.map(function (i) {
               return '<button class="pl-card' + (p.input === i.key ? ' on' : '') +
@@ -202,7 +336,7 @@
         var i = byKey(INPUTS, p.input), o = byKey(OUTPUTS, p.output);
         body =
           preview() +
-          '<div class="pl-row">🧩 <b>第三步：把「如果…那麼…」補完整</b></div>' +
+          '<div class="pl-row">🧩 <b>第四步：把「如果…那麼…」補完整</b></div>' +
           '<div class="pl-row">如果　' + esc(i.t.replace(/（.*/, '')) +
             '　<select class="pl-in" id="pl-dir" style="width:88px">' +
               '<option value="lt"' + (p.dir === 'lt' ? ' selected' : '') + '>小於</option>' +
@@ -238,6 +372,34 @@
     }
 
     function bind() {
+      /* ── ① 複習盤 ── */
+      el.querySelectorAll('[data-mi]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          mx.input = b.getAttribute('data-mi');
+          mx.raw = mx.input === 'us' ? 40 : 50;
+          markTried(); view('', '');
+        });
+      });
+      el.querySelectorAll('[data-mo]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          mx.output = b.getAttribute('data-mo');
+          mx.act = actsOf(mx.output)[0].key;
+          markTried(); view('', '');
+        });
+      });
+      var ma = el.querySelector('#pl-mact');
+      if (ma) ma.addEventListener('change', function () { mx.act = ma.value; view('', ''); });
+      var mr = el.querySelector('#pl-mraw');
+      if (mr) mr.addEventListener('input', function () {
+        mx.raw = Number(mr.value); markTried(); mixPaint();
+      });
+      var n0 = el.querySelector('#pl-n0');
+      if (n0) n0.addEventListener('click', function () {
+        if (Object.keys(mx.tried).length < 4)
+          return view('⚠️ 還有配法沒試過 —— **四種都拉一次**，' +
+                      '不然等一下想題目的時候會忘記某一樣能做什麼。', 'bad');
+        node = 2; view('', '');
+      });
       el.querySelectorAll('[data-scene]').forEach(function (b) {
         b.addEventListener('click', function () {
           p.scene = b.getAttribute('data-scene'); view('', '');
@@ -266,18 +428,18 @@
       if (n1) n1.addEventListener('click', function () {
         grab();
         if (!p.scene) return view('先選一個情境，或在下面自己寫一個。', 'bad');
-        node = 2; view('', '');
+        node = 3; view('', '');
       });
       var n2 = el.querySelector('#pl-n2');
       if (n2) n2.addEventListener('click', function () {
         grab();
         if (!p.input || !p.output) return view(sayPlan(p), 'bad');
-        node = 3; view('', '');
+        node = 4; view('', '');
       });
       var b2 = el.querySelector('#pl-b2');
-      if (b2) b2.addEventListener('click', function () { grab(); node = 1; view('', ''); });
+      if (b2) b2.addEventListener('click', function () { grab(); node = 2; view('', ''); });
       var b3 = el.querySelector('#pl-b3');
-      if (b3) b3.addEventListener('click', function () { grab(); node = 2; view('', ''); });
+      if (b3) b3.addEventListener('click', function () { grab(); node = 3; view('', ''); });
       var dn = el.querySelector('#pl-done');
       if (dn) dn.addEventListener('click', doDone);
       var ta = el.querySelector('#pl-own');
@@ -309,7 +471,8 @@
   }
 
   global.PLANLAB = {
-    SCENES: SCENES, INPUTS: INPUTS, OUTPUTS: OUTPUTS,
+    SCENES: SCENES, INPUTS: INPUTS, OUTPUTS: OUTPUTS, ACTS: ACTS, SPD: SPD, LEDS: LEDS,
+    actsOf: actsOf, effectOf: effectOf,
     byKey: byKey, planLine: planLine, planReady: planReady, sayPlan: sayPlan,
     mount: mount
   };

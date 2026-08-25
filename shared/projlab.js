@@ -39,6 +39,13 @@
   var FULL = 5;                  // 幾公分以內就算「貼著了」（全開）
   var DIST_MIN = 2, DIST_MAX = 200;
   var HUE_MAX = 359;
+  /* ⚠️⚠️ 老師 2026-08-25：「風扇轉速 42% 數值應該是 -250 ~ 250」。
+     ★ 對 —— 第三節的積木就是 類比對應(A7, −250, 250)，
+       這裡寫成百分比等於**自己發明了第五個範圍**
+       （這門課已經有 1023／255／359 三個容易混的了）。
+     ⇒ 手動：−250～250（中間停、兩邊反轉，就是第三節的 C 那一題）
+       自動：0～250（只往一邊轉 —— 第三節也講過「只往一邊的話 0 就是對的」） */
+  var SPD = 250;
 
   function norm(s) { return String(s == null ? '' : s).replace(/\s+/g, ''); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, Number(v) || 0)); }
@@ -67,14 +74,16 @@
     var k = Math.min(1, (NEAR - d) / (NEAR - FULL));  // 0（剛好 30cm）～1（貼著）
     return { on: Math.max(1, Math.round(k * LEDS)),
              hue: Math.round(120 - 120 * k),          // 綠 → 紅
-             speed: Math.round(k * 100), near: true };
+             /* 自動只往一邊轉 → 下限是 0（第三節 B 講過的那個對照）。 */
+             speed: Math.round(k * SPD), lo: 0, near: true };
   }
   /* 手動模式：旋鈕 → 顏色／第幾顆／轉速。 */
   function manualOf(pct) {
     var p = clamp(pct, 0, 100);
     return { on: Math.round(1 + (LEDS - 1) * p / 100),
              hue: Math.round(HUE_MAX * p / 100),
-             speed: Math.round(p), near: true };
+             /* 旋鈕最左 −250、正中間 0（停）、最右 250 —— 第三節那一組。 */
+             speed: Math.round(-SPD + 2 * SPD * p / 100), lo: -SPD, near: true };
   }
 
   /* ── 成果發表的三句 ────────────────────────────────
@@ -262,8 +271,7 @@
   '.pj-led{width:28px;height:28px;border-radius:50%;border:2px solid #334155}' +
   '.pj-fan{display:flex;align-items:center;justify-content:center;gap:12px;' +
     'color:#e2e8f0;font-weight:900;font-size:15px}' +
-  '.pj-blade{width:46px;height:46px;border-radius:50%;border:3px solid #64748b;' +
-    'display:flex;align-items:center;justify-content:center;font-size:20px}' +
+
   '.pj-read{text-align:center;color:#94a3b8;font-weight:900;font-size:14px;margin-top:10px;' +
     'font-variant-numeric:tabular-nums}' +
   '.pj-sl{display:flex;align-items:center;gap:10px;font-weight:900;font-size:15px;margin:10px 0}' +
@@ -344,10 +352,13 @@
         leds += '<div class="pj-led" style="background:' + (on ? col : '#1e293b') +
           (on ? ';box-shadow:0 0 12px ' + col : '') + '"></div>';
       }
+      var spd = st.speed, dirTxt = spd === 0 ? '停止'
+        : (spd > 0 ? '正轉' : '反轉');
       return '<div class="pj-stage"><div class="pj-strip">' + leds + '</div>' +
-        '<div class="pj-fan"><div class="pj-blade" style="color:' +
-          (st.speed > 0 ? '#38bdf8' : '#475569') + '">✦</div>' +
-          (st.speed > 0 ? '風扇轉速 ' + st.speed + '%' : '風扇停止') + '</div>' +
+        '<div class="pj-fan">' + LK().fanHtml(spd, SPD) +
+          '<div><b>風扇轉速 ' + spd + '</b>' +
+          '<span style="display:block;font-size:12px;color:#94a3b8">' +
+            dirTxt + '　（範圍 ' + st.lo + ' ～ ' + SPD + '）</span></div></div>' +
         '<div class="pj-read">' +
           (mode === 'auto'
             ? '距離 ' + cm + ' 公分　｜　' + (st.near ? '有人來了' : '沒人（超過 ' + NEAR + ' 公分）')
@@ -370,12 +381,15 @@
             '<input type="range" id="pj-cm" min="' + DIST_MIN + '" max="' + DIST_MAX +
               '" value="' + cm + '"><b>' + cm + ' cm</b></div>' +
             '<div class="pj-note">⚠️ 拉到 ' + NEAR + ' 公分以內才會有反應 —— ' +
-            '那個 ' + NEAR + ' 就是<b>你要自己決定的門檻</b>。</div>'
+            '那個 ' + NEAR + ' 就是<b>你要自己決定的門檻</b>。<br>' +
+            '★ 這裡風扇只往一邊轉，所以下限寫 <b>0</b>（不是 −' + SPD + '）。</div>'
           : '<div class="pj-sl"><label>旋鈕</label>' +
             '<input type="range" id="pj-pct" min="0" max="100" value="' + pct + '"><b>' +
               pct + ' %</b></div>' +
             '<div class="pj-note">★ 這就是第三、四節的「類比對應」—— ' +
-            '同一個旋鈕，換算成<b>轉速</b>、<b>顏色</b>、<b>第幾顆</b>。</div>') +
+            '同一個旋鈕，換算成<b>轉速</b>、<b>顏色</b>、<b>第幾顆</b>。<br>' +
+            '⚠️ 轉速的範圍是 <b>−' + SPD + ' ～ ' + SPD + '</b>：' +
+            '旋鈕轉到<b>正中間</b>剛好是 0（停），往兩邊各是正轉和反轉。</div>') +
         '<div class="pj-pick">📝 想好了嗎？你的作品要做<b>' +
           MODES.map(function (x) { return x.t; }).join('</b>還是<b>') + '</b>？' +
           '<div class="pj-fill" style="margin-top:8px">' +
@@ -489,7 +503,8 @@
   }
 
   global.PROJLAB = {
-    MIN: MIN, LEDS: LEDS, NEAR: NEAR, FULL: FULL, HUE_MAX: HUE_MAX, MODES: MODES, SHOW_Q: SHOW_Q,
+    MIN: MIN, LEDS: LEDS, NEAR: NEAR, FULL: FULL, HUE_MAX: HUE_MAX, SPD: SPD,
+    MODES: MODES, SHOW_Q: SHOW_Q,
     autoOf: autoOf, manualOf: manualOf,
     judgeShow: judgeShow, sayShow: sayShow,
     cardHtml: cardHtml, drawCard: drawCard, printCard: printCard, downloadPng: downloadPng,

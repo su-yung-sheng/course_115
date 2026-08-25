@@ -288,7 +288,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">五節課微型課程</span>
                 </h1>
                 <p class="text-lg text-slate-500 leading-relaxed">
-                    本課程使用 <b>NKNU 5016B 教具模組</b>，運用超音波感測器與可變電阻，結合直流減速馬達與 RGB 燈條，學習自動感應與手動微調的機電邏輯，打造專屬的「智慧家庭控制系統」。
+                    本課程使用 <b>NKNU 5016B 教具模組</b>，運用超音波距離感測器與可變電阻（旋鈕），結合直流馬達與 RGB 全彩燈條，學習自動感應與手動微調的機電邏輯，打造專屬的「智慧家庭控制系統」。
                 </p>
                 <div class="flex gap-4 pt-4">
                     <button onclick="scrollToCurriculum()" class="bg-primary text-white px-6 py-3 rounded-lg font-bold shadow-lg hover:bg-emerald-600 hover:shadow-xl transition flex items-center gap-2">
@@ -350,7 +350,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         <span class="text-sm font-bold text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full">第一節課</span>
                     </div>
                     <h3 class="text-xl font-bold text-slate-800 mb-3">感應大門：超音波與馬達</h3>
-                    <p class="text-slate-600 mb-4 h-16">利用 HC-SR04 超音波量測距離，當有人靠近時，自動觸發直流減速馬達開啟車庫門或窗簾。</p>
+                    <p class="text-slate-600 mb-4 h-16">利用 HC-SR04 超音波量測距離，當有人靠近時，自動觸發直流馬達開啟車庫門或窗簾。</p>
                     <div class="border-t border-slate-100 pt-4 mt-auto flex justify-between items-center">
                         <span class="text-xs text-emerald-600 font-bold flex items-center gap-1"><i data-lucide="play-circle" class="w-4 h-4"></i> 含距離感測模擬器</span>
                         <i data-lucide="arrow-right" class="w-5 h-5 text-slate-500 group-hover:text-emerald-500 transition-colors"></i>
@@ -382,7 +382,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         <span class="text-sm font-bold text-amber-600 bg-amber-100 px-3 py-1 rounded-full">第三節課</span>
                     </div>
                     <h3 class="text-xl font-bold text-slate-800 mb-3">無段風扇：可變電阻與馬達</h3>
-                    <p class="text-slate-600 mb-4 h-16">讀取可變電阻的類比值 (Analog)，透過映射 (Map) 轉換為 PWM 訊號，精準控制直流馬達的轉速。</p>
+                    <p class="text-slate-600 mb-4 h-16">讀取可變電阻的類比值 (Analog)，透過「類比對應」換算成馬達的轉速，精準控制直流馬達的轉速。</p>
                     <div class="border-t border-slate-100 pt-4 mt-auto flex justify-between items-center">
                         <span class="text-xs text-amber-600 font-bold flex items-center gap-1"><i data-lucide="play-circle" class="w-4 h-4"></i> 含PWM轉速模擬器</span>
                         <i data-lucide="arrow-right" class="w-5 h-5 text-slate-500 group-hover:text-amber-500 transition-colors"></i>
@@ -398,7 +398,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         <span class="text-sm font-bold text-purple-600 bg-purple-100 px-3 py-1 rounded-full">第四節課</span>
                     </div>
                     <h3 class="text-xl font-bold text-slate-800 mb-3">情境照明：可變電阻與燈條</h3>
-                    <p class="text-slate-600 mb-4 h-16">取代傳統開關，使用旋鈕（可變電阻）手動無段調節室內 RGB 燈條的亮度與色彩氛圍。</p>
+                    <p class="text-slate-600 mb-4 h-16">取代傳統開關，使用旋鈕（可變電阻）手動無段調節室內 RGB 全彩燈條的亮度與色彩氛圍。</p>
                     <div class="border-t border-slate-100 pt-4 mt-auto flex justify-between items-center">
                         <span class="text-xs text-purple-600 font-bold flex items-center gap-1"><i data-lucide="play-circle" class="w-4 h-4"></i> 含類比調光模擬器</span>
                         <i data-lucide="arrow-right" class="w-5 h-5 text-slate-500 group-hover:text-purple-500 transition-colors"></i>
@@ -699,8 +699,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                           '⚠️ 它們都<span class="hl">沒有眼睛</span> —— 鐵捲門不知道自己捲到頂了沒有，' +
                           '靠的是<span class="hl-b">時間</span>。這一節課要做的就是這件事。',
                 objectives: [
-                    "認識超音波感測器 (Trig 發射 / Echo 接收) 的測距原理",
-                    "用「正轉 / 反轉 / 停」三個狀態控制直流減速馬達",
+                    "認識超音波距離感測器 (Trig 發射 / Echo 接收) 的測距原理",
+                    "用「正轉 / 反轉 / 停」三個狀態控制直流馬達",
                     "用『等待幾秒』決定<span class=\"hl\">馬達轉多久</span> —— 並實測出自己這組的秒數",
                     "用一個變數記住『門現在開著還是關著』，避免重複開門",
                     "認識門檻的『中間地帶』(10～20cm)：避免門一直開開關關"
@@ -720,8 +720,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                      教室裡本來就是這套設備，寫出來反而像在提醒有別的可能。 */
                 materials: [
                     "NKNU 5016B 教具模組",
-                    "超音波感測器（腳位對照：Trig = A2、Echo = A3）",
-                    "直流減速馬達（腳位對照：馬達 腳位 2、3）"
+                    "超音波距離感測器（腳位對照：Trig = A2、Echo = A3）",
+                    "直流馬達（腳位對照：馬達 腳位 2、3）"
                 ],
                 initPlayground: function(container) {
                     /* ★ 2026-08-24 老師：「測量距離的拉吧相反了，配合程式，
@@ -845,7 +845,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 <span class="col-span-2"><span class="text-sky-600">變數</span> 門的狀態 <span class="text-rose-600">設為</span> <span class="text-indigo-600">「關」</span></span>
 <span class="col-span-2">&nbsp;</span>
 <span class="col-span-2"><span class="text-rose-600">無限重複執行</span></span>
-<span class="col-span-2">  <span class="text-sky-600">變數</span> 距離 <span class="text-rose-600">設為</span> <span class="text-amber-600">讀取超音波感測器 (公分)</span></span>
+<span class="col-span-2">  <span class="text-sky-600">變數</span> 距離 <span class="text-rose-600">設為</span> <span class="text-amber-600">讀取超音波距離感測器 (公分)</span></span>
 <span class="col-span-2">&nbsp;</span>
 <span class="col-span-2 text-emerald-600">  // ② 有人靠近，而且門還關著 → 開門</span>
 <span class="col-span-2">  <span class="text-rose-600">如果</span> <span class="text-sky-600">距離</span> &lt; <span class="text-indigo-600">10</span> <span class="text-rose-600">而且</span> <span class="text-sky-600">門的狀態</span> = <span class="text-indigo-600">「關」</span> <span class="text-rose-600">則</span></span>
@@ -909,13 +909,13 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                           '所以需要一塊新積木：<b>對應</b>。',
                 objectives: [
                     "認識 WS2812B 的「定址」特性：一條線就能分別控制每一顆燈珠",
-                    "應用數學映射 (Map) 概念：將距離數值 (例如 10~100cm) 轉換為燈珠數量 (1~8顆)",
+                    "應用<span class=\"hl\">類比對應</span>：把距離數值（例如 10~100 公分）換算成燈珠數量 (1~8顆)",
                     "撰寫迴圈 (For-Loop) 來動態更新燈條的點亮與熄滅狀態"
                 ],
                 materials: [
                     "NKNU 5016B 教具模組",
-                    "超音波感測器（腳位對照：Trig = A2、Echo = A3）",
-                    "WS2812B RGB 全彩燈條（8 顆燈珠）"
+                    "超音波距離感測器（腳位對照：Trig = A2、Echo = A3）",
+                    "RGB 全彩燈條（WS2812B，8 顆燈珠）"
                 ],
                 initPlayground: function(container) {
                     container.innerHTML = `
@@ -1121,7 +1121,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 colorText: "text-amber-400",
                 colorBg: "bg-amber-500",
                 icon: "fan",
-                desc: "自動控制很方便，但我們也需要手動微調的能力！本單元引入「可變電阻 (旋鈕)」，讀取其類比電壓值，並透過 PWM 脈衝寬度調變技術，精準控制直流馬達的轉速（如同家中的無段風扇）。",
+                desc: "自動控制很方便，但我們也需要手動微調的能力！本單元引入「可變電阻（旋鈕）」，讀取其類比電壓值，並透過 PWM 脈衝寬度調變技術，精準控制直流馬達的轉速（如同家中的無段風扇）。",
                 /* 🎯 第三節的暖身：可變電阻原理 ＋ **接線練習**
                    （老師 2026-08-24：「第三關的可變電阻因為開發板沒有，
                    這裡增加了一個接線動作，連接到開發板上的 A7」）。
@@ -1151,9 +1151,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 ],
                 materials: [
                     "NKNU 5016B 教具模組",
-                    "旋鈕式可變電阻（10K）＋ 麵包板、杜邦線三條",
+                    "可變電阻（旋鈕，10K）＋ 麵包板、杜邦線三條",
                     "⚠️ 這一顆<b>不在模組上</b>，要自己接：開發板 <b>G→腳1</b>、<b>P→腳3</b>、<b>S→腳2</b>（訊號進 <b>A7</b>）",
-                    "直流減速馬達（腳位對照：馬達 腳位 2、3）"
+                    "直流馬達（腳位對照：馬達 腳位 2、3）"
                 ],
                 initPlayground: function(container) {
                     container.innerHTML = `
@@ -1369,8 +1369,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 ],
                 materials: [
                     "NKNU 5016B 教具模組",
-                    "旋鈕式可變電阻（10K）—— 接法同第三節：G→腳1、P→腳3、S→腳2（訊號進 <b>A7</b>）",
-                    "WS2812B RGB 全彩燈條"
+                    "可變電阻（旋鈕，10K）—— 接法同第三節：G→腳1、P→腳3、S→腳2（訊號進 <b>A7</b>）",
+                    "RGB 全彩燈條（WS2812B）"
                 ],
                 /* ⚠️⚠️ 老師 2026-08-25：「旋鈕輸入 (Hue): 976　色相角: 343° 這個操作沒有說明?
                    是不是一直都沒有說明可變電阻的數值是 0-1023?」
@@ -1574,7 +1574,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 ],
                 materials: [
                     "NKNU 5016B 教具模組",
-                    "前四節用過的元件：超音波距離感測器、可變電阻旋鈕、RGB 燈條、直流馬達",
+                    "前四節用過的元件：超音波距離感測器、可變電阻（旋鈕）、RGB 全彩燈條、直流馬達",
                     "專題設計單（就在下面，先把要做什麼講清楚）"
                 ],
                 initPlayground: function(container) {
@@ -1590,7 +1590,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     ];
                     const OUTS = [
                         { k: 'strip', t: 'RGB 全彩燈條', d: '顏色、亮第幾顆', from: '第二、四節' },
-                        { k: 'moto',  t: '直流馬達（風扇）', d: '轉／停／快慢', from: '第三節' }
+                        { k: 'moto',  t: '直流馬達', d: '轉／停／快慢', from: '第三節' }
                     ];
                     const IDEA = {
                         'us|strip': '有人靠近就亮的玄關燈；或越近亮越多顆，變成停車距離指示。',

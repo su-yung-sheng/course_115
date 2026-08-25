@@ -98,10 +98,82 @@ section('★★ 兩種模式：同一組硬體，兩種玩法');
      '★★ 旋鈕兩端 → 第 1 顆／第 ' + J.LEDS + ' 顆（八顆都到得了）');
   ok(J.manualOf(0).hue === 0 && J.manualOf(100).hue === J.HUE_MAX,
      '★★ 色環 0～' + J.HUE_MAX + '（和第四節同一組）');
-  ok(J.manualOf(50).speed === 50, '★ 轉速就是旋鈕的百分比');
+  /* ⚠️⚠️ 老師 2026-08-25：「風扇轉速 42% 數值應該是 -250 ~ 250」。
+     ★ 對 —— 第三節的積木就是 類比對應(A7, −250, 250)。
+       寫成百分比等於**自己發明了第五個範圍**
+       （這門課已經有 1023／255／359 三個容易混的了）。 */
+  ok(J.SPD === 250, '★ 轉速上限 250（第三節那一組）');
+  ok(J.manualOf(50).speed === 0, '★★ 旋鈕正中間 → 轉速 0（停）');
+  ok(J.manualOf(0).speed === -J.SPD && J.manualOf(100).speed === J.SPD,
+     '★★ 兩端是 −' + J.SPD + ' 和 ' + J.SPD + '（不是百分比）');
+  ok(J.manualOf(0).lo === -J.SPD, '★ 手動的下限是負的（要能反轉）');
+  /* ★ 自動只往一邊轉 → 下限 0（第三節 B 講過的那個對照）。 */
+  ok(J.autoOf(J.FULL).speed === J.SPD && J.autoOf(J.FULL).lo === 0,
+     '★★ 自動模式只往一邊轉，下限是 0');
+  ok(J.autoOf(150).speed === 0, '   遠的時候停著');
   /* 夾住 —— 滑桿以外的值不可以爆掉。 */
   ok(J.manualOf(-30).on === 1 && J.manualOf(300).on === J.LEDS, '   超出範圍會夾住');
   ok(J.autoOf(-5).near && J.autoOf(9999).near === false, '   距離也夾得住');
+}
+
+section('★★ ① 元件複習盤（老師：這一段要在最開始）');
+{
+  /* ★ 老師 2026-08-25：「這一段應該在最開始的地方，提示學生目前學過了
+     這四個，可以相互組合，例如點選超音波配燈號順序等等，
+     讓學生先花一點時間複習元件」。 */
+  ok(P.actsOf('strip').length === 3 && P.actsOf('moto').length === 2,
+     '★ 燈條三種做法、馬達兩種做法');
+  ok(P.actsOf('strip').some(a => /燈號順序/.test(a.t)),
+     '★★ 有「燈號順序」這個做法（老師點名的例子）');
+  ok(P.actsOf('strip').concat(P.actsOf('moto')).every(a => a.from && a.can),
+     '★★ 每一種做法都標「第幾節學的」和「可以拿來做什麼」');
+  /* ⚠️ 超音波是**越近越強**（反向）—— 第二節那一課。 */
+  const near = P.effectOf('us', 'strip', 'bar', 5).n;
+  const far = P.effectOf('us', 'strip', 'bar', 55).n;
+  ok(near > far, '★★ 超音波越近亮越多顆（反向，第二節那一課）');
+  ok(P.effectOf('pot', 'strip', 'bar', 100).n > P.effectOf('pot', 'strip', 'bar', 10).n,
+     '★ 旋鈕是正比');
+  ok(P.effectOf('pot', 'strip', 'seq', 0).on[0] === 1 &&
+     P.effectOf('pot', 'strip', 'seq', 100).on[0] === P.LEDS,
+     '★★ 燈號順序：只亮一顆，兩端都到得了');
+  /* ★★ 轉速一律 −250～250，不可以自己發明百分比。 */
+  ok(P.SPD === 250, '★ 轉速上限 250');
+  ok(P.effectOf('pot', 'moto', 'ratio', 50).fan === 0,
+     '★★ 旋鈕正中間 → 轉速 0（停）');
+  ok(P.effectOf('pot', 'moto', 'ratio', 0).fan === -P.SPD &&
+     P.effectOf('pot', 'moto', 'ratio', 100).fan === P.SPD, '★★ 兩端 ±250');
+  ok(P.effectOf('pot', 'moto', 'onoff', 90).lo === 0,
+     '★ 「轉或停」只往一邊 → 下限 0');
+}
+
+section('★★ ① 複習盤：四種配法都要親手試過');
+{
+  const box = W.document.createElement('div');
+  W.document.body.appendChild(box);
+  let plan = null;
+  const pa = P.mount(box, { onDone: i => { plan = i; } });
+  ok(pa.node() === 1, '★★ 一進來就是複習盤（老師：這一段要在最開始）');
+  ok(!!box.querySelector('#pl-mraw'), '   有可以拉的滑桿');
+  ok(/已試 1／4|已試 0／4/.test(box.textContent), '★ 畫面上顯示還差幾種');
+  /* ⚠️ 沒試完就想往下 → 要擋。 */
+  box.querySelector('#pl-n0').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(pa.node() === 1, '★★ 四種沒試完，按下一步跳不過去');
+  ok(/還有配法沒試過/.test(box.textContent), '   而且講清楚為什麼');
+  /* 四種都點過。 */
+  const tap = (sel) => box.querySelector(sel)
+    .dispatchEvent(new W.Event('click', { bubbles: true }));
+  [['us', 'strip'], ['us', 'moto'], ['pot', 'strip'], ['pot', 'moto']].forEach(c => {
+    tap('[data-mi="' + c[0] + '"]');
+    tap('[data-mo="' + c[1] + '"]');
+  });
+  ok(/已試 4／4/.test(box.textContent), '★ 四種都試過了');
+  box.querySelector('#pl-n0').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(pa.node() === 2, '★★ 試完才進得到「選情境」');
+  /* ⚠️ 拉滑桿時只換舞台那一塊 —— 整頁重畫會讓滑桿失焦。 */
+  ok(/function mixPaint\(\)[\s\S]{0,160}#pl-mstage[\s\S]{0,60}innerHTML/
+       .test(read('shared/planlab.js')),
+     '★★ 拉滑桿只換舞台那一塊，不整頁重畫');
+  ok(!plan, '   複習盤本身不算完成整張設計單');
 }
 
 section('★★ 成果發表：三句話（老師指定，文字不可改）');
@@ -276,8 +348,8 @@ section('★★ 第五節接上頁面了');
   ok(!/狀態機|State Machine/.test(u5), '★★ 舊草稿那組（狀態機）已經清掉');
   ok(!/0, 1023, 0, 255/.test(u5), '★★ 舊草稿那個 (0,1023,0,255) 的色相 bug 也一併消失');
   /* ★★ 老師 2026-08-25：「只有四個喔」 */
-  ok(/超音波距離感測器、可變電阻旋鈕、RGB 燈條、直流馬達/.test(u5),
-     '★★ 教材上的元件清單就那四樣');
+  ok(/超音波距離感測器、可變電阻（旋鈕）、RGB 全彩燈條、直流馬達/.test(u5),
+     '★★ 教材上的元件清單就那四樣，而且用的是統一過的全名');
   ok(!/按鈕|單顆 LED/.test(u5), '★★ 教材裡也不再出現按鈕或單顆 LED');
   /* 三張任務卡留在教材區（不是關卡）。 */
   ok(/基礎關/.test(u5) && /挑戰關/.test(u5) && /創意關/.test(u5), '★★ 三張任務卡都在教材區');

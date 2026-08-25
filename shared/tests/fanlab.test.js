@@ -175,7 +175,27 @@ section('★ 骨架與頁面');
   ok(!/FANLAB/.test(read('shared/labkit.js')), '★★ labkit 不知道 fanlab（相依單向）');
   ok(!/stars/.test(src), '★★ 不碰 stars');
   /* ★ 停的時候風扇圖不可以還在轉 —— 畫面和數字自相矛盾最糟。 */
-  ok(/s === 'stop' \? '🌀'/.test(src), '★ 停止時的圖示和轉動時不一樣');
+  /* ★ 老師 2026-08-25：「沒有風扇轉動動畫」。
+     ⚠️ 原本只是換一個 emoji —— 學生看不出「轉速 180」和「轉速 40」差在哪。
+        ⇒ 改用 labkit 那顆會轉的風扇（轉速依數字、方向依正負）。
+     ⚠️⚠️ 而且**停著的時候要一眼看得出是停的** ——
+        靜止的風扇和「正在轉但畫面沒動」長得一模一樣。 */
+  const K = W.LABKIT;
+  ok(/LK\(\)\.fanHtml\(/.test(src), '★ 風扇用 labkit 那顆會轉的（第三、五節同一顆）');
+  ok(/animation:lk-spin/.test(K.fanHtml(200, 250)), '★★ 有轉速就真的會轉');
+  ok(!/animation:lk-spin/.test(K.fanHtml(0, 250)), '★★ 停的時候不轉');
+  ok(/lk-fan stop/.test(K.fanHtml(0, 250)) && !/lk-fan stop/.test(K.fanHtml(200, 250)),
+     '★★ 停止時一眼看得出是停的（變淡＋轉灰），不是只有不動');
+  ok(/reverse/.test(K.fanHtml(-200, 250)) && !/reverse/.test(K.fanHtml(200, 250)),
+     '★★ 負的往反方向轉（第三節的重點就是那個負號）');
+  /* ⚠️ 從**畫出來的樣式**讀秒數 —— 不去戳內部函式，
+     那樣測到的才是學生真的看到的東西。 */
+  const dur = v => Number((K.fanHtml(v, 250).match(/lk-spin ([\d.]+)s/) || [])[1]);
+  ok(dur(250) < dur(60), '★ 數字越大轉越快（' + dur(60) + 's → ' + dur(250) + 's）');
+  /* ⚠️ 太快會糊成一個圓盤，反而看不出在轉、也看不出方向。 */
+  ok(dur(250) >= 0.3, '★★ 最快也不可以快到看不出在轉（' + dur(250) + ' 秒一圈）');
+  ok(/#f59e0b/.test(K.fanHtml(200, 250)),
+     '★★ 留一片不同色的葉片 —— 轉快的時候靠它才分得出方向');
 
   const page = read('11501/5016b.html');
   ok(/<script src="\.\.\/shared\/fanlab\.js"><\/script>/.test(page), '頁面載入 fanlab');

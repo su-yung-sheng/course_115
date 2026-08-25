@@ -228,9 +228,12 @@
     document.head.appendChild(st);
   }
   /** 風扇圖：停的時候不要轉（★ 停就是停，動畫還在轉就自相矛盾）。 */
+  /* ★ 老師 2026-08-25：「沒有風扇轉動動畫」。
+     ⚠️ 原本只是一個 emoji —— 學生看不出「轉速 180」和「轉速 40」差在哪。
+     ⇒ 改用 labkit 那顆**會轉的**風扇（第五節也用同一顆）。 */
   function fanHtml(v) {
     var s = stateOf(v);
-    return '<div class="fn-fan">' + (s === 'stop' ? '🌀' : (s === 'back' ? '🔄' : '💨')) + '</div>' +
+    return LK().fanHtml(v, HI) +
            '<div class="fn-val ' + s + '">' + v + '</div>' +
            '<div class="fn-state">' + sayState(v) + '</div>';
   }

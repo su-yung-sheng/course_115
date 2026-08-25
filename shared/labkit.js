@@ -116,6 +116,11 @@
 
   /* ═══ 畫面 ═══════════════════════════════════════════ */
   var CSS = '' +
+  /* 會轉的風扇（第三、五節共用）。★ 慢到最快都看得出方向。 */
+  '@keyframes lk-spin{to{transform:rotate(360deg)}}' +
+  '.lk-fan{display:flex;justify-content:center}' +
+  '.lk-fanb{width:72px;height:72px;display:block}' +
+  '.lk-fan.stop{opacity:.45;filter:grayscale(1)}' +
   /* 旋鈕（第三、四節共用）。★ touch-action:none 是必要的 ——
      不然手機上一拖就變成捲頁面，旋鈕不會動。 */
   '.lk-dial{display:block;margin:0 auto;width:190px;max-width:60vw;cursor:grab;' +
@@ -204,7 +209,7 @@
                'transform="rotate(' + t + ' 60 60)"/>';
     }
     return '<svg class="lk-dial ' + (o.cls || '') + '" viewBox="0 0 120 ' + h + '" ' +
-        'role="img" aria-label="可變電阻旋鈕">' +
+        'role="img" aria-label="可變電阻（旋鈕）">' +
       ticks +
       '<circle cx="60" cy="60" r="34" fill="#e7e5e4" stroke="#78716c" stroke-width="3"/>' +
       '<g id="' + (o.needleId || 'lk-needle') + '" transform="rotate(' + dialAngle(pct) + ' 60 60)">' +
@@ -275,6 +280,40 @@
     return { dragging: function () { return dragging; } };
   }
 
+  /* ═══ 會轉的風扇（第三、五節共用）═══════════════════
+     ★ 老師 2026-08-25：「沒有風扇轉動動畫」。
+     ⚠️ 原本三節都只畫一個 emoji（💨／🔄／🌀）—— 學生看不出
+        「轉速 180」和「轉速 40」差在哪，那個數字就只是個數字。
+     ⚠️⚠️ 但動畫**不是加了就看得見**（這個專案踩過）：
+        轉太快會糊成一個圓盤，反而看不出在轉、也看不出方向。
+        ⇒ 最快只到 0.32 秒一圈，而且留一片**不同顏色的葉片**當記號，
+          快轉的時候還是分得出正轉還是反轉。 */
+  var FAN_MAX = 250;             // 課本那組：類比對應(A7, -250, 250)
+  function fanSpin(v, max) {
+    var m = max || FAN_MAX, a = Math.min(1, Math.abs(Number(v) || 0) / m);
+    if (a < 0.02) return { dur: 0, rev: false, a: 0 };
+    return { dur: Math.round((2.4 - 2.08 * a) * 100) / 100, rev: (Number(v) || 0) < 0, a: a };
+  }
+  function fanHtml(v, max) {
+    var sp = fanSpin(v, max);
+    var style = sp.dur
+      ? 'animation:lk-spin ' + sp.dur + 's linear infinite' +
+        (sp.rev ? ' reverse' : '')
+      : '';
+    /* ⚠️ 停著的時候要**一眼看得出是停的** —— 不然靜止的風扇
+       和「正在轉但畫面沒動」長得一模一樣（螢幕截圖尤其分不出）。
+       ⇒ 停的時候整顆變淡、葉片轉灰。 */
+    return '<div class="lk-fan' + (sp.dur ? '' : ' stop') + '">' +
+      '<svg viewBox="0 0 100 100" class="lk-fanb" style="' + style + '">' +
+      '<circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="3"/>' +
+      /* ★ 第一片刻意不同色 —— 轉快的時候靠它才看得出方向。 */
+      '<ellipse cx="50" cy="26" rx="9" ry="21" fill="#f59e0b"/>' +
+      '<ellipse cx="50" cy="74" rx="9" ry="21" fill="#94a3b8"/>' +
+      '<ellipse cx="26" cy="50" rx="21" ry="9" fill="#94a3b8"/>' +
+      '<ellipse cx="74" cy="50" rx="21" ry="9" fill="#94a3b8"/>' +
+      '<circle cx="50" cy="50" r="9" fill="#475569"/></svg></div>';
+  }
+
   /* 色相 → 紅綠藍。★ 第四、五節都要用（顏色的算法不可以有兩份）。
      ⚠️ 刻意**不用 sin**（老師：那個公式有點難，不解釋）——
         這只是把角度換成一組顏色讓畫面看得見，學生不必看這一段。 */
@@ -303,6 +342,10 @@
        匯出了只會讓下一個人以為它被測過（「沒人用的匯出」那條當場抓到）。 */
     dialAngle: dialAngle,
     dialPctFromAngle: dialPctFromAngle,
+    /* ⚠️ FAN_MAX／fanSpin 不匯出 —— 只有測試在用不算「有人用」，
+       匯出了只會讓下一個人以為它是公開的。轉速與方向從 fanHtml
+       畫出來的樣式就驗得到。 */
+    fanHtml: fanHtml,
     hueRgb: hueRgb,
     hexOf: hexOf,
     dialSvg: dialSvg,
