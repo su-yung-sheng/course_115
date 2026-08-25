@@ -17,9 +17,9 @@
         ② 成果發表：三句話 → 一張帶得走的成果卡
 
    ⚠️ 成果卡不用 jsPDF 那一類的函式庫 —— 它們預設不含中文字型，
-      印出來會是一整排豆腐字。改用兩條零相依的路：
-        ① 瀏覽器原生列印（另存 PDF）—— 中文一定正確
-        ② canvas 自己畫成 PNG —— 版面我自己控，適合截圖／貼到作業
+      印出來會是一整排豆腐字。改成 canvas 自己畫成 PNG：
+      版面我自己控，中文一定正確，也適合截圖／貼到作業。
+      ★ 老師 2026-08-25：「保留下載成圖片就好」—— 列印那條路已經拿掉。
 
    ⚠️ 三張分層任務卡（基礎／挑戰／創意）**不在這裡** ——
       那是課堂進行的節奏，寫在教材區（頁面的 demoHTML）。
@@ -95,7 +95,7 @@
       words: '旋鈕|轉|%|百分|可變電阻',
       code: '轉速 ← 類比對應（A7，−250，250）\n設定馬達 = 轉速\n燈條顏色 ← 類比對應（A7，0，359）',
       note: '⚠️ 這樣寫從頭到尾**沒有一個「如果」** —— 它只是照著換算。' +
-            '★ 所以做手動的組別要**自己補一個條件**，例如：' +
+            '★ 所以做手動的人要**自己補一個條件**，例如：' +
             '「如果 旋鈕 < 5%，那麼 兩個都關掉」。' }
   ];
 
@@ -276,6 +276,22 @@
            '★ 遇到什麼 → 就用什麼解決 → 學到的就是從那件事來的。\n' +
            '（遇到「燈一直閃」、卻學到「顏色要調亮一點」—— 那是兩件事。）' }
   ];
+  /* ⚠️⚠️ 老師 2026-08-25：「重新再進入卡片時，如果沒有更動文字
+     應該不用再送 AI 助教吧?」
+     ★ 對 —— aiDone 只活在這一次掛載裡，換個分頁回來、重新整理，
+       同一份內容就會**再送一次**，而額度是全班共用的。
+     ⇒ 記住「上次送審的那份內容」的指紋，一起存進紀錄。
+       內容一個字都沒改 → 直接出卡，不送。
+     ⚠️ 指紋要算在**送出去的那段文字**上，不是算在整包 f ——
+        不然改個模式、換個名字也會被當成「內容變了」。 */
+  function sig(v) {
+    var t = aiText(v), h = 2166136261;
+    for (var i = 0; i < t.length; i++) {
+      h ^= t.charCodeAt(i);
+      h = (h * 16777619) >>> 0;
+    }
+    return String(h);
+  }
   function aiText(v) {
     return '（1）我要解決的問題是：' + v.problem + '\n' +
            '（2）當 ' + v.when + ' 時，燈條 ' + v.thenL + '、馬達 ' + v.thenM +
@@ -314,30 +330,45 @@
     }).catch(function () { return { skipped: true }; });
   }
 
-  /* ═══ 成果卡：列印（另存 PDF）與下載 PNG ═══════════ */
+  /* ═══ 成果卡：下載成 PNG ═════════════════════════════ */
   /* ⚠️⚠️ cardLines() 是**下載 PNG 那一版的唯一版面來源** ——
      網頁上的 cardHtml() 有自己的一份。
      ★ 兩份要一起改：突變測試把這裡的「我學到」刪掉，
        網頁版照樣正確、測試也照樣綠，**只有下載下來的圖少一句**。
        ⇒ 所以這支要匯出，讓測試直接盯它。 */
+  /* ⚠️⚠️ 老師 2026-08-25：
+       「系統規格中…這個自己一行」
+       「使用者自己輸入的文字用不同顏色表示」
+     ★ 所以下載版的資料結構要**帶著兩個訊息**：
+         ① 這一列是規格（k/v 各自一欄，一列一行），還是內文
+         ② 這一格的字是**學生自己打的**（own:true）還是系統填的
+       ⚠️ 第一版把四項規格擠成兩行文字（「控制模式：…｜輸入：…」）——
+          看起來像備註，不像規格表；而且學生打的字和系統填的字
+          長得一模一樣，老師改作業時分不出哪些是他寫的。
+     ★ 這一份是**下載 PNG 的唯一版面來源**（網頁版是 cardHtml）。 */
   function cardLines(v) {
     var sp = specOf(v);
     return [
-      { s: '一、系統規格',
-        k: '控制模式：' + (sp.mode ? sp.mode + '模式' : '—') +
-           '　｜　輸入：' + (sp.input || '—') + '（' + sp.pin + '）',
-        v: '輸出：' + (sp.outs.join('、') || '—') + '　｜　' + sp.level },
-      { s: '二、動作說明',
-        k: '1　我要解決的問題是', v: v.problem },
-      { k: '2　當　' + v.when + '　時',
-        v: '（燈條）' + v.thenL + '、（馬達）' + v.thenM },
-      { k: '　　否則',
-        v: '（燈條）' + v.elsL + '、（馬達）' + v.elsM },
-      { s: '三、問題與解決',
-        k: '3　我遇到　' + v.trouble, v: '最後用　' + v.fix + '　解決' },
-      { k: '4　我學到', v: v.learn }
+      { s: '一、系統規格' },
+      { t: 'spec', k: '控制模式', v: sp.mode ? sp.mode + '模式' : '—' },
+      { t: 'spec', k: '輸入元件', v: sp.input || '—' },
+      { t: 'spec', k: '接腳',     v: sp.pin },
+      { t: 'spec', k: '輸出元件', v: sp.outs.join('、') },
+      { t: 'spec', k: '系統架構', v: sp.level },
+      { s: '二、動作說明' },
+      { t: 'line', n: '1', k: '我要解決的問題是', v: v.problem, own: true },
+      { t: 'cond', k: '當', v: v.when, own: true, tail: '時' },
+      { t: 'io', k: '那麼　（燈條）', v: v.thenL, own: true },
+      { t: 'io', k: '　　　（馬達）', v: v.thenM, own: true },
+      { t: 'io', k: '否則　（燈條）', v: v.elsL, own: true },
+      { t: 'io', k: '　　　（馬達）', v: v.elsM, own: true },
+      { s: '三、問題與解決' },
+      { t: 'line', n: '2', k: '我遇到', v: v.trouble, own: true },
+      { t: 'line', n: '3', k: '最後用…解決', v: v.fix, own: true },
+      { t: 'line', n: '4', k: '我學到', v: v.learn, own: true }
     ];
   }
+
   /* ★ 老師 2026-08-25：「設計一下卡片格式，正式文件風格」。
      ⇒ 版面照一份技術文件走：
          抬頭（單位／文件名／日期）
@@ -352,8 +383,11 @@
     var esc = LK().esc;
     var m = meta || {};
     var sp = specOf(v);
-    function row(k, val) {
-      return '<tr><th>' + esc(k) + '</th><td>' + esc(val || '—') + '</td></tr>';
+    /* ★ 老師 2026-08-25：「使用者自己輸入的文字用不同顏色表示」——
+       網頁版和 PNG 用同一套：學生打的字上藍色。 */
+    function row(k, val, own) {
+      return '<tr><th>' + esc(k) + '</th><td' + (own ? ' class="pj-own"' : '') +
+        '>' + esc(val || '—') + '</td></tr>';
     }
     return '<div class="pj-card" id="pj-card">' +
       '<div class="pj-doc-h">' +
@@ -362,9 +396,9 @@
         '<div class="pj-doc-m">' + esc(m.date || '') + '</div>' +
       '</div>' +
       '<table class="pj-tb pj-tb-head">' +
-        row('專題名稱', m.scene) +
+        row('專題名稱', m.scene, true) +
         row('研發人員', m.team) +
-        row('完成階段', sp.level) +
+        row('系統架構', sp.level) +
       '</table>' +
       '<div class="pj-sec">一、系統規格</div>' +
       '<table class="pj-tb">' +
@@ -375,18 +409,24 @@
       '</table>' +
       '<div class="pj-sec">二、動作說明</div>' +
       '<div class="pj-body">' +
-        '<div class="pj-li"><span>1</span>我要解決的問題是：' + esc(v.problem) + '</div>' +
-        '<div class="pj-li"><span>2</span>當 <b>' + esc(v.when) + '</b> 時：' +
-          '<table class="pj-tb pj-tb-io"><tr><th>燈條</th><td>' + esc(v.thenL) + '</td>' +
-          '<th>馬達</th><td>' + esc(v.thenM) + '</td></tr>' +
-          '<tr><th>否則 燈條</th><td>' + esc(v.elsL) + '</td>' +
-          '<th>否則 馬達</th><td>' + esc(v.elsM) + '</td></tr></table></div>' +
+        '<div class="pj-li"><span>1</span>我要解決的問題是：' +
+          '<span class="pj-own">' + esc(v.problem) + '</span></div>' +
+        '<div class="pj-li"><span>2</span>當 <span class="pj-own">' + esc(v.when) +
+          '</span> 時：' +
+          '<table class="pj-tb pj-tb-io"><tr><th>燈條</th>' +
+          '<td class="pj-own">' + esc(v.thenL) + '</td>' +
+          '<th>馬達</th><td class="pj-own">' + esc(v.thenM) + '</td></tr>' +
+          '<tr><th>否則 燈條</th><td class="pj-own">' + esc(v.elsL) + '</td>' +
+          '<th>否則 馬達</th><td class="pj-own">' + esc(v.elsM) + '</td></tr></table></div>' +
       '</div>' +
       '<div class="pj-sec">三、問題與解決</div>' +
       '<div class="pj-body">' +
-        '<div class="pj-li"><span>3</span>我遇到 <b>' + esc(v.trouble) + '</b>，' +
-          '最後用 <b>' + esc(v.fix) + '</b> 解決。</div>' +
-        '<div class="pj-li"><span>4</span>我學到 <b>' + esc(v.learn) + '</b>。</div>' +
+        '<div class="pj-li"><span>3</span>我遇到 <span class="pj-own">' +
+          esc(v.trouble) + '</span>，最後用 <span class="pj-own">' + esc(v.fix) +
+          '</span> 解決。</div>' +
+        '<div class="pj-li"><span>4</span>我學到 <span class="pj-own">' +
+          esc(v.learn) + '</span>。</div>' +
+        '<div class="pj-legend">■ 藍色的字是研發人員自己填的</div>' +
       '</div>' +
       (m.line ? '<div class="pj-doc-f">設計單：' + esc(m.line) + '</div>' : '') +
       '<div class="pj-sign"><span>研發人員簽名</span><span>教師確認</span></div>' +
@@ -410,71 +450,125 @@
     if (line) out.push(line);
     return out;
   }
+  /* ★★ 顏色：**學生自己打的字用深藍**，系統／樣板字用深灰。
+     ⚠️ 老師 2026-08-25：「使用者自己輸入的文字用不同顏色表示」——
+        改作業的時候一眼分得出哪些是他寫的，哪些是表格本來就有的。 */
+  var C_OWN = '#1d4ed8';        // 學生打的
+  var C_TXT = '#334155';        // 系統／樣板
+  var C_KEY = '#64748b';        // 欄位名
+  var C_ACC = '#7c3aed';        // 主色
   function drawCard(v, meta) {
-    var W = 1000, H = 1414, pad = 72;          // A4 直式的比例
+    var W = 1000, H = 1414, pad = 78;          // A4 直式的比例
     var cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     var c = cv.getContext('2d');
     var FONT = '"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif';
-    var m = meta || {}, sp = specOf(v);
+    var m = meta || {}, sp = specOf(v), IN = W - pad * 2;
     c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
+    /* 左側色帶 —— 一眼看得出是同一份文件。 */
+    c.fillStyle = C_ACC; c.fillRect(0, 0, 12, H);
 
     /* ── 抬頭 ── */
-    var y = pad + 16;
-    c.fillStyle = '#64748b'; c.font = '700 20px ' + FONT;
+    var y = pad + 14;
+    c.fillStyle = C_KEY; c.font = '700 20px ' + FONT;
     c.fillText(String(m.org || '智慧家居機電專題'), pad, y);
     c.textAlign = 'right'; c.fillText(String(m.date || ''), W - pad, y);
     c.textAlign = 'left';
-    y += 44;
-    c.fillStyle = '#0f172a'; c.font = '900 40px ' + FONT;
+    y += 46;
+    c.fillStyle = '#0f172a'; c.font = '900 42px ' + FONT;
     c.fillText('專題成果報告', pad, y);
-    y += 18;
-    c.fillStyle = '#7c3aed'; c.fillRect(pad, y, W - pad * 2, 4);
-    y += 40;
+    y += 16;
+    c.fillStyle = C_ACC; c.fillRect(pad, y, IN, 4);
+    y += 34;
 
-    /* ── 基本資料 ── */
-    function kv(k, val) {
-      c.fillStyle = '#64748b'; c.font = '800 22px ' + FONT;
-      c.fillText(k, pad, y);
-      c.fillStyle = '#0f172a'; c.font = '800 24px ' + FONT;
-      wrapText(c, String(val || '—'), W - pad * 2 - 150).forEach(function (l, i) {
-        c.fillText(l, pad + 150, y + i * 34);
-      });
-      y += 34 * Math.max(1, wrapText(c, String(val || '—'), W - pad * 2 - 150).length) + 8;
+    /* ── 表格：一列一行，欄位名在左、內容在右 ── */
+    var KW = 132;                       // 欄位名那一欄的寬
+    function row(k, val, own) {
+      c.font = '800 23px ' + FONT;
+      var lines = wrapText(c, String(val == null || val === '' ? '—' : val), IN - KW - 26);
+      var h = Math.max(40, lines.length * 34 + 12);
+      c.strokeStyle = '#e2e8f0'; c.lineWidth = 1.5;
+      c.strokeRect(pad, y, IN, h);
+      c.fillStyle = '#f8fafc'; c.fillRect(pad + 1, y + 1, KW - 1, h - 2);
+      c.beginPath(); c.moveTo(pad + KW, y); c.lineTo(pad + KW, y + h); c.stroke();
+      c.fillStyle = C_KEY; c.font = '900 21px ' + FONT;
+      c.fillText(k, pad + 14, y + 27);
+      c.fillStyle = own ? C_OWN : C_TXT; c.font = '800 23px ' + FONT;
+      lines.forEach(function (l, i) { c.fillText(l, pad + KW + 14, y + 27 + i * 34); });
+      y += h;
     }
-    kv('專題名稱', m.scene);
-    kv('研發人員', m.team);
-    kv('完成階段', sp.level);
+    row('專題名稱', m.scene, true);
+    row('研發人員', m.team, false);
 
-    /* ── 各段 ── */
-    y += 12;
-    cardLines(v).forEach(function (row) {
-      if (row.s) {
-        y += 12;
-        c.fillStyle = '#7c3aed'; c.font = '900 26px ' + FONT;
-        c.fillText(row.s, pad, y);
-        y += 10;
-        c.fillStyle = '#ede9fe'; c.fillRect(pad, y, W - pad * 2, 3);
-        y += 34;
-      }
-      c.fillStyle = '#0f172a'; c.font = '900 25px ' + FONT;
-      wrapText(c, row.k, W - pad * 2).forEach(function (l) { c.fillText(l, pad, y); y += 34; });
-      c.fillStyle = '#334155'; c.font = '700 24px ' + FONT;
-      wrapText(c, row.v, W - pad * 2 - 24).forEach(function (l) {
-        c.fillText(l, pad + 24, y); y += 33;
+    /* ── 段落 ── */
+    function sec(t) {
+      y += 26;
+      c.fillStyle = '#f5f3ff'; c.fillRect(pad, y - 22, IN, 34);
+      c.fillStyle = C_ACC; c.fillRect(pad, y - 22, 5, 34);
+      c.font = '900 23px ' + FONT;
+      c.fillText(t, pad + 16, y + 2);
+      y += 26;
+    }
+    /* 內文一列（編號 ＋ 標籤 ＋ 學生的字）。 */
+    function line(n, k, val, own) {
+      c.fillStyle = '#ede9fe';
+      c.beginPath(); c.arc(pad + 13, y - 1, 13, 0, Math.PI * 2); c.fill();
+      c.fillStyle = C_ACC; c.font = '900 17px ' + FONT;
+      c.textAlign = 'center'; c.fillText(n, pad + 13, y + 5); c.textAlign = 'left';
+      c.fillStyle = C_KEY; c.font = '900 21px ' + FONT;
+      c.fillText(k, pad + 36, y + 5);
+      y += 32;
+      c.fillStyle = own ? C_OWN : C_TXT; c.font = '800 24px ' + FONT;
+      wrapText(c, String(val || '—'), IN - 36).forEach(function (l) {
+        c.fillText(l, pad + 36, y); y += 33;
       });
-      y += 14;
+      y += 10;
+    }
+    /* 條件那一列：框起來，因為它就是程式裡的「如果」。 */
+    function cond(k, val, tail) {
+      c.fillStyle = '#fffbeb'; c.strokeStyle = '#fcd34d'; c.lineWidth = 2;
+      var h = 48;
+      c.fillRect(pad, y - 8, IN, h); c.strokeRect(pad, y - 8, IN, h);
+      c.fillStyle = C_KEY; c.font = '900 21px ' + FONT;
+      c.fillText(k, pad + 14, y + 22);
+      var kw = c.measureText(k).width;
+      c.fillStyle = C_OWN; c.font = '900 24px ' + FONT;
+      c.fillText(String(val || '—'), pad + 24 + kw, y + 22);
+      var vw = c.measureText(String(val || '—')).width;
+      c.fillStyle = C_KEY; c.font = '900 21px ' + FONT;
+      c.fillText(tail || '', pad + 34 + kw + vw, y + 22);
+      y += h + 8;
+    }
+    /* 輸出那四列：標籤在左，箭頭，學生的字在右。 */
+    function io(k, val) {
+      c.fillStyle = C_KEY; c.font = '900 21px ' + FONT;
+      c.fillText(k, pad + 22, y + 12);
+      c.fillStyle = '#cbd5e1'; c.fillText('→', pad + 200, y + 12);
+      c.fillStyle = C_OWN; c.font = '800 23px ' + FONT;
+      c.fillText(String(val || '—'), pad + 240, y + 12);
+      y += 36;
+    }
+
+    cardLines(v).forEach(function (r) {
+      if (r.s) return sec(r.s);
+      if (r.t === 'spec') return row(r.k, r.v, false);
+      if (r.t === 'cond') return cond(r.k, r.v, r.tail);
+      if (r.t === 'io') return io(r.k, r.v);
+      line(r.n, r.k, r.v, r.own);
     });
 
-    /* ── 簽名欄 ── */
-    var sy = H - pad - 46;
+    /* ── 頁尾：圖例 ＋ 簽名 ── */
+    var fy = H - pad - 62;
+    c.fillStyle = C_OWN; c.font = '800 17px ' + FONT;
+    c.fillText('■', pad, fy);
+    c.fillStyle = C_KEY; c.fillText(' 藍色的字是研發人員自己填的', pad + 18, fy);
+    var sy = H - pad - 8;
     c.strokeStyle = '#cbd5e1'; c.lineWidth = 2;
     [0, 1].forEach(function (i) {
-      var x = pad + i * ((W - pad * 2) / 2 + 10);
-      var w = (W - pad * 2) / 2 - 10;
+      var x = pad + i * (IN / 2 + 10), w = IN / 2 - 10;
       c.beginPath(); c.moveTo(x, sy); c.lineTo(x + w, sy); c.stroke();
-      c.fillStyle = '#94a3b8'; c.font = '700 19px ' + FONT;
-      c.fillText(i === 0 ? '研發人員簽名' : '教師確認', x, sy + 26);
+      c.fillStyle = '#94a3b8'; c.font = '700 18px ' + FONT;
+      c.fillText(i === 0 ? '研發人員簽名' : '教師確認', x, sy + 24);
     });
     return cv;
   }
@@ -584,6 +678,8 @@
     'color:#7c3aed;font-size:13px;font-weight:900;text-align:center;line-height:22px;' +
     'margin-top:4px}' +
   '.pj-li b{color:#0f172a}' +
+  '.pj-own{color:#1d4ed8;font-weight:900}' +
+  '.pj-legend{font-size:12px;font-weight:800;color:#94a3b8;margin-top:14px}' +
   '.pj-doc-f{font-size:12px;font-weight:800;color:#94a3b8;background:#f8fafc;' +
     'border-radius:6px;padding:7px 10px;margin-top:14px}' +
   '.pj-sign{display:flex;gap:20px;margin-top:26px}' +
@@ -610,7 +706,7 @@
           會被下一次重新掛載蓋掉。 */
     var f = Object.assign({ mode: '', problem: '', when: '',
                             thenL: '', thenM: '', elsL: '', elsM: '',
-                            trouble: '', fix: '', learn: '' }, opts.work || {});
+                            trouble: '', fix: '', learn: '', aiSig: '' }, opts.work || {});
     /* ⚠️⚠️ 老師 2026-08-25：「研發人員 是我上次輸入的人名? 不是目前帳號的實際資料」
        ★ 對 —— 病根在這裡：身分原本和學生的作答**混在同一包 f 裡**，
          而那一包會被存下來、下次再載回來。
@@ -795,11 +891,16 @@
       /* ★ AI 助教看一遍（只看一次）。⚠️ 它**沒有否決權** ——
          看完之後再按一次就出卡，不管它說了什麼；
          失敗或沒設定就直接出卡，學生不會知道有這一關。 */
+      /* ★ 內容和上次送審的一模一樣 → 不用再送（老師 2026-08-25）。 */
+      if (!aiDone && f.aiSig && f.aiSig === sig(f)) aiDone = true;
       if (aiOn() && !aiDone && !aiBusy) {
         aiBusy = true;
         viewShow('', '');
         aiReview(f, opts).then(function (a) {
           aiBusy = false; aiDone = true;
+          /* ⚠️ 只有**真的送出去過**才記指紋 ——
+             AI 不在的時候記了，等 AI 恢復也不會再看。 */
+          if (!a.skipped) f.aiSig = sig(f);
           if (a.skipped) return doShow();          // AI 不在 → 直接出卡
           if (!a.missing.length)
             return viewShow('✅ AI 助教看過了，三點都不錯 —— **再按一次**就出卡。', 'good');
@@ -888,7 +989,7 @@
     MIN: MIN, MIN_IO: MIN_IO, MODES: MODES, SHOW_Q: SHOW_Q,
     judgeShow: judgeShow, sayShow: sayShow,
     OUTS: OUTS, specOf: specOf, inputOf: inputOf,
-    AI_NEED: AI_NEED, aiText: aiText, aiReview: aiReview, aiOn: aiOn,
+    AI_NEED: AI_NEED, aiText: aiText, aiReview: aiReview, aiOn: aiOn, sig: sig,
     cardHtml: cardHtml, cardLines: cardLines, drawCard: drawCard,
     fileName: fileName, safeName: safeName, downloadPng: downloadPng,
     mount: mount

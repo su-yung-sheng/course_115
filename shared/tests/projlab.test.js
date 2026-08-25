@@ -100,6 +100,8 @@ section('★★ 兩種模式：改成對照表，而且有新的目的');
      '★ 但輸入只有一個（不會同時讀兩種）');
   ok(/類比對應/.test(J.MODES[1].code) && !/如果/.test(J.MODES[1].code),
      '★★ 手動那一欄的骨架**沒有一個「如果」**（那正是要點破的事）');
+  /* ⚠️ 「組別」是舊的稱呼 —— 前面已經改成「研發人員」（單數）。 */
+  ok(!/組別|我們/.test(JSON.stringify(J.MODES)), '★ 兩種模式的說明也用單數（不寫「組別」）');
   ok(/自己補一個條件/.test(J.MODES[1].note),
      '★★ 而且明講「做手動的組別要自己補一個條件」');
   ok(/否則.*不能省|少了它/.test(J.MODES[0].note),
@@ -379,7 +381,7 @@ section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
   ok(/Trig = A2/.test(html), '★ 連接腳都寫上去');
   ok(/輸出元件/.test(html) && /RGB 全彩燈條/.test(html) && /直流馬達/.test(html),
      '★★ 輸出元件（燈條＋馬達）');
-  ok(/一個輸入 ＋ 兩個輸出/.test(html), '★ 完成階段固定寫「一個輸入 ＋ 兩個輸出」');
+  ok(/一個輸入 ＋ 兩個輸出/.test(html), '★ 系統架構固定寫「一個輸入 ＋ 兩個輸出」');
   ok(/專題成果報告/.test(html) && /一、系統規格/.test(html) &&
      /二、動作說明/.test(html) && /三、問題與解決/.test(html),
      '★★ 正式文件的版面（抬頭＋三段編號）');
@@ -398,18 +400,49 @@ section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
      兩份要一起改。突變測試證實：把 cardLines 的「我學到」刪掉，
      網頁版照樣正確、測試也照樣綠，**只有下載下來的圖少一句**。 */
   const rows = J.cardLines(v);
-  const txt = rows.map(r => (r.s || '') + r.k + r.v).join('\n');
+  const txt = rows.map(r => (r.s || '') + (r.k || '') + (r.v || '')).join('\n');
   ok(rows.filter(r => r.s).length === 3, '★★ 下載版也有三段標題');
   ok(/一、系統規格/.test(txt) && /二、動作說明/.test(txt) && /三、問題與解決/.test(txt),
      '★★ 而且和網頁版同一套段落');
-  ok(/控制模式/.test(txt) && /自動模式/.test(txt) && /超音波距離感測器/.test(txt),
-     '★★ 規格也印在下載版上（模式＋輸入）');
-  ok(/RGB 全彩燈條/.test(txt) && /直流馬達/.test(txt), '★★ 輸出也在');
+  /* ⚠️⚠️ 老師 2026-08-25：「系統規格中…這個自己一行」。
+     ★ 第一版把四項規格擠成兩行文字（「控制模式：…｜輸入：…」）——
+       看起來像備註，不像規格表。 */
+  const spec = rows.filter(r => r.t === 'spec');
+  ok(spec.length >= 4, '★★ 系統規格**一項一行**（' + spec.length + ' 行）');
+  ok(spec.map(r => r.k).join() === '控制模式,輸入元件,接腳,輸出元件,系統架構',
+     '★★ 四項規格各自一列，欄位名和內容分開');
+  ok(spec.every(r => r.v && String(r.v).indexOf('：') < 0),
+     '★ 每一格只放**內容**，不再把欄位名塞進同一格');
+  /* ⚠️⚠️ 老師 2026-08-25：「使用者自己輸入的文字用不同顏色表示」——
+     所以每一格都要標得出**誰填的**。 */
+  ok(rows.filter(r => r.own).length >= 7,
+     '★★ 學生自己填的那幾格都標了 own（要上色）');
+  ok(spec.every(r => !r.own), '★★ 規格那幾行是系統填的，不上色');
   ok(/我要解決的問題是/.test(txt), '★ ① 我要解決的問題是');
-  ok(/否則/.test(txt), '★★ ② 含「否則」那一段');
+  ok(rows.some(r => r.t === 'cond'), '★★ 條件那一列**單獨一種樣式**（它就是程式裡的「如果」）');
+  ok(rows.filter(r => r.t === 'io').length === 4,
+     '★★ 兩個輸出 ×（那麼／否則）＝ 四列，各自一行');
   ok(/我遇到/.test(txt) && /解決/.test(txt), '★ ③ 我遇到…最後用…解決');
   ok(/我學到/.test(txt) && txt.indexOf(v.learn) >= 0, '★★ ④ 我學到（下載版也要有）');
   ok(!/我們/.test(txt), '★ 下載版也沒有「我們」');
+  /* ★ 顏色：畫的時候學生的字要用不同顏色，而且卡片上要有圖例。 */
+  /* ⚠️⚠️ 這幾條要**只看 drawCard（PNG 版）那一段**。
+     HTML 版和 PNG 版用了同樣的字串（「藍色的字是研發人員自己填的」、
+     row('專題名稱', …)），整份原始碼一起搜的話，
+     **PNG 版改壞了照樣綠** —— 因為 HTML 版那一份還在。
+     ★ 這個教訓這一輪已經是第三次了（先前是 cardLines、<th>燈條）。 */
+  const all5 = read('shared/projlab.js').replace(/\/\*[\s\S]*?\*\//g, '');
+  const src5 = all5.slice(all5.indexOf('function drawCard'),
+                          all5.indexOf('function downloadPng'));
+  ok(/C_OWN = '#1d4ed8'/.test(all5) && /own \? C_OWN : C_TXT/.test(src5),
+     '★★ 下載版真的用兩種顏色畫（學生的字 vs 系統填的）');
+  ok(/row\('專題名稱', m\.scene, true\)/.test(src5),
+     '★★ PNG 版：專題名稱算學生填的（上色）');
+  ok(/row\('研發人員', m\.team, false\)/.test(src5), '★ 研發人員是系統填的（不上色）');
+  ok(/藍色的字是研發人員自己填的/.test(src5),
+     '★★ PNG 版有顏色圖例 —— 不然看的人不知道顏色代表什麼');
+  ok(/pj-own/.test(J.cardHtml(v, {})) && /藍色的字/.test(J.cardHtml(v, {})),
+     '★ 網頁版也上同一種色、也有圖例');
   /* ⚠️ 卡片上**每一格都是學生自己打的字**，全部都要跳脫。 */
   ['problem', 'when', 'thenL', 'thenM', 'elsL', 'elsM',
    'trouble', 'fix', 'learn'].forEach(k => {
@@ -544,6 +577,10 @@ section('★★ 走一遍：展示 → 成果卡');
      '★★ 只留「下載成圖片」（老師 2026-08-25：保留下載成圖片就好）');
   ok(/檔名會自動取成/.test(el.textContent) && /成果發表-/.test(el.textContent),
      '★★ 而且先告訴他檔名長什麼樣（一整批交上來才對得起來）');
+  /* ⚠️ 列印那條路拿掉之後，**畫面上的句子也要跟著改** ——
+     老師 2026-08-25：「這句話也要修改」。 */
+  ok(!/列印|另存|PDF/.test(el.textContent),
+     '★★ 出卡之後的說明不再提列印／另存 PDF');
   ok(!!done.work && done.work.problem, '★ 回報 onDone 時把整份內容帶出去（要存起來）');
   /* ⚠️ 回頭改的時候字要還在。 */
   click('pj-back');
@@ -842,6 +879,28 @@ section('★★ 檔名帶身分（老師 2026-08-25）');
   ok(/chkApi\.setWho\(t, fn\)/.test(page2), '★ 晚一步問到名冊時檔名也跟著補');
 }
 
+section('★★ 內容沒改就不再送 AI（老師 2026-08-25）');
+{
+  /* ⚠️ aiDone 只活在這一次掛載裡 —— 換個分頁回來、重新整理，
+     同一份內容會**再送一次**，而額度是全班共用的。 */
+  const base2 = { mode: '自動', problem: '玄關太暗', when: '距離小於 30 公分',
+                  thenL: '亮起來', thenM: '轉起來', elsL: '熄掉', elsM: '停下來',
+                  trouble: '燈會閃', fix: '兩個門檻', learn: '門檻要兩個' };
+  ok(J.sig(base2) === J.sig(Object.assign({}, base2)), '★ 一樣的內容 → 一樣的指紋');
+  ok(J.sig(base2) !== J.sig(Object.assign({}, base2, { learn: '改了' })),
+     '★★ 改了一個字 → 指紋就不一樣');
+  /* ⚠️ 指紋要算在**送出去的那段文字**上 ——
+     改個模式、換個名字不算「內容變了」。 */
+  ok(J.sig(base2) === J.sig(Object.assign({}, base2, { mode: '手動' })),
+     '★★ 換模式不算內容變了（那段文字沒變）');
+  const src6 = read('shared/projlab.js').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(/f\.aiSig && f\.aiSig === sig\(f\)/.test(src6),
+     '★★ 內容和上次送審的一樣 → 直接出卡，不送');
+  ok(/if \(!a\.skipped\) f\.aiSig = sig\(f\)/.test(src6),
+     '★★ 只有**真的送出去過**才記指紋（AI 不在時記了，恢復也不會再看）');
+  ok(/aiSig: ''/.test(src6), '★ 指紋跟著作答一起存（下次載回來才記得）');
+}
+
 section('★ 規矩');
 {
   const plan = read('shared/planlab.js'), proj = read('shared/projlab.js');
@@ -905,6 +964,13 @@ section('★★ 第五節接上頁面了');
   ok(/基礎關/.test(u5) && /挑戰關/.test(u5) && /創意關/.test(u5), '★★ 三張任務卡都在教材區');
   ok(/先讓它動/.test(u5) && /讓它更聰明/.test(u5) && /讓它解決問題/.test(u5),
      '★★ 三個副標一字不改');
+  /* ⚠️ 老師 2026-08-25：「這句話也要修改，檢查是否還有需要調整的句子」——
+     列印那條路拿掉之後，教材上那句「可以列印（另存 PDF）或下載成圖片」
+     也得跟著改。★ 功能刪掉、文字沒跟上，比功能還在更糟：
+       學生會去找一顆不存在的按鈕。 */
+  ok(!/列印|另存 PDF/.test(u5), '★★ 教材上不再提列印／另存 PDF');
+  ok(/下載成圖片/.test(u5) && /成果發表-班級_座號_姓名/.test(u5),
+     '★★ 改成講「下載成圖片」，而且寫出檔名長什麼樣');
   ok(/我要解決的問題是/.test(u5) &&
      /當＿＿＿＿時，系統會＿＿＿＿；<b>否則<\/b>＿＿＿＿/.test(u5) &&
      /我遇到＿＿＿＿，最後用＿＿＿＿解決，<b>我學到<\/b>＿＿＿＿/.test(u5),
