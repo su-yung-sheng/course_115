@@ -395,15 +395,25 @@
     /* ★ 自動帶入班級座號姓名（頁面從 SSO 拿）。
        ⚠️ 只在「學生還沒自己填過」的時候帶入 —— 不然他改了名字（加組員）
           會被下一次重新掛載蓋掉。 */
-    var f = Object.assign({ team: '', mode: '', problem: '', when: '', then: '', els: '',
+    var f = Object.assign({ mode: '', problem: '', when: '', then: '', els: '',
                             trouble: '', fix: '', learn: '' }, opts.work || {});
-    if (!f.team && opts.who) f.team = opts.who;
+    /* ⚠️⚠️ 老師 2026-08-25：「研發人員 是我上次輸入的人名? 不是目前帳號的實際資料」
+       ★ 對 —— 病根在這裡：身分原本和學生的作答**混在同一包 f 裡**，
+         而那一包會被存下來、下次再載回來。
+         於是舊紀錄裡（唯讀之前）手打的名字，就一直跟著跑。
+       ⚠️ 前一輪我還加了一條測試說「舊的會被系統值蓋掉」——
+          但那測的是 setWho()，而快取有值的時候**根本不會呼叫 setWho()**。
+          釘錯層：測了修補的動作，沒測真正的來源。
+       ⇒ 身分**不放進 f**，獨立一個變數，而且**只有系統填得了**：
+         唯一來源是 opts.who（或稍後 setWho 補進來的名冊值）。
+         舊紀錄裡的 team 一律忽略。 */
+    var who = String(opts.who || '');
     /* 三態：已帶入／還在問名冊／問不到。⚠️ 不可以靜默留白。 */
-    var whoState = f.team ? 'got' : 'wait';
+    var whoState = who ? 'got' : 'wait';
     function whoLine() {
       if (whoState === 'got')
         return '<span class="pj-who-k">研發人員</span>' +
-               '<b>' + esc(f.team) + '</b>' +
+               '<b>' + esc(who) + '</b>' +
                '<span class="pj-who-n">（系統自動填入，不可修改）</span>';
       if (whoState === 'wait')
         return '<span class="pj-who-k">研發人員</span>' +
@@ -415,7 +425,7 @@
     /* ★ 頁面問到名冊之後補進來。⚠️ 唯讀 —— 沒有「會不會蓋掉學生打的」問題。 */
     function setWho(t) {
       whoState = t ? 'got' : 'miss';
-      if (t) f.team = t;
+      if (t) who = t;
       var n = el.querySelector('#pj-who');
       if (n) { n.innerHTML = whoLine(); bind(); }
     }
@@ -515,7 +525,7 @@
       return (m && m.ph && m.ph[i]) || SHOW_Q[1].ph[i];
     }
     function meta() {
-      return { scene: scene, team: f.team, mode: f.mode, line: line,
+      return { scene: scene, team: who, mode: f.mode, line: line,
                date: new Date().toLocaleDateString('zh-TW') };
     }
     function doShow() {
@@ -537,6 +547,8 @@
         '★ 列印的時候在「印表機」那一欄選<b>「另存為 PDF」</b>就會變成一份 PDF。</div>' +
         '</div>';
       bind();
+      /* ⚠️ 存下來的是**作答**，不含身分 —— 身分每次都跟著帳號重新帶，
+         不可以變成「上次那個人的名字」跟著紀錄跑。 */
       if (typeof opts.onDone === 'function') opts.onDone({ work: f });
     }
 

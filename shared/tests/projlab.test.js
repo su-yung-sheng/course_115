@@ -521,17 +521,33 @@ section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
   ok(!/if \(!norm\(f\.team\)\)/.test(src1),
      '★★ 沒有殘留「不覆蓋學生打的」那段（唯讀就不會有那個情況）');
 
-  /* ⚠️ 唯讀之後這條測試沒有意義了（原本測「學生改過的不被蓋掉」）——
-     打不了字就不會有那個情況。
-     ★ 反過來要測的是：**舊紀錄裡手打的名字要被系統值蓋掉** ——
-       前一版存過的手打值不可以留在卡上。 */
+  /* ⚠️⚠️ 老師 2026-08-25：「研發人員 是我上次輸入的人名? 不是目前帳號的實際資料」
+     ★ 病根：身分原本和學生的作答**混在同一包 work 裡**，
+       而那一包會被存下來、下次再載回來 ——
+       於是唯讀之前手打的名字就一直跟著跑。
+     ⚠️ 前一輪我測的是 setWho()「會覆蓋」，但快取有值的時候
+        **根本不會呼叫 setWho()** —— 釘錯層：
+        測了修補的動作，沒測真正的來源。
+     ⇒ 要測的是 **mount 當下**：舊紀錄裡的 team 一律忽略。 */
   const b3 = W.document.createElement('div');
   W.document.body.appendChild(b3);
-  const a3 = J.mount(b3, { work: { team: '前一版手打的' } });
+  const a3 = J.mount(b3, { who: '二年三班　13 號　王小明',
+                           work: { team: '上次手打的別人' } });
   a3.show('show');
-  a3.setWho('二年三班　13 號　王小明');
-  ok(/二年三班　13 號　王小明/.test(b3.textContent) && !/前一版手打的/.test(b3.textContent),
-     '★★ 舊紀錄裡手打的名字會被系統值蓋掉');
+  ok(!/上次手打的別人/.test(b3.textContent),
+     '★★ 舊紀錄裡的名字**完全不採用**（不是靠事後覆蓋）');
+  ok(/二年三班　13 號　王小明/.test(b3.textContent), '★★ 顯示的是目前帳號的資料');
+  /* ⚠️ 連沒有 who 的時候也不可以退回舊紀錄 —— 那還是別人的名字。 */
+  const b3b = W.document.createElement('div');
+  W.document.body.appendChild(b3b);
+  const a3b = J.mount(b3b, { work: { team: '上次手打的別人' } });
+  a3b.show('show');
+  ok(!/上次手打的別人/.test(b3b.textContent) && a3b.whoState() === 'wait',
+     '★★ 沒讀到帳號資料時也不退回舊紀錄（寧可空著等）');
+  /* ★ 而且存下去的**作答不含身分** —— 身分每次跟著帳號重新帶。 */
+  const src2 = read('shared/projlab.js').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/team: ''/.test(src2) && !/f\.team/.test(src2),
+     '★★ 身分不放進作答那一包（不然又會跟著紀錄跑）');
 
   /* 頁面那一端：身分從 SSO 的快取拿。 */
   const page = read('11501/5016b.html');
