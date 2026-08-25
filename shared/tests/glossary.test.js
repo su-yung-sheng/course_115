@@ -68,6 +68,11 @@ section('★★ 每顆零件只有一個寫法');
   });
   /* ⚠️「全彩燈條」前面一定要有 RGB —— 半個名字也是第三種寫法。 */
   ok(!/(?<!RGB )全彩燈條/.test(ALL), '★★ 「全彩燈條」前面一定接 RGB');
+  /* ★ 型號（HC-SR04／WS2812B）**只出現在材料表**，而且要對稱 ——
+     ⚠️ 原本只有燈條給型號、超音波沒給，學生拿到零件包會對不起來。 */
+  const page0 = read(PAGE);
+  ok(/超音波距離感測器（HC-SR04/.test(page0) && /RGB 全彩燈條（WS2812B/.test(page0),
+     '★★ 材料表兩顆都給型號（原本只有燈條有，超音波沒有）');
 }
 
 section('★★ 積木名稱只有一套');
@@ -106,6 +111,49 @@ section('★★ 節次與區塊的叫法一致');
                         page.indexOf('function openCourseDetail'));
   ok(!/動手檢核/.test(u5), '★★ 第五節沒有「動手檢核」這四個字');
   ok(/成果發表/.test(u5), '   第五節那一塊叫「成果發表」');
+}
+
+section('★★ 課程小卡要跟著詳情頁一起改');
+{
+  /* ⚠️⚠️ 老師 2026-08-25 問：「入口頁面的說明與課程小卡有隨著調整說明文字嗎?」
+     —— 沒有。第五節詳情頁早就改成「自己的專案」，
+     **小卡上還寫著「智慧中樞：綜合家居面板」、還在講「雙模式切換」**。
+     ★ 學生點進去看到的和點之前看到的是兩件事 ——
+       這種脫節不會報錯，只會讓人以為自己點錯了。
+     ⇒ 釘死：小卡標題必須和 courseData 的 title 一模一樣。 */
+  const page = read(PAGE);
+  const cards = [...page.matchAll(
+    /onclick="openCourseDetail\((\d)\)"[\s\S]{0,1400}?<h3[^>]*>([^<]+)<\/h3>/g)];
+  const data = {};
+  [...page.matchAll(/\n {12}(\d): \{\s*\n\s*title: "([^"]+)"/g)]
+    .forEach(m => { data[m[1]] = m[2]; });
+  ok(cards.length === 5, '五張小卡都在（' + cards.length + '）');
+  cards.forEach(m => {
+    ok(m[2].trim() === data[m[1]],
+       '★★ 第' + m[1] + '節的小卡標題和詳情頁一致（小卡「' + m[2].trim() +
+       '」／詳情「' + (data[m[1]] || '找不到') + '」）');
+  });
+  /* ⚠️ 舊草稿的字不可以留在小卡上。 */
+  const grid = page.slice(page.indexOf('微課程單元規劃'), page.indexOf('id="detail-view"'));
+  ok(!/智慧中樞|雙模式切換|綜合家居面板/.test(grid),
+     '★★ 小卡上沒有舊草稿那組（智慧中樞／雙模式切換）');
+  ok(/自己的專案/.test(grid) && /成果卡/.test(grid),
+     '★ 第五節的小卡講的是專題與成果卡');
+  /* ★ 底下那行小標也要對得上這一節真的有什麼。 */
+  ok(!/PWM轉速模擬器|類比調光模擬器/.test(grid),
+     '★★ 底標不用舊草稿的名字（PWM／類比調光）');
+  ok(/三原色混色模擬器/.test(grid), '★ 第四節的底標講混色（這一節的重點）');
+}
+
+section('★★ 入口頁（hub）的卡片也要跟上');
+{
+  const hub = read('11501/hub.html');
+  const card = hub.slice(hub.indexOf("id:'arduino'"), hub.indexOf("id:'arduino'") + 400);
+  ok(/智慧家居機電專題/.test(card),
+     '★★ 入口卡的名字和課程頁一致（原本叫「Arduino 智慧家居」，兩邊對不起來）');
+  ok(!/用模擬器體驗感測器與控制/.test(card),
+     '★★ 說明不再是那句什麼都沒講的話');
+  ok(/專題/.test(card), '★ 而且講出最後要做專題');
 }
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
