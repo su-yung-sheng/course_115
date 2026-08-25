@@ -240,12 +240,13 @@
   }
 
   /* ── ② 連連看的座標 ────────────────────────────
-     ★ 可變電阻在**上**（腳 1 2 3 由左到右，和實物一致），
-       開發板在**下**（孔 G P S 由左到右）。
-     ★★ 這樣正解的連線會**交叉**（P→3 和 S→2 交叉），
-        而「照順序接」是三條直的 —— 一眼就看得出差別。 */
-  var LEG_X = { 1: 130, 2: 200, 3: 270 }, LEG_Y = 132;
-  var HOLE_X = { G: 130, P: 200, S: 270 }, HOLE_Y = 232;
+     ★ 老師 2026-08-24：「接線圖可變電阻在下，開發板在上」——
+       **開發板在上**（孔 G P S 由左到右），
+       **可變電阻在下**（腳 1 2 3 由左到右，本體再往下、旋鈕軸朝下）。
+     ★★ 上下對調不影響重點：正解的 P→3 和 S→2 一樣會**交叉**，
+        而「照順序接」是三條直的 —— 那個差別才是這一關要學生看見的。 */
+  var HOLE_X = { G: 130, P: 200, S: 270 }, HOLE_Y = 62;
+  var LEG_X = { 1: 130, 2: 200, 3: 270 }, LEG_Y = 168;
 
   function linkHtml(pick, sel) {
     var lines = WIRING.map(function (w) {
@@ -254,34 +255,35 @@
       return '<line class="pt-wireline" x1="' + HOLE_X[w.hole] + '" y1="' + HOLE_Y +
              '" x2="' + LEG_X[leg] + '" y2="' + LEG_Y + '"/>';
     }).join('');
+    var holes = WIRING.map(function (w) {
+      return '<g class="pt-node' + (sel === 'hole' + w.hole ? ' sel' : '') + '" data-hole="' + w.hole + '">' +
+        '<circle cx="' + HOLE_X[w.hole] + '" cy="' + HOLE_Y + '" r="17" fill="#0f172a" stroke="#334155" stroke-width="3"/>' +
+        '<text x="' + HOLE_X[w.hole] + '" y="' + (HOLE_Y + 6) + '" text-anchor="middle" font-size="17" ' +
+        'font-weight="900" fill="#fff">' + w.hole + '</text>' +
+        '<text x="' + HOLE_X[w.hole] + '" y="' + (HOLE_Y - 26) + '" text-anchor="middle" font-size="12" ' +
+        'font-weight="900" fill="#64748b">' + w.name + '</text></g>';
+    }).join('');
     var legs = LEGS.map(function (n) {
       return '<g class="pt-node' + (sel === 'leg' + n ? ' sel' : '') + '" data-leg="' + n + '">' +
         '<circle cx="' + LEG_X[n] + '" cy="' + LEG_Y + '" r="15" fill="#f1f5f9" stroke="#94a3b8" stroke-width="3"/>' +
         '<text x="' + LEG_X[n] + '" y="' + (LEG_Y + 6) + '" text-anchor="middle" font-size="17" ' +
         'font-weight="900" fill="#0f172a">' + n + '</text></g>';
     }).join('');
-    var holes = WIRING.map(function (w) {
-      return '<g class="pt-node' + (sel === 'hole' + w.hole ? ' sel' : '') + '" data-hole="' + w.hole + '">' +
-        '<circle cx="' + HOLE_X[w.hole] + '" cy="' + HOLE_Y + '" r="17" fill="#0f172a" stroke="#334155" stroke-width="3"/>' +
-        '<text x="' + HOLE_X[w.hole] + '" y="' + (HOLE_Y + 6) + '" text-anchor="middle" font-size="17" ' +
-        'font-weight="900" fill="#fff">' + w.hole + '</text>' +
-        '<text x="' + HOLE_X[w.hole] + '" y="' + (HOLE_Y + 34) + '" text-anchor="middle" font-size="12" ' +
-        'font-weight="900" fill="#64748b">' + w.name + '</text></g>';
-    }).join('');
-    return '<svg class="pt-link" viewBox="0 0 400 280">' +
-      /* 可變電阻本體（上） */
-      '<circle cx="200" cy="62" r="46" fill="#e7e5e4" stroke="#78716c" stroke-width="4"/>' +
-      '<rect x="188" y="6" width="24" height="22" rx="6" fill="#a8a29e"/>' +
-      '<text x="200" y="68" text-anchor="middle" font-size="14" font-weight="900" fill="#78716c">10K</text>' +
-      '<line x1="130" y1="106" x2="130" y2="117" stroke="#94a3b8" stroke-width="5"/>' +
-      '<line x1="200" y1="108" x2="200" y2="117" stroke="#94a3b8" stroke-width="5"/>' +
-      '<line x1="270" y1="106" x2="270" y2="117" stroke="#94a3b8" stroke-width="5"/>' +
-      '<text x="200" y="128" text-anchor="middle" font-size="0"> </text>' +
-      lines + legs +
-      /* 開發板（下） */
-      '<rect x="96" y="208" width="208" height="48" rx="10" fill="none" stroke="#cbd5e1" stroke-width="3"/>' +
+    return '<svg class="pt-link" viewBox="0 0 400 300">' +
+      /* ── 開發板（上）── */
+      '<text x="200" y="20" text-anchor="middle" font-size="13" font-weight="900" fill="#94a3b8">開發板</text>' +
+      '<rect x="96" y="30" width="208" height="64" rx="10" fill="none" stroke="#cbd5e1" stroke-width="3"/>' +
       holes +
-      '<text x="200" y="200" text-anchor="middle" font-size="13" font-weight="900" fill="#94a3b8">開發板</text>' +
+      lines +
+      /* ── 可變電阻（下）：腳朝上，本體與旋鈕軸在下 ── */
+      legs +
+      '<line x1="130" y1="183" x2="130" y2="196" stroke="#94a3b8" stroke-width="5"/>' +
+      '<line x1="200" y1="183" x2="200" y2="194" stroke="#94a3b8" stroke-width="5"/>' +
+      '<line x1="270" y1="183" x2="270" y2="196" stroke="#94a3b8" stroke-width="5"/>' +
+      '<circle cx="200" cy="240" r="46" fill="#e7e5e4" stroke="#78716c" stroke-width="4"/>' +
+      '<text x="200" y="246" text-anchor="middle" font-size="14" font-weight="900" fill="#78716c">10K</text>' +
+      '<rect x="188" y="284" width="24" height="14" rx="5" fill="#a8a29e"/>' +
+      '<text x="316" y="246" text-anchor="middle" font-size="13" font-weight="900" fill="#94a3b8">可變電阻</text>' +
     '</svg>';
   }
 
@@ -575,6 +577,7 @@
     ADC_MAX: ADC_MAX, PIN: PIN, WIRING: WIRING, LEGS: LEGS, Q1: Q1,
     readAt: readAt, judgeWire: judgeWire, sayWire: sayWire,
     SWEEP: SWEEP, angleOf: angleOf, pctFromAngle: pctFromAngle,
+    HOLE_X: HOLE_X, HOLE_Y: HOLE_Y, LEG_X: LEG_X, LEG_Y: LEG_Y,
     optsWhy: optsWhy, judgeWhy: judgeWhy, sayWhy: sayWhy, caseQ1: caseQ1,
     mount: mount
   };

@@ -182,6 +182,16 @@ section('★★ 三個節點真的走得完');
      '★★ 三個孔、三支腳都是可以點的');
   ok(!el.querySelector('select'), '★★ 不再用下拉選單 —— 改成點兩下連一條線');
   ok(/10K/.test(el.innerHTML), '★★ 真的把**可變電阻畫出來**（不是只寫 1 2 3）');
+  /* ★ 老師 2026-08-24：「接線圖可變電阻在下，開發板在上」。
+     ⚠️ 上下對調不影響重點：正解的 P→3 和 S→2 一樣會交叉。 */
+  ok(P.HOLE_Y < P.LEG_Y,
+     '★ 開發板在**上**、可變電阻在**下**（孔 y=' + P.HOLE_Y + '、腳 y=' + P.LEG_Y + '）');
+  {
+    /* 正解那三條線裡，P→3 和 S→2 一定要交叉 —— 那是和「照順序接」最好認的差別。 */
+    const cross = (P.HOLE_X.P - P.LEG_X[3]) * (P.HOLE_X.S - P.LEG_X[2]) < 0;
+    ok(cross, '★★ 正解的 P→3 與 S→2 是**交叉**的（照順序接則是三條直的）');
+    ok(P.HOLE_X.G === P.LEG_X[1], '   而 G→1 是直的');
+  }
 
   api.tapHole('G'); api.tapLeg('1');
   ok(el.querySelectorAll('.pt-wireline').length === 1, '★ 點孔再點腳 → 連一條線');
