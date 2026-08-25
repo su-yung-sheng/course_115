@@ -119,6 +119,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
   <script src="config.js"></script>
   <script src="../shared/semester.js"></script>
 <script src="../shared/guard.js"></script>
+  <!-- ★ 完成紀錄要靠它把闖關基地那個登入接過來（沒有它，Firestore 是未登入狀態，
+       寫入會被安全規則擋掉 —— 而且擋得很安靜）。 -->
+  <script src="../shared/auth.js"></script>
   <!-- 第一節課的暖身關卡與三個檢核（老師 2026-08-24 定案）。
        ⚠️ ultralab 是**共用**的：第二節「迎賓走廊」也用超音波，直接呼叫同一支。 -->
   <script src="../shared/ultralab.js"></script>
@@ -139,21 +142,25 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
   <script src="../shared/lightlab.js"></script>
 
   <!-- ═══ 完成紀錄（老師 2026-08-24：「每次都要重玩? 要有記錄」）═══
-       ⚠️⚠️ **不計星**。寫的是 modules.arduino.{單元}.{warm|checks}，
-          絕對不可以碰 modules.arduino.stars ——
-          hub 的 summary() 是 stars += d.stars、maxTotal += m.maxStars，
-          而 arduino 卡的 maxStars 是 0：分子加了、分母沒加，
-          整體進度就會超過 100%。
-       ⚠️ 也不可以用 REPORT.unit()／REPORT.pass()：那兩支會自己算 stars。
-          這裡用最樸素的 setDoc(merge)。
-       ★ 讀不到雲端（沒登入、斷網、規則沒發布）時退回 sessionStorage ——
-          至少同一節課裡重新整理不會從頭來。
-          ⚠️ 用 sessionStorage 不用 localStorage：教室是共用電腦，
-             關掉瀏覽器就該消失（和全站的身分規則一致）。 -->
+       ⚠️⚠️ 2026-08-24 修：第一版**只 import 了 firebase-app 和 firestore，
+          完全沒有 auth** —— Firestore 用戶端是未登入狀態，
+          安全規則的 isSignedIn() 一律不成立，所以**每一次寫入都被拒絕**。
+          而我把失敗只寫進 console.warn，於是唯一活著的是 sessionStorage ——
+          症狀就是老師回報的「關掉瀏覽器後紀錄不見了」。
+          ★★ 這和 aiguide.gs 的 unitBrief_ 是同一種病：**安靜降級**，
+             壞掉和正常長得一模一樣。所以這次除了修，還要讓它**看得見**。
+
+       ⚠️ 不計星。寫的是 modules.arduino.{單元}.{warm|checks|say}，
+          絕對不可以碰 stars（arduino 卡的 maxStars 是 0，分子加了分母沒加）。
+       ⚠️ 也不可以用 REPORT.unit()／pass()：那兩支會自己算 stars。 -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { initializeApp, getApps, getApp }
+      from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getFirestore, doc, getDoc, setDoc }
       from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    /* ★ auth 一定要一起載，而且要**等它接上**再讀寫。 */
+    import { getAuth, signInAnonymously, onAuthStateChanged }
+      from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
     const CFG  = window.CONFIG || {};
     const COL  = (CFG.COLLECTIONS && CFG.COLLECTIONS.PROGRESS) || '11501-progress';
@@ -161,9 +168,41 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     let sid = '';
     try { sid = sessionStorage.getItem('sid' + TERM) || ''; } catch (e) {}
 
-    let db = null;
-    try { if (CFG.FIREBASE && sid) db = getFirestore(initializeApp(CFG.FIREBASE)); }
-    catch (e) { console.warn('[LAB] Firebase 起不來，改用 sessionStorage', e); }
+    /* 目前的狀態：cloud＝存得進雲端；local＝只存在這台電腦（關掉就沒了）。
+       ★ 頁面會把 local 顯示出來，不要再讓它安靜。 */
+    let state = 'local', why = '';
+    const listeners = [];
+    function setState(s, r) {
+      state = s; why = r || '';
+      listeners.forEach(function (f) { try { f(s, why); } catch (e) {} });
+    }
+
+    /* ⚠️ 不在這裡登入 —— 學生已經在闖關基地登入過了。
+       attachSession 只是把那個身分接過來（沿用 shared/auth.js 的做法，
+       同 thinking.html）。自己再 signIn 會把 Google 身分蓋掉，
+       安全規則的 isOwner() 就失效了。 */
+    const ready = (async () => {
+      if (!CFG.FIREBASE) { setState('local', '這一頁沒有 Firebase 設定'); return null; }
+      if (!sid)          { setState('local', '讀不到學號'); return null; }
+      try {
+        const app  = getApps().length ? getApp() : initializeApp(CFG.FIREBASE);
+        const auth = getAuth(app);
+        if (window.AUTH && window.AUTH.attachSession) {
+          await window.AUTH.attachSession(auth, signInAnonymously, onAuthStateChanged);
+        } else {
+          /* ⚠️ auth.js 沒載到就不要硬闖 —— 寫進去也會被規則擋，
+             而且會擋得很安靜。講清楚比較好查。 */
+          setState('local', '沒有載入 shared/auth.js');
+          return null;
+        }
+        if (!auth.currentUser) { setState('local', '還沒登入'); return null; }
+        setState('cloud', '');
+        return getFirestore(app);
+      } catch (e) {
+        setState('local', '連不上雲端：' + (e && e.message || e));
+        return null;
+      }
+    })();
 
     const localKey = 'lab' + TERM;
     function localAll() {
@@ -171,22 +210,29 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     }
 
     window.LABSAVE = {
-      /** 讀這個單元做到哪 —— 回傳 { warm:{at,tries}, checks:{at,tries} } */
+      /** 現在是存得進雲端還是只存本機。頁面用它決定要不要顯示警告。 */
+      onState(fn) { listeners.push(fn); fn(state, why); },
+      /** 讀這個單元做到哪 —— 回傳 { warm:{at,tries}, checks:{...}, say:{...} } */
       async load(unit) {
         const mine = localAll()[unit] || {};
+        const db = await ready;
         if (!db) return mine;
         try {
           const snap = await getDoc(doc(db, COL, sid));
           const m = (snap.exists() && snap.data().modules) || {};
           return Object.assign({}, mine, ((m.arduino || {})[unit]) || {});
-        } catch (e) { console.warn('[LAB] 讀取失敗，用本機的', e); return mine; }
+        } catch (e) {
+          setState('local', '讀取失敗：' + (e && e.code || e));
+          return mine;
+        }
       },
-      /** 記一段完成。part 是 'warm' 或 'checks'。 */
+      /** 記一段完成。part 是 'warm'／'checks'／'say'。 */
       async save(unit, part, info) {
         const rec = Object.assign({ at: Date.now() }, info || {});
         const all = localAll();
         all[unit] = Object.assign({}, all[unit], { [part]: rec });
         try { sessionStorage.setItem(localKey, JSON.stringify(all)); } catch (e) {}
+        const db = await ready;
         if (!db) return;
         try {
           /* ⚠️ 只寫這一格。沒有 stars、沒有 status —— 這一頁不計星。 */
@@ -195,7 +241,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             modules: { arduino: { [unit]: { [part]: rec } } },
             updatedAt: Date.now()
           }, { merge: true });
-        } catch (e) { console.warn('[LAB] 寫入失敗（本機仍有紀錄）', e); }
+          setState('cloud', '');
+        } catch (e) {
+          /* ★★ 不可以只寫 console.warn —— 那正是這次的病根。 */
+          setState('local', '寫入被拒：' + (e && e.code || e));
+        }
       }
     };
   </script>
@@ -1599,6 +1649,26 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
                 warmBox.classList.remove('hidden');
                 labBox.classList.remove('hidden');
+
+                /* ★★ 存不進雲端就要**講出來**（老師 2026-08-24：
+                   「關閉瀏覽器後，再次進入，暖身活動的記錄被清除了」）。
+                   ⚠️ 那一次的病根是「寫入被規則擋掉，但只寫進 console」——
+                      學生和老師都看不到，症狀變成「紀錄自己不見了」。
+                   ⇒ 只存本機時掛一條橘色橫幅，明講「關掉瀏覽器就會不見」。 */
+                if (save.onState) save.onState(function (st, reason) {
+                    let bar = document.getElementById('lab-cloud');
+                    if (st === 'cloud') { if (bar) bar.remove(); return; }
+                    if (!bar) {
+                        bar = document.createElement('div');
+                        bar.id = 'lab-cloud';
+                        bar.className = 'mb-4 bg-orange-50 border-2 border-orange-300 ' +
+                                        'rounded-2xl p-3 text-sm font-bold text-orange-900';
+                        warmBox.insertBefore(bar, warmBox.firstChild);
+                    }
+                    bar.innerHTML = '⚠️ 這次的紀錄<b>只存在這台電腦</b>，關掉瀏覽器就會不見。' +
+                                    '<span class="text-xs font-normal">（' +
+                                    (reason || '雲端沒接上') + '）</span>';
+                });
                 wrap.innerHTML = '<div class="text-slate-400 font-bold text-sm py-6 text-center">讀取上次的紀錄…</div>';
 
                 /* 已完成的樣子：一張綠卡 ＋ 一個「再玩一次」。

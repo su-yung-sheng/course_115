@@ -500,6 +500,42 @@ section('★★ ② 先拉一遍再答題（老師 2026-08-24 指定的互動體
      '★★ 拖曳只更新尺標那一塊（整個重畫會讓拉桿失焦）');
 }
 
+section('★★ 完成紀錄要真的存得進雲端（老師 2026-08-24：關掉瀏覽器就不見了）');
+{
+  const page = read('11501/5016b.html');
+  /* ⚠️⚠️ 第一版只 import 了 firebase-app 和 firestore，**沒有 auth** ——
+     Firestore 用戶端是未登入狀態，安全規則的 isSignedIn() 一律不成立，
+     每一次寫入都被拒絕。而失敗只寫進 console.warn，
+     於是唯一活著的是 sessionStorage —— 關掉瀏覽器就沒了。
+     ★★ 和 aiguide.gs 的 unitBrief_ 同一種病：**安靜降級**。 */
+  ok(/firebase-auth\.js/.test(page), '★★ 有載入 firebase-auth（沒有它，寫入一定被規則擋掉）');
+  ok(/<script src="\.\.\/shared\/auth\.js"><\/script>/.test(page),
+     '★★ 有載入 shared/auth.js（要靠它把闖關基地那個登入接過來）');
+  ok(/await window\.AUTH\.attachSession\(auth, signInAnonymously, onAuthStateChanged\)/.test(page),
+     '★★ 而且**等它接上**再讀寫 —— 不等的話寫在 auth 還沒回來之前');
+  ok(/getApps\(\)\.length \? getApp\(\) : initializeApp/.test(page),
+     '★ 用 getApps()／getApp()，不盲目再 initializeApp 一次');
+  /* ⚠️ 不可以自己再登入一次 —— 會把 Google 身分蓋掉，isOwner() 就失效了。 */
+  ok(!/signInWithPopup|signInAnonymously\(auth\)/.test(page),
+     '★★ 這一頁不自己登入 —— 蓋掉 Google 身分的話，安全規則的 isOwner() 會失效');
+
+  /* ★★ 真正的修法是讓失敗**看得見**。 */
+  /* ⚠️ 用「數幾個」不夠 —— 拿掉一個還剩四個，照樣綠（突變測試抓到的）。
+     ⇒ 改成**逐一點名**：每一條失敗路徑都要有自己的 setState。 */
+  ['這一頁沒有 Firebase 設定', '讀不到學號', '沒有載入 shared/auth.js', '還沒登入',
+   '連不上雲端', '讀取失敗', '寫入被拒'].forEach(r => {
+    ok(page.indexOf("setState('local', '" + r) > 0,
+       '★★ 失敗路徑「' + r + '」有自己的 setState（不是默默吞掉）');
+  });
+  ok(!/console\.warn\('寫入/.test(page), '★★ 寫入失敗不可以只寫 console.warn（那就是這次的病根）');
+  ok(/if \(save\.onState\) save\.onState\(function/.test(page) && /只存在這台電腦/.test(page),
+     '★★ 只存本機時畫面上要掛橫幅，明講「關掉瀏覽器就會不見」');
+  ok(page.indexOf("bar.id = 'lab-cloud'") > 0 && /if \(bar\) bar\.remove\(\)/.test(page),
+     '   接上雲端之後那條橫幅要收掉');
+  /* 原因要講出來，不然老師還是不知道要查哪裡。 */
+  ok(/reason \|\| '雲端沒接上'/.test(page), '★ 而且要把原因寫在橫幅上（方便查）');
+}
+
 section('★ 第二節真的接上頁面了');
 {
   const page = read('11501/5016b.html');
