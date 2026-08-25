@@ -263,25 +263,37 @@ section('★★ ① 複習盤：四種配法都要親手試過');
 section('★★ 成果發表：三句話（老師指定，文字不可改）');
 {
   ok(J.SHOW_Q.length === 3, '三句');
-  ok(/我們要解決的問題是/.test(J.SHOW_Q[0].t), '★★ 第一句：我們要解決的問題是');
+  /* ★ 老師 2026-08-25：前面改成「研發人員」（單數），三句主詞一律「我」。 */
+  ok(/^我要解決的問題是/.test(J.SHOW_Q[0].t), '★★ 第一句：我要解決的問題是');
+  ok(!J.SHOW_Q.some(q => /我們/.test(q.t)), '★★ 三句都沒有「我們」');
   /* ★★ 老師 2026-08-25（追加）：「要有兩種條件(如果 那麼 否則)」。 */
   ok(/當.*時，系統會.*；否則/.test(J.SHOW_Q[1].t),
      '★★ 第二句：當＿＿時，系統會＿＿；**否則**＿＿');
   ok(J.SHOW_Q[1].slots.join() === 'when,then,els', '★★ 三格（含否則）');
   ok(/否則/.test(J.SHOW_Q[1].hint) && /回不去/.test(J.SHOW_Q[1].hint),
      '★★ 加註要點破「少了否則，動作做了就回不去」（第一節那一課）');
-  ok(/我們遇到.*最後用.*解決/.test(J.SHOW_Q[2].t), '★★ 第三句：我們遇到＿＿，最後用＿＿解決');
+  /* ★★ 老師 2026-08-25：「我遇到＿＿，最後用＿＿解決，我學到＿＿」。
+     ⚠️ 多的那一格是**反思** —— 前兩格講「事情經過」，第三格才是「所以呢」。
+        沒有它，發表就停在「我修好了」。 */
+  ok(/^我遇到.*最後用.*解決.*我學到/.test(J.SHOW_Q[2].t),
+     '★★ 第三句：我遇到＿＿，最後用＿＿解決，**我學到**＿＿');
+  ok(J.SHOW_Q[2].slots.join() === 'trouble,fix,learn', '★★ 三格（含我學到）');
   ok(J.SHOW_Q.every(q => q.ph && q.ph.length === q.slots.length), '   每一格都有範例');
 
   /* ⚠️ 第二句的「當…」現在要看得出是**條件**（老師 2026-08-25：
      「一定要有條件判斷」）—— 範例本身也要合格。 */
   const v = { problem: '晚上回家玄關太暗', when: '距離小於 30 公分',
               then: '燈條慢慢亮成暖黃色', els: '兩個都關掉', trouble: '距離一直跳，燈會閃',
-              fix: '把門檻改成進 15 出 25 兩個數字' };
+              fix: '把門檻改成進 15 出 25 兩個數字',
+              learn: '感測器讀到的數字會抖，門檻不能只設一個' };
   ok(J.judgeShow(v).ok, '填滿 → 過');
   ok(!J.judgeShow(Object.assign({}, v, { then: '' })).ok, '   少一格 → 不過');
   /* ⚠️⚠️ 「否則」那一格空著要擋 —— 那正是第一節「門開了沒」的病根。 */
   ok(!J.judgeShow(Object.assign({}, v, { els: '' })).ok, '★★ 「否則」空著 → 不過');
+  ok(!J.judgeShow(Object.assign({}, v, { learn: '' })).ok, '★★ 「我學到」空著 → 不過');
+  ok(J.judgeShow(Object.assign({}, v, { learn: '' })).miss.indexOf('learn') >= 0 &&
+     /我學到/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { learn: '' })))),
+     '★ 而且點名是「我學到」那一格');
   ok(J.judgeShow(Object.assign({}, v, { els: '' })).miss.indexOf('els') >= 0,
      '★ 而且點名是「否則」那一格');
   ok(/否則/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { els: '' })))),
@@ -326,15 +338,27 @@ section('★★ 成果發表：三句話（老師指定，文字不可改）');
 section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
 {
   const v = { problem: '玄關太暗', when: '有人靠近', then: '燈亮起來', els: '關掉',
-              trouble: '燈一直閃', fix: '加了兩個門檻' };
+              trouble: '燈一直閃', fix: '加了兩個門檻', learn: '門檻要兩個' };
   const html = J.cardHtml(v, { scene: '玄關迎賓燈', team: '二年三班第 4 組',
                                mode: '自動', date: '2026/8/25' });
   ok(/玄關迎賓燈/.test(html) && /二年三班第 4 組/.test(html), '★ 卡片上有題目和研發人員');
   ok(/模式：自動/.test(html), '★★ 而且標出這一組做的是哪一種模式');
-  ok(/我們要解決的問題是/.test(html) && /系統會/.test(html) && /最後用/.test(html),
-     '★★ 三句話都在卡片上');
+  ok(/我要解決的問題是/.test(html) && /系統會/.test(html) && /最後用/.test(html) &&
+     /我學到/.test(html),
+     '★★ 三句話都在卡片上（含「我學到」）');
+  ok(!/我們/.test(html), '★ 卡片上沒有「我們」');
+  /* ⚠️⚠️ 下載成 PNG 的那一版**版面是另一份**（cardLines）——
+     兩份要一起改。突變測試證實：把 cardLines 的「我學到」刪掉，
+     網頁版照樣正確、測試也照樣綠，**只有下載下來的圖少一句**。 */
+  const rows = J.cardLines(v);
+  ok(rows.length === 4, '★★ 下載版有四段（問題／當…否則／遇到…解決／我學到）');
+  ok(/我要解決的問題是/.test(rows[0].k), '★ ① 我要解決的問題是');
+  ok(/當/.test(rows[1].k) && /否則/.test(rows[1].v), '★★ ② 含「否則」那一段');
+  ok(/我遇到/.test(rows[2].k) && /解決/.test(rows[2].v), '★ ③ 我遇到…最後用…解決');
+  ok(/我學到/.test(rows[3].k) && rows[3].v === v.learn, '★★ ④ 我學到（下載版也要有）');
+  ok(!rows.map(r => r.k + r.v).join().match(/我們/), '★ 下載版也沒有「我們」');
   /* ⚠️ 卡片上**每一格都是學生自己打的字**，全部都要跳脫。 */
-  ['problem', 'when', 'then', 'trouble', 'fix'].forEach(k => {
+  ['problem', 'when', 'then', 'els', 'trouble', 'fix', 'learn'].forEach(k => {
     const w = Object.assign({}, v); w[k] = '<img src=x onerror=alert(1)>';
     ok(!/<img/.test(J.cardHtml(w, {})), '★★ ' + k + ' 有跳脫');
   });
@@ -413,6 +437,7 @@ section('★★ 走一遍：展示 → 成果卡');
   ok(!done && /最值錢/.test(el.textContent), '★★ 第三句寫「沒有」→ 擋下來，不給出卡');
   set('pj-trouble', '距離一直跳，燈會閃個不停');
   set('pj-fix', '把門檻改成進 15 出 25 兩個數字');
+  ok(set('pj-learn', '感測器的數字會抖，門檻不能只設一個'), '★★ 畫面上有「我學到」那一格');
   click('pj-make');
   ok(!!done, '★ 三句都寫好 → 產生成果卡');
   ok(!!el.querySelector('#pj-card'), '   卡片畫出來了');
@@ -535,9 +560,10 @@ section('★★ 第五節接上頁面了');
   ok(/基礎關/.test(u5) && /挑戰關/.test(u5) && /創意關/.test(u5), '★★ 三張任務卡都在教材區');
   ok(/先讓它動/.test(u5) && /讓它更聰明/.test(u5) && /讓它解決問題/.test(u5),
      '★★ 三個副標一字不改');
-  ok(/我們要解決的問題是/.test(u5) && /當＿＿＿＿時，系統會＿＿＿＿/.test(u5) &&
-     /我們遇到＿＿＿＿，最後用＿＿＿＿解決/.test(u5),
-     '★★ 發表三句一字不改（老師指定）');
+  ok(/我要解決的問題是/.test(u5) &&
+     /當＿＿＿＿時，系統會＿＿＿＿；<b>否則<\/b>＿＿＿＿/.test(u5) &&
+     /我遇到＿＿＿＿，最後用＿＿＿＿解決，<b>我學到<\/b>＿＿＿＿/.test(u5),
+     '★★ 教材上的三句和模組一致（含否則、我學到）');
   ok(/每組都從基礎關開始/.test(u5), '★ 而且寫明「每組都從基礎關開始」');
   ok(/做自動的用超音波/.test(u5) && /做手動的用旋鈕/.test(u5),
      '★★ 講清楚輸入怎麼挑：自動用超音波、手動用旋鈕');

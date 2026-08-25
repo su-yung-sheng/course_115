@@ -77,7 +77,9 @@
   /* ── 成果發表的三句 ────────────────────────────────
      ★ 老師指定，一字不改。 */
   var SHOW_Q = [
-    { key: 's1', t: '我們要解決的問題是：', slots: ['problem'],
+    /* ★ 老師 2026-08-25：前面改成「研發人員」（單數），
+       所以三句的主詞一律用「我」。 */
+    { key: 's1', t: '我要解決的問題是：', slots: ['problem'],
       ph: ['例：晚上回家玄關太暗，開燈要摸半天'] },
     /* ★ 老師 2026-08-25：「加註 如果 那麼 或者 如果 那麼 否則
        一定要有條件判斷」。
@@ -92,8 +94,16 @@
       hint: '＝ <b>如果</b>（條件）<b>那麼</b>（動作）<b>否則</b>（另一個動作）<br>' +
             '⚠️ 「否則」那一格不能空 —— 少了它，動作做了就<b>回不去</b>。',
       ph: ['例：距離小於 30 公分', '例：燈條亮起來、風扇開始轉', '例：兩個都關掉'] },
-    { key: 's3', t: '我們遇到＿＿＿＿，最後用＿＿＿＿解決。', slots: ['trouble', 'fix'],
-      ph: ['例：距離一直跳來跳去，燈會閃', '例：把門檻改成兩個數字（進 15 出 25）'] }
+    /* ★★ 老師 2026-08-25：「我遇到＿＿，最後用＿＿解決，我學到＿＿」。
+       ⚠️ 多的那一格是**反思** —— 前兩格講的是「事情經過」，
+          第三格才是「所以呢」。
+       ★ 沒有它的話，發表就停在「我修好了」；有了它，
+         學生得回頭想「這件事以後還能用在哪」。 */
+    { key: 's3', t: '我遇到＿＿＿＿，最後用＿＿＿＿解決，我學到＿＿＿＿。',
+      slots: ['trouble', 'fix', 'learn'],
+      ph: ['例：距離一直跳來跳去，燈會閃',
+           '例：把門檻改成兩個數字（進 15 出 25）',
+           '例：感測器讀到的數字會抖，門檻不能只設一個'] }
   ];
   /* ⚠️ 第三句最常見的敷衍就是「沒有遇到問題」。
      ★ 那句話一寫出來，這一節最有價值的部分（怎麼卡住、怎麼解掉）就沒了。 */
@@ -113,7 +123,7 @@
          剛好長度過關，而這一格最值錢的東西還是沒寫。 */
     if (NO_TROUBLE.test(norm(v.trouble))) return { ok: false, how: 'notrouble' };
     var miss = [];
-    ['problem', 'when', 'then', 'els', 'trouble', 'fix'].forEach(function (k) {
+    ['problem', 'when', 'then', 'els', 'trouble', 'fix', 'learn'].forEach(function (k) {
       if (norm(v[k]).length < MIN) miss.push(k);
     });
     if (miss.length) return { ok: false, how: 'short', miss: miss };
@@ -121,7 +131,8 @@
     return { ok: true, how: 'fit' };
   }
   var LABEL = { problem: '要解決的問題', when: '當…時', then: '系統會…',
-                els: '否則…', trouble: '遇到…', fix: '最後用…解決' };
+                els: '否則…', trouble: '我遇到…', fix: '最後用…解決',
+                learn: '我學到…' };
   function sayShow(r) {
     if (r.how === 'nocond')
       return '⚠️ 第二句的「當＿＿時」要是一個**條件** —— ' +
@@ -141,11 +152,17 @@
   }
 
   /* ═══ 成果卡：列印（另存 PDF）與下載 PNG ═══════════ */
+  /* ⚠️⚠️ cardLines() 是**下載 PNG 那一版的唯一版面來源** ——
+     網頁上的 cardHtml() 有自己的一份。
+     ★ 兩份要一起改：突變測試把這裡的「我學到」刪掉，
+       網頁版照樣正確、測試也照樣綠，**只有下載下來的圖少一句**。
+       ⇒ 所以這支要匯出，讓測試直接盯它。 */
   function cardLines(v) {
     return [
-      { k: '我們要解決的問題是', v: v.problem },
+      { k: '我要解決的問題是', v: v.problem },
       { k: '當　' + v.when + '　時', v: '系統會　' + v.then + '；否則　' + v.els },
-      { k: '我們遇到　' + v.trouble, v: '最後用　' + v.fix + '　解決' }
+      { k: '我遇到　' + v.trouble, v: '最後用　' + v.fix + '　解決' },
+      { k: '我學到', v: v.learn }
     ];
   }
   function cardHtml(v, meta) {
@@ -154,16 +171,17 @@
     return '<div class="pj-card" id="pj-card">' +
       '<div class="pj-hd"><span>智慧家居機電專題　成果發表</span>' +
         '<span>' + esc(m.date || '') + '</span></div>' +
-      '<div class="pj-title">' + esc(m.scene || '我們的專題') + '</div>' +
+      '<div class="pj-title">' + esc(m.scene || '我的專題') + '</div>' +
       (m.team ? '<div class="pj-team">' + esc(m.team) + '</div>' : '') +
       (m.mode ? '<div class="pj-mode">模式：' + esc(m.mode) + '</div>' : '') +
       (m.line ? '<div class="pj-line">' + esc(m.line) + '</div>' : '') +
       '<ol class="pj-ol">' +
-        '<li><b>我們要解決的問題是：</b><br>' + esc(v.problem) + '</li>' +
+        '<li><b>我要解決的問題是：</b><br>' + esc(v.problem) + '</li>' +
         '<li><b>當</b> ' + esc(v.when) + ' <b>時，系統會</b> ' + esc(v.then) +
           '<b>；否則</b> ' + esc(v.els) + '。</li>' +
-        '<li><b>我們遇到</b> ' + esc(v.trouble) +
-          ' <b>，最後用</b> ' + esc(v.fix) + ' <b>解決。</b></li>' +
+        '<li><b>我遇到</b> ' + esc(v.trouble) +
+          ' <b>，最後用</b> ' + esc(v.fix) + ' <b>解決。</b><br>' +
+          '<b>我學到</b> ' + esc(v.learn) + '。</li>' +
       '</ol></div>';
   }
 
@@ -219,7 +237,7 @@
 
     y += 62;
     c.fillStyle = '#0f172a'; c.font = '900 46px ' + FONT;
-    wrapText(c, m.scene || '我們的專題', W - pad * 2).forEach(function (l) {
+    wrapText(c, m.scene || '我的專題', W - pad * 2).forEach(function (l) {
       c.fillText(l, pad, y); y += 56;
     });
     if (m.team) {
@@ -340,13 +358,13 @@
     ensureCss();
     var esc = LK().esc, md = LK().md;
     var line = String(opts.line || '');
-    var scene = (opts.plan && opts.plan.scene) || '我們的專題';
+    var scene = (opts.plan && opts.plan.scene) || '我的專題';
     var tab = 'demo';                 // demo（兩種模式）／show（成果發表）
     /* ★ 自動帶入班級座號姓名（頁面從 SSO 拿）。
        ⚠️ 只在「學生還沒自己填過」的時候帶入 —— 不然他改了名字（加組員）
           會被下一次重新掛載蓋掉。 */
     var f = Object.assign({ team: '', mode: '', problem: '', when: '', then: '', els: '',
-                            trouble: '', fix: '' }, opts.work || {});
+                            trouble: '', fix: '', learn: '' }, opts.work || {});
     if (!f.team && opts.who) f.team = opts.who;
 
     function tabs() {
@@ -385,7 +403,7 @@
             '<div class="pj-col-n">' + md(m.good) + '</div>' +
             '<button class="dl-go" data-pick="' + esc(m.t) + '"' +
               (f.mode === m.t ? '' : ' style="background:#94a3b8"') + '>' +
-              (f.mode === m.t ? '✅ 我們做這一種' : '選這一種') + '</button>' +
+              (f.mode === m.t ? '✅ 我做這一種' : '選這一種') + '</button>' +
           '</div>';
         }).join('') + '</div>' +
         '<div class="pj-pick">🧩 <b>不管做哪一種，程式裡一定要有一個「如果」。</b><br>' +
@@ -412,7 +430,7 @@
             : '⚠️ <b>沒讀到你的班級座號姓名</b>，請自己填 —— ' +
               '（可能是沒登入，或名冊還沒建。）') +
         '</div>' +
-        '<div class="pj-ask" style="margin-top:10px">1. 我們要解決的問題是：</div>' +
+        '<div class="pj-ask" style="margin-top:10px">1. 我要解決的問題是：</div>' +
         '<div class="pj-fill"><input class="pj-t" id="pj-problem" value="' + esc(f.problem) +
           '" placeholder="' + esc(SHOW_Q[0].ph[0]) + '"></div>' +
         '<div class="pj-ask" style="margin-top:10px">2. 當＿＿時，系統會＿＿；否則＿＿。' +
@@ -423,11 +441,14 @@
           '" placeholder="' + esc(SHOW_Q[1].ph[1]) + '"></div>' +
         '<div class="pj-fill">否則　<input class="pj-t" id="pj-els" value="' + esc(f.els) +
           '" placeholder="' + esc(SHOW_Q[1].ph[2]) + '"></div>' +
-        '<div class="pj-ask" style="margin-top:10px">3. 我們遇到＿＿，最後用＿＿解決。</div>' +
-        '<div class="pj-fill">我們遇到　<input class="pj-t" id="pj-trouble" value="' +
+        '<div class="pj-ask" style="margin-top:10px">' +
+          '3. 我遇到＿＿，最後用＿＿解決，我學到＿＿。</div>' +
+        '<div class="pj-fill">我遇到　<input class="pj-t" id="pj-trouble" value="' +
           esc(f.trouble) + '" placeholder="' + esc(SHOW_Q[2].ph[0]) + '"></div>' +
         '<div class="pj-fill">最後用　<input class="pj-t" id="pj-fix" value="' + esc(f.fix) +
           '" placeholder="' + esc(SHOW_Q[2].ph[1]) + '">　解決</div>' +
+        '<div class="pj-fill">我學到　<input class="pj-t" id="pj-learn" value="' + esc(f.learn) +
+          '" placeholder="' + esc(SHOW_Q[2].ph[2]) + '"></div>' +
         '<div class="dl-row"><button class="dl-go" id="pj-make">產生成果卡</button></div>',
         msg, cls);
     }
@@ -458,7 +479,8 @@
     function grab() {
       [['pj-team', 'team'], ['pj-problem', 'problem'], ['pj-when', 'when'],
        ['pj-then', 'then'], ['pj-els', 'els'],
-       ['pj-trouble', 'trouble'], ['pj-fix', 'fix']].forEach(function (x) {
+       ['pj-trouble', 'trouble'], ['pj-fix', 'fix'],
+       ['pj-learn', 'learn']].forEach(function (x) {
         var e = el.querySelector('#' + x[0]);
         if (e) f[x[1]] = e.value;
       });
@@ -494,7 +516,7 @@
   global.PROJLAB = {
     MIN: MIN, MODES: MODES, SHOW_Q: SHOW_Q,
     judgeShow: judgeShow, sayShow: sayShow,
-    cardHtml: cardHtml, drawCard: drawCard, printCard: printCard, downloadPng: downloadPng,
+    cardHtml: cardHtml, cardLines: cardLines, drawCard: drawCard, printCard: printCard, downloadPng: downloadPng,
     mount: mount
   };
 
