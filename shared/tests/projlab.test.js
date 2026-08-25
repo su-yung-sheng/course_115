@@ -925,10 +925,22 @@ section('★★ 內容沒改就不再送 AI（老師 2026-08-25）');
   ok(/AI 助教看過這一版了/.test(el9.textContent) &&
      !/送出前 AI 助教會先看一遍/.test(el9.textContent),
      '★★ 所以畫面上寫「看過了」，不是「會先看一遍」');
-  /* ★ 改一個字 → 提示自己回來。 */
-  el9.querySelector('#pj-learn').value = '改了一個字';
-  el9.querySelector('#pj-learn').dispatchEvent(new W.Event('input', { bubbles: true }));
-  a9.show('show');
+  /* ⚠️⚠️ 那行提示要**跟著打字即時更新**。
+     ★ 第一版只在重畫的時候算 —— 但 input 事件不重畫（重畫會讓輸入框失焦），
+       所以學生改完字，畫面上還寫著「AI 助教看過這一版了」。
+       他會以為不用再送，其實按下去是會送的。 */
+  const box9 = el9.querySelector('#pj-learn');
+  box9.value = '我改了一個字，門檻要兩個';
+  box9.dispatchEvent(new W.Event('input', { bubbles: true }));
+  ok(!a9.aiSeen(), '★★ 改了字 → 立刻知道「這一版還沒看過」');
+  ok(/送出前 AI 助教會先看一遍/.test(el9.querySelector('#pj-ainote').textContent),
+     '★★ 而且那行提示**當下就換回來**（不必等按按鈕）');
+  /* ⚠️⚠️ 打字的時候**不可以整頁重畫** —— 輸入框會被換成新的元素，
+     學生打到一半就失焦（第三節那顆旋鈕踩過同一族的坑）。
+     ★ 測「字還在」抓不到這個：重畫會從資料重建，字確實還在。
+       要測的是**元素還是不是同一個**。 */
+  ok(el9.querySelector('#pj-learn') === box9,
+     '★★ 打字之後輸入框**還是同一個元素**（重畫會讓人打到一半失焦）');
   W.document.body.removeChild(el9);
   delete W.ASKAI;
   ok(/aiSig: ''/.test(src6), '★ 指紋跟著作答一起存（下次載回來才記得）');

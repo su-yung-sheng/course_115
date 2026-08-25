@@ -866,9 +866,7 @@
         '<div class="dl-row"><button class="dl-go" id="pj-make"' +
           (aiBusy ? ' disabled' : '') + '>' +
           (aiBusy ? '🤖 AI 助教看一下…' : '產生成果卡') + '</button>' +
-          (aiOn() && !aiSeen()
-            ? '<span class="dl-note">送出前 AI 助教會先看一遍。</span>'
-            : (aiOn() ? '<span class="dl-note">✅ AI 助教看過這一版了。</span>' : '')) +
+          '<span class="dl-note" id="pj-ainote">' + aiNote() + '</span>' +
         '</div>',
         msg, cls);
     }
@@ -895,6 +893,19 @@
        ⇒ 改成**每次重畫都重算**：看過了就不顯示；
          學生一改字，指紋就對不上，那行提示自己會回來。 */
     function aiSeen() { return aiDone || !!(f.aiSig && f.aiSig === sig(f)); }
+    function aiNote() {
+      if (!aiOn()) return '';
+      return aiSeen() ? '✅ AI 助教看過這一版了。' : '送出前 AI 助教會先看一遍。';
+    }
+    /* ⚠️⚠️ 那行提示要**跟著打字即時更新**。
+       ★ 第一版只在重畫的時候算 —— 但 input 事件不重畫（重畫會讓輸入框失焦），
+         所以學生改完字，畫面上還寫著「AI 助教看過這一版了」。
+         他會以為不用再送，其實按下去是會送的（doShow 會先 grab）。
+       ⇒ 打字 → 收進資料 → **只換那一行的文字**，不重畫。 */
+    function aiNotePaint() {
+      var n = el.querySelector('#pj-ainote');
+      if (n) n.textContent = aiNote();
+    }
     function doShow() {
       grab();
       var r = judgeShow(f);
@@ -974,6 +985,10 @@
         var e = el.querySelector('#' + id); if (e) e.addEventListener('click', fn);
       };
       on('pj-make', doShow);
+      /* ★ 打字就把文字收進資料，並重算那行提示（不重畫，不然會失焦）。 */
+      el.querySelectorAll('.pj-t').forEach(function (t) {
+        t.addEventListener('input', function () { grab(); aiNotePaint(); });
+      });
       /* ⚠️ 問不到的時候留一顆「重新讀取」—— 唯讀的欄位不能只留一句抱歉。 */
       on('pj-whoretry', function () {
         whoState = 'wait';
