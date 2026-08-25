@@ -53,7 +53,7 @@
        重複的互動不會多教到什麼，只會讓人以為自己走錯地方。
      ⇒ 改成一張**對照表**，而且給它一個複習盤沒有的目的：
        「**你的程式裡，條件判斷在哪裡？**」
-         自動：如果…那麼…否則…　—— 判斷寫在中間，這是第一節那一課
+         自動：如果…那麼…否則…　—— 判斷寫在中間
          手動：直接換算，**沒有條件判斷** —— 所以要自己補一個
      ★ 這正好接上成果發表第二句要寫的東西。 */
   /* ⚠️⚠️ 老師 2026-08-25：「自動版本使用超音波，手動版版使用可變電阻，
@@ -84,7 +84,7 @@
       words: '距離|公分|靠近|接近|太近|太遠|走|人',
       code: '如果　距離 < 30　那麼\n　　燈條亮起來\n　　風扇開始轉\n否則\n　　兩個都關掉',
       note: '★ 那個 30 就是**你要自己決定的門檻**。' +
-            '⚠️ 「否則」不能省 —— 少了它，燈亮起來就再也不會暗（第一節那一課）。' },
+            '⚠️ 「否則」不能省 —— 少了它，燈亮起來就**再也不會暗**。' },
     { key: 'manual', t: '手動', by: '可變電阻（旋鈕）',
       d: '轉到哪就是哪 —— 顏色和轉速都自己說了算。',
       good: '★ 好處：完全可控。⚠️ 代價：得一直自己轉。',
@@ -116,9 +116,14 @@
        ⚠️ 這一句不是在描述「我們做了什麼」，它就是**程式裡那個判斷**。
           寫不出條件的組別，通常是程式裡也沒有 —— 那才是要抓的。 */
     /* ★★ 老師 2026-08-25（追加）：「要有兩種條件(如果 那麼 否則)」。
-       ⚠️ 所以第二句多一格「否則」—— 而且那一格是**擋得住最多錯**的地方：
-          第一節整節課在講的「門開了沒」，病根就是少了否則。
-          少了它，燈亮起來就再也不會暗。 */
+       ⚠️ 所以第二句多一格「否則」—— 而且那一格是**擋得住最多錯**的地方。
+       ⚠️⚠️ 但不要把它說成「第一節那一課」——**歸錯了**。
+          第一節教的是「加一個變數**記住狀態**」（門開過了沒），
+          病根是「動作一直重複」；
+          少了「否則」的病根是「動作做了**回不去**」。
+       ★ 兩者是同一族、不是同一件事：都來自
+         「只想了**該做的時候**，沒想**不該做的時候**」。
+         這樣講才對得起第一節那一節課。 */
     /* ★★ 老師 2026-08-25（再追加）：「輸出元件 兩個都要，所以
        『當＿＿時，系統會＿＿；否則＿＿』的反應要分兩種，直接幫使用者註明
        (燈條)(馬達) 因為可能會替換成生活中的實際產品，例如電燈，電扇等」。
@@ -133,6 +138,8 @@
       hint: '＝ <b>如果</b>（條件）<b>那麼</b>（兩個輸出各做什麼）' +
             '<b>否則</b>（兩個各恢復成什麼）<br>' +
             '⚠️ 「否則」那兩格不能空 —— 少了它，動作做了就<b>回不去</b>。<br>' +
+            '★ 和第一節那個「門開了沒」是同一族的毛病：' +
+            '只想了<b>該做的時候</b>，沒想<b>不該做的時候</b>。<br>' +
             '★ （燈條）（馬達）可以讀成你作品裡的東西：玄關燈、電扇…',
       ph: ['例：距離小於 30 公分',
            '例：亮起暖黃色', '例：慢慢開始轉',
@@ -383,6 +390,17 @@
     var esc = LK().esc;
     var m = meta || {};
     var sp = specOf(v);
+    /* ⚠️⚠️ 老師 2026-08-25：「『產生成果卡』的排版怎麼跑掉了，
+       使用者輸入的字換行排版錯亂」。
+       ★ 病根：.pj-li 是 flex 容器，而 flex 會把**每一個子節點**
+         當成獨立的 item —— 文字片段、<span>、<table> 全部並排。
+         第一版把編號、句子、表格全塞在同一層，整段就被拆成一條橫排。
+       ⇒ 只留**兩個** flex item：編號圓點、內容區塊。
+         內容區塊自己是普通的 block，句子和表格就正常往下排。 */
+    function li(n, html) {
+      return '<div class="pj-li"><span class="pj-no">' + n + '</span>' +
+             '<div class="pj-li-b">' + html + '</div></div>';
+    }
     /* ★ 老師 2026-08-25：「使用者自己輸入的文字用不同顏色表示」——
        網頁版和 PNG 用同一套：學生打的字上藍色。 */
     function row(k, val, own) {
@@ -409,23 +427,21 @@
       '</table>' +
       '<div class="pj-sec">二、動作說明</div>' +
       '<div class="pj-body">' +
-        '<div class="pj-li"><span>1</span>我要解決的問題是：' +
-          '<span class="pj-own">' + esc(v.problem) + '</span></div>' +
-        '<div class="pj-li"><span>2</span>當 <span class="pj-own">' + esc(v.when) +
-          '</span> 時：' +
-          '<table class="pj-tb pj-tb-io"><tr><th>燈條</th>' +
-          '<td class="pj-own">' + esc(v.thenL) + '</td>' +
-          '<th>馬達</th><td class="pj-own">' + esc(v.thenM) + '</td></tr>' +
-          '<tr><th>否則 燈條</th><td class="pj-own">' + esc(v.elsL) + '</td>' +
-          '<th>否則 馬達</th><td class="pj-own">' + esc(v.elsM) + '</td></tr></table></div>' +
+        li('1', '我要解決的問題是：' +
+              '<span class="pj-own">' + esc(v.problem) + '</span>') +
+        li('2', '當 <span class="pj-own">' + esc(v.when) + '</span> 時：' +
+              '<table class="pj-tb pj-tb-io"><tr><th>燈條</th>' +
+              '<td class="pj-own">' + esc(v.thenL) + '</td>' +
+              '<th>馬達</th><td class="pj-own">' + esc(v.thenM) + '</td></tr>' +
+              '<tr><th>否則 燈條</th><td class="pj-own">' + esc(v.elsL) + '</td>' +
+              '<th>否則 馬達</th><td class="pj-own">' + esc(v.elsM) +
+              '</td></tr></table>') +
       '</div>' +
       '<div class="pj-sec">三、問題與解決</div>' +
       '<div class="pj-body">' +
-        '<div class="pj-li"><span>3</span>我遇到 <span class="pj-own">' +
-          esc(v.trouble) + '</span>，最後用 <span class="pj-own">' + esc(v.fix) +
-          '</span> 解決。</div>' +
-        '<div class="pj-li"><span>4</span>我學到 <span class="pj-own">' +
-          esc(v.learn) + '</span>。</div>' +
+        li('3', '我遇到 <span class="pj-own">' + esc(v.trouble) +
+              '</span>，最後用 <span class="pj-own">' + esc(v.fix) + '</span> 解決。') +
+        li('4', '我學到 <span class="pj-own">' + esc(v.learn) + '</span>。') +
         '<div class="pj-legend">■ 藍色的字是研發人員自己填的</div>' +
       '</div>' +
       (m.line ? '<div class="pj-doc-f">設計單：' + esc(m.line) + '</div>' : '') +
@@ -673,10 +689,15 @@
   '.pj-sec{font-size:16px;font-weight:900;color:#7c3aed;margin:18px 0 6px;' +
     'border-bottom:2px solid #ede9fe;padding-bottom:4px}' +
   '.pj-body{font-size:15px;font-weight:800;color:#334155}' +
-  '.pj-li{display:flex;gap:9px;align-items:flex-start;margin-bottom:8px;line-height:1.9}' +
-  '.pj-li span{flex:none;width:22px;height:22px;border-radius:50%;background:#ede9fe;' +
+  '.pj-li{display:flex;gap:9px;align-items:flex-start;margin-bottom:10px;line-height:1.9}' +
+  /* ⚠️ 只有**直接子元素**才是 flex item —— 編號和內容區塊，就這兩個。
+     內容區塊裡面（句子、表格）是正常的 block 流。
+     ⚠️ 第一版寫 `.pj-li span{…}` —— 那會連內容裡的 .pj-own 一起套上
+        圓點的樣式（固定 22px、圓形、置中），學生的字整個被壓爛。 */
+  '.pj-li>.pj-no{flex:none;width:22px;height:22px;border-radius:50%;background:#ede9fe;' +
     'color:#7c3aed;font-size:13px;font-weight:900;text-align:center;line-height:22px;' +
-    'margin-top:4px}' +
+    'margin-top:5px}' +
+  '.pj-li>.pj-li-b{flex:1;min-width:0}' +
   '.pj-li b{color:#0f172a}' +
   '.pj-own{color:#1d4ed8;font-weight:900}' +
   '.pj-legend{font-size:12px;font-weight:800;color:#94a3b8;margin-top:14px}' +

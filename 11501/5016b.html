@@ -872,7 +872,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 <span class="col-span-2">&nbsp;</span>
 <span class="col-span-2 text-emerald-600">  // ③ 人走遠了，而且門還開著 → 關門（馬達反轉）</span>
 <span class="col-span-2">  <span class="text-rose-600">如果</span> <span class="text-sky-600">距離</span> &gt; <span class="text-indigo-600">20</span> <span class="text-rose-600">而且</span> <span class="text-sky-600">門的狀態</span> = <span class="text-indigo-600">「開」</span> <span class="text-rose-600">則</span></span>
-<span>    <span class="text-amber-600">設定 馬達</span> <span class="text-indigo-600">-250</span></span><span class="text-emerald-600">// 反轉</span>
+<span>    <span class="text-amber-600">設定 馬達</span> <span class="text-indigo-600">−250</span></span><span class="text-emerald-600">// 反轉</span>
 <span>    <span class="text-rose-600">等待</span> <span class="text-indigo-600">1.3</span> 秒</span><span class="text-emerald-600">// 和開門一樣久</span>
 <span>    <span class="text-amber-600">設定 馬達</span> <span class="text-indigo-600">0</span></span><span class="text-emerald-600">// 停</span>
 <span>    <span class="text-sky-600">門的狀態</span> <span class="text-rose-600">設為</span> <span class="text-indigo-600">「關」</span></span>
@@ -925,7 +925,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                           '所以需要一塊新積木：<b>對應</b>。',
                 objectives: [
                     "認識 WS2812B 的「定址」特性：一條線就能分別控制每一顆燈珠",
-                    "應用<span class=\"hl\">類比對應</span>：把距離數值（例如 10~100 公分）換算成燈珠數量 (1~8顆)",
+                    "應用<span class=\"hl\">對應</span>積木：把距離數值（例如 10～100 公分）換算成燈珠數量（1～8 顆）",
                     "撰寫迴圈 (For-Loop) 來動態更新燈條的點亮與熄滅狀態"
                 ],
                 materials: [
@@ -1286,8 +1286,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 <pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
 <span class="col-span-2"><span class="text-rose-600">當綠旗被點擊</span></span>
 <span class="col-span-2"><span class="text-rose-600">無限重複執行</span></span>
-<span class="col-span-2 text-emerald-600">  // ⚠️ 下限是 -250，不是 0 —— 負數代表反轉</span>
-<span class="col-span-2">  <span class="text-sky-600">變數</span> 轉速 <span class="text-rose-600">設為</span> <span class="text-amber-600">類比對應</span> (<span class="text-indigo-600">A7</span>, <span class="text-indigo-600">-250</span>, <span class="text-indigo-600">250</span>)</span>
+<span class="col-span-2 text-emerald-600">  // ⚠️ 下限是 −250，不是 0 —— 負數代表反轉</span>
+<span class="col-span-2">  <span class="text-sky-600">變數</span> 轉速 <span class="text-rose-600">設為</span> <span class="text-amber-600">類比對應</span> (<span class="text-indigo-600">A7</span>, <span class="text-indigo-600">−250</span>, <span class="text-indigo-600">250</span>)</span>
 <span class="col-span-2">  <span class="text-amber-600">設定馬達</span> (<span class="text-indigo-600">腳位2、3</span>) <span class="text-rose-600">=</span> <span class="text-sky-600">轉速</span></span>
 <span class="col-span-2">  <span class="text-amber-600">右轉</span> (<span class="text-sky-600">轉速</span> ÷ <span class="text-indigo-600">5</span>) <span class="text-amber-600">度</span>　<span class="text-emerald-600">// 畫面上的風扇圖跟著轉</span></span>
 </code></pre>

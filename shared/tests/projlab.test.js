@@ -105,7 +105,16 @@ section('★★ 兩種模式：改成對照表，而且有新的目的');
   ok(/自己補一個條件/.test(J.MODES[1].note),
      '★★ 而且明講「做手動的組別要自己補一個條件」');
   ok(/否則.*不能省|少了它/.test(J.MODES[0].note),
-     '★ 自動那一欄提醒「否則」不能省（第一節那一課）');
+     '★ 自動那一欄提醒「否則」不能省');
+  /* ⚠️⚠️ 2026-08-25 總體檢抓到的**概念歸屬錯誤**：
+     第一節教的是「加一個變數**記住狀態**」（門開過了沒），
+     病根是「動作一直重複」；
+     少了「否則」的病根是「動作做了**回不去**」。
+     ★ 兩者同一族、不是同一件事 —— 不可以把「否則」說成第一節那一課。 */
+  ok(!/第一節/.test(J.MODES[0].note),
+     '★★ 「否則」不可以歸給第一節（第一節教的是記住狀態）');
+  ok(/門開了沒/.test(J.SHOW_Q[1].hint) && /同一族/.test(J.SHOW_Q[1].hint),
+     '★★ 要連到第一節的話，講清楚是「同一族的毛病」而不是同一件事');
   /* ⚠️ 舊的滑桿與換算已經整段收掉 —— 不可以留死碼。 */
   const src = read('shared/projlab.js').replace(/\/\*[\s\S]*?\*\//g, '');
   ok(!/function autoOf|function manualOf|id="pj-cm"|id="pj-pct"/.test(src),
@@ -443,6 +452,24 @@ section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
      '★★ PNG 版有顏色圖例 —— 不然看的人不知道顏色代表什麼');
   ok(/pj-own/.test(J.cardHtml(v, {})) && /藍色的字/.test(J.cardHtml(v, {})),
      '★ 網頁版也上同一種色、也有圖例');
+  /* ⚠️⚠️ 老師 2026-08-25：「『產生成果卡』的排版怎麼跑掉了，
+     使用者輸入的字換行排版錯亂」。
+     ★ 病根：.pj-li 是 flex 容器，flex 把**每一個子節點**當成獨立 item ——
+       文字片段、<span class=pj-own>、<table> 全部並排，整段被拆成一條橫排。
+     ⇒ 只留兩個 flex item：編號圓點、內容區塊。 */
+  const dd = new JSDOM('<div>' + J.cardHtml(v, { scene: 'x', team: 'y' }) + '</div>');
+  const lis = [...dd.window.document.querySelectorAll('.pj-li')];
+  ok(lis.length === 4, '★ 四條內文');
+  ok(lis.every(el => el.children.length === 2),
+     '★★ 每一條只有**兩個** flex item（編號＋內容），不然會被拆成橫排');
+  ok(lis.every(el => el.children[0].className === 'pj-no' &&
+                     el.children[1].className === 'pj-li-b'),
+     '★★ 而且順序固定：編號圓點、內容區塊');
+  /* ⚠️ 樣式也要只套在編號上 —— `.pj-li span{…}` 會把內容裡的
+     .pj-own 一起套成 22px 的圓點，學生的字整個被壓爛。 */
+  const css5 = read('shared/projlab.js');
+  ok(/'\.pj-li>\.pj-no\{/.test(css5) && !/'\.pj-li span\{/.test(css5),
+     '★★ 圓點的樣式只套在 .pj-no（不是所有 span）');
   /* ⚠️ 卡片上**每一格都是學生自己打的字**，全部都要跳脫。 */
   ['problem', 'when', 'thenL', 'thenM', 'elsL', 'elsM',
    'trouble', 'fix', 'learn'].forEach(k => {

@@ -334,7 +334,7 @@
         轉太快會糊成一個圓盤，反而看不出在轉、也看不出方向。
         ⇒ 最快只到 0.32 秒一圈，而且留一片**不同顏色的葉片**當記號，
           快轉的時候還是分得出正轉還是反轉。 */
-  var FAN_MAX = 250;             // 課本那組：類比對應(A7, -250, 250)
+  var FAN_MAX = 250;             // 課本那組：類比對應（A7，−250，250）
   function fanSpin(v, max) {
     var m = max || FAN_MAX, a = Math.min(1, Math.abs(Number(v) || 0) / m);
     if (a < 0.02) return { dur: 0, rev: false, a: 0 };
