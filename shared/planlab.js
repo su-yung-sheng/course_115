@@ -85,14 +85,38 @@
       { key: 'hue',  t: '整條變色（走完色環）', from: '第四節',
         can: '做成氣氛燈、狀態燈 —— 綠色安全、紅色警告。' }
     ],
-    moto: [
+    /* ⚠️⚠️ 老師 2026-08-25：「可變電阻配直流馬達沒有反轉? 往左反轉不是前面課程?」
+       ★ 兩個毛病：
+         ① 馬達的**預設做法**是「轉或停」（0～250），
+            學生點下去看到的是不會反轉的那一種 ——
+            而「往左反轉」正是第三節花了一整節在講的事。
+            ⇒ 旋鈕配馬達時，把「依比例（−250～250）」放**第一個**。
+         ② 更根本的：⚠️ 反轉是**旋鈕才有**的。
+            超音波只有「越近越快」一個方向，人走遠了馬達反轉沒有道理。
+            第一版兩種輸入共用同一份做法清單，
+            所以超音波拉遠會看到馬達倒轉 —— 那是憑空多出來的行為。
+            ⇒ 做法清單**依輸入而不同**，這剛好就是第三節 B 那個對照：
+              「只往一邊轉的話，下限 0 就是對的」。 */
+    moto_pot: [
+      { key: 'ratio', t: '依比例調轉速（−250 ～ 250）', from: '第三節',
+        can: '★ 旋鈕轉到**正中間是停**，往左**反轉**、往右正轉 —— ' +
+             '這就是第三節那個負號的意思。' },
+      { key: 'onoff', t: '轉或停（過了門檻才轉）', from: '第一節的判斷',
+        can: '做成可調速電扇的開關；最單純，先做這個一定會動。' }
+    ],
+    moto_us: [
       { key: 'onoff', t: '轉或停（過了門檻才轉）', from: '第一節的判斷',
         can: '做成感應風扇、自動門 —— 最單純，先做這個一定會動。' },
-      { key: 'ratio', t: '依比例調轉速（−250～250）', from: '第三節',
-        can: '做成可調速電扇；負的代表**反轉**，中間是停。' }
+      { key: 'ratio', t: '依比例調轉速（0 ～ 250）', from: '第三節',
+        can: '越近轉越快。⚠️ 這裡下限是 **0 不是 −250** —— ' +
+             '人走遠了讓風扇倒轉沒有道理，只往一邊轉的話 0 才對。' }
     ]
   };
-  function actsOf(out) { return ACTS[out] || []; }
+  /* ⚠️ 做法要看**輸入是誰** —— 反轉是旋鈕才有的。 */
+  function actsOf(out, inKey) {
+    if (out !== 'moto') return ACTS[out] || [];
+    return inKey === 'us' ? ACTS.moto_us : ACTS.moto_pot;
+  }
   /* 輸入的原始值 → 這個做法會做出什麼。★ 只有這一個地方在算，畫面照著畫。 */
   function effectOf(inKey, out, act, raw) {
     /* 先把兩種輸入都換成 0～1 的「強度」——
@@ -102,6 +126,8 @@
       : Math.max(0, Math.min(1, raw / 100));
     if (out === 'moto') {
       if (act === 'onoff') return { fan: k > 0.5 ? SPD : 0, lo: 0 };
+      /* ★ 旋鈕：中間停、往左反轉（第三節）。超音波：只往一邊。 */
+      if (inKey === 'us') return { fan: Math.round(k * SPD), lo: 0 };
       return { fan: Math.round(-SPD + 2 * SPD * k), lo: -SPD };
     }
     if (act === 'seq') return { on: [Math.round(1 + (LEDS - 1) * k)], hue: 200 };
@@ -250,7 +276,7 @@
         '</div></div>';
     }
     function mixHtml() {
-      var ins = PLIN(), a = actsOf(mx.output);
+      var ins = PLIN(), a = actsOf(mx.output, mx.input);
       var act = a.filter(function (x) { return x.key === mx.act; })[0] || a[0];
       var n = Object.keys(mx.tried).length;
       return '<div class="pl-row">🔁 <b>第一步：先複習 —— 學過的就這四樣</b></div>' +
@@ -416,14 +442,25 @@
       el.querySelectorAll('[data-mi]').forEach(function (b) {
         b.addEventListener('click', function () {
           mx.input = b.getAttribute('data-mi');
-          mx.raw = mx.input === 'us' ? 40 : 50;
+          /* ⚠️ 旋鈕預設不要停在正中間 —— 配馬達的時候正中間剛好是
+             「停」，學生一切過去看到不會動，會以為壞掉。
+             ⇒ 預設偏右（正轉），讓他先看到會動，再自己往左轉發現反轉。 */
+          mx.raw = mx.input === 'us' ? 40 : 75;
+          /* ⚠️ 這裡**不需要**把做法重設。
+             第一版加了一段「舊的 key 可能不在新清單裡」的守衛 ——
+             但兩組做法用的是同一組 key（onoff／ratio），
+             那個條件**永遠不會成立**（突變測試把它刪掉，測試照樣綠）。
+             ★ 補償一個不存在的問題，比原本的問題更難查。
+             ⇒ 留著 mx.act 反而更好：同樣選「依比例」，
+               切到超音波範圍就自動變成 0～250、標題也跟著換 ——
+               那正好是第三節「只往一邊轉的話下限 0 才對」那個對照。 */
           markTried(); view('', '');
         });
       });
       el.querySelectorAll('[data-mo]').forEach(function (b) {
         b.addEventListener('click', function () {
           mx.output = b.getAttribute('data-mo');
-          mx.act = actsOf(mx.output)[0].key;
+          mx.act = actsOf(mx.output, mx.input)[0].key;
           markTried(); view('', '');
         });
       });

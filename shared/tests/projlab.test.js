@@ -121,8 +121,23 @@ section('★★ ① 元件複習盤（老師：這一段要在最開始）');
   /* ★ 老師 2026-08-25：「這一段應該在最開始的地方，提示學生目前學過了
      這四個，可以相互組合，例如點選超音波配燈號順序等等，
      讓學生先花一點時間複習元件」。 */
-  ok(P.actsOf('strip').length === 3 && P.actsOf('moto').length === 2,
-     '★ 燈條三種做法、馬達兩種做法');
+  ok(P.actsOf('strip').length === 3, '★ 燈條三種做法');
+  /* ⚠️⚠️ 老師 2026-08-25：「可變電阻配直流馬達沒有反轉? 往左反轉不是前面課程?」
+     ★ 兩個毛病：
+       ① 馬達的**預設做法**是「轉或停」（0～250）—— 學生點下去看到的
+          是不會反轉的那一種，而「往左反轉」是第三節花一整節在講的事。
+       ② 更根本的：反轉是**旋鈕才有**的。第一版兩種輸入共用同一份清單，
+          所以超音波拉遠會看到馬達倒轉 —— 那是憑空多出來的行為。 */
+  ok(P.actsOf('moto', 'pot')[0].key === 'ratio',
+     '★★ 旋鈕配馬達 → 預設就是「會反轉」的那一種（第三節的重點）');
+  ok(/−250/.test(P.actsOf('moto', 'pot')[0].t) && /反轉/.test(P.actsOf('moto', 'pot')[0].can),
+     '★★ 而且標題和說明都寫出 −250 與「反轉」');
+  ok(P.actsOf('moto', 'us')[0].key === 'onoff',
+     '★ 超音波配馬達 → 從最單純的「轉或停」開始');
+  ok(!/−250/.test(P.actsOf('moto', 'us').map(a => a.t).join()),
+     '★★ 超音波那一組**不出現 −250** —— 人走遠了讓風扇倒轉沒有道理');
+  ok(/0 才對|下限是 \*\*0/.test(P.actsOf('moto', 'us')[1].can),
+     '★★ 而且點回第三節那個對照：只往一邊轉的話下限 0 才對');
   ok(P.actsOf('strip').some(a => /燈號順序/.test(a.t)),
      '★★ 有「燈號順序」這個做法（老師點名的例子）');
   ok(P.actsOf('strip').concat(P.actsOf('moto')).every(a => a.from && a.can),
@@ -141,7 +156,15 @@ section('★★ ① 元件複習盤（老師：這一段要在最開始）');
   ok(P.effectOf('pot', 'moto', 'ratio', 50).fan === 0,
      '★★ 旋鈕正中間 → 轉速 0（停）');
   ok(P.effectOf('pot', 'moto', 'ratio', 0).fan === -P.SPD &&
-     P.effectOf('pot', 'moto', 'ratio', 100).fan === P.SPD, '★★ 兩端 ±250');
+     P.effectOf('pot', 'moto', 'ratio', 100).fan === P.SPD, '★★ 旋鈕兩端 ±250');
+  ok(P.effectOf('pot', 'moto', 'ratio', 20).fan < 0, '★★ 旋鈕往左 → **真的是負的**（反轉）');
+  /* ⚠️ 超音波那一路**永遠不可以是負的**。 */
+  [2, 20, 60, 200].forEach(cm => {
+    ok(P.effectOf('us', 'moto', 'ratio', cm).fan >= 0,
+       '★★ 超音波 ' + cm + ' 公分 → 轉速不是負的（' +
+       P.effectOf('us', 'moto', 'ratio', cm).fan + '）');
+  });
+  ok(P.effectOf('us', 'moto', 'ratio', 200).lo === 0, '★ 超音波那一路下限是 0');
   ok(P.effectOf('pot', 'moto', 'onoff', 90).lo === 0,
      '★ 「轉或停」只往一邊 → 下限 0');
 }
@@ -200,6 +223,28 @@ section('★★ ① 複習盤：四種配法都要親手試過');
   tap('[data-mi="pot"]');
   ok(/pl-dial/.test(box.innerHTML) && /rotate\(/.test(box.innerHTML),
      '★★ 旋鈕：用第三節那顆真的會轉的（不是再畫一份）');
+  /* ★★ 旋鈕配馬達：一切過去就要看得到「會反轉」那一種，而且**先看到它在動**。 */
+  {
+    tap('[data-mo="moto"]');
+    ok(box.querySelector('#pl-mact').value === 'ratio',
+       '★★ 旋鈕配馬達 → 預設選到「依比例（−250～250）」');
+    ok(!/轉速 0<|停止/.test(box.innerHTML),
+       '★★ 而且預設不是停在正中間（不然學生會以為壞掉）');
+    pa.setRaw(10);
+    ok(/-\d+/.test(box.querySelector('.pl-read').textContent) &&
+       /反轉/.test(box.innerHTML),
+       '★★ 往左轉 → 轉速是負的、而且畫面上寫「反轉」');
+    pa.setRaw(50);
+    ok(/停止/.test(box.innerHTML), '★ 正中間 → 停止（第三節那個 0）');
+    /* ★★ 同樣選「依比例」，換成超音波之後範圍要自動變成 0～250 ——
+       那正好是第三節「只往一邊轉的話下限 0 才對」那個對照。 */
+    tap('[data-mi="us"]');
+    ok(box.querySelector('#pl-mact').value === 'ratio', '   做法留著（還是「依比例」）');
+    ok(/0 ～ 250/.test(box.innerHTML) && !/−250 ～ 250/.test(box.innerHTML),
+       '★★ 但範圍自動換成 0 ～ 250（超音波不反轉）');
+    tap('[data-mi="pot"]');
+    tap('[data-mo="strip"]');
+  }
   ok(/LK\(\)\.dialSvg\(/.test(read('shared/planlab.js')) &&
      /LK\(\)\.dialBind\(/.test(read('shared/planlab.js')),
      '★★ 旋鈕的幾何與拖曳都走 labkit（第三、五節同一顆）');
