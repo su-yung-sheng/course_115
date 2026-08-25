@@ -218,6 +218,19 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       try { return JSON.parse(sessionStorage.getItem(localKey) || '{}'); } catch (e) { return {}; }
     }
 
+    /* ★ 老師 2026-08-25：「不是要在名冊內才能登入?」—— 對。
+       ⚠️ 所以「讀不到姓名」的原因**不是**沒登入或名冊沒建，
+          而是 SSO.me() 讀的是**快取**：已經登入、但這一頁還沒解析過
+          身分的時候，快取就是空的（例如直接開網址、新分頁進來）。
+       ⇒ 補一支讀名冊的，讓 SSO.resolve() 有東西可以問。 */
+    window.LABROSTER = async function (id) {
+      const db = await ready;
+      if (!db) return null;
+      const ROS = (CFG.COLLECTIONS && CFG.COLLECTIONS.ROSTER) || (TERM + '-roster');
+      const snap = await getDoc(doc(db, ROS, id));
+      return snap.exists() ? snap.data() : null;
+    };
+
     window.LABSAVE = {
       /** 現在是存得進雲端還是只存本機。頁面用它決定要不要顯示警告。 */
       onState(fn) { listeners.push(fn); fn(state, why); },
@@ -1951,14 +1964,32 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 let planRec = null;
                 /* 「二年三班　13 號　王小明」。⚠️ 缺哪一段就跳過哪一段，
                    不要印出「undefined 班」那種東西。 */
-                function whoText() {
-                    const me = (window.SSO && window.SSO.me && window.SSO.me()) || null;
+                function fmtWho(me) {
                     if (!me) return '';
                     const bits = [];
                     if (me.cls) bits.push(me.cls + ' 班');
                     if (me.no) bits.push(me.no + ' 號');
                     if (me.name) bits.push(me.name);
                     return bits.join('　');
+                }
+                function whoText() {
+                    return fmtWho((window.SSO && window.SSO.me && window.SSO.me()) || null);
+                }
+                /* ⚠️⚠️ 老師 2026-08-25：「不是要在名冊內才能登入?」—— 對，
+                   所以只要登入了，名冊裡**一定**查得到。
+                   ★ 快取沒有不代表查不到 —— 那只代表這一頁還沒問過。
+                     （直接開網址、或在新分頁打開，就會是這種狀況。）
+                   ⇒ 快取沒有就去問一次名冊，拿到再補進去。 */
+                let chkApi = null;
+                function fillWhoLater() {
+                    if (whoText()) return;                    // 快取已經有了
+                    if (!window.SSO || !window.SSO.resolve || !window.LABROSTER) return;
+                    window.SSO.resolve(window.LABROSTER, { silent: true })
+                        .then(function (me) {
+                            const t = fmtWho(me);
+                            if (t && chkApi && chkApi.setWho) chkApi.setWho(t);
+                        })
+                        .catch(function () {});   // 失敗就讓學生自己填（畫面上會講）
                 }
                 function planLine() {
                     return (window.PLANLAB && planRec) ? window.PLANLAB.planLine(planRec) : '';
@@ -1968,7 +1999,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     checks.innerHTML = '';
                     let sid = '';
                     try { sid = sessionStorage.getItem('sid' + ((window.CONFIG || {}).TERM || '11501')) || ''; } catch (e) {}
-                    chkMod.mount(checks, {
+                    chkApi = chkMod.mount(checks, {
                         seed: seed,
                         student: sid,          // AI 覆核要記在誰頭上（額度是全班共用的）
                         plan: planRec,         // 第五節：設計單
@@ -1997,6 +2028,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             if (info && info.work) save.save(UNIT, 'work', { work: info.work });
                         }
                     });
+                    fillWhoLater();      // ★ 快取沒有就去問名冊，拿到再補
                 }
                 function mountWarm(rec) {
                     wrap.innerHTML = '';

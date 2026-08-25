@@ -469,14 +469,46 @@ section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
      '★★ 班級座號姓名自動填進去了');
   ok(/自動帶入/.test(b1.textContent), '★ 而且告訴他這是自動帶的、可以改');
 
-  /* ⚠️⚠️ 讀不到的時候要**看得見** —— 不然學生會交出一張沒有名字的成果卡。 */
+  /* ⚠️⚠️ 老師 2026-08-25 追問：「不是要在名冊內才能登入?」—— 對。
+     ★ 所以「讀不到」**不是**沒登入、也不是名冊沒建：那兩種進不到這一頁。
+       真正會發生的只有「還沒問到」（SSO 讀的是快取，
+       直接開網址或新分頁進來時快取是空的）。
+     ⚠️ 第一版把原因寫成「可能是沒登入」—— 那是**猜的，而且猜錯**。
+        錯的原因比沒有原因更糟：學生會跑去重新登入，然後發現沒用。 */
+  const src0 = read('shared/projlab.js').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/可能是沒登入|名冊還沒建/.test(src0),
+     '★★ 不再把原因猜成「沒登入／名冊沒建」（登入就一定在名冊裡）');
+
   const b2 = W.document.createElement('div');
   W.document.body.appendChild(b2);
   const a2 = J.mount(b2, {});
   a2.show('show');
-  ok(b2.querySelector('#pj-team').value === '', '   讀不到就留空');
-  ok(/沒讀到.{0,6}班級座號姓名/.test(b2.textContent),
-     '★★ 而且明講「沒讀到，請自己填」（靜默留白最糟）');
+  ok(b2.querySelector('#pj-team').value === '', '   還沒問到就留空');
+  ok(a2.whoState() === 'wait' && /正在讀/.test(b2.textContent),
+     '★★ 這個時候要說「**正在讀**」，不是說「讀不到」');
+  /* ★ 頁面問到名冊之後補進來。 */
+  a2.setWho('二年三班　13 號　王小明');
+  ok(b2.querySelector('#pj-team').value === '二年三班　13 號　王小明',
+     '★★ 問到之後自動補進去');
+  ok(a2.whoState() === 'got' && /已自動帶入/.test(b2.textContent), '   而且提示跟著換');
+  /* ⚠️ 真的問不到才講「請自己填」—— 而且要點出成果卡不能沒有名字。 */
+  const b4 = W.document.createElement('div');
+  W.document.body.appendChild(b4);
+  const a4 = J.mount(b4, {});
+  a4.show('show');
+  a4.setWho('');
+  ok(a4.whoState() === 'miss' && /請自己填/.test(b4.textContent),
+     '★★ 真的問不到 → 才說「請自己填」');
+  ok(/成果卡上不能沒有名字/.test(b4.textContent),
+     '★★ 而且點出後果（靜默留白最糟）');
+  /* ⚠️ 學生自己填過的，補進來也不可以蓋掉。 */
+  const b5 = W.document.createElement('div');
+  W.document.body.appendChild(b5);
+  const a5 = J.mount(b5, { work: { team: '我自己打的' } });
+  a5.show('show');
+  a5.setWho('二年三班　13 號　王小明');
+  ok(b5.querySelector('#pj-team').value === '我自己打的',
+     '★★ 他自己填過的，晚一步問到也不會蓋掉');
 
   /* ★ 學生自己改過就不可以被蓋掉（例如加上組員）。 */
   const b3 = W.document.createElement('div');
@@ -492,7 +524,18 @@ section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
   ok(/<script src="\.\.\/shared\/sso\.js"><\/script>/.test(page), '頁面載入 sso');
   ok(/who: whoText\(\)/.test(page), '★ 掛載時把身分傳進去');
   ok(/window\.SSO && window\.SSO\.me/.test(page),
-     '★★ 用同步的快取 —— 不為了填一格名字去等 Firestore');
+     '★★ 先用同步的快取 —— 不為了填一格名字去等 Firestore');
+  /* ★★ 快取沒有不代表查不到 —— 那只代表這一頁還沒問過。 */
+  ok(/SSO\.resolve\(window\.LABROSTER/.test(page),
+     '★★ 快取沒有就去問一次名冊（登入了就一定查得到）');
+  /* ⚠️ 光「有寫那個函式」不算 —— 要真的**被呼叫到**。
+     突變測試把呼叫刪掉，函式還在，第一版照樣綠（釘錯層）。 */
+  ok(/\n\s*fillWhoLater\(\);/.test(page),
+     '★★ 而且掛載檢核之後真的呼叫它（不是只定義著）');
+  ok(/chkApi\.setWho/.test(page), '★ 問到之後補回畫面');
+  ok(/window\.LABROSTER = async function/.test(page), '   有一支讀名冊的');
+  ok(/COLLECTIONS && CFG\.COLLECTIONS\.ROSTER/.test(page) && /-roster/.test(page),
+     '★ 名冊的集合名字跟著設定走（不寫死成 11501-roster）');
   ok(/if \(me\.cls\)/.test(page) && /if \(me\.name\)/.test(page),
      '★★ 缺哪一段跳過哪一段（不要印出「undefined 班」）');
 }

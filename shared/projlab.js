@@ -366,6 +366,31 @@
     var f = Object.assign({ team: '', mode: '', problem: '', when: '', then: '', els: '',
                             trouble: '', fix: '', learn: '' }, opts.work || {});
     if (!f.team && opts.who) f.team = opts.who;
+    /* 三態：已帶入／還在問名冊／問不到。⚠️ 不可以靜默留白。 */
+    var whoState = f.team ? 'got' : 'wait';
+    function whoNote() {
+      if (whoState === 'got')
+        return '★ 已自動帶入你的班級座號姓名（可以自己改，例如加上組員）。';
+      if (whoState === 'wait')
+        return '⏳ 正在讀你的班級座號姓名…（讀到會自動填，也可以先自己打）';
+      return '⚠️ <b>這一頁沒問到你的班級座號姓名</b>，請自己填。' +
+             '（不影響其他紀錄 —— 但**成果卡上不能沒有名字**。）';
+    }
+    /* ★ 頁面問到名冊之後補進來。
+       ⚠️ 學生自己填過就不覆蓋 —— 他可能加了組員。 */
+    function setWho(t) {
+      if (!t) { whoState = 'miss'; }
+      else {
+        whoState = 'got';
+        if (!norm(f.team)) {
+          f.team = t;
+          var e = el.querySelector('#pj-team');
+          if (e) e.value = t;
+        }
+      }
+      var n = el.querySelector('#pj-whonote');
+      if (n) n.innerHTML = whoNote();
+    }
 
     function tabs() {
       var t = [['demo', '🎛️ 兩種模式', '玩玩看，複習前四節'],
@@ -420,16 +445,16 @@
         '<div class="pj-ask">🎤 <b>成果發表</b>　—— 固定講這三句就好。</div>' +
         /* ★ 老師 2026-08-25：「組別／組員」改成「研發人員」，
            而且班級座號姓名要由系統自動填入。
-           ⚠️ 讀不到名冊的時候要**看得見** —— 不然學生會以為系統壞了，
-              或更糟：交出一張沒有名字的成果卡。 */
+           ⚠️⚠️ 老師追問：「不是要在名冊內才能登入?」—— 對。
+              ★ 所以「讀不到」**不是**沒登入、也不是名冊沒建 ——
+                那兩種情況根本進不到這一頁。
+              ⇒ 真正會發生的只有「**還沒問到**」：SSO 讀的是快取，
+                直接開網址或新分頁進來時快取是空的，要去問一次名冊。
+              ⚠️ 第一版把原因寫成「可能是沒登入」—— 那是**猜的，而且猜錯**。
+                 錯的原因比沒有原因更糟：學生會跑去重新登入，然後發現沒用。 */
         '<div class="pj-fill">研發人員：<input class="pj-t" id="pj-team" value="' +
           esc(f.team) + '" placeholder="例：二年三班　13 號　王小明"></div>' +
-        '<div class="pj-note">' +
-          (opts.who
-            ? '★ 已自動帶入你的班級座號姓名（可以自己改，例如加上組員）。'
-            : '⚠️ <b>沒讀到你的班級座號姓名</b>，請自己填 —— ' +
-              '（可能是沒登入，或名冊還沒建。）') +
-        '</div>' +
+        '<div class="pj-note" id="pj-whonote">' + whoNote() + '</div>' +
         '<div class="pj-ask" style="margin-top:10px">1. 我要解決的問題是：</div>' +
         '<div class="pj-fill"><input class="pj-t" id="pj-problem" value="' + esc(f.problem) +
           '" placeholder="' + esc(SHOW_Q[0].ph[0]) + '"></div>' +
@@ -510,6 +535,7 @@
 
     show('demo');
     return { tab: function () { return tab; }, work: function () { return f; },
+             setWho: setWho, whoState: function () { return whoState; },
              show: show, card: function () { return cardHtml(f, meta()); } };
   }
 
