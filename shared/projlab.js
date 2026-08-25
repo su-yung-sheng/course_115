@@ -188,6 +188,8 @@
                 els: '否則…', trouble: '我遇到…', fix: '最後用…解決',
                 learn: '我學到…' };
   function sayShow(r) {
+    /* ⚠️ 正常走不到這裡（沒選模式就進不了成果發表）——
+       留著是因為 judgeShow 也給外面用（例如老師的檢查工具）。 */
     if (r.how === 'nomode')
       return '⚠️ 先在上面那一頁**挑一種模式**（自動或手動）—— ' +
              '成果卡上要寫清楚你做的是哪一種。';
@@ -470,6 +472,7 @@
     'border:2px solid #e2e8f0;font-weight:900;font-size:14px;color:#64748b;background:#fff;' +
     'cursor:pointer}' +
   '.pj-tab.on{border-color:#7c3aed;background:#f5f3ff;color:#5b21b6}' +
+  '.pj-tab.off{opacity:.55;cursor:not-allowed}' +
   '.pj-tab span{display:block;font-size:11px;font-weight:800;opacity:.8}' +
   '.pj-goal{background:#0f172a;color:#e2e8f0;border-radius:14px;padding:14px 16px;' +
     'font-weight:900;font-size:15px;line-height:1.9;margin-bottom:12px}' +
@@ -612,8 +615,10 @@
       var t = [['demo', '🎛️ 兩種模式', '玩玩看，複習前四節'],
                ['show', '🎤 成果發表', '三句話 ＋ 成果卡']];
       return '<div class="pj-lv">' + t.map(function (x) {
-        return '<div class="pj-tab ' + (tab === x[0] ? 'on' : '') + '" data-tab="' + x[0] + '">' +
-          x[1] + '<span>' + x[2] + '</span></div>';
+        var off = (x[0] === 'show' && !f.mode);
+        return '<div class="pj-tab ' + (tab === x[0] ? 'on' : '') + (off ? ' off' : '') +
+          '" data-tab="' + x[0] + '">' +
+          x[1] + '<span>' + (off ? '先挑一種模式' : x[2]) + '</span></div>';
       }).join('') + '</div>';
     }
     function goal() {
@@ -651,7 +656,9 @@
           '自動那一種本來就有；手動那一種要自己補 —— ' +
           '想想看：<b>什麼情況下它應該整個停下來？</b><br>' +
           '★ 這一句等一下就是成果發表的第二句。</div>' +
-        '<div class="dl-row"><button class="dl-go" id="pj-go-show">去填成果發表 →</button></div>',
+        '<div class="dl-row"><button class="dl-go" id="pj-go-show"' +
+          (f.mode ? '' : ' style="background:#94a3b8"') + '>' +
+          (f.mode ? '去填成果發表 →' : '先挑一種模式') + '</button></div>',
         msg, cls);
     }
 
@@ -782,7 +789,20 @@
         if (e) f[x[1]] = e.value;
       });
     }
-    function show(t) { tab = t; if (t === 'demo') viewDemo('', ''); else viewShow('', ''); }
+    /* ⚠️⚠️ 老師 2026-08-25：「模式 沒有決定應該不能進入 下一步吧?」
+       ★ 對，而且不只是出卡的時候才擋 ——
+         **沒選模式，第二句的範例根本給不出來**
+         （自動給距離的例子、手動給旋鈕的例子，那是上一輪剛建立的關連）。
+         讓他先進去看到一組通用範例，寫完才被退回來，比一開始就擋更糟。
+       ⚠️ 這是這一節唯一一道門 —— 「第五課不用動手檢核」指的是
+          不做關卡式的判定，不是連填表的順序都不管。 */
+    function show(t) {
+      if (t === 'show' && !f.mode)
+        return viewDemo('⚠️ 先挑一種模式（**自動**或**手動**）再往下 —— ' +
+                        '成果發表要寫的條件、範例、規格都跟著它走。', 'bad');
+      tab = t;
+      if (t === 'demo') viewDemo('', ''); else viewShow('', '');
+    }
 
     function bind() {
       var on = function (id, fn) {

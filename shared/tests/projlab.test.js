@@ -443,9 +443,25 @@ section('★★ 走一遍：展示 → 成果卡');
      '★★ 手動那一欄明講「沒有條件判斷」');
   ok(/一定要有一個「如果」/.test(el.textContent),
      '★★ 而且收尾要求：不管做哪一種，程式裡一定要有一個「如果」');
+  /* ⚠️⚠️ 老師 2026-08-25：「模式 沒有決定應該不能進入 下一步吧?」
+     ★ 對 —— 而且不只是出卡時才擋：**沒選模式，第二句的範例就給不出來**。
+       讓他先進去看到一組通用範例、寫完才被退回來，比一開始就擋更糟。 */
+  ok(!api.work().mode, '   （還沒挑模式）');
+  el.querySelector('[data-tab="show"]').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(api.tab() === 'demo', '★★ 沒挑模式 → 分頁點不進去');
+  ok(/先挑一種模式/.test(el.textContent), '★★ 而且講清楚為什麼');
+  click('pj-go-show');
+  ok(api.tab() === 'demo', '★★ 「下一步」那顆按鈕也一樣進不去');
+  ok(!!el.querySelector('.pj-tab.off'), '★ 那個分頁看得出是暗的（不是按了沒反應）');
+  /* ⚠️ 按鈕**自己**也要看得出來 —— 只有點下去才出提示的話，
+     學生會以為那顆壞了（第一版就是這樣，突變測試漏掉）。 */
+  ok(/先挑一種模式/.test(el.querySelector('#pj-go-show').textContent),
+     '★★ 那顆按鈕上就寫著「先挑一種模式」');
+
   /* ★ 學生要選一種當自己的作品。 */
   el.querySelector('[data-pick="手動"]').dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(api.work().mode === '手動', '★★ 挑一種模式當自己的作品');
+  ok(!el.querySelector('.pj-tab.off'), '★ 挑了之後分頁就亮了');
 
   click('pj-go-show');
   ok(api.tab() === 'show' && !!el.querySelector('#pj-problem'), '★ 進到成果發表');
@@ -504,6 +520,10 @@ section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
   const b1 = W.document.createElement('div');
   W.document.body.appendChild(b1);
   const a1 = J.mount(b1, { who: '二年三班　13 號　王小明' });
+  /* ⚠️ 沒挑模式進不了成果發表（老師 2026-08-25）—— 先挑一個。 */
+  const pick = (box, t) => box.querySelector('[data-pick="' + t + '"]')
+    .dispatchEvent(new W.Event('click', { bubbles: true }));
+  pick(b1, '自動');
   a1.show('show');
   ok(/研發人員/.test(b1.textContent) && !/組別／組員/.test(b1.textContent),
      '★★ 欄位名稱改成「研發人員」');
@@ -527,6 +547,7 @@ section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
   const b2 = W.document.createElement('div');
   W.document.body.appendChild(b2);
   const a2 = J.mount(b2, {});
+  pick(b2, '自動');
   a2.show('show');
   ok(a2.whoState() === 'wait' && /正在讀/.test(b2.textContent),
      '★★ 這個時候要說「**正在讀**」，不是說「讀不到」');
@@ -538,6 +559,7 @@ section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
   const b4 = W.document.createElement('div');
   W.document.body.appendChild(b4);
   const a4 = J.mount(b4, {});
+  pick(b4, '自動');
   a4.show('show');
   a4.setWho('');
   ok(a4.whoState() === 'miss' && /沒問到/.test(b4.textContent),
@@ -548,6 +570,7 @@ section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
   const b5 = W.document.createElement('div');
   W.document.body.appendChild(b5);
   const a5 = J.mount(b5, { onRetryWho: () => { retried++; } });
+  pick(b5, '自動');
   a5.show('show');
   a5.setWho('');
   ok(!!b5.querySelector('#pj-whoretry'), '★★ 問不到 → 要有一顆「重新讀取」');
@@ -572,6 +595,7 @@ section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
   W.document.body.appendChild(b3);
   const a3 = J.mount(b3, { who: '二年三班　13 號　王小明',
                            work: { team: '上次手打的別人' } });
+  pick(b3, '自動');
   a3.show('show');
   ok(!/上次手打的別人/.test(b3.textContent),
      '★★ 舊紀錄裡的名字**完全不採用**（不是靠事後覆蓋）');
@@ -580,6 +604,7 @@ section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
   const b3b = W.document.createElement('div');
   W.document.body.appendChild(b3b);
   const a3b = J.mount(b3b, { work: { team: '上次手打的別人' } });
+  pick(b3b, '自動');
   a3b.show('show');
   ok(!/上次手打的別人/.test(b3b.textContent) && a3b.whoState() === 'wait',
      '★★ 沒讀到帳號資料時也不退回舊紀錄（寧可空著等）');
