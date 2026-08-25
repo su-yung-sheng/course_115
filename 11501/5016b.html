@@ -2037,6 +2037,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                 byAI: !!(res && res.byAI)
                             });
                         },
+                        /* ★ 第五節：AI 看過之後**當下就存** ——
+                           等出卡才存的話，學生看完建議跑去改字或直接關掉，
+                           指紋就沒留下來，下次進來又送一次。 */
+                        onSave: function (work) {
+                            if (work) save.save(UNIT, 'work', { work: work });
+                        },
                         onDone: function (info) {
                             if (!(rec && rec.checks)) save.save(UNIT, 'checks', { tries: info && info.tries });
                             /* 第五節：任務卡與成果發表的內容也要留著 ——

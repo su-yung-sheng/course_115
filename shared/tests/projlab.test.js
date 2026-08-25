@@ -805,9 +805,9 @@ section('★★ AI 助教看一遍（老師 2026-08-25：成果發表引入 AI �
      不然「按了就出卡」會變成非同步（差一個 microtask），
      而且按鈕旁還會寫「AI 會先看一遍」，那是騙人的。 */
   ok(!J.aiOn(), '   （測試環境沒有 ASKAI）');
-  ok(/if \(aiOn\(\) && !aiDone && !aiBusy\)/.test(src3),
+  ok(/if \(aiOn\(\) && !aiSeen\(\) && !aiBusy\)/.test(src3),
      '★★ 沒有 AI 就不繞那條路（按了直接出卡）');
-  ok(/aiOn\(\) && !aiDone \?/.test(src3),
+  ok(/aiOn\(\) && !aiSeen\(\)/.test(src3),
      '★ 沒有 AI 的時候也不寫「AI 會先看一遍」');
   ok(/if \(a\.skipped\) return doShow\(\);/.test(src3),
      '★★ AI 不在／失敗 → **直接出卡**（學生不會知道有這一關）');
@@ -896,8 +896,41 @@ section('★★ 內容沒改就不再送 AI（老師 2026-08-25）');
   const src6 = read('shared/projlab.js').replace(/\/\*[\s\S]*?\*\//g, '');
   ok(/f\.aiSig && f\.aiSig === sig\(f\)/.test(src6),
      '★★ 內容和上次送審的一樣 → 直接出卡，不送');
-  ok(/if \(!a\.skipped\) f\.aiSig = sig\(f\)/.test(src6),
+  ok(/if \(!a\.skipped\) \{\n\s*f\.aiSig = sig\(f\);/.test(src6),
      '★★ 只有**真的送出去過**才記指紋（AI 不在時記了，恢復也不會再看）');
+  /* ⚠️⚠️ 老師 2026-08-25：「每次重新進入都會看到『送給 AI 助教』，
+     但是我沒有改字」。
+     ★ 病根：「內容和上次一樣」那個判斷**只在按下按鈕時才算** ——
+       畫面一載入，那行提示一定會出現，即使一個字都沒改。
+     ⇒ 改成每次重畫都重算。 */
+  ok(/function aiSeen\(\)/.test(src6) && /aiDone \|\| !!\(f\.aiSig/.test(src6),
+     '★★ 「看過了沒」是**每次重畫都重算**，不是一個死變數');
+  /* ⚠️ 而且要當下就存 —— 等出卡才存的話，
+     學生看完建議跑去改字或直接關掉，指紋就沒留下來。 */
+  ok(/opts\.onSave === 'function'/.test(src6), '★★ AI 看過就立刻回存指紋');
+  ok(/onSave: function \(work\)/.test(read('11501/5016b.html')),
+     '★ 頁面那端接起來');
+
+  /* 走一遍：帶著上次的指紋進來 → 提示不該出現。 */
+  const el9 = W.document.createElement('div');
+  W.document.body.appendChild(el9);
+  W.ASKAI = { enabled: () => true, judge: () => Promise.resolve([{ i: 0, got: [] }]) };
+  const same = Object.assign({}, base2);
+  same.aiSig = J.sig(base2);
+  const a9 = J.mount(el9, { work: same });
+  el9.querySelector('[data-pick="自動"]')
+    .dispatchEvent(new W.Event('click', { bubbles: true }));
+  a9.show('show');
+  ok(a9.aiSeen(), '★★ 內容沒改 → 一進來就知道「看過了」');
+  ok(/AI 助教看過這一版了/.test(el9.textContent) &&
+     !/送出前 AI 助教會先看一遍/.test(el9.textContent),
+     '★★ 所以畫面上寫「看過了」，不是「會先看一遍」');
+  /* ★ 改一個字 → 提示自己回來。 */
+  el9.querySelector('#pj-learn').value = '改了一個字';
+  el9.querySelector('#pj-learn').dispatchEvent(new W.Event('input', { bubbles: true }));
+  a9.show('show');
+  W.document.body.removeChild(el9);
+  delete W.ASKAI;
   ok(/aiSig: ''/.test(src6), '★ 指紋跟著作答一起存（下次載回來才記得）');
 }
 

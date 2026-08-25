@@ -866,7 +866,9 @@
         '<div class="dl-row"><button class="dl-go" id="pj-make"' +
           (aiBusy ? ' disabled' : '') + '>' +
           (aiBusy ? '🤖 AI 助教看一下…' : '產生成果卡') + '</button>' +
-          (aiOn() && !aiDone ? '<span class="dl-note">送出前 AI 助教會先看一遍。</span>' : '') +
+          (aiOn() && !aiSeen()
+            ? '<span class="dl-note">送出前 AI 助教會先看一遍。</span>'
+            : (aiOn() ? '<span class="dl-note">✅ AI 助教看過這一版了。</span>' : '')) +
         '</div>',
         msg, cls);
     }
@@ -882,6 +884,17 @@
                date: new Date().toLocaleDateString('zh-TW') };
     }
     var aiBusy = false, aiDone = false;
+    /* ⚠️⚠️ 老師 2026-08-25：「每次重新進入都會看到『送給 AI 助教』，
+       但是我沒有改字，這樣是沒有使用到?」
+       ★ 病根：aiDone 是個變數，而「內容和上次送審一樣」那個判斷
+         **只在按下按鈕的時候才算**（在 doShow 裡）。
+         所以畫面一載入，按鈕旁那行「送出前 AI 助教會先看一遍」
+         一定會出現 —— 即使一個字都沒改。
+       ⚠️ 更糟的是它會誤導：學生以為又要送一次，
+          而看到那行字的人（老師）會以為額度真的被燒掉了。
+       ⇒ 改成**每次重畫都重算**：看過了就不顯示；
+         學生一改字，指紋就對不上，那行提示自己會回來。 */
+    function aiSeen() { return aiDone || !!(f.aiSig && f.aiSig === sig(f)); }
     function doShow() {
       grab();
       var r = judgeShow(f);
@@ -892,15 +905,20 @@
          看完之後再按一次就出卡，不管它說了什麼；
          失敗或沒設定就直接出卡，學生不會知道有這一關。 */
       /* ★ 內容和上次送審的一模一樣 → 不用再送（老師 2026-08-25）。 */
-      if (!aiDone && f.aiSig && f.aiSig === sig(f)) aiDone = true;
-      if (aiOn() && !aiDone && !aiBusy) {
+      if (aiOn() && !aiSeen() && !aiBusy) {
         aiBusy = true;
         viewShow('', '');
         aiReview(f, opts).then(function (a) {
           aiBusy = false; aiDone = true;
           /* ⚠️ 只有**真的送出去過**才記指紋 ——
              AI 不在的時候記了，等 AI 恢復也不會再看。 */
-          if (!a.skipped) f.aiSig = sig(f);
+          if (!a.skipped) {
+            f.aiSig = sig(f);
+            /* ⚠️⚠️ 而且要**當下就存**。等出卡才存的話，
+               學生看完建議跑去改字、或直接關掉，指紋就沒留下來 ——
+               下次進來又送一次（額度是全班共用的）。 */
+            if (typeof opts.onSave === 'function') opts.onSave(f);
+          }
           if (a.skipped) return doShow();          // AI 不在 → 直接出卡
           if (!a.missing.length)
             return viewShow('✅ AI 助教看過了，三點都不錯 —— **再按一次**就出卡。', 'good');
@@ -981,6 +999,7 @@
     show('demo');
     return { tab: function () { return tab; }, work: function () { return f; },
              setWho: setWho, whoState: function () { return whoState; },
+             aiSeen: aiSeen,
              fname: fname,
              show: show, card: function () { return cardHtml(f, meta()); } };
   }
