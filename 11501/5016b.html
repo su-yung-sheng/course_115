@@ -139,6 +139,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
   <script src="../shared/labkit.js"></script>
   <script src="../shared/maplab.js"></script>
   <script src="../shared/potlab.js"></script>
+  <script src="../shared/fanlab.js"></script>
   <script src="../shared/doorlab.js"></script>
   <script src="../shared/lightlab.js"></script>
 
@@ -1120,7 +1121,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                    這裡增加了一個接線動作，連接到開發板上的 A7」）。
                    ⚠️ 這是五節課裡**第一次要學生自己接線** —— 前兩節都在模組上。
                    ⚠️ 三個檢核還沒做，checks 先留 null。 */
-                lab: { unit: 'u3', warm: 'POTLAB', checks: null },
+                lab: { unit: 'u3', warm: 'POTLAB', checks: 'FANLAB' },
                 apps: [
                     { icon: "🌀", name: "DC 變頻電扇",
                       how: "旋鈕轉一點點，風就大一點點，中間任何位置都停得住。⚠️ 傳統電扇不是這樣 —— 它是「一檔二檔三檔」的三段開關，裡面沒有可變電阻。" },
@@ -1131,14 +1132,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                           '這一節換成<span class="hl">人自己轉的</span>。' +
                           '⚠️ 但後面完全一樣：讀到一個數字 → <b>對應</b> → 拿去控制東西。' +
                           '★ 可變電阻就是一把 <span class="hl-b">0～1023 的尺</span>，' +
-                          '這一節要把它換算成馬達的 <span class="hl-b">0～255</span>。' +
+                          '這一節要把它換算成馬達的 <span class="hl-b">−250～250</span> —— ' + '⚠️ 下限是<b>負的</b>，因為馬達會反轉。' +
                           '<br>⚠️ 這兩個的共同點是<span class="hl">無段</span> —— ' +
                           '「一檔二檔三檔」用一個<b>開關</b>就做得到，' +
                           '要做到<span class="hl-b">中間任何位置都停得住</span>，才需要可變電阻。',
                 objectives: [
-                    "了解可變電阻的分壓原理與類比輸入腳位 (A0~A5) 的 0~1023 解析度",
-                    "認識 PWM (Pulse Width Modulation) 數位模擬類比輸出的技術 (0~255)",
-                    "實作將 0~1023 的類比輸入值映射至 0~255 的 PWM 輸出，控制馬達轉速"
+                    "了解可變電阻的<span class=\"hl\">分壓原理</span>：旋鈕轉到哪裡，就把電壓按比例切一段出來（A7 讀到 0～1023）",
+                    "會自己<span class=\"hl\">接三條線</span>：G→腳1、P→腳3、<span class=\"hl-b\">S→腳2（中間那支刷片）</span>",
+                    "學會用「<span class=\"hl\">類比對應</span>」積木 —— 只填<b>下限與上限</b>兩個數字，換算它幫你做",
+                    "實作<span class=\"hl-b\">中間停、兩邊反轉</span>的無段風扇，並說得出<span class=\"hl\">為什麼下限要寫成負的</span>（−250～250）"
                 ],
                 materials: [
                     "NKNU 5016B 教具模組",
@@ -1223,28 +1225,105 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     lucide.createIcons();
                 },
                 demoHTML: `
-                    <div class="flex items-center gap-3 mb-6">
+                    <div class="flex items-center gap-3 mb-2">
                         <i data-lucide="code-2" class="w-8 h-8 text-amber-400"></i>
-                        <h3 class="text-xl font-bold text-slate-800 tracking-wide">邏輯解析：類比訊號映射 PWM</h3>
+                        <h3 class="text-xl font-bold text-slate-800 tracking-wide">邏輯解析：一個旋鈕，兩個角色一起動</h3>
                     </div>
+                    <p class="text-slate-600 mb-6 leading-relaxed">
+                        兩段程式讀的是<span class="hl">同一支腳（A7）</span>，
+                        只是換算到<span class="hl-b">不同的範圍</span> ——
+                        一個換成「指針要指哪裡」，一個換成「馬達要轉多快」。
+                    </p>
+
+                    <div class="bg-[#1e1e1e] rounded-xl border border-slate-200 overflow-hidden shadow-2xl mb-6">
+                        <div class="bg-[#2d2d2d] px-4 py-3 flex items-center gap-2 border-b border-slate-200">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span class="ml-4 text-xs text-slate-500 font-mono">角色一：指針 — 轉到哪，指針就指到哪</span>
+                        </div>
+                        <div class="p-4 sm:p-6 overflow-x-auto text-sm sm:text-base font-mono leading-relaxed text-slate-600">
+<pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
+<span class="col-span-2"><span class="text-rose-600">當綠旗被點擊</span></span>
+<span class="col-span-2"><span class="text-rose-600">無限重複執行</span></span>
+<span class="col-span-2">  <span class="text-sky-600">變數</span> 角度 <span class="text-rose-600">設為</span> <span class="text-amber-600">類比對應</span> (<span class="text-indigo-600">A7</span>, <span class="text-indigo-600">0</span>, <span class="text-indigo-600">180</span>)</span>
+<span class="col-span-2">  <span class="text-amber-600">面向</span> <span class="text-sky-600">角度</span> <span class="text-amber-600">度</span></span>
+</code></pre>
+                        </div>
+                    </div>
+
                     <div class="bg-[#1e1e1e] rounded-xl border border-slate-200 overflow-hidden shadow-2xl">
                         <div class="bg-[#2d2d2d] px-4 py-3 flex items-center gap-2 border-b border-slate-200">
                             <div class="w-3 h-3 rounded-full bg-red-500"></div>
                             <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
                             <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                            <span class="ml-4 text-xs text-slate-500 font-mono">manual_fan.block</span>
+                            <span class="ml-4 text-xs text-slate-500 font-mono">角色二：風扇 — 轉速可以是負的</span>
                         </div>
                         <div class="p-4 sm:p-6 overflow-x-auto text-sm sm:text-base font-mono leading-relaxed text-slate-600">
 <pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
+<span class="col-span-2"><span class="text-rose-600">當綠旗被點擊</span></span>
 <span class="col-span-2"><span class="text-rose-600">無限重複執行</span></span>
-<span class="col-span-2">  <span class="text-sky-600">變數</span> 旋鈕值 <span class="text-rose-600">設為</span> <span class="text-amber-600">讀取類比腳位 A0</span></span><span class="text-emerald-600">// 範圍 0~1023</span>
-<span class="col-span-2">  </span>
-<span class="col-span-2 text-emerald-600">  // 將 0~1023 對應到 0~255 的馬達轉速範圍</span>
-<span class="col-span-2">  <span class="text-sky-600">變數</span> 轉速 <span class="text-rose-600">設為</span> <span class="text-amber-600">數值對應</span> (<span class="text-sky-600">旋鈕值</span>, <span class="text-indigo-600">0</span>, <span class="text-indigo-600">1023</span>, <span class="text-indigo-600">0</span>, <span class="text-indigo-600">255</span>)</span>
-<span class="col-span-2">  </span>
-<span>  <span class="text-amber-600">設定 PWM 輸出腳位(9)</span> 為 <span class="text-sky-600">轉速</span></span>
+<span class="col-span-2 text-emerald-600">  // ⚠️ 下限是 -250，不是 0 —— 負數代表反轉</span>
+<span class="col-span-2">  <span class="text-sky-600">變數</span> 轉速 <span class="text-rose-600">設為</span> <span class="text-amber-600">類比對應</span> (<span class="text-indigo-600">A7</span>, <span class="text-indigo-600">-250</span>, <span class="text-indigo-600">250</span>)</span>
+<span class="col-span-2">  <span class="text-amber-600">設定馬達</span> (<span class="text-indigo-600">腳位2、3</span>) <span class="text-rose-600">=</span> <span class="text-sky-600">轉速</span></span>
+<span class="col-span-2">  <span class="text-amber-600">右轉</span> (<span class="text-sky-600">轉速</span> ÷ <span class="text-indigo-600">5</span>) <span class="text-amber-600">度</span>　<span class="text-emerald-600">// 畫面上的風扇圖跟著轉</span></span>
 </code></pre>
                         </div>
+                    </div>
+
+                    <div class="mt-6 grid md:grid-cols-3 gap-4">
+                        <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
+                            <div class="font-black text-amber-900 mb-1">為什麼是 −250 到 250？</div>
+                            <p class="text-sm text-amber-900 leading-relaxed">
+                                因為馬達的轉速<span class="hl">可以是負的</span> ——
+                                負數就是<b>反轉</b>。所以旋鈕轉到
+                                <span class="hl-b">正中間會得到 0，也就是停止</span>；
+                                往一邊轉是正轉，往另一邊轉是反轉。
+                            </p>
+                        </div>
+                        <div class="bg-sky-50 border-2 border-sky-200 rounded-2xl p-4">
+                            <div class="font-black text-sky-900 mb-1">「類比對應」幫你做了什麼？</div>
+                            <p class="text-sm text-sky-900 leading-relaxed">
+                                A7 實際讀到的是 <b>0～1023</b>，但你<span class="hl">不必自己算</span>：
+                                這塊積木只要填<b>下限和上限</b>兩個數字，它就幫你換算好。
+                                ⚠️ 上一節那塊「對應」要填四個數字，這一塊只要兩個。
+                            </p>
+                        </div>
+                        <div class="bg-slate-50 border-2 border-slate-300 rounded-2xl p-4">
+                            <div class="font-black text-slate-800 mb-1">為什麼要「÷ 5」？</div>
+                            <p class="text-sm text-slate-700 leading-relaxed">
+                                那一行只是讓<span class="hl">畫面上的風扇圖</span>轉起來，
+                                和真正的馬達<b>沒有關係</b>。
+                                不除以 5 的話圖會轉得太快，看起來像在閃。
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 bg-white border-2 border-amber-300 rounded-2xl p-5">
+                        <div class="font-black text-amber-800 text-lg mb-3">🎚️ 旋鈕轉到哪，馬達就怎麼轉</div>
+                        <div class="grid grid-cols-5 gap-2 text-center text-sm">
+                            <div><div class="font-black text-slate-800">最左</div>
+                                 <div class="text-2xl font-black text-rose-600">−250</div>
+                                 <div class="text-slate-600">◀ 反轉最快</div></div>
+                            <div><div class="font-black text-slate-800">左半</div>
+                                 <div class="text-2xl font-black text-rose-500">−125</div>
+                                 <div class="text-slate-600">◀ 反轉</div></div>
+                            <div class="bg-slate-100 rounded-xl py-1"><div class="font-black text-slate-800">正中間</div>
+                                 <div class="text-2xl font-black text-slate-800">0</div>
+                                 <div class="text-slate-700 font-black">■ 停</div></div>
+                            <div><div class="font-black text-slate-800">右半</div>
+                                 <div class="text-2xl font-black text-emerald-600">125</div>
+                                 <div class="text-slate-600">正轉 ▶</div></div>
+                            <div><div class="font-black text-slate-800">最右</div>
+                                 <div class="text-2xl font-black text-emerald-700">250</div>
+                                 <div class="text-slate-600">正轉最快 ▶</div></div>
+                        </div>
+                        <p class="text-sm text-slate-700 mt-4 leading-relaxed">
+                            ⚠️ 如果把下限改成 <b>0</b>（寫成 0～250），
+                            風扇就<span class="hl">永遠不會反轉</span>，
+                            而且<span class="hl-b">旋鈕轉到最左邊才會停</span> ——
+                            中間那個「停」的位置就不見了。
+                        </p>
                     </div>
                 `
             },

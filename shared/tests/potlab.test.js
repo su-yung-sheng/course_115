@@ -172,8 +172,8 @@ section('★ 第三節接上頁面了');
 {
   const page = read('11501/5016b.html');
   ok(/<script src="\.\.\/shared\/potlab\.js"><\/script>/.test(page), '頁面載入 potlab');
-  ok(/lab: \{ unit: 'u3', warm: 'POTLAB', checks: null \}/.test(page),
-     '★ 第三節：暖身 POTLAB，檢核先留 null（還沒做）');
+  ok(/lab: \{ unit: 'u3', warm: 'POTLAB', checks: 'FANLAB' \}/.test(page),
+     '★ 第三節：暖身 POTLAB、檢核 FANLAB');
   /* ⚠️ 器材要寫清楚「這一顆不在模組上」，不然學生會找不到。 */
   const mats = page.slice(page.indexOf('title: "無段風扇：可變電阻與馬達"'));
   ok(/不在模組上/.test(mats.slice(0, 2500)), '★★ 器材要註明「這一顆不在模組上，要自己接」');
