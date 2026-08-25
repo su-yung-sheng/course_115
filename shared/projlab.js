@@ -175,6 +175,74 @@
     return '';
   }
 
+  /* ═══ AI 助教看一遍 ════════════════════════════════
+     ★ 老師 2026-08-25：「成果發表 欄位 引入 AI 檢測」，三個檢查點：
+         ① 我要解決的問題 —— 應該是**實際存在的情況**
+         ② 當…時／系統會…／否則… —— 要**和選的元件相關**（距離、轉動、亮燈）
+         ③ 我遇到／最後用…解決／我學到 —— 三件事要**互相關聯**
+     ⚠️ 這三點本機的關鍵字判不出來（尤其③的關聯性）—— 正是 AI 該做的事。
+
+     ⚠️⚠️ 但這個專案的鐵律：**AI 不可以有否決權**。
+        額度用完、GAS 掛掉、網路不通的時候，全班會卡在這裡交不出成果卡。
+        ⇒ 所以做成「**看一遍、給建議**」：
+            本機該擋的照擋（空白／太短／沒條件／沒有遇到問題）
+            AI 只在出卡前插一手，講哪一點還可以更好
+            學生看完**再按一次就出卡** —— 不管 AI 說了什麼
+          AI 失敗／沒設定 → 直接出卡，學生不會知道有這一關。
+     ★ 名稱要短、要好回；而且**只收這三個**，模型自己造的一律丟掉
+       （沿用 labkit.reviewSay 的那道防護 —— 不然就不是覆核，是代判）。 */
+  var AI_NEED = [
+    { name: '問題是真的會遇到的',
+      tip: '⚠️ 第一句：**「我要解決的問題」要是真的會發生的事**。\n' +
+           '★ 想想看：那件事**什麼時候**發生？發生的時候**誰**覺得麻煩？\n' +
+           '（「想做一個燈」不是問題；「晚上回家玄關太暗，開燈要摸半天」才是。）' },
+    { name: '條件和動作用到你選的元件',
+      tip: '⚠️ 第二句：**條件和動作要看得出用了哪個元件**。\n' +
+           '★ 條件講「距離幾公分」或「旋鈕轉到幾 %」；\n' +
+           '　動作講「燈條怎麼亮」「風扇怎麼轉」——\n' +
+           '　不要只寫「系統會啟動」，那聽不出你做了什麼。' },
+    { name: '遇到、解決、學到三件事對得起來',
+      tip: '⚠️ 第三句：**那三格要是同一件事的三個階段**。\n' +
+           '★ 遇到什麼 → 就用什麼解決 → 學到的就是從那件事來的。\n' +
+           '（遇到「燈一直閃」、卻學到「顏色要調亮一點」—— 那是兩件事。）' }
+  ];
+  function aiText(v) {
+    return '（1）我要解決的問題是：' + v.problem + '\n' +
+           '（2）當 ' + v.when + ' 時，系統會 ' + v.then + '；否則 ' + v.els + '。\n' +
+           '（3）我遇到 ' + v.trouble + '，最後用 ' + v.fix + ' 解決，我學到 ' + v.learn + '。';
+  }
+  /* 回 { skipped } 或 { missing: [tip...] }。⚠️ **永遠 resolve** ——
+     呼叫端不必寫 catch，也就不會有人哪天忘了寫。 */
+  /* AI 到底在不在。⚠️ 這一支要**同步**判得出來 ——
+     不在的話連那條非同步的路都不要走：
+     沒設定 AI 的環境下，「按了就出卡」不應該變成非同步，
+     那顆按鈕的說明也不該寫「AI 會先看一遍」。 */
+  function aiOn() {
+    return !!(global.ASKAI && global.ASKAI.enabled && global.ASKAI.enabled() &&
+              global.ASKAI.judge);
+  }
+  function aiReview(v, opts) {
+    opts = opts || {};
+    var names = AI_NEED.map(function (g) { return g.name; });
+    if (!aiOn()) return Promise.resolve({ skipped: true });
+    return global.ASKAI.judge('5016b-u5-show', [{
+      i: 0,
+      q: '這是一份國中生的專題成果發表。請判斷下面三點做到了哪幾點。',
+      need: names,
+      got: [],
+      /* ⚠️ 截斷 —— 不截的話一篇長文就把額度燒掉了（額度全班共用）。 */
+      a: aiText(v).slice(0, 400)
+    }], opts.student).then(function (list) {
+      var x = (list || [])[0];
+      /* ★★ 只收原本列出的三個名稱，模型自己造的一律丟掉。 */
+      var got = ((x && x.got) || []).filter(function (n) {
+        return names.indexOf(n) >= 0;
+      });
+      var missing = AI_NEED.filter(function (g) { return got.indexOf(g.name) < 0; });
+      return { skipped: false, got: got, missing: missing };
+    }).catch(function () { return { skipped: true }; });
+  }
+
   /* ═══ 成果卡：列印（另存 PDF）與下載 PNG ═══════════ */
   /* ⚠️⚠️ cardLines() 是**下載 PNG 那一版的唯一版面來源** ——
      網頁上的 cardHtml() 有自己的一份。
@@ -515,7 +583,11 @@
           '" placeholder="' + esc(SHOW_Q[2].ph[1]) + '">　解決</div>' +
         '<div class="pj-fill">我學到　<input class="pj-t" id="pj-learn" value="' + esc(f.learn) +
           '" placeholder="' + esc(SHOW_Q[2].ph[2]) + '"></div>' +
-        '<div class="dl-row"><button class="dl-go" id="pj-make">產生成果卡</button></div>',
+        '<div class="dl-row"><button class="dl-go" id="pj-make"' +
+          (aiBusy ? ' disabled' : '') + '>' +
+          (aiBusy ? '🤖 AI 助教看一下…' : '產生成果卡') + '</button>' +
+          (aiOn() && !aiDone ? '<span class="dl-note">送出前 AI 助教會先看一遍。</span>' : '') +
+        '</div>',
         msg, cls);
     }
     /* ★ 第二句的範例跟著**你選的模式**走 —— 選了自動就給距離的例子，
@@ -528,12 +600,29 @@
       return { scene: scene, team: who, mode: f.mode, line: line,
                date: new Date().toLocaleDateString('zh-TW') };
     }
+    var aiBusy = false, aiDone = false;
     function doShow() {
       grab();
       var r = judgeShow(f);
       if (!r.ok) return viewShow(sayShow(r), 'bad');
       /* ⚠️ 對不起來只提醒，不擋 —— 但要**在出卡之前**講，不然沒人會回頭改。 */
       if (r.warn && !f.warned) { f.warned = true; return viewShow(r.warn, 'bad'); }
+      /* ★ AI 助教看一遍（只看一次）。⚠️ 它**沒有否決權** ——
+         看完之後再按一次就出卡，不管它說了什麼；
+         失敗或沒設定就直接出卡，學生不會知道有這一關。 */
+      if (aiOn() && !aiDone && !aiBusy) {
+        aiBusy = true;
+        viewShow('', '');
+        aiReview(f, opts).then(function (a) {
+          aiBusy = false; aiDone = true;
+          if (a.skipped) return doShow();          // AI 不在 → 直接出卡
+          if (!a.missing.length)
+            return viewShow('✅ AI 助教看過了，三點都不錯 —— **再按一次**就出卡。', 'good');
+          viewShow('🤖 AI 助教的建議（**看完再按一次就出卡**，不改也可以）：\n' +
+                   a.missing.map(function (g) { return g.tip; }).join('\n'), 'bad');
+        });
+        return;
+      }
       el.innerHTML = '<div class="dl-wrap">' + tabs() +
         '<div class="dl-msg good">🎉 成果卡好了 —— 下面兩個按鈕都可以帶走。</div>' +
         cardHtml(f, meta()) +
@@ -600,6 +689,7 @@
   global.PROJLAB = {
     MIN: MIN, MODES: MODES, SHOW_Q: SHOW_Q,
     judgeShow: judgeShow, sayShow: sayShow,
+    AI_NEED: AI_NEED, aiText: aiText, aiReview: aiReview, aiOn: aiOn,
     cardHtml: cardHtml, cardLines: cardLines, drawCard: drawCard, printCard: printCard, downloadPng: downloadPng,
     mount: mount
   };

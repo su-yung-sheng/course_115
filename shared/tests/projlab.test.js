@@ -617,6 +617,81 @@ section('★★ 模式和成果卡要真的有關連（老師 2026-08-25）');
      '★★ 選了手動 → 第二句的範例換成旋鈕那一組');
 }
 
+section('★★ AI 助教看一遍（老師 2026-08-25：成果發表引入 AI 檢測）');
+{
+  /* ★ 三個檢查點都是本機關鍵字判不出來的 —— 尤其③的關聯性。 */
+  ok(J.AI_NEED.length === 3, '三個檢查點');
+  ok(/實際|真的/.test(J.AI_NEED[0].name + J.AI_NEED[0].tip),
+     '★★ ① 問題要是**實際存在**的情況');
+  ok(/元件/.test(J.AI_NEED[1].name) &&
+     /距離/.test(J.AI_NEED[1].tip) && /旋鈕/.test(J.AI_NEED[1].tip) &&
+     /燈條/.test(J.AI_NEED[1].tip) && /風扇/.test(J.AI_NEED[1].tip),
+     '★★ ② 條件和動作要和選的元件相關（距離／旋鈕／亮燈／轉動）');
+  ok(/對得起來|關聯/.test(J.AI_NEED[2].name) && /三個階段|同一件事/.test(J.AI_NEED[2].tip),
+     '★★ ③ 遇到／解決／學到要互相關聯');
+  ok(J.AI_NEED.every(g => g.tip && g.tip.length > 30),
+     '★ 每一點都給**具體**的建議（不是只說「不夠好」）');
+  /* ⚠️ 送出去的是三句話串起來的一段，而且要截斷（額度全班共用）。 */
+  const v2 = { problem: '玄關太暗', when: '距離小於 30 公分', then: '燈亮',
+               els: '關掉', trouble: '燈會閃', fix: '兩個門檻', learn: '門檻要兩個' };
+  const txt = J.aiText(v2);
+  ok(/1/.test(txt) && /2/.test(txt) && /3/.test(txt), '★ 三句都送出去（AI 才判得出關聯）');
+  ok(/玄關太暗/.test(txt) && /門檻要兩個/.test(txt), '   內容都在');
+
+  /* ⚠️⚠️ 這個專案的鐵律：**AI 不可以有否決權**。
+     額度用完、GAS 掛掉、網路不通的時候，全班會卡在這裡交不出成果卡。 */
+  const src3 = read('shared/projlab.js').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(/\.catch\(function \(\) \{ return \{ skipped: true \}; \}\)/.test(src3),
+     '★★ AI 失敗一律當成「沒看」（不是不給過）');
+  /* ⚠️⚠️ 沒設定 AI 的環境下**連那條非同步的路都不要走** ——
+     不然「按了就出卡」會變成非同步（差一個 microtask），
+     而且按鈕旁還會寫「AI 會先看一遍」，那是騙人的。 */
+  ok(!J.aiOn(), '   （測試環境沒有 ASKAI）');
+  ok(/if \(aiOn\(\) && !aiDone && !aiBusy\)/.test(src3),
+     '★★ 沒有 AI 就不繞那條路（按了直接出卡）');
+  ok(/aiOn\(\) && !aiDone \?/.test(src3),
+     '★ 沒有 AI 的時候也不寫「AI 會先看一遍」');
+  ok(/if \(a\.skipped\) return doShow\(\);/.test(src3),
+     '★★ AI 不在／失敗 → **直接出卡**（學生不會知道有這一關）');
+  ok(/names\.indexOf\(n\) >= 0/.test(src3),
+     '★★ 只收原本列出的那三個名稱（模型自己造的丟掉 —— 不然是代判不是覆核）');
+  ok(/slice\(0, 400\)/.test(src3), '★ 送出前截斷（額度是全班共用的）');
+
+  /* 走一遍：AI 說有一點不夠 → 給建議、不出卡；再按一次才出卡。 */
+  const el7 = W.document.createElement('div');
+  W.document.body.appendChild(el7);
+  let done7 = null;
+  const a7 = J.mount(el7, { onDone: i => { done7 = i; } });
+  a7.show('show');
+  const put = (id, v) => { const e = el7.querySelector('#' + id); if (e) e.value = v; };
+  put('pj-problem', '晚上回家玄關太暗，開燈要摸半天');
+  put('pj-when', '距離小於 30 公分'); put('pj-then', '燈條亮起來');
+  put('pj-els', '兩個都關掉');
+  put('pj-trouble', '距離一直跳，燈會閃'); put('pj-fix', '改成兩個門檻');
+  put('pj-learn', '數字會抖，門檻不能只設一個');
+  /* 假一個 ASKAI：只認出兩點。 */
+  W.ASKAI = { enabled: () => true,
+              judge: () => Promise.resolve([{ i: 0, got: [J.AI_NEED[0].name,
+                                                          J.AI_NEED[2].name] }]) };
+  el7.querySelector('#pj-make').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(/AI 助教看一下/.test(el7.textContent), '★ 送出去的時候看得出在等（按鈕會變）');
+  /* ⚠️ AI 是非同步的 —— 後面的斷言要等它回來，
+     所以剩下的段落搬進 rest()，由這裡的 setTimeout 叫起來。 */
+  setTimeout(function () {
+    ok(!done7, '★★ AI 給建議的時候**還不出卡**');
+    ok(/AI 助教的建議/.test(el7.textContent), '   而且講明這是建議');
+    ok(/元件/.test(el7.textContent), '★★ 只列 AI 覺得沒做到的那一點');
+    ok(!/真的會遇到的/.test(el7.textContent), '   做到的那兩點不囉嗦');
+    ok(/再按一次就出卡/.test(el7.textContent), '★★ 而且講清楚「不改也可以」');
+    el7.querySelector('#pj-make').dispatchEvent(new W.Event('click', { bubbles: true }));
+    ok(!!done7 && !!el7.querySelector('#pj-card'),
+       '★★ 再按一次 → 出卡（AI 沒有否決權）');
+    delete W.ASKAI;
+    rest();
+  }, 20);
+}
+
+function rest() {
 section('★ 規矩');
 {
   const plan = read('shared/planlab.js'), proj = read('shared/projlab.js');
@@ -701,3 +776,4 @@ section('★★ 第五節接上頁面了');
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
+}
