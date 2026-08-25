@@ -1365,7 +1365,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "★ 認識<span class=\"hl\">光的三原色</span>：燈條每一顆裡面有紅、綠、藍三盞小燈，疊在一起就混出顏色",
                     "⚠️ 分得出<span class=\"hl-b\">光和顏料不一樣</span> —— 顏料越混越暗，光越混越亮（三盞全開是白光）",
                     "複習<span class=\"hl\">類比對應</span>：同一塊積木，這次換算成「第幾顆」與「色環角度 0～359」",
-                    "用同一顆旋鈕做出<b>兩種模式</b>：讓燈跑起來、讓燈變色"
+                    "用<b>一個輸入</b>控制<b>兩個輸出</b>：同一個判斷，讓燈條和風扇一起動"
                 ],
                 materials: [
                     "NKNU 5016B 教具模組",
@@ -1568,7 +1568,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 objectives: [
                     "把一個生活問題，翻成<span class=\"hl\">一句「如果…那麼…」</span>（設計單）",
                     "用 1 個輸入＋1 個輸出<span class=\"hl-b\">先讓它動起來</span>，而且能現場操作驗證",
-                    "調整<span class=\"hl\">判斷的數值或條件</span>，再加入第二個輸入、第二個輸出",
+                    "調整<span class=\"hl\">判斷的數值或條件</span>，再加入<b>第二個輸出</b>（輸入不換）",
                     "加上自訂功能並<span class=\"hl-b\">說得出為什麼要這樣改</span>",
                     "用固定的三句話完成成果發表，並產出一張可帶走的成果卡"
                 ],
@@ -1618,8 +1618,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                 各選一個，這裡會給你一個點子。
                             </div>
                             <p class="text-xs text-slate-500 leading-relaxed">
-                                ⚠️ 教具上就這 <b>四樣</b>。挑戰關要「第二個輸入、第二個輸出」的時候，
-                                就是把<b>另外那一個也用上</b> —— 兩個感測器一起、兩個輸出一起。
+                                ⚠️ 教具上就這 <b>四樣</b>。<b>輸入挑一個就好</b> ——
+                                做自動的用超音波、做手動的用旋鈕，整節課都不換。<br>
+                                ★ 挑戰關要加的是<b>第二個輸出</b>：同一個判斷，
+                                讓燈條和風扇<b>一起動</b>。
                             </p>
                         </div>
                     `;
@@ -1672,9 +1674,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             <div class="font-black text-slate-800 text-lg mb-2">讓它更聰明</div>
                             <p class="text-sm text-slate-600 leading-relaxed">
                                 調整<span class="hl">判斷數值或條件</span>，
-                                再加入<b>第二個輸入</b>、<b>第二個輸出</b>。<br>
+                                再加入<b>第二個輸出</b>。<br>
                                 <span class="text-xs text-slate-500">
-                                （教具就四樣 —— 「第二個」就是把<b>另外那一個</b>也用上）</span>
+                                ★ 輸入<b>不換</b>：做自動的一路用超音波、做手動的一路用旋鈕。<br>
+                                ⇒ 整個專案就是 <b>一個輸入 ＋ 兩個輸出</b>。</span>
                             </p>
                         </div>
                         <div class="bg-white border-2 border-fuchsia-300 rounded-2xl p-5">
@@ -1705,7 +1708,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         </div>
                         <div class="px-4 sm:px-6 pb-5 text-xs sm:text-sm text-slate-400 leading-relaxed">
                             ⚠️ <b>「否則」不要省略</b> —— 少了它，燈亮起來就再也不會暗。
-                            這是第一節那個「門開了沒」的老問題。
+                            這是第一節那個「門開了沒」的老問題。<br>
+                            ★ 挑戰關就是在這個骨架上<b>多掛一個輸出</b>：
+                            同一個判斷，兩樣東西一起動。
                         </div>
                     </div>
 
@@ -1714,18 +1719,17 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             <div class="w-3 h-3 rounded-full bg-red-500"></div>
                             <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
                             <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                            <span class="ml-4 text-xs text-slate-400 font-mono">挑戰關的骨架 — 兩個輸入、兩個輸出</span>
+                            <span class="ml-4 text-xs text-slate-400 font-mono">挑戰關的骨架 — 一個輸入、兩個輸出</span>
                         </div>
                         <div class="p-4 sm:p-6 overflow-x-auto text-sm sm:text-base font-mono leading-relaxed text-slate-300">
 <pre class="whitespace-pre"><code><span class="text-rose-400">重複無限次</span>
-  <span class="text-sky-400">讀值一</span> ← <span class="text-amber-400">［第一個輸入］</span>
-  <span class="text-sky-400">讀值二</span> ← <span class="text-amber-400">［第二個輸入］</span>
-  <span class="text-rose-400">如果</span> <span class="text-sky-400">讀值二</span> <span class="text-amber-400">［切換條件］</span> <span class="text-rose-400">那麼</span>
-      <span class="text-slate-500">// 第二個輸入負責「換一種行為」，不是再做一次同樣的事</span>
-      <span class="text-slate-500">// 例：旋鈕決定亮度，超音波決定要不要亮</span>
-      <span class="text-amber-400">［第二個輸出］</span> <span class="text-amber-400">［動作］</span>
+  <span class="text-sky-400">讀值</span> ← <span class="text-amber-400">［你的輸入］</span>　<span class="text-slate-500">// 只有這一個，不再換</span>
+  <span class="text-rose-400">如果</span> <span class="text-sky-400">讀值</span> <span class="text-amber-400">［判斷］</span> <span class="text-amber-400">［門檻］</span> <span class="text-rose-400">那麼</span>
+      <span class="text-amber-400">［輸出一］</span> <span class="text-amber-400">［動作］</span>　<span class="text-slate-500">// 例：燈條亮起來</span>
+      <span class="text-amber-400">［輸出二］</span> <span class="text-amber-400">［動作］</span>　<span class="text-slate-500">// 例：風扇開始轉</span>
   <span class="text-rose-400">否則</span>
-      <span class="text-rose-400">如果</span> <span class="text-sky-400">讀值一</span> <span class="text-amber-400">［判斷］</span> <span class="text-rose-400">那麼</span> <span class="text-amber-400">［第一個輸出］</span> <span class="text-amber-400">［動作］</span>
+      <span class="text-amber-400">［輸出一］</span> <span class="text-amber-400">［恢復］</span>
+      <span class="text-amber-400">［輸出二］</span> <span class="text-amber-400">［恢復］</span>
 </code></pre>
                         </div>
                     </div>
