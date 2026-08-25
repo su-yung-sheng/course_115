@@ -249,54 +249,75 @@ section('★ 聲音要畫成同心弧線，不是圓球（老師 2026-08-24）')
 }
 
 
-section('★★ 檢核不可以是固定題目固定答案（老師 2026-08-24）');
+section('★★ A：題目要變，但問法與答案固定（老師 2026-08-24）');
 {
-  /* ⚠️ 原本 A 的距離序列寫死、門檻預設 10／20，正解**永遠是 2**：
-     學生連那排數字都不用看，填 2 就過。B 也是同一組壞程式、同一個正解。
-     ★ 換數字不夠 —— 要換**走法**，正解才會跟著變（0／2／4）。 */
-  const keys = {}, answers = {};
-  let broken = 0, notFragile = 0;
-  for (let i = 0; i < 200; i++) {
-    const rng = U.rngFrom('k' + i);
-    let prev = null;
-    for (let k = 0; k < 3; k++) {
-      const c = D.caseA(rng, prev); prev = c;
-      keys[c.key] = (keys[c.key] || 0) + 1;
-      answers[c.answer] = (answers[c.answer] || 0) + 1;
-      /* ① 用合理門檻，門的行為必須剛好符合這一種走法的目標 */
-      const r = D.runDoor(c.seq, D.IDEAL_NEAR, D.IDEAL_FAR);
-      if (r.opens !== c.goal.opens || r.closes !== c.goal.closes) broken++;
-      /* ② ★★ 設錯門檻**一定要**出事 —— 那是 A 唯一教到「門檻要拉開」的地方。
-         長不出這個性質的題目等於整關白做，而畫面上完全看不出來。 */
-      const line = c.key === 'pass' ? 30 : D.IDEAL_NEAR;
-      if (!(D.runDoor(c.seq, line, line + 1).opens > c.goal.opens)) notFragile++;
-    }
+  /* ⚠️ 這一關繞了一圈：
+     ① 原版距離序列寫死、門檻預設 10／20，正解永遠 2 —— 學生連數字都不用看。
+     ② 中間改成三種走法（開關 0／2／4 次），老師回報「有點怪，還是回到原來的問法」：
+        「路過」那一組**不管怎麼設門檻都不該開**，設門檻這個任務就沒意義了；
+        而且開關次數會變，**和前面教的觀念搞混**。
+     ⇒ ③ 現在：問法回到「乾淨地開一次、關一次」（答案固定 2），
+          但**人停在哪一段是隨機的** —— 門檻要讀那排數字才知道怎麼設。
+        ★ A 真正要練的是遲滯（兩個門檻要拉開），這樣才對準它。 */
+  let nul = 0, bad = 0, notFragile = 0, wrongAns = 0, zones = {};
+  for (let i = 0; i < 300; i++) {
+    const c = D.caseA(U.rngFrom('k' + i), null);
+    if (!c) { nul++; continue; }
+    zones[c.zone.join('-')] = 1;
+    if (c.answer !== 2) wrongAns++;
+    /* ① 存在一組合理門檻，做得出乾淨的一開一關 */
+    const good = D.runDoor(c.seq, c.hintNear, c.hintFar);
+    if (good.opens !== 1 || good.closes !== 1) bad++;
+    /* ② ★★ 門檻設在晃動區中線附近**一定要抖** —— A 唯一教到「門檻要拉開」的地方 */
+    const mid = Math.round((c.zone[0] + c.zone[1]) / 2);
+    if (D.runDoor(c.seq, mid, mid + 1).opens <= 1) notFragile++;
   }
-  ok(Object.keys(keys).length === 3,
-     '★★ 三種走法都會抽到（' + Object.keys(keys).join('／') + '）');
-  ok(broken === 0, '★★ 每一題用合理門檻都剛好符合目標（沒有「怎麼設都過不了」的題目）');
-  ok(notFragile === 0, '★★ 每一題「門檻設錯真的會出事」—— 這是 A 的重點');
-  ok(Object.keys(answers).sort().join('／') === '0／2／4',
-     '★★ 正解不再永遠是 2（實得：' + Object.keys(answers).sort().join('／') + '）');
+  ok(nul === 0, '★ 每一次都出得出題');
+  ok(wrongAns === 0, '★★ 答案固定是「開關各一次 = 2」—— 不再變成 0 或 4（會和前面的觀念搞混）');
+  ok(bad === 0, '★★ 每一題都存在一組門檻做得出乾淨的一開一關（沒有「怎麼設都過不了」的題目）');
+  ok(notFragile === 0, '★★ 每一題「門檻靠太近真的會抖」—— 這是 A 的重點');
+  ok(Object.keys(zones).length === D.ZONES.length,
+     '★★ 人停的位置會換（' + Object.keys(zones).join('／') + '）—— 門檻沒得抄');
 
-  /* 答案不同，判定也要跟著不同 —— 不可以再寫死「乾淨的一開一關」。 */
-  const passSeq = (function () {
-    for (let i = 0; i < 60; i++) {
-      const c = D.caseA(U.rngFrom('p' + i), null);
-      if (c.key === 'pass') return c;
-    }
-  })();
-  ok(!!passSeq, '抽得到「路過」那一種');
-  if (passSeq) {
-    const r = D.runDoor(passSeq.seq, D.IDEAL_NEAR, D.IDEAL_FAR);
-    ok(D.judgeA(0, r, passSeq).predOk && D.judgeA(0, r, passSeq).cleanOk,
-       '★★ 路過那一種：門完全不開、答 0 才算過');
-    ok(!D.judgeA(2, r, passSeq).predOk, '   在這一種填 2 → 不過（傳答案破功）');
+  /* ★★ 「10／20 是萬用解」這件事一定要被打破，不然等於沒隨機。 */
+  let universal = 0, total = 0;
+  for (let i = 0; i < 300; i++) {
+    const c = D.caseA(U.rngFrom('u' + i), null);
+    if (!c) continue;
+    total++;
+    const r = D.runDoor(c.seq, 10, 20);
+    if (r.opens === 1 && r.closes === 1) universal++;
   }
-  ok(!/乾淨地開一次、關一次/.test(read('shared/doorlab.js')),
-     '★ 題目不再寫死「乾淨地開一次、關一次」（那等於先告訴他答案）');
+  ok(universal < total * 0.75,
+     '★★ 10／20 不是萬用解（' + universal + '／' + total + ' 才過）—— 學生非讀數字不可');
 
-  /* ── B 的三組情境 ── */
+  /* 問法回到原來的，而且門檻不預填。 */
+  const src = read('shared/doorlab.js');
+  /* ⚠️ 「不可以出現 X」型的檢查一定要先剝註解 ——
+     上面那段註解正好在解釋「不再用『只在該開的時候開』」，
+     不剝的話它自己就把自己判紅了（這個專案第六次踩到）。 */
+  const code = src
+    .replace(/(^|[\s;{(=])\/\*[\s\S]*?\*\//gm, '$1')
+    .replace(/^\s*\/\/.*$/gm, '');
+  ok(/乾淨地開一次、關一次/.test(code), '★ 問法回到「乾淨地開一次、關一次」');
+  ok(!/只在該開的時候開/.test(code), '   不再用含糊的「只在該開的時候開」');
+  ok(/id="dl-near" placeholder="\?"/.test(src) && /id="dl-far" placeholder="\?"/.test(src),
+     '★★ 門檻**不預填** —— 預填等於送分，學生連數字都不必看');
+  ok(!/走進來，退出去|從門口前面走過去/.test(src),
+     '★ 折返／路過那兩種走法已經拿掉（老師：會和前面的觀念搞混）');
+
+  /* 三種錯的回饋要分得開 —— 講錯了學生會往錯的方向調。 */
+  const c0 = D.caseA(U.rngFrom('fb'), null);
+  ok(/抖了好幾次/.test(src) && /從頭到尾沒開/.test(src) && /開了卻沒關起來/.test(src),
+     '★★ 抖／沒開／沒關三種錯的回饋分開講');
+}
+
+section('★★ B：三組情境（換情境比換數字有用）');
+{
+  /* ★ 三組**不同的東西**壞掉，但壞的是同一個原因：少了狀態。
+     學生得自己認出「這又是那件事」—— 那正是「懂了」和「記住答案」的差別。
+     ⚠️ 三組的正解一律是「加一個變數記住狀態」，那是概念，沒得換；
+        擋傳答案的是後面「用自己的話說」那一段。 */
   ok(D.CASES_B.length === 3, '★ B 有三組不同的東西壞掉（' +
      D.CASES_B.map(c => c.thing).join('／') + '）');
   ok(D.CASES_B.every(c => c.fixes.filter(f => f.good).length === 1 &&
@@ -396,15 +417,15 @@ section('★★ 答錯要換一題（重猜同一題只證明他記得剛才選�
   /* A：猜錯次數 → 下一次應該是**另一種走法** */
   {
     const d = D.mount(box, { seed: 'aa' });
-    const before = d.aCase().key;
-    box.querySelector('#dl-near').value = D.IDEAL_NEAR;
-    box.querySelector('#dl-far').value = D.IDEAL_FAR;
+    const before = d.aCase().zone.join('-');
+    box.querySelector('#dl-near').value = d.aCase().hintNear;
+    box.querySelector('#dl-far').value = d.aCase().hintFar;
     /* 故意填一個一定錯的數字 */
     box.querySelector('#dl-pred').value = d.aCase().answer + 1;
     box.querySelector('#dl-runA').dispatchEvent(new W.Event('click', { bubbles: true }));
     ok(d.step() === 'A', '   猜錯了還留在 A');
-    ok(d.aCase().key !== before,
-       '★★ A 猜錯 → 換一種走法（' + before + ' → ' + d.aCase().key + '）');
+    ok(d.aCase().zone.join('-') !== before,
+       '★★ A 猜錯 → 換一段（' + before + ' → ' + d.aCase().zone.join('-') + '）');
   }
 
   /* ★★ B：**修法選對、但預測錯** → 一樣不過。
@@ -414,8 +435,8 @@ section('★★ 答錯要換一題（重猜同一題只證明他記得剛才選�
         2026-08-24 之前只有 B 沒有。 */
   {
     const d = D.mount(box, { seed: 'cc' });
-    box.querySelector('#dl-near').value = D.IDEAL_NEAR;
-    box.querySelector('#dl-far').value = D.IDEAL_FAR;
+    box.querySelector('#dl-near').value = d.aCase().hintNear;
+    box.querySelector('#dl-far').value = d.aCase().hintFar;
     box.querySelector('#dl-pred').value = d.aCase().answer;
     box.querySelector('#dl-runA').dispatchEvent(new W.Event('click', { bubbles: true }));
     const before = d.bCase().key;
@@ -435,8 +456,8 @@ section('★★ 答錯要換一題（重猜同一題只證明他記得剛才選�
   /* B：選錯 → 換一個東西壞掉 */
   {
     const d = D.mount(box, { seed: 'bb' });
-    box.querySelector('#dl-near').value = D.IDEAL_NEAR;
-    box.querySelector('#dl-far').value = D.IDEAL_FAR;
+    box.querySelector('#dl-near').value = d.aCase().hintNear;
+    box.querySelector('#dl-far').value = d.aCase().hintFar;
     box.querySelector('#dl-pred').value = d.aCase().answer;
     box.querySelector('#dl-runA').dispatchEvent(new W.Event('click', { bubbles: true }));
     const before = d.bCase().key;
@@ -465,8 +486,8 @@ section('★ B 的兩階段真的掛得起來');
   /* 直接跳到 B：先把 A 做完。
      ⚠️ 正解不再是寫死的 2 —— 走法是抽的，答案是 0／2／4。
         測試自己去問這一次抽到什麼（api.aCase()），不可以猜。 */
-  box.querySelector('#dl-near').value = D.IDEAL_NEAR;
-  box.querySelector('#dl-far').value = D.IDEAL_FAR;
+  box.querySelector('#dl-near').value = d.aCase().hintNear;
+  box.querySelector('#dl-far').value = d.aCase().hintFar;
   box.querySelector('#dl-pred').value = d.aCase().answer;
   box.querySelector('#dl-runA').dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(d.step() === 'B', 'A 過了進到 B（走法：' + d.aCase().key + '）');
