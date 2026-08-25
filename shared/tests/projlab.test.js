@@ -267,9 +267,17 @@ section('★★ 成果發表：三句話（老師指定，文字不可改）');
   ok(/^我要解決的問題是/.test(J.SHOW_Q[0].t), '★★ 第一句：我要解決的問題是');
   ok(!J.SHOW_Q.some(q => /我們/.test(q.t)), '★★ 三句都沒有「我們」');
   /* ★★ 老師 2026-08-25（追加）：「要有兩種條件(如果 那麼 否則)」。 */
-  ok(/當.*時，系統會.*；否則/.test(J.SHOW_Q[1].t),
-     '★★ 第二句：當＿＿時，系統會＿＿；**否則**＿＿');
-  ok(J.SHOW_Q[1].slots.join() === 'when,then,els', '★★ 三格（含否則）');
+  /* ★★ 老師 2026-08-25（再追加）：「輸出元件 兩個都要，所以…的反應要分兩種，
+     直接幫使用者註明 (燈條)(馬達)」。 */
+  ok(/當.*時，（燈條）.*（馬達）.*；否則（燈條）.*（馬達）/.test(J.SHOW_Q[1].t),
+     '★★ 第二句：兩個輸出各一格，而且**直接註明（燈條）（馬達）**');
+  ok(J.SHOW_Q[1].slots.join() === 'when,thenL,thenM,elsL,elsM', '★★ 五格');
+  ok(/玄關燈|電扇/.test(J.SHOW_Q[1].hint),
+     '★★ 加註要說「可以讀成你作品裡的東西」（他可能換成電燈、電扇）');
+  /* ⚠️⚠️ 拆成四格之後，正確答案自然很短（「熄掉」「停下來」）——
+     門檻沒跟著調的話，學生會被逼著寫廢話。 */
+  ok(J.MIN_IO < J.MIN, '★★ 輸出那四格的字數門檻要比別格低（' +
+     J.MIN_IO + ' < ' + J.MIN + '）');
   ok(/否則/.test(J.SHOW_Q[1].hint) && /回不去/.test(J.SHOW_Q[1].hint),
      '★★ 加註要點破「少了否則，動作做了就回不去」（第一節那一課）');
   /* ★★ 老師 2026-08-25：「我遇到＿＿，最後用＿＿解決，我學到＿＿」。
@@ -284,35 +292,44 @@ section('★★ 成果發表：三句話（老師指定，文字不可改）');
      「一定要有條件判斷」）—— 範例本身也要合格。 */
   /* ⚠️ 規格（模式＋輸出）現在是必填 —— 一張沒有規格的成果卡
      看不出他做了什麼。 */
-  const v = { mode: '自動', outs: ['strip', 'moto'],
+  /* ⚠️ 老師 2026-08-25（再追加）：「輸出元件 兩個都要」——
+     所以「系統會…」和「否則…」各拆成燈條、馬達兩格。 */
+  const v = { mode: '自動',
               problem: '晚上回家玄關太暗', when: '距離小於 30 公分',
-              then: '燈條慢慢亮成暖黃色', els: '兩個都關掉', trouble: '距離一直跳，燈會閃',
+              thenL: '亮起暖黃色', thenM: '慢慢開始轉',
+              elsL: '熄掉', elsM: '停下來', trouble: '距離一直跳，燈會閃',
               fix: '把門檻改成進 15 出 25 兩個數字',
               learn: '感測器讀到的數字會抖，門檻不能只設一個' };
   ok(J.judgeShow(v).ok, '填滿 → 過');
-  ok(!J.judgeShow(Object.assign({}, v, { then: '' })).ok, '   少一格 → 不過');
-  /* ⚠️⚠️ 「否則」那一格空著要擋 —— 那正是第一節「門開了沒」的病根。 */
-  ok(!J.judgeShow(Object.assign({}, v, { els: '' })).ok, '★★ 「否則」空著 → 不過');
+  ok(!J.judgeShow(Object.assign({}, v, { thenL: '' })).ok, '   少一格 → 不過');
+  /* ⚠️⚠️ 「否則」那**兩格**空著都要擋 —— 那正是第一節「門開了沒」的病根。 */
+  ok(!J.judgeShow(Object.assign({}, v, { elsL: '' })).ok, '★★ 否則（燈條）空著 → 不過');
+  ok(!J.judgeShow(Object.assign({}, v, { elsM: '' })).ok, '★★ 否則（馬達）空著 → 不過');
+  ok(/否則（馬達）/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { elsM: '' })))),
+     '★★ 回饋分得出是**哪一個輸出**沒填');
   ok(!J.judgeShow(Object.assign({}, v, { learn: '' })).ok, '★★ 「我學到」空著 → 不過');
+  ok(J.judgeShow(Object.assign({}, v, { learn: '' })).miss.indexOf('learn') >= 0 &&
+     /我學到/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { learn: '' })))),
+     '★ 而且點名是「我學到」那一格');
   /* ⚠️ 規格不完整就出不了卡 —— 一張沒有規格的成果卡看不出他做了什麼。 */
   ok(J.judgeShow(Object.assign({}, v, { mode: '' })).how === 'nomode',
      '★★ 沒挑模式 → 擋下來');
   ok(/挑一種模式/.test(J.sayShow({ how: 'nomode' })), '   而且告訴他去哪裡挑');
-  ok(J.judgeShow(Object.assign({}, v, { outs: [] })).how === 'noout',
-     '★★ 沒勾輸出 → 擋下來');
-  ok(/基礎關一個|挑戰關是兩個/.test(J.sayShow({ how: 'noout' })),
-     '   而且講清楚基礎關一個、挑戰關兩個');
-  ok(J.judgeShow(Object.assign({}, v, { learn: '' })).miss.indexOf('learn') >= 0 &&
-     /我學到/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { learn: '' })))),
-     '★ 而且點名是「我學到」那一格');
-  ok(J.judgeShow(Object.assign({}, v, { els: '' })).miss.indexOf('els') >= 0,
-     '★ 而且點名是「否則」那一格');
-  ok(/否則/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { els: '' })))),
-     '★ 回饋要講出「否則」');
-  ok(J.judgeShow(Object.assign({}, v, { then: '' })).miss.indexOf('then') >= 0,
+  /* ⚠️ 老師 2026-08-25（再追加）：「輸出元件 **兩個都要**」——
+     所以那個勾選整段拿掉了。留著一個永遠成立的勾選，
+     就是補償一個不存在的情況（這幾輪一直在犯的錯）。 */
+  const src4 = read('shared/projlab.js').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/data-out=|f\.outs|'noout'/.test(src4), '★★ 輸出的勾選整段清掉（兩個都要，沒得選）');
+  ok(J.specOf({ mode: '自動' }).outs.length === 2, '★★ 規格一律列兩個輸出');
+  ok(/兩個輸出/.test(J.specOf({ mode: '自動' }).level),
+     '★ 完成階段固定寫「一個輸入 ＋ 兩個輸出」');
+  ok(J.judgeShow(Object.assign({}, v, { thenM: '' })).miss.indexOf('thenM') >= 0,
      '★ 而且點名是哪一格');
-  ok(/系統會/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { then: '' })))),
-     '★ 回饋要講出那一格的名字，不是只說「沒填完」');
+  /* ⚠️ 回饋要分得出**是哪一個輸出** —— 兩格都叫「系統會…」的話，
+     學生看到「還有沒填完的：系統會…」根本不知道要填哪一格。 */
+  ok(/（馬達）/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { thenM: '' })))) &&
+     !/（燈條）/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { thenM: '' })))),
+     '★★ 只點名（馬達）那一格，不會兩個都講');
   /* ⚠️⚠️ 「沒有遇到問題」是第三句最常見的敷衍，而那一格最值錢。
      ⚠️ 而且**短的那幾個也要判成 notrouble**，不可以只回「太短」——
         回「太短」會把他推去補成「沒有遇到問題」，剛好過長度，
@@ -348,8 +365,8 @@ section('★★ 成果發表：三句話（老師指定，文字不可改）');
 
 section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
 {
-  const v = { mode: '自動', outs: ['strip', 'moto'],
-              problem: '玄關太暗', when: '有人靠近', then: '燈亮起來', els: '關掉',
+  const v = { mode: '自動', problem: '玄關太暗', when: '有人靠近',
+              thenL: '燈亮起來', thenM: '風扇轉', elsL: '燈關掉', elsM: '風扇停',
               trouble: '燈一直閃', fix: '加了兩個門檻', learn: '門檻要兩個' };
   const html = J.cardHtml(v, { scene: '玄關迎賓燈', team: '二年三班第 4 組',
                                mode: '自動', date: '2026/8/25' });
@@ -362,14 +379,20 @@ section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
   ok(/Trig = A2/.test(html), '★ 連接腳都寫上去');
   ok(/輸出元件/.test(html) && /RGB 全彩燈條/.test(html) && /直流馬達/.test(html),
      '★★ 輸出元件（燈條＋馬達）');
-  ok(/挑戰關/.test(html), '★ 兩個輸出 → 標成挑戰關');
+  ok(/一個輸入 ＋ 兩個輸出/.test(html), '★ 完成階段固定寫「一個輸入 ＋ 兩個輸出」');
   ok(/專題成果報告/.test(html) && /一、系統規格/.test(html) &&
      /二、動作說明/.test(html) && /三、問題與解決/.test(html),
      '★★ 正式文件的版面（抬頭＋三段編號）');
   ok(/研發人員簽名/.test(html) && /教師確認/.test(html), '★ 有簽名欄');
-  ok(/我要解決的問題是/.test(html) && /系統會/.test(html) && /最後用/.test(html) &&
-     /我學到/.test(html),
+  ok(/我要解決的問題是/.test(html) && /最後用/.test(html) && /我學到/.test(html),
      '★★ 三句話都在卡片上（含「我學到」）');
+  /* ★★ 第二句在卡片上要**分兩列**：燈條一列、馬達一列。 */
+  /* ⚠️ 要釘在**表格的標題欄**上 —— 只查「頁面某處有『燈條』」的話，
+     「否則 燈條」那一列也會讓它過，標題欄漏掉照樣綠。 */
+  ok(/<th>燈條<\/th>/.test(html) && /<th>馬達<\/th>/.test(html),
+     '★★ 卡片上兩個輸出各自一列（標題欄標明是哪一個）');
+  ok(/<th>否則 燈條<\/th>/.test(html) && /<th>否則 馬達<\/th>/.test(html),
+     '★★ 「否則」那兩格也各自一列');
   ok(!/我們/.test(html), '★ 卡片上沒有「我們」');
   /* ⚠️⚠️ 下載成 PNG 的那一版**版面是另一份**（cardLines）——
      兩份要一起改。突變測試證實：把 cardLines 的「我學到」刪掉，
@@ -388,7 +411,8 @@ section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
   ok(/我學到/.test(txt) && txt.indexOf(v.learn) >= 0, '★★ ④ 我學到（下載版也要有）');
   ok(!/我們/.test(txt), '★ 下載版也沒有「我們」');
   /* ⚠️ 卡片上**每一格都是學生自己打的字**，全部都要跳脫。 */
-  ['problem', 'when', 'then', 'els', 'trouble', 'fix', 'learn'].forEach(k => {
+  ['problem', 'when', 'thenL', 'thenM', 'elsL', 'elsM',
+   'trouble', 'fix', 'learn'].forEach(k => {
     const w = Object.assign({}, v); w[k] = '<img src=x onerror=alert(1)>';
     ok(!/<img/.test(J.cardHtml(w, {})), '★★ ' + k + ' 有跳脫');
   });
@@ -479,21 +503,20 @@ section('★★ 走一遍：展示 → 成果卡');
   /* ⚠️ 這一段前面選的是**手動**，所以條件也要寫旋鈕那一邊的 ——
      不然會（正確地）被提醒「你選手動，條件卻在講自動」。
      ★ 這正是模式和成果卡的關連：測試自己也得對得起來。 */
-  set('pj-when', '旋鈕轉到 80% 以上'); set('pj-then', '風扇轉快、燈條變紅');
-  ok(set('pj-els', '兩個都關掉'), '★★ 畫面上有「否則」那一格');
+  set('pj-when', '旋鈕轉到 80% 以上'); set('pj-thenL', '燈條變紅');
+  ok(set('pj-thenM', '風扇轉快'), '★★ 畫面上（馬達）也有一格');
+  ok(set('pj-elsL', '燈條熄掉') && set('pj-elsM', '風扇停下來'),
+     '★★ 「否則」也是兩格');
   set('pj-trouble', '沒有'); set('pj-fix', '把門檻改成兩個數字');
   click('pj-make');
   ok(!done && /最值錢/.test(el.textContent), '★★ 第三句寫「沒有」→ 擋下來，不給出卡');
   set('pj-trouble', '距離一直跳，燈會閃個不停');
   set('pj-fix', '把門檻改成進 15 出 25 兩個數字');
   ok(set('pj-learn', '感測器的數字會抖，門檻不能只設一個'), '★★ 畫面上有「我學到」那一格');
-  /* ⚠️ 規格是必填 —— 沒勾輸出就出不了卡。 */
-  click('pj-make');
-  ok(!done && /輸出/.test(el.textContent), '★★ 沒勾輸出 → 擋下來');
-  el.querySelector('[data-out="moto"]').checked = true;
-  el.querySelector('[data-out="moto"]').dispatchEvent(new W.Event('change', { bubbles: true }));
   ok(/輸入元件/.test(el.textContent) && /可變電阻/.test(el.textContent),
      '★★ 規格區：輸入元件由模式自動帶出來（不讓學生選）');
+  ok(/RGB 全彩燈條、直流馬達/.test(el.textContent),
+     '★★ 輸出**兩個都列**（沒得勾 —— 老師：兩個都要）');
   click('pj-make');
   ok(!!done, '★ 三句都寫好 → 產生成果卡');
   ok(!!el.querySelector('#pj-card'), '   卡片畫出來了');
@@ -649,8 +672,9 @@ section('★★ 模式和成果卡要真的有關連（老師 2026-08-25）');
   ok(/距離|公分/.test(J.MODES[0].ph[0]) && /旋鈕/.test(J.MODES[1].ph[0]),
      '★★ 自動給距離的例子、手動給旋鈕的例子');
 
-  const base = { mode: '自動', outs: ['strip'], problem: '玄關太暗', when: '距離小於 30 公分',
-                 then: '燈條亮起來、風扇開始轉', els: '兩個都關掉',
+  const base = { mode: '自動', problem: '玄關太暗', when: '距離小於 30 公分',
+                 thenL: '燈條亮起來', thenM: '風扇開始轉',
+                 elsL: '燈條熄掉', elsM: '風扇停下來',
                  trouble: '燈會一直閃', fix: '加了兩個門檻', learn: '門檻要兩個' };
   ok(J.judgeShow(base).ok && !J.judgeShow(base).warn, '★ 對得起來 → 沒有提醒');
   const bad = Object.assign({}, base, { when: '旋鈕轉到 80% 以上' });
@@ -696,9 +720,9 @@ section('★★ AI 助教看一遍（老師 2026-08-25：成果發表引入 AI �
   ok(J.AI_NEED.every(g => g.tip && g.tip.length > 30),
      '★ 每一點都給**具體**的建議（不是只說「不夠好」）');
   /* ⚠️ 送出去的是三句話串起來的一段，而且要截斷（額度全班共用）。 */
-  const v2 = { mode: '自動', outs: ['strip'],
-               problem: '玄關太暗', when: '距離小於 30 公分', then: '燈亮',
-               els: '關掉', trouble: '燈會閃', fix: '兩個門檻', learn: '門檻要兩個' };
+  const v2 = { mode: '自動', problem: '玄關太暗', when: '距離小於 30 公分',
+               thenL: '燈亮', thenM: '風扇轉', elsL: '燈關', elsM: '風扇停',
+               trouble: '燈會閃', fix: '兩個門檻', learn: '門檻要兩個' };
   const txt = J.aiText(v2);
   ok(/1/.test(txt) && /2/.test(txt) && /3/.test(txt), '★ 三句都送出去（AI 才判得出關聯）');
   ok(/玄關太暗/.test(txt) && /門檻要兩個/.test(txt), '   內容都在');
@@ -731,12 +755,12 @@ section('★★ AI 助教看一遍（老師 2026-08-25：成果發表引入 AI �
   el7.querySelector('[data-pick="自動"]')
     .dispatchEvent(new W.Event('click', { bubbles: true }));
   a7.show('show');
-  el7.querySelector('[data-out="strip"]').checked = true;
-  el7.querySelector('[data-out="strip"]').dispatchEvent(new W.Event('change', { bubbles: true }));
+
   const put = (id, v) => { const e = el7.querySelector('#' + id); if (e) e.value = v; };
   put('pj-problem', '晚上回家玄關太暗，開燈要摸半天');
-  put('pj-when', '距離小於 30 公分'); put('pj-then', '燈條亮起來');
-  put('pj-els', '兩個都關掉');
+  put('pj-when', '距離小於 30 公分');
+  put('pj-thenL', '燈條亮起來'); put('pj-thenM', '風扇開始轉');
+  put('pj-elsL', '燈條熄掉'); put('pj-elsM', '風扇停下來');
   put('pj-trouble', '距離一直跳，燈會閃'); put('pj-fix', '改成兩個門檻');
   put('pj-learn', '數字會抖，門檻不能只設一個');
   /* 假一個 ASKAI：只認出兩點。 */

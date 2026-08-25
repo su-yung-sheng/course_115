@@ -34,6 +34,16 @@
   }
 
   var MIN = 4;                   // 每一格至少幾個字
+  /* ⚠️⚠️ 但**輸出那四格例外**：拆成「燈條做什麼／馬達做什麼」之後，
+     正確答案自然就很短 ——「熄掉」「停下來」「亮起來」都是完整的答案，
+     卻會被 4 字門檻擋掉。
+     ★ 這是拆格子**必然**帶來的後果：格子越細，每一格的字越少。
+       門檻沒跟著調的話，學生會被逼著寫廢話（「燈條會熄掉不亮」）。 */
+  var MIN_IO = 2;
+  function minOf(k) {
+    return (k === 'thenL' || k === 'thenM' || k === 'elsL' || k === 'elsM')
+      ? MIN_IO : MIN;
+  }
 
   function norm(s) { return String(s == null ? '' : s).replace(/\s+/g, ''); }
   /* ── 兩種模式 ────────────────────────────────────────
@@ -97,11 +107,24 @@
        ⚠️ 所以第二句多一格「否則」—— 而且那一格是**擋得住最多錯**的地方：
           第一節整節課在講的「門開了沒」，病根就是少了否則。
           少了它，燈亮起來就再也不會暗。 */
-    { key: 's2', t: '當＿＿＿＿時，系統會＿＿＿＿；否則＿＿＿＿。',
-      slots: ['when', 'then', 'els'],
-      hint: '＝ <b>如果</b>（條件）<b>那麼</b>（動作）<b>否則</b>（另一個動作）<br>' +
-            '⚠️ 「否則」那一格不能空 —— 少了它，動作做了就<b>回不去</b>。',
-      ph: ['例：距離小於 30 公分', '例：燈條亮起來、風扇開始轉', '例：兩個都關掉'] },
+    /* ★★ 老師 2026-08-25（再追加）：「輸出元件 兩個都要，所以
+       『當＿＿時，系統會＿＿；否則＿＿』的反應要分兩種，直接幫使用者註明
+       (燈條)(馬達) 因為可能會替換成生活中的實際產品，例如電燈，電扇等」。
+       ⚠️ 所以「系統會…」和「否則…」各拆成**兩格** —— 一格燈條、一格馬達。
+       ★ 合在一格寫的話，學生只會寫其中一個（多半是燈），
+         然後上機才發現馬達那一段根本沒想過。
+       ★ 標註元件名還有第二個用處：他可以把它讀成自己作品裡的東西
+         （「燈條」＝玄關燈、「馬達」＝電扇），發表時聽得懂。 */
+    { key: 's2', t: '當＿＿＿＿時，（燈條）＿＿＿＿、（馬達）＿＿＿＿；' +
+                    '否則（燈條）＿＿＿＿、（馬達）＿＿＿＿。',
+      slots: ['when', 'thenL', 'thenM', 'elsL', 'elsM'],
+      hint: '＝ <b>如果</b>（條件）<b>那麼</b>（兩個輸出各做什麼）' +
+            '<b>否則</b>（兩個各恢復成什麼）<br>' +
+            '⚠️ 「否則」那兩格不能空 —— 少了它，動作做了就<b>回不去</b>。<br>' +
+            '★ （燈條）（馬達）可以讀成你作品裡的東西：玄關燈、電扇…',
+      ph: ['例：距離小於 30 公分',
+           '例：亮起暖黃色', '例：慢慢開始轉',
+           '例：熄掉', '例：停下來'] },
     /* ★★ 老師 2026-08-25：「我遇到＿＿，最後用＿＿解決，我學到＿＿」。
        ⚠️ 多的那一格是**反思** —— 前兩格講的是「事情經過」，
           第三格才是「所以呢」。
@@ -137,17 +160,17 @@
     var m = MODES.filter(function (x) { return x.t === modeT; })[0];
     return m ? m.by : '';
   }
-  function outsOf(v) {
-    return OUTS.filter(function (o) { return (v.outs || []).indexOf(o.key) >= 0; });
-  }
+  /* ⚠️ 老師 2026-08-25（再追加）：「輸出元件 **兩個都要**」。
+     ★ 所以不再讓學生勾 —— 勾選那一段整個拿掉，
+       連帶「基礎關／挑戰關」的分級也沒意義了（成果發表本來就是最後一步）。
+     ⚠️ 留著一個永遠成立的勾選，就是補償一個不存在的情況。 */
   function specOf(v) {
     return {
       mode: v.mode || '',
       input: inputOf(v.mode),
       pin: v.mode === '自動' ? 'Trig = A2、Echo = A3' : 'A7',
-      outs: outsOf(v).map(function (o) { return o.t; }),
-      level: (v.outs || []).length >= 2 ? '挑戰關（一個輸入、兩個輸出）'
-                                        : '基礎關（一個輸入、一個輸出）'
+      outs: OUTS.map(function (o) { return o.t; }),
+      level: '一個輸入 ＋ 兩個輸出'
     };
   }
   function modeOf(t) {
@@ -174,28 +197,26 @@
          剛好長度過關，而這一格最值錢的東西還是沒寫。 */
     if (NO_TROUBLE.test(norm(v.trouble))) return { ok: false, how: 'notrouble' };
     var miss = [];
-    ['problem', 'when', 'then', 'els', 'trouble', 'fix', 'learn'].forEach(function (k) {
-      if (norm(v[k]).length < MIN) miss.push(k);
+    ['problem', 'when', 'thenL', 'thenM', 'elsL', 'elsM',
+     'trouble', 'fix', 'learn'].forEach(function (k) {
+      if (norm(v[k]).length < minOf(k)) miss.push(k);
     });
     if (miss.length) return { ok: false, how: 'short', miss: miss };
     /* ⚠️ 規格不完整就出不了卡 —— 一張沒有規格的成果卡看不出他做了什麼。 */
     if (!v.mode) return { ok: false, how: 'nomode' };
-    if (!(v.outs || []).length) return { ok: false, how: 'noout' };
     if (!COND.test(String(v.when || ''))) return { ok: false, how: 'nocond' };
     return { ok: true, how: 'fit', warn: mismatch(v) };
   }
-  var LABEL = { problem: '要解決的問題', when: '當…時', then: '系統會…',
-                els: '否則…', trouble: '我遇到…', fix: '最後用…解決',
-                learn: '我學到…' };
+  var LABEL = { problem: '要解決的問題', when: '當…時',
+                thenL: '（燈條）會…', thenM: '（馬達）會…',
+                elsL: '否則（燈條）…', elsM: '否則（馬達）…',
+                trouble: '我遇到…', fix: '最後用…解決', learn: '我學到…' };
   function sayShow(r) {
     /* ⚠️ 正常走不到這裡（沒選模式就進不了成果發表）——
        留著是因為 judgeShow 也給外面用（例如老師的檢查工具）。 */
     if (r.how === 'nomode')
       return '⚠️ 先在上面那一頁**挑一種模式**（自動或手動）—— ' +
              '成果卡上要寫清楚你做的是哪一種。';
-    if (r.how === 'noout')
-      return '⚠️ 勾一下你**實際用到的輸出**（燈條、馬達）。\n' +
-             '★ 基礎關一個就好；挑戰關是兩個一起動。';
     if (r.how === 'nocond')
       return '⚠️ 第二句的「當＿＿時」要是一個**條件** —— ' +
              '也就是程式裡那個「**如果**」。\n' +
@@ -208,8 +229,7 @@
              '線有沒有插錯過？那些都算。';
     if (r.how === 'short')
       return '⚠️ 還有沒填完的：**' +
-             r.miss.map(function (k) { return LABEL[k]; }).join('、') +
-             '**。每一格至少寫 ' + MIN + ' 個字。';
+             r.miss.map(function (k) { return LABEL[k]; }).join('、') + '**。';
     return '';
   }
 
@@ -246,7 +266,8 @@
   ];
   function aiText(v) {
     return '（1）我要解決的問題是：' + v.problem + '\n' +
-           '（2）當 ' + v.when + ' 時，系統會 ' + v.then + '；否則 ' + v.els + '。\n' +
+           '（2）當 ' + v.when + ' 時，燈條 ' + v.thenL + '、馬達 ' + v.thenM +
+             '；否則 燈條 ' + v.elsL + '、馬達 ' + v.elsM + '。\n' +
            '（3）我遇到 ' + v.trouble + '，最後用 ' + v.fix + ' 解決，我學到 ' + v.learn + '。';
   }
   /* 回 { skipped } 或 { missing: [tip...] }。⚠️ **永遠 resolve** ——
@@ -297,7 +318,9 @@
       { s: '二、動作說明',
         k: '1　我要解決的問題是', v: v.problem },
       { k: '2　當　' + v.when + '　時',
-        v: '系統會　' + v.then + '；否則　' + v.els },
+        v: '（燈條）' + v.thenL + '、（馬達）' + v.thenM },
+      { k: '　　否則',
+        v: '（燈條）' + v.elsL + '、（馬達）' + v.elsM },
       { s: '三、問題與解決',
         k: '3　我遇到　' + v.trouble, v: '最後用　' + v.fix + '　解決' },
       { k: '4　我學到', v: v.learn }
@@ -341,8 +364,11 @@
       '<div class="pj-sec">二、動作說明</div>' +
       '<div class="pj-body">' +
         '<div class="pj-li"><span>1</span>我要解決的問題是：' + esc(v.problem) + '</div>' +
-        '<div class="pj-li"><span>2</span>當 <b>' + esc(v.when) + '</b> 時，' +
-          '系統會 <b>' + esc(v.then) + '</b>；否則 <b>' + esc(v.els) + '</b>。</div>' +
+        '<div class="pj-li"><span>2</span>當 <b>' + esc(v.when) + '</b> 時：' +
+          '<table class="pj-tb pj-tb-io"><tr><th>燈條</th><td>' + esc(v.thenL) + '</td>' +
+          '<th>馬達</th><td>' + esc(v.thenM) + '</td></tr>' +
+          '<tr><th>否則 燈條</th><td>' + esc(v.elsL) + '</td>' +
+          '<th>否則 馬達</th><td>' + esc(v.elsM) + '</td></tr></table></div>' +
       '</div>' +
       '<div class="pj-sec">三、問題與解決</div>' +
       '<div class="pj-body">' +
@@ -509,10 +535,11 @@
   '.pj-spec-r b{color:#0f172a}' +
   '.pj-spec-r span{font-size:12px;color:#94a3b8;font-family:monospace}' +
   '.pj-spec-n{font-size:12px;font-weight:800;color:#94a3b8;margin-top:5px}' +
-  '.pj-out{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;' +
-    'border:2px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;' +
-    'font-size:14px;font-weight:900;color:#334155}' +
-  '.pj-out.on{border-color:#7c3aed;background:#f5f3ff;color:#5b21b6}' +
+  '.pj-io2{padding-left:14px}' +
+  '.pj-io2 b{color:#7c3aed;min-width:62px}' +
+  '.pj-tb-io{margin:6px 0 0}' +
+  '.pj-tb-io th{width:78px;font-size:13px}' +
+  '.pj-tb-io td{font-size:14px}' +
   '.pj-hint{font-size:13px;font-weight:800;color:#7c3aed;background:#f5f3ff;' +
     'border-radius:10px;padding:7px 10px;margin-top:5px;line-height:1.8}' +
   /* 兩種模式的對照表 */
@@ -576,8 +603,9 @@
     /* ★ 自動帶入班級座號姓名（頁面從 SSO 拿）。
        ⚠️ 只在「學生還沒自己填過」的時候帶入 —— 不然他改了名字（加組員）
           會被下一次重新掛載蓋掉。 */
-    var f = Object.assign({ mode: '', problem: '', when: '', then: '', els: '',
-                            trouble: '', fix: '', learn: '', outs: [] }, opts.work || {});
+    var f = Object.assign({ mode: '', problem: '', when: '',
+                            thenL: '', thenM: '', elsL: '', elsM: '',
+                            trouble: '', fix: '', learn: '' }, opts.work || {});
     /* ⚠️⚠️ 老師 2026-08-25：「研發人員 是我上次輸入的人名? 不是目前帳號的實際資料」
        ★ 對 —— 病根在這裡：身分原本和學生的作答**混在同一包 f 裡**，
          而那一包會被存下來、下次再載回來。
@@ -693,27 +721,31 @@
             (inputOf(f.mode) || '（挑了模式就會自動帶出來）') + '</b>' +
             '<span>' + (f.mode === '自動' ? 'Trig = A2、Echo = A3'
                                           : (f.mode ? 'A7' : '')) + '</span></div>' +
-          '<div class="pj-spec-r">輸出元件：' +
-            OUTS.map(function (o) {
-              var on = (f.outs || []).indexOf(o.key) >= 0;
-              return '<label class="pj-out' + (on ? ' on' : '') + '">' +
-                '<input type="checkbox" data-out="' + o.key + '"' + (on ? ' checked' : '') +
-                '>' + esc(o.t) + '</label>';
-            }).join('') +
-          '</div>' +
-          '<div class="pj-spec-n">★ 基礎關勾一個就好；<b>挑戰關是兩個一起動</b>。</div>' +
+          '<div class="pj-spec-r">輸出元件：<b>' +
+            OUTS.map(function (o) { return esc(o.t); }).join('、') + '</b></div>' +
+          '<div class="pj-spec-n">★ 兩個輸出**都要用到** —— ' +
+          '同一個判斷底下，燈條和馬達一起動。</div>' +
         '</div>' +
         '<div class="pj-ask" style="margin-top:10px">1. 我要解決的問題是：</div>' +
         '<div class="pj-fill"><input class="pj-t" id="pj-problem" value="' + esc(f.problem) +
           '" placeholder="' + esc(SHOW_Q[0].ph[0]) + '"></div>' +
-        '<div class="pj-ask" style="margin-top:10px">2. 當＿＿時，系統會＿＿；否則＿＿。' +
+        '<div class="pj-ask" style="margin-top:10px">2. 當＿＿時，兩個輸出各做什麼？' +
           '<div class="pj-hint">' + SHOW_Q[1].hint + '</div></div>' +
         '<div class="pj-fill">當　<input class="pj-t" id="pj-when" value="' + esc(f.when) +
           '" placeholder="' + esc(ph2(0)) + '">　時</div>' +
-        '<div class="pj-fill">系統會　<input class="pj-t" id="pj-then" value="' + esc(f.then) +
+        '<div class="pj-fill pj-io2"><b>（燈條）</b>會　' +
+          '<input class="pj-t" id="pj-thenL" value="' + esc(f.thenL) +
           '" placeholder="' + esc(ph2(1)) + '"></div>' +
-        '<div class="pj-fill">否則　<input class="pj-t" id="pj-els" value="' + esc(f.els) +
+        '<div class="pj-fill pj-io2"><b>（馬達）</b>會　' +
+          '<input class="pj-t" id="pj-thenM" value="' + esc(f.thenM) +
           '" placeholder="' + esc(ph2(2)) + '"></div>' +
+        '<div class="pj-fill" style="margin-top:8px">否則 ——</div>' +
+        '<div class="pj-fill pj-io2"><b>（燈條）</b>　' +
+          '<input class="pj-t" id="pj-elsL" value="' + esc(f.elsL) +
+          '" placeholder="' + esc(ph2(3)) + '"></div>' +
+        '<div class="pj-fill pj-io2"><b>（馬達）</b>　' +
+          '<input class="pj-t" id="pj-elsM" value="' + esc(f.elsM) +
+          '" placeholder="' + esc(ph2(4)) + '"></div>' +
         '<div class="pj-ask" style="margin-top:10px">' +
           '3. 我遇到＿＿，最後用＿＿解決，我學到＿＿。</div>' +
         '<div class="pj-fill">我遇到　<input class="pj-t" id="pj-trouble" value="' +
@@ -782,7 +814,8 @@
 
     function grab() {
       [['pj-problem', 'problem'], ['pj-when', 'when'],
-       ['pj-then', 'then'], ['pj-els', 'els'],
+       ['pj-thenL', 'thenL'], ['pj-thenM', 'thenM'],
+       ['pj-elsL', 'elsL'], ['pj-elsM', 'elsM'],
        ['pj-trouble', 'trouble'], ['pj-fix', 'fix'],
        ['pj-learn', 'learn']].forEach(function (x) {
         var e = el.querySelector('#' + x[0]);
@@ -827,15 +860,6 @@
           show(b.getAttribute('data-tab'));
         });
       });
-      el.querySelectorAll('[data-out]').forEach(function (b) {
-        b.addEventListener('change', function () {
-          var k = b.getAttribute('data-out');
-          var i = (f.outs || []).indexOf(k);
-          if (b.checked && i < 0) f.outs.push(k);
-          if (!b.checked && i >= 0) f.outs.splice(i, 1);
-          viewShow('', '');
-        });
-      });
       el.querySelectorAll('[data-pick]').forEach(function (b) {
         b.addEventListener('click', function () { f.mode = b.getAttribute('data-pick'); viewDemo('', ''); });
       });
@@ -848,7 +872,7 @@
   }
 
   global.PROJLAB = {
-    MIN: MIN, MODES: MODES, SHOW_Q: SHOW_Q,
+    MIN: MIN, MIN_IO: MIN_IO, MODES: MODES, SHOW_Q: SHOW_Q,
     judgeShow: judgeShow, sayShow: sayShow,
     OUTS: OUTS, specOf: specOf, inputOf: inputOf,
     AI_NEED: AI_NEED, aiText: aiText, aiReview: aiReview, aiOn: aiOn,
