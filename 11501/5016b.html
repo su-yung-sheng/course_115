@@ -1365,53 +1365,81 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "旋鈕式可變電阻（10K）—— 接法同第三節：G→腳1、P→腳3、S→腳2（訊號進 <b>A7</b>）",
                     "WS2812B RGB 全彩燈條"
                 ],
+                /* ⚠️⚠️ 老師 2026-08-25：「旋鈕輸入 (Hue): 976　色相角: 343° 這個操作沒有說明?
+                   是不是一直都沒有說明可變電阻的數值是 0-1023?」
+                   ★ 0～1023 **有**說明 —— 在第三節（分壓那一段講過三次）。
+                     真正的毛病是這個示範自己沒接上：
+                     ① 標籤把 976 叫做 **(Hue)** —— 那是 A7 的**原始讀值**，不是色相。
+                        兩個不同的東西共用一個名字，學生當然看不懂。
+                     ② 中間**少了換算那一步**，343 像是憑空冒出來的。
+                     ③ 用 360 換算，但積木裡是 **359**。
+                     ④ 只畫 4 顆燈，實際燈條是 8 顆。
+                   ⇒ 改成把「讀到什麼 → 哪一塊換算 → 換成什麼」三層都寫出來。 */
                 initPlayground: function(container) {
                     container.innerHTML = `
-                        <div class="flex flex-col items-center gap-6 w-full">
-                            <div class="w-full max-w-sm">
-                                <div class="flex justify-between text-xs text-slate-500 font-mono mb-2">
-                                    <span>旋鈕輸入 (Hue): <span id="color-pot-val" class="text-indigo-600 font-bold">0</span></span>
-                                    <span>色相角: <span id="hue-val" class="text-indigo-600 font-bold">0°</span></span>
+                        <div class="flex flex-col items-center gap-5 w-full">
+                            <div class="w-full max-w-md bg-slate-50 border-2 border-slate-200 rounded-2xl p-4">
+                                <div class="flex items-center justify-between gap-2 text-sm font-mono">
+                                    <span class="text-slate-600">A7 讀到</span>
+                                    <span><b id="color-pot-val" class="text-amber-600 text-lg">0</b>
+                                        <span class="text-xs text-slate-400">／ 1023</span></span>
                                 </div>
-                                <input type="range" id="color-slider" min="0" max="1023" value="0" class="w-full big-range" style="--thumb:#a855f7; background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);">
+                                <div class="text-center text-xs text-slate-400 my-1">
+                                    ↓　類比對應（A7，0，359）　↓
+                                </div>
+                                <div class="flex items-center justify-between gap-2 text-sm font-mono">
+                                    <span class="text-slate-600">色相</span>
+                                    <span><b id="hue-val" class="text-indigo-600 text-lg">0</b>
+                                        <span class="text-xs text-slate-400">／ 359</span></span>
+                                </div>
                             </div>
-                            
-                            <!-- Large LED Display -->
-                            <div class="flex gap-4 justify-center items-center bg-slate-50 p-8 rounded-2xl border border-slate-200 w-full">
-                                <div id="hue-led-1" class="w-12 h-12 rounded-full bg-red-500 shadow-[0_0_20px_#ef4444] transition-colors"></div>
-                                <div id="hue-led-2" class="w-12 h-12 rounded-full bg-red-500 shadow-[0_0_20px_#ef4444] transition-colors"></div>
-                                <div id="hue-led-3" class="w-12 h-12 rounded-full bg-red-500 shadow-[0_0_20px_#ef4444] transition-colors"></div>
-                                <div id="hue-led-4" class="w-12 h-12 rounded-full bg-red-500 shadow-[0_0_20px_#ef4444] transition-colors"></div>
+
+                            <div class="w-full max-w-md">
+                                <input type="range" id="color-slider" min="0" max="1023" value="0"
+                                    class="w-full big-range"
+                                    style="--thumb:#a855f7; background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);">
+                                <div class="flex justify-between text-xs text-slate-400 font-mono mt-1">
+                                    <span>轉到最左</span><span>轉到最右</span>
+                                </div>
                             </div>
+
+                            <div id="hue-strip" class="flex gap-2 sm:gap-3 justify-center items-center bg-slate-900 p-5 rounded-2xl w-full"></div>
+
+                            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-md">
+                                ⚠️ 上面那個 <b>0～1023</b> 是 <b>A7 原本讀到的數字</b>
+                                （第三節那把尺，旋鈕轉到哪就讀到多少）。<br>
+                                你<span class="hl">不必自己除</span> ——
+                                「類比對應」那塊積木會直接把它換成 <b>0～359</b> 的色相。
+                            </p>
                         </div>
                     `;
 
                     const slider = document.getElementById('color-slider');
                     const potText = document.getElementById('color-pot-val');
                     const hueText = document.getElementById('hue-val');
-                    
-                    const leds = [
-                        document.getElementById('hue-led-1'),
-                        document.getElementById('hue-led-2'),
-                        document.getElementById('hue-led-3'),
-                        document.getElementById('hue-led-4')
-                    ];
+                    const strip = document.getElementById('hue-strip');
+                    /* 燈條是 8 顆（和第二、四節的程式一致）。 */
+                    const leds = [];
+                    for (let i = 0; i < 8; i++) {
+                        const d = document.createElement('div');
+                        d.className = 'w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-colors';
+                        strip.appendChild(d);
+                        leds.push(d);
+                    }
 
-                    slider.addEventListener('input', (e) => {
-                        const val = parseInt(e.target.value);
+                    function paint(val) {
                         potText.textContent = val;
-                        
-                        // Map 0-1023 to Hue 0-360
-                        const hue = Math.floor((val / 1023) * 360);
-                        hueText.textContent = hue + "°";
-                        
+                        /* ★ 上限是 359，和積木裡那一組一模一樣（不是 360）。 */
+                        const hue = Math.round((val / 1023) * 359);
+                        hueText.textContent = hue;
                         const colorString = `hsl(${hue}, 100%, 50%)`;
-                        
                         leds.forEach(led => {
                             led.style.backgroundColor = colorString;
-                            led.style.boxShadow = `0 0 20px ${colorString}`;
+                            led.style.boxShadow = `0 0 18px ${colorString}`;
                         });
-                    });
+                    }
+                    slider.addEventListener('input', (e) => paint(parseInt(e.target.value)));
+                    paint(0);
                 },
                 demoHTML: `
                     <div class="flex items-center gap-3 mb-2">
