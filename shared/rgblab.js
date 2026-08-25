@@ -98,7 +98,27 @@
   ];
   function caseQ2(rng, prev) { return LK().pick(rng, Q2, prev, function (x) { return x.q; }); }
 
-  /* ── ③ 複習轉換 ───────────────────────────────────
+  /* ── ③ 旋轉旋鈕 → 燈號移動 ＋ 換色 ─────────────────
+     ⚠️ 老師 2026-08-25：「沒有旋轉可變電阻燈號改變位置的互動操作」
+        —— 第一版的 ③ 只是一格填空，兩種模式**都沒有動手的地方**。
+     ⇒ 這裡放一顆真的旋鈕：轉它，亮的那一顆會跑，顏色也會跟著換，
+        也就是這一節的兩個模式同時看得見。
+     ★ 兩端都轉到才出題 —— 光看圖沒有感覺，要自己轉一遍（同第三節）。 */
+  var LEDS = 8;
+  /* ⚠️ 1 到 8 中間只有**七格**間隔（第二節踩過：用 8 會少一顆到不了）。 */
+  function posAt(pct) { return Math.round(1 + (LEDS - 1) * clamp(pct) / 100); }
+  function hueAt(pct) { return Math.round(HUE_MAX * clamp(pct) / 100); }
+  function clamp(v) { return Math.max(0, Math.min(100, Number(v) || 0)); }
+  /* 色相 → 紅綠藍。★ 刻意**不用 sin**（老師：那個公式有點難，不解釋）——
+     這裡只是要讓畫面上的顏色跟著轉，學生不必看這一段。 */
+  function hueRgb(h) {
+    var x = (h % 360) / 60, i = Math.floor(x), f = x - i;
+    var up = Math.round(255 * f), dn = 255 - up;
+    return [[255, up, 0], [dn, 255, 0], [0, 255, up], [0, dn, 255],
+            [up, 0, 255], [255, 0, dn]][i % 6];
+  }
+
+  /* ── ③ 的填空：複習轉換 ───────────────────────────
      ★ 老師：「複習一下轉換公式」。
      ⚠️ 只複習**類比對應**那一塊（0～359），
         那三個 sin 不碰（老師：公式有點難，不解釋）。 */
@@ -172,6 +192,11 @@
   '.rg-msg.bad{background:#fff7ed;border:2px solid #fdba74;color:#7c2d12}' +
   '.rg-msg.good{background:#ecfdf5;border:2px solid #6ee7b7;color:#065f46}' +
   '.rg-dots{display:flex;gap:6px;margin-bottom:12px}' +
+  '.rg-live{text-align:center;font-weight:900;font-size:16px;color:#e2e8f0;margin-top:8px;' +
+    'font-variant-numeric:tabular-nums}' +
+  '.rg-goals{display:flex;gap:14px;justify-content:center;font-weight:900;font-size:14px;' +
+    'color:#475569;margin-top:8px}' +
+  '.rg-sm{padding:7px 14px;font-size:13px}' +
   '.rg-dot{flex:1;height:6px;border-radius:3px;background:#e2e8f0}' +
   '.rg-dot.on{background:#7c3aed}.rg-dot.ok{background:#10b981}';
 
@@ -210,6 +235,8 @@
     var rng = rngFrom(opts.seed);
     var node = 1, tries = 0;
     var rgb = [0, 0, 0];
+    var pct = 50, turned = { lo: false, hi: false };
+    var dialH = null, needView = false;
     var mix = caseMix(rng, null), q2 = caseQ2(rng, null), hue = caseHue(rng, null);
 
     function dots(n, done) {
@@ -245,15 +272,28 @@
             return '<button class="rg-opt" data-k="' + o.k + '">' + md(o.t) + '</button>';
           }).join('');
       } else {
+        var both = turned.lo && turned.hi;
         body =
-          '<div class="rg-q">🎚️ 最後複習一下<b>轉換</b>（和上一節同一塊積木）：<br>' +
-          '<span style="font-family:monospace;font-size:14px">顏色 ← 類比對應（' + PIN +
-            '，0，' + HUE_MAX + '）</span><br>' +
-          '旋鈕轉一圈，就走完整個色環。<br>' +
-          '⚠️ 旋鈕轉到 <b>' + hue.pct + '%</b> 的時候，「顏色」會是多少？</div>' +
-          '<div class="rg-row" style="text-align:center">' +
-            '<input class="rg-in" id="rg-hue" placeholder="?"> ' +
-            '<button class="rg-go" id="rg-runH">送出</button></div>';
+          '<div class="rg-q">🎚️ 換<b>旋鈕</b>上場 —— 轉轉看：<br>' +
+          '亮的那一顆會<b>跟著跑</b>（模式一），顏色也會<b>跟著換</b>（模式二）。<br>' +
+          '⚠️ 左右<b>兩端都要轉到</b>。</div>' +
+          LK().dialSvg(pct, { cls: 'rg-dial', needleId: 'rg-needle', legs: true }) +
+          '<div id="rg-live">' + liveHtml() + '</div>' +
+          '<div class="rg-goals">' +
+            '<span id="rg-gl"></span><span id="rg-gh"></span></div>' +
+          '<div style="text-align:center;margin-top:4px">' +
+            '<button class="rg-go rg-sm" id="rg-jl">直接轉到最左</button> ' +
+            '<button class="rg-go rg-sm" id="rg-jr">直接轉到最右</button></div>' +
+          (both
+            ? '<div class="rg-q" style="margin-top:14px">' +
+              '✅ 兩種模式你都轉過了。最後把<b>換算</b>寫出來：<br>' +
+              '<span style="font-family:monospace;font-size:14px">顏色 ← 類比對應（' + PIN +
+                '，0，' + HUE_MAX + '）</span><br>' +
+              '⚠️ 旋鈕轉到 <b>' + hue.pct + '%</b> 的時候，「顏色」會是多少？</div>' +
+              '<div class="rg-row" style="text-align:center">' +
+                '<input class="rg-in" id="rg-hue" placeholder="?"> ' +
+                '<button class="rg-go" id="rg-runH">送出</button></div>'
+            : '');
       }
       el.innerHTML = '<div class="rg-wrap">' + dots(node, node - 1) + body +
         (msg ? '<div class="rg-msg ' + (cls || 'bad') + '">' + md(msg) + '</div>' : '') + '</div>';
@@ -271,7 +311,57 @@
       });
     }
 
+    /* ③ 的燈條＋讀數。⚠️ 這一塊和旋鈕的 SVG **分開**，
+       所以重畫它不會把正在拖的旋鈕換掉。 */
+    function liveHtml() {
+      var pos = posAt(pct), h = hueAt(pct), c = hex(hueRgb(h));
+      var leds = '';
+      for (var i = 1; i <= LEDS; i++) {
+        leds += '<div class="rg-led" style="background:' + (i === pos ? c : '#1e293b') +
+          (i === pos ? ';box-shadow:0 0 14px ' + c : '') + '"></div>';
+      }
+      return '<div class="rg-stage"><div class="rg-strip">' + leds + '</div></div>' +
+        '<div class="rg-live">第 <b>' + pos + '</b> 顆　｜　顏色 <b>' + h + '</b>' +
+        '　｜　旋鈕 ' + pct + '%</div>';
+    }
+    function paint3() {
+      var g = el.querySelector('#rg-needle');
+      if (g) g.setAttribute('transform', 'rotate(' + LK().dialAngle(pct) + ' 60 60)');
+      var lv = el.querySelector('#rg-live');
+      if (lv) lv.innerHTML = liveHtml();
+      var gl = el.querySelector('#rg-gl'), gh = el.querySelector('#rg-gh');
+      if (gl) gl.textContent = (turned.lo ? '✅' : '⬜') + ' 轉到最左';
+      if (gh) gh.textContent = (turned.hi ? '✅' : '⬜') + ' 轉到最右';
+    }
+    /* ⚠️⚠️ 手指還按著的時候**不可以重畫整頁** —— 那會把正在拖的 SVG
+       換掉，變成「滑鼠只能點第一下」（第三節踩過，見 labkit.dialBind）。 */
+    function setPct(v) {
+      var was = turned.lo && turned.hi;
+      pct = clamp(v);
+      if (pct <= 5) turned.lo = true;
+      if (pct >= 95) turned.hi = true;
+      paint3();
+      if (!was && turned.lo && turned.hi) {
+        if (dialH && dialH.dragging()) { needView = true; return; }
+        view('', '');
+      }
+    }
+
     function bind() {
+      /* ③ 的旋鈕：拖曳／滾輪／方向鍵都在 labkit（和第三節同一顆）。 */
+      var dl = el.querySelector('.rg-dial');
+      if (dl) {
+        dialH = LK().dialBind(dl, {
+          get: function () { return pct; },
+          set: setPct,
+          onRelease: function () { if (needView) { needView = false; view('', ''); } }
+        });
+        paint3();
+      }
+      var jl = el.querySelector('#rg-jl');
+      if (jl) jl.addEventListener('click', function () { setPct(0); });
+      var jr = el.querySelector('#rg-jr');
+      if (jr) jr.addEventListener('click', function () { setPct(100); });
       el.querySelectorAll('[data-ch]').forEach(function (sl) {
         sl.addEventListener('input', function () {
           rgb[Number(sl.getAttribute('data-ch'))] = Number(sl.value);
@@ -324,13 +414,15 @@
     return { node: function () { return node; }, tries: function () { return tries; },
              rgb: function () { return rgb; }, setRgb: function (a) { rgb = a.slice(); paint(); },
              mix: function () { return mix; }, q2: function () { return q2; },
-             hue: function () { return hue; } };
+             hue: function () { return hue; },
+             pct: function () { return pct; }, setPct: setPct };
   }
 
   global.RGBLAB = {
     PIN: PIN, HUE_MAX: HUE_MAX, MIXES: MIXES, Q2: Q2, CH: CH, ON: ON, OFF: OFF,
     hex: hex, caseMix: caseMix, judgeMix: judgeMix, sayMix: sayMix,
-    caseQ2: caseQ2, caseHue: caseHue, judgeHue: judgeHue, sayHue: sayHue,
+    caseQ2: caseQ2, caseHue: caseHue, LEDS: LEDS,
+    posAt: posAt, hueAt: hueAt, hueRgb: hueRgb, judgeHue: judgeHue, sayHue: sayHue,
     mount: mount
   };
 

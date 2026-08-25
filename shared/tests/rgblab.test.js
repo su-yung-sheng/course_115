@@ -153,7 +153,66 @@ section('★★ 三個節點真的走得完');
   el.querySelector('[data-k="' + api.q2().opts.filter(o => o.good)[0].k + '"]')
     .dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(api.node() === 3, '★ ② 答對 → 進到 ③');
-  ok(!!el.querySelector('#rg-hue'), '   ③ 是填空');
+
+  /* ── ③ ⚠️⚠️ 老師 2026-08-25：「沒有旋轉可變電阻燈號改變位置的互動操作」
+     ★ 第一版的 ③ 只有一格填空 —— 這一節講的兩個模式
+       （燈號移動、混色）**都沒有動手的地方**，等於只用讀的。
+     ⇒ 這裡放一顆真的旋鈕，轉它燈號會跑、顏色會換。 */
+  ok(!!el.querySelector('.rg-dial'), '★★ ③ 有一顆**真的旋鈕**（不是只有填空）');
+  ok(!el.querySelector('#rg-hue'),
+     '★★ 還沒轉過就不出題 —— 要自己轉一遍才有感覺（同第三節）');
+  {
+    /* ⚠️⚠️ 這裡本來只測純函式（posAt / hueAt）—— 那**測不到老師抱怨的那件事**。
+       「轉了燈不動」的病根從來不在算式，而在畫面沒更新：
+       把 paint3() 裡的選擇器打錯一個字，純函式照樣全對，測試照樣綠。
+       ⇒ 一定要真的去看**畫面上亮的是第幾顆**。 */
+    const litAt = () => {
+      const leds = [...el.querySelectorAll('.rg-led')];
+      return leds.findIndex(d => !/#1e293b|rgb\(30, 41, 59\)/.test(d.style.background)) + 1;
+    };
+    api.setPct(0);
+    ok(litAt() === 1, '★★ 轉到最左 → **畫面上**亮第 1 顆');
+    api.setPct(100);
+    ok(litAt() === R.LEDS,
+       '★★ 轉到最右 → **畫面上**亮第 ' + R.LEDS + ' 顆（實得第 ' + litAt() + ' 顆）');
+    api.setPct(50);
+    ok(litAt() > 1 && litAt() < R.LEDS, '★ 轉到一半 → 亮中間那幾顆之一（第 ' + litAt() + '）');
+    /* 顏色也要真的跟著換（模式二）。 */
+    const colAt = p => { api.setPct(p); return el.querySelector('#rg-live').innerHTML; };
+    ok(colAt(20) !== colAt(80), '★★ 轉動時**畫面上**的顏色真的會變');
+    api.setPct(0); api.setPct(100);
+    ok(R.posAt(50) !== 1 && R.posAt(50) !== R.LEDS, '★ 換算本身也對（' + R.posAt(50) + '）');
+    /* ★ 顏色也要跟著換 —— 這是模式二。 */
+    ok(R.hueAt(0) === 0 && R.hueAt(100) === R.HUE_MAX, '★ 顏色 0～' + R.HUE_MAX);
+    ok(String(R.hueRgb(R.hueAt(0))) !== String(R.hueRgb(R.hueAt(50))),
+       '★★ 轉動時顏色真的會變（不是一直同一色）');
+  }
+  ok(!!el.querySelector('#rg-hue'), '★ 兩端都轉到 → 才出填空題');
+  /* ⚠️ 拖曳中不可以重畫整頁（第三節的「滑鼠只能點第一下」）。 */
+  {
+    const src3 = read('shared/rgblab.js');
+    ok(/dialH && dialH\.dragging\(\)/.test(src3),
+       '★★ 手指還按著時不重畫整頁（不然會把正在拖的 SVG 換掉）');
+    const p3 = src3.slice(src3.indexOf('function paint3()'), src3.indexOf('function setPct'));
+    ok(/#rg-needle[\s\S]{0,120}setAttribute\('transform'/.test(p3),
+       '★★ 轉動時只改指針的 transform');
+    ok(!/rg-dial[\s\S]{0,40}innerHTML/.test(p3), '★★ 不重畫旋鈕那一塊');
+  }
+  /* 用轉的比拉的難 —— 留兩顆退路（同第三節）。 */
+  {
+    const el5 = W.document.createElement('div');
+    W.document.body.appendChild(el5);
+    const a5 = R.mount(el5, { seed: 'jj' });
+    a5.setRgb(a5.mix().want.map(v => v ? 255 : 0));
+    el5.querySelector('#rg-run').dispatchEvent(new W.Event('click', { bubbles: true }));
+    el5.querySelector('[data-k="' + a5.q2().opts.filter(o => o.good)[0].k + '"]')
+      .dispatchEvent(new W.Event('click', { bubbles: true }));
+    ok(!!el5.querySelector('#rg-jl') && !!el5.querySelector('#rg-jr'),
+       '★ 有「直接轉到最左／最右」兩顆按鈕');
+    el5.querySelector('#rg-jl').dispatchEvent(new W.Event('click', { bubbles: true }));
+    el5.querySelector('#rg-jr').dispatchEvent(new W.Event('click', { bubbles: true }));
+    ok(!!el5.querySelector('#rg-hue'), '   按那兩顆也能把兩端達成、出題');
+  }
 
   el.querySelector('#rg-hue').value = api.hue().answer;
   el.querySelector('#rg-runH').dispatchEvent(new W.Event('click', { bubbles: true }));
@@ -166,6 +225,14 @@ section('★★ 三個節點真的走得完');
   const src = read('shared/rgblab.js');
   ok(/function paint\(\)[\s\S]{0,200}#rg-stage[\s\S]{0,60}innerHTML/.test(src),
      '★★ 拖滑桿時只換舞台那一塊，不整個重畫（重畫會讓滑桿失焦）');
+
+  /* ★ 旋鈕的幾何與拖曳在 labkit（第三、四節共用）——
+     ⚠️ 不可以在這裡再寫一份，不然兩節課的手感會不一樣而且看不出來。 */
+  ok(/LK\(\)\.dialSvg\(/.test(src) && /LK\(\)\.dialBind\(/.test(src),
+     '★★ 旋鈕用 labkit 的那一顆（和第三節同一個，幾何不可以有兩份）');
+  ok(!/atan2|SWEEP/.test(src.replace(/\/\*[\s\S]*?\*\//g, '')),
+     '★★ rgblab 自己不算角度（算了就是第二份幾何）');
+  ok(!/Math\.sin/.test(src), '★ 連畫顏色都沒用到 sin');
 }
 
 section('★ 第四節接上頁面了');
@@ -184,7 +251,12 @@ section('★ 第四節接上頁面了');
   ok(/359/.test(u4), '★★ 色環範圍是 0～359');
   /* 兩個模式都要寫出來 —— 這一節是二＋三的整合。 */
   ok(/燈號移動/.test(u4) && /混色/.test(u4), '★★ 兩種模式都寫出來（燈號移動／混色）');
-  ok(/第二節/.test(u4) && /第三節/.test(u4), '★ 而且點出它接在前兩節的哪裡');
+  /* ⚠️ 老師 2026-08-25：「『第二節＋第三節的整合』這個就不用特別寫出來」。
+     ★ 第一版反過來釘「一定要點出接在前兩節哪裡」—— 現在要釘相反的事：
+       學生看得到的地方**不出現那個框架**（讓他自己覺得熟悉就好）。
+     ⚠️ 但「接法同第三節」那種**操作上的指引**留著 —— 那是接線要用的。 */
+  ok(!/整合/.test(u4.replace(/\/\*[\s\S]*?\*\//g, '')),
+     '★★ 畫面上不寫「整合」（老師 2026-08-25）');
   /* ★★ 這一節的重點：RGB 混色，而且公式不解釋。 */
   ok(/不必看懂/.test(u4), '★★ 明講那三行 sin 不必看懂（老師：公式有點難，不解釋）');
   ok(/光不是顏料|越混越暗/.test(u4), '★★ 點出「光不是顏料」那個迷思');

@@ -1334,8 +1334,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 colorText: "text-indigo-600",
                 colorBg: "bg-purple-500",
                 icon: "sliders-horizontal",
-                desc: "這一節是<b>第二節＋第三節的整合</b>：一樣用旋鈕，但這次控制的是燈條。按 1 是<b>燈號移動</b>（旋鈕轉到哪，亮的那一顆就跑到哪）；按 2 是<b>混色</b>（旋鈕轉一圈，走完整個色環）。★ 重點在<b>紅綠藍三盞燈疊在一起會混出什麼顏色</b>。",
-                /* 🎯 第四節＝第二節（燈號移動）＋第三節（旋鈕）的整合。
+                desc: "用旋鈕控制整條燈條。按 1 是<b>燈號移動</b>（旋鈕轉到哪，亮的那一顆就跑到哪）；按 2 是<b>混色</b>（旋鈕轉一圈，走完整個色環）。★ 重點在<b>紅綠藍三盞燈疊在一起會混出什麼顏色</b>。",
+                /* 🎯 第四節：旋鈕控制燈條的「位置」與「顏色」。
+                   ⚠️ 老師 2026-08-25：「『第二節＋第三節的整合』這個就不用特別寫出來」
+                      —— 學生看得到的地方不點破它是整合，讓他自己覺得熟悉就好。
+                      （這個註解是寫給老師看的，不會出現在畫面上。）
                    ★ 老師 2026-08-24：「重點強調 R G B 三原色混色原理」、
                      「公式有點難，不解釋」⇒ 暖身只練混色，那三行 sin 不碰。
                    ⚠️ 三個檢核還沒做。 */
@@ -1355,7 +1358,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "★ 認識<span class=\"hl\">光的三原色</span>：燈條每一顆裡面有紅、綠、藍三盞小燈，疊在一起就混出顏色",
                     "⚠️ 分得出<span class=\"hl-b\">光和顏料不一樣</span> —— 顏料越混越暗，光越混越亮（三盞全開是白光）",
                     "複習<span class=\"hl\">類比對應</span>：同一塊積木，這次換算成「第幾顆」與「色環角度 0～359」",
-                    "把第二節的<b>燈號移動</b>和第三節的<b>旋鈕</b>接起來，做出兩種模式"
+                    "用同一顆旋鈕做出<b>兩種模式</b>：讓燈跑起來、讓燈變色"
                 ],
                 materials: [
                     "NKNU 5016B 教具模組",
@@ -1425,7 +1428,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             <div class="w-3 h-3 rounded-full bg-red-500"></div>
                             <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
                             <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                            <span class="ml-4 text-xs text-slate-500 font-mono">模式一：燈號移動（按 1）— 第二節那一招，換成旋鈕控制</span>
+                            <span class="ml-4 text-xs text-slate-500 font-mono">模式一：燈號移動（按 1）— 旋鈕轉到哪，亮的就跑到哪</span>
                         </div>
                         <div class="p-4 sm:p-6 overflow-x-auto text-sm sm:text-base font-mono leading-relaxed text-slate-600">
 <pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
@@ -1479,12 +1482,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             </p>
                         </div>
                         <div class="bg-sky-50 border-2 border-sky-200 rounded-2xl p-4">
-                            <div class="font-black text-sky-900 mb-1">和前兩節接在哪裡？</div>
+                            <div class="font-black text-sky-900 mb-1">同一塊積木，換個用途</div>
                             <p class="text-sm text-sky-900 leading-relaxed">
-                                模式一就是<span class="hl">第二節的燈號移動</span>，
-                                只是輸入從超音波換成旋鈕；<br>
-                                而「類比對應」是<span class="hl-b">第三節那一塊</span>，
-                                一模一樣。
+                                「類比對應」還是那一塊 ——
+                                只是這次把旋鈕換成<span class="hl">第幾顆</span>
+                                或<span class="hl-b">色環角度</span>。<br>
+                                換算的道理一樣，換的只是<b>要換成什麼</b>。
                             </p>
                         </div>
                     </div>

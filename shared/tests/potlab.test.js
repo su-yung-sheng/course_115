@@ -269,9 +269,21 @@ section('★ 骨架沒有走鐘（和前兩節同一套）');
      '★★ 轉動時只改指針的 transform');
   ok(!/#pt-dial[\s\S]{0,40}innerHTML/.test(paintFn),
      '★★ paint() 不重畫 #pt-dial（那樣會把正在拖的 SVG 換掉）');
-  ok(/if \(dragging\) \{ needView = true; return; \}/.test(src),
+  ok(/if \(dragging\(\)\) \{ needView = true; return; \}/.test(src),
      '★★ 手指還按著時不重畫整頁，放開之後才畫');
-  ok(/addEventListener\('wheel'/.test(src), '★ 滾輪也轉得動（滑鼠使用者用轉的很不順）');
+  /* ⚠️ 旋鈕的拖曳搬到 labkit 之後（第四節也要用），
+     這裡再 grep potlab 的原始碼就**釘錯層**了 ——
+     實作不在這一支，grep 一定找不到，紅的卻不是真的壞掉。
+     ⇒ 滾輪改成**真的滾一下**看值有沒有變（本來就該這樣測）。 */
+  {
+    const el4 = W.document.createElement('div');
+    W.document.body.appendChild(el4);
+    const a4 = P.mount(el4, { seed: 'wh' });
+    const d4 = el4.querySelector('.pt-dial');
+    const b4 = a4.pct();
+    d4.dispatchEvent(new W.WheelEvent('wheel', { deltaY: -1, bubbles: true, cancelable: true }));
+    ok(a4.pct() > b4, '★ 滾輪也轉得動（' + b4 + ' → ' + a4.pct() + '）');
+  }
   /* ★ 拖不順的人要有別的路 —— 觸控板上轉圈很不好操作。
      ⚠️ 用「原始碼裡有沒有 ArrowLeft」判斷不夠：拿掉一個還有另一個，
         照樣綠（突變測試抓到）。⇒ 真的按下去看它動不動。 */
@@ -289,7 +301,9 @@ section('★ 骨架沒有走鐘（和前兩節同一套）');
     dial.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
     ok(a2.pct() === 0, '   Home 直接轉到底');
   }
-  ok(/setPointerCapture/.test(src), '   手指滑出旋鈕範圍也不會斷（pointer capture）');
+  /* 同上：pointer capture 也在 labkit（jsdom 量不到滑鼠，只能看原始碼）。 */
+  ok(/setPointerCapture/.test(read('shared/labkit.js')),
+     '   手指滑出旋鈕範圍也不會斷（pointer capture，實作在 labkit）');
 }
 
 section('★ 第三節接上頁面了');

@@ -138,8 +138,7 @@
   /* ── ① 旋鈕（真的會轉）───────────────────────────
      ⚠️ 老師：「真實可變電阻是旋轉式，這裡使用左右拉比較無感」——
         拉桿和實物的操作感差太多，學生轉不出「這是同一個東西」。 */
-  '.pt-dial{display:block;margin:0 auto;width:190px;max-width:60vw;cursor:grab;touch-action:none}' +
-  '.pt-dial:active{cursor:grabbing}' +
+  /* ★ .pt-dial 的基本樣式已經搬到 shared/labkit.js 的 .lk-dial（第四節共用）。 */
   '.pt-hint{text-align:center;font-size:13px;font-weight:900;color:#94a3b8;margin-top:2px}' +
   '.pt-read{text-align:center;font-size:30px;font-weight:900;color:#0f172a;margin:8px 0 2px}' +
   '.pt-read span{font-size:14px;color:#64748b}' +
@@ -189,46 +188,16 @@
     document.head.appendChild(st);
   }
 
-  /* 旋鈕轉的角度範圍。★ 真實的旋鈕大約轉 270 度（−135 到 +135）。 */
-  var SWEEP = 270;
-  function angleOf(pct) { return -SWEEP / 2 + SWEEP * pct / 100; }
-  /* 角度 → 百分比。
-     ⚠️⚠️ 一定要**夾住**：從最左再往左轉，角度會繞到 −170 度那一帶，
-        不夾的話百分比會突然跳到另一端 —— 手指還在往左，旋鈕卻彈到最右。
-     ★ 抽成純函式是為了測得到（jsdom 量不到滑鼠座標）。 */
-  function pctFromAngle(deg) {
-    if (deg < -SWEEP / 2) deg = -SWEEP / 2;
-    if (deg > SWEEP / 2) deg = SWEEP / 2;
-    return Math.round((deg + SWEEP / 2) / SWEEP * 100);
+  /* 旋鈕的幾何與拖曳**都在 shared/labkit.js**（第四節也要用同一個）。
+     ⚠️ 這裡只留三個薄薄的別名 —— 幾何不可以有兩份。 */
+  function angleOf(pct) { return LK().dialAngle(pct); }
+  function pctFromAngle(deg) { return LK().dialPctFromAngle(deg); }
+
+  /** ① 的旋鈕（SVG，會跟著轉）。★ 畫的人是 labkit，這裡只指定名字。 */
+  function dialHtml(pct) {
+    return LK().dialSvg(pct, { cls: 'pt-dial', needleId: 'pt-needle', legs: true });
   }
 
-  /** ① 的旋鈕（SVG，會跟著轉）。 */
-  function dialHtml(pct) {
-    var a = angleOf(pct);
-    var ticks = '';
-    for (var i = 0; i <= 10; i++) {
-      var t = -SWEEP / 2 + SWEEP * i / 10;
-      ticks += '<line x1="60" y1="14" x2="60" y2="21" stroke="#cbd5e1" stroke-width="2" ' +
-               'transform="rotate(' + t + ' 60 60)"/>';
-    }
-    return '<svg class="pt-dial" viewBox="0 0 120 128" role="img" aria-label="可變電阻旋鈕">' +
-      ticks +
-      '<circle cx="60" cy="60" r="34" fill="#e7e5e4" stroke="#78716c" stroke-width="3"/>' +
-      /* ⚠️ 指針獨立成一個 g 並給 id —— 轉動時只改它的 transform，
-         **不可以重畫整個 SVG**（見 paint() 的說明）。 */
-      '<g id="pt-needle" transform="rotate(' + a + ' 60 60)">' +
-        '<line x1="60" y1="60" x2="60" y2="32" stroke="#0891b2" stroke-width="7" stroke-linecap="round"/>' +
-      '</g>' +
-      '<circle cx="60" cy="60" r="9" fill="#a8a29e"/>' +
-      /* 三支腳（朝下），和實物一樣由左到右 1、2、3 */
-      '<line x1="44" y1="92" x2="44" y2="112" stroke="#94a3b8" stroke-width="4"/>' +
-      '<line x1="60" y1="94" x2="60" y2="112" stroke="#94a3b8" stroke-width="4"/>' +
-      '<line x1="76" y1="92" x2="76" y2="112" stroke="#94a3b8" stroke-width="4"/>' +
-      '<text x="44" y="126" text-anchor="middle" font-size="12" font-weight="900" fill="#64748b">1</text>' +
-      '<text x="60" y="126" text-anchor="middle" font-size="12" font-weight="900" fill="#0891b2">2</text>' +
-      '<text x="76" y="126" text-anchor="middle" font-size="12" font-weight="900" fill="#64748b">3</text>' +
-    '</svg>';
-  }
   /** 分壓那條尺 */
   function barHtml(pct) {
     var edge = pct < 12 ? ' at-l' : (pct > 88 ? ' at-r' : '');
@@ -421,7 +390,8 @@
     }
     /* 手指還按著的時候不可以重畫整頁 —— 一樣會把 SVG 換掉。
        ⇒ 記下來，放開之後再畫。 */
-    var dragging = false, needView = false;
+    var dialH = null, needView = false;
+    function dragging() { return !!(dialH && dialH.dragging()); }
     function setPct(v) {
       var was = turned.lo && turned.hi;
       pct = Math.max(0, Math.min(100, v));
@@ -429,59 +399,19 @@
       if (pct >= 95) turned.hi = true;
       paint();
       if (!was && turned.lo && turned.hi) {
-        if (dragging) { needView = true; return; }
+        if (dragging()) { needView = true; return; }
         view('', '');
       }
     }
-    /* 由滑鼠／手指的位置算出旋鈕轉到幾 %。
-       ⚠️ 旋鈕只轉 270 度（−135～135），超出範圍要夾住 ——
-          不夾的話從最左再往左會突然跳到最右。 */
-    function pctFromPoint(svg, cx, cy) {
-      var r = svg.getBoundingClientRect();
-      var dx = cx - (r.left + r.width / 2);
-      var dy = cy - (r.top + r.height * 0.47);
-      var deg = Math.atan2(dx, -dy) * 180 / Math.PI;   // 12 點鐘方向為 0
-      return pctFromAngle(deg);
-    }
 
     function bind() {
-      /* ── ① 旋鈕：拖曳轉動 ── */
-      var svg = el.querySelector('.pt-dial');
-      if (svg) {
-        dragging = false;
-        var stop = function () {
-          dragging = false;
-          /* 放開之後才重畫（拖曳中重畫會把 SVG 換掉）。 */
-          if (needView) { needView = false; view('', ''); }
-        };
-        var move = function (e) {
-          if (!dragging) return;
-          e.preventDefault();
-          setPct(pctFromPoint(svg, e.clientX, e.clientY));
-        };
-        svg.addEventListener('pointerdown', function (e) {
-          dragging = true;
-          if (svg.setPointerCapture) { try { svg.setPointerCapture(e.pointerId); } catch (x) {} }
-          setPct(pctFromPoint(svg, e.clientX, e.clientY));
-        });
-        svg.addEventListener('pointermove', move);
-        svg.addEventListener('pointerup', stop);
-        svg.addEventListener('pointercancel', stop);
-        svg.addEventListener('pointerleave', stop);
-        /* ★ 滾輪也能轉 —— 滑鼠使用者用轉的很不順（老師 2026-08-24）。 */
-        svg.addEventListener('wheel', function (e) {
-          e.preventDefault();
-          setPct(pct + (e.deltaY < 0 ? 5 : -5));
-        }, { passive: false });
-        /* ★ 鍵盤也要能轉 —— 有些學生用觸控板拖不順。 */
-        svg.setAttribute('tabindex', '0');
-        svg.addEventListener('keydown', function (e) {
-          if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { setPct(pct - 5); e.preventDefault(); }
-          if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { setPct(pct + 5); e.preventDefault(); }
-          if (e.key === 'Home') { setPct(0); e.preventDefault(); }
-          if (e.key === 'End')  { setPct(100); e.preventDefault(); }
-        });
-      }
+      /* ── ① 旋鈕：拖曳／滾輪／方向鍵，都在 labkit ── */
+      dialH = LK().dialBind(el.querySelector('.pt-dial'), {
+        get: function () { return pct; },
+        set: setPct,
+        /* 放開之後才重畫（拖曳中重畫會把 SVG 換掉）。 */
+        onRelease: function () { if (needView) { needView = false; view('', ''); } }
+      });
       /* ── ② 連連看：點孔 → 點腳 ── */
       el.querySelectorAll('[data-hole]').forEach(function (g) {
         g.addEventListener('click', function () { tapHole(g.getAttribute('data-hole')); });
@@ -585,7 +515,9 @@
   global.POTLAB = {
     ADC_MAX: ADC_MAX, PIN: PIN, WIRING: WIRING, LEGS: LEGS, Q1: Q1,
     readAt: readAt, judgeWire: judgeWire, sayWire: sayWire,
-    SWEEP: SWEEP, angleOf: angleOf, pctFromAngle: pctFromAngle,
+    /* ⚠️ 這裡不再自己寫一個 SWEEP = 270 —— 那個數字只能有一份，
+       要拿去 LABKIT.DIAL_SWEEP。 */
+    angleOf: angleOf, pctFromAngle: pctFromAngle,
     HOLE_X: HOLE_X, HOLE_Y: HOLE_Y, LEG_X: LEG_X, LEG_Y: LEG_Y,
     optsWhy: optsWhy, judgeWhy: judgeWhy, sayWhy: sayWhy, caseQ1: caseQ1,
     mount: mount

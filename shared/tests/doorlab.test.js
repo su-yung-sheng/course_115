@@ -555,7 +555,15 @@ section('★★ 共用骨架（老師 2026-08-24：「之後的單元都使用�
                             kit.indexOf('};', kit.indexOf('global.LABKIT = {')));
     const exported = [...block.matchAll(/(\w+)\s*:/g)].map(m => m[1])
       .filter(n => n !== 'VERSION' && n !== 'CSS');
-    const dead = exported.filter(n => !new RegExp('\\b' + n + '\\s*\\(').test(door));
+    /* ⚠️⚠️ 第一版只掃 doorlab —— 那時候 labkit 只有第一節在用。
+       現在四個單元都靠它（旋鈕是第三、四節共用的），
+       再用「doorlab 有沒有用到」當標準就是**釘錯範圍**：
+       明明有人在用，測試卻說它是死的。
+       ⇒ 掃**所有**用得到 labkit 的單元。
+       ⚠️ 而且常數（DIAL_SWEEP）不會被 `(` 呼叫，不可以只找函式呼叫。 */
+    const users = ['doorlab', 'maplab', 'lightlab', 'potlab', 'fanlab', 'rgblab']
+      .map(f => read('shared/' + f + '.js')).join('\n');
+    const dead = exported.filter(n => !new RegExp('LK\\(\\)\\.' + n + '\\b').test(users));
     ok(dead.length === 0,
        '★★ labkit 匯出的每一支都真的有人用' +
        (dead.length ? '（沒人用：' + dead.join('、') + '）' : ''));

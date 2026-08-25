@@ -116,6 +116,11 @@
 
   /* ═══ 畫面 ═══════════════════════════════════════════ */
   var CSS = '' +
+  /* 旋鈕（第三、四節共用）。★ touch-action:none 是必要的 ——
+     不然手機上一拖就變成捲頁面，旋鈕不會動。 */
+  '.lk-dial{display:block;margin:0 auto;width:190px;max-width:60vw;cursor:grab;' +
+    'touch-action:none}' +
+  '.lk-dial:active{cursor:grabbing}' +
   '.dl-tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}' +
   '.dl-tab{flex:1;min-width:150px;padding:9px 10px;border-radius:12px;border:2px solid #e2e8f0;background:#fff;font-weight:900;font-size:13px;color:#94a3b8}' +
   '.dl-tab.on{border-color:#7c3aed;color:#5b21b6;background:#f5f3ff}' +
@@ -168,6 +173,108 @@
       '<span class="dl-note">⚠️ 寫錯不會扣分，可以一直改。</span></div>';
   }
 
+  /* ═══ 旋鈕（第三、四節共用）══════════════════════════════
+     ★ 老師 2026-08-24：「真實可變電阻是旋轉式，這裡使用左右拉比較無感」
+       ⇒ 第三節長出了這個旋鈕；第四節也要用同一個
+         （老師：「沒有旋轉可變電阻燈號改變位置的互動操作」）。
+     ⚠️ 抽到這裡是因為**幾何不可以有兩份** —— 兩邊各寫一次，
+        改了一邊忘了另一邊，兩節課的旋鈕手感就會不一樣，
+        而且畫面上看不出來（這個專案已經在 WIRING 上踩過同一族的坑）。 */
+  var DIAL_SWEEP = 270;                       // 真實旋鈕大約轉 270 度
+  function dialAngle(pct) { return -DIAL_SWEEP / 2 + DIAL_SWEEP * pct / 100; }
+  /* 角度 → 百分比。
+     ⚠️⚠️ 一定要**夾住**：從最左再往左轉，角度會繞到 −170 度那一帶，
+        不夾的話百分比會突然跳到另一端 —— 手指還在往左，旋鈕卻彈到最右。
+     ★ 抽成純函式是為了測得到（jsdom 量不到滑鼠座標）。 */
+  function dialPctFromAngle(deg) {
+    if (deg < -DIAL_SWEEP / 2) deg = -DIAL_SWEEP / 2;
+    if (deg > DIAL_SWEEP / 2) deg = DIAL_SWEEP / 2;
+    return Math.round((deg + DIAL_SWEEP / 2) / DIAL_SWEEP * 100);
+  }
+  /** 旋鈕的 SVG。o: { cls, needleId, legs }
+      ⚠️ 指針獨立成一個 g 並給 id —— 轉動時**只改它的 transform**，
+         不可以重畫整個 SVG（見 dialBind 的說明）。 */
+  function dialSvg(pct, o) {
+    o = o || {};
+    var legs = o.legs !== false, h = legs ? 128 : 108;
+    var ticks = '';
+    for (var i = 0; i <= 10; i++) {
+      var t = -DIAL_SWEEP / 2 + DIAL_SWEEP * i / 10;
+      ticks += '<line x1="60" y1="14" x2="60" y2="21" stroke="#cbd5e1" stroke-width="2" ' +
+               'transform="rotate(' + t + ' 60 60)"/>';
+    }
+    return '<svg class="lk-dial ' + (o.cls || '') + '" viewBox="0 0 120 ' + h + '" ' +
+        'role="img" aria-label="可變電阻旋鈕">' +
+      ticks +
+      '<circle cx="60" cy="60" r="34" fill="#e7e5e4" stroke="#78716c" stroke-width="3"/>' +
+      '<g id="' + (o.needleId || 'lk-needle') + '" transform="rotate(' + dialAngle(pct) + ' 60 60)">' +
+        '<line x1="60" y1="60" x2="60" y2="32" stroke="#0891b2" stroke-width="7" ' +
+          'stroke-linecap="round"/>' +
+      '</g>' +
+      '<circle cx="60" cy="60" r="9" fill="#a8a29e"/>' +
+      (legs
+        ? /* 三支腳（朝下），和實物一樣由左到右 1、2、3 */
+          '<line x1="44" y1="92" x2="44" y2="112" stroke="#94a3b8" stroke-width="4"/>' +
+          '<line x1="60" y1="94" x2="60" y2="112" stroke="#94a3b8" stroke-width="4"/>' +
+          '<line x1="76" y1="92" x2="76" y2="112" stroke="#94a3b8" stroke-width="4"/>' +
+          '<text x="44" y="126" text-anchor="middle" font-size="12" font-weight="900" ' +
+            'fill="#64748b">1</text>' +
+          '<text x="60" y="126" text-anchor="middle" font-size="12" font-weight="900" ' +
+            'fill="#0891b2">2</text>' +
+          '<text x="76" y="126" text-anchor="middle" font-size="12" font-weight="900" ' +
+            'fill="#64748b">3</text>'
+        : '') +
+    '</svg>';
+  }
+  /** 把旋鈕接上事件。o: { get, set, onRelease }
+      ⚠️⚠️ 老師 2026-08-24 在第三節回報：「轉轉看不是很好操作，**滑鼠只能點第一下**」
+         ★ 病根：paint() 把旋鈕外框的 innerHTML 整個換掉，
+           而那裡面**就是正在被拖曳的 SVG** —— 一重畫，監聽器和
+           pointer capture 全部消失，所以只有第一下有效。
+         ⇒ 呼叫端在轉動時只能改指針的 transform；而「要不要整頁重畫」
+           要先問 dragging()（手指還按著就先記著，放開再畫）。 */
+  function dialBind(svg, o) {
+    if (!svg) return { dragging: function () { return false; } };
+    var dragging = false;
+    function pctFromPoint(cx, cy) {
+      var r = svg.getBoundingClientRect();
+      var dx = cx - (r.left + r.width / 2);
+      var dy = cy - (r.top + r.height * 0.47);
+      return dialPctFromAngle(Math.atan2(dx, -dy) * 180 / Math.PI);  // 12 點鐘方向為 0
+    }
+    var stop = function () {
+      dragging = false;
+      if (typeof o.onRelease === 'function') o.onRelease();
+    };
+    svg.addEventListener('pointerdown', function (e) {
+      dragging = true;
+      if (svg.setPointerCapture) { try { svg.setPointerCapture(e.pointerId); } catch (x) {} }
+      o.set(pctFromPoint(e.clientX, e.clientY));
+    });
+    svg.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      e.preventDefault();
+      o.set(pctFromPoint(e.clientX, e.clientY));
+    });
+    svg.addEventListener('pointerup', stop);
+    svg.addEventListener('pointercancel', stop);
+    svg.addEventListener('pointerleave', stop);
+    /* ★ 滾輪也能轉 —— 滑鼠使用者用轉的很不順（老師 2026-08-24）。 */
+    svg.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      o.set(o.get() + (e.deltaY < 0 ? 5 : -5));
+    }, { passive: false });
+    /* ★ 鍵盤也要能轉 —— 有些學生用觸控板拖不順。 */
+    svg.setAttribute('tabindex', '0');
+    svg.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { o.set(o.get() - 5); e.preventDefault(); }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { o.set(o.get() + 5); e.preventDefault(); }
+      if (e.key === 'Home') { o.set(0); e.preventDefault(); }
+      if (e.key === 'End') { o.set(100); e.preventDefault(); }
+    });
+    return { dragging: function () { return dragging; } };
+  }
+
   global.LABKIT = {
     VERSION: VERSION,
     pick: pick,
@@ -177,6 +284,12 @@
     esc: esc,
     md: md,
     tabsHtml: tabsHtml,
+    /* ⚠️ DIAL_SWEEP 不匯出 —— 外面沒人需要那個數字，
+       匯出了只會讓下一個人以為它被測過（「沒人用的匯出」那條當場抓到）。 */
+    dialAngle: dialAngle,
+    dialPctFromAngle: dialPctFromAngle,
+    dialSvg: dialSvg,
+    dialBind: dialBind,
     sayHtml: sayHtml,
     CSS: CSS
   };
