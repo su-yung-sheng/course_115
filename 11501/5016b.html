@@ -1122,16 +1122,19 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                    ⚠️ 三個檢核還沒做，checks 先留 null。 */
                 lab: { unit: 'u3', warm: 'POTLAB', checks: null },
                 apps: [
-                    { icon: "🌀", name: "無段風扇",
-                      how: "旋鈕轉多少，風就多大 —— 不是「一段二段三段」，而是中間任何一個位置都可以。" },
-                    { icon: "🔉", name: "音響的音量旋鈕",
-                      how: "轉一點點就大聲一點點，沒有跳格 —— 裡面就是一顆可變電阻。" }
+                    { icon: "🌀", name: "DC 變頻電扇",
+                      how: "旋鈕轉一點點，風就大一點點，中間任何位置都停得住。⚠️ 傳統電扇不是這樣 —— 它是「一檔二檔三檔」的三段開關，裡面沒有可變電阻。" },
+                    { icon: "🎮", name: "遙控車的油門扳機",
+                      how: "扳機推多少，車就跑多快。彎道要收油門、直線再推到底 —— 扳機裡面就是一顆可變電阻。" }
                 ],
                 appsNote: '前兩節的輸入是<span class="hl-b">感測器自己量的</span>（距離）；' +
                           '這一節換成<span class="hl">人自己轉的</span>。' +
                           '⚠️ 但後面完全一樣：讀到一個數字 → <b>對應</b> → 拿去控制東西。' +
                           '★ 可變電阻就是一把 <span class="hl-b">0～1023 的尺</span>，' +
-                          '這一節要把它換算成馬達的 <span class="hl-b">0～255</span>。',
+                          '這一節要把它換算成馬達的 <span class="hl-b">0～255</span>。' +
+                          '<br>⚠️ 這兩個的共同點是<span class="hl">無段</span> —— ' +
+                          '「一檔二檔三檔」用一個<b>開關</b>就做得到，' +
+                          '要做到<span class="hl-b">中間任何位置都停得住</span>，才需要可變電阻。',
                 objectives: [
                     "了解可變電阻的分壓原理與類比輸入腳位 (A0~A5) 的 0~1023 解析度",
                     "認識 PWM (Pulse Width Modulation) 數位模擬類比輸出的技術 (0~255)",
