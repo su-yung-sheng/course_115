@@ -174,6 +174,11 @@
   '.pl-chip span{display:block;font-size:11px;color:#64748b;font-weight:800}' +
   '.pl-sel{font-size:14px;font-weight:900;padding:8px 10px;border:2px solid #cbd5e1;' +
     'border-radius:10px}' +
+  '.pl-io{margin:8px 0}' +
+  '.pl-io-h{font-size:12px;font-weight:900;color:#7c3aed;margin-bottom:4px}' +
+  '.pl-arrow{text-align:center;font-size:13px;font-weight:900;color:#94a3b8;margin:2px 0}' +
+  '.pl-dialbox{background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;padding:6px}' +
+  '.pl-dial{width:104px}' +
   '.pl-stage{background:#0f172a;border-radius:14px;padding:16px;margin:10px 0;' +
     'display:flex;flex-direction:column;align-items:center;gap:10px}' +
   '.pl-strip{display:flex;gap:5px;justify-content:center}' +
@@ -210,6 +215,19 @@
         return '<div class="pl-dot ' + (node > i ? 'ok' : (node === i ? 'on' : '')) + '"></div>';
       }).join('') + '</div>';
     }
+    /* ★ 老師 2026-08-25：「這兩個元件能圖形化嗎? 有一個人左右移動，
+       旋轉元件似乎有畫過?」
+       ⇒ 輸入不再只是一根滑桿加一個數字：
+         超音波 → 感測器 ＋ 會走的人 ＋ 尺標（labkit.distStage）
+         旋鈕　 → 第三節那顆真的會轉的旋鈕（labkit.dialSvg）
+       ⚠️ 旋鈕是**可以直接拖的** —— 光看圖沒有感覺，要自己轉。 */
+    function inStage() {
+      if (mx.input === 'us') return LK().distStage(mx.raw, 2, 200);
+      return '<div class="pl-dialbox">' +
+        LK().dialSvg(mx.raw, { cls: 'pl-dial', needleId: 'pl-needle', legs: false }) +
+        '</div>';
+    }
+
     /* ① 元件複習盤 */
     function mixStage() {
       var e = effectOf(mx.input, mx.output, mx.act, mx.raw);
@@ -255,7 +273,17 @@
             return '<option value="' + x.key + '"' + (mx.act === x.key ? ' selected' : '') +
               '>' + esc(x.t) + '</option>';
           }).join('') + '</select></div>' +
-        '<div id="pl-mstage">' + mixStage() + '</div>' +
+        '<div class="pl-io">' +
+          '<div class="pl-io-h">輸入：' + esc(mx.input === 'us' ? '超音波距離感測器'
+                                                              : '可變電阻（旋鈕）') + '</div>' +
+          '<div id="pl-instage">' + inStage() + '</div>' +
+        '</div>' +
+        '<div class="pl-arrow">↓　換算　↓</div>' +
+        '<div class="pl-io">' +
+          '<div class="pl-io-h">輸出：' + esc(mx.output === 'strip' ? 'RGB 全彩燈條'
+                                                                   : '直流馬達') + '</div>' +
+          '<div id="pl-mstage">' + mixStage() + '</div>' +
+        '</div>' +
         '<div class="pl-row"><label style="min-width:64px">' +
           (mx.input === 'us' ? '距離' : '旋鈕') + '</label>' +
           '<input type="range" id="pl-mraw" style="flex:1" ' +
@@ -274,8 +302,20 @@
     function mixPaint() {
       var st = el.querySelector('#pl-mstage');
       if (st) st.innerHTML = mixStage();
+      /* ⚠️⚠️ 旋鈕**不可以重畫** —— 那就是正在被拖的 SVG，
+         一換掉監聽器就沒了，變成「滑鼠只能點第一下」（第三節踩過）。
+         ⇒ 旋鈕只改指針的 transform；距離舞台才整塊換。 */
+      if (mx.input === 'us') {
+        var ins = el.querySelector('#pl-instage');
+        if (ins) ins.innerHTML = inStage();
+      } else {
+        var g = el.querySelector('#pl-needle');
+        if (g) g.setAttribute('transform', 'rotate(' + LK().dialAngle(mx.raw) + ' 60 60)');
+      }
       var b = el.querySelector('#pl-mval');
       if (b) b.textContent = mx.raw + (mx.input === 'us' ? ' cm' : ' %');
+      var sl = el.querySelector('#pl-mraw');
+      if (sl && Number(sl.value) !== mx.raw) sl.value = mx.raw;
     }
     function markTried() { mx.tried[mx.input + '|' + mx.output] = 1; }
 
@@ -393,6 +433,12 @@
       if (mr) mr.addEventListener('input', function () {
         mx.raw = Number(mr.value); markTried(); mixPaint();
       });
+      /* ★ 旋鈕可以直接拖／滾／用方向鍵（和第三節同一顆）。 */
+      var dl = el.querySelector('.pl-dial');
+      if (dl) LK().dialBind(dl, {
+        get: function () { return mx.raw; },
+        set: function (v) { mx.raw = Math.max(0, Math.min(100, v)); markTried(); mixPaint(); }
+      });
       var n0 = el.querySelector('#pl-n0');
       if (n0) n0.addEventListener('click', function () {
         if (Object.keys(mx.tried).length < 4)
@@ -465,6 +511,7 @@
 
     view('', '');
     return { node: function () { return node; }, plan: function () { return p; },
+             setRaw: function (v) { mx.raw = v; markTried(); mixPaint(); },
              tries: function () { return tries; },
              set: function (k, v) { p[k] = v; view('', ''); },
              go: function (n) { node = n; view('', ''); } };

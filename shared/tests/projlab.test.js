@@ -167,6 +167,35 @@ section('★★ ① 複習盤：四種配法都要親手試過');
     tap('[data-mo="' + c[1] + '"]');
   });
   ok(/已試 4／4/.test(box.textContent), '★ 四種都試過了');
+
+  /* ★★ 老師 2026-08-25：「這兩個元件能圖形化嗎? 有一個人左右移動，
+     旋轉元件似乎有畫過? 前面有些圖案設計可以再拿來使用」。
+     ⚠️ 原本輸入只是一根滑桿加一個數字 —— 那不叫「複習元件」，
+        學生看不出那個數字是從哪個東西來的。 */
+  tap('[data-mi="us"]');
+  ok(/lk-dist/.test(box.innerHTML) && /🧍/.test(box.innerHTML) && /📡/.test(box.innerHTML),
+     '★★ 超音波：畫出感測器和會走的人');
+  const manAt = () => Number((box.innerHTML.match(/lk-dist-o" style="left:([\d.]+)%/) || [])[1]);
+  pa.setRaw(20);  const nearX = manAt();
+  pa.setRaw(180); const farX = manAt();
+  ok(farX > nearX, '★★ 拉遠 → **人真的往右走**（' + nearX + '% → ' + farX + '%）');
+  ok(/公分/.test(box.innerHTML), '★ 而且尺標上寫著幾公分');
+
+  tap('[data-mi="pot"]');
+  ok(/pl-dial/.test(box.innerHTML) && /rotate\(/.test(box.innerHTML),
+     '★★ 旋鈕：用第三節那顆真的會轉的（不是再畫一份）');
+  ok(/LK\(\)\.dialSvg\(/.test(read('shared/planlab.js')) &&
+     /LK\(\)\.dialBind\(/.test(read('shared/planlab.js')),
+     '★★ 旋鈕的幾何與拖曳都走 labkit（第三、五節同一顆）');
+  {
+    const svg = box.querySelector('.pl-dial');
+    const t0 = box.querySelector('#pl-needle').getAttribute('transform');
+    pa.setRaw(90);
+    ok(box.querySelector('.pl-dial') === svg,
+       '★★ 轉動之後 SVG 還是同一個元素（不然拖第二下就沒反應）');
+    ok(box.querySelector('#pl-needle').getAttribute('transform') !== t0,
+       '★ 而指針的角度真的變了');
+  }
   box.querySelector('#pl-n0').dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(pa.node() === 2, '★★ 試完才進得到「選情境」');
   /* ⚠️ 拉滑桿時只換舞台那一塊 —— 整頁重畫會讓滑桿失焦。 */

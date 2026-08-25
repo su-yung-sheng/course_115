@@ -116,6 +116,17 @@
 
   /* ═══ 畫面 ═══════════════════════════════════════════ */
   var CSS = '' +
+  /* 距離舞台（第五節複習用）。★ 人越遠越右邊。 */
+  '.lk-dist{position:relative;height:104px;background:#f8fafc;border:2px solid #e2e8f0;' +
+    'border-radius:14px;overflow:hidden}' +
+  '.lk-dist-s{position:absolute;left:8px;top:22px;font-size:30px}' +
+  '.lk-dist-o{position:absolute;top:22px;font-size:30px;transform:translateX(-50%);' +
+    'transition:left .12s linear}' +
+  '.lk-dist-r{position:absolute;left:42px;bottom:26px;height:0;' +
+    'border-top:3px dashed #94a3b8}' +
+  '.lk-dist-r span{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);' +
+    'font-size:14px;font-weight:900;color:#334155;background:#f8fafc;padding:0 8px;' +
+    'white-space:nowrap}' +
   /* 會轉的風扇（第三、五節共用）。★ 慢到最快都看得出方向。 */
   '@keyframes lk-spin{to{transform:rotate(360deg)}}' +
   '.lk-fan{display:flex;justify-content:center}' +
@@ -280,6 +291,32 @@
     return { dragging: function () { return dragging; } };
   }
 
+  /* ═══ 距離舞台（第五節複習用）═══════════════════════
+     ★ 老師 2026-08-25：「這兩個元件能圖形化嗎? 有一個人左右移動，
+       旋轉元件似乎有畫過? 前面有些圖案設計可以再拿來使用」。
+     ⇒ 旋鈕直接用下面的 dialSvg（第三節畫的那顆，真的共用）；
+       距離則是**感測器 📡 ＋ 會走的人 🧍 ＋ 虛線尺標**。
+
+     ⚠️ 為什麼**不**直接搬第一節那個舞台過來：
+        第一節那份帶著聲波的去程／回程弧線，它是在教
+        「波怎麼一去一回、所以要除以 2」—— 那是那一節的重點。
+        第五節只是要看「人走近，數字變小」。
+        ★ 兩者長得像，但**不是同一件事**：硬合併之後，
+          哪天為了複習盤調版面，就會把第一節的教學動畫弄壞。
+        （會共用的是幾何與算法 —— 那種東西走偏了看不出來；
+          這裡只是幾個 emoji 的位置，走偏了一眼就看得見。） */
+  function distStage(cm, lo, hi) {
+    var a = Math.max(lo, Math.min(hi, Number(cm) || 0));
+    /* 人的位置：越遠越右邊。留 12%～92% 免得貼邊被切掉。 */
+    var pct = 12 + 80 * (a - lo) / (hi - lo);
+    return '<div class="lk-dist">' +
+      '<div class="lk-dist-s">📡</div>' +
+      '<div class="lk-dist-o" style="left:' + pct.toFixed(1) + '%">🧍</div>' +
+      '<div class="lk-dist-r" style="width:calc(' + pct.toFixed(1) + '% - 30px)">' +
+        '<span>' + a + ' 公分</span></div>' +
+    '</div>';
+  }
+
   /* ═══ 會轉的風扇（第三、五節共用）═══════════════════
      ★ 老師 2026-08-25：「沒有風扇轉動動畫」。
      ⚠️ 原本三節都只畫一個 emoji（💨／🔄／🌀）—— 學生看不出
@@ -345,6 +382,7 @@
     /* ⚠️ FAN_MAX／fanSpin 不匯出 —— 只有測試在用不算「有人用」，
        匯出了只會讓下一個人以為它是公開的。轉速與方向從 fanHtml
        畫出來的樣式就驗得到。 */
+    distStage: distStage,
     fanHtml: fanHtml,
     hueRgb: hueRgb,
     hexOf: hexOf,
