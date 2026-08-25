@@ -176,9 +176,25 @@ section('★★ ① 複習盤：四種配法都要親手試過');
   ok(/lk-dist/.test(box.innerHTML) && /🧍/.test(box.innerHTML) && /📡/.test(box.innerHTML),
      '★★ 超音波：畫出感測器和會走的人');
   const manAt = () => Number((box.innerHTML.match(/lk-dist-o" style="left:([\d.]+)%/) || [])[1]);
-  pa.setRaw(20);  const nearX = manAt();
-  pa.setRaw(180); const farX = manAt();
-  ok(farX > nearX, '★★ 拉遠 → **人真的往右走**（' + nearX + '% → ' + farX + '%）');
+  /* ⚠️⚠️ 老師 2026-08-25：「超音波距離感測器 與 全彩燈條 燈號順序
+     左右位置相反了，人往右移，燈號應該也要右移，超音波起點放右邊」。
+     ★ 第一版感測器畫在左邊 → 人往右＝變遠＝燈號往左縮，兩張圖反向。
+     ⚠️ 這種錯**單看任何一張圖都是對的**，只有兩張擺在一起才看得出來。
+     ⇒ 感測器在右：人往右＝靠近＝燈號也往右。 */
+  const ledAt = () => {
+    const ds = [...box.querySelectorAll('.pl-led')];
+    return ds.findIndex(d => !/#1e293b|rgb\(30, 41, 59\)/.test(d.style.background)) + 1;
+  };
+  tap('[data-mo="strip"]');
+  const sel = box.querySelector('#pl-mact');
+  sel.value = 'seq'; sel.dispatchEvent(new W.Event('change', { bubbles: true }));
+  pa.setRaw(50);  const farX = manAt(),  farLed = ledAt();
+  pa.setRaw(10);  const nearX = manAt(), nearLed = ledAt();
+  ok(nearX > farX, '★★ 靠近（10cm）→ **人在比較右邊**（' + farX + '% → ' + nearX + '%）');
+  ok(nearLed > farLed,
+     '★★ 而且亮的那一顆**也往右**（第 ' + farLed + ' 顆 → 第 ' + nearLed + ' 顆）');
+  ok((nearX - farX) * (nearLed - farLed) > 0,
+     '★★ 兩張圖同向 —— 人往哪走，燈號就往哪跑');
   ok(/公分/.test(box.innerHTML), '★ 而且尺標上寫著幾公分');
 
   tap('[data-mi="pot"]');
@@ -290,10 +306,19 @@ section('★★ 走一遍：展示 → 成果卡');
   ok(api.mode() === 'auto' && !!el.querySelector('#pj-cm'), '   自動模式：拉距離');
   const litCount = () => [...el.querySelectorAll('.pj-led')]
     .filter(d => !/#1e293b|rgb\(30, 41, 59\)/.test(d.style.background)).length;
+  /* ★ 自動模式也要看得到那張「人走過來」的圖。
+     ⚠️ 而且拉滑桿時人**要真的跟著移動** —— 只換燈條的話，
+        人站在原地不動，看起來就像壞掉（「找不到動畫」那一族）。 */
+  const man = () => Number((el.innerHTML.match(/lk-dist-o" style="left:([\d.]+)%/) || [])[1]);
+  ok(/lk-dist/.test(el.innerHTML) && /🧍/.test(el.innerHTML),
+     '★★ 自動模式也畫出感測器和人');
   api.setCm(150);
+  const farMan = man();
   ok(litCount() === 0, '★★ 拉遠 → **畫面上**全暗');
   api.setCm(J.FULL);
   ok(litCount() === J.LEDS, '★★ 拉近 → **畫面上**整條亮（實得 ' + litCount() + ' 顆）');
+  ok(man() > farMan,
+     '★★ 而且人真的跟著往右走（靠近感測器：' + farMan + '% → ' + man() + '%）');
   ok(/風扇轉速/.test(el.textContent), '★ 而且風扇也轉起來了（一個輸入、兩個輸出）');
   /* ⚠️ 拉滑桿時只換舞台那一塊 —— 整頁重畫會讓滑桿失焦（第三節踩過）。 */
   ok(!!el.querySelector('#pj-cm'), '   拉完滑桿還在');

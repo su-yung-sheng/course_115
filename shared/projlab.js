@@ -377,7 +377,8 @@
         '<div class="pj-note">' + esc(m.d) + '<br>' + md(m.good) + '</div>' +
         '<div id="pj-stage">' + stageHtml() + '</div>' +
         (mode === 'auto'
-          ? '<div class="pj-sl"><label>距離</label>' +
+          ? '<div id="pj-instage">' + LK().distStage(cm, DIST_MIN, DIST_MAX) + '</div>' +
+            '<div class="pj-sl"><label>距離</label>' +
             '<input type="range" id="pj-cm" min="' + DIST_MIN + '" max="' + DIST_MAX +
               '" value="' + cm + '"><b>' + cm + ' cm</b></div>' +
             '<div class="pj-note">⚠️ 拉到 ' + NEAR + ' 公分以內才會有反應 —— ' +
@@ -407,6 +408,10 @@
     function paint() {
       var st = el.querySelector('#pj-stage');
       if (st) st.innerHTML = stageHtml();
+      /* ⚠️ 那張「人走過來」的圖也要跟著動 —— 只換燈條的話，
+         拉滑桿時人站在原地不動，看起來就像壞掉。 */
+      var ins = el.querySelector('#pj-instage');
+      if (ins) ins.innerHTML = LK().distStage(cm, DIST_MIN, DIST_MAX);
       var b = el.querySelector('.pj-sl b');
       if (b) b.textContent = mode === 'auto' ? (cm + ' cm') : (pct + ' %');
     }

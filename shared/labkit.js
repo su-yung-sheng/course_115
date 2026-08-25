@@ -119,10 +119,11 @@
   /* 距離舞台（第五節複習用）。★ 人越遠越右邊。 */
   '.lk-dist{position:relative;height:104px;background:#f8fafc;border:2px solid #e2e8f0;' +
     'border-radius:14px;overflow:hidden}' +
-  '.lk-dist-s{position:absolute;left:8px;top:22px;font-size:30px}' +
+  /* ★ 感測器在**右邊** —— 人往右就是靠近（和燈號同向）。 */
+  '.lk-dist-s{position:absolute;right:8px;top:22px;font-size:30px;transform:scaleX(-1)}' +
   '.lk-dist-o{position:absolute;top:22px;font-size:30px;transform:translateX(-50%);' +
     'transition:left .12s linear}' +
-  '.lk-dist-r{position:absolute;left:42px;bottom:26px;height:0;' +
+  '.lk-dist-r{position:absolute;right:44px;bottom:26px;height:0;' +
     'border-top:3px dashed #94a3b8}' +
   '.lk-dist-r span{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);' +
     'font-size:14px;font-weight:900;color:#334155;background:#f8fafc;padding:0 8px;' +
@@ -305,14 +306,22 @@
           哪天為了複習盤調版面，就會把第一節的教學動畫弄壞。
         （會共用的是幾何與算法 —— 那種東西走偏了看不出來；
           這裡只是幾個 emoji 的位置，走偏了一眼就看得見。） */
+  /* ⚠️⚠️ 老師 2026-08-25：「超音波距離感測器 與 全彩燈條 燈號順序
+     左右位置相反了，人往右移，燈號應該也要右移，超音波起點放右邊」。
+     ★ 病根：第一版把感測器畫在**左邊**，於是
+         人往右走 → 離感測器更遠 → 距離變大 → 亮的燈往**左**縮。
+       兩張圖擺在一起，一個往右一個往左 —— 學生會以為程式寫反了。
+     ⇒ 感測器改放**右邊**：人往右＝靠近＝距離變小＝燈號往右。兩邊同向。
+     ⚠️ 這種錯不會報錯，而且**單看任何一張圖都是對的** ——
+        只有兩張擺在一起才看得出來。 */
   function distStage(cm, lo, hi) {
     var a = Math.max(lo, Math.min(hi, Number(cm) || 0));
-    /* 人的位置：越遠越右邊。留 12%～92% 免得貼邊被切掉。 */
-    var pct = 12 + 80 * (a - lo) / (hi - lo);
+    /* 人的位置：越近越靠右（貼近感測器）。留 8%～88% 免得貼邊被切掉。 */
+    var pct = 88 - 80 * (a - lo) / (hi - lo);
     return '<div class="lk-dist">' +
       '<div class="lk-dist-s">📡</div>' +
       '<div class="lk-dist-o" style="left:' + pct.toFixed(1) + '%">🧍</div>' +
-      '<div class="lk-dist-r" style="width:calc(' + pct.toFixed(1) + '% - 30px)">' +
+      '<div class="lk-dist-r" style="left:' + pct.toFixed(1) + '%">' +
         '<span>' + a + ' 公分</span></div>' +
     '</div>';
   }
