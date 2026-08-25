@@ -430,7 +430,10 @@ section('★★ 走一遍：展示 → 成果卡');
   }
   set('pj-team', '二年三班第 4 組');
   set('pj-problem', '晚上回家玄關太暗，開燈要摸半天');
-  set('pj-when', '距離小於 30 公分'); set('pj-then', '燈條亮起來、風扇開始轉');
+  /* ⚠️ 這一段前面選的是**手動**，所以條件也要寫旋鈕那一邊的 ——
+     不然會（正確地）被提醒「你選手動，條件卻在講自動」。
+     ★ 這正是模式和成果卡的關連：測試自己也得對得起來。 */
+  set('pj-when', '旋鈕轉到 80% 以上'); set('pj-then', '風扇轉快、燈條變紅');
   ok(set('pj-els', '兩個都關掉'), '★★ 畫面上有「否則」那一格');
   set('pj-trouble', '沒有'); set('pj-fix', '把門檻改成兩個數字');
   click('pj-make');
@@ -465,9 +468,12 @@ section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
   a1.show('show');
   ok(/研發人員/.test(b1.textContent) && !/組別／組員/.test(b1.textContent),
      '★★ 欄位名稱改成「研發人員」');
-  ok(b1.querySelector('#pj-team').value === '二年三班　13 號　王小明',
-     '★★ 班級座號姓名自動填進去了');
-  ok(/自動帶入/.test(b1.textContent), '★ 而且告訴他這是自動帶的、可以改');
+  /* ⚠️⚠️ 老師 2026-08-25：「個人資料應該是唯讀，由系統填寫」。
+     ★ 能打字就有人會打別人的名字，而這張卡是要交出去的。 */
+  ok(!b1.querySelector('#pj-team'), '★★ 那一格**不是輸入框**（唯讀）');
+  ok(/二年三班　13 號　王小明/.test(b1.textContent), '★★ 但名字要顯示出來');
+  ok(/不可修改/.test(b1.textContent), '★ 而且講明是系統填的、不可修改');
+  ok(b1.querySelector('#pj-card') === null, '   （這時還沒出卡）');
 
   /* ⚠️⚠️ 老師 2026-08-25 追問：「不是要在名冊內才能登入?」—— 對。
      ★ 所以「讀不到」**不是**沒登入、也不是名冊沒建：那兩種進不到這一頁。
@@ -483,41 +489,49 @@ section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
   W.document.body.appendChild(b2);
   const a2 = J.mount(b2, {});
   a2.show('show');
-  ok(b2.querySelector('#pj-team').value === '', '   還沒問到就留空');
   ok(a2.whoState() === 'wait' && /正在讀/.test(b2.textContent),
      '★★ 這個時候要說「**正在讀**」，不是說「讀不到」');
   /* ★ 頁面問到名冊之後補進來。 */
   a2.setWho('二年三班　13 號　王小明');
-  ok(b2.querySelector('#pj-team').value === '二年三班　13 號　王小明',
-     '★★ 問到之後自動補進去');
-  ok(a2.whoState() === 'got' && /已自動帶入/.test(b2.textContent), '   而且提示跟著換');
+  ok(/二年三班　13 號　王小明/.test(b2.textContent), '★★ 問到之後自動顯示出來');
+  ok(a2.whoState() === 'got', '   狀態跟著換');
   /* ⚠️ 真的問不到才講「請自己填」—— 而且要點出成果卡不能沒有名字。 */
   const b4 = W.document.createElement('div');
   W.document.body.appendChild(b4);
   const a4 = J.mount(b4, {});
   a4.show('show');
   a4.setWho('');
-  ok(a4.whoState() === 'miss' && /請自己填/.test(b4.textContent),
-     '★★ 真的問不到 → 才說「請自己填」');
-  ok(/成果卡上不能沒有名字/.test(b4.textContent),
-     '★★ 而且點出後果（靜默留白最糟）');
-  /* ⚠️ 學生自己填過的，補進來也不可以蓋掉。 */
+  ok(a4.whoState() === 'miss' && /沒問到/.test(b4.textContent),
+     '★★ 真的問不到 → 才說「沒問到」');
+  /* ⚠️⚠️ 唯讀的欄位問不到的話，學生什麼都做不了 ——
+     所以一定要留一條路，不能只留一句抱歉。 */
+  let retried = 0;
   const b5 = W.document.createElement('div');
   W.document.body.appendChild(b5);
-  const a5 = J.mount(b5, { work: { team: '我自己打的' } });
+  const a5 = J.mount(b5, { onRetryWho: () => { retried++; } });
   a5.show('show');
-  a5.setWho('二年三班　13 號　王小明');
-  ok(b5.querySelector('#pj-team').value === '我自己打的',
-     '★★ 他自己填過的，晚一步問到也不會蓋掉');
+  a5.setWho('');
+  ok(!!b5.querySelector('#pj-whoretry'), '★★ 問不到 → 要有一顆「重新讀取」');
+  b5.querySelector('#pj-whoretry').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(retried === 1, '★★ 按下去真的再問一次');
+  ok(a5.whoState() === 'wait' && /正在讀/.test(b5.textContent), '   而且回到「正在讀」');
+  /* ⚠️ 唯讀之後，「會不會蓋掉學生打的」那個問題就不存在了 ——
+     留著那段判斷就是補償一個不存在的問題（這幾輪一直犯的錯）。 */
+  const src1 = read('shared/projlab.js').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/if \(!norm\(f\.team\)\)/.test(src1),
+     '★★ 沒有殘留「不覆蓋學生打的」那段（唯讀就不會有那個情況）');
 
-  /* ★ 學生自己改過就不可以被蓋掉（例如加上組員）。 */
+  /* ⚠️ 唯讀之後這條測試沒有意義了（原本測「學生改過的不被蓋掉」）——
+     打不了字就不會有那個情況。
+     ★ 反過來要測的是：**舊紀錄裡手打的名字要被系統值蓋掉** ——
+       前一版存過的手打值不可以留在卡上。 */
   const b3 = W.document.createElement('div');
   W.document.body.appendChild(b3);
-  const a3 = J.mount(b3, { who: '二年三班　13 號　王小明',
-                           work: { team: '二年三班　王小明、李小華' } });
+  const a3 = J.mount(b3, { work: { team: '前一版手打的' } });
   a3.show('show');
-  ok(b3.querySelector('#pj-team').value === '二年三班　王小明、李小華',
-     '★★ 他自己填過的不會被自動帶入蓋掉');
+  a3.setWho('二年三班　13 號　王小明');
+  ok(/二年三班　13 號　王小明/.test(b3.textContent) && !/前一版手打的/.test(b3.textContent),
+     '★★ 舊紀錄裡手打的名字會被系統值蓋掉');
 
   /* 頁面那一端：身分從 SSO 的快取拿。 */
   const page = read('11501/5016b.html');
@@ -533,11 +547,58 @@ section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
   ok(/\n\s*fillWhoLater\(\);/.test(page),
      '★★ 而且掛載檢核之後真的呼叫它（不是只定義著）');
   ok(/chkApi\.setWho/.test(page), '★ 問到之後補回畫面');
+  /* ⚠️⚠️ 問不到也要**回報** —— 不回報的話畫面會永遠停在「正在讀…」，
+     而那比直接說「沒問到」更糟：學生會一直等。 */
+  ok(/return tell\(''\)/.test(page) && /catch\(function \(\) \{ tell\(''\); \}\)/.test(page),
+     '★★ 沒有 SSO／讀失敗都要回報空值（不可以卡在「正在讀」）');
+  ok(/onRetryWho/.test(page), '★ 而且「重新讀取」接得回去再問一次');
   ok(/window\.LABROSTER = async function/.test(page), '   有一支讀名冊的');
   ok(/COLLECTIONS && CFG\.COLLECTIONS\.ROSTER/.test(page) && /-roster/.test(page),
      '★ 名冊的集合名字跟著設定走（不寫死成 11501-roster）');
   ok(/if \(me\.cls\)/.test(page) && /if \(me\.name\)/.test(page),
      '★★ 缺哪一段跳過哪一段（不要印出「undefined 班」）');
+}
+
+section('★★ 模式和成果卡要真的有關連（老師 2026-08-25）');
+{
+  /* ⚠️⚠️ 老師：「自動模式 & 手動模式 對於 成果卡無關連性?」
+     ★ 問得對 —— 原本它只是印在卡上的標籤，不影響任何東西。
+     ⇒ 現在它決定第二句的**範例**，而且會檢查條件對不對得起來。 */
+  ok(J.MODES.every(m => m.ph && m.ph.length === 3 && m.words),
+     '★★ 每一種模式都有自己的範例和關鍵字');
+  ok(/距離|公分/.test(J.MODES[0].ph[0]) && /旋鈕/.test(J.MODES[1].ph[0]),
+     '★★ 自動給距離的例子、手動給旋鈕的例子');
+
+  const base = { mode: '自動', problem: '玄關太暗', when: '距離小於 30 公分',
+                 then: '燈條亮起來、風扇開始轉', els: '兩個都關掉',
+                 trouble: '燈會一直閃', fix: '加了兩個門檻', learn: '門檻要兩個' };
+  ok(J.judgeShow(base).ok && !J.judgeShow(base).warn, '★ 對得起來 → 沒有提醒');
+  const bad = Object.assign({}, base, { when: '旋鈕轉到 80% 以上' });
+  ok(J.judgeShow(bad).ok, '★★ 對不起來還是**過** —— 只提醒，不擋');
+  ok(/自動模式/.test(J.judgeShow(bad).warn) && /手動模式/.test(J.judgeShow(bad).warn),
+     '★★ 但要點名「你選自動，條件卻在講手動」');
+  /* ⚠️ 沒選模式、或條件我看不懂的寫法 → 不要亂提醒。 */
+  ok(!J.judgeShow(Object.assign({}, base, { mode: '' })).warn, '   沒選模式就不提醒');
+  /* ⚠️⚠️ 這個例子要**先過得了條件檢查**，不然測到的是別的東西。
+     第一版用「太暗的時候」—— 它連 COND 都不過，judgeShow 早就
+     回 nocond 了（連 warn 這個欄位都沒有），
+     於是「不要亂提醒」那條**永遠是綠的**（突變測試當場證實）。
+     ⇒ 換成「亮度低於 20」：有比較詞（過得了 COND），
+       但兩邊的關鍵字都沾不到。 */
+  const vague = Object.assign({}, base, { when: '亮度低於 20' });
+  ok(J.judgeShow(vague).ok, '   （先確認這個例子過得了條件檢查）');
+  ok(!J.judgeShow(vague).warn,
+     '★★ 兩邊關鍵字都沾不到 → **不要亂猜**（學生可能有我沒想到的寫法）');
+
+  /* 畫面上：選了模式，第二句的範例要跟著換。 */
+  const b6 = W.document.createElement('div');
+  W.document.body.appendChild(b6);
+  const a6 = J.mount(b6, {});
+  b6.querySelector('[data-pick="手動"]')
+    .dispatchEvent(new W.Event('click', { bubbles: true }));
+  a6.show('show');
+  ok(/旋鈕/.test(b6.querySelector('#pj-when').getAttribute('placeholder')),
+     '★★ 選了手動 → 第二句的範例換成旋鈕那一組');
 }
 
 section('★ 規矩');

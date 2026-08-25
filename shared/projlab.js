@@ -56,6 +56,12 @@
       d: '人一靠近就亮、就轉；走遠了自己停。',
       good: '★ 好處：不用動手。⚠️ 代價：想要它「現在別亮」也做不到。',
       cond: '**有**條件判斷',
+      /* ⚠️⚠️ 老師 2026-08-25：「自動模式 & 手動模式 對於 成果卡無關連性?」
+         ★ 問得對 —— 原本它只是印在卡上的一個標籤，不影響任何東西。
+         ⇒ 現在它決定**成果發表第二句的範例**，而且會檢查你寫的條件
+           和你選的模式對不對得起來（只提醒、不擋）。 */
+      ph: ['例：距離小於 30 公分', '例：燈條亮起來、風扇開始轉', '例：兩個都關掉'],
+      words: '距離|公分|靠近|接近|太近|太遠|走|人',
       code: '如果　距離 < 30　那麼\n　　燈條亮起來\n　　風扇開始轉\n否則\n　　兩個都關掉',
       note: '★ 那個 30 就是**你要自己決定的門檻**。' +
             '⚠️ 「否則」不能省 —— 少了它，燈亮起來就再也不會暗（第一節那一課）。' },
@@ -63,6 +69,8 @@
       d: '轉到哪就是哪 —— 顏色和轉速都自己說了算。',
       good: '★ 好處：完全可控。⚠️ 代價：得一直自己轉。',
       cond: '⚠️ **沒有**條件判斷',
+      ph: ['例：旋鈕轉到 80% 以上', '例：風扇轉快、燈條變紅', '例：兩個都關掉'],
+      words: '旋鈕|轉|%|百分|可變電阻',
       code: '轉速 ← 類比對應（A7，−250，250）\n設定馬達 = 轉速\n燈條顏色 ← 類比對應（A7，0，359）',
       note: '⚠️ 這樣寫從頭到尾**沒有一個「如果」** —— 它只是照著換算。' +
             '★ 所以做手動的組別要**自己補一個條件**，例如：' +
@@ -115,6 +123,22 @@
         國中生講得出那個意思就算，不必寫成數學式。 */
   var COND = new RegExp('[0-9０-９]|小於|大於|超過|低於|高於|以內|以下|以上|不到|' +
                         '靠近|接近|太近|太遠|碰到|轉到|滿|到達|超出|距離|公分|%');
+  function modeOf(t) {
+    return MODES.filter(function (m) { return m.t === t; })[0] || null;
+  }
+  /* ★ 模式和第二句對不對得起來。⚠️ 只**提醒**不擋 ——
+     學生可能有我沒想到的寫法（例如自動模式也講「太亮的時候」）。 */
+  function mismatch(v) {
+    var m = modeOf(v.mode);
+    if (!m || !norm(v.when)) return '';
+    if (new RegExp(m.words).test(String(v.when))) return '';
+    var other = MODES.filter(function (x) { return x !== m; })[0];
+    if (other && new RegExp(other.words).test(String(v.when)))
+      return '⚠️ 你選的是**' + m.t + '模式**（靠' + m.by + '），' +
+             '但第二句的條件講的是**' + other.t + '模式**那一邊的東西。' +
+             '★ 兩個對不起來的話，聽的人會很困惑 —— 檢查一下是哪一個寫錯了。';
+    return '';
+  }
   function judgeShow(v) {
     /* ⚠️⚠️ 這一條要**排在長度檢查前面**。
        第一版先查長度 —— 但學生實際上打的就是「沒有」兩個字，
@@ -128,7 +152,7 @@
     });
     if (miss.length) return { ok: false, how: 'short', miss: miss };
     if (!COND.test(String(v.when || ''))) return { ok: false, how: 'nocond' };
-    return { ok: true, how: 'fit' };
+    return { ok: true, how: 'fit', warn: mismatch(v) };
   }
   var LABEL = { problem: '要解決的問題', when: '當…時', then: '系統會…',
                 els: '否則…', trouble: '我遇到…', fix: '最後用…解決',
@@ -313,6 +337,14 @@
   '.pj-t{flex:1;min-width:150px;font-size:15px;font-weight:800;padding:9px 12px;' +
     'border:2px solid #cbd5e1;border-radius:10px;box-sizing:border-box}' +
   '.pj-note{font-size:13px;color:#64748b;font-weight:700;line-height:1.8;margin-top:6px}' +
+  '.pj-who{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#f8fafc;' +
+    'border:2px solid #e2e8f0;border-radius:12px;padding:10px 13px;margin:8px 0;' +
+    'font-size:15px;font-weight:900;color:#0f172a}' +
+  '.pj-who-k{font-size:12px;font-weight:900;color:#7c3aed}' +
+  '.pj-who-n{font-size:12px;font-weight:800;color:#94a3b8}' +
+  '.pj-who-w{font-size:14px;font-weight:800;color:#64748b}' +
+  '.pj-who-b{font-size:14px;font-weight:900;color:#b45309}' +
+  '.pj-who-r{padding:5px 12px;font-size:12px}' +
   '.pj-hint{font-size:13px;font-weight:800;color:#7c3aed;background:#f5f3ff;' +
     'border-radius:10px;padding:7px 10px;margin-top:5px;line-height:1.8}' +
   /* 兩種模式的對照表 */
@@ -368,28 +400,24 @@
     if (!f.team && opts.who) f.team = opts.who;
     /* 三態：已帶入／還在問名冊／問不到。⚠️ 不可以靜默留白。 */
     var whoState = f.team ? 'got' : 'wait';
-    function whoNote() {
+    function whoLine() {
       if (whoState === 'got')
-        return '★ 已自動帶入你的班級座號姓名（可以自己改，例如加上組員）。';
+        return '<span class="pj-who-k">研發人員</span>' +
+               '<b>' + esc(f.team) + '</b>' +
+               '<span class="pj-who-n">（系統自動填入，不可修改）</span>';
       if (whoState === 'wait')
-        return '⏳ 正在讀你的班級座號姓名…（讀到會自動填，也可以先自己打）';
-      return '⚠️ <b>這一頁沒問到你的班級座號姓名</b>，請自己填。' +
-             '（不影響其他紀錄 —— 但**成果卡上不能沒有名字**。）';
+        return '<span class="pj-who-k">研發人員</span>' +
+               '<span class="pj-who-w">⏳ 正在讀你的班級座號姓名…</span>';
+      return '<span class="pj-who-k">研發人員</span>' +
+             '<span class="pj-who-b">⚠️ 這一頁沒問到你的班級座號姓名</span>' +
+             '<button class="dl-go pj-who-r" id="pj-whoretry">重新讀取</button>';
     }
-    /* ★ 頁面問到名冊之後補進來。
-       ⚠️ 學生自己填過就不覆蓋 —— 他可能加了組員。 */
+    /* ★ 頁面問到名冊之後補進來。⚠️ 唯讀 —— 沒有「會不會蓋掉學生打的」問題。 */
     function setWho(t) {
-      if (!t) { whoState = 'miss'; }
-      else {
-        whoState = 'got';
-        if (!norm(f.team)) {
-          f.team = t;
-          var e = el.querySelector('#pj-team');
-          if (e) e.value = t;
-        }
-      }
-      var n = el.querySelector('#pj-whonote');
-      if (n) n.innerHTML = whoNote();
+      whoState = t ? 'got' : 'miss';
+      if (t) f.team = t;
+      var n = el.querySelector('#pj-who');
+      if (n) { n.innerHTML = whoLine(); bind(); }
     }
 
     function tabs() {
@@ -452,20 +480,23 @@
                 直接開網址或新分頁進來時快取是空的，要去問一次名冊。
               ⚠️ 第一版把原因寫成「可能是沒登入」—— 那是**猜的，而且猜錯**。
                  錯的原因比沒有原因更糟：學生會跑去重新登入，然後發現沒用。 */
-        '<div class="pj-fill">研發人員：<input class="pj-t" id="pj-team" value="' +
-          esc(f.team) + '" placeholder="例：二年三班　13 號　王小明"></div>' +
-        '<div class="pj-note" id="pj-whonote">' + whoNote() + '</div>' +
+        /* ⚠️⚠️ 老師 2026-08-25：「個人資料應該是唯讀，由系統填寫」。
+           ★ 對 —— 這一格能打字就有人會打別人的名字，
+             而這張卡是要交出去的。改成**唯讀顯示**。
+           ⚠️ 所以「不覆蓋學生打的」那段邏輯也一起拿掉 ——
+              打不了字就不會有那個情況，留著就是補償一個不存在的問題。 */
+        '<div class="pj-who" id="pj-who">' + whoLine() + '</div>' +
         '<div class="pj-ask" style="margin-top:10px">1. 我要解決的問題是：</div>' +
         '<div class="pj-fill"><input class="pj-t" id="pj-problem" value="' + esc(f.problem) +
           '" placeholder="' + esc(SHOW_Q[0].ph[0]) + '"></div>' +
         '<div class="pj-ask" style="margin-top:10px">2. 當＿＿時，系統會＿＿；否則＿＿。' +
           '<div class="pj-hint">' + SHOW_Q[1].hint + '</div></div>' +
         '<div class="pj-fill">當　<input class="pj-t" id="pj-when" value="' + esc(f.when) +
-          '" placeholder="' + esc(SHOW_Q[1].ph[0]) + '">　時</div>' +
+          '" placeholder="' + esc(ph2(0)) + '">　時</div>' +
         '<div class="pj-fill">系統會　<input class="pj-t" id="pj-then" value="' + esc(f.then) +
-          '" placeholder="' + esc(SHOW_Q[1].ph[1]) + '"></div>' +
+          '" placeholder="' + esc(ph2(1)) + '"></div>' +
         '<div class="pj-fill">否則　<input class="pj-t" id="pj-els" value="' + esc(f.els) +
-          '" placeholder="' + esc(SHOW_Q[1].ph[2]) + '"></div>' +
+          '" placeholder="' + esc(ph2(2)) + '"></div>' +
         '<div class="pj-ask" style="margin-top:10px">' +
           '3. 我遇到＿＿，最後用＿＿解決，我學到＿＿。</div>' +
         '<div class="pj-fill">我遇到　<input class="pj-t" id="pj-trouble" value="' +
@@ -477,6 +508,12 @@
         '<div class="dl-row"><button class="dl-go" id="pj-make">產生成果卡</button></div>',
         msg, cls);
     }
+    /* ★ 第二句的範例跟著**你選的模式**走 —— 選了自動就給距離的例子，
+       選了手動就給旋鈕的例子。⚠️ 這就是模式和成果卡的關連。 */
+    function ph2(i) {
+      var m = modeOf(f.mode);
+      return (m && m.ph && m.ph[i]) || SHOW_Q[1].ph[i];
+    }
     function meta() {
       return { scene: scene, team: f.team, mode: f.mode, line: line,
                date: new Date().toLocaleDateString('zh-TW') };
@@ -485,6 +522,8 @@
       grab();
       var r = judgeShow(f);
       if (!r.ok) return viewShow(sayShow(r), 'bad');
+      /* ⚠️ 對不起來只提醒，不擋 —— 但要**在出卡之前**講，不然沒人會回頭改。 */
+      if (r.warn && !f.warned) { f.warned = true; return viewShow(r.warn, 'bad'); }
       el.innerHTML = '<div class="dl-wrap">' + tabs() +
         '<div class="dl-msg good">🎉 成果卡好了 —— 下面兩個按鈕都可以帶走。</div>' +
         cardHtml(f, meta()) +
@@ -502,7 +541,7 @@
     }
 
     function grab() {
-      [['pj-team', 'team'], ['pj-problem', 'problem'], ['pj-when', 'when'],
+      [['pj-problem', 'problem'], ['pj-when', 'when'],
        ['pj-then', 'then'], ['pj-els', 'els'],
        ['pj-trouble', 'trouble'], ['pj-fix', 'fix'],
        ['pj-learn', 'learn']].forEach(function (x) {
@@ -517,6 +556,13 @@
         var e = el.querySelector('#' + id); if (e) e.addEventListener('click', fn);
       };
       on('pj-make', doShow);
+      /* ⚠️ 問不到的時候留一顆「重新讀取」—— 唯讀的欄位不能只留一句抱歉。 */
+      on('pj-whoretry', function () {
+        whoState = 'wait';
+        var n = el.querySelector('#pj-who');
+        if (n) { n.innerHTML = whoLine(); bind(); }
+        if (typeof opts.onRetryWho === 'function') opts.onRetryWho();
+      });
       on('pj-print', function () { printCard(cardHtml(f, meta())); });
       on('pj-png', function () { downloadPng(f, meta()); });
       on('pj-back', function () { show('show'); });

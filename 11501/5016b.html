@@ -1981,15 +1981,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                      （直接開網址、或在新分頁打開，就會是這種狀況。）
                    ⇒ 快取沒有就去問一次名冊，拿到再補進去。 */
                 let chkApi = null;
-                function fillWhoLater() {
-                    if (whoText()) return;                    // 快取已經有了
-                    if (!window.SSO || !window.SSO.resolve || !window.LABROSTER) return;
+                function fillWhoLater(retry) {
+                    if (!retry && whoText()) return;          // 快取已經有了
+                    const tell = t => { if (chkApi && chkApi.setWho) chkApi.setWho(t); };
+                    if (!window.SSO || !window.SSO.resolve || !window.LABROSTER)
+                        return tell('');                      // ⚠️ 問不到也要回報，不可以卡在「正在讀」
                     window.SSO.resolve(window.LABROSTER, { silent: true })
-                        .then(function (me) {
-                            const t = fmtWho(me);
-                            if (t && chkApi && chkApi.setWho) chkApi.setWho(t);
-                        })
-                        .catch(function () {});   // 失敗就讓學生自己填（畫面上會講）
+                        .then(function (me) { tell(fmtWho(me)); })
+                        .catch(function () { tell(''); });
                 }
                 function planLine() {
                     return (window.PLANLAB && planRec) ? window.PLANLAB.planLine(planRec) : '';
@@ -2010,6 +2009,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                               名字去等 Firestore；讀不到就讓那一格空著，
                               模組會在畫面上講清楚「沒讀到，請自己填」。 */
                         who: whoText(),
+                        /* ★ 唯讀欄位問不到的時候，學生按「重新讀取」→ 再問一次名冊。
+                           ⚠️ 沒有這一條的話，唯讀的欄位就只剩一句抱歉。 */
+                        onRetryWho: function () { fillWhoLater(true); },
                         /* ★ B 那段「用自己的話說」要存起來 —— 老師看得到全班怎麼說。
                            ⚠️ 舊版的 placeholder 寫著「老師會看」，但根本沒存，
                               那句話是假的。存的是**原文**，不是判定結果：
