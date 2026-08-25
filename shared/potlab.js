@@ -261,7 +261,8 @@
         '<text x="' + HOLE_X[w.hole] + '" y="' + (HOLE_Y + 6) + '" text-anchor="middle" font-size="17" ' +
         'font-weight="900" fill="#fff">' + w.hole + '</text>' +
         '<text x="' + HOLE_X[w.hole] + '" y="' + (HOLE_Y - 26) + '" text-anchor="middle" font-size="12" ' +
-        'font-weight="900" fill="#64748b">' + w.name + '</text></g>';
+        'font-weight="900" fill="' + (w.hole === 'S' ? '#0891b2' : '#64748b') + '">' +
+        w.name + (w.hole === 'S' ? '（' + PIN + '）' : '') + '</text></g>';
     }).join('');
     var legs = LEGS.map(function (n) {
       return '<g class="pt-node' + (sel === 'leg' + n ? ' sel' : '') + '" data-leg="' + n + '">' +
@@ -272,7 +273,15 @@
     return '<svg class="pt-link" viewBox="0 0 400 300">' +
       /* ── 開發板（上）── */
       '<text x="200" y="20" text-anchor="middle" font-size="13" font-weight="900" fill="#94a3b8">開發板</text>' +
-      '<rect x="96" y="30" width="208" height="64" rx="10" fill="none" stroke="#cbd5e1" stroke-width="3"/>' +
+      '<rect x="76" y="30" width="248" height="64" rx="10" fill="none" stroke="#cbd5e1" stroke-width="3"/>' +
+      /* ★ 老師 2026-08-24：「開發板 接腳 G P S 旁要標示腳位 A7」——
+         板子上那一組三支腳就是印著 A7，所以把它標在**整組旁邊**，
+         同時在「訊號」那一個孔也註明（真正接到 A7 的是 S）。 */
+      '<rect x="84" y="50" width="38" height="26" rx="7" fill="#0891b2"/>' +
+      '<text x="103" y="68" text-anchor="middle" font-size="15" font-weight="900" fill="#fff">' +
+        PIN + '</text>' +
+      '<line x1="122" y1="63" x2="' + (HOLE_X.G - 19) + '" y2="63" ' +
+        'stroke="#0891b2" stroke-width="2" stroke-dasharray="3 3"/>' +
       holes +
       lines +
       /* ── 可變電阻（下）：腳朝上，本體與旋鈕軸在下 ── */

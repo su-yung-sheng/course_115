@@ -186,6 +186,22 @@ section('★★ 三個節點真的走得完');
      ⚠️ 上下對調不影響重點：正解的 P→3 和 S→2 一樣會交叉。 */
   ok(P.HOLE_Y < P.LEG_Y,
      '★ 開發板在**上**、可變電阻在**下**（孔 y=' + P.HOLE_Y + '、腳 y=' + P.LEG_Y + '）');
+  /* ★ 老師 2026-08-24：「開發板 接腳 G P S 旁要標示腳位 A7」——
+     板子上那一組三支腳就是印著 A7，上機時要對得起來。 */
+  {
+    const svg = el.querySelector('.pt-link');
+    const texts = [...svg.querySelectorAll('text')].map(t => t.textContent);
+    ok(texts.indexOf(P.PIN) >= 0,
+       '★★ 接線圖上標出腳位「' + P.PIN + '」（不然學生不知道要插哪一組）');
+    /* 而且要在**孔的旁邊**，不是掛在可變電阻那一側。 */
+    const badge = [...svg.querySelectorAll('text')].filter(t => t.textContent === P.PIN)[0];
+    ok(badge && Math.abs(+badge.getAttribute('y') - P.HOLE_Y) < 30,
+       '★ 標在 G P S 那一排旁邊（y=' + (badge && badge.getAttribute('y')) +
+       '、孔 y=' + P.HOLE_Y + '）');
+    /* 真正接到 A7 的是 S —— 訊號那一格也要註明。 */
+    ok(texts.some(t => /訊號（A7）|訊號\(A7\)/.test(t)),
+       '★★ 「訊號」那個孔也註明 A7（三支腳裡只有 S 是訊號）');
+  }
   {
     /* 正解那三條線裡，P→3 和 S→2 一定要交叉 —— 那是和「照順序接」最好認的差別。 */
     const cross = (P.HOLE_X.P - P.LEG_X[3]) * (P.HOLE_X.S - P.LEG_X[2]) < 0;
