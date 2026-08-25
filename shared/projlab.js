@@ -393,27 +393,11 @@
     '</div>';
   }
 
-  /* 列印：把成果卡搬到一個獨立容器，@media print 只留它。
-     ⚠️ 不開新視窗 —— 會被擋，而且新視窗載不到這頁的樣式。 */
-  function printCard(html) {
-    var root = document.getElementById('pj-print-root');
-    if (!root) {
-      root = document.createElement('div');
-      root.id = 'pj-print-root';
-      document.body.appendChild(root);
-    }
-    root.innerHTML = html;
-    document.body.classList.add('pj-printing');
-    var clean = function () {
-      document.body.classList.remove('pj-printing');
-      global.removeEventListener('afterprint', clean);
-    };
-    global.addEventListener('afterprint', clean);
-    global.print();
-    /* ⚠️ 有些瀏覽器不發 afterprint —— 留一個保險，
-       不還原的話整頁會一直是空白的。 */
-    global.setTimeout(clean, 1500);
-  }
+  /* ⚠️ 老師 2026-08-25：「保留下載成圖片就好」。
+     ★ 列印（另存 PDF）那條路整段拿掉了 —— 連 printCard()、
+       @media print 的規則、#pj-print-root 那個容器都清掉。
+     ⚠️ 留著一條沒有按鈕會走到的路，比刪掉更糟：
+        下一個人會以為它還被用著、還被測過。 */
 
   /* 下載 PNG：canvas 自己畫。★ 用系統字型 fillText，中文不會有問題。 */
   function wrapText(ctx, text, max) {
@@ -495,10 +479,23 @@
     return cv;
   }
 
+  /* ★ 老師 2026-08-25：檔名為「成果發表-班級_座號_姓名.png」。
+     ⚠️ 檔名裡不可以有 \ / : * ? " < > | 那幾個字（Windows 會拒存），
+        空白也拿掉 —— 不然一整批交上來的檔案很難排序。
+     ⚠️ 讀不到身分的時候不要硬湊出「成果發表-.png」那種檔名 ——
+        退回專題名稱，至少看得出是誰的作品。 */
+  function safeName(t) {
+    return String(t || '').replace(/[\\\/:*?"<>|\s]+/g, '');
+  }
+  function fileName(meta) {
+    var m = meta || {};
+    var who = safeName(m.file);
+    return '成果發表-' + (who || safeName(m.scene) || '專題') + '.png';
+  }
   function downloadPng(v, meta) {
     var cv = drawCard(v, meta);
     var a = document.createElement('a');
-    a.download = '成果發表_' + ((meta && meta.scene) || '專題') + '.png';
+    a.download = fileName(meta);
     a.href = cv.toDataURL('image/png');
     document.body.appendChild(a); a.click(); a.remove();
   }
@@ -591,11 +588,7 @@
     'border-radius:6px;padding:7px 10px;margin-top:14px}' +
   '.pj-sign{display:flex;gap:20px;margin-top:26px}' +
   '.pj-sign span{flex:1;border-top:1px solid #cbd5e1;padding-top:6px;font-size:12px;' +
-    'font-weight:800;color:#94a3b8}' +
-  '#pj-print-root{display:none}' +
-  '@media print{body.pj-printing>*{display:none!important}' +
-    'body.pj-printing #pj-print-root{display:block!important}' +
-    'body.pj-printing .pj-card{border-width:2px;page-break-inside:avoid}}';
+    'font-weight:800;color:#94a3b8}';
 
   function ensureCss() {
     LK().ensureCss();
@@ -629,6 +622,10 @@
          唯一來源是 opts.who（或稍後 setWho 補進來的名冊值）。
          舊紀錄裡的 team 一律忽略。 */
     var who = String(opts.who || '');
+    /* ★ 檔名要的是「班級_座號_姓名」——
+       ⚠️ 和畫面上顯示的那一串**不是同一種格式**（那一串有「班」「號」和全形空白），
+          所以頁面另外給一份，不要在這裡反解字串。 */
+    var whoFile = String(opts.whoFile || '');
     /* 三態：已帶入／還在問名冊／問不到。⚠️ 不可以靜默留白。 */
     var whoState = who ? 'got' : 'wait';
     function whoLine() {
@@ -644,9 +641,10 @@
              '<button class="dl-go pj-who-r" id="pj-whoretry">重新讀取</button>';
     }
     /* ★ 頁面問到名冊之後補進來。⚠️ 唯讀 —— 沒有「會不會蓋掉學生打的」問題。 */
-    function setWho(t) {
+    function setWho(t, file) {
       whoState = t ? 'got' : 'miss';
       if (t) who = t;
+      if (file) whoFile = file;
       var n = el.querySelector('#pj-who');
       if (n) { n.innerHTML = whoLine(); bind(); }
     }
@@ -721,6 +719,9 @@
            ⚠️ 所以「不覆蓋學生打的」那段邏輯也一起拿掉 ——
               打不了字就不會有那個情況，留著就是補償一個不存在的問題。 */
         '<div class="pj-who" id="pj-who">' + whoLine() + '</div>' +
+        /* ★ 檔名**在表單上就先寫出來** —— 出卡之後才看到，
+           學生已經沒在注意名字對不對了。 */
+        '<div class="pj-note">🖼️ 下載的檔名會是 <b>' + esc(fname()) + '</b></div>' +
         /* ★ 老師 2026-08-25：「成果卡應該要有手動或自動系統選擇，
            超音波或可變電阻，配燈條與馬達，完整版本的格式」。
            ⚠️ 輸入**不讓學生選** —— 它由模式決定，兩邊各自只有一個；
@@ -779,8 +780,9 @@
       var m = modeOf(f.mode);
       return (m && m.ph && m.ph[i]) || SHOW_Q[1].ph[i];
     }
+    function fname() { return fileName(meta()); }
     function meta() {
-      return { scene: scene, team: who, mode: f.mode, line: line,
+      return { scene: scene, team: who, file: whoFile, mode: f.mode, line: line,
                date: new Date().toLocaleDateString('zh-TW') };
     }
     var aiBusy = false, aiDone = false;
@@ -810,13 +812,12 @@
         '<div class="dl-msg good">🎉 成果卡好了 —— 下面兩個按鈕都可以帶走。</div>' +
         cardHtml(f, meta()) +
         '<div class="dl-row">' +
-          '<button class="dl-go" id="pj-print">🖨️ 列印／存成 PDF</button> ' +
-          '<button class="dl-go" id="pj-png" style="background:#0891b2">🖼️ 下載成圖片</button> ' +
+          '<button class="dl-go" id="pj-png">🖼️ 下載成圖片</button> ' +
           '<button class="dl-go" id="pj-back" style="background:#94a3b8">回去改</button>' +
         '</div>' +
         '<div class="pj-note">⚠️ 電腦教室<b>關機會還原</b> —— ' +
-        '記得把檔案傳給自己，或直接交給老師。<br>' +
-        '★ 列印的時候在「印表機」那一欄選<b>「另存為 PDF」</b>就會變成一份 PDF。</div>' +
+        '下載完記得把檔案傳給自己，或直接交給老師。<br>' +
+        '★ 檔名會自動取成 <b>' + esc(fname()) + '</b>。</div>' +
         '</div>';
       bind();
       /* ⚠️ 存下來的是**作答**，不含身分 —— 身分每次都跟著帳號重新帶，
@@ -861,7 +862,6 @@
         if (n) { n.innerHTML = whoLine(); bind(); }
         if (typeof opts.onRetryWho === 'function') opts.onRetryWho();
       });
-      on('pj-print', function () { printCard(cardHtml(f, meta())); });
       on('pj-png', function () { downloadPng(f, meta()); });
       on('pj-back', function () { show('show'); });
       on('pj-go-show', function () { show('show'); });
@@ -880,6 +880,7 @@
     show('demo');
     return { tab: function () { return tab; }, work: function () { return f; },
              setWho: setWho, whoState: function () { return whoState; },
+             fname: fname,
              show: show, card: function () { return cardHtml(f, meta()); } };
   }
 
@@ -888,7 +889,8 @@
     judgeShow: judgeShow, sayShow: sayShow,
     OUTS: OUTS, specOf: specOf, inputOf: inputOf,
     AI_NEED: AI_NEED, aiText: aiText, aiReview: aiReview, aiOn: aiOn,
-    cardHtml: cardHtml, cardLines: cardLines, drawCard: drawCard, printCard: printCard, downloadPng: downloadPng,
+    cardHtml: cardHtml, cardLines: cardLines, drawCard: drawCard,
+    fileName: fileName, safeName: safeName, downloadPng: downloadPng,
     mount: mount
   };
 

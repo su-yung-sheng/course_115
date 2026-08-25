@@ -1975,6 +1975,16 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 function whoText() {
                     return fmtWho((window.SSO && window.SSO.me && window.SSO.me()) || null);
                 }
+                /* ★ 老師 2026-08-25：檔名為「成果發表-班級_座號_姓名.png」。
+                   ⚠️ 和畫面上顯示的那一串**不是同一種格式**（那一串有「班」「號」
+                      和全形空白）—— 所以另外給一份，不要讓模組去反解字串。 */
+                function fmtFile(me) {
+                    if (!me) return '';
+                    return [me.cls, me.no, me.name].filter(Boolean).join('_');
+                }
+                function whoFile() {
+                    return fmtFile((window.SSO && window.SSO.me && window.SSO.me()) || null);
+                }
                 /* ⚠️⚠️ 老師 2026-08-25：「不是要在名冊內才能登入?」—— 對，
                    所以只要登入了，名冊裡**一定**查得到。
                    ★ 快取沒有不代表查不到 —— 那只代表這一頁還沒問過。
@@ -1983,11 +1993,13 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 let chkApi = null;
                 function fillWhoLater(retry) {
                     if (!retry && whoText()) return;          // 快取已經有了
-                    const tell = t => { if (chkApi && chkApi.setWho) chkApi.setWho(t); };
+                    const tell = (t, fn) => {
+                        if (chkApi && chkApi.setWho) chkApi.setWho(t, fn);
+                    };
                     if (!window.SSO || !window.SSO.resolve || !window.LABROSTER)
                         return tell('');                      // ⚠️ 問不到也要回報，不可以卡在「正在讀」
                     window.SSO.resolve(window.LABROSTER, { silent: true })
-                        .then(function (me) { tell(fmtWho(me)); })
+                        .then(function (me) { tell(fmtWho(me), fmtFile(me)); })
                         .catch(function () { tell(''); });
                 }
                 function planLine() {
@@ -2009,6 +2021,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                               名字去等 Firestore；讀不到就讓那一格空著，
                               模組會在畫面上講清楚「沒讀到，請自己填」。 */
                         who: whoText(),
+                        whoFile: whoFile(),
                         /* ★ 唯讀欄位問不到的時候，學生按「重新讀取」→ 再問一次名冊。
                            ⚠️ 沒有這一條的話，唯讀的欄位就只剩一句抱歉。 */
                         onRetryWho: function () { fillWhoLater(true); },

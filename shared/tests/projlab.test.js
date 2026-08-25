@@ -428,13 +428,27 @@ section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
   const src = read('shared/projlab.js').replace(/\/\*[\s\S]*?\*\//g, '');
   ok(!/jspdf|html2canvas|pdfmake/i.test(src),
      '★★ 不用 jsPDF／html2canvas（中文會變豆腐字，而且電腦教室未必載得到）');
-  ok(/global\.print\(\)/.test(src), '★ 列印走瀏覽器原生（另存 PDF，中文一定正確）');
-  ok(/@media print/.test(src) && /pj-printing/.test(src),
-     '★★ 列印時只留成果卡（不然會印出整頁教材）');
-  ok(/afterprint/.test(src) && /setTimeout\(clean/.test(src),
-     '★★ 印完要把頁面還原，而且**留一個保險** —— 有些瀏覽器不發 afterprint，' +
-     '不還原的話整頁會一直是空白的');
-  ok(/toDataURL\('image\/png'\)/.test(src), '★ 另一條路：canvas 畫成 PNG（適合截圖／交作業）');
+  /* ⚠️ 老師 2026-08-25：「保留下載成圖片就好」。
+     ★ 列印那條路整段拿掉了 —— 連 printCard()、@media print、
+       #pj-print-root 都清掉。
+     ⚠️ 留著一條沒有按鈕會走到的路，比刪掉更糟：
+        下一個人會以為它還被用著、還被測過。 */
+  ok(!/printCard|global\.print\(\)|@media print|pj-print-root/.test(src),
+     '★★ 列印那條路整段清乾淨（沒有留死碼）');
+  ok(/toDataURL\('image\/png'\)/.test(src), '★ 只留下載成 PNG');
+
+  /* ★ 老師 2026-08-25：檔名為「成果發表-班級_座號_姓名.png」。 */
+  ok(J.fileName({ file: '二年三班_13_王小明' }) === '成果發表-二年三班_13_王小明.png',
+     '★★ 檔名＝成果發表-班級_座號_姓名.png');
+  /* ⚠️ Windows 不收 \ / : * ? " < > | 那幾個字 —— 有的話整個存不下來。 */
+  ok(!/[\\/:*?"<>|]/.test(J.fileName({ file: '二年3班/13*王<小>明' })),
+     '★★ 非法字元清掉（不然 Windows 拒存）');
+  ok(!/\s/.test(J.fileName({ file: '二年三班 13 王小明' })),
+     '★ 空白也拿掉（一整批交上來才排得了序）');
+  /* ⚠️ 讀不到身分的時候不要湊出「成果發表-.png」那種檔名。 */
+  ok(J.fileName({ scene: '玄關迎賓燈' }) === '成果發表-玄關迎賓燈.png',
+     '★★ 沒有身分就退回專題名稱（至少看得出是誰的作品）');
+  ok(J.fileName({}) === '成果發表-專題.png', '   什麼都沒有也不會變成「成果發表-.png」');
   ok(/關機會還原/.test(src), '★★ 提醒學生電腦教室關機會還原，記得把檔案帶走');
 }
 
@@ -526,9 +540,10 @@ section('★★ 走一遍：展示 → 成果卡');
      '★★ 而且輸入元件跟著模式帶出來（手動＝可變電阻）');
   ok(/否則/.test(el.querySelector('#pj-card').textContent),
      '★★ 成果卡上第二句也印出「否則」那一段');
-  ok(!!el.querySelector('#pj-print') && !!el.querySelector('#pj-png'),
-     '★★ 兩顆按鈕都在：列印／存成 PDF、下載成圖片');
-  ok(/另存為 PDF/.test(el.textContent), '★ 而且教學生怎麼存成 PDF（在印表機那一欄選）');
+  ok(!el.querySelector('#pj-print') && !!el.querySelector('#pj-png'),
+     '★★ 只留「下載成圖片」（老師 2026-08-25：保留下載成圖片就好）');
+  ok(/檔名會自動取成/.test(el.textContent) && /成果發表-/.test(el.textContent),
+     '★★ 而且先告訴他檔名長什麼樣（一整批交上來才對得起來）');
   ok(!!done.work && done.work.problem, '★ 回報 onDone 時把整份內容帶出去（要存起來）');
   /* ⚠️ 回頭改的時候字要還在。 */
   click('pj-back');
@@ -803,6 +818,30 @@ section('★★ AI 助教看一遍（老師 2026-08-25：成果發表引入 AI �
 }
 
 function rest() {
+section('★★ 檔名帶身分（老師 2026-08-25）');
+{
+  const b8 = W.document.createElement('div');
+  W.document.body.appendChild(b8);
+  const a8 = J.mount(b8, { who: '二年三班　13 號　王小明',
+                           whoFile: '二年三班_13_王小明' });
+  b8.querySelector('[data-pick="自動"]')
+    .dispatchEvent(new W.Event('click', { bubbles: true }));
+  a8.show('show');
+  /* ⚠️ 檔名要**在表單上就先寫出來** —— 出卡之後才看到，
+     學生已經沒在注意名字對不對了。 */
+  ok(a8.fname() === '成果發表-二年三班_13_王小明.png', '★★ mount 有把身分帶進檔名');
+  ok(/成果發表-二年三班_13_王小明\.png/.test(b8.textContent),
+     '★★ 而且表單上就先寫出來（不是出卡才看到）');
+  /* ⚠️ 顯示用的那一串和檔名**不是同一種格式** ——
+     頁面各給一份，不要讓模組去反解字串。 */
+  const page2 = read('11501/5016b.html');
+  ok(/function fmtFile/.test(page2) && /whoFile: whoFile\(\)/.test(page2),
+     '★★ 頁面另外給一份檔名格式（班級_座號_姓名）');
+  ok(/\[me\.cls, me\.no, me\.name\].filter\(Boolean\).join\('_'\)/.test(page2),
+     '★ 缺哪一段跳過哪一段（不會變成「__王小明」）');
+  ok(/chkApi\.setWho\(t, fn\)/.test(page2), '★ 晚一步問到名冊時檔名也跟著補');
+}
+
 section('★ 規矩');
 {
   const plan = read('shared/planlab.js'), proj = read('shared/projlab.js');
