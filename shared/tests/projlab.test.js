@@ -264,17 +264,28 @@ section('★★ 成果發表：三句話（老師指定，文字不可改）');
 {
   ok(J.SHOW_Q.length === 3, '三句');
   ok(/我們要解決的問題是/.test(J.SHOW_Q[0].t), '★★ 第一句：我們要解決的問題是');
-  ok(/當.*時，系統會/.test(J.SHOW_Q[1].t), '★★ 第二句：當＿＿時，系統會＿＿');
+  /* ★★ 老師 2026-08-25（追加）：「要有兩種條件(如果 那麼 否則)」。 */
+  ok(/當.*時，系統會.*；否則/.test(J.SHOW_Q[1].t),
+     '★★ 第二句：當＿＿時，系統會＿＿；**否則**＿＿');
+  ok(J.SHOW_Q[1].slots.join() === 'when,then,els', '★★ 三格（含否則）');
+  ok(/否則/.test(J.SHOW_Q[1].hint) && /回不去/.test(J.SHOW_Q[1].hint),
+     '★★ 加註要點破「少了否則，動作做了就回不去」（第一節那一課）');
   ok(/我們遇到.*最後用.*解決/.test(J.SHOW_Q[2].t), '★★ 第三句：我們遇到＿＿，最後用＿＿解決');
   ok(J.SHOW_Q.every(q => q.ph && q.ph.length === q.slots.length), '   每一格都有範例');
 
   /* ⚠️ 第二句的「當…」現在要看得出是**條件**（老師 2026-08-25：
      「一定要有條件判斷」）—— 範例本身也要合格。 */
   const v = { problem: '晚上回家玄關太暗', when: '距離小於 30 公分',
-              then: '燈條慢慢亮成暖黃色', trouble: '距離一直跳，燈會閃',
+              then: '燈條慢慢亮成暖黃色', els: '兩個都關掉', trouble: '距離一直跳，燈會閃',
               fix: '把門檻改成進 15 出 25 兩個數字' };
   ok(J.judgeShow(v).ok, '填滿 → 過');
   ok(!J.judgeShow(Object.assign({}, v, { then: '' })).ok, '   少一格 → 不過');
+  /* ⚠️⚠️ 「否則」那一格空著要擋 —— 那正是第一節「門開了沒」的病根。 */
+  ok(!J.judgeShow(Object.assign({}, v, { els: '' })).ok, '★★ 「否則」空著 → 不過');
+  ok(J.judgeShow(Object.assign({}, v, { els: '' })).miss.indexOf('els') >= 0,
+     '★ 而且點名是「否則」那一格');
+  ok(/否則/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { els: '' })))),
+     '★ 回饋要講出「否則」');
   ok(J.judgeShow(Object.assign({}, v, { then: '' })).miss.indexOf('then') >= 0,
      '★ 而且點名是哪一格');
   ok(/系統會/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { then: '' })))),
@@ -314,11 +325,11 @@ section('★★ 成果發表：三句話（老師指定，文字不可改）');
 
 section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
 {
-  const v = { problem: '玄關太暗', when: '有人靠近', then: '燈亮起來',
+  const v = { problem: '玄關太暗', when: '有人靠近', then: '燈亮起來', els: '關掉',
               trouble: '燈一直閃', fix: '加了兩個門檻' };
   const html = J.cardHtml(v, { scene: '玄關迎賓燈', team: '二年三班第 4 組',
                                mode: '自動', date: '2026/8/25' });
-  ok(/玄關迎賓燈/.test(html) && /二年三班第 4 組/.test(html), '★ 卡片上有題目和組別');
+  ok(/玄關迎賓燈/.test(html) && /二年三班第 4 組/.test(html), '★ 卡片上有題目和研發人員');
   ok(/模式：自動/.test(html), '★★ 而且標出這一組做的是哪一種模式');
   ok(/我們要解決的問題是/.test(html) && /系統會/.test(html) && /最後用/.test(html),
      '★★ 三句話都在卡片上');
@@ -395,7 +406,8 @@ section('★★ 走一遍：展示 → 成果卡');
   }
   set('pj-team', '二年三班第 4 組');
   set('pj-problem', '晚上回家玄關太暗，開燈要摸半天');
-  set('pj-when', '有人走到門口三十公分內'); set('pj-then', '燈條慢慢亮成暖黃色');
+  set('pj-when', '距離小於 30 公分'); set('pj-then', '燈條亮起來、風扇開始轉');
+  ok(set('pj-els', '兩個都關掉'), '★★ 畫面上有「否則」那一格');
   set('pj-trouble', '沒有'); set('pj-fix', '把門檻改成兩個數字');
   click('pj-make');
   ok(!done && /最值錢/.test(el.textContent), '★★ 第三句寫「沒有」→ 擋下來，不給出卡');
@@ -406,6 +418,8 @@ section('★★ 走一遍：展示 → 成果卡');
   ok(!!el.querySelector('#pj-card'), '   卡片畫出來了');
   ok(/模式：手動/.test(el.querySelector('#pj-card').textContent),
      '★★ 卡片上帶著他選的模式');
+  ok(/否則/.test(el.querySelector('#pj-card').textContent),
+     '★★ 成果卡上第二句也印出「否則」那一段');
   ok(!!el.querySelector('#pj-print') && !!el.querySelector('#pj-png'),
      '★★ 兩顆按鈕都在：列印／存成 PDF、下載成圖片');
   ok(/另存為 PDF/.test(el.textContent), '★ 而且教學生怎麼存成 PDF（在印表機那一欄選）');
@@ -414,6 +428,48 @@ section('★★ 走一遍：展示 → 成果卡');
   click('pj-back');
   ok(el.querySelector('#pj-problem').value === '晚上回家玄關太暗，開燈要摸半天',
      '★★ 回去改的時候填過的字還在');
+}
+
+section('★★ 研發人員：系統自動填入（老師 2026-08-25）');
+{
+  /* ★ 老師：「『組別／組員：』改成『研發人員：』，
+     這個班級座號姓名資料能夠由系統自動填入吧」。 */
+  const b1 = W.document.createElement('div');
+  W.document.body.appendChild(b1);
+  const a1 = J.mount(b1, { who: '二年三班　13 號　王小明' });
+  a1.show('show');
+  ok(/研發人員/.test(b1.textContent) && !/組別／組員/.test(b1.textContent),
+     '★★ 欄位名稱改成「研發人員」');
+  ok(b1.querySelector('#pj-team').value === '二年三班　13 號　王小明',
+     '★★ 班級座號姓名自動填進去了');
+  ok(/自動帶入/.test(b1.textContent), '★ 而且告訴他這是自動帶的、可以改');
+
+  /* ⚠️⚠️ 讀不到的時候要**看得見** —— 不然學生會交出一張沒有名字的成果卡。 */
+  const b2 = W.document.createElement('div');
+  W.document.body.appendChild(b2);
+  const a2 = J.mount(b2, {});
+  a2.show('show');
+  ok(b2.querySelector('#pj-team').value === '', '   讀不到就留空');
+  ok(/沒讀到.{0,6}班級座號姓名/.test(b2.textContent),
+     '★★ 而且明講「沒讀到，請自己填」（靜默留白最糟）');
+
+  /* ★ 學生自己改過就不可以被蓋掉（例如加上組員）。 */
+  const b3 = W.document.createElement('div');
+  W.document.body.appendChild(b3);
+  const a3 = J.mount(b3, { who: '二年三班　13 號　王小明',
+                           work: { team: '二年三班　王小明、李小華' } });
+  a3.show('show');
+  ok(b3.querySelector('#pj-team').value === '二年三班　王小明、李小華',
+     '★★ 他自己填過的不會被自動帶入蓋掉');
+
+  /* 頁面那一端：身分從 SSO 的快取拿。 */
+  const page = read('11501/5016b.html');
+  ok(/<script src="\.\.\/shared\/sso\.js"><\/script>/.test(page), '頁面載入 sso');
+  ok(/who: whoText\(\)/.test(page), '★ 掛載時把身分傳進去');
+  ok(/window\.SSO && window\.SSO\.me/.test(page),
+     '★★ 用同步的快取 —— 不為了填一格名字去等 Firestore');
+  ok(/if \(me\.cls\)/.test(page) && /if \(me\.name\)/.test(page),
+     '★★ 缺哪一段跳過哪一段（不要印出「undefined 班」）');
 }
 
 section('★ 規矩');

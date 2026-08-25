@@ -83,10 +83,15 @@
        一定要有條件判斷」。
        ⚠️ 這一句不是在描述「我們做了什麼」，它就是**程式裡那個判斷**。
           寫不出條件的組別，通常是程式裡也沒有 —— 那才是要抓的。 */
-    { key: 's2', t: '當＿＿＿＿時，系統會＿＿＿＿。', slots: ['when', 'then'],
-      hint: '＝ <b>如果</b>（條件）<b>那麼</b>（動作）；' +
-            '如果還要處理「不符合的時候」，就是 <b>如果…那麼…否則…</b>',
-      ph: ['例：距離小於 30 公分', '例：燈條亮成暖黃色，超過就關掉'] },
+    /* ★★ 老師 2026-08-25（追加）：「要有兩種條件(如果 那麼 否則)」。
+       ⚠️ 所以第二句多一格「否則」—— 而且那一格是**擋得住最多錯**的地方：
+          第一節整節課在講的「門開了沒」，病根就是少了否則。
+          少了它，燈亮起來就再也不會暗。 */
+    { key: 's2', t: '當＿＿＿＿時，系統會＿＿＿＿；否則＿＿＿＿。',
+      slots: ['when', 'then', 'els'],
+      hint: '＝ <b>如果</b>（條件）<b>那麼</b>（動作）<b>否則</b>（另一個動作）<br>' +
+            '⚠️ 「否則」那一格不能空 —— 少了它，動作做了就<b>回不去</b>。',
+      ph: ['例：距離小於 30 公分', '例：燈條亮起來、風扇開始轉', '例：兩個都關掉'] },
     { key: 's3', t: '我們遇到＿＿＿＿，最後用＿＿＿＿解決。', slots: ['trouble', 'fix'],
       ph: ['例：距離一直跳來跳去，燈會閃', '例：把門檻改成兩個數字（進 15 出 25）'] }
   ];
@@ -108,7 +113,7 @@
          剛好長度過關，而這一格最值錢的東西還是沒寫。 */
     if (NO_TROUBLE.test(norm(v.trouble))) return { ok: false, how: 'notrouble' };
     var miss = [];
-    ['problem', 'when', 'then', 'trouble', 'fix'].forEach(function (k) {
+    ['problem', 'when', 'then', 'els', 'trouble', 'fix'].forEach(function (k) {
       if (norm(v[k]).length < MIN) miss.push(k);
     });
     if (miss.length) return { ok: false, how: 'short', miss: miss };
@@ -116,7 +121,7 @@
     return { ok: true, how: 'fit' };
   }
   var LABEL = { problem: '要解決的問題', when: '當…時', then: '系統會…',
-                trouble: '我們遇到…', fix: '最後用…解決' };
+                els: '否則…', trouble: '遇到…', fix: '最後用…解決' };
   function sayShow(r) {
     if (r.how === 'nocond')
       return '⚠️ 第二句的「當＿＿時」要是一個**條件** —— ' +
@@ -139,7 +144,7 @@
   function cardLines(v) {
     return [
       { k: '我們要解決的問題是', v: v.problem },
-      { k: '當　' + v.when + '　時', v: '系統會　' + v.then },
+      { k: '當　' + v.when + '　時', v: '系統會　' + v.then + '；否則　' + v.els },
       { k: '我們遇到　' + v.trouble, v: '最後用　' + v.fix + '　解決' }
     ];
   }
@@ -155,7 +160,8 @@
       (m.line ? '<div class="pj-line">' + esc(m.line) + '</div>' : '') +
       '<ol class="pj-ol">' +
         '<li><b>我們要解決的問題是：</b><br>' + esc(v.problem) + '</li>' +
-        '<li><b>當</b> ' + esc(v.when) + ' <b>時，系統會</b> ' + esc(v.then) + '。</li>' +
+        '<li><b>當</b> ' + esc(v.when) + ' <b>時，系統會</b> ' + esc(v.then) +
+          '<b>；否則</b> ' + esc(v.els) + '。</li>' +
         '<li><b>我們遇到</b> ' + esc(v.trouble) +
           ' <b>，最後用</b> ' + esc(v.fix) + ' <b>解決。</b></li>' +
       '</ol></div>';
@@ -336,8 +342,12 @@
     var line = String(opts.line || '');
     var scene = (opts.plan && opts.plan.scene) || '我們的專題';
     var tab = 'demo';                 // demo（兩種模式）／show（成果發表）
-    var f = Object.assign({ team: '', mode: '', problem: '', when: '', then: '',
+    /* ★ 自動帶入班級座號姓名（頁面從 SSO 拿）。
+       ⚠️ 只在「學生還沒自己填過」的時候帶入 —— 不然他改了名字（加組員）
+          會被下一次重新掛載蓋掉。 */
+    var f = Object.assign({ team: '', mode: '', problem: '', when: '', then: '', els: '',
                             trouble: '', fix: '' }, opts.work || {});
+    if (!f.team && opts.who) f.team = opts.who;
 
     function tabs() {
       var t = [['demo', '🎛️ 兩種模式', '玩玩看，複習前四節'],
@@ -390,17 +400,29 @@
     function viewShow(msg, cls) {
       view(
         '<div class="pj-ask">🎤 <b>成果發表</b>　—— 固定講這三句就好。</div>' +
-        '<div class="pj-fill">組別／組員：<input class="pj-t" id="pj-team" value="' +
-          esc(f.team) + '" placeholder="例：二年三班　第 4 組　王小明、李小華"></div>' +
+        /* ★ 老師 2026-08-25：「組別／組員」改成「研發人員」，
+           而且班級座號姓名要由系統自動填入。
+           ⚠️ 讀不到名冊的時候要**看得見** —— 不然學生會以為系統壞了，
+              或更糟：交出一張沒有名字的成果卡。 */
+        '<div class="pj-fill">研發人員：<input class="pj-t" id="pj-team" value="' +
+          esc(f.team) + '" placeholder="例：二年三班　13 號　王小明"></div>' +
+        '<div class="pj-note">' +
+          (opts.who
+            ? '★ 已自動帶入你的班級座號姓名（可以自己改，例如加上組員）。'
+            : '⚠️ <b>沒讀到你的班級座號姓名</b>，請自己填 —— ' +
+              '（可能是沒登入，或名冊還沒建。）') +
+        '</div>' +
         '<div class="pj-ask" style="margin-top:10px">1. 我們要解決的問題是：</div>' +
         '<div class="pj-fill"><input class="pj-t" id="pj-problem" value="' + esc(f.problem) +
           '" placeholder="' + esc(SHOW_Q[0].ph[0]) + '"></div>' +
-        '<div class="pj-ask" style="margin-top:10px">2. 當＿＿時，系統會＿＿。' +
+        '<div class="pj-ask" style="margin-top:10px">2. 當＿＿時，系統會＿＿；否則＿＿。' +
           '<div class="pj-hint">' + SHOW_Q[1].hint + '</div></div>' +
         '<div class="pj-fill">當　<input class="pj-t" id="pj-when" value="' + esc(f.when) +
           '" placeholder="' + esc(SHOW_Q[1].ph[0]) + '">　時</div>' +
         '<div class="pj-fill">系統會　<input class="pj-t" id="pj-then" value="' + esc(f.then) +
           '" placeholder="' + esc(SHOW_Q[1].ph[1]) + '"></div>' +
+        '<div class="pj-fill">否則　<input class="pj-t" id="pj-els" value="' + esc(f.els) +
+          '" placeholder="' + esc(SHOW_Q[1].ph[2]) + '"></div>' +
         '<div class="pj-ask" style="margin-top:10px">3. 我們遇到＿＿，最後用＿＿解決。</div>' +
         '<div class="pj-fill">我們遇到　<input class="pj-t" id="pj-trouble" value="' +
           esc(f.trouble) + '" placeholder="' + esc(SHOW_Q[2].ph[0]) + '"></div>' +
@@ -435,7 +457,8 @@
 
     function grab() {
       [['pj-team', 'team'], ['pj-problem', 'problem'], ['pj-when', 'when'],
-       ['pj-then', 'then'], ['pj-trouble', 'trouble'], ['pj-fix', 'fix']].forEach(function (x) {
+       ['pj-then', 'then'], ['pj-els', 'els'],
+       ['pj-trouble', 'trouble'], ['pj-fix', 'fix']].forEach(function (x) {
         var e = el.querySelector('#' + x[0]);
         if (e) f[x[1]] = e.value;
       });
