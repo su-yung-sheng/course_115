@@ -244,7 +244,10 @@ section('★ 第四節接上頁面了');
   ok(/lab: \{ unit: 'u4', warm: 'RGBLAB', checks: 'MIXLAB' \}/.test(page),
      '★ 第四節：暖身 RGBLAB ＋ 檢核 MIXLAB');
 
-  const u4 = page.slice(page.indexOf('title: "情境照明'), page.indexOf('title: "智慧中樞'));
+  /* ⚠️ 用「下一節的標題」當界標很脆：第五節重寫之後標題從
+     「智慧中樞」變成「自己的專案」，這一支就整個切錯位置紅了。
+     ★ 這種紅燈很難查 —— 壞掉的不是第四節，是界標。 */
+  const u4 = page.slice(page.indexOf('title: "情境照明'), page.indexOf('title: "自己的專案'));
   /* ⚠️ 舊草稿寫 A1、0~1023→0~255 色相、還有一塊不存在的「色相填滿」積木。 */
   ok(!/類比 A1|0, 1023, 0, 255|色相為/.test(u4),
      '★★ 舊草稿那組（A1、0~1023→0~255、色相填滿）已經清掉');

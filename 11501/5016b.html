@@ -142,6 +142,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
   <script src="../shared/fanlab.js"></script>
   <script src="../shared/rgblab.js"></script>
   <script src="../shared/mixlab.js"></script>
+  <script src="../shared/planlab.js"></script>
+  <script src="../shared/projlab.js"></script>
   <script src="../shared/doorlab.js"></script>
   <script src="../shared/lightlab.js"></script>
 
@@ -1541,243 +1543,224 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 `
             },
             5: {
-                title: "智慧中樞：綜合家居面板",
+                title: "自己的專案：從想法到成果",
                 badge: "第五節課",
                 colorText: "text-primary",
                 colorBg: "bg-primary",
-                icon: "laptop",
-                desc: "這是一套完整的系統！我們利用「按鈕」切換智慧家庭的模式。在【自動模式】下，感測器全權接管，距離一靠近就開燈開風扇；在【手動模式】下，我們透過旋鈕自由掌控風量與氣氛燈色。",
+                icon: "lightbulb",
+                desc: "前面四節都是我出題、你照著做。這一節<b>換你出題</b>：想一個家裡真的會遇到的麻煩，用學過的元件把它解決掉。★ 三張任務卡<b>每組都從基礎關開始</b> —— 先讓它動，再讓它更聰明，最後讓它真的解決問題。",
+                /* 🎯 第五節：專題。⚠️ 和前四節最大的不同 ——
+                   **電腦看不到硬體**，所以任務卡不判定「做出來了沒」，
+                   只判定「你有沒有寫出證據」（老師 2026-08-25 選的做法）。
+                   ★ 老師指定的三關與發表三句，文字一字不改。
+                   ⚠️ 舊草稿（狀態機／自動手動模式）已整塊清掉，
+                      裡面還把燈條色相寫成 (0, 1023, 0, 255) —— 色相上限應該是 359。 */
+                apps: [
+                    { icon: "🚪", name: "玄關迎賓燈", how: "手上提滿東西的時候，最不想做的就是摸黑找開關。" },
+                    { icon: "🌱", name: "植物缺水提醒", how: "不是每天都記得澆水 —— 讓它自己提醒你。" },
+                    { icon: "🔔", name: "冰箱門沒關", how: "門沒關緊常常整晚才發現，電費和食物一起壞掉。" }
+                ],
+                appsNote: "⚠️ 這三個只是<b>起頭</b>。最好的題目通常來自「我家真的有這個困擾」 —— 想不到的話，回想一下這禮拜有什麼事讓你覺得麻煩。",
                 objectives: [
-                    "實作狀態機 (State Machine) 概念：透過按鈕切換 Auto / Manual 變數狀態",
-                    "將感測器(超音波)、輸入元件(可變電阻)、輸出元件(馬達與燈條) 完美整合於一個程式",
-                    "規劃自動／手動的切換流程，並完成一次完整的操作展示"
+                    "把一個生活問題，翻成<span class=\"hl\">一句「如果…那麼…」</span>（設計單）",
+                    "用 1 個輸入＋1 個輸出<span class=\"hl-b\">先讓它動起來</span>，而且能現場操作驗證",
+                    "調整<span class=\"hl\">判斷的數值或條件</span>，再加入第二個輸入、第二個輸出",
+                    "加上自訂功能並<span class=\"hl-b\">說得出為什麼要這樣改</span>",
+                    "用固定的三句話完成成果發表，並產出一張可帶走的成果卡"
                 ],
                 materials: [
                     "NKNU 5016B 教具模組",
-                    "模式切換按鈕",
-                    "紙筆：規劃自動／手動兩種模式的切換流程"
+                    "前四節用過的元件：按鈕、超音波距離感測器、可變電阻旋鈕、LED、RGB 燈條、直流馬達",
+                    "專題設計單（就在下面的暖身關卡，做完才會打開任務卡）"
                 ],
                 initPlayground: function(container) {
+                    /* 🧠 靈感牆：輸入 × 輸出 的配對盤。
+                       ⚠️ 這裡**刻意不做決定** —— 決定是設計單（暖身）的事。
+                          這一塊只回答「這兩個湊起來能幹嘛」，
+                          因為專題課最常見的卡關是「我不知道這個能拿來做什麼」。 */
+                    const INS = [
+                        { k: 'btn', t: '按鈕', d: '按下／沒按' },
+                        { k: 'us',  t: '超音波', d: '距離幾公分' },
+                        { k: 'pot', t: '旋鈕', d: '轉到幾 %' }
+                    ];
+                    const OUTS = [
+                        { k: 'led',   t: 'LED 燈', d: '亮／暗／閃' },
+                        { k: 'strip', t: 'RGB 燈條', d: '顏色、亮第幾顆' },
+                        { k: 'moto',  t: '馬達風扇', d: '轉／停／快慢' }
+                    ];
+                    const IDEA = {
+                        'btn|led': '按一下開燈、再按一下關燈 —— 最單純的開關，先做這個一定會動。',
+                        'btn|strip': '按鈕切換顏色：一按換一種心情燈（讀書白光、睡前暖黃）。',
+                        'btn|moto': '按著才轉的手持小風扇 —— 放開就停，不會忘記關。',
+                        'us|led': '有人靠近就亮的玄關燈；走遠了自己熄掉。',
+                        'us|strip': '距離越近亮的顆數越多 —— 倒車或停車位的距離指示。',
+                        'us|moto': '手一靠近就吹風的感應風扇；也可以反過來，太近就停下來保護手指。',
+                        'pot|led': '旋鈕當調光器，把燈從全暗轉到全亮。',
+                        'pot|strip': '旋鈕轉一圈換一輪顏色 —— 自己調出喜歡的氣氛燈。',
+                        'pot|moto': '旋鈕調風速，像真的電風扇一樣。'
+                    };
                     container.innerHTML = `
-                        <div class="flex flex-col items-center bg-slate-100 p-6 rounded-3xl border-4 border-slate-800 w-full shadow-2xl relative">
-                            <!-- Dashboard Header -->
-                            <div class="w-full flex justify-between items-center pb-4 border-b border-slate-800 mb-6">
-                                <span class="text-sm text-slate-500 font-bold tracking-wider"><i data-lucide="home" class="inline w-4 h-4 mr-1"></i> SMART HUB</span>
-                                
-                                <!-- Mode Toggle -->
-                                <button id="hub-mode-btn" class="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-full text-xs transition flex items-center gap-2">
-                                    <i data-lucide="refresh-cw" class="w-3 h-3"></i> 模式：自動 (AUTO)
-                                </button>
+                        <div class="w-full flex flex-col gap-4">
+                            <div class="text-sm font-bold text-slate-600">
+                                🧠 <b>靈感牆</b>：各挑一個，看看能組出什麼。
+                                <span class="text-slate-400">（這裡只是發想，決定寫在下面的設計單）</span>
                             </div>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
-                                <!-- Inputs Panel -->
-                                <div class="space-y-6 bg-slate-50 p-4 rounded-xl border border-slate-800">
-                                    <h4 class="text-xs font-bold text-slate-500 border-b border-slate-800 pb-2">環境感測 / 輸入</h4>
-                                    
-                                    <div class="space-y-2">
-                                        <div class="flex justify-between text-xs text-slate-500">
-                                            <span><i data-lucide="waves" class="inline w-3 h-3 text-emerald-400"></i> 超音波距離:</span>
-                                            <span id="hub-dist-val">150 cm</span>
-                                        </div>
-                                        <input type="range" id="hub-dist-slider" min="10" max="200" value="150" class="w-full big-range" style="--thumb:#10b981">
-                                    </div>
-                                    
-                                    <div class="space-y-2 opacity-50 transition-opacity" id="hub-manual-controls">
-                                        <div class="flex justify-between text-xs text-slate-500">
-                                            <span><i data-lucide="settings" class="inline w-3 h-3 text-amber-400"></i> 控制旋鈕:</span>
-                                            <span id="hub-pot-val">0</span>
-                                        </div>
-                                        <input type="range" id="hub-pot-slider" min="0" max="1023" value="0" class="w-full big-range" style="--thumb:#f59e0b" disabled>
-                                    </div>
+                            <div class="grid sm:grid-cols-2 gap-4">
+                                <div>
+                                    <div class="text-xs font-black text-slate-400 mb-2">輸入（它怎麼知道）</div>
+                                    <div id="idea-in" class="flex flex-col gap-2"></div>
                                 </div>
-                                
-                                <!-- Outputs Panel -->
-                                <div class="space-y-6 bg-slate-50 p-4 rounded-xl border border-slate-800 flex flex-col justify-center items-center">
-                                    <h4 class="text-xs font-bold text-slate-500 border-b border-slate-800 w-full text-left pb-2">實體驅動 / 輸出</h4>
-                                    
-                                    <div class="flex gap-8 items-center w-full justify-around pt-2">
-                                        <!-- Motor -->
-                                        <div class="flex flex-col items-center gap-2">
-                                            <div class="w-16 h-16 bg-white rounded-full border-2 border-slate-300 flex items-center justify-center relative">
-                                                <div id="hub-motor-blade" class="w-1.5 h-12 bg-slate-400 rounded-full motor-prop absolute"></div>
-                                                <div id="hub-motor-blade2" class="w-12 h-1.5 bg-slate-400 rounded-full motor-prop absolute"></div>
-                                                <div class="w-3 h-3 bg-slate-300 rounded-full z-10"></div>
-                                            </div>
-                                            <span class="text-[10px] text-slate-500 font-bold" id="hub-motor-label">馬達停止</span>
-                                        </div>
-                                        
-                                        <!-- Light -->
-                                        <div class="flex flex-col items-center gap-2">
-                                            <div id="hub-light-bulb" class="w-12 h-12 rounded-full bg-white border-2 border-slate-200 transition-all duration-300 flex items-center justify-center">
-                                                <i data-lucide="lightbulb" class="w-6 h-6 text-slate-600" id="hub-light-icon"></i>
-                                            </div>
-                                            <span class="text-[10px] text-slate-500 font-bold" id="hub-light-label">燈光關閉</span>
-                                        </div>
-                                    </div>
+                                <div>
+                                    <div class="text-xs font-black text-slate-400 mb-2">輸出（它做什麼）</div>
+                                    <div id="idea-out" class="flex flex-col gap-2"></div>
                                 </div>
+                            </div>
+                            <div id="idea-out-box" class="bg-slate-900 text-slate-100 rounded-2xl p-5 font-bold leading-relaxed text-sm sm:text-base min-h-[86px] flex items-center">
+                                各選一個，這裡會給你一個點子。
                             </div>
                         </div>
                     `;
-
-                    // Elements
-                    const modeBtn = document.getElementById('hub-mode-btn');
-                    const distSlider = document.getElementById('hub-dist-slider');
-                    const potSlider = document.getElementById('hub-pot-slider');
-                    const distVal = document.getElementById('hub-dist-val');
-                    const potVal = document.getElementById('hub-pot-val');
-                    const manualControls = document.getElementById('hub-manual-controls');
-                    
-                    const motorBlade1 = document.getElementById('hub-motor-blade');
-                    const motorBlade2 = document.getElementById('hub-motor-blade2');
-                    const motorLabel = document.getElementById('hub-motor-label');
-                    
-                    const lightBulb = document.getElementById('hub-light-bulb');
-                    const lightIcon = document.getElementById('hub-light-icon');
-                    const lightLabel = document.getElementById('hub-light-label');
-
-                    // State
-                    let isAuto = true;
-                    let mRot = 0;
-                    let mSpeed = 0;
-
-                    function updateSystem() {
-                        const dist = parseInt(distSlider.value);
-                        const pot = parseInt(potSlider.value);
-
-                        if (isAuto) {
-                            // AUTO MODE LOGIC
-                            if (dist < 80) { // Person detected
-                                mSpeed = 15; // Fast speed
-                                motorLabel.textContent = "自動：送風中";
-                                motorLabel.className = "text-[10px] font-bold text-emerald-400";
-                                motorBlade1.style.backgroundColor = motorBlade2.style.backgroundColor = '#10b981';
-                                
-                                lightBulb.style.backgroundColor = '#fffbeb'; // Amber 50
-                                lightBulb.style.boxShadow = '0 0 25px #fcd34d';
-                                lightIcon.style.color = '#f59e0b';
-                                lightLabel.textContent = "自動：照明開";
-                                lightLabel.className = "text-[10px] font-bold text-amber-400";
-                            } else {
-                                mSpeed = 0;
-                                motorLabel.textContent = "馬達停止";
-                                motorLabel.className = "text-[10px] font-bold text-slate-500";
-                                motorBlade1.style.backgroundColor = motorBlade2.style.backgroundColor = '#94a3b8';
-                                
-                                lightBulb.style.backgroundColor = '#1e293b';
-                                lightBulb.style.boxShadow = 'none';
-                                lightIcon.style.color = '#475569';
-                                lightLabel.textContent = "燈光關閉";
-                                lightLabel.className = "text-[10px] font-bold text-slate-500";
-                            }
-                        } else {
-                            // MANUAL MODE LOGIC
-                            mSpeed = (pot / 1023) * 20; // Scale speed
-                            if (mSpeed > 0) {
-                                motorLabel.textContent = "手動：調速中";
-                                motorLabel.className = "text-[10px] font-bold text-amber-400";
-                                motorBlade1.style.backgroundColor = motorBlade2.style.backgroundColor = '#f59e0b';
-                            } else {
-                                motorLabel.textContent = "馬達停止";
-                                motorLabel.className = "text-[10px] font-bold text-slate-500";
-                                motorBlade1.style.backgroundColor = motorBlade2.style.backgroundColor = '#94a3b8';
-                            }
-
-                            // Color map for light
-                            if (pot > 0) {
-                                const hue = Math.floor((pot / 1023) * 360);
-                                const colorStr = `hsl(${hue}, 100%, 50%)`;
-                                lightBulb.style.backgroundColor = colorStr;
-                                lightBulb.style.boxShadow = `0 0 25px ${colorStr}`;
-                                lightIcon.style.color = '#000';
-                                lightLabel.textContent = "手動：調光中";
-                                lightLabel.className = "text-[10px] font-bold text-indigo-600";
-                            } else {
-                                lightBulb.style.backgroundColor = '#1e293b';
-                                lightBulb.style.boxShadow = 'none';
-                                lightIcon.style.color = '#475569';
-                                lightLabel.textContent = "燈光關閉";
-                                lightLabel.className = "text-[10px] font-bold text-slate-500";
-                            }
-                        }
+                    let pick = { in: '', out: '' };
+                    function btn(x, kind) {
+                        const b = document.createElement('button');
+                        b.className = 'text-left px-4 py-3 rounded-xl border-2 border-slate-200 bg-white font-black text-slate-800 hover:border-primary hover:bg-indigo-50 transition';
+                        b.innerHTML = `${x.t}<span class="block text-xs font-bold text-slate-500">${x.d}</span>`;
+                        b.addEventListener('click', () => {
+                            pick[kind] = x.k;
+                            [...container.querySelectorAll(`[data-kind="${kind}"]`)].forEach(o => {
+                                const on = o.getAttribute('data-k') === x.k;
+                                o.classList.toggle('border-primary', on);
+                                o.classList.toggle('bg-indigo-50', on);
+                            });
+                            const box = document.getElementById('idea-out-box');
+                            box.textContent = (pick.in && pick.out)
+                                ? '💡 ' + (IDEA[pick.in + '|' + pick.out] || '這個組合也可以，想想看能解決什麼？')
+                                : '各選一個，這裡會給你一個點子。';
+                        });
+                        b.setAttribute('data-kind', kind);
+                        b.setAttribute('data-k', x.k);
+                        return b;
                     }
-
-                    function spinHubMotor() {
-                        if (mSpeed > 0) {
-                            mRot += mSpeed;
-                            motorBlade1.style.transform = `rotate(${mRot}deg)`;
-                            motorBlade2.style.transform = `rotate(${mRot}deg)`;
-                        }
-                        animationRequests.push(requestAnimationFrame(spinHubMotor));
-                    }
-
-                    // Event Listeners
-                    modeBtn.addEventListener('click', () => {
-                        isAuto = !isAuto;
-                        if (isAuto) {
-                            modeBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-3 h-3"></i> 模式：自動 (AUTO)';
-                            modeBtn.className = 'px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-full text-xs transition flex items-center gap-2';
-                            manualControls.classList.add('opacity-50');
-                            potSlider.disabled = true;
-                        } else {
-                            modeBtn.innerHTML = '<i data-lucide="hand" class="w-3 h-3"></i> 模式：手動 (MANUAL)';
-                            modeBtn.className = 'px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-full text-xs transition flex items-center gap-2';
-                            manualControls.classList.remove('opacity-50');
-                            potSlider.disabled = false;
-                        }
-                        lucide.createIcons();
-                        updateSystem();
-                    });
-
-                    distSlider.addEventListener('input', (e) => {
-                        distVal.textContent = e.target.value + " cm";
-                        updateSystem();
-                    });
-
-                    potSlider.addEventListener('input', (e) => {
-                        potVal.textContent = e.target.value;
-                        updateSystem();
-                    });
-
-                    // Init
-                    updateSystem();
-                    spinHubMotor();
-                    lucide.createIcons();
+                    INS.forEach(x => document.getElementById('idea-in').appendChild(btn(x, 'in')));
+                    OUTS.forEach(x => document.getElementById('idea-out').appendChild(btn(x, 'out')));
                 },
                 demoHTML: `
-                    <div class="flex items-center gap-3 mb-6">
-                        <i data-lucide="code-2" class="w-8 h-8 text-primary"></i>
-                        <h3 class="text-xl font-bold text-slate-800 tracking-wide">系統整合：狀態機架構</h3>
+                    <div class="flex items-center gap-3 mb-2">
+                        <i data-lucide="layers" class="w-8 h-8 text-fuchsia-400"></i>
+                        <h3 class="text-xl font-bold text-slate-800 tracking-wide">分層任務卡：每組都從基礎關開始</h3>
                     </div>
-                    <div class="bg-[#1e1e1e] rounded-xl border border-slate-200 overflow-hidden shadow-2xl">
-                        <div class="bg-[#2d2d2d] px-4 py-3 flex items-center gap-2 border-b border-slate-200">
+                    <p class="text-slate-600 mb-4 text-sm sm:text-base leading-relaxed">
+                        ⚠️ 不要一次想做到最完整 —— <span class="hl">先讓它動</span>，
+                        再一層一層加上去。每一關都要<b>現場操作給人看</b>。
+                    </p>
+
+                    <div class="grid gap-4 md:grid-cols-3">
+                        <div class="bg-white border-2 border-emerald-300 rounded-2xl p-5">
+                            <div class="text-xs font-black text-emerald-600 mb-1">① 基礎關</div>
+                            <div class="font-black text-slate-800 text-lg mb-2">先讓它動</div>
+                            <p class="text-sm text-slate-600 leading-relaxed">
+                                選 <b>1 個輸入</b>＋<b>1 個輸出</b>，
+                                完成一個「<span class="hl">如果…那麼…</span>」功能，
+                                並能<b>現場操作驗證</b>。
+                            </p>
+                        </div>
+                        <div class="bg-white border-2 border-amber-300 rounded-2xl p-5">
+                            <div class="text-xs font-black text-amber-600 mb-1">② 挑戰關</div>
+                            <div class="font-black text-slate-800 text-lg mb-2">讓它更聰明</div>
+                            <p class="text-sm text-slate-600 leading-relaxed">
+                                調整<span class="hl">判斷數值或條件</span>，
+                                再加入<b>第二個輸入</b>、<b>第二個輸出</b>。
+                            </p>
+                        </div>
+                        <div class="bg-white border-2 border-fuchsia-300 rounded-2xl p-5">
+                            <div class="text-xs font-black text-fuchsia-600 mb-1">③ 創意關</div>
+                            <div class="font-black text-slate-800 text-lg mb-2">讓它解決問題</div>
+                            <p class="text-sm text-slate-600 leading-relaxed">
+                                加入<b>自訂功能</b>，完成一段<span class="hl">測試情境</span>，
+                                並<b>說明你修改的原因</b>。
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 bg-slate-900 rounded-2xl overflow-hidden shadow-xl">
+                        <div class="flex items-center gap-2 px-4 py-3 bg-slate-800/50">
                             <div class="w-3 h-3 rounded-full bg-red-500"></div>
                             <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
                             <div class="w-3 h-3 rounded-full bg-green-500"></div>
-                            <span class="ml-4 text-xs text-slate-500 font-mono">smart_home_hub.block</span>
+                            <span class="ml-4 text-xs text-slate-400 font-mono">基礎關的骨架 — 把方框換成你自己的東西</span>
                         </div>
-                        <div class="p-4 sm:p-6 overflow-x-auto text-sm sm:text-base font-mono leading-relaxed text-slate-600">
-<pre class="whitespace-pre-wrap"><code class="grid grid-cols-[max-content_1fr] gap-x-4 sm:gap-x-6 gap-y-2">
-<span class="col-span-2"><span class="text-rose-600">如果</span> <span class="text-sky-600">目前模式</span> == <span class="text-indigo-600">"AUTO"</span> <span class="text-rose-600">則</span></span>
-<span class="col-span-2 text-emerald-600">  // 自動控制邏輯 (依賴超音波)</span>
-<span class="col-span-2">  <span class="text-rose-600">如果</span> <span class="text-sky-600">超音波距離</span> &lt; <span class="text-indigo-600">80</span> <span class="text-rose-600">則</span></span>
-<span>    <span class="text-amber-600">啟動馬達開門()</span></span>
-<span>    <span class="text-amber-600">點亮迎賓燈()</span></span>
-<span class="col-span-2">  <span class="text-rose-600">否則</span></span>
-<span>    <span class="text-amber-600">關閉馬達()</span></span>
-<span>    <span class="text-amber-600">關閉燈光()</span></span>
-<span class="col-span-2">    </span>
-<span class="col-span-2"><span class="text-rose-600">否則</span> <span class="text-emerald-600">// MANUAL 手動模式</span></span>
-<span class="col-span-2 text-emerald-600">  // 手動控制邏輯 (依賴可變電阻)</span>
-<span class="col-span-2">  <span class="text-sky-600">風扇轉速</span> <span class="text-rose-600">設為</span> <span class="text-amber-600">數值對應</span> (<span class="text-sky-600">旋鈕值</span>, 0, 1023, 0, 255)</span>
-<span class="col-span-2">  <span class="text-sky-600">燈條色相</span> <span class="text-rose-600">設為</span> <span class="text-amber-600">數值對應</span> (<span class="text-sky-600">旋鈕值</span>, 0, 1023, 0, 255)</span>
-<span>  <span class="text-amber-600">寫入 PWM 馬達控制(轉速)</span></span>
-<span>  <span class="text-amber-600">更新 RGB 燈帶顏色(色相)</span></span>
+                        <div class="p-4 sm:p-6 overflow-x-auto text-sm sm:text-base font-mono leading-relaxed text-slate-300">
+<pre class="whitespace-pre"><code><span class="text-rose-400">重複無限次</span>
+  <span class="text-sky-400">讀值</span> ← <span class="text-amber-400">［你的輸入］</span>
+  <span class="text-rose-400">如果</span> <span class="text-sky-400">讀值</span> <span class="text-amber-400">［大於／小於］</span> <span class="text-amber-400">［門檻］</span> <span class="text-rose-400">那麼</span>
+      <span class="text-amber-400">［你的輸出］</span> <span class="text-amber-400">［動作］</span>
+  <span class="text-rose-400">否則</span>
+      <span class="text-amber-400">［你的輸出］</span> <span class="text-amber-400">［恢復原狀］</span>
+</code></pre>
+                        </div>
+                        <div class="px-4 sm:px-6 pb-5 text-xs sm:text-sm text-slate-400 leading-relaxed">
+                            ⚠️ <b>「否則」不要省略</b> —— 少了它，燈亮起來就再也不會暗。
+                            這是第一節那個「門開了沒」的老問題。
+                        </div>
+                    </div>
+
+                    <div class="mt-6 bg-slate-900 rounded-2xl overflow-hidden shadow-xl">
+                        <div class="flex items-center gap-2 px-4 py-3 bg-slate-800/50">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span class="ml-4 text-xs text-slate-400 font-mono">挑戰關的骨架 — 兩個輸入、兩個輸出</span>
+                        </div>
+                        <div class="p-4 sm:p-6 overflow-x-auto text-sm sm:text-base font-mono leading-relaxed text-slate-300">
+<pre class="whitespace-pre"><code><span class="text-rose-400">重複無限次</span>
+  <span class="text-sky-400">讀值一</span> ← <span class="text-amber-400">［第一個輸入］</span>
+  <span class="text-sky-400">讀值二</span> ← <span class="text-amber-400">［第二個輸入］</span>
+  <span class="text-rose-400">如果</span> <span class="text-sky-400">讀值二</span> <span class="text-amber-400">［切換條件］</span> <span class="text-rose-400">那麼</span>
+      <span class="text-slate-500">// 第二個輸入負責「換一種行為」，不是再做一次同樣的事</span>
+      <span class="text-amber-400">［第二個輸出］</span> <span class="text-amber-400">［動作］</span>
+  <span class="text-rose-400">否則</span>
+      <span class="text-rose-400">如果</span> <span class="text-sky-400">讀值一</span> <span class="text-amber-400">［判斷］</span> <span class="text-rose-400">那麼</span> <span class="text-amber-400">［第一個輸出］</span> <span class="text-amber-400">［動作］</span>
 </code></pre>
                         </div>
                     </div>
-                `
+
+                    <div class="mt-6 grid gap-4 md:grid-cols-2">
+                        <div class="bg-sky-50 border-2 border-sky-200 rounded-2xl p-4">
+                            <div class="font-black text-sky-900 mb-1">🎤 成果發表：固定講這三句就好</div>
+                            <ol class="text-sm text-sky-900 leading-relaxed list-decimal pl-5 space-y-1 mt-2">
+                                <li>我們要解決的問題是：＿＿＿＿。</li>
+                                <li>當＿＿＿＿時，系統會＿＿＿＿。</li>
+                                <li>我們遇到＿＿＿＿，最後用＿＿＿＿解決。</li>
+                            </ol>
+                            <p class="text-xs text-sky-800 mt-3 leading-relaxed">
+                                ★ 填完會產生一張<b>成果卡</b>，可以列印（另存 PDF）或下載成圖片。
+                            </p>
+                        </div>
+                        <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4">
+                            <div class="font-black text-amber-900 mb-1">⚠️ 第三句最容易寫壞</div>
+                            <p class="text-sm text-amber-900 leading-relaxed">
+                                「我們沒有遇到問題」<b>不算</b> ——
+                                那一格是整段發表<span class="hl-b">最值錢</span>的地方。<br>
+                                第一次燒錄成功了嗎？數字第一次就抓對了嗎？線有沒有插錯過？
+                                <b>那些都算。</b>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 bg-white border-2 border-slate-300 rounded-2xl p-5">
+                        <div class="font-black text-slate-800 mb-2">🧯 卡住的時候，照這個順序檢查</div>
+                        <ol class="text-sm text-slate-600 leading-relaxed list-decimal pl-5 space-y-1">
+                            <li><b>線</b>：三支腳有沒有接對？（第三節：G→腳1、P→腳3、S→腳2）</li>
+                            <li><b>數字</b>：門檻填在感測器讀得到的範圍裡嗎？（超音波約 2～200 公分）</li>
+                            <li><b>範圍別搞混</b>：<span class="hl">1023</span> 是讀到的、<span class="hl">255</span> 是每盞燈的亮度、<span class="hl">359</span> 是色環一圈。</li>
+                            <li><b>「否則」寫了沒</b>：只寫「如果」的話，動作做了就回不去。</li>
+                            <li>還是不動 → 把「如果…那麼…」<b>唸出來給同學聽</b>，通常唸到一半自己就發現了。</li>
+                        </ol>
+                    </div>
+                `,
+                lab: { unit: 'u5', warm: 'PLANLAB', checks: 'PROJLAB' }
             }
+
         };
 
         function openCourseDetail(unitId) {
@@ -1928,6 +1911,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         mountChecks(rec);
                     }
                 }
+                /* ★ 第五節的設計單要傳給任務卡（前四節沒有這個東西，會是 undefined）。
+                   ⚠️ 不可以讓 projlab 直接去呼叫 PLANLAB —— 相依只能單向。
+                      ⇒ 由**頁面**當中間人：暖身做完寫進紀錄，掛檢核時再讀出來。
+                   ⚠️ 設計單和「完成時間」不一樣：完成時間刻意不覆寫（老師要看第一次），
+                      但設計單**每次都覆寫** —— 學生改主意是正常的。 */
+                let planRec = null;
+                function planLine() {
+                    return (window.PLANLAB && planRec) ? window.PLANLAB.planLine(planRec) : '';
+                }
                 function mountChecks(rec) {
                     if (!chkMod) return;
                     checks.innerHTML = '';
@@ -1936,6 +1928,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     chkMod.mount(checks, {
                         seed: seed,
                         student: sid,          // AI 覆核要記在誰頭上（額度是全班共用的）
+                        plan: planRec,         // 第五節：設計單
+                        line: planLine(),      // 第五節：那一句「如果…那麼…」
+                        work: (rec && rec.work && rec.work.work) || null,
                         /* ★ B 那段「用自己的話說」要存起來 —— 老師看得到全班怎麼說。
                            ⚠️ 舊版的 placeholder 寫著「老師會看」，但根本沒存，
                               那句話是假的。存的是**原文**，不是判定結果：
@@ -1949,6 +1944,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         },
                         onDone: function (info) {
                             if (!(rec && rec.checks)) save.save(UNIT, 'checks', { tries: info && info.tries });
+                            /* 第五節：任務卡與成果發表的內容也要留著 ——
+                               ⚠️ 電腦教室關機會還原，不存的話學生下一節要重打一次。 */
+                            if (info && info.work) save.save(UNIT, 'work', { work: info.work });
                         }
                     });
                 }
@@ -1957,8 +1955,13 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     warmMod.mount(wrap, {
                         mode: 'warmup',          // ultralab 才看這個；maplab 會忽略
                         seed: seed,
+                        plan: planRec,           // 第五節：帶著上次的設計單回來
                         onDone: function (info) {
                             if (!(rec && rec.warm)) save.save(UNIT, 'warm', { tries: info && info.tries });
+                            if (info && info.plan) {
+                                planRec = info.plan;
+                                save.save(UNIT, 'plan', { plan: info.plan });   // ★ 每次都覆寫
+                            }
                             openChecks(rec);
                             /* ⚠️ 這裡**不自動捲到檢核**。暖身過了之後，
                                學生應該往下讀模擬與虛擬碼，最後才做檢核 ——
@@ -1969,6 +1972,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
                 save.load(UNIT).then(function (rec) {
                     rec = rec || {};
+                    planRec = (rec.plan && rec.plan.plan) || null;
                     if (rec.warm) {
                         doneCard(wrap, rec.warm.at, '暖身關卡已通過', () => mountWarm(rec));
                         openChecks(rec);          // ★ 鑰匙已經拿過了，不必再拿一次
