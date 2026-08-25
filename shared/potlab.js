@@ -214,7 +214,9 @@
     return '<svg class="pt-dial" viewBox="0 0 120 128" role="img" aria-label="可變電阻旋鈕">' +
       ticks +
       '<circle cx="60" cy="60" r="34" fill="#e7e5e4" stroke="#78716c" stroke-width="3"/>' +
-      '<g transform="rotate(' + a + ' 60 60)">' +
+      /* ⚠️ 指針獨立成一個 g 並給 id —— 轉動時只改它的 transform，
+         **不可以重畫整個 SVG**（見 paint() 的說明）。 */
+      '<g id="pt-needle" transform="rotate(' + a + ' 60 60)">' +
         '<line x1="60" y1="60" x2="60" y2="32" stroke="#0891b2" stroke-width="7" stroke-linecap="round"/>' +
       '</g>' +
       '<circle cx="60" cy="60" r="9" fill="#a8a29e"/>' +
@@ -320,7 +322,7 @@
     }
     function stageHtml() {
       return '<div id="pt-dial">' + dialHtml(pct) + '</div>' +
-             '<div class="pt-hint">↻ 用手指或滑鼠<b>轉動旋鈕</b>（也可以用方向鍵）</div>' +
+             '<div class="pt-hint">↻ 按住旋鈕<b>轉一圈</b>看看（滾輪、方向鍵也可以）</div>' +
              '<div class="pt-read" id="pt-read">' + readAt(pct) +
                ' <span>／ ' + ADC_MAX + '（' + PIN + ' 讀到的）</span></div>' +
              '<div id="pt-bar">' + barHtml(pct) + '</div>';
@@ -341,9 +343,18 @@
               list.map(function (o) {
                 return '<button class="pt-opt" data-k="' + o.k + '">' + esc(o.t) + '</button>';
               }).join('')
-            : '<div class="pt-msg bad">⚠️ 兩端都轉到才會出題（' +
-              (turned.lo ? '✅' : '⬜') + ' 轉到最左　' +
-              (turned.hi ? '✅' : '⬜') + ' 轉到最右）</div>');
+            : '<div class="pt-msg bad">⚠️ 兩端都轉到才會出題　' +
+              '<span id="pt-goal-lo">' + (turned.lo ? '✅' : '⬜') + ' 轉到最左</span>　' +
+              '<span id="pt-goal-hi">' + (turned.hi ? '✅' : '⬜') + ' 轉到最右</span>' +
+              /* ★ 老師 2026-08-24：「不是很好操作」——
+                 用轉的本來就比拉的難，所以留兩顆「直接轉到底」的按鈕當退路。
+                 ⚠️ 但**主要的操作還是轉** —— 按鈕只是給拖不順的人用的。 */
+              '<div style="margin-top:8px">' +
+                '<button class="pt-go" id="pt-jl" style="padding:7px 14px;font-size:13px">' +
+                  '⟲ 直接轉到最左</button> ' +
+                '<button class="pt-go" id="pt-jr" style="padding:7px 14px;font-size:13px">' +
+                  '直接轉到最右 ⟳</button></div>' +
+              '</div>');
       } else if (node === 2) {
         /* ★ 老師 2026-08-24：「接線能類似連連看? 畫出可變電阻，
            不然只寫 1 2 3 很難對照」⇒ 點一個孔、再點一支腳，就連一條線。 */
@@ -377,20 +388,39 @@
       bind();
     }
 
-    /* ⚠️ 轉的時候**只換那三塊**，不整個重畫 —— 重畫會讓拖曳中斷。 */
+    /* ⚠️⚠️ 老師 2026-08-24：「轉轉看不是很好操作，**滑鼠只能點第一下**」
+       ★ 病根：第一版的 paint() 是
+             el.querySelector('#pt-dial').innerHTML = dialHtml(pct)
+         而 #pt-dial **就是那個 SVG 的外框** —— 一重畫，正在被拖曳的
+         SVG 元素整個被換掉，監聽器和 pointer capture 全部消失，
+         所以只有第一下 pointerdown 有效。
+       ⚠️ 我還在註解裡寫「只換那幾塊，不整個重畫」——
+          但我換的那一塊**包含正在拖的元素**。這種錯不會報錯，
+          只會變成「怎麼拖都沒反應」。
+       ⇒ 轉動時**只改指針的 transform**，SVG 元素從頭到尾不換。 */
     function paint() {
-      var d = el.querySelector('#pt-dial'); if (d) d.innerHTML = dialHtml(pct);
+      var g = el.querySelector('#pt-needle');
+      if (g) g.setAttribute('transform', 'rotate(' + angleOf(pct) + ' 60 60)');
       var b = el.querySelector('#pt-bar');  if (b) b.innerHTML = barHtml(pct);
       var r = el.querySelector('#pt-read');
       if (r) r.innerHTML = readAt(pct) + ' <span>／ ' + ADC_MAX + '（' + PIN + ' 讀到的）</span>';
+      var lo = el.querySelector('#pt-goal-lo'), hi = el.querySelector('#pt-goal-hi');
+      if (lo) lo.textContent = (turned.lo ? '✅' : '⬜') + ' 轉到最左';
+      if (hi) hi.textContent = (turned.hi ? '✅' : '⬜') + ' 轉到最右';
     }
+    /* 手指還按著的時候不可以重畫整頁 —— 一樣會把 SVG 換掉。
+       ⇒ 記下來，放開之後再畫。 */
+    var dragging = false, needView = false;
     function setPct(v) {
       var was = turned.lo && turned.hi;
       pct = Math.max(0, Math.min(100, v));
       if (pct <= 5) turned.lo = true;
       if (pct >= 95) turned.hi = true;
-      if (!was && turned.lo && turned.hi) { view('', ''); return; }
       paint();
+      if (!was && turned.lo && turned.hi) {
+        if (dragging) { needView = true; return; }
+        view('', '');
+      }
     }
     /* 由滑鼠／手指的位置算出旋鈕轉到幾 %。
        ⚠️ 旋鈕只轉 270 度（−135～135），超出範圍要夾住 ——
@@ -407,7 +437,12 @@
       /* ── ① 旋鈕：拖曳轉動 ── */
       var svg = el.querySelector('.pt-dial');
       if (svg) {
-        var dragging = false;
+        dragging = false;
+        var stop = function () {
+          dragging = false;
+          /* 放開之後才重畫（拖曳中重畫會把 SVG 換掉）。 */
+          if (needView) { needView = false; view('', ''); }
+        };
         var move = function (e) {
           if (!dragging) return;
           e.preventDefault();
@@ -419,8 +454,14 @@
           setPct(pctFromPoint(svg, e.clientX, e.clientY));
         });
         svg.addEventListener('pointermove', move);
-        svg.addEventListener('pointerup', function () { dragging = false; });
-        svg.addEventListener('pointercancel', function () { dragging = false; });
+        svg.addEventListener('pointerup', stop);
+        svg.addEventListener('pointercancel', stop);
+        svg.addEventListener('pointerleave', stop);
+        /* ★ 滾輪也能轉 —— 滑鼠使用者用轉的很不順（老師 2026-08-24）。 */
+        svg.addEventListener('wheel', function (e) {
+          e.preventDefault();
+          setPct(pct + (e.deltaY < 0 ? 5 : -5));
+        }, { passive: false });
         /* ★ 鍵盤也要能轉 —— 有些學生用觸控板拖不順。 */
         svg.setAttribute('tabindex', '0');
         svg.addEventListener('keydown', function (e) {
@@ -437,6 +478,10 @@
       el.querySelectorAll('[data-leg]').forEach(function (g) {
         g.addEventListener('click', function () { tapLeg(g.getAttribute('data-leg')); });
       });
+      var jl = el.querySelector('#pt-jl');
+      if (jl) jl.addEventListener('click', function () { setPct(0); });
+      var jr = el.querySelector('#pt-jr');
+      if (jr) jr.addEventListener('click', function () { setPct(100); });
       var run = el.querySelector('#pt-run');
       if (run) run.addEventListener('click', doWire);
       /* ── ①③ 的選項 ── */

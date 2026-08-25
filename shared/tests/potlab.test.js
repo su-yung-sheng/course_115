@@ -124,10 +124,41 @@ section('★★ 三個節點真的走得完');
   ok(!el.querySelector('[data-k]'),
      '★★ 還沒轉過就不出題 —— 光看圖沒有感覺，要自己轉一遍');
 
+  /* ⚠️⚠️ 老師 2026-08-24：「轉轉看不是很好操作，**滑鼠只能點第一下**」
+     ★ 病根：paint() 原本是把 #pt-dial 的 innerHTML 整個換掉，
+       而那裡面**就是正在被拖曳的那個 SVG** —— 一重畫，
+       監聽器和 pointer capture 全沒了，所以只有第一下有效。
+     ⚠️ 這種錯不會報錯，只會變成「怎麼拖都沒反應」。
+     ⇒ 轉動時只改指針的 transform，SVG 元素從頭到尾不換。 */
+  {
+    const svgBefore = el.querySelector('.pt-dial');
+    const t0 = el.querySelector('#pt-needle').getAttribute('transform');
+    api.setPct(30);
+    ok(el.querySelector('.pt-dial') === svgBefore,
+       '★★ 轉動之後 SVG **還是同一個元素**（不然監聽器會跟著消失，拖第二下就沒反應）');
+    ok(el.querySelector('#pt-needle').getAttribute('transform') !== t0,
+       '★ 而指針的角度真的變了（只改 transform，不重畫）');
+    api.setPct(70);
+    ok(el.querySelector('.pt-dial') === svgBefore, '   再轉一次也一樣');
+  }
+
   api.setPct(0);
   ok(!el.querySelector('[data-k]'), '   只轉到一端 → 還是不出題');
+  ok(/✅ 轉到最左/.test(el.textContent), '★ 而且達成的那一端要當場打勾（不必等重畫）');
   api.setPct(100);
   ok(!!el.querySelector('[data-k]'), '★ 兩端都轉到 → 才出題');
+
+  /* ★ 用轉的本來就比拉的難 —— 留兩顆「直接轉到底」的退路。 */
+  {
+    const el3 = W.document.createElement('div');
+    W.document.body.appendChild(el3);
+    const a3 = P.mount(el3, { seed: 'jump' });
+    ok(!!el3.querySelector('#pt-jl') && !!el3.querySelector('#pt-jr'),
+       '★ 有「直接轉到最左／最右」兩顆按鈕（拖不順時的退路）');
+    el3.querySelector('#pt-jl').dispatchEvent(new W.Event('click', { bubbles: true }));
+    el3.querySelector('#pt-jr').dispatchEvent(new W.Event('click', { bubbles: true }));
+    ok(!!el3.querySelector('[data-k]'), '   按那兩顆也能把兩端達成、出題');
+  }
   /* ⚠️⚠️ 旋鈕只轉 270 度（−135～135）。從最左再往左轉，
      角度會繞到 −170 度那一帶 —— **不夾住的話百分比會跳到另一端**，
      手指還在往左，旋鈕卻彈到最右。
@@ -206,8 +237,15 @@ section('★ 骨架沒有走鐘（和前兩節同一套）');
   ok(!/POTLAB/.test(read('shared/labkit.js')), '★★ labkit 不知道 potlab 的存在（相依單向）');
   ok(!/stars/.test(src), '★★ 不碰 stars —— 5016B 不計星');
   /* 拖曳只換那一塊，不整個重畫（重畫會讓旋鈕失焦）。 */
-  ok(/function paint\(\)[\s\S]{0,300}#pt-dial[\s\S]{0,200}#pt-bar/.test(src),
-     '★★ 轉旋鈕時只更新那幾塊（整個重畫會讓拖曳中斷）');
+  /* ★★ paint() **不可以**碰 #pt-dial 的 innerHTML —— 那就是正在被拖的 SVG。 */
+  const paintFn = src.slice(src.indexOf('function paint()'), src.indexOf('function setPct'));
+  ok(/#pt-needle[\s\S]{0,120}setAttribute\('transform'/.test(paintFn),
+     '★★ 轉動時只改指針的 transform');
+  ok(!/#pt-dial[\s\S]{0,40}innerHTML/.test(paintFn),
+     '★★ paint() 不重畫 #pt-dial（那樣會把正在拖的 SVG 換掉）');
+  ok(/if \(dragging\) \{ needView = true; return; \}/.test(src),
+     '★★ 手指還按著時不重畫整頁，放開之後才畫');
+  ok(/addEventListener\('wheel'/.test(src), '★ 滾輪也轉得動（滑鼠使用者用轉的很不順）');
   /* ★ 拖不順的人要有別的路 —— 觸控板上轉圈很不好操作。
      ⚠️ 用「原始碼裡有沒有 ArrowLeft」判斷不夠：拿掉一個還有另一個，
         照樣綠（突變測試抓到）。⇒ 真的按下去看它動不動。 */
