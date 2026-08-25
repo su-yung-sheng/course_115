@@ -191,5 +191,31 @@ section('★★ 入口頁（hub）的卡片也要跟上');
   ok(/專題/.test(card), '★ 而且講出最後要做專題');
 }
 
+section('★★ 註解不可以和實際狀況相反');
+{
+  /* ⚠️⚠️ 2026-08-25 的總體檢抓到：五處註解還寫著
+     「三個檢核還沒做／checks 先留 null」，但四節的檢核早就做好了。
+     ★ 過期的註解比沒有註解更糟 ——
+       下一個人（包括我自己）會照著它做判斷。
+     ⇒ 只要 checks 不是 null，就不可以留那種話。 */
+  const raw = fs.readFileSync(path.join(root, PAGE), 'utf8');
+  ok(!/checks: null/.test(raw), '★ 五節的 checks 都接上了');
+  ok(!/檢核還沒做|checks 先留 null/.test(raw),
+     '★★ 沒有殘留「檢核還沒做」那種和實際相反的註解');
+  /* ★ 五節都要有完整的內容欄位。 */
+  const ids = [...raw.matchAll(/\n {12}(\d): \{/g)].map(m => Number(m[1]));
+  ok(ids.join() === '1,2,3,4,5', '★ 五節都在（' + ids.join('、') + '）');
+  [1, 2, 3, 4, 5].forEach(n => {
+    const a = raw.indexOf('\n            ' + n + ': {');
+    const b = n === 5 ? raw.indexOf('function openCourseDetail')
+                      : raw.indexOf('\n            ' + (n + 1) + ': {');
+    const blk = raw.slice(a, b);
+    const miss = ['objectives:', 'materials:', 'initPlayground', 'demoHTML', 'lab:']
+      .filter(k => blk.indexOf(k) < 0);
+    ok(miss.length === 0, '★ 第' + n + '節的欄位齊全' +
+       (miss.length ? '（缺 ' + miss.join('、') + '）' : ''));
+  });
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

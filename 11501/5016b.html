@@ -700,8 +700,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         放進來的話，學生會拿一個「不必算時間」的東西
                         來對照這節課「一定要算時間」的核心，剛好互相抵消。 */
                 /* 🎯 暖身與檢核。★ 兩個**分開指定** ——
-                   第二節換了暖身（超音波 → 換算）但檢核還沒做，
-                   綁在一起的話那一節就什麼都掛不上。 */
+                   當初是因為第二節先換了暖身、檢核卻還沒動；
+                   現在五節都齊了，但分開指定仍然是對的：
+                   第五節的「暖身」是設計單、「檢核」那一槽放的是成果發表，
+                   兩者本來就不是同一種東西。 */
                 lab: { unit: 'u1', warm: 'ULTRALAB', checks: 'DOORLAB',
                        warmTitle: '🔥 暖身關卡：超音波怎麼量距離' },
                 apps: [
@@ -909,7 +911,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 /* 🎯 這一節的暖身換成「換算」（老師 2026-08-24：「第二節先不要超音波，
                    重點改放在燈條上」）—— 超音波的原理第一節教過了，
                    距離在這裡只是輸入來源。
-                   ⚠️ 三個檢核還沒做，所以 checks 先留 null。 */
+                   ★ 三個檢核在 shared/lightlab.js（A 換算／B 只留一顆／C 自己調）。 */
                 lab: { unit: 'u2', warm: 'MAPLAB', checks: 'LIGHTLAB',
                        warmTitle: '🔥 暖身關卡：距離怎麼換成亮度' },
                 apps: [
@@ -1142,7 +1144,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                    （老師 2026-08-24：「第三關的可變電阻因為開發板沒有，
                    這裡增加了一個接線動作，連接到開發板上的 A7」）。
                    ⚠️ 這是五節課裡**第一次要學生自己接線** —— 前兩節都在模組上。
-                   ⚠️ 三個檢核還沒做，checks 先留 null。 */
+                   ★ 三個檢核在 shared/fanlab.js（A 讀取轉換／B 為什麼要負的／C 自己調範圍）。 */
                 lab: { unit: 'u3', warm: 'POTLAB', checks: 'FANLAB',
                        warmTitle: '🔥 暖身關卡：可變電阻怎麼接、怎麼讀' },
                 apps: [
@@ -1363,7 +1365,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                       （這個註解是寫給老師看的，不會出現在畫面上。）
                    ★ 老師 2026-08-24：「重點強調 R G B 三原色混色原理」、
                      「公式有點難，不解釋」⇒ 暖身只練混色，那三行 sin 不碰。
-                   ⚠️ 三個檢核還沒做。 */
+                   ★ 三個檢核在 shared/mixlab.js（A 混出什麼色／B 為什麼是 359／C 自己調範圍）。 */
                 lab: { unit: 'u4', warm: 'RGBLAB', checks: 'MIXLAB',
                        warmTitle: '🔥 暖身關卡：紅綠藍三盞燈怎麼混色' },
                 apps: [
@@ -1871,8 +1873,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             const warmBox = document.getElementById('detail-warm');
             const labBox  = document.getElementById('detail-lab');
             /* ★ 資料驅動：哪一節掛哪一支，寫在 courseData 的 lab 裡。
-               ⚠️ 暖身與檢核**分開判斷** —— 第二節換了暖身但檢核還沒做，
-                  綁在一起的話那一節會什麼都掛不上。 */
+               ⚠️ 暖身與檢核**分開判斷** —— 兩者是不同的東西，
+                  綁在一起的話，只做好一邊的那一節會什麼都掛不上。
+                  ★ 第五節就是活例子：它的「檢核」那一槽放的是成果發表。 */
             const labCfg  = data.lab || null;
             const warmMod = labCfg && labCfg.warm   ? window[labCfg.warm]   : null;
             const chkMod  = labCfg && labCfg.checks ? window[labCfg.checks] : null;
