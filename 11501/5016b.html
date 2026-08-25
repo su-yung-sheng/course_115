@@ -138,6 +138,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
        ⚠️ 一定要排在 doorlab 之前 —— doorlab 開場就會去拿 LABKIT。 -->
   <script src="../shared/labkit.js"></script>
   <script src="../shared/maplab.js"></script>
+  <script src="../shared/potlab.js"></script>
   <script src="../shared/doorlab.js"></script>
   <script src="../shared/lightlab.js"></script>
 
@@ -1114,6 +1115,23 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 colorBg: "bg-amber-500",
                 icon: "fan",
                 desc: "自動控制很方便，但我們也需要手動微調的能力！本單元引入「可變電阻 (旋鈕)」，讀取其類比電壓值，並透過 PWM 脈衝寬度調變技術，精準控制直流馬達的轉速（如同家中的無段風扇）。",
+                /* 🎯 第三節的暖身：可變電阻原理 ＋ **接線練習**
+                   （老師 2026-08-24：「第三關的可變電阻因為開發板沒有，
+                   這裡增加了一個接線動作，連接到開發板上的 A7」）。
+                   ⚠️ 這是五節課裡**第一次要學生自己接線** —— 前兩節都在模組上。
+                   ⚠️ 三個檢核還沒做，checks 先留 null。 */
+                lab: { unit: 'u3', warm: 'POTLAB', checks: null },
+                apps: [
+                    { icon: "🌀", name: "無段風扇",
+                      how: "旋鈕轉多少，風就多大 —— 不是「一段二段三段」，而是中間任何一個位置都可以。" },
+                    { icon: "🔉", name: "音響的音量旋鈕",
+                      how: "轉一點點就大聲一點點，沒有跳格 —— 裡面就是一顆可變電阻。" }
+                ],
+                appsNote: '前兩節的輸入是<span class="hl-b">感測器自己量的</span>（距離）；' +
+                          '這一節換成<span class="hl">人自己轉的</span>。' +
+                          '⚠️ 但後面完全一樣：讀到一個數字 → <b>對應</b> → 拿去控制東西。' +
+                          '★ 可變電阻就是一把 <span class="hl-b">0～1023 的尺</span>，' +
+                          '這一節要把它換算成馬達的 <span class="hl-b">0～255</span>。',
                 objectives: [
                     "了解可變電阻的分壓原理與類比輸入腳位 (A0~A5) 的 0~1023 解析度",
                     "認識 PWM (Pulse Width Modulation) 數位模擬類比輸出的技術 (0~255)",
@@ -1121,7 +1139,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 ],
                 materials: [
                     "NKNU 5016B 教具模組",
-                    "旋鈕式可變電阻（腳位對照：類比 A0）",
+                    "旋鈕式可變電阻（10K）＋ 麵包板、杜邦線三條",
+                    "⚠️ 這一顆<b>不在模組上</b>，要自己接：開發板 <b>G→腳1</b>、<b>P→腳3</b>、<b>S→腳2</b>（訊號進 <b>A7</b>）",
                     "直流減速馬達（腳位對照：馬達 腳位 2、3）"
                 ],
                 initPlayground: function(container) {
