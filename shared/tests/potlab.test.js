@@ -114,38 +114,80 @@ section('★★ 三個節點真的走得完');
   const el = W.document.getElementById('x');
   let done = null;
   const api = P.mount(el, { seed: '1234', onDone: i => { done = i; } });
-  ok(api.node() === 1 && !!el.querySelector('#pt-knob'), '① 進場先看到旋鈕');
+
+  /* ── ① 旋鈕（老師 2026-08-24：「真實可變電阻是旋轉式，
+     這裡使用左右拉比較無感」）───────────────────── */
+  ok(api.node() === 1 && !!el.querySelector('.pt-dial'), '① 進場先看到**旋鈕**');
+  ok(!el.querySelector('input[type="range"]'),
+     '★★ 不再用左右拉的拉桿 —— 和實物的操作感差太多');
+  ok(/rotate\(/.test(el.innerHTML), '★ 指針是用旋轉畫的（真的會轉）');
   ok(!el.querySelector('[data-k]'),
      '★★ 還沒轉過就不出題 —— 光看圖沒有感覺，要自己轉一遍');
 
-  const k = el.querySelector('#pt-knob');
-  k.value = 2;  k.dispatchEvent(new W.Event('input', { bubbles: true }));
+  api.setPct(0);
   ok(!el.querySelector('[data-k]'), '   只轉到一端 → 還是不出題');
-  k.value = 98; k.dispatchEvent(new W.Event('input', { bubbles: true }));
+  api.setPct(100);
   ok(!!el.querySelector('[data-k]'), '★ 兩端都轉到 → 才出題');
+  /* ⚠️⚠️ 旋鈕只轉 270 度（−135～135）。從最左再往左轉，
+     角度會繞到 −170 度那一帶 —— **不夾住的話百分比會跳到另一端**，
+     手指還在往左，旋鈕卻彈到最右。
+     ★ jsdom 量不到滑鼠座標，所以測的是那個純函式。 */
+  ok(P.pctFromAngle(-135) === 0 && P.pctFromAngle(135) === 100, '★ 兩端剛好是 0／100');
+  ok(P.pctFromAngle(0) === 50, '   正上方是一半');
+  ok(P.pctFromAngle(-170) === 0,
+     '★★ 轉過最左（−170 度）→ 夾在 0，**不會跳到另一端**');
+  ok(P.pctFromAngle(170) === 100, '★★ 另一端也一樣');
+  api.setPct(-30); ok(api.pct() === 0, '   setPct 自己也夾一次（雙保險）');
+  api.setPct(300); ok(api.pct() === 100, '   同上');
 
   el.querySelector('[data-k="' + api.q1().opts.filter(o => o.good)[0].k + '"]')
     .dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(api.node() === 2, '★ ① 答對 → 進到接線');
-  ok(el.querySelectorAll('.pt-pick').length === 3, '   三個孔各一個下拉');
 
-  /* 先故意接錯：照順序 G1 P2 S3 */
-  const set = (h, v) => {
-    const s = el.querySelector('.pt-pick[data-hole="' + h + '"]');
-    s.value = String(v); s.dispatchEvent(new W.Event('change', { bubbles: true }));
-  };
-  set('G', 1); set('P', 2); set('S', 3);
+  /* ── ② 連連看（老師：「接線能類似連連看? 畫出可變電阻，
+     不然只寫 1 2 3 很難對照」）──────────────────── */
+  ok(el.querySelectorAll('[data-hole]').length === 3 &&
+     el.querySelectorAll('[data-leg]').length === 3,
+     '★★ 三個孔、三支腳都是可以點的');
+  ok(!el.querySelector('select'), '★★ 不再用下拉選單 —— 改成點兩下連一條線');
+  ok(/10K/.test(el.innerHTML), '★★ 真的把**可變電阻畫出來**（不是只寫 1 2 3）');
+
+  api.tapHole('G'); api.tapLeg('1');
+  ok(el.querySelectorAll('.pt-wireline').length === 1, '★ 點孔再點腳 → 連一條線');
+  /* ⚠️ 一支腳只能接一個孔 —— 不然畫面上會出現「一支腳兩條線」，實物做不到。 */
+  api.tapHole('P'); api.tapLeg('1');
+  ok(api.pick().G === '' && api.pick().P === '1',
+     '★★ 同一支腳接第二條時，前一條自動拆掉（實物上一支腳只能接一條）');
+  /* ★★ 點一個**已接的孔** → 拆掉，而且**選起來等著接新的**。
+     ⚠️ 第一版是「拆掉但不選起來」，想改接的人點了孔、再點腳完全沒反應，
+        得回頭再點一次孔 —— 「我要改這一條」本來就該一步到位。 */
+  api.tapHole('P');
+  ok(api.pick().P === '', '★ 點已接的孔 → 先拆掉');
+  api.tapLeg('3');
+  ok(api.pick().P === '3', '★★ 而且拆完直接接得上新的那一支（不必再點一次孔）');
+
+  api.tapHole('G'); api.tapLeg('1');
+  api.tapHole('P'); api.tapLeg('2');    // 故意接錯：照順序
+  api.tapHole('S'); api.tapLeg('3');
   el.querySelector('#pt-run').dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(api.node() === 2, '★★ 照順序接（G1 P2 S3）→ 不過');
   ok(/發熱/.test(el.textContent), '   而且畫面上要講出「會發熱」');
-  /* ⚠️ 接錯之後選的東西要留著 —— 重畫就清空的話，他得三個重選一次。 */
-  ok(el.querySelector('.pt-pick[data-hole="G"]').value === '1',
-     '★★ 接錯重畫之後，剛才選的還留著（不然三個都要重選）');
+  ok(el.querySelectorAll('.pt-wireline').length === 3,
+     '★★ 接錯之後那三條線還在（不然要整個重連）');
 
-  set('P', 3); set('S', 2);
+  api.tapHole('P'); api.tapLeg('3');
+  api.tapHole('S'); api.tapLeg('2');
   el.querySelector('#pt-run').dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(api.node() === 3, '★ 接對 → 進到最後一題');
-  ok(el.querySelectorAll('[data-w]').length === 3, '   三個選項');
+  /* ★★ 接對之後要點出「P 和 S 是交叉的」—— 那是和「照順序接」最好認的差別。 */
+  ok(/交叉/.test(el.textContent),
+     '★★ 接對後要點出「P 和 S 的線是交叉的」（照順序接是三條直的）');
+
+  /* ── ③ 大圖（老師：「第三步驟的圖示可以放大」）──── */
+  ok(el.querySelectorAll('.pt-card').length === 3, '★ 三個選項改成三張卡');
+  ok(el.querySelectorAll('.pt-card svg').length === 3,
+     '★★ 每一張都配一張**圖**（不是只有文字）');
+  ok(/藍色＝訊號/.test(el.textContent), '   而且說明顏色代表什麼');
 
   el.querySelector('[data-w="wiper"]').dispatchEvent(new W.Event('click', { bubbles: true }));
   ok(!!done, '★ 三個節點都過 → 回報 onDone');
@@ -164,8 +206,26 @@ section('★ 骨架沒有走鐘（和前兩節同一套）');
   ok(!/POTLAB/.test(read('shared/labkit.js')), '★★ labkit 不知道 potlab 的存在（相依單向）');
   ok(!/stars/.test(src), '★★ 不碰 stars —— 5016B 不計星');
   /* 拖曳只換那一塊，不整個重畫（重畫會讓旋鈕失焦）。 */
-  ok(/var b = el\.querySelector\('#pt-bar'\);[\s\S]{0,80}b\.innerHTML/.test(src),
-     '★★ 轉旋鈕時只更新那一塊（整個重畫會讓旋鈕失焦）');
+  ok(/function paint\(\)[\s\S]{0,300}#pt-dial[\s\S]{0,200}#pt-bar/.test(src),
+     '★★ 轉旋鈕時只更新那幾塊（整個重畫會讓拖曳中斷）');
+  /* ★ 拖不順的人要有別的路 —— 觸控板上轉圈很不好操作。
+     ⚠️ 用「原始碼裡有沒有 ArrowLeft」判斷不夠：拿掉一個還有另一個，
+        照樣綠（突變測試抓到）。⇒ 真的按下去看它動不動。 */
+  {
+    const el2 = W.document.createElement('div');
+    W.document.body.appendChild(el2);
+    const a2 = P.mount(el2, { seed: 'kb' });
+    const dial = el2.querySelector('.pt-dial');
+    const before = a2.pct();
+    dial.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    ok(a2.pct() > before, '★★ 按 → 真的會往右轉（' + before + ' → ' + a2.pct() + '）');
+    dial.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    dial.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    ok(a2.pct() < before, '★★ 按 ← 真的會往左轉');
+    dial.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    ok(a2.pct() === 0, '   Home 直接轉到底');
+  }
+  ok(/setPointerCapture/.test(src), '   手指滑出旋鈕範圍也不會斷（pointer capture）');
 }
 
 section('★ 第三節接上頁面了');
