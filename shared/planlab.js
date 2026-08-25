@@ -9,13 +9,14 @@
       逼他在動手之前**把要做什麼講清楚**。
       ★ 專題課最常見的卡關不是不會寫程式，是「還沒想好要做什麼」。
 
-   三個節點（做完才開任務卡）：
+   三個節點：
      ① 選一個情境（可以自訂）
      ② 選 1 個輸入 ＋ 1 個輸出
      ③ 把「如果…那麼…」補完整（觸發條件 ＋ 輸出動作）
 
-   ⚠️ 元件清單只放**前四節真的用過**的那幾樣。
-      憑空多寫一個教具上沒有的，學生會找半天 —— 所以另外留「其他」讓他自己填。
+   ⚠️⚠️ 元件清單只放**前四節真的用過**的那四樣（老師 2026-08-25 更正：
+      超音波、可變電阻、RGB 燈條、直流馬達）。憑空多寫一個教具上沒有的，
+      學生會找半天，而且那種錯只有上機才會發現。
    ===================================================================== */
 (function (global) {
   'use strict';
@@ -26,33 +27,36 @@
   }
 
   /* ── ① 情境清單 ────────────────────────────────────── */
+  /* ⚠️ 每一個情境都要**只用那四樣做得出來**（超音波、旋鈕、燈條、馬達）。
+     ★ 原本有「衣櫃感應燈：門一打開就亮」—— 那需要門磁或按鈕，教具上沒有。
+       說明改成用距離偵測，不然學生照著做會卡在找不到零件。 */
   var SCENES = [
     { key: 'hall',  t: '玄關迎賓燈',   d: '有人走近就亮，離開一會兒自己熄掉' },
     { key: 'desk',  t: '書桌護眼燈',   d: '坐太近就變色提醒，坐好了才恢復' },
-    { key: 'closet', t: '衣櫃感應燈',  d: '門一打開裡面就亮，關上就暗' },
-    { key: 'fan',   t: '房間自動電扇', d: '轉鈕調風速，或依情況自己加減' },
-    { key: 'pet',   t: '寵物餵食提醒', d: '時間到或碗被移動就提醒你' },
-    { key: 'fridge', t: '冰箱門沒關警示', d: '門開太久就閃燈警告' },
-    { key: 'stair', t: '樓梯夜燈',     d: '晚上有人經過才亮，一階一階跟著走' },
-    { key: 'focus', t: '專注計時燈',   d: '讀書時燈慢慢變色，時間到就提醒' }
+    { key: 'closet', t: '衣櫃感應燈',  d: '手伸進去（距離變近）就亮，拿開就暗' },
+    { key: 'fan',   t: '房間自動電扇', d: '旋鈕調風速；或人靠近才吹' },
+    { key: 'park',  t: '停車距離指示', d: '越靠近亮的顆數越多，太近就整條變紅' },
+    { key: 'water', t: '洗手感應計時', d: '手伸過來就亮，燈跑完一圈代表洗夠久了' },
+    { key: 'stair', t: '樓梯夜燈',     d: '有人經過才亮，一顆一顆跟著走' },
+    { key: 'focus', t: '專注計時燈',   d: '旋鈕設定時間，燈條慢慢跑完就提醒' }
   ];
 
   /* ── ② 輸入／輸出 ───────────────────────────────────
      ★ 只列前四節用過的。⚠️ 每一個都標出「它給你什麼數字」——
         專題課最容易卡在「我不知道這個能拿來幹嘛」。 */
+  /* ⚠️⚠️ 老師 2026-08-25 更正：「只有四個喔」——
+     前四節用過的就是**超音波、可變電阻、RGB 燈條、直流馬達**。
+     ★ 第一版多列了「按鈕」和「單顆 LED」—— 教具上沒有，
+       學生照著設計單去找零件會找半天，而且那種錯只有上機才會發現。 */
   var INPUTS = [
-    { key: 'btn', t: '按鈕（開關）', gives: '按下／沒按（兩種狀態）',
-      from: '第一節', cond: 'press' },
     { key: 'us',  t: '超音波距離感測器', gives: '距離幾公分（數字）',
-      from: '第一、二節', cond: 'num', unit: '公分', hint: '越近數字越小',
+      from: '第一、二節', unit: '公分', hint: '越近數字越小',
       def: 15, lo: 2, hi: 200 },
     { key: 'pot', t: '可變電阻（旋鈕）', gives: '轉到幾 %（數字）',
-      from: '第三、四節', cond: 'num', unit: '%', hint: '最左 0、最右 100',
+      from: '第三、四節', unit: '%', hint: '最左 0、最右 100',
       def: 50, lo: 0, hi: 100 }
   ];
   var OUTPUTS = [
-    { key: 'led',   t: '單顆 LED 燈', from: '第一節',
-      acts: ['亮起來', '熄掉', '閃爍'] },
     { key: 'strip', t: 'RGB 全彩燈條', from: '第二、四節',
       acts: ['整條亮起指定顏色', '只亮其中一顆（位置會跑）', '顏色跟著變'] },
     { key: 'moto',  t: '直流馬達（風扇）', from: '第三節',
@@ -69,10 +73,8 @@
     if (!p || !p.input || !p.output) return '';
     var i = byKey(INPUTS, p.input), o = byKey(OUTPUTS, p.output);
     if (!i || !o) return '';
-    var when = (i.cond === 'num')
-      ? i.t.replace(/（.*/, '') + '讀到的數字 ' +
-        (p.dir === 'gt' ? '大於' : '小於') + ' ' + p.value + ' ' + i.unit
-      : (p.press === 'hold' ? '按鈕被「一直按著」' : '按鈕被「按一下」');
+    var when = i.t.replace(/（.*/, '') + '讀到的數字 ' +
+      (p.dir === 'gt' ? '大於' : '小於') + ' ' + p.value + ' ' + i.unit;
     return '如果　' + when + '　那麼　' + o.t + '就' + p.act + '。';
   }
   /* 設計單填完了沒。⚠️ 少一格就不算 —— 半張設計單等於沒有。 */
@@ -80,24 +82,21 @@
     if (!p || !p.scene || !p.input || !p.output || !p.act) return false;
     var i = byKey(INPUTS, p.input);
     if (!i) return false;
-    if (i.cond === 'num') return p.value !== '' && isFinite(Number(p.value));
-    return p.press === 'tap' || p.press === 'hold';
+    return p.value !== '' && isFinite(Number(p.value));
   }
   function sayPlan(p) {
     if (!p.scene) return '先選一個情境（或自己寫一個）。';
     if (!p.input) return '選一個**輸入** —— 系統要靠什麼知道「該動作了」？';
     if (!p.output) return '選一個**輸出** —— 你希望它做什麼給你看？';
     var i = byKey(INPUTS, p.input);
-    if (i && i.cond === 'num' && (p.value === '' || !isFinite(Number(p.value))))
+    if (i && (p.value === '' || !isFinite(Number(p.value))))
       return '⚠️ 那個門檻要填一個**數字** —— 到多少才算「該動作了」？';
-    if (i && i.cond === 'num') {
+    if (i) {
       var n = Number(p.value);
       if (n < i.lo || n > i.hi)
         return '⚠️ ' + i.t + '只讀得到 ' + i.lo + '～' + i.hi + ' ' + i.unit +
                '，填在範圍外的話**永遠不會觸發**。';
     }
-    if (i && i.cond === 'press' && !p.press)
-      return '選一個：**按一下**就動作，還是**一直按著**才動作？';
     if (!p.act) return '選一個動作 —— 輸出要「怎麼動」？';
     return '';
   }
@@ -141,7 +140,7 @@
     var node = 1, tries = 0;
     /* ★ 帶著上次的設計單回來（改主意很正常，不必從頭選）。 */
     var p = Object.assign({ scene: '', input: '', output: '', act: '',
-                            value: '', dir: 'lt', press: '' }, opts.plan || {});
+                            value: '', dir: 'lt' }, opts.plan || {});
 
     function dots() {
       return '<div class="pl-dots">' + [1, 2, 3].map(function (i) {
@@ -205,19 +204,13 @@
           preview() +
           '<div class="pl-row">🧩 <b>第三步：把「如果…那麼…」補完整</b></div>' +
           '<div class="pl-row">如果　' + esc(i.t.replace(/（.*/, '')) +
-            (i.cond === 'num'
-              ? '　<select class="pl-in" id="pl-dir" style="width:88px">' +
-                  '<option value="lt"' + (p.dir === 'lt' ? ' selected' : '') + '>小於</option>' +
-                  '<option value="gt"' + (p.dir === 'gt' ? ' selected' : '') + '>大於</option>' +
-                '</select>　<input class="pl-in" id="pl-val" placeholder="?" value="' +
-                  esc(String(p.value)) + '">　' + esc(i.unit) +
-                '<span style="font-size:13px;color:#64748b;font-weight:700">' +
-                  '（' + esc(i.hint) + '，' + i.lo + '～' + i.hi + '）</span>'
-              : '　<select class="pl-in" id="pl-press" style="width:130px">' +
-                  '<option value="">選一個…</option>' +
-                  '<option value="tap"' + (p.press === 'tap' ? ' selected' : '') + '>被按一下</option>' +
-                  '<option value="hold"' + (p.press === 'hold' ? ' selected' : '') + '>被一直按著</option>' +
-                '</select>') +
+            '　<select class="pl-in" id="pl-dir" style="width:88px">' +
+              '<option value="lt"' + (p.dir === 'lt' ? ' selected' : '') + '>小於</option>' +
+              '<option value="gt"' + (p.dir === 'gt' ? ' selected' : '') + '>大於</option>' +
+            '</select>　<input class="pl-in" id="pl-val" placeholder="?" value="' +
+              esc(String(p.value)) + '">　' + esc(i.unit) +
+            '<span style="font-size:13px;color:#64748b;font-weight:700">' +
+              '（' + esc(i.hint) + '，' + i.lo + '～' + i.hi + '）</span>' +
           '</div>' +
           '<div class="pl-row">那麼　' + esc(o.t) + '就' +
             '　<select class="pl-in" id="pl-act" style="width:auto;min-width:170px">' +
@@ -239,7 +232,6 @@
     function grab() {
       var v = el.querySelector('#pl-val'); if (v) p.value = v.value.trim();
       var d = el.querySelector('#pl-dir'); if (d) p.dir = d.value;
-      var pr = el.querySelector('#pl-press'); if (pr) p.press = pr.value;
       var a = el.querySelector('#pl-act'); if (a) p.act = a.value;
       var own = el.querySelector('#pl-own');
       if (own && own.value.trim()) p.scene = own.value.trim();
@@ -255,10 +247,10 @@
         b.addEventListener('click', function () {
           grab();
           /* 換了輸入 → 觸發條件要重選（數字型和按鈕型問的不是同一件事）。 */
-          if (p.input !== b.getAttribute('data-in')) { p.value = ''; p.press = ''; }
+          if (p.input !== b.getAttribute('data-in')) p.value = '';
           p.input = b.getAttribute('data-in');
           var i = byKey(INPUTS, p.input);
-          if (i && i.cond === 'num' && p.value === '') p.value = String(i.def);
+          if (i && p.value === '') p.value = String(i.def);
           view('', '');
         });
       });
@@ -297,10 +289,8 @@
       grab();
       if (!planReady(p)) return view(sayPlan(p), 'bad');
       var i = byKey(INPUTS, p.input);
-      if (i.cond === 'num') {
-        var n = Number(p.value);
-        if (n < i.lo || n > i.hi) return view(sayPlan(p), 'bad');
-      }
+      var n = Number(p.value);
+      if (n < i.lo || n > i.hi) return view(sayPlan(p), 'bad');
       el.innerHTML = '<div class="dl-wrap">' + dots() +
         '<div class="pl-line">🎯 <em>' + esc(p.scene) + '</em><br>' + esc(planLine(p)) + '</div>' +
         '<div class="dl-msg good">' + md(

@@ -546,9 +546,9 @@ section('★ 第二節真的接上頁面了');
   /* ★★ 暖身與檢核要**分開指定**。
      ⚠️ 綁在一起的話，第二節（換了暖身、檢核還沒做）會什麼都掛不上 ——
         而畫面上只是「那一塊不見了」，不會報錯。 */
-  ok(/lab: \{ unit: 'u1', warm: 'ULTRALAB', checks: 'DOORLAB' \}/.test(page),
+  ok(new RegExp("lab: \\{ unit: 'u1', warm: 'ULTRALAB', checks: 'DOORLAB'").test(page),
      '★ 第一節：暖身 ULTRALAB ＋ 檢核 DOORLAB');
-  ok(/lab: \{ unit: 'u2', warm: 'MAPLAB', checks: 'LIGHTLAB' \}/.test(page),
+  ok(new RegExp("lab: \\{ unit: 'u2', warm: 'MAPLAB', checks: 'LIGHTLAB'").test(page),
      '★★ 第二節：暖身換成 MAPLAB、檢核是 LIGHTLAB');
   ok(!/data\.lab === 'door1'/.test(page),
      '★ 掛載邏輯不再寫死 door1（資料驅動，之後每一節只要填 lab）');

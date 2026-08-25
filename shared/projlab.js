@@ -1,25 +1,29 @@
 /* =====================================================================
-   第五節「自己的專案」— 分層任務卡 ＋ 成果發表
+   第五節「自己的專案」— 兩種模式展示 ＋ 成果發表
    ---------------------------------------------------------------------
    ★ 老師 2026-08-25：
-     ①基礎關｜先讓它動　選 1 個輸入＋1 個輸出，完成一個「如果…那麼…」，
-       並能現場操作驗證
-     ②挑戰關｜讓它更聰明　調整判斷數值或條件，再加入第二個輸入、第二個輸出
-     ③創意關｜讓它解決問題　加入自訂功能，完成一段測試情境，並說明修改的原因
-     成果發表固定講三句。
-   ★ 老師 2026-08-25（追加）：「成果發表要變成一份文件以供截圖下載，
-     還是能下載成 PDF 更方便」
+     「第五課不用『動手檢核』」
+     「任務卡改成之前提到的互動介面，當成複習」
+     「設計成系統的兩種模式展示，學生的作品可以有兩種選擇」
+     「成果發表要變成一份文件以供截圖下載，還是能下載成 PDF 更方便」
 
-   ⚠️⚠️ 這一節**電腦看不到硬體**，所以判定的方式和前四節完全不同：
-      老師選的是「**自我勾選＋必須寫出證據**」。
-      ⇒ 勾選很容易，但證據句擋得住空白、太短、和**照抄設計單**。
-        ★ 抄設計單是最常見的敷衍：那句話證明的是「我會複製」，
-          不是「它真的動了」。所以一定要擋。
+   ⚠️⚠️ 所以這一支**不判定學生做出來了沒**（電腦看不到硬體），
+      也不是關卡。它做兩件事：
+        ① 兩種模式的互動展示 —— 把前四節的東西一次複習過
+             自動：超音波接管（近了就亮、就轉）
+             手動：旋鈕接管（自己調顏色、調轉速）
+           ★ 學生的作品**挑一種做就好**，不必兩種都做，
+             也不必做「切換」—— 教具上沒有按鈕。
+        ② 成果發表：三句話 → 一張帶得走的成果卡
 
-   ⚠️ PDF 不用 jsPDF 那一類的函式庫 —— 它們預設不含中文字型，
+   ⚠️ 成果卡不用 jsPDF 那一類的函式庫 —— 它們預設不含中文字型，
       印出來會是一整排豆腐字。改用兩條零相依的路：
         ① 瀏覽器原生列印（另存 PDF）—— 中文一定正確
         ② canvas 自己畫成 PNG —— 版面我自己控，適合截圖／貼到作業
+
+   ⚠️ 三張分層任務卡（基礎／挑戰／創意）**不在這裡** ——
+      那是課堂進行的節奏，寫在教材區（頁面的 demoHTML）。
+      硬做成關卡只會變成「填表格才准往下」，那不是專題課該有的樣子。
    ===================================================================== */
 (function (global) {
   'use strict';
@@ -30,80 +34,47 @@
   }
 
   var MIN = 4;                   // 每一格至少幾個字
+  var LEDS = 8;
+  var NEAR = 30;                 // 自動模式：幾公分以內算「有人來了」
+  var FULL = 5;                  // 幾公分以內就算「貼著了」（全開）
+  var DIST_MIN = 2, DIST_MAX = 200;
+  var HUE_MAX = 359;
 
   function norm(s) { return String(s == null ? '' : s).replace(/\s+/g, ''); }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, Number(v) || 0)); }
 
-  /* ── 證據句的判定 ──────────────────────────────────
-     ★ 只擋三件事：空白、太短、照抄設計單。
-     ⚠️ 不去猜「內容對不對」—— 那是老師巡堂看的，電腦看不到硬體。 */
-  function judgeEvidence(a, b, line) {
-    var A = norm(a), B = norm(b);
-    if (!A || !B) return { ok: false, how: 'empty' };
-    if (A.length < MIN || B.length < MIN) return { ok: false, how: 'short' };
-    var L = norm(line);
-    /* ⚠️ 照抄設計單 —— 那證明的是「我會複製」，不是「它真的動了」。 */
-    if (L && L.length > 6 && (L.indexOf(A) >= 0 && L.indexOf(B) >= 0))
-      return { ok: false, how: 'copy' };
-    if (A === B) return { ok: false, how: 'same' };
-    return { ok: true, how: 'fit' };
+  /* ── 兩種模式：同一組硬體，兩種玩法 ────────────────
+     ★ 自動＝超音波說了算；手動＝旋鈕說了算。
+     ⚠️ 兩種都只用「一個輸入 → 兩個輸出」，學生照著做得出來。 */
+  var MODES = [
+    { key: 'auto', t: '自動', by: '超音波距離感測器',
+      d: '人一靠近就亮、就轉；走遠了自己停。',
+      good: '★ 好處：不用動手。⚠️ 代價：想要它「現在別亮」也做不到。' },
+    { key: 'manual', t: '手動', by: '可變電阻（旋鈕）',
+      d: '轉到哪就是哪 —— 顏色和轉速都自己說了算。',
+      good: '★ 好處：完全可控。⚠️ 代價：得一直自己轉。' }
+  ];
+  /* 自動模式：距離 → 亮幾顆／什麼顏色／轉多快。
+     ★ 越近越紅、越近越多顆、越近轉越快（接回第二節的反向換算）。 */
+  function autoOf(cm) {
+    var d = clamp(cm, DIST_MIN, DIST_MAX);
+    if (d > NEAR) return { on: 0, hue: 0, speed: 0, near: false };
+    /* ⚠️ 分母用的是 NEAR−FULL，不是 NEAR−DIST_MIN。
+       ★ 超音波在 2～3 公分附近本來就量不準，
+         把「全開」訂在 2 公分的話，學生**永遠拉不到整條亮**
+         （手不可能貼那麼近，實測只會亮到 7 顆）。
+       ⇒ 5 公分以內就算貼著了。 */
+    var k = Math.min(1, (NEAR - d) / (NEAR - FULL));  // 0（剛好 30cm）～1（貼著）
+    return { on: Math.max(1, Math.round(k * LEDS)),
+             hue: Math.round(120 - 120 * k),          // 綠 → 紅
+             speed: Math.round(k * 100), near: true };
   }
-  function sayEvidence(r) {
-    if (r.how === 'empty') return '⚠️ 兩格都要填 —— 這是你「真的做出來了」的證據。';
-    if (r.how === 'short')
-      return '⚠️ 太短了，看不出你做了什麼。寫具體一點：' +
-             '**你的手（或東西）怎麼動**，**你看到什麼**。';
-    if (r.how === 'copy')
-      return '⛔ 這是把**設計單抄過來**。設計單寫的是「打算怎樣」，' +
-             '這裡要寫的是「**實際操作的時候發生了什麼**」—— 那是兩件事。';
-    if (r.how === 'same') return '⚠️ 兩格寫了一樣的話。左邊是你做的動作，右邊是它的反應。';
-    return '';
-  }
-
-  /* ── 挑戰關：三件事都要交代 ────────────────────────
-     ★ 老師：「調整判斷數值或條件，再加入第二個輸入，第二個輸出」。 */
-  function judgeLevel2(f) {
-    var miss = [];
-    if (norm(f.from) === '' || norm(f.to) === '') miss.push('num');
-    else if (norm(f.from) === norm(f.to)) miss.push('nochange');
-    if (norm(f.in2).length < 2) miss.push('in2');
-    if (norm(f.out2).length < 2) miss.push('out2');
-    return { ok: miss.length === 0, miss: miss };
-  }
-  function sayLevel2(r) {
-    if (r.miss.indexOf('num') >= 0)
-      return '⚠️ 那個判斷的數字（或條件）要寫出**改之前**和**改之後**。';
-    if (r.miss.indexOf('nochange') >= 0)
-      return '⚠️ 改之前和改之後一樣 —— 那就是沒有調整。' +
-             '★ 挑戰關的重點是「**數字換了，行為就換了**」，親手試一次才有感覺。';
-    if (r.miss.indexOf('in2') >= 0) return '⚠️ 第二個**輸入**是什麼？（讓它多知道一件事）';
-    if (r.miss.indexOf('out2') >= 0) return '⚠️ 第二個**輸出**是什麼？（讓它多做一件事）';
-    return '';
-  }
-
-  /* ── 創意關：說明「為什麼這樣改」──────────────────
-     ★ 這是這一節唯一走 AI 覆核的地方（本機關鍵字為主力，AI 只加分）。 */
-  var SAY = {
-    need: [
-      { name: '本來有什麼問題／不夠好',
-        any: ['本來', '原本', '之前', 'problem', '不方便', '不夠', '會', '常常',
-              '太', '沒辦法', '麻煩', '危險', '忘記', '浪費'] },
-      { name: '改了之後好在哪',
-        any: ['所以', '就', '才', '變成', '改成', '這樣', '解決', '比較', '方便',
-              '安全', '省', '不用', '自動'] }
-    ],
-    min: 12,
-    full: 1
-  };
-  function saySpec() {
-    return { need: SAY.need, full: SAY.full, min: SAY.min,
-             q: '為什麼要加這個功能？（本來有什麼不夠好，改了之後好在哪）',
-             src: ['為什麼要加這個功能', '本來有什麼問題', '改了之後好在哪'] };
-  }
-  function judgeSay(text) { return LK().judgeSay(text, saySpec()); }
-  function reviewSay(text, res, opts) {
-    return LK().reviewSay(text, res, {
-      student: opts && opts.student, unit: '5016b-u5-L3', q: saySpec().q, spec: saySpec()
-    });
+  /* 手動模式：旋鈕 → 顏色／第幾顆／轉速。 */
+  function manualOf(pct) {
+    var p = clamp(pct, 0, 100);
+    return { on: Math.round(1 + (LEDS - 1) * p / 100),
+             hue: Math.round(HUE_MAX * p / 100),
+             speed: Math.round(p), near: true };
   }
 
   /* ── 成果發表的三句 ────────────────────────────────
@@ -112,7 +83,7 @@
     { key: 's1', t: '我們要解決的問題是：', slots: ['problem'],
       ph: ['例：晚上回家玄關太暗，開燈要摸半天'] },
     { key: 's2', t: '當＿＿＿＿時，系統會＿＿＿＿。', slots: ['when', 'then'],
-      ph: ['例：有人走到門口 1 公尺內', '例：燈條慢慢亮成暖黃色'] },
+      ph: ['例：有人走到門口 30 公分內', '例：燈條慢慢亮成暖黃色'] },
     { key: 's3', t: '我們遇到＿＿＿＿，最後用＿＿＿＿解決。', slots: ['trouble', 'fix'],
       ph: ['例：距離一直跳來跳去，燈會閃', '例：把門檻改成兩個數字（進 15 出 25）'] }
   ];
@@ -120,12 +91,11 @@
      ★ 那句話一寫出來，這一節最有價值的部分（怎麼卡住、怎麼解掉）就沒了。 */
   var NO_TROUBLE = /^(沒有|沒|無|都很順利|很順利|沒問題|沒遇到|一切順利|none|no)/;
   function judgeShow(v) {
-    /* ⚠️⚠️ 「沒有遇到問題」這一條要**排在長度檢查前面**。
+    /* ⚠️⚠️ 這一條要**排在長度檢查前面**。
        第一版先查長度 —— 但學生實際上打的就是「沒有」兩個字，
        兩個字不到門檻，於是他收到的是「太短，至少寫 4 個字」。
        ★ 那句話會把他推向**更糟的方向**：他只會補成「沒有遇到問題」，
-         剛好長度過關，而這一格最值錢的東西還是沒寫。
-       ⇒ 先認出「他想說的是沒問題」，再給他方向。 */
+         剛好長度過關，而這一格最值錢的東西還是沒寫。 */
     if (NO_TROUBLE.test(norm(v.trouble))) return { ok: false, how: 'notrouble' };
     var miss = [];
     ['problem', 'when', 'then', 'trouble', 'fix'].forEach(function (k) {
@@ -148,9 +118,8 @@
     return '';
   }
 
-  /* ═══ 成果卡：列印（另存 PDF）與下載 PNG ═══════════
-     ⚠️ 不用 jsPDF —— 中文會變豆腐字。 */
-  function cardLines(v, meta) {
+  /* ═══ 成果卡：列印（另存 PDF）與下載 PNG ═══════════ */
+  function cardLines(v) {
     return [
       { k: '我們要解決的問題是', v: v.problem },
       { k: '當　' + v.when + '　時', v: '系統會　' + v.then },
@@ -165,6 +134,7 @@
         '<span>' + esc(m.date || '') + '</span></div>' +
       '<div class="pj-title">' + esc(m.scene || '我們的專題') + '</div>' +
       (m.team ? '<div class="pj-team">' + esc(m.team) + '</div>' : '') +
+      (m.mode ? '<div class="pj-mode">模式：' + esc(m.mode) + '</div>' : '') +
       (m.line ? '<div class="pj-line">' + esc(m.line) + '</div>' : '') +
       '<ol class="pj-ol">' +
         '<li><b>我們要解決的問題是：</b><br>' + esc(v.problem) + '</li>' +
@@ -191,12 +161,13 @@
     };
     global.addEventListener('afterprint', clean);
     global.print();
-    /* ⚠️ 有些瀏覽器不發 afterprint —— 留一個保險，不然整頁會一直藏著。 */
+    /* ⚠️ 有些瀏覽器不發 afterprint —— 留一個保險，
+       不還原的話整頁會一直是空白的。 */
     global.setTimeout(clean, 1500);
   }
 
   /* 下載 PNG：canvas 自己畫。★ 用系統字型 fillText，中文不會有問題。 */
-  function wrap(ctx, text, max) {
+  function wrapText(ctx, text, max) {
     var out = [], line = '';
     String(text || '').split('').forEach(function (ch) {
       if (ch === '\n') { out.push(line); line = ''; return; }
@@ -212,6 +183,7 @@
     cv.width = W; cv.height = H;
     var c = cv.getContext('2d');
     var FONT = '"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif';
+    var m = meta || {};
     c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
     c.fillStyle = '#7c3aed'; c.fillRect(0, 0, W, 14);
 
@@ -219,24 +191,28 @@
     c.fillStyle = '#64748b'; c.font = '600 22px ' + FONT;
     c.fillText('智慧家居機電專題　成果發表', pad, y);
     c.textAlign = 'right';
-    c.fillText(String((meta && meta.date) || ''), W - pad, y);
+    c.fillText(String(m.date || ''), W - pad, y);
     c.textAlign = 'left';
 
     y += 62;
     c.fillStyle = '#0f172a'; c.font = '900 46px ' + FONT;
-    wrap(c, (meta && meta.scene) || '我們的專題', W - pad * 2).forEach(function (l) {
+    wrapText(c, m.scene || '我們的專題', W - pad * 2).forEach(function (l) {
       c.fillText(l, pad, y); y += 56;
     });
-    if (meta && meta.team) {
+    if (m.team) {
       c.fillStyle = '#7c3aed'; c.font = '800 26px ' + FONT;
-      c.fillText(meta.team, pad, y); y += 44;
+      c.fillText(m.team, pad, y); y += 44;
     }
-    if (meta && meta.line) {
+    if (m.mode) {
+      c.fillStyle = '#0891b2'; c.font = '800 24px ' + FONT;
+      c.fillText('模式：' + m.mode, pad, y); y += 40;
+    }
+    if (m.line) {
       y += 8;
       c.fillStyle = '#f1f5f9'; c.fillRect(pad, y - 26, W - pad * 2, 6);
       y += 20;
       c.fillStyle = '#475569'; c.font = '700 24px ' + FONT;
-      wrap(c, meta.line, W - pad * 2).forEach(function (l) { c.fillText(l, pad, y); y += 36; });
+      wrapText(c, m.line, W - pad * 2).forEach(function (l) { c.fillText(l, pad, y); y += 36; });
     }
 
     y += 34;
@@ -246,11 +222,11 @@
       c.fillStyle = '#7c3aed'; c.font = '900 26px ' + FONT;
       c.fillText(String(i + 1), pad + 16, y);
       c.fillStyle = '#0f172a'; c.font = '900 30px ' + FONT;
-      wrap(c, row.k, W - pad * 2 - 66).forEach(function (l) {
+      wrapText(c, row.k, W - pad * 2 - 66).forEach(function (l) {
         c.fillText(l, pad + 66, y); y += 42;
       });
       c.fillStyle = '#334155'; c.font = '700 28px ' + FONT;
-      wrap(c, row.v, W - pad * 2 - 66).forEach(function (l) {
+      wrapText(c, row.v, W - pad * 2 - 66).forEach(function (l) {
         c.fillText(l, pad + 66, y); y += 40;
       });
       y += 34;
@@ -272,26 +248,33 @@
   /* ═══ 樣式 ═══════════════════════════════════════════ */
   var CSS = '' +
   '.pj-lv{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}' +
-  '.pj-tab{flex:1;min-width:120px;text-align:center;padding:10px 8px;border-radius:12px;' +
-    'border:2px solid #e2e8f0;font-weight:900;font-size:14px;color:#64748b;background:#fff}' +
+  '.pj-tab{flex:1;min-width:130px;text-align:center;padding:10px 8px;border-radius:12px;' +
+    'border:2px solid #e2e8f0;font-weight:900;font-size:14px;color:#64748b;background:#fff;' +
+    'cursor:pointer}' +
   '.pj-tab.on{border-color:#7c3aed;background:#f5f3ff;color:#5b21b6}' +
-  '.pj-tab.ok{border-color:#10b981;background:#ecfdf5;color:#047857}' +
   '.pj-tab span{display:block;font-size:11px;font-weight:800;opacity:.8}' +
   '.pj-goal{background:#0f172a;color:#e2e8f0;border-radius:14px;padding:14px 16px;' +
     'font-weight:900;font-size:15px;line-height:1.9;margin-bottom:12px}' +
   '.pj-goal em{color:#fbbf24;font-style:normal}' +
   '.pj-ask{font-size:15px;font-weight:900;color:#0f172a;line-height:1.9;margin:12px 0 8px}' +
+  '.pj-stage{background:#0f172a;border-radius:14px;padding:16px;margin:10px 0}' +
+  '.pj-strip{display:flex;gap:5px;justify-content:center;margin-bottom:12px}' +
+  '.pj-led{width:28px;height:28px;border-radius:50%;border:2px solid #334155}' +
+  '.pj-fan{display:flex;align-items:center;justify-content:center;gap:12px;' +
+    'color:#e2e8f0;font-weight:900;font-size:15px}' +
+  '.pj-blade{width:46px;height:46px;border-radius:50%;border:3px solid #64748b;' +
+    'display:flex;align-items:center;justify-content:center;font-size:20px}' +
+  '.pj-read{text-align:center;color:#94a3b8;font-weight:900;font-size:14px;margin-top:10px;' +
+    'font-variant-numeric:tabular-nums}' +
+  '.pj-sl{display:flex;align-items:center;gap:10px;font-weight:900;font-size:15px;margin:10px 0}' +
+  '.pj-sl input{flex:1;height:30px;cursor:pointer}' +
   '.pj-fill{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-weight:900;' +
     'font-size:15px;margin:8px 0}' +
   '.pj-t{flex:1;min-width:150px;font-size:15px;font-weight:800;padding:9px 12px;' +
     'border:2px solid #cbd5e1;border-radius:10px;box-sizing:border-box}' +
-  '.pj-s{width:110px;font-size:15px;font-weight:800;padding:9px 10px;text-align:center;' +
-    'border:2px solid #cbd5e1;border-radius:10px}' +
-  '.pj-chk{display:flex;gap:10px;align-items:flex-start;background:#fffbeb;' +
-    'border:2px solid #fcd34d;border-radius:12px;padding:12px 14px;margin:12px 0;' +
-    'font-weight:800;font-size:14px;color:#78350f;line-height:1.8;cursor:pointer}' +
-  '.pj-chk input{width:22px;height:22px;margin-top:2px;flex:none;cursor:pointer}' +
   '.pj-note{font-size:13px;color:#64748b;font-weight:700;line-height:1.8;margin-top:6px}' +
+  '.pj-pick{background:#fffbeb;border:2px solid #fcd34d;border-radius:12px;padding:12px 14px;' +
+    'margin:12px 0;font-weight:800;font-size:14px;color:#78350f;line-height:1.8}' +
   /* 成果卡 */
   '.pj-card{background:#fff;border:3px solid #7c3aed;border-radius:18px;padding:24px 26px;' +
     'margin:14px 0;line-height:1.9}' +
@@ -299,6 +282,7 @@
     'color:#7c3aed;letter-spacing:.05em;margin-bottom:10px}' +
   '.pj-title{font-size:26px;font-weight:900;color:#0f172a}' +
   '.pj-team{font-size:15px;font-weight:900;color:#7c3aed;margin-top:2px}' +
+  '.pj-mode{font-size:14px;font-weight:900;color:#0891b2;margin-top:2px}' +
   '.pj-line{font-size:14px;font-weight:800;color:#475569;background:#f8fafc;' +
     'border-radius:10px;padding:9px 12px;margin-top:10px}' +
   '.pj-ol{margin:14px 0 0;padding-left:22px}' +
@@ -323,27 +307,18 @@
     var esc = LK().esc, md = LK().md;
     var line = String(opts.line || '');
     var scene = (opts.plan && opts.plan.scene) || '我們的專題';
-    var step = 'L1';
-    var done = { L1: false, L2: false, L3: false };
-    var tries = { L1: 0, L2: 0, L3: 0, SHOW: 0 };
-    var sayBusy = false;
-    /* 全部的填寫內容。★ 換關不清空 —— 學生會回頭改。 */
-    var f = Object.assign({
-      ok1: false, ev1a: '', ev1b: '',
-      from: '', to: '', in2: '', out2: '', ok2: false, ev2a: '', ev2b: '',
-      feat: '', test: '', why: '', ok3: false,
-      team: '', problem: '', when: '', then: '', trouble: '', fix: ''
-    }, opts.work || {});
+    var tab = 'demo';                 // demo（兩種模式）／show（成果發表）
+    var mode = 'auto';
+    var cm = 60, pct = 50;
+    var f = Object.assign({ team: '', mode: '', problem: '', when: '', then: '',
+                            trouble: '', fix: '' }, opts.work || {});
 
     function tabs() {
-      var t = [['L1', '①基礎關', '先讓它動'],
-               ['L2', '②挑戰關', '讓它更聰明'],
-               ['L3', '③創意關', '解決問題'],
-               ['SHOW', '成果發表', '三句話']];
+      var t = [['demo', '🎛️ 兩種模式', '玩玩看，複習前四節'],
+               ['show', '🎤 成果發表', '三句話 ＋ 成果卡']];
       return '<div class="pj-lv">' + t.map(function (x) {
-        var cls = done[x[0]] ? 'ok' : (step === x[0] ? 'on' : '');
-        return '<div class="pj-tab ' + cls + '" data-go="' + x[0] + '">' +
-          (done[x[0]] ? '✅ ' : '') + x[1] + '<span>' + x[2] + '</span></div>';
+        return '<div class="pj-tab ' + (tab === x[0] ? 'on' : '') + '" data-tab="' + x[0] + '">' +
+          x[1] + '<span>' + x[2] + '</span></div>';
       }).join('') + '</div>';
     }
     function goal() {
@@ -356,111 +331,70 @@
         '</div>';
       bind();
     }
-    function evidenceBox(a, b, ida, idb) {
-      return '<div class="pj-ask">✍️ 寫下你的<b>證據</b>（老師巡堂會看這一格）：</div>' +
-        '<div class="pj-fill">當我　<input class="pj-t" id="' + ida + '" value="' + esc(a) +
-          '" placeholder="例：把手放到感測器前面 10 公分"></div>' +
-        '<div class="pj-fill">它就　<input class="pj-t" id="' + idb + '" value="' + esc(b) +
-          '" placeholder="例：燈條整條亮起來，手拿開就暗了"></div>' +
-        '<div class="pj-note">⚠️ 不要抄設計單 —— 設計單寫的是「打算怎樣」，' +
-        '這裡要寫「**實際操作的時候發生了什麼**」。</div>';
-    }
 
-    /* ── ① 基礎關 ── */
-    function viewL1(msg, cls) {
+    /* ── 兩種模式的展示 ── */
+    function state() { return mode === 'auto' ? autoOf(cm) : manualOf(pct); }
+    function stageHtml() {
+      var st = state(), col = LK().hexOf(LK().hueRgb(st.hue));
+      var leds = '';
+      for (var i = 1; i <= LEDS; i++) {
+        var on = st.on >= i && (mode === 'auto' ? st.near : true);
+        /* 手動只亮一顆（位置會跑）；自動是亮幾顆（越近越多） */
+        if (mode === 'manual') on = (i === st.on);
+        leds += '<div class="pj-led" style="background:' + (on ? col : '#1e293b') +
+          (on ? ';box-shadow:0 0 12px ' + col : '') + '"></div>';
+      }
+      return '<div class="pj-stage"><div class="pj-strip">' + leds + '</div>' +
+        '<div class="pj-fan"><div class="pj-blade" style="color:' +
+          (st.speed > 0 ? '#38bdf8' : '#475569') + '">✦</div>' +
+          (st.speed > 0 ? '風扇轉速 ' + st.speed + '%' : '風扇停止') + '</div>' +
+        '<div class="pj-read">' +
+          (mode === 'auto'
+            ? '距離 ' + cm + ' 公分　｜　' + (st.near ? '有人來了' : '沒人（超過 ' + NEAR + ' 公分）')
+            : '旋鈕 ' + pct + '%　｜　色相 ' + st.hue + '　｜　第 ' + st.on + ' 顆') +
+        '</div></div>';
+    }
+    function viewDemo(msg, cls) {
+      var m = MODES.filter(function (x) { return x.key === mode; })[0];
       view(
-        '<div class="pj-ask">① <b>先讓它動</b>　—— 把設計單那一句做出來，' +
-        '而且要能<b>現場操作給人看</b>。</div>' +
-        '<label class="pj-chk"><input type="checkbox" id="pj-ok1"' +
-          (f.ok1 ? ' checked' : '') + '>' +
-          '我已經<b>實際操作過</b>：輸入一動，輸出真的跟著動了。' +
-          '（不是只有程式跑得起來）</label>' +
-        evidenceBox(f.ev1a, f.ev1b, 'pj-e1a', 'pj-e1b') +
-        '<div class="dl-row"><button class="dl-go" id="pj-r1">完成基礎關</button></div>',
+        '<div class="pj-ask">🎛️ 同一組硬體，<b>兩種玩法</b>　—— ' +
+        '⚠️ 你的作品<b>挑一種做就好</b>，不用兩種都做。</div>' +
+        '<div class="pj-lv">' + MODES.map(function (x) {
+          return '<div class="pj-tab ' + (mode === x.key ? 'on' : '') +
+            '" data-mode="' + x.key + '">' + x.t + '模式<span>靠' + esc(x.by) + '</span></div>';
+        }).join('') + '</div>' +
+        '<div class="pj-note">' + esc(m.d) + '<br>' + md(m.good) + '</div>' +
+        '<div id="pj-stage">' + stageHtml() + '</div>' +
+        (mode === 'auto'
+          ? '<div class="pj-sl"><label>距離</label>' +
+            '<input type="range" id="pj-cm" min="' + DIST_MIN + '" max="' + DIST_MAX +
+              '" value="' + cm + '"><b>' + cm + ' cm</b></div>' +
+            '<div class="pj-note">⚠️ 拉到 ' + NEAR + ' 公分以內才會有反應 —— ' +
+            '那個 ' + NEAR + ' 就是<b>你要自己決定的門檻</b>。</div>'
+          : '<div class="pj-sl"><label>旋鈕</label>' +
+            '<input type="range" id="pj-pct" min="0" max="100" value="' + pct + '"><b>' +
+              pct + ' %</b></div>' +
+            '<div class="pj-note">★ 這就是第三、四節的「類比對應」—— ' +
+            '同一個旋鈕，換算成<b>轉速</b>、<b>顏色</b>、<b>第幾顆</b>。</div>') +
+        '<div class="pj-pick">📝 想好了嗎？你的作品要做<b>' +
+          MODES.map(function (x) { return x.t; }).join('</b>還是<b>') + '</b>？' +
+          '<div class="pj-fill" style="margin-top:8px">' +
+            MODES.map(function (x) {
+              return '<button class="dl-go" data-pick="' + x.t + '"' +
+                (f.mode === x.t ? '' : ' style="background:#94a3b8"') + '>' +
+                (f.mode === x.t ? '✅ ' : '') + x.t + '模式</button>';
+            }).join(' ') +
+          '</div></div>' +
+        '<div class="dl-row"><button class="dl-go" id="pj-go-show">去填成果發表 →</button></div>',
         msg, cls);
     }
-    function doL1() {
-      tries.L1++; grab();
-      if (!f.ok1) return viewL1('⚠️ 先實際操作一次 —— 這一關要的不是程式跑得起來，' +
-                                '是**東西真的會動**。', 'bad');
-      var r = judgeEvidence(f.ev1a, f.ev1b, line);
-      if (!r.ok) return viewL1(sayEvidence(r), 'bad');
-      done.L1 = true; step = 'L2';
-      viewL2('✅ 基礎關完成 —— 它會動了。接下來讓它**更聰明**一點。', 'good');
-    }
-
-    /* ── ② 挑戰關 ── */
-    function viewL2(msg, cls) {
-      view(
-        '<div class="pj-ask">② <b>讓它更聰明</b>　—— 三件事都要做到：</div>' +
-        '<div class="pj-ask" style="margin-top:4px">a. 調整<b>判斷的數值或條件</b>：</div>' +
-        '<div class="pj-fill">從　<input class="pj-s" id="pj-from" value="' + esc(f.from) +
-          '" placeholder="改之前">　改成　<input class="pj-s" id="pj-to" value="' + esc(f.to) +
-          '" placeholder="改之後">　（例：15 公分 → 30 公分）</div>' +
-        '<div class="pj-ask" style="margin-top:10px">b. 加入<b>第二個輸入</b>：</div>' +
-        '<div class="pj-fill"><input class="pj-t" id="pj-in2" value="' + esc(f.in2) +
-          '" placeholder="例：加一顆按鈕，用來切換「自動／手動」"></div>' +
-        '<div class="pj-ask" style="margin-top:10px">c. 加入<b>第二個輸出</b>：</div>' +
-        '<div class="pj-fill"><input class="pj-t" id="pj-out2" value="' + esc(f.out2) +
-          '" placeholder="例：再加一顆 LED，手動模式時亮著提醒"></div>' +
-        '<label class="pj-chk"><input type="checkbox" id="pj-ok2"' +
-          (f.ok2 ? ' checked' : '') + '>' +
-          '三件事我都<b>實際做出來並操作過</b>了。</label>' +
-        evidenceBox(f.ev2a, f.ev2b, 'pj-e2a', 'pj-e2b') +
-        '<div class="dl-row"><button class="dl-go" id="pj-r2">完成挑戰關</button></div>',
-        msg, cls);
-    }
-    function doL2() {
-      tries.L2++; grab();
-      var r2 = judgeLevel2(f);
-      if (!r2.ok) return viewL2(sayLevel2(r2), 'bad');
-      if (!f.ok2) return viewL2('⚠️ 三件事都要實際做出來、操作過才算。', 'bad');
-      var r = judgeEvidence(f.ev2a, f.ev2b, line);
-      if (!r.ok) return viewL2(sayEvidence(r), 'bad');
-      done.L2 = true; step = 'L3';
-      viewL3('✅ 挑戰關完成。最後一關：讓它**真的解決一個問題**。', 'good');
-    }
-
-    /* ── ③ 創意關 ── */
-    function viewL3(msg, cls) {
-      view(
-        '<div class="pj-ask">③ <b>讓它解決問題</b>　—— 加一個<b>你自己想的功能</b>，' +
-        '而且要說得出<b>為什麼</b>。</div>' +
-        '<div class="pj-ask" style="margin-top:4px">a. 我加的功能是：</div>' +
-        '<div class="pj-fill"><input class="pj-t" id="pj-feat" value="' + esc(f.feat) +
-          '" placeholder="例：離開之後燈慢慢變暗，不要突然全黑"></div>' +
-        '<div class="pj-ask" style="margin-top:10px">b. 我怎麼<b>測</b>的（一段測試情境）：</div>' +
-        '<div class="pj-fill"><input class="pj-t" id="pj-test" value="' + esc(f.test) +
-          '" placeholder="例：走進來停 3 秒再走開，看燈是不是花 5 秒才暗"></div>' +
-        '<div class="pj-ask" style="margin-top:10px">c. ' + esc(saySpec().q) + '</div>' +
-        LK().sayHtml({ q: '', text: f.why, busy: sayBusy }) +
-        '<label class="pj-chk"><input type="checkbox" id="pj-ok3"' +
-          (f.ok3 ? ' checked' : '') + '>' +
-          '這個功能我<b>實際做出來並測過</b>了。</label>' +
-        '<div class="dl-row"><button class="dl-go" id="pj-r3">完成創意關</button></div>',
-        msg, cls);
-    }
-    function doL3() {
-      tries.L3++; grab();
-      if (norm(f.feat).length < MIN) return viewL3('⚠️ 先寫出你加了什麼功能。', 'bad');
-      if (norm(f.test).length < MIN)
-        return viewL3('⚠️ 測試情境要寫出來 —— **你怎麼試的**，' +
-                      '不然沒辦法證明它真的有用。', 'bad');
-      if (!f.ok3) return viewL3('⚠️ 要實際做出來並測過才算。', 'bad');
-      var res = judgeSay(f.why);
-      if (res.level !== 'none') return passL3(res);
-      sayBusy = true; viewL3('', 'bad');
-      reviewSay(f.why, res, opts).then(function (r2) {
-        sayBusy = false;
-        if (r2.level !== 'none') return passL3(r2);
-        viewL3('⚠️ 再想一次：**本來**有什麼不方便（或會出什麼錯）？' +
-               '加了這個功能之後**變成怎樣**？兩件事都講到才算。', 'bad');
-      });
-    }
-    function passL3(res) {
-      done.L3 = true; step = 'SHOW';
-      if (typeof opts.onSay === 'function') opts.onSay(f.why, res);
-      viewShow('✅ 三關都完成了！最後把成果整理成**發表卡**。', 'good');
+    /* ⚠️ 拉滑桿時**只換舞台那一塊** —— 整頁重畫會讓滑桿失焦，
+       手指還按著就斷了（第三節踩過這個坑）。 */
+    function paint() {
+      var st = el.querySelector('#pj-stage');
+      if (st) st.innerHTML = stageHtml();
+      var b = el.querySelector('.pj-sl b');
+      if (b) b.textContent = mode === 'auto' ? (cm + ' cm') : (pct + ' %');
     }
 
     /* ── 成果發表 ── */
@@ -468,7 +402,7 @@
       view(
         '<div class="pj-ask">🎤 <b>成果發表</b>　—— 固定講這三句就好。</div>' +
         '<div class="pj-fill">組別／組員：<input class="pj-t" id="pj-team" value="' +
-          esc(f.team) + '" placeholder="例：三年二班　第 4 組　王小明、李小華"></div>' +
+          esc(f.team) + '" placeholder="例：二年三班　第 4 組　王小明、李小華"></div>' +
         '<div class="pj-ask" style="margin-top:10px">1. 我們要解決的問題是：</div>' +
         '<div class="pj-fill"><input class="pj-t" id="pj-problem" value="' + esc(f.problem) +
           '" placeholder="' + esc(SHOW_Q[0].ph[0]) + '"></div>' +
@@ -486,11 +420,11 @@
         msg, cls);
     }
     function meta() {
-      return { scene: scene, team: f.team, line: line,
+      return { scene: scene, team: f.team, mode: f.mode, line: line,
                date: new Date().toLocaleDateString('zh-TW') };
     }
     function doShow() {
-      tries.SHOW++; grab();
+      grab();
       var r = judgeShow(f);
       if (!r.ok) return viewShow(sayShow(r), 'bad');
       el.innerHTML = '<div class="dl-wrap">' + tabs() +
@@ -506,71 +440,57 @@
         '★ 列印的時候在「印表機」那一欄選<b>「另存為 PDF」</b>就會變成一份 PDF。</div>' +
         '</div>';
       bind();
-      if (typeof opts.onDone === 'function') opts.onDone({ tries: tries, work: f });
+      if (typeof opts.onDone === 'function') opts.onDone({ work: f });
     }
 
     function grab() {
-      var g = function (id) { var e = el.querySelector('#' + id); return e ? e.value : null; };
-      var c = function (id) { var e = el.querySelector('#' + id); return e ? e.checked : null; };
-      [['pj-e1a', 'ev1a'], ['pj-e1b', 'ev1b'], ['pj-from', 'from'], ['pj-to', 'to'],
-       ['pj-in2', 'in2'], ['pj-out2', 'out2'], ['pj-e2a', 'ev2a'], ['pj-e2b', 'ev2b'],
-       ['pj-feat', 'feat'], ['pj-test', 'test'], ['dl-say', 'why'], ['pj-team', 'team'],
-       ['pj-problem', 'problem'], ['pj-when', 'when'], ['pj-then', 'then'],
-       ['pj-trouble', 'trouble'], ['pj-fix', 'fix']].forEach(function (x) {
-        var v = g(x[0]); if (v !== null) f[x[1]] = v;
-      });
-      [['pj-ok1', 'ok1'], ['pj-ok2', 'ok2'], ['pj-ok3', 'ok3']].forEach(function (x) {
-        var v = c(x[0]); if (v !== null) f[x[1]] = v;
+      [['pj-team', 'team'], ['pj-problem', 'problem'], ['pj-when', 'when'],
+       ['pj-then', 'then'], ['pj-trouble', 'trouble'], ['pj-fix', 'fix']].forEach(function (x) {
+        var e = el.querySelector('#' + x[0]);
+        if (e) f[x[1]] = e.value;
       });
     }
-    /* 這一關開了沒 —— 前面的關過了才開得了。 */
-    function reach(s) {
-      if (s === 'L1') return true;
-      if (s === 'L2') return done.L1;
-      if (s === 'L3') return done.L2;
-      return done.L3;
-    }
-    function show(s) {
-      step = s;
-      if (s === 'L1') viewL1('', ''); else if (s === 'L2') viewL2('', '');
-      else if (s === 'L3') viewL3('', ''); else viewShow('', '');
-    }
+    function show(t) { tab = t; if (t === 'demo') viewDemo('', ''); else viewShow('', ''); }
 
     function bind() {
       var on = function (id, fn) {
         var e = el.querySelector('#' + id); if (e) e.addEventListener('click', fn);
       };
-      on('pj-r1', doL1); on('pj-r2', doL2); on('pj-r3', doL3); on('pj-make', doShow);
+      on('pj-make', doShow);
       on('pj-print', function () { printCard(cardHtml(f, meta())); });
       on('pj-png', function () { downloadPng(f, meta()); });
-      on('pj-back', function () { show('SHOW'); });
-      /* ⚠️ 不能跳關（老師：「每組都從基礎關開始」），但**過了的關要能自由來回**。
-         ⚠️⚠️ 第一版寫成「只能往回走」（`order.indexOf(s) > order.indexOf(step)` 就擋）——
-            那會困住學生：三關都過了、回頭看一眼基礎關，
-            **就再也回不去成果發表**，因為 SHOW 永遠在 L1 後面。
-            ★ 而且畫面上那個分頁看起來還是可以點的，按了卻沒反應。
-         ⇒ 判斷「這一關開了沒」，不是「它在前面還是後面」。 */
-      el.querySelectorAll('[data-go]').forEach(function (b) {
+      on('pj-back', function () { show('show'); });
+      on('pj-go-show', function () { show('show'); });
+      /* ★ 兩塊都是開的，隨時可以來回 —— 這一節不是關卡（老師 2026-08-25）。 */
+      el.querySelectorAll('[data-tab]').forEach(function (b) {
         b.addEventListener('click', function () {
-          var s = b.getAttribute('data-go');
-          if (s === step || !reach(s)) return;
-          grab(); show(s);
+          if (tab === 'show') grab();
+          show(b.getAttribute('data-tab'));
         });
       });
+      el.querySelectorAll('[data-mode]').forEach(function (b) {
+        b.addEventListener('click', function () { mode = b.getAttribute('data-mode'); viewDemo('', ''); });
+      });
+      el.querySelectorAll('[data-pick]').forEach(function (b) {
+        b.addEventListener('click', function () { f.mode = b.getAttribute('data-pick'); viewDemo('', ''); });
+      });
+      var sc = el.querySelector('#pj-cm');
+      if (sc) sc.addEventListener('input', function () { cm = Number(sc.value); paint(); });
+      var sp = el.querySelector('#pj-pct');
+      if (sp) sp.addEventListener('input', function () { pct = Number(sp.value); paint(); });
     }
 
-    show('L1');
-    return { step: function () { return step; }, work: function () { return f; },
-             tries: function () { return tries; }, done: function () { return done; },
-             set: function (k, v) { f[k] = v; }, show: show, card: function () {
-               return cardHtml(f, meta()); } };
+    show('demo');
+    return { tab: function () { return tab; }, mode: function () { return mode; },
+             work: function () { return f; },
+             setCm: function (v) { cm = v; paint(); },
+             setPct: function (v) { pct = v; paint(); },
+             show: show, card: function () { return cardHtml(f, meta()); } };
   }
 
   global.PROJLAB = {
-    MIN: MIN, SAY: SAY, SHOW_Q: SHOW_Q,
-    judgeEvidence: judgeEvidence, sayEvidence: sayEvidence,
-    judgeLevel2: judgeLevel2, sayLevel2: sayLevel2,
-    judgeSay: judgeSay, reviewSay: reviewSay,
+    MIN: MIN, LEDS: LEDS, NEAR: NEAR, FULL: FULL, HUE_MAX: HUE_MAX, MODES: MODES, SHOW_Q: SHOW_Q,
+    autoOf: autoOf, manualOf: manualOf,
     judgeShow: judgeShow, sayShow: sayShow,
     cardHtml: cardHtml, drawCard: drawCard, printCard: printCard, downloadPng: downloadPng,
     mount: mount

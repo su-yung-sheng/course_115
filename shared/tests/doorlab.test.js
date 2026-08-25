@@ -561,7 +561,13 @@ section('★★ 共用骨架（老師 2026-08-24：「之後的單元都使用�
        明明有人在用，測試卻說它是死的。
        ⇒ 掃**所有**用得到 labkit 的單元。
        ⚠️ 而且常數（DIAL_SWEEP）不會被 `(` 呼叫，不可以只找函式呼叫。 */
-    const users = ['doorlab', 'maplab', 'lightlab', 'potlab', 'fanlab', 'rgblab']
+    /* ⚠️⚠️ 這份名單**每加一個單元就要補一次** —— 2026-08-25 一天之內漏了兩次
+       （第一次漏 rgblab 那組，第二次漏 mixlab／planlab／projlab）。
+       ★ 症狀是「明明有人在用，測試卻說它是死的」。
+       ⇒ 不要用寫死的名單，直接掃 shared/ 底下所有 *lab.js。 */
+    const users = fs.readdirSync(path.join(root, 'shared'))
+      .filter(f => /lab\.js$/.test(f) && f !== 'labkit.js')
+      .map(f => f.replace(/\.js$/, ''))
       .map(f => read('shared/' + f + '.js')).join('\n');
     const dead = exported.filter(n => !new RegExp('LK\\(\\)\\.' + n + '\\b').test(users));
     ok(dead.length === 0,

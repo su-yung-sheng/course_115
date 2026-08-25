@@ -1,12 +1,14 @@
 /* 第五節「自己的專案」：設計單（planlab）＋ 分層任務卡與成果發表（projlab）
    跑法：node shared/tests/projlab.test.js   （需要 jsdom）
 
-   ★ 老師 2026-08-25 指定的三關與發表三句，文字不可以改。
-   ★ 過關方式：自我勾選＋**必須寫出證據**（老師選的）。
+   ★ 老師 2026-08-25：
+     「只有四個喔」（超音波、可變電阻、RGB 燈條、直流馬達）
+     「第五課不用『動手檢核』」「任務卡改成之前提到的互動介面，當成複習」
+     「設計成系統的兩種模式展示，學生的作品可以有兩種選擇」
+     成果發表三句 ＋ 可下載的成果卡。
 
-   ⚠️⚠️ 這一節電腦看不到硬體，所以「判定」唯一擋得住的就是**敷衍**：
-      空白、太短、照抄設計單、「沒有遇到問題」。
-      這一支測的就是那幾道門真的關得起來。 */
+   ⚠️⚠️ 這一節**不是關卡** —— 電腦看不到硬體，判定唯一擋得住的是
+      成果發表那一句「沒有遇到問題」。其他都靠老師巡堂。 */
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -29,16 +31,16 @@ global.document = W.document; global.window = W;
   .forEach(f => new Function('window', read(f))(W));
 const P = W.PLANLAB, J = W.PROJLAB;
 
-section('★★ 設計單：元件只列教具上真的有的');
+section('★★ 設計單：元件就那四樣（老師 2026-08-25 更正）');
 {
-  ok(P.INPUTS.length === 3 && P.OUTPUTS.length === 3, '三個輸入、三個輸出');
-  ok(P.INPUTS.map(i => i.key).join() === 'btn,us,pot',
-     '★★ 輸入＝按鈕／超音波／可變電阻（前四節用過的）');
-  ok(P.OUTPUTS.map(o => o.key).join() === 'led,strip,moto',
-     '★★ 輸出＝LED／RGB 燈條／馬達（前四節用過的）');
-  /* ⚠️ 憑空多一個教具上沒有的，學生會找半天。 */
-  ok(!/光敏|溫濕度|土壤|紅外線|蜂鳴/.test(JSON.stringify(P.INPUTS) + JSON.stringify(P.OUTPUTS)),
-     '★★ 沒有偷渡教具上不存在的元件');
+  ok(P.INPUTS.length === 2 && P.OUTPUTS.length === 2, '★★ 兩個輸入、兩個輸出（共四樣）');
+  ok(P.INPUTS.map(i => i.key).join() === 'us,pot', '★★ 輸入＝超音波／可變電阻');
+  ok(P.OUTPUTS.map(o => o.key).join() === 'strip,moto', '★★ 輸出＝RGB 燈條／直流馬達');
+  /* ⚠️⚠️ 第一版多列了按鈕和單顆 LED —— 教具上沒有，
+     學生照著設計單去找零件會找半天，而且那種錯只有上機才會發現。 */
+  const all = JSON.stringify(P.INPUTS) + JSON.stringify(P.OUTPUTS) + JSON.stringify(P.SCENES);
+  ok(!/按鈕|按鍵|LED 燈|光敏|溫濕度|土壤|紅外線|蜂鳴|門磁/.test(all),
+     '★★ 沒有偷渡教具上不存在的元件（連情境說明裡也不可以）');
   ok(P.INPUTS.every(i => i.gives && i.from), '★ 每個輸入都標「它給你什麼數字」和哪一節用過');
   ok(P.OUTPUTS.every(o => o.acts && o.acts.length >= 2), '   每個輸出都有幾個動作可選');
   ok(P.SCENES.length >= 6, '★ 情境清單至少 6 個（' + P.SCENES.length + '），免得卡在選題');
@@ -53,51 +55,53 @@ section('★★ 設計單：填完了才算');
   ok(/如果/.test(P.planLine(full)) && /那麼/.test(P.planLine(full)),
      '★★ 組出一句「如果…那麼…」');
   ok(/15/.test(P.planLine(full)) && /公分/.test(P.planLine(full)), '★ 門檻和單位都在句子裡');
-  /* ⚠️ 少一格就不算 —— 半張設計單等於沒有。 */
   ok(!P.planReady(Object.assign({}, full, { scene: '' })), '   沒選情境 → 不過');
   ok(!P.planReady(Object.assign({}, full, { value: '' })), '   沒填門檻 → 不過');
   ok(!P.planReady(Object.assign({}, full, { act: '' })), '   沒選動作 → 不過');
-  /* 按鈕型沒有數字，改問「按一下還是按著」。 */
-  const btn = { scene: '衣櫃感應燈', input: 'btn', output: 'led', act: '亮起來', press: '' };
-  ok(!P.planReady(btn), '★ 按鈕型：沒選「按一下／按著」→ 不過');
-  ok(P.planReady(Object.assign({}, btn, { press: 'tap' })), '   選了就過');
-  ok(/按一下/.test(P.planLine(Object.assign({}, btn, { press: 'tap' }))),
-     '   而且句子裡看得出來是哪一種');
   /* ★★ 門檻超出感測器讀得到的範圍 —— 永遠不會觸發，是最難查的錯。 */
   ok(/永遠不會觸發/.test(P.sayPlan(Object.assign({}, full, { value: '900' }))),
      '★★ 門檻填在範圍外 → 明講「永遠不會觸發」');
+  const pot = { scene: '氣氛燈', input: 'pot', output: 'moto',
+                act: '依比例調整轉速', value: '50', dir: 'gt' };
+  ok(P.planReady(pot) && /%/.test(P.planLine(pot)), '★ 旋鈕那一路也組得出句子');
+  ok(/永遠不會觸發/.test(P.sayPlan(Object.assign({}, pot, { value: '150' }))),
+     '   旋鈕超過 100% 一樣點破');
 }
 
-section('★★ 證據句：擋得住敷衍（這一節唯一的門）');
+section('★★ 兩種模式：同一組硬體，兩種玩法');
 {
-  const line = '如果　超音波距離小於 15 公分　那麼　RGB 全彩燈條就整條亮起指定顏色。';
-  ok(J.judgeEvidence('把手放到感測器前面 10 公分', '燈條整條亮起來，手拿開就暗了', line).ok,
-     '★ 寫得具體 → 過');
-  ok(!J.judgeEvidence('', '', line).ok, '   空白 → 不過');
-  ok(J.judgeEvidence('', '', line).how === 'empty', '   而且分得出是空白');
-  ok(!J.judgeEvidence('有', '會亮', line).ok, '★ 太短 → 不過');
-  ok(J.judgeEvidence('有', '會亮', line).how === 'short', '   分得出是太短');
-  /* ⚠️⚠️ 照抄設計單是最常見的敷衍：那句話證明的是「我會複製」。 */
-  const r = J.judgeEvidence('超音波距離小於 15 公分', 'RGB 全彩燈條就整條亮起指定顏色', line);
-  ok(!r.ok && r.how === 'copy', '★★ 照抄設計單 → 擋下來');
-  ok(/設計單/.test(J.sayEvidence(r)) && /實際操作/.test(J.sayEvidence(r)),
-     '★★ 而且要講清楚「打算怎樣」和「實際發生什麼」是兩件事');
-  ok(!J.judgeEvidence('把手放上去', '把手放上去', line).ok, '★ 兩格一模一樣 → 不過');
-  const hows = ['empty', 'short', 'copy', 'same'].map(h => J.sayEvidence({ how: h }));
-  ok(new Set(hows).size === 4, '★★ 四種回饋各不相同');
-}
+  ok(J.MODES.length === 2, '兩種模式');
+  ok(J.MODES.map(m => m.key).join() === 'auto,manual', '★★ 自動／手動');
+  ok(/超音波/.test(J.MODES[0].by) && /可變電阻|旋鈕/.test(J.MODES[1].by),
+     '★★ 自動靠超音波、手動靠旋鈕');
+  /* ⚠️ 兩種都要講**代價**，不然學生只會覺得「自動比較厲害」。 */
+  ok(J.MODES.every(m => /⚠️/.test(m.good) && /★/.test(m.good)),
+     '★★ 每一種都要講好處**和代價**（自動不用動手，但也叫不動它）');
 
-section('★★ 挑戰關：三件事都要交代');
-{
-  const good = { from: '15', to: '30', in2: '加一顆按鈕切換自動手動', out2: '再加一顆 LED 提醒' };
-  ok(J.judgeLevel2(good).ok, '三件事都寫 → 過');
-  ok(!J.judgeLevel2(Object.assign({}, good, { from: '' })).ok, '   沒寫改之前 → 不過');
-  ok(!J.judgeLevel2(Object.assign({}, good, { in2: '' })).ok, '   沒寫第二個輸入 → 不過');
-  ok(!J.judgeLevel2(Object.assign({}, good, { out2: '' })).ok, '   沒寫第二個輸出 → 不過');
-  /* ⚠️ 改之前＝改之後 → 那就是沒調整。這種「有填但等於沒做」最容易漏掉。 */
-  const same = J.judgeLevel2(Object.assign({}, good, { to: '15' }));
-  ok(!same.ok && same.miss.indexOf('nochange') >= 0, '★★ 改之前和改之後一樣 → 擋下來');
-  ok(/沒有調整/.test(J.sayLevel2(same)), '★★ 而且要點破「那就是沒有調整」');
+  /* 自動：越近越亮、越近越多顆、越近轉越快。 */
+  const far = J.autoOf(150), near = J.autoOf(5), edge = J.autoOf(J.NEAR + 1);
+  ok(!far.near && far.on === 0 && far.speed === 0, '★ 遠的時候什麼都不動');
+  ok(!edge.near, '★★ 剛好超過門檻（' + (J.NEAR + 1) + ' 公分）就不算「有人來了」');
+  ok(J.autoOf(J.NEAR).near, '   剛好在門檻上算');
+  /* ⚠️⚠️ 「貼著」不可以訂在感測器的最小值（2 公分）——
+     超音波在那附近本來就量不準，而且手不可能貼那麼近，
+     學生會**永遠拉不到整條亮**（第一版實測只亮到 7 顆）。 */
+  ok(near.on === J.LEDS && near.speed > 80, '★★ 貼著（5 公分）就整條亮、轉最快');
+  ok(J.autoOf(J.FULL).on === J.LEDS && J.autoOf(2).on === J.LEDS,
+     '★★ 比 ' + J.FULL + ' 公分更近一樣是整條（不會因為量不準就掉一顆）');
+  ok(J.autoOf(10).on > J.autoOf(25).on, '★ 越近亮越多顆（反向：距離小、數字大）');
+  ok(J.autoOf(5).hue < J.autoOf(28).hue, '★ 越近越紅（色相往 0 走）');
+  ok(J.autoOf(5).hue === 0, '   貼著的時候是純紅');
+
+  /* 手動：旋鈕直接對應。 */
+  ok(J.manualOf(0).on === 1 && J.manualOf(100).on === J.LEDS,
+     '★★ 旋鈕兩端 → 第 1 顆／第 ' + J.LEDS + ' 顆（八顆都到得了）');
+  ok(J.manualOf(0).hue === 0 && J.manualOf(100).hue === J.HUE_MAX,
+     '★★ 色環 0～' + J.HUE_MAX + '（和第四節同一組）');
+  ok(J.manualOf(50).speed === 50, '★ 轉速就是旋鈕的百分比');
+  /* 夾住 —— 滑桿以外的值不可以爆掉。 */
+  ok(J.manualOf(-30).on === 1 && J.manualOf(300).on === J.LEDS, '   超出範圍會夾住');
+  ok(J.autoOf(-5).near && J.autoOf(9999).near === false, '   距離也夾得住');
 }
 
 section('★★ 成果發表：三句話（老師指定，文字不可改）');
@@ -117,10 +121,10 @@ section('★★ 成果發表：三句話（老師指定，文字不可改）');
      '★ 而且點名是哪一格');
   ok(/系統會/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { then: '' })))),
      '★ 回饋要講出那一格的名字，不是只說「沒填完」');
-  /* ⚠️⚠️ 「沒有遇到問題」是第三句最常見的敷衍，而那一格最值錢。 */
-  /* ⚠️⚠️ 而且**短的那幾個也要判成 notrouble**，不可以只回「太短」——
-     回「太短」會把他推去補成「沒有遇到問題」，剛好過長度，
-     這一格最值錢的東西還是沒寫。 */
+  /* ⚠️⚠️ 「沒有遇到問題」是第三句最常見的敷衍，而那一格最值錢。
+     ⚠️ 而且**短的那幾個也要判成 notrouble**，不可以只回「太短」——
+        回「太短」會把他推去補成「沒有遇到問題」，剛好過長度，
+        這一格最值錢的東西還是沒寫。 */
   ['沒有', '沒有遇到什麼問題', '都很順利', '無', '沒'].forEach(t => {
     const rr = J.judgeShow(Object.assign({}, v, { trouble: t }));
     ok(!rr.ok && rr.how === 'notrouble', '★★ 「' + t + '」→ 擋下來，而且點破是在敷衍');
@@ -133,24 +137,21 @@ section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
 {
   const v = { problem: '玄關太暗', when: '有人靠近', then: '燈亮起來',
               trouble: '燈一直閃', fix: '加了兩個門檻' };
-  const html = J.cardHtml(v, { scene: '玄關迎賓燈', team: '2 年 3 班第 4 組', date: '2026/8/25' });
-  ok(/玄關迎賓燈/.test(html) && /2 年 3 班第 4 組/.test(html), '★ 卡片上有題目和組別');
+  const html = J.cardHtml(v, { scene: '玄關迎賓燈', team: '二年三班第 4 組',
+                               mode: '自動', date: '2026/8/25' });
+  ok(/玄關迎賓燈/.test(html) && /二年三班第 4 組/.test(html), '★ 卡片上有題目和組別');
+  ok(/模式：自動/.test(html), '★★ 而且標出這一組做的是哪一種模式');
   ok(/我們要解決的問題是/.test(html) && /系統會/.test(html) && /最後用/.test(html),
      '★★ 三句話都在卡片上');
-  /* ⚠️ 學生自己打的字要跳脫 —— 這是唯一會出現使用者輸入的地方。 */
-  const bad = J.cardHtml(Object.assign({}, v, { problem: '<img src=x onerror=alert(1)>' }), {});
-  ok(!/<img/.test(bad) && /&lt;img/.test(bad), '★★ 學生打的字有跳脫（這裡是使用者輸入）');
-  /* ⚠️ 情境名稱和組別**也是學生自己打的**（設計單可以自訂情境）——
-     第一版只測 problem 那一格，漏掉這兩個（突變測試當場抓到）。 */
-  ['scene', 'team', 'line'].forEach(k => {
-    const m = { scene: 'x', team: 'x', line: 'x' };
-    m[k] = '<img src=x onerror=alert(1)>';
-    const h = J.cardHtml(v, m);
-    ok(!/<img/.test(h), '★★ ' + k + ' 也要跳脫（設計單的情境可以自訂）');
-  });
-  ['when', 'then', 'trouble', 'fix'].forEach(k => {
+  /* ⚠️ 卡片上**每一格都是學生自己打的字**，全部都要跳脫。 */
+  ['problem', 'when', 'then', 'trouble', 'fix'].forEach(k => {
     const w = Object.assign({}, v); w[k] = '<img src=x onerror=alert(1)>';
-    ok(!/<img/.test(J.cardHtml(w, {})), '   ' + k + ' 也要跳脫');
+    ok(!/<img/.test(J.cardHtml(w, {})), '★★ ' + k + ' 有跳脫');
+  });
+  ['scene', 'team', 'mode', 'line'].forEach(k => {
+    const m = { scene: 'x', team: 'x', mode: 'x', line: 'x' };
+    m[k] = '<img src=x onerror=alert(1)>';
+    ok(!/<img/.test(J.cardHtml(v, m)), '★★ ' + k + ' 也要跳脫（情境可以自訂）');
   });
 
   /* ⚠️⚠️ jsPDF 那一類的函式庫預設不含中文字型 —— 印出來是一排豆腐字。
@@ -169,85 +170,50 @@ section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
   ok(/關機會還原/.test(src), '★★ 提醒學生電腦教室關機會還原，記得把檔案帶走');
 }
 
-section('★★ 三關真的走得完，而且不能跳關');
+section('★★ 走一遍：展示 → 成果卡');
 {
   const el = W.document.getElementById('x');
-  let done = null, said = null;
+  let done = null;
   const line = '如果　超音波距離小於 15 公分　那麼　RGB 全彩燈條就整條亮起指定顏色。';
-  const api = J.mount(el, {
-    line: line, plan: { scene: '玄關迎賓燈' },
-    onDone: i => { done = i; }, onSay: (t, r) => { said = r; }
-  });
-  const set = (id, v) => {
-    const e = el.querySelector('#' + id);
-    if (e) { if (e.type === 'checkbox') e.checked = v; else e.value = v; }
-    return !!e;
-  };
+  const api = J.mount(el, { line: line, plan: { scene: '玄關迎賓燈' },
+                            onDone: i => { done = i; } });
+  const set = (id, v) => { const e = el.querySelector('#' + id); if (e) e.value = v; return !!e; };
   const click = id => el.querySelector('#' + id)
     .dispatchEvent(new W.Event('click', { bubbles: true }));
 
-  ok(api.step() === 'L1', '★★ 一進來就是基礎關（老師：每組都從基礎關開始）');
+  ok(api.tab() === 'demo', '★ 一進來是兩種模式的展示（複習，不是關卡）');
   ok(/玄關迎賓燈/.test(el.textContent) && /15 公分/.test(el.textContent),
-     '★★ 畫面上一直掛著設計單那一句（整節課的錨）');
-  /* ⚠️ 不能跳關 —— **每一關都要試**，只試最後一關的話，
-     「L2 忘了鎖」這種錯會整個漏掉（突變測試當場證實）。 */
-  ['L2', 'L3', 'SHOW'].forEach(s => {
-    el.querySelector('[data-go="' + s + '"]')
-      .dispatchEvent(new W.Event('click', { bubbles: true }));
-    ok(api.step() === 'L1', '★★ 基礎關還沒過，點「' + s + '」跳不過去');
-  });
+     '★★ 畫面上一直掛著設計單那一句');
+  /* ⚠️ 老師：「第五課不用動手檢核」—— 兩塊都是開的，隨時可以來回。 */
+  ok(!!el.querySelector('[data-tab="show"]'), '★★ 成果發表一開始就點得到（沒有鎖）');
+  ok(api.mode() === 'auto' && !!el.querySelector('#pj-cm'), '   自動模式：拉距離');
+  const litCount = () => [...el.querySelectorAll('.pj-led')]
+    .filter(d => !/#1e293b|rgb\(30, 41, 59\)/.test(d.style.background)).length;
+  api.setCm(150);
+  ok(litCount() === 0, '★★ 拉遠 → **畫面上**全暗');
+  api.setCm(J.FULL);
+  ok(litCount() === J.LEDS, '★★ 拉近 → **畫面上**整條亮（實得 ' + litCount() + ' 顆）');
+  ok(/風扇轉速/.test(el.textContent), '★ 而且風扇也轉起來了（一個輸入、兩個輸出）');
+  /* ⚠️ 拉滑桿時只換舞台那一塊 —— 整頁重畫會讓滑桿失焦（第三節踩過）。 */
+  ok(!!el.querySelector('#pj-cm'), '   拉完滑桿還在');
+  ok(/function paint\(\)[\s\S]{0,160}#pj-stage[\s\S]{0,60}innerHTML/.test(read('shared/projlab.js')),
+     '★★ 只換舞台那一塊，不整頁重畫');
 
-  /* ── L1：先不勾 → 擋 ── */
-  set('pj-e1a', '把手放到感測器前面 10 公分');
-  set('pj-e1b', '燈條整條亮起來，手拿開就暗了');
-  click('pj-r1');
-  ok(api.step() === 'L1' && /實際操作/.test(el.textContent),
-     '★★ 沒勾「我操作過」→ 擋下來');
-  set('pj-ok1', true);
-  set('pj-e1a', '把手放到感測器前面 10 公分');
-  set('pj-e1b', '燈條整條亮起來，手拿開就暗了');
-  click('pj-r1');
-  ok(api.step() === 'L2', '★ L1 完成 → 進到挑戰關');
+  el.querySelector('[data-mode="manual"]').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(api.mode() === 'manual' && !!el.querySelector('#pj-pct'), '★ 切到手動：改拉旋鈕');
+  api.setPct(0);  ok(litCount() === 1, '★★ 手動只亮**一顆**（位置會跑，第二節那一招）');
+  api.setPct(100); ok(litCount() === 1, '   轉到底還是一顆');
+  ok(/色相/.test(el.textContent), '★ 而且顏色跟著換（第四節那一招）');
 
-  /* ── L2 ── */
-  set('pj-from', '15'); set('pj-to', '15');
-  set('pj-in2', '加一顆按鈕切換自動手動'); set('pj-out2', '再加一顆 LED 提醒');
-  set('pj-ok2', true);
-  set('pj-e2a', '按下按鈕切到手動'); set('pj-e2b', '提醒燈亮起來，距離就不管了');
-  click('pj-r2');
-  ok(api.step() === 'L2' && /沒有調整/.test(el.textContent),
-     '★★ 數值前後一樣 → 擋下來');
-  set('pj-from', '15'); set('pj-to', '30');
-  set('pj-in2', '加一顆按鈕切換自動手動'); set('pj-out2', '再加一顆 LED 提醒');
-  set('pj-ok2', true);
-  set('pj-e2a', '按下按鈕切到手動'); set('pj-e2b', '提醒燈亮起來，距離就不管了');
-  click('pj-r2');
-  ok(api.step() === 'L3', '★ L2 完成 → 進到創意關');
+  /* ★ 學生要選一種當自己的作品。 */
+  el.querySelector('[data-pick="手動"]').dispatchEvent(new W.Event('click', { bubbles: true }));
+  ok(api.work().mode === '手動', '★★ 挑一種模式當自己的作品（不必兩種都做）');
 
-  /* ── L3 ── */
-  ok(!!el.querySelector('#dl-say'), '★ 創意關有「說明修改原因」的填空');
-  set('pj-feat', '離開之後燈慢慢變暗');
-  set('pj-test', '走進來停三秒再走開，看燈是不是花五秒才暗');
-  set('pj-ok3', true);
-  set('dl-say', '本來燈會突然全黑，走廊很嚇人，所以改成慢慢變暗比較安全');
-  click('pj-r3');
-  ok(api.step() === 'SHOW', '★★ 三關都過 → 進到成果發表');
-  ok(!!said, '   而且回報 onSay（老師看得到全班怎麼說）');
-  /* ★ 走回頭路要放行 —— 學生本來就會回去改。 */
-  el.querySelector('[data-go="L1"]').dispatchEvent(new W.Event('click', { bubbles: true }));
-  ok(api.step() === 'L1', '★ 已經過的關卡可以回去改');
-  ok(el.querySelector('#pj-e1a').value === '把手放到感測器前面 10 公分',
-     '★★ 而且回去的時候**填過的字還在**（不然沒人敢回頭改）');
-  /* ⚠️⚠️ 回頭看一眼之後**要回得去成果發表** ——
-     第一版的規則是「只能往回走」，結果三關都過的人一點基礎關就被鎖死，
-     而且那個分頁看起來還是可以點的，按了卻沒反應（測試當場抓到）。 */
-  el.querySelector('[data-go="SHOW"]').dispatchEvent(new W.Event('click', { bubbles: true }));
-  ok(api.step() === 'SHOW', '★★ 回頭看過之後，還回得去成果發表（不可以被鎖死）');
-
-  /* ── 成果發表 ── */
-  set('pj-team', '2 年 3 班第 4 組');
+  click('pj-go-show');
+  ok(api.tab() === 'show' && !!el.querySelector('#pj-problem'), '★ 進到成果發表');
+  set('pj-team', '二年三班第 4 組');
   set('pj-problem', '晚上回家玄關太暗，開燈要摸半天');
-  set('pj-when', '有人走到門口一公尺內'); set('pj-then', '燈條慢慢亮成暖黃色');
+  set('pj-when', '有人走到門口三十公分內'); set('pj-then', '燈條慢慢亮成暖黃色');
   set('pj-trouble', '沒有'); set('pj-fix', '把門檻改成兩個數字');
   click('pj-make');
   ok(!done && /最值錢/.test(el.textContent), '★★ 第三句寫「沒有」→ 擋下來，不給出卡');
@@ -256,10 +222,16 @@ section('★★ 三關真的走得完，而且不能跳關');
   click('pj-make');
   ok(!!done, '★ 三句都寫好 → 產生成果卡');
   ok(!!el.querySelector('#pj-card'), '   卡片畫出來了');
+  ok(/模式：手動/.test(el.querySelector('#pj-card').textContent),
+     '★★ 卡片上帶著他選的模式');
   ok(!!el.querySelector('#pj-print') && !!el.querySelector('#pj-png'),
      '★★ 兩顆按鈕都在：列印／存成 PDF、下載成圖片');
   ok(/另存為 PDF/.test(el.textContent), '★ 而且教學生怎麼存成 PDF（在印表機那一欄選）');
   ok(!!done.work && done.work.problem, '★ 回報 onDone 時把整份內容帶出去（要存起來）');
+  /* ⚠️ 回頭改的時候字要還在。 */
+  click('pj-back');
+  ok(el.querySelector('#pj-problem').value === '晚上回家玄關太暗，開燈要摸半天',
+     '★★ 回去改的時候填過的字還在');
 }
 
 section('★ 規矩');
@@ -268,14 +240,15 @@ section('★ 規矩');
   ok(/if \(!global\.LABKIT\) throw new Error/.test(plan) &&
      /if \(!global\.LABKIT\) throw new Error/.test(proj),
      '★★ labkit 沒載到要明講（靜默半殘的症狀是「按了沒反應」）');
-  /* ⚠️⚠️ 設計單在暖身、任務卡在檢核 —— 兩支不可以互相呼叫。 */
+  /* ⚠️⚠️ 設計單在暖身、展示在下面 —— 兩支不可以互相呼叫。 */
   ok(!/PLANLAB/.test(proj), '★★ projlab 不直接呼叫 PLANLAB（相依只能單向）');
   ok(!/PROJLAB/.test(plan), '★★ planlab 也不知道 projlab');
   ok(!/PLANLAB|PROJLAB/.test(read('shared/labkit.js')), '★★ labkit 不知道它們的存在');
   ok(!/stars/.test(plan) && !/stars/.test(proj), '★★ 不碰 stars —— 5016B 不計星');
-  ok(/LK\(\)\.reviewSay\(/.test(proj), '★ AI 覆核走 labkit');
-  ok(!/global\.ASKAI/.test(proj), '★★ 自己不碰 ASKAI');
-  ok(/unit: '5016b-u5-L3'/.test(proj), '   AI 覆核標明是哪一關');
+  /* ★ 顏色的算法在 labkit（第四、五節共用），不可以有兩份。 */
+  ok(/LK\(\)\.hueRgb\(/.test(proj) && /LK\(\)\.hueRgb\(/.test(read('shared/rgblab.js')),
+     '★★ 色相換顏色走 labkit（第四、五節同一份）');
+  ok(!/function hueRgb\(h\) \{\n    var x/.test(proj), '   projlab 自己不再寫一份');
 }
 
 section('★★ 第五節接上頁面了');
@@ -283,35 +256,49 @@ section('★★ 第五節接上頁面了');
   const page = read('11501/5016b.html');
   ok(/<script src="\.\.\/shared\/planlab\.js"><\/script>/.test(page) &&
      /<script src="\.\.\/shared\/projlab\.js"><\/script>/.test(page), '頁面載入兩支');
-  ok(/lab: \{ unit: 'u5', warm: 'PLANLAB', checks: 'PROJLAB' \}/.test(page),
-     '★ 第五節：設計單當進場券，任務卡當檢核');
-  /* ⚠️ 又要剝註解：我在程式碼裡寫了「舊草稿（狀態機…）已整塊清掉」，
-     不剝的話這兩條永遠是紅的（同一輪裡第二次踩到）。 */
-  const u5 = page.slice(page.indexOf('title: "自己的專案'))
+  ok(/warm: 'PLANLAB', checks: 'PROJLAB', gate: false/.test(page),
+     '★★ 第五節**不上鎖**（老師 2026-08-25：「第五課不用動手檢核」）');
+  ok(/checkTitle: '🎛️ 兩種模式 ＋ 成果發表'/.test(page),
+     '★★ 那一塊不叫「動手檢核」了');
+  /* ⚠️⚠️ 這兩個標題原本寫死在 HTML 裡（「暖身關卡：超音波怎麼量距離」），
+     所以第二～四節的暖身明明是換算／旋鈕／混色，標題都寫著超音波。 */
+  ok(/id="warm-title"/.test(page) && /T\('warm-title', labCfg\.warmTitle\)/.test(page),
+     '★★ 暖身標題跟著單元走（原本寫死，第二～四節都顯示「超音波怎麼量距離」）');
+  ['距離怎麼換成亮度', '可變電阻怎麼接', '三盞燈怎麼混色', '專題設計單']
+    .forEach(t => ok(page.indexOf(t) > 0, '   有「' + t + '」這個標題'));
+
+  /* ⚠️ 界標要**切到課程資料結束為止**。第一版切到檔案結尾，
+     於是頁尾那顆「返回基地按鈕」也被算成第五節的內容，
+     「不可以出現按鈕」那條就永遠是紅的 —— 紅的不是第五節，是切法。 */
+  const u5 = page.slice(page.indexOf('title: "自己的專案'),
+                        page.indexOf('function openCourseDetail'))
     .replace(/\/\*[\s\S]*?\*\//g, '');
-  /* ⚠️ 舊草稿（狀態機／自動手動）裡把燈條色相寫成 0~255，整塊已清掉。 */
   ok(!/狀態機|State Machine/.test(u5), '★★ 舊草稿那組（狀態機）已經清掉');
   ok(!/0, 1023, 0, 255/.test(u5), '★★ 舊草稿那個 (0,1023,0,255) 的色相 bug 也一併消失');
-  /* 老師指定的三關名稱與發表三句，文字不可以改。 */
-  ok(/基礎關/.test(u5) && /挑戰關/.test(u5) && /創意關/.test(u5), '★★ 三張任務卡都在');
+  /* ★★ 老師 2026-08-25：「只有四個喔」 */
+  ok(/超音波距離感測器、可變電阻旋鈕、RGB 燈條、直流馬達/.test(u5),
+     '★★ 教材上的元件清單就那四樣');
+  ok(!/按鈕|單顆 LED/.test(u5), '★★ 教材裡也不再出現按鈕或單顆 LED');
+  /* 三張任務卡留在教材區（不是關卡）。 */
+  ok(/基礎關/.test(u5) && /挑戰關/.test(u5) && /創意關/.test(u5), '★★ 三張任務卡都在教材區');
   ok(/先讓它動/.test(u5) && /讓它更聰明/.test(u5) && /讓它解決問題/.test(u5),
      '★★ 三個副標一字不改');
   ok(/我們要解決的問題是/.test(u5) && /當＿＿＿＿時，系統會＿＿＿＿/.test(u5) &&
      /我們遇到＿＿＿＿，最後用＿＿＿＿解決/.test(u5),
      '★★ 發表三句一字不改（老師指定）');
   ok(/每組都從基礎關開始/.test(u5), '★ 而且寫明「每組都從基礎關開始」');
-  /* ★ 骨架虛擬碼要提醒「否則」—— 第一節那個老問題。 */
+  ok(/另外那一個/.test(u5),
+     '★★ 講清楚「第二個輸入」就是把另外那一個也用上（教具只有四樣）');
   ok(/否則/.test(u5) && /再也不會暗/.test(u5),
      '★★ 骨架裡點出「否則」不能省（第一節「門開了沒」的老問題）');
   ok(/1023/.test(u5) && /255/.test(u5) && /359/.test(u5),
      '★★ 卡關檢查表把三個範圍列出來（這門課最容易混的地方）');
 
-  /* 設計單要傳得到任務卡 —— ⚠️ 由頁面當中間人，不是模組互相呼叫。 */
   ok(/planRec = info\.plan/.test(page), '★★ 暖身做完把設計單存起來');
-  ok(/line: planLine\(\)/.test(page), '★★ 掛任務卡時把那一句傳進去');
+  ok(/line: planLine\(\)/.test(page), '★★ 掛下面那一塊時把那一句傳進去');
   ok(/save\.save\(UNIT, 'plan'/.test(page), '★ 設計單存進紀錄（每次覆寫 —— 改主意是正常的）');
   ok(/save\.save\(UNIT, 'work'/.test(page),
-     '★★ 任務卡的內容也要存（電腦教室關機會還原，不存就要重打）');
+     '★★ 成果發表的內容也要存（電腦教室關機會還原，不存就要重打）');
 }
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);

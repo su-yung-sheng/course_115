@@ -489,10 +489,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         放在最後的話，它就變成複習，不是進場券。 -->
                 <div id="detail-warm" class="hidden p-8 border-b border-slate-200 bg-cyan-50/40">
                     <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
-                        <h3 class="text-2xl font-bold text-slate-800">🔥 暖身關卡：超音波怎麼量距離</h3>
+                        <h3 class="text-2xl font-bold text-slate-800" id="warm-title">🔥 暖身關卡</h3>
                         <span id="warm-seed" class="text-xs text-slate-400 font-mono"></span>
                     </div>
-                    <p class="text-slate-500 text-sm mb-4">
+                    <p class="text-slate-500 text-sm mb-4" id="warm-note">
                         三個小步驟，做完才開始這一節課 ——
                         <b>先弄懂那個「距離」是怎麼來的</b>，後面的門檻和秒數才有意義。
                     </p>
@@ -530,10 +530,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             才有東西可以被檢核。暖身則在最前面（見上面 #detail-warm）。 -->
                     <div id="detail-lab" class="hidden">
                         <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-                            <h3 class="text-2xl font-bold text-slate-800">🎯 動手檢核</h3>
+                            <h3 class="text-2xl font-bold text-slate-800" id="lab-title">🎯 動手檢核</h3>
                             <span id="lab-seed" class="text-xs text-slate-400 font-mono"></span>
                         </div>
-                        <p class="text-slate-500 text-sm mb-4">
+                        <p class="text-slate-500 text-sm mb-4" id="lab-note">
                             每一關都要<b>先講你認為會怎樣，再執行</b> ——
                             說對了才算過。答錯會換一組數字重來，不限次數。
                         </p>
@@ -686,7 +686,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 /* 🎯 暖身與檢核。★ 兩個**分開指定** ——
                    第二節換了暖身（超音波 → 換算）但檢核還沒做，
                    綁在一起的話那一節就什麼都掛不上。 */
-                lab: { unit: 'u1', warm: 'ULTRALAB', checks: 'DOORLAB' },
+                lab: { unit: 'u1', warm: 'ULTRALAB', checks: 'DOORLAB',
+                       warmTitle: '🔥 暖身關卡：超音波怎麼量距離' },
                 apps: [
                     { icon: "🚪", name: "感應式鐵捲門",
                       how: "車子靠近就往上捲（或往旁邊拉開），開到定位就停；車走了再關回去。" },
@@ -893,7 +894,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                    重點改放在燈條上」）—— 超音波的原理第一節教過了，
                    距離在這裡只是輸入來源。
                    ⚠️ 三個檢核還沒做，所以 checks 先留 null。 */
-                lab: { unit: 'u2', warm: 'MAPLAB', checks: 'LIGHTLAB' },
+                lab: { unit: 'u2', warm: 'MAPLAB', checks: 'LIGHTLAB',
+                       warmTitle: '🔥 暖身關卡：距離怎麼換成亮度' },
                 apps: [
                     { icon: "✨", name: "迎賓燈",
                       how: "客人從走廊那一頭走過來，燈就跟著亮起來迎接他 —— 越靠近，亮的位置越往門口推。" },
@@ -1125,7 +1127,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                    這裡增加了一個接線動作，連接到開發板上的 A7」）。
                    ⚠️ 這是五節課裡**第一次要學生自己接線** —— 前兩節都在模組上。
                    ⚠️ 三個檢核還沒做，checks 先留 null。 */
-                lab: { unit: 'u3', warm: 'POTLAB', checks: 'FANLAB' },
+                lab: { unit: 'u3', warm: 'POTLAB', checks: 'FANLAB',
+                       warmTitle: '🔥 暖身關卡：可變電阻怎麼接、怎麼讀' },
                 apps: [
                     { icon: "🌀", name: "DC 變頻電扇",
                       how: "旋鈕轉一點點，風就大一點點，中間任何位置都停得住。⚠️ 傳統電扇不是這樣 —— 它是「一檔二檔三檔」的三段開關，裡面沒有可變電阻。" },
@@ -1345,7 +1348,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                    ★ 老師 2026-08-24：「重點強調 R G B 三原色混色原理」、
                      「公式有點難，不解釋」⇒ 暖身只練混色，那三行 sin 不碰。
                    ⚠️ 三個檢核還沒做。 */
-                lab: { unit: 'u4', warm: 'RGBLAB', checks: 'MIXLAB' },
+                lab: { unit: 'u4', warm: 'RGBLAB', checks: 'MIXLAB',
+                       warmTitle: '🔥 暖身關卡：紅綠藍三盞燈怎麼混色' },
                 apps: [
                     { icon: "🏮", name: "氣氛燈／燈條",
                       how: "同一條燈，轉個旋鈕就從暖黃換成冷藍 —— 裡面就是紅綠藍三盞燈用不同比例。" },
@@ -1570,33 +1574,28 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 ],
                 materials: [
                     "NKNU 5016B 教具模組",
-                    "前四節用過的元件：按鈕、超音波距離感測器、可變電阻旋鈕、LED、RGB 燈條、直流馬達",
-                    "專題設計單（就在下面的暖身關卡，做完才會打開任務卡）"
+                    "前四節用過的元件：超音波距離感測器、可變電阻旋鈕、RGB 燈條、直流馬達",
+                    "專題設計單（就在下面，先把要做什麼講清楚）"
                 ],
                 initPlayground: function(container) {
                     /* 🧠 靈感牆：輸入 × 輸出 的配對盤。
-                       ⚠️ 這裡**刻意不做決定** —— 決定是設計單（暖身）的事。
-                          這一塊只回答「這兩個湊起來能幹嘛」，
-                          因為專題課最常見的卡關是「我不知道這個能拿來做什麼」。 */
+                       ⚠️ 老師 2026-08-25：「只有四個喔」—— 教具上就是
+                          超音波、可變電阻、RGB 燈條、直流馬達。
+                          第一版還列了按鈕和單顆 LED，那會害學生去找不存在的零件。
+                       ★ 只有 2×2 四種組合，剛好可以**四種都給一個點子**，
+                         學生看完就知道「這兩樣湊起來能幹嘛」。 */
                     const INS = [
-                        { k: 'btn', t: '按鈕', d: '按下／沒按' },
-                        { k: 'us',  t: '超音波', d: '距離幾公分' },
-                        { k: 'pot', t: '旋鈕', d: '轉到幾 %' }
+                        { k: 'us',  t: '超音波距離感測器', d: '給你「幾公分」', from: '第一、二節' },
+                        { k: 'pot', t: '可變電阻（旋鈕）', d: '給你「轉到幾 %」', from: '第三、四節' }
                     ];
                     const OUTS = [
-                        { k: 'led',   t: 'LED 燈', d: '亮／暗／閃' },
-                        { k: 'strip', t: 'RGB 燈條', d: '顏色、亮第幾顆' },
-                        { k: 'moto',  t: '馬達風扇', d: '轉／停／快慢' }
+                        { k: 'strip', t: 'RGB 全彩燈條', d: '顏色、亮第幾顆', from: '第二、四節' },
+                        { k: 'moto',  t: '直流馬達（風扇）', d: '轉／停／快慢', from: '第三節' }
                     ];
                     const IDEA = {
-                        'btn|led': '按一下開燈、再按一下關燈 —— 最單純的開關，先做這個一定會動。',
-                        'btn|strip': '按鈕切換顏色：一按換一種心情燈（讀書白光、睡前暖黃）。',
-                        'btn|moto': '按著才轉的手持小風扇 —— 放開就停，不會忘記關。',
-                        'us|led': '有人靠近就亮的玄關燈；走遠了自己熄掉。',
-                        'us|strip': '距離越近亮的顆數越多 —— 倒車或停車位的距離指示。',
-                        'us|moto': '手一靠近就吹風的感應風扇；也可以反過來，太近就停下來保護手指。',
-                        'pot|led': '旋鈕當調光器，把燈從全暗轉到全亮。',
-                        'pot|strip': '旋鈕轉一圈換一輪顏色 —— 自己調出喜歡的氣氛燈。',
+                        'us|strip': '有人靠近就亮的玄關燈；或越近亮越多顆，變成停車距離指示。',
+                        'us|moto': '手一靠近就吹風的感應風扇；也可以反過來 —— 太近就停下來保護手指。',
+                        'pot|strip': '旋鈕轉一圈換一輪顏色，自己調出喜歡的氣氛燈。',
                         'pot|moto': '旋鈕調風速，像真的電風扇一樣。'
                     };
                     container.innerHTML = `
@@ -1618,13 +1617,17 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             <div id="idea-out-box" class="bg-slate-900 text-slate-100 rounded-2xl p-5 font-bold leading-relaxed text-sm sm:text-base min-h-[86px] flex items-center">
                                 各選一個，這裡會給你一個點子。
                             </div>
+                            <p class="text-xs text-slate-500 leading-relaxed">
+                                ⚠️ 教具上就這 <b>四樣</b>。挑戰關要「第二個輸入、第二個輸出」的時候，
+                                就是把<b>另外那一個也用上</b> —— 兩個感測器一起、兩個輸出一起。
+                            </p>
                         </div>
                     `;
                     let pick = { in: '', out: '' };
                     function btn(x, kind) {
                         const b = document.createElement('button');
                         b.className = 'text-left px-4 py-3 rounded-xl border-2 border-slate-200 bg-white font-black text-slate-800 hover:border-primary hover:bg-indigo-50 transition';
-                        b.innerHTML = `${x.t}<span class="block text-xs font-bold text-slate-500">${x.d}</span>`;
+                        b.innerHTML = `${x.t}<span class="block text-xs font-bold text-slate-500">${x.d}　·　${x.from}用過</span>`;
                         b.addEventListener('click', () => {
                             pick[kind] = x.k;
                             [...container.querySelectorAll(`[data-kind="${kind}"]`)].forEach(o => {
@@ -1634,7 +1637,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             });
                             const box = document.getElementById('idea-out-box');
                             box.textContent = (pick.in && pick.out)
-                                ? '💡 ' + (IDEA[pick.in + '|' + pick.out] || '這個組合也可以，想想看能解決什麼？')
+                                ? '💡 ' + (IDEA[pick.in + '|' + pick.out] || '想想看這個組合能解決什麼？')
                                 : '各選一個，這裡會給你一個點子。';
                         });
                         b.setAttribute('data-kind', kind);
@@ -1669,7 +1672,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             <div class="font-black text-slate-800 text-lg mb-2">讓它更聰明</div>
                             <p class="text-sm text-slate-600 leading-relaxed">
                                 調整<span class="hl">判斷數值或條件</span>，
-                                再加入<b>第二個輸入</b>、<b>第二個輸出</b>。
+                                再加入<b>第二個輸入</b>、<b>第二個輸出</b>。<br>
+                                <span class="text-xs text-slate-500">
+                                （教具就四樣 —— 「第二個」就是把<b>另外那一個</b>也用上）</span>
                             </p>
                         </div>
                         <div class="bg-white border-2 border-fuchsia-300 rounded-2xl p-5">
@@ -1717,6 +1722,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
   <span class="text-sky-400">讀值二</span> ← <span class="text-amber-400">［第二個輸入］</span>
   <span class="text-rose-400">如果</span> <span class="text-sky-400">讀值二</span> <span class="text-amber-400">［切換條件］</span> <span class="text-rose-400">那麼</span>
       <span class="text-slate-500">// 第二個輸入負責「換一種行為」，不是再做一次同樣的事</span>
+      <span class="text-slate-500">// 例：旋鈕決定亮度，超音波決定要不要亮</span>
       <span class="text-amber-400">［第二個輸出］</span> <span class="text-amber-400">［動作］</span>
   <span class="text-rose-400">否則</span>
       <span class="text-rose-400">如果</span> <span class="text-sky-400">讀值一</span> <span class="text-amber-400">［判斷］</span> <span class="text-rose-400">那麼</span> <span class="text-amber-400">［第一個輸出］</span> <span class="text-amber-400">［動作］</span>
@@ -1758,7 +1764,16 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         </ol>
                     </div>
                 `,
-                lab: { unit: 'u5', warm: 'PLANLAB', checks: 'PROJLAB' }
+/* ★ 老師 2026-08-25：「第五課不用動手檢核」、
+                   「任務卡改成之前提到的互動介面，當成複習」。
+                   ⇒ 下面那一塊不是檢核，是**兩種模式的展示 ＋ 成果發表**，而且不上鎖。 */
+                lab: { unit: 'u5', warm: 'PLANLAB', checks: 'PROJLAB', gate: false,
+                       warmTitle: '📋 專題設計單',
+                       warmNote: '三個步驟，把你想做的東西講清楚 —— ' +
+                                 '⚠️ 隨時可以回來改，改主意是正常的。',
+                       checkTitle: '🎛️ 兩種模式 ＋ 成果發表',
+                       checkNote: '先玩玩看<b>自動</b>和<b>手動</b>兩種模式（複習前四節）—— ' +
+                                  '你的作品挑一種來做就好。最後把成果整理成一張帶得走的卡片。' }
             }
 
         };
@@ -1845,6 +1860,16 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 const seedTxt = seed ? ('全班同題　seed = ' + seed) : '每個人的數字都不一樣';
                 document.getElementById('warm-seed').textContent = seedTxt;
                 document.getElementById('lab-seed').textContent = seedTxt;
+
+                /* ⚠️⚠️ 這兩個標題原本是**寫死在 HTML 裡**的（「暖身關卡：超音波怎麼量距離」）——
+                   所以第二～四節的暖身明明是換算、旋鈕、混色，標題卻都寫著超音波。
+                   ★ 這種錯不會報錯，只會讓學生一進來就覺得「我是不是點錯節」。
+                   ⇒ 標題跟著單元走，沒寫就用預設。 */
+                const T = (id, v) => { if (v) document.getElementById(id).innerHTML = v; };
+                T('warm-title', labCfg.warmTitle);
+                T('warm-note', labCfg.warmNote);
+                T('lab-title', labCfg.checkTitle);
+                T('lab-note', labCfg.checkNote);
 
                 const UNIT   = labCfg.unit;
                 const wrap   = document.getElementById('warm-box');
@@ -1973,6 +1998,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 save.load(UNIT).then(function (rec) {
                     rec = rec || {};
                     planRec = (rec.plan && rec.plan.plan) || null;
+                    /* ★ 老師 2026-08-25：「第五課不用動手檢核」——
+                       那一節下面是**成果發表**，不是檢核，所以不上鎖：
+                       ⚠️ 鎖住的話，還沒填完設計單就看不到「等一下要交什麼」，
+                          學生會做完才發現方向不對。 */
+                    if (labCfg.gate === false) {
+                        mountWarm(rec);
+                        openChecks(rec);
+                        return;
+                    }
                     if (rec.warm) {
                         doneCard(wrap, rec.warm.at, '暖身關卡已通過', () => mountWarm(rec));
                         openChecks(rec);          // ★ 鑰匙已經拿過了，不必再拿一次

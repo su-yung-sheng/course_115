@@ -275,6 +275,21 @@
     return { dragging: function () { return dragging; } };
   }
 
+  /* 色相 → 紅綠藍。★ 第四、五節都要用（顏色的算法不可以有兩份）。
+     ⚠️ 刻意**不用 sin**（老師：那個公式有點難，不解釋）——
+        這只是把角度換成一組顏色讓畫面看得見，學生不必看這一段。 */
+  function hueRgb(h) {
+    var x = (((h % 360) + 360) % 360) / 60, i = Math.floor(x), f = x - i;
+    var up = Math.round(255 * f), dn = 255 - up;
+    return [[255, up, 0], [dn, 255, 0], [0, 255, up], [0, dn, 255],
+            [up, 0, 255], [255, 0, dn]][i % 6];
+  }
+  function hexOf(rgb) {
+    return '#' + rgb.map(function (v) {
+      return ('0' + Math.max(0, Math.min(255, Math.round(v))).toString(16)).slice(-2);
+    }).join('');
+  }
+
   global.LABKIT = {
     VERSION: VERSION,
     pick: pick,
@@ -288,6 +303,8 @@
        匯出了只會讓下一個人以為它被測過（「沒人用的匯出」那條當場抓到）。 */
     dialAngle: dialAngle,
     dialPctFromAngle: dialPctFromAngle,
+    hueRgb: hueRgb,
+    hexOf: hexOf,
     dialSvg: dialSvg,
     dialBind: dialBind,
     sayHtml: sayHtml,

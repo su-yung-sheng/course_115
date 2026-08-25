@@ -207,7 +207,7 @@ section('★ 第四節接上頁面了');
 {
   const page = read('11501/5016b.html');
   ok(/<script src="\.\.\/shared\/mixlab\.js"><\/script>/.test(page), '頁面載入 mixlab');
-  ok(/lab: \{ unit: 'u4', warm: 'RGBLAB', checks: 'MIXLAB' \}/.test(page),
+  ok(new RegExp("lab: \\{ unit: 'u4', warm: 'RGBLAB', checks: 'MIXLAB'").test(page),
      '★★ 第四節的檢核接上了（原本是 null —— 老師 2026-08-25 回報「沒有開始」）');
   ok(!/checks: null/.test(page.slice(page.indexOf('title: "情境照明'),
                                      page.indexOf('title: "智慧中樞'))),

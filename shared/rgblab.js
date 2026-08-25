@@ -109,14 +109,8 @@
   function posAt(pct) { return Math.round(1 + (LEDS - 1) * clamp(pct) / 100); }
   function hueAt(pct) { return Math.round(HUE_MAX * clamp(pct) / 100); }
   function clamp(v) { return Math.max(0, Math.min(100, Number(v) || 0)); }
-  /* 色相 → 紅綠藍。★ 刻意**不用 sin**（老師：那個公式有點難，不解釋）——
-     這裡只是要讓畫面上的顏色跟著轉，學生不必看這一段。 */
-  function hueRgb(h) {
-    var x = (h % 360) / 60, i = Math.floor(x), f = x - i;
-    var up = Math.round(255 * f), dn = 255 - up;
-    return [[255, up, 0], [dn, 255, 0], [0, 255, up], [0, dn, 255],
-            [up, 0, 255], [255, 0, dn]][i % 6];
-  }
+  /* 色相 → 紅綠藍。★ 算法在 labkit（第五節的展示也要用，不可以有兩份）。 */
+  function hueRgb(h) { return LK().hueRgb(h); }
 
   /* ── ③ 的填空：複習轉換 ───────────────────────────
      ★ 老師：「複習一下轉換公式」。

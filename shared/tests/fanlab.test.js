@@ -179,7 +179,7 @@ section('★ 骨架與頁面');
 
   const page = read('11501/5016b.html');
   ok(/<script src="\.\.\/shared\/fanlab\.js"><\/script>/.test(page), '頁面載入 fanlab');
-  ok(/lab: \{ unit: 'u3', warm: 'POTLAB', checks: 'FANLAB' \}/.test(page),
+  ok(new RegExp("lab: \\{ unit: 'u3', warm: 'POTLAB', checks: 'FANLAB'").test(page),
      '★ 第三節：暖身 POTLAB ＋ 檢核 FANLAB');
 
   /* ⚠️ 虛擬碼要和 .sb3 一致 —— 舊草稿寫 A0、0~1023、0~255，全是錯的。 */
