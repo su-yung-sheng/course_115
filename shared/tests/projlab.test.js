@@ -282,7 +282,10 @@ section('★★ 成果發表：三句話（老師指定，文字不可改）');
 
   /* ⚠️ 第二句的「當…」現在要看得出是**條件**（老師 2026-08-25：
      「一定要有條件判斷」）—— 範例本身也要合格。 */
-  const v = { problem: '晚上回家玄關太暗', when: '距離小於 30 公分',
+  /* ⚠️ 規格（模式＋輸出）現在是必填 —— 一張沒有規格的成果卡
+     看不出他做了什麼。 */
+  const v = { mode: '自動', outs: ['strip', 'moto'],
+              problem: '晚上回家玄關太暗', when: '距離小於 30 公分',
               then: '燈條慢慢亮成暖黃色', els: '兩個都關掉', trouble: '距離一直跳，燈會閃',
               fix: '把門檻改成進 15 出 25 兩個數字',
               learn: '感測器讀到的數字會抖，門檻不能只設一個' };
@@ -291,6 +294,14 @@ section('★★ 成果發表：三句話（老師指定，文字不可改）');
   /* ⚠️⚠️ 「否則」那一格空著要擋 —— 那正是第一節「門開了沒」的病根。 */
   ok(!J.judgeShow(Object.assign({}, v, { els: '' })).ok, '★★ 「否則」空著 → 不過');
   ok(!J.judgeShow(Object.assign({}, v, { learn: '' })).ok, '★★ 「我學到」空著 → 不過');
+  /* ⚠️ 規格不完整就出不了卡 —— 一張沒有規格的成果卡看不出他做了什麼。 */
+  ok(J.judgeShow(Object.assign({}, v, { mode: '' })).how === 'nomode',
+     '★★ 沒挑模式 → 擋下來');
+  ok(/挑一種模式/.test(J.sayShow({ how: 'nomode' })), '   而且告訴他去哪裡挑');
+  ok(J.judgeShow(Object.assign({}, v, { outs: [] })).how === 'noout',
+     '★★ 沒勾輸出 → 擋下來');
+  ok(/基礎關一個|挑戰關是兩個/.test(J.sayShow({ how: 'noout' })),
+     '   而且講清楚基礎關一個、挑戰關兩個');
   ok(J.judgeShow(Object.assign({}, v, { learn: '' })).miss.indexOf('learn') >= 0 &&
      /我學到/.test(J.sayShow(J.judgeShow(Object.assign({}, v, { learn: '' })))),
      '★ 而且點名是「我學到」那一格');
@@ -337,12 +348,25 @@ section('★★ 成果發表：三句話（老師指定，文字不可改）');
 
 section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
 {
-  const v = { problem: '玄關太暗', when: '有人靠近', then: '燈亮起來', els: '關掉',
+  const v = { mode: '自動', outs: ['strip', 'moto'],
+              problem: '玄關太暗', when: '有人靠近', then: '燈亮起來', els: '關掉',
               trouble: '燈一直閃', fix: '加了兩個門檻', learn: '門檻要兩個' };
   const html = J.cardHtml(v, { scene: '玄關迎賓燈', team: '二年三班第 4 組',
                                mode: '自動', date: '2026/8/25' });
   ok(/玄關迎賓燈/.test(html) && /二年三班第 4 組/.test(html), '★ 卡片上有題目和研發人員');
-  ok(/模式：自動/.test(html), '★★ 而且標出這一組做的是哪一種模式');
+  /* ★ 老師 2026-08-25：「成果卡應該要有手動或自動系統選擇，
+     超音波或可變電阻，配燈條與馬達，完整版本的格式」。 */
+  ok(/控制模式/.test(html) && /自動模式/.test(html), '★★ 規格表寫出控制模式');
+  ok(/輸入元件/.test(html) && /超音波距離感測器/.test(html),
+     '★★ 輸入元件由模式帶出來（自動＝超音波）');
+  ok(/Trig = A2/.test(html), '★ 連接腳都寫上去');
+  ok(/輸出元件/.test(html) && /RGB 全彩燈條/.test(html) && /直流馬達/.test(html),
+     '★★ 輸出元件（燈條＋馬達）');
+  ok(/挑戰關/.test(html), '★ 兩個輸出 → 標成挑戰關');
+  ok(/專題成果報告/.test(html) && /一、系統規格/.test(html) &&
+     /二、動作說明/.test(html) && /三、問題與解決/.test(html),
+     '★★ 正式文件的版面（抬頭＋三段編號）');
+  ok(/研發人員簽名/.test(html) && /教師確認/.test(html), '★ 有簽名欄');
   ok(/我要解決的問題是/.test(html) && /系統會/.test(html) && /最後用/.test(html) &&
      /我學到/.test(html),
      '★★ 三句話都在卡片上（含「我學到」）');
@@ -351,12 +375,18 @@ section('★★ 成果卡：帶得走（老師 2026-08-25 追加）');
      兩份要一起改。突變測試證實：把 cardLines 的「我學到」刪掉，
      網頁版照樣正確、測試也照樣綠，**只有下載下來的圖少一句**。 */
   const rows = J.cardLines(v);
-  ok(rows.length === 4, '★★ 下載版有四段（問題／當…否則／遇到…解決／我學到）');
-  ok(/我要解決的問題是/.test(rows[0].k), '★ ① 我要解決的問題是');
-  ok(/當/.test(rows[1].k) && /否則/.test(rows[1].v), '★★ ② 含「否則」那一段');
-  ok(/我遇到/.test(rows[2].k) && /解決/.test(rows[2].v), '★ ③ 我遇到…最後用…解決');
-  ok(/我學到/.test(rows[3].k) && rows[3].v === v.learn, '★★ ④ 我學到（下載版也要有）');
-  ok(!rows.map(r => r.k + r.v).join().match(/我們/), '★ 下載版也沒有「我們」');
+  const txt = rows.map(r => (r.s || '') + r.k + r.v).join('\n');
+  ok(rows.filter(r => r.s).length === 3, '★★ 下載版也有三段標題');
+  ok(/一、系統規格/.test(txt) && /二、動作說明/.test(txt) && /三、問題與解決/.test(txt),
+     '★★ 而且和網頁版同一套段落');
+  ok(/控制模式/.test(txt) && /自動模式/.test(txt) && /超音波距離感測器/.test(txt),
+     '★★ 規格也印在下載版上（模式＋輸入）');
+  ok(/RGB 全彩燈條/.test(txt) && /直流馬達/.test(txt), '★★ 輸出也在');
+  ok(/我要解決的問題是/.test(txt), '★ ① 我要解決的問題是');
+  ok(/否則/.test(txt), '★★ ② 含「否則」那一段');
+  ok(/我遇到/.test(txt) && /解決/.test(txt), '★ ③ 我遇到…最後用…解決');
+  ok(/我學到/.test(txt) && txt.indexOf(v.learn) >= 0, '★★ ④ 我學到（下載版也要有）');
+  ok(!/我們/.test(txt), '★ 下載版也沒有「我們」');
   /* ⚠️ 卡片上**每一格都是學生自己打的字**，全部都要跳脫。 */
   ['problem', 'when', 'then', 'els', 'trouble', 'fix', 'learn'].forEach(k => {
     const w = Object.assign({}, v); w[k] = '<img src=x onerror=alert(1)>';
@@ -428,7 +458,7 @@ section('★★ 走一遍：展示 → 成果卡');
     ok(/如果/.test(t) && /那麼/.test(t) && /否則/.test(t),
        '★★ 而且「如果…那麼…否則…」三個字都在（老師 2026-08-25 指定）');
   }
-  set('pj-team', '二年三班第 4 組');
+
   set('pj-problem', '晚上回家玄關太暗，開燈要摸半天');
   /* ⚠️ 這一段前面選的是**手動**，所以條件也要寫旋鈕那一邊的 ——
      不然會（正確地）被提醒「你選手動，條件卻在講自動」。
@@ -441,11 +471,20 @@ section('★★ 走一遍：展示 → 成果卡');
   set('pj-trouble', '距離一直跳，燈會閃個不停');
   set('pj-fix', '把門檻改成進 15 出 25 兩個數字');
   ok(set('pj-learn', '感測器的數字會抖，門檻不能只設一個'), '★★ 畫面上有「我學到」那一格');
+  /* ⚠️ 規格是必填 —— 沒勾輸出就出不了卡。 */
+  click('pj-make');
+  ok(!done && /輸出/.test(el.textContent), '★★ 沒勾輸出 → 擋下來');
+  el.querySelector('[data-out="moto"]').checked = true;
+  el.querySelector('[data-out="moto"]').dispatchEvent(new W.Event('change', { bubbles: true }));
+  ok(/輸入元件/.test(el.textContent) && /可變電阻/.test(el.textContent),
+     '★★ 規格區：輸入元件由模式自動帶出來（不讓學生選）');
   click('pj-make');
   ok(!!done, '★ 三句都寫好 → 產生成果卡');
   ok(!!el.querySelector('#pj-card'), '   卡片畫出來了');
-  ok(/模式：手動/.test(el.querySelector('#pj-card').textContent),
+  ok(/手動模式/.test(el.querySelector('#pj-card').textContent),
      '★★ 卡片上帶著他選的模式');
+  ok(/可變電阻/.test(el.querySelector('#pj-card').textContent),
+     '★★ 而且輸入元件跟著模式帶出來（手動＝可變電阻）');
   ok(/否則/.test(el.querySelector('#pj-card').textContent),
      '★★ 成果卡上第二句也印出「否則」那一段');
   ok(!!el.querySelector('#pj-print') && !!el.querySelector('#pj-png'),
@@ -585,7 +624,7 @@ section('★★ 模式和成果卡要真的有關連（老師 2026-08-25）');
   ok(/距離|公分/.test(J.MODES[0].ph[0]) && /旋鈕/.test(J.MODES[1].ph[0]),
      '★★ 自動給距離的例子、手動給旋鈕的例子');
 
-  const base = { mode: '自動', problem: '玄關太暗', when: '距離小於 30 公分',
+  const base = { mode: '自動', outs: ['strip'], problem: '玄關太暗', when: '距離小於 30 公分',
                  then: '燈條亮起來、風扇開始轉', els: '兩個都關掉',
                  trouble: '燈會一直閃', fix: '加了兩個門檻', learn: '門檻要兩個' };
   ok(J.judgeShow(base).ok && !J.judgeShow(base).warn, '★ 對得起來 → 沒有提醒');
@@ -632,7 +671,8 @@ section('★★ AI 助教看一遍（老師 2026-08-25：成果發表引入 AI �
   ok(J.AI_NEED.every(g => g.tip && g.tip.length > 30),
      '★ 每一點都給**具體**的建議（不是只說「不夠好」）');
   /* ⚠️ 送出去的是三句話串起來的一段，而且要截斷（額度全班共用）。 */
-  const v2 = { problem: '玄關太暗', when: '距離小於 30 公分', then: '燈亮',
+  const v2 = { mode: '自動', outs: ['strip'],
+               problem: '玄關太暗', when: '距離小於 30 公分', then: '燈亮',
                els: '關掉', trouble: '燈會閃', fix: '兩個門檻', learn: '門檻要兩個' };
   const txt = J.aiText(v2);
   ok(/1/.test(txt) && /2/.test(txt) && /3/.test(txt), '★ 三句都送出去（AI 才判得出關聯）');
@@ -662,7 +702,12 @@ section('★★ AI 助教看一遍（老師 2026-08-25：成果發表引入 AI �
   W.document.body.appendChild(el7);
   let done7 = null;
   const a7 = J.mount(el7, { onDone: i => { done7 = i; } });
+  /* ⚠️ 規格是必填 —— 先挑模式、勾輸出，不然會被本機那一關擋在 AI 之前。 */
+  el7.querySelector('[data-pick="自動"]')
+    .dispatchEvent(new W.Event('click', { bubbles: true }));
   a7.show('show');
+  el7.querySelector('[data-out="strip"]').checked = true;
+  el7.querySelector('[data-out="strip"]').dispatchEvent(new W.Event('change', { bubbles: true }));
   const put = (id, v) => { const e = el7.querySelector('#' + id); if (e) e.value = v; };
   put('pj-problem', '晚上回家玄關太暗，開燈要摸半天');
   put('pj-when', '距離小於 30 公分'); put('pj-then', '燈條亮起來');

@@ -123,6 +123,33 @@
         國中生講得出那個意思就算，不必寫成數學式。 */
   var COND = new RegExp('[0-9０-９]|小於|大於|超過|低於|高於|以內|以下|以上|不到|' +
                         '靠近|接近|太近|太遠|碰到|轉到|滿|到達|超出|距離|公分|%');
+  /* ═══ 系統規格 ═══════════════════════════════════════
+     ★ 老師 2026-08-25：「成果卡應該要有手動或自動系統選擇，
+       超音波或可變電阻，配燈條與馬達，完整版本的格式」。
+     ⚠️ 輸入**不讓學生選** —— 它由模式決定（自動＝超音波、手動＝旋鈕），
+        兩邊各自只有一個。讓他選只會多一個對不起來的機會。
+     ★ 輸出才要勾：基礎關一個、挑戰關兩個 —— 那正是這一節的進度。 */
+  var OUTS = [
+    { key: 'strip', t: 'RGB 全彩燈條', pin: '燈條腳位', from: '第二、四節' },
+    { key: 'moto',  t: '直流馬達',     pin: '馬達 腳位 2、3', from: '第三節' }
+  ];
+  function inputOf(modeT) {
+    var m = MODES.filter(function (x) { return x.t === modeT; })[0];
+    return m ? m.by : '';
+  }
+  function outsOf(v) {
+    return OUTS.filter(function (o) { return (v.outs || []).indexOf(o.key) >= 0; });
+  }
+  function specOf(v) {
+    return {
+      mode: v.mode || '',
+      input: inputOf(v.mode),
+      pin: v.mode === '自動' ? 'Trig = A2、Echo = A3' : 'A7',
+      outs: outsOf(v).map(function (o) { return o.t; }),
+      level: (v.outs || []).length >= 2 ? '挑戰關（一個輸入、兩個輸出）'
+                                        : '基礎關（一個輸入、一個輸出）'
+    };
+  }
   function modeOf(t) {
     return MODES.filter(function (m) { return m.t === t; })[0] || null;
   }
@@ -151,6 +178,9 @@
       if (norm(v[k]).length < MIN) miss.push(k);
     });
     if (miss.length) return { ok: false, how: 'short', miss: miss };
+    /* ⚠️ 規格不完整就出不了卡 —— 一張沒有規格的成果卡看不出他做了什麼。 */
+    if (!v.mode) return { ok: false, how: 'nomode' };
+    if (!(v.outs || []).length) return { ok: false, how: 'noout' };
     if (!COND.test(String(v.when || ''))) return { ok: false, how: 'nocond' };
     return { ok: true, how: 'fit', warn: mismatch(v) };
   }
@@ -158,6 +188,12 @@
                 els: '否則…', trouble: '我遇到…', fix: '最後用…解決',
                 learn: '我學到…' };
   function sayShow(r) {
+    if (r.how === 'nomode')
+      return '⚠️ 先在上面那一頁**挑一種模式**（自動或手動）—— ' +
+             '成果卡上要寫清楚你做的是哪一種。';
+    if (r.how === 'noout')
+      return '⚠️ 勾一下你**實際用到的輸出**（燈條、馬達）。\n' +
+             '★ 基礎關一個就好；挑戰關是兩個一起動。';
     if (r.how === 'nocond')
       return '⚠️ 第二句的「當＿＿時」要是一個**條件** —— ' +
              '也就是程式裡那個「**如果**」。\n' +
@@ -250,31 +286,71 @@
        網頁版照樣正確、測試也照樣綠，**只有下載下來的圖少一句**。
        ⇒ 所以這支要匯出，讓測試直接盯它。 */
   function cardLines(v) {
+    var sp = specOf(v);
     return [
-      { k: '我要解決的問題是', v: v.problem },
-      { k: '當　' + v.when + '　時', v: '系統會　' + v.then + '；否則　' + v.els },
-      { k: '我遇到　' + v.trouble, v: '最後用　' + v.fix + '　解決' },
-      { k: '我學到', v: v.learn }
+      { s: '一、系統規格',
+        k: '控制模式：' + (sp.mode ? sp.mode + '模式' : '—') +
+           '　｜　輸入：' + (sp.input || '—') + '（' + sp.pin + '）',
+        v: '輸出：' + (sp.outs.join('、') || '—') + '　｜　' + sp.level },
+      { s: '二、動作說明',
+        k: '1　我要解決的問題是', v: v.problem },
+      { k: '2　當　' + v.when + '　時',
+        v: '系統會　' + v.then + '；否則　' + v.els },
+      { s: '三、問題與解決',
+        k: '3　我遇到　' + v.trouble, v: '最後用　' + v.fix + '　解決' },
+      { k: '4　我學到', v: v.learn }
     ];
   }
+  /* ★ 老師 2026-08-25：「設計一下卡片格式，正式文件風格」。
+     ⇒ 版面照一份技術文件走：
+         抬頭（單位／文件名／日期）
+         基本資料（專題名稱、研發人員、完成階段）
+         一、系統規格（模式／輸入／腳位／輸出）
+         二、動作說明（如果…那麼…否則）
+         三、問題與解決（遇到／解法／學到）
+         簽名欄
+     ⚠️ 正式**不等於**冷冰冰：欄位名稱仍用學生看得懂的話，
+        不寫「需求規格書」那種他念不出來的詞。 */
   function cardHtml(v, meta) {
     var esc = LK().esc;
     var m = meta || {};
+    var sp = specOf(v);
+    function row(k, val) {
+      return '<tr><th>' + esc(k) + '</th><td>' + esc(val || '—') + '</td></tr>';
+    }
     return '<div class="pj-card" id="pj-card">' +
-      '<div class="pj-hd"><span>智慧家居機電專題　成果發表</span>' +
-        '<span>' + esc(m.date || '') + '</span></div>' +
-      '<div class="pj-title">' + esc(m.scene || '我的專題') + '</div>' +
-      (m.team ? '<div class="pj-team">' + esc(m.team) + '</div>' : '') +
-      (m.mode ? '<div class="pj-mode">模式：' + esc(m.mode) + '</div>' : '') +
-      (m.line ? '<div class="pj-line">' + esc(m.line) + '</div>' : '') +
-      '<ol class="pj-ol">' +
-        '<li><b>我要解決的問題是：</b><br>' + esc(v.problem) + '</li>' +
-        '<li><b>當</b> ' + esc(v.when) + ' <b>時，系統會</b> ' + esc(v.then) +
-          '<b>；否則</b> ' + esc(v.els) + '。</li>' +
-        '<li><b>我遇到</b> ' + esc(v.trouble) +
-          ' <b>，最後用</b> ' + esc(v.fix) + ' <b>解決。</b><br>' +
-          '<b>我學到</b> ' + esc(v.learn) + '。</li>' +
-      '</ol></div>';
+      '<div class="pj-doc-h">' +
+        '<div class="pj-doc-org">' + esc(m.org || '智慧家居機電專題') + '</div>' +
+        '<div class="pj-doc-t">專題成果報告</div>' +
+        '<div class="pj-doc-m">' + esc(m.date || '') + '</div>' +
+      '</div>' +
+      '<table class="pj-tb pj-tb-head">' +
+        row('專題名稱', m.scene) +
+        row('研發人員', m.team) +
+        row('完成階段', sp.level) +
+      '</table>' +
+      '<div class="pj-sec">一、系統規格</div>' +
+      '<table class="pj-tb">' +
+        row('控制模式', sp.mode ? sp.mode + '模式' : '') +
+        row('輸入元件', sp.input) +
+        row('接腳', sp.pin) +
+        row('輸出元件', sp.outs.join('、')) +
+      '</table>' +
+      '<div class="pj-sec">二、動作說明</div>' +
+      '<div class="pj-body">' +
+        '<div class="pj-li"><span>1</span>我要解決的問題是：' + esc(v.problem) + '</div>' +
+        '<div class="pj-li"><span>2</span>當 <b>' + esc(v.when) + '</b> 時，' +
+          '系統會 <b>' + esc(v.then) + '</b>；否則 <b>' + esc(v.els) + '</b>。</div>' +
+      '</div>' +
+      '<div class="pj-sec">三、問題與解決</div>' +
+      '<div class="pj-body">' +
+        '<div class="pj-li"><span>3</span>我遇到 <b>' + esc(v.trouble) + '</b>，' +
+          '最後用 <b>' + esc(v.fix) + '</b> 解決。</div>' +
+        '<div class="pj-li"><span>4</span>我學到 <b>' + esc(v.learn) + '</b>。</div>' +
+      '</div>' +
+      (m.line ? '<div class="pj-doc-f">設計單：' + esc(m.line) + '</div>' : '') +
+      '<div class="pj-sign"><span>研發人員簽名</span><span>教師確認</span></div>' +
+    '</div>';
   }
 
   /* 列印：把成果卡搬到一個獨立容器，@media print 只留它。
@@ -311,65 +387,74 @@
     return out;
   }
   function drawCard(v, meta) {
-    var W = 1000, H = 1414, pad = 70;          // A4 直式的比例
+    var W = 1000, H = 1414, pad = 72;          // A4 直式的比例
     var cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     var c = cv.getContext('2d');
     var FONT = '"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif';
-    var m = meta || {};
+    var m = meta || {}, sp = specOf(v);
     c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
-    c.fillStyle = '#7c3aed'; c.fillRect(0, 0, W, 14);
 
-    var y = pad + 30;
-    c.fillStyle = '#64748b'; c.font = '600 22px ' + FONT;
-    c.fillText('智慧家居機電專題　成果發表', pad, y);
-    c.textAlign = 'right';
-    c.fillText(String(m.date || ''), W - pad, y);
+    /* ── 抬頭 ── */
+    var y = pad + 16;
+    c.fillStyle = '#64748b'; c.font = '700 20px ' + FONT;
+    c.fillText(String(m.org || '智慧家居機電專題'), pad, y);
+    c.textAlign = 'right'; c.fillText(String(m.date || ''), W - pad, y);
     c.textAlign = 'left';
+    y += 44;
+    c.fillStyle = '#0f172a'; c.font = '900 40px ' + FONT;
+    c.fillText('專題成果報告', pad, y);
+    y += 18;
+    c.fillStyle = '#7c3aed'; c.fillRect(pad, y, W - pad * 2, 4);
+    y += 40;
 
-    y += 62;
-    c.fillStyle = '#0f172a'; c.font = '900 46px ' + FONT;
-    wrapText(c, m.scene || '我的專題', W - pad * 2).forEach(function (l) {
-      c.fillText(l, pad, y); y += 56;
-    });
-    if (m.team) {
-      c.fillStyle = '#7c3aed'; c.font = '800 26px ' + FONT;
-      c.fillText(m.team, pad, y); y += 44;
-    }
-    if (m.mode) {
-      c.fillStyle = '#0891b2'; c.font = '800 24px ' + FONT;
-      c.fillText('模式：' + m.mode, pad, y); y += 40;
-    }
-    if (m.line) {
-      y += 8;
-      c.fillStyle = '#f1f5f9'; c.fillRect(pad, y - 26, W - pad * 2, 6);
-      y += 20;
-      c.fillStyle = '#475569'; c.font = '700 24px ' + FONT;
-      wrapText(c, m.line, W - pad * 2).forEach(function (l) { c.fillText(l, pad, y); y += 36; });
-    }
-
-    y += 34;
-    cardLines(v).forEach(function (row, i) {
-      c.fillStyle = '#ede9fe';
-      c.fillRect(pad, y - 34, 46, 46);
-      c.fillStyle = '#7c3aed'; c.font = '900 26px ' + FONT;
-      c.fillText(String(i + 1), pad + 16, y);
-      c.fillStyle = '#0f172a'; c.font = '900 30px ' + FONT;
-      wrapText(c, row.k, W - pad * 2 - 66).forEach(function (l) {
-        c.fillText(l, pad + 66, y); y += 42;
+    /* ── 基本資料 ── */
+    function kv(k, val) {
+      c.fillStyle = '#64748b'; c.font = '800 22px ' + FONT;
+      c.fillText(k, pad, y);
+      c.fillStyle = '#0f172a'; c.font = '800 24px ' + FONT;
+      wrapText(c, String(val || '—'), W - pad * 2 - 150).forEach(function (l, i) {
+        c.fillText(l, pad + 150, y + i * 34);
       });
-      c.fillStyle = '#334155'; c.font = '700 28px ' + FONT;
-      wrapText(c, row.v, W - pad * 2 - 66).forEach(function (l) {
-        c.fillText(l, pad + 66, y); y += 40;
+      y += 34 * Math.max(1, wrapText(c, String(val || '—'), W - pad * 2 - 150).length) + 8;
+    }
+    kv('專題名稱', m.scene);
+    kv('研發人員', m.team);
+    kv('完成階段', sp.level);
+
+    /* ── 各段 ── */
+    y += 12;
+    cardLines(v).forEach(function (row) {
+      if (row.s) {
+        y += 12;
+        c.fillStyle = '#7c3aed'; c.font = '900 26px ' + FONT;
+        c.fillText(row.s, pad, y);
+        y += 10;
+        c.fillStyle = '#ede9fe'; c.fillRect(pad, y, W - pad * 2, 3);
+        y += 34;
+      }
+      c.fillStyle = '#0f172a'; c.font = '900 25px ' + FONT;
+      wrapText(c, row.k, W - pad * 2).forEach(function (l) { c.fillText(l, pad, y); y += 34; });
+      c.fillStyle = '#334155'; c.font = '700 24px ' + FONT;
+      wrapText(c, row.v, W - pad * 2 - 24).forEach(function (l) {
+        c.fillText(l, pad + 24, y); y += 33;
       });
-      y += 34;
+      y += 14;
     });
 
-    c.fillStyle = '#94a3b8'; c.font = '600 20px ' + FONT;
-    c.fillText('⚠️ 電腦教室關機會還原 —— 記得把這張圖傳給自己或交給老師。',
-               pad, H - pad + 10);
+    /* ── 簽名欄 ── */
+    var sy = H - pad - 46;
+    c.strokeStyle = '#cbd5e1'; c.lineWidth = 2;
+    [0, 1].forEach(function (i) {
+      var x = pad + i * ((W - pad * 2) / 2 + 10);
+      var w = (W - pad * 2) / 2 - 10;
+      c.beginPath(); c.moveTo(x, sy); c.lineTo(x + w, sy); c.stroke();
+      c.fillStyle = '#94a3b8'; c.font = '700 19px ' + FONT;
+      c.fillText(i === 0 ? '研發人員簽名' : '教師確認', x, sy + 26);
+    });
     return cv;
   }
+
   function downloadPng(v, meta) {
     var cv = drawCard(v, meta);
     var a = document.createElement('a');
@@ -413,6 +498,18 @@
   '.pj-who-w{font-size:14px;font-weight:800;color:#64748b}' +
   '.pj-who-b{font-size:14px;font-weight:900;color:#b45309}' +
   '.pj-who-r{padding:5px 12px;font-size:12px}' +
+  '.pj-spec{background:#f8fafc;border:2px solid #e2e8f0;border-radius:12px;' +
+    'padding:11px 13px;margin:10px 0}' +
+  '.pj-spec-h{font-size:12px;font-weight:900;color:#7c3aed;margin-bottom:5px}' +
+  '.pj-spec-r{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:14px;' +
+    'font-weight:800;color:#475569;margin:4px 0}' +
+  '.pj-spec-r b{color:#0f172a}' +
+  '.pj-spec-r span{font-size:12px;color:#94a3b8;font-family:monospace}' +
+  '.pj-spec-n{font-size:12px;font-weight:800;color:#94a3b8;margin-top:5px}' +
+  '.pj-out{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;' +
+    'border:2px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;' +
+    'font-size:14px;font-weight:900;color:#334155}' +
+  '.pj-out.on{border-color:#7c3aed;background:#f5f3ff;color:#5b21b6}' +
   '.pj-hint{font-size:13px;font-weight:800;color:#7c3aed;background:#f5f3ff;' +
     'border-radius:10px;padding:7px 10px;margin-top:5px;line-height:1.8}' +
   /* 兩種模式的對照表 */
@@ -428,18 +525,31 @@
   '.pj-pick{background:#fffbeb;border:2px solid #fcd34d;border-radius:12px;padding:12px 14px;' +
     'margin:12px 0;font-weight:800;font-size:14px;color:#78350f;line-height:1.8}' +
   /* 成果卡 */
-  '.pj-card{background:#fff;border:3px solid #7c3aed;border-radius:18px;padding:24px 26px;' +
-    'margin:14px 0;line-height:1.9}' +
-  '.pj-hd{display:flex;justify-content:space-between;font-size:12px;font-weight:900;' +
-    'color:#7c3aed;letter-spacing:.05em;margin-bottom:10px}' +
-  '.pj-title{font-size:26px;font-weight:900;color:#0f172a}' +
-  '.pj-team{font-size:15px;font-weight:900;color:#7c3aed;margin-top:2px}' +
-  '.pj-mode{font-size:14px;font-weight:900;color:#0891b2;margin-top:2px}' +
-  '.pj-line{font-size:14px;font-weight:800;color:#475569;background:#f8fafc;' +
-    'border-radius:10px;padding:9px 12px;margin-top:10px}' +
-  '.pj-ol{margin:14px 0 0;padding-left:22px}' +
-  '.pj-ol li{font-size:16px;font-weight:800;color:#334155;margin-bottom:12px}' +
-  '.pj-ol b{color:#0f172a}' +
+  '.pj-card{background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:30px 32px;' +
+    'margin:14px 0;line-height:1.9;color:#0f172a}' +
+  '.pj-doc-h{display:flex;justify-content:space-between;align-items:baseline;' +
+    'flex-wrap:wrap;gap:6px;border-bottom:3px solid #7c3aed;padding-bottom:10px}' +
+  '.pj-doc-org{font-size:14px;font-weight:800;color:#64748b;letter-spacing:.08em}' +
+  '.pj-doc-t{font-size:26px;font-weight:900;letter-spacing:.12em}' +
+  '.pj-doc-m{font-size:13px;font-weight:800;color:#64748b}' +
+  '.pj-tb{width:100%;border-collapse:collapse;margin:12px 0;font-size:15px}' +
+  '.pj-tb th{width:112px;text-align:left;font-weight:900;color:#64748b;' +
+    'background:#f8fafc;border:1px solid #e2e8f0;padding:7px 11px;white-space:nowrap}' +
+  '.pj-tb td{border:1px solid #e2e8f0;padding:7px 11px;font-weight:800}' +
+  '.pj-tb-head th{color:#7c3aed}' +
+  '.pj-sec{font-size:16px;font-weight:900;color:#7c3aed;margin:18px 0 6px;' +
+    'border-bottom:2px solid #ede9fe;padding-bottom:4px}' +
+  '.pj-body{font-size:15px;font-weight:800;color:#334155}' +
+  '.pj-li{display:flex;gap:9px;align-items:flex-start;margin-bottom:8px;line-height:1.9}' +
+  '.pj-li span{flex:none;width:22px;height:22px;border-radius:50%;background:#ede9fe;' +
+    'color:#7c3aed;font-size:13px;font-weight:900;text-align:center;line-height:22px;' +
+    'margin-top:4px}' +
+  '.pj-li b{color:#0f172a}' +
+  '.pj-doc-f{font-size:12px;font-weight:800;color:#94a3b8;background:#f8fafc;' +
+    'border-radius:6px;padding:7px 10px;margin-top:14px}' +
+  '.pj-sign{display:flex;gap:20px;margin-top:26px}' +
+  '.pj-sign span{flex:1;border-top:1px solid #cbd5e1;padding-top:6px;font-size:12px;' +
+    'font-weight:800;color:#94a3b8}' +
   '#pj-print-root{display:none}' +
   '@media print{body.pj-printing>*{display:none!important}' +
     'body.pj-printing #pj-print-root{display:block!important}' +
@@ -464,7 +574,7 @@
        ⚠️ 只在「學生還沒自己填過」的時候帶入 —— 不然他改了名字（加組員）
           會被下一次重新掛載蓋掉。 */
     var f = Object.assign({ mode: '', problem: '', when: '', then: '', els: '',
-                            trouble: '', fix: '', learn: '' }, opts.work || {});
+                            trouble: '', fix: '', learn: '', outs: [] }, opts.work || {});
     /* ⚠️⚠️ 老師 2026-08-25：「研發人員 是我上次輸入的人名? 不是目前帳號的實際資料」
        ★ 對 —— 病根在這裡：身分原本和學生的作答**混在同一包 f 裡**，
          而那一包會被存下來、下次再載回來。
@@ -564,6 +674,28 @@
            ⚠️ 所以「不覆蓋學生打的」那段邏輯也一起拿掉 ——
               打不了字就不會有那個情況，留著就是補償一個不存在的問題。 */
         '<div class="pj-who" id="pj-who">' + whoLine() + '</div>' +
+        /* ★ 老師 2026-08-25：「成果卡應該要有手動或自動系統選擇，
+           超音波或可變電阻，配燈條與馬達，完整版本的格式」。
+           ⚠️ 輸入**不讓學生選** —— 它由模式決定，兩邊各自只有一個；
+              讓他選只會多一個對不起來的機會。 */
+        '<div class="pj-spec">' +
+          '<div class="pj-spec-h">系統規格</div>' +
+          '<div class="pj-spec-r">控制模式：<b>' +
+            (f.mode ? esc(f.mode) + '模式' : '⚠️ 還沒挑（回上一頁選）') + '</b></div>' +
+          '<div class="pj-spec-r">輸入元件：<b>' +
+            (inputOf(f.mode) || '（挑了模式就會自動帶出來）') + '</b>' +
+            '<span>' + (f.mode === '自動' ? 'Trig = A2、Echo = A3'
+                                          : (f.mode ? 'A7' : '')) + '</span></div>' +
+          '<div class="pj-spec-r">輸出元件：' +
+            OUTS.map(function (o) {
+              var on = (f.outs || []).indexOf(o.key) >= 0;
+              return '<label class="pj-out' + (on ? ' on' : '') + '">' +
+                '<input type="checkbox" data-out="' + o.key + '"' + (on ? ' checked' : '') +
+                '>' + esc(o.t) + '</label>';
+            }).join('') +
+          '</div>' +
+          '<div class="pj-spec-n">★ 基礎關勾一個就好；<b>挑戰關是兩個一起動</b>。</div>' +
+        '</div>' +
         '<div class="pj-ask" style="margin-top:10px">1. 我要解決的問題是：</div>' +
         '<div class="pj-fill"><input class="pj-t" id="pj-problem" value="' + esc(f.problem) +
           '" placeholder="' + esc(SHOW_Q[0].ph[0]) + '"></div>' +
@@ -675,6 +807,15 @@
           show(b.getAttribute('data-tab'));
         });
       });
+      el.querySelectorAll('[data-out]').forEach(function (b) {
+        b.addEventListener('change', function () {
+          var k = b.getAttribute('data-out');
+          var i = (f.outs || []).indexOf(k);
+          if (b.checked && i < 0) f.outs.push(k);
+          if (!b.checked && i >= 0) f.outs.splice(i, 1);
+          viewShow('', '');
+        });
+      });
       el.querySelectorAll('[data-pick]').forEach(function (b) {
         b.addEventListener('click', function () { f.mode = b.getAttribute('data-pick'); viewDemo('', ''); });
       });
@@ -689,6 +830,7 @@
   global.PROJLAB = {
     MIN: MIN, MODES: MODES, SHOW_Q: SHOW_Q,
     judgeShow: judgeShow, sayShow: sayShow,
+    OUTS: OUTS, specOf: specOf, inputOf: inputOf,
     AI_NEED: AI_NEED, aiText: aiText, aiReview: aiReview, aiOn: aiOn,
     cardHtml: cardHtml, cardLines: cardLines, drawCard: drawCard, printCard: printCard, downloadPng: downloadPng,
     mount: mount
