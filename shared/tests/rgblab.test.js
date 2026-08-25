@@ -239,8 +239,10 @@ section('★ 第四節接上頁面了');
 {
   const page = read('11501/5016b.html');
   ok(/<script src="\.\.\/shared\/rgblab\.js"><\/script>/.test(page), '頁面載入 rgblab');
-  ok(/lab: \{ unit: 'u4', warm: 'RGBLAB', checks: null \}/.test(page),
-     '★ 第四節：暖身 RGBLAB，檢核先留 null');
+  /* 檢核已經接上（老師 2026-08-25：「都暖身結束了，動手檢核：沒有開始」）——
+     那一關的斷言在 shared/tests/mixlab.test.js。 */
+  ok(/lab: \{ unit: 'u4', warm: 'RGBLAB', checks: 'MIXLAB' \}/.test(page),
+     '★ 第四節：暖身 RGBLAB ＋ 檢核 MIXLAB');
 
   const u4 = page.slice(page.indexOf('title: "情境照明'), page.indexOf('title: "智慧中樞'));
   /* ⚠️ 舊草稿寫 A1、0~1023→0~255 色相、還有一塊不存在的「色相填滿」積木。 */
