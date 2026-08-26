@@ -433,5 +433,45 @@ ok('raise RuntimeError' not in _boot_code,
 ok('paddleocr' not in _boot_code.split('import importlib')[0],
    '★ 啟動格的 pip 不可以再裝 PaddleOCR（否則拆格白做）')
 
+# ═══════════════════════════════════════════════════════════
+section('C-5 「重啟執行階段」這個建議不可以再出現')
+# ═══════════════════════════════════════════════════════════
+# ⚠️⚠️ 2026-08-26 老師回報：「numpy 版本：2.1.3 ❌ numpy 是 2.x →
+#    重新啟動執行階段 → 全部執行」，照做第二次還是同一行。
+#    ★ 因為 paddle 3.x **本來就要** numpy 2.x —— 重啟一百次也不會變 1.x。
+#      這個建議在升級之後永遠是錯的，而錯的建議比沒建議更糟。
+#    ⚠️ 我當時改了三處（安裝格、啟動格、/analyze），
+#       卻漏掉第四處（步驟 5 的自我測試）和第五處（health 的 ocr_note）——
+#       同一個概念散落多處，改一半是這個 repo 反覆出現的毛病。
+#    ⇒ 用測試把整份 notebook 一次掃過，以後不必靠記性。
+_nb_cells = json.load(io.open(NB, encoding='utf8'))['cells']
+
+
+def _code_of(cell):
+    """只取程式碼行（剝掉整行註解）—— 註解裡會提到這些字是正常的。"""
+    return '\n'.join(l for l in ''.join(cell.get('source', [])).split('\n')
+                      if not l.strip().startswith('#'))
+
+
+_all_code = '\n'.join(_code_of(c) for c in _nb_cells)
+ok('重新啟動執行階段' not in _all_code,
+   '★★ 程式碼裡不可以再叫人「重新啟動執行階段」來解 numpy 問題')
+ok('需要 1.x' not in _all_code,
+   '★ 不可以再宣稱 PaddleOCR「需要 numpy 1.x」（paddle 3.x 要的是 2.x）')
+
+# 步驟 5 的自我測試必須**真的跑**，不可以被版本檢查擋在門外
+_self = _code_of(_nb_cells[12])
+ok('ocr_run' in _self, '★ 自我測試要真的呼叫 ocr_run')
+ok('_ocr_texts' in _self,
+   '★★ 自我測試要順便驗解析器 ——「跑得動」和「撈得到字」是兩件事')
+# ⚠️ 以前測試主體整個寫在 `if numpy>=2: … else: <測試>` 的 else 裡，
+#    numpy 一是 2.x 就完全不執行。釘住：ocr_run 不可以縮在那種分支底下。
+_lines = _self.split('\n')
+_i_run = next(k for k, l in enumerate(_lines) if 'ocr_run' in l)
+_guard = [l for l in _lines[:_i_run]
+          if l.strip().startswith('if ') and 'numpy' in l.lower()]
+ok(not _guard, '★★ 自我測試不可以被 numpy 版本判斷擋住（' +
+   (_guard[0].strip()[:50] if _guard else '無') + '）')
+
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
 sys.exit(1 if fail_n else 0)
