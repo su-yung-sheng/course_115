@@ -64,21 +64,41 @@ def ok(cond, label):
         print('  ❌ ' + label)
 
 
+def okc(fn, label):
+    """斷言「呼叫本身可能拋例外」的情況。
+
+    ⚠️⚠️ 2026-08-26 的突變測試抓到：直接寫 ok(f(x) == y, ...) 的話，
+       f(x) 一拋例外就會**中斷整支測試** —— 後面的斷言全部沒跑，
+       stdout 也不會出現任何 ❌。於是突變測試看起來「沒紅」，
+       我差點以為那條斷言沒作用。
+       ⇒ 呼叫包起來：例外一律算失敗，並把例外內容印出來。
+    """
+    try:
+        ok(bool(fn()), label)
+    except Exception as e:                      # noqa: BLE001
+        ok(False, label + '（拋例外 %s: %s）' % (type(e).__name__, e))
+
+
 def section(t):
     print('\n── ' + t + ' ──')
 
 
-def load_funcs():
-    """把 notebook 裡的目標函式原始碼抽出來 exec，回傳命名空間。"""
+def load_funcs(marker='def parse_chain_recursive', want=None):
+    """把 notebook 裡的目標函式原始碼抽出來 exec，回傳命名空間。
+
+    marker 用來挑 cell（notebook 有兩個大 cell：批改核心、API 伺服器），
+    want 是要抽哪幾支；不給就用預設的 WANT。
+    """
+    want = want or WANT
     nb = json.load(io.open(NB, encoding='utf8'))
     src = None
     for cell in nb['cells']:
         body = ''.join(cell.get('source', []))
-        if 'def parse_chain_recursive' in body:
+        if marker in body:
             src = body
             break
     if src is None:
-        print('❌ backend.ipynb 裡找不到 parse_chain_recursive —— '
+        print('❌ backend.ipynb 裡找不到 ' + marker + ' —— '
               '是不是搬到別的 cell 或改名了？')
         sys.exit(1)
 
@@ -92,13 +112,13 @@ def load_funcs():
     chunks = ['import json, re, os']
     found = set()
     for k, (name, i) in enumerate(starts):
-        if name not in WANT:
+        if name not in want:
             continue
         j = starts[k + 1][1] if k + 1 < len(starts) else len(lines)
         chunks.append('\n'.join(lines[i:j]))
         found.add(name)
 
-    missing = [w for w in WANT if w not in found]
+    missing = [w for w in want if w not in found]
     if missing:
         print('❌ 抽不到這幾支函式：' + '、'.join(missing))
         sys.exit(1)
@@ -355,6 +375,63 @@ for phrase, why in [
     ('功能是否達成」優先於「積木來源是否正確', '原生積木替代擴充算等效'),
 ]:
     ok(phrase in NB_NOTE_FREE, '評分標準沒被動到：' + why)
+
+# ═══════════════════════════════════════════════════════════
+section('C-4 OCR 結果解析：2.x／3.x 兩種格式都要吃得下')
+# ═══════════════════════════════════════════════════════════
+# ⚠️ 2026-08-26：Colab 升到 Python 3.13，舊的 paddle 組合再也裝不起來，
+#    被迫升到 paddleocr 3.x —— 而 3.x 的回傳格式和 2.x 完全不同。
+#    不改解析器的話會變成「套件裝起來了，但一個字都撈不到」，
+#    學生每次都判定不通過，卻找不到任何錯誤訊息。
+_srv = load_funcs(marker='def _ocr_texts', want=('_ocr_texts',))
+ocr_texts = _srv['_ocr_texts']
+
+# 3.x：[OCRResult]，文字在 rec_texts
+three = [{'rec_texts': ['跳格子', '挑戰成功']}]
+okc(lambda: ocr_texts(three) == ['跳格子', '挑戰成功'],
+    '★ 吃得下 3.x 的 rec_texts')
+
+# 2.x：[[ [box, (text, score)], ... ]]
+two = [[[[[0, 0], [9, 0], [9, 9], [0, 9]], ('跳格子', 0.99)],
+        [[[0, 9], [9, 9], [9, 18], [0, 18]], ('挑戰成功', 0.98)]]]
+okc(lambda: ocr_texts(two) == ['跳格子', '挑戰成功'],
+    '★ 吃得下 2.x 的巢狀 list')
+
+okc(lambda: ocr_texts([]) == [] and ocr_texts(None) == [], '空結果回空清單')
+
+# 3.x 多頁：兩個 OCRResult 要合起來
+okc(lambda: ocr_texts([{'rec_texts': ['甲']}, {'rec_texts': ['乙']}]) == ['甲', '乙'],
+    '3.x 多個結果要合併')
+
+# ⚠️⚠️ 最重要的一條：不認得的形狀**不可以安靜回空清單**。
+#    回空的話判定會變成「沒通過」，學生以為是自己截圖沒截好，
+#    而真正的原因（格式又變了）沒有任何人看得到。
+_raised = False
+try:
+    ocr_texts([42])
+except Exception:
+    _raised = True
+ok(_raised, '★★ 看不懂的格式要丟例外，不可以安靜回空清單')
+
+# ── 安裝清單不可以退回裝不起來的舊組合 ──────────────────
+_inst = ''.join(json.load(io.open(NB, encoding='utf8'))['cells'][4]['source'])
+_inst_code = '\n'.join(l for l in _inst.split('\n') if not l.strip().startswith('#'))
+ok('numpy<2' not in _inst_code,
+   '★ 安裝清單不可以再限制 numpy<2（Python 3.13 上無解）')
+ok('paddlepaddle>=3' in _inst_code and 'paddleocr>=3' in _inst_code,
+   '★ 用 paddle 3.x（有 Python 3.13 的 wheel，且吃 numpy 2.x）')
+ok('--only-binary=:all:' in _inst_code,
+   '★★ 只裝預編譯 wheel —— 沒有就報錯，不要安靜編譯二十分鐘')
+ok('do_shutdown' not in _inst_code,
+   '★ 不再需要「自動重啟核心」那一段（numpy 衝突的根源已消失）')
+
+# ── 啟動格不可以讓 OCR 擋住批改 ──────────────────────────
+_boot = ''.join(json.load(io.open(NB, encoding='utf8'))['cells'][10]['source'])
+_boot_code = '\n'.join(l for l in _boot.split('\n') if not l.strip().startswith('#'))
+ok('raise RuntimeError' not in _boot_code,
+   '★★ 啟動格不可以因為 OCR 沒就緒就 raise（會連批改一起停擺）')
+ok('paddleocr' not in _boot_code.split('import importlib')[0],
+   '★ 啟動格的 pip 不可以再裝 PaddleOCR（否則拆格白做）')
 
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
 sys.exit(1 if fail_n else 0)
