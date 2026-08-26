@@ -454,10 +454,24 @@ def _code_of(cell):
 
 
 _all_code = '\n'.join(_code_of(c) for c in _nb_cells)
-ok('重新啟動執行階段' not in _all_code,
-   '★★ 程式碼裡不可以再叫人「重新啟動執行階段」來解 numpy 問題')
+# ⚠️⚠️ 這一條原本寫成「不可以出現『重新啟動執行階段』」——
+#    用字串比對代替了意圖，結果把**正當**的重啟建議也擋掉了：
+#    關 oneDNN 的 FLAGS_use_mkldnn 必須在 paddle 載入前生效，
+#    那種情況下叫人重啟是對的。
+#    ⇒ 要禁的其實是「把 numpy 2.x 當成錯誤」這個**主張**，
+#      不是「重啟」這個動作。
+_bad_np = [l.strip() for l in _all_code.split('\n')
+           if 'numpy' in l
+           and ('需要 1.x' in l
+                or ('是 2.x' in l and 'paddleocr' not in l))]
+ok(not _bad_np,
+   '★★ 不可以把「numpy 是 2.x」當成錯誤（paddle 3.x 要的就是 numpy 2.x）'
+   + ('　←　' + _bad_np[0][:60] if _bad_np else ''))
 ok('需要 1.x' not in _all_code,
    '★ 不可以再宣稱 PaddleOCR「需要 numpy 1.x」（paddle 3.x 要的是 2.x）')
+# ★ 唯一合法的 numpy 判斷：paddleocr 2.x 配 numpy 2.x 才是壞組合。
+ok('paddleocr' in _all_code and 'enable_mkldnn' in _all_code,
+   '★ oneDNN 要被關掉（paddle 3.x 的 PIR 執行器在那條路徑上會爆）')
 
 # 步驟 5 的自我測試必須**真的跑**，不可以被版本檢查擋在門外
 _self = _code_of(_nb_cells[12])
