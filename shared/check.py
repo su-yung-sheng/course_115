@@ -768,6 +768,39 @@ def check_sb3_levels():
                           f'     關卡   → {_json.dumps(got, ensure_ascii=False)}')
 
 
+# ── 7.10 Python 測試（pre-commit 只跑 *.test.js，跑不到這些）─────
+def check_py_tests():
+    """跑 shared/tests/*.test.py。
+
+    ⚠️ 為什麼掛在這裡而不是 pre-commit：
+       那支 hook 的測試迴圈寫死了 `shared/tests/*.test.js`，
+       Python 測試放進 tests/ 也不會被執行 —— 而且改 hook 之後
+       老師要重跑一次「安裝檢查掛鉤.bat」才生效，
+       忘了重跑就是又一個「看起來有保護、其實沒有」的狀況。
+       check.py 本來就一定會被 hook 呼叫，掛這裡最穩。
+
+    ★ 和 hook 的做法一致：缺套件不算失敗，真的紅了才擋。
+    """
+    # ⚠️ ROOT 是字串不是 pathlib.Path —— 這裡一律用 os.path。
+    d = os.path.join(ROOT, 'shared', 'tests')
+    if not os.path.isdir(d):
+        return
+    for f in sorted(glob.glob(os.path.join(d, '*.test.py'))):
+        name = os.path.basename(f)
+        try:
+            r = subprocess.run([sys.executable, f],
+                               capture_output=True, text=True, timeout=120)
+        except Exception as e:                      # noqa: BLE001
+            warns.append(f'{name} 跑不起來（{e}）—— 沒測到，不是通過')
+            continue
+        if r.returncode != 0:
+            bad = [l.strip() for l in (r.stdout + r.stderr).split('\n')
+                   if l.strip().startswith('❌')]
+            errors.append(f'{name} 沒過：' +
+                          ('；'.join(bad[:4]) if bad
+                           else f'（看完整輸出：python shared/tests/{name}）'))
+
+
 def main():
     log('檢查中…\n')
     check_empty()
@@ -785,6 +818,7 @@ def main():
     check_scratch_names()
     check_sb3_levels()
     check_wording()
+    check_py_tests()
 
     if warns:
         for w in warns:
