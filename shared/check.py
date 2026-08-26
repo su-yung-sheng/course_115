@@ -408,7 +408,13 @@ def check_old_prefix():
     # 逐字比對檔名兩種都抓不到。
     prefix = re.compile(r'115\d{2}_')
     joined = re.compile(r'''['"]_[\w.\-]*\.html['"]''')
-    for path in all_pages() + all_scripts():
+    # ⚠️ .ipynb 也要掃。2026-08-26 發現 shared/backend.ipynb 的標題還寫著
+    #    「115 學年下學期 課程後端（11502_backend）」，而內文講的是 11501 的
+    #    集合和檔名 —— 標題和內文自相矛盾，是併成單一 repo 時留下的殘骸。
+    #    這個檢查本來只看 HTML／JS，所以一年都沒抓到。
+    #    ★ notebook 是老師每次上課都會打開的東西，寫錯的代價不比程式碼小。
+    nbs = sorted(glob.glob(os.path.join(ROOT, 'shared', '*.ipynb')))
+    for path in all_pages() + all_scripts() + nbs:
         name = rel(path)
         try:
             s = strip_comments(open(path, encoding='utf-8').read())
