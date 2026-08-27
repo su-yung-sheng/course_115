@@ -487,5 +487,36 @@ _guard = [l for l in _lines[:_i_run]
 ok(not _guard, '★★ 自我測試不可以被 numpy 版本判斷擋住（' +
    (_guard[0].strip()[:50] if _guard else '無') + '）')
 
+# ═══════════════════════════════════════════════════════════
+section('C-6 老師 2026-08-26 在 Colab 實測後的修正，不可以退回去')
+# ═══════════════════════════════════════════════════════════
+_srv_code = _code_of(_nb_cells[8])
+_inst_code2 = _code_of(_nb_cells[4])
+
+# ① 版本要鎖上界：這個後端是針對 3.x 的 predict()/OCRResult 驗證過的，
+#    Colab 自動升到 4.x 之後 API 可能又改，屆時會變成安靜的解析失敗。
+ok('paddlepaddle>=3.0,<4' in _inst_code2 and 'paddleocr>=3.0,<4' in _inst_code2,
+   '★ paddle／paddleocr 要鎖在 3.x（<4），不要跟著升未驗證的主版本')
+
+# ② 3.x 的正式介面是 predict()；ocr() 只當舊版回退。
+ok('predict' in _srv_code and 'hasattr(_ocr_model, "predict")' in _srv_code,
+   '★ 優先用 predict()，ocr() 保留為 2.x 回退')
+
+# ③ 指定 PP-OCRv5：不指定的話，Colab 更新後預設模型會漂。
+ok('PP-OCRv5' in _srv_code, '★ 明確指定 ocr_version，避免模型預設值漂移')
+
+# ④⚠️⚠️ ngrok 的 stop：官方 API 除了路徑上的 id，**本文也必須帶 id**。
+#    原本送空 POST —— 看起來有「自動清除舊連線」這個功能，
+#    實際上可能從未成功對舊 agent 發出停止指令。
+#    這正是這個 repo 最典型的病灶：壞掉和正常長得一模一樣。
+ok('{"id": sid}' in _srv_code,
+   '★★ ngrok stop 要帶 body {"id": sid}（空 POST 會安靜地什麼都沒做）')
+ok('detail or e.reason' in _srv_code,
+   '★ ngrok 的 HTTP 400 要把原文讀出來（只印「HTTP 400」查不出哪裡錯）')
+
+# ⑤ 解析器仍然是所有辨識的唯一入口 —— 兩階段 ROI 改寫之後也要維持。
+ok(_srv_code.count('_ocr_texts(') >= 2,
+   '★ 兩階段辨識都要經過 _ocr_texts（格式相容的唯一入口）')
+
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
 sys.exit(1 if fail_n else 0)
