@@ -357,7 +357,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       return shuffle([...u.steps, ...distractors]);
     }
 
-    let state = { status:'loading', studentId:'', studentName:'', tempId:'', tempCode:'', loginError:'', done:{}, progDone:{},
+    let state = { status:'loading', studentId:'', studentName:'', slowNote:'', done:{}, progDone:{},
                   progStars:{}, imgUnits:{}, vidUnits:{}, unit:null, candidates:[], selected:{}, selMsg:'', placed:[], pool:[], mistakes:0,
                   qIdx:0, qPicked:null, qScore:0, refOpen:false, leadOpen:false, graderOpen:false,
                   readLeft:0, hintUsed:false, hintLeft:0, selTries:0,
@@ -545,10 +545,32 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       if(user && state.status==='loading'){
         const saved = sessionStorage.getItem(SAVED_KEY);
         if(saved && /^14\d{5}$/.test(saved)) autoLogin(saved);
-        else { state.status='login'; render(); }
+        /* ⚠️ guard.js 已經擋掉沒登入的人，走到這裡幾乎只會是時序問題。
+           不論如何都不該畫那個沒有功能的登入頁 —— 回闖關基地重登。 */
+        else {
+          const hub = (window.CONFIG && window.CONFIG.HUB_PAGE) || 'hub.html';
+          location.replace(hub + '?next=' + encodeURIComponent('flowchart.html'));
+        }
       }
     });
-    setTimeout(()=>{ if(state.status==='loading'){ state.status='login'; render(); } }, 2500);
+    /* ⚠️⚠️ 2026-08-26 老師回報：「進入程式設計時會短暫出現舊的輸入學號頁面，
+       然後跳走」。原因就是這個逾時 —— autoLogin() 要跑**兩次** Firestore
+       讀取（查名冊 ＋ 讀進度），學校網路慢一點就超過 2.5 秒，
+       逾時先把畫面換成登入頁，資料讀完才跳回選單。
+       ★ 而那個登入頁**早就沒有功能**：它要比對名冊裡的 code 欄位，
+         但驗證碼在 2026-08-04 已經整套移除，永遠停在
+         「此學號尚未設定驗證碼」——叫學生去做一件不存在的事。
+       ⇒ 慢的時候只補一行提示，不換畫面。 */
+    setTimeout(()=>{ if(state.status==='loading'){ state.slowNote='連線比較慢，請再等一下…'; render(); } }, 2500);
+    /* ⚠️ 但也不能讓學生停在一個永遠不會變的畫面。十秒還沒進來
+       代表身分真的有問題（guard.js 擋得住沒登入的人，走到這裡通常是
+       Firebase 連不上），導回闖關基地重新登入。 */
+    setTimeout(()=>{
+      if(state.status==='loading'){
+        const hub = (window.CONFIG && window.CONFIG.HUB_PAGE) || 'hub.html';
+        location.replace(hub + '?next=' + encodeURIComponent('flowchart.html'));
+      }
+    }, 10000);
 
     async function loadProgress(sid){
       try{
@@ -599,22 +621,6 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       await loadProgress(sid);
       state.status='menu'; render();
     }
-    async function handleLogin(){
-      const t=(state.tempId||'').trim(), c=(state.tempCode||'').trim();
-      if(!/^14\d{5}$/.test(t)){ state.loginError='學號格式錯誤：需 7 位數字、以 14 開頭'; render(); return; }
-      if(!/^\d{6}$/.test(c)){ state.loginError='請輸入 6 位數字驗證碼'; render(); return; }
-      try{
-        const r = await getDoc(doc(db, ROSTER, t));
-        if(!r.exists()){ state.loginError=`找不到學號 ${t}，請找老師確認名冊`; render(); return; }
-        const info = r.data();
-        if(!info.code){ state.loginError='此學號尚未設定驗證碼，請先到「闖關基地」首次登入設定'; render(); return; }
-        if(String(info.code)!==c){ state.loginError='驗證碼錯誤'; render(); return; }
-        state.studentName = info.name||'';
-      }catch(e){ state.loginError='驗證失敗，請稍後再試'; render(); return; }
-      state.studentId=t; sessionStorage.setItem(SAVED_KEY, t);
-      await loadProgress(t);
-      state.loginError=''; state.status='menu'; render();
-    }
     // 程式設計階段：測驗從題庫「5 選 3」，全對才算通過（通過才解鎖程式截圖）
     const QUIZ_PICK = 3;
     function newQuizSet(u){ return shuffle([...(PROG[u.id].quiz||[])]).slice(0, QUIZ_PICK); }
@@ -643,8 +649,16 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     // finishProgram 已移除：完成由 AI 批改星數自動認定
     /* 登出要把「上一個人的進度」清乾淨。
        教室是共用電腦，殘留 progStars／leadDone 會讓下一位同學看到別人的解鎖狀態。 */
-    function logout(){ sessionStorage.removeItem(SAVED_KEY); state.status='login'; state.studentId=''; state.studentName=''; state.tempId=''; state.tempCode='';
-      state.done={}; state.progDone={}; state.progStars={}; state.imgUnits={}; state.vidUnits={}; state.leadDone=false; state.gateMsg=''; state.leadOpen=false; render(); }
+    /* ⚠️ 2026-08-26：原本是 state.status='login' —— 回到本頁那個
+       已經沒有功能的登入畫面。登出的正確去處是闖關基地。 */
+    function logout(){
+      sessionStorage.removeItem(SAVED_KEY);
+      /* ⚠️ 導回闖關基地就是整頁重載，state 自然歸零 ——
+         原本那一長串手動清除（progStars／leadDone…）是給
+         「留在本頁、切回登入畫面」用的，現在不需要了。 */
+      const hub = (window.CONFIG && window.CONFIG.HUB_PAGE) || 'hub.html';
+      location.replace(hub);
+    }
 
     // ===== 遊戲邏輯 =====
     function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
@@ -731,34 +745,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     // ===== 畫面 =====
     function render(){
       const el=document.getElementById('app');
-      if(state.status==='loading'){ el.innerHTML=`<div class="min-h-screen flex items-center justify-center text-slate-500 font-bold text-lg">系統連線中…</div>`; return; }
+      /* ⚠️ 逾時不再換成登入畫面，只補一行「比較慢」的提示。
+         換畫面會讓學生以為要重新登入，而那個登入頁根本沒有功能。 */
+      if(state.status==='loading'){ el.innerHTML=`<div class="min-h-screen flex flex-col items-center justify-center gap-3 text-slate-500 font-bold text-lg"><div>系統連線中…</div>${state.slowNote?`<div class="text-sm text-slate-400 font-normal">${state.slowNote}</div>`:''}</div>`; return; }
 
-      if(state.status==='login'){
-        el.innerHTML = `
-          <div class="min-h-screen flex items-center justify-center p-4">
-            <div class="w-full max-w-md pop">
-              <div class="text-center mb-6">
-                <div class="text-5xl mb-2">🧩</div>
-                <h1 class="text-3xl font-black"><span class="underline-doodle px-1">流程圖與程式設計</span></h1>
-                <p class="text-slate-500 text-sm mt-2">先排流程圖(+${STARS_PER_UNIT}⭐)，再寫程式</p>
-              </div>
-              <div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 relative"><span class="tape"></span>
-                <label class="block text-sm font-bold text-slate-500 mb-2">學號</label>
-                <input id="sid" type="text" inputmode="numeric" value="${state.tempId}" placeholder="14XXXXX" class="w-full bg-transparent border-0 border-b-2 border-slate-300 focus:border-purple-500 text-2xl font-mono tracking-widest py-2 outline-none">
-                <label class="block text-sm font-bold text-slate-500 mb-2 mt-4">驗證碼</label>
-                <div class="relative">
-                  <input id="code" type="password" inputmode="numeric" maxlength="6" value="${state.tempCode}" placeholder="6 位數字" class="w-full bg-transparent border-0 border-b-2 border-slate-300 focus:border-purple-500 text-2xl font-mono tracking-widest py-2 pr-10 outline-none">
-                  <button type="button" tabindex="-1" onclick="var i=document.getElementById('code');var s=i.type==='password';i.type=s?'text':'password';this.textContent=s?'🙈':'👁';" class="absolute right-0 bottom-2 text-xl text-slate-400 hover:text-slate-600" aria-label="顯示或隱藏驗證碼">👁</button>
-                </div>
-                ${state.loginError?`<p class="text-red-500 text-sm mt-3">${state.loginError}</p>`:''}
-                <button id="go" class="mt-6 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg py-3 rounded-lg active:scale-95 transition">開始闖關</button>
-                <p class="text-xs text-slate-400 text-center mt-3">首次登入請先到「闖關基地」設定驗證碼</p>
-              </div>
-            </div>
-          </div>`;
-        setTimeout(()=>document.getElementById('sid')?.focus(),0);
-        return;
-      }
 
       if(state.status==='menu'){
         const doneCount = Object.keys(state.done).length;
@@ -1178,7 +1168,6 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
     // ===== 事件 =====
     document.addEventListener('click', e=>{
-      if(e.target.closest('#go')){ state.tempId=document.getElementById('sid').value; state.tempCode=document.getElementById('code').value; handleLogin(); return; }
       if(e.target.closest('#logout')){ logout(); return; }
       if(e.target.closest('#toggle-lead')){ state.leadOpen=!state.leadOpen; render(); return; }
       if(e.target.closest('#toggle-ref')){ state.refOpen=!state.refOpen; render(); return; }
@@ -1238,10 +1227,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       if(e.target.closest('#back-menu')||e.target.closest('#back-menu2')){ clearTimers(); state.status='menu'; render(); return; }
     });
     document.addEventListener('input', e=>{
-      if(e.target.id==='sid') state.tempId=e.target.value;
-      if(e.target.id==='code') state.tempCode=e.target.value;
     });
-    document.addEventListener('keypress', e=>{ if(e.key==='Enter'&&state.status==='login'){ state.tempId=document.getElementById('sid').value; state.tempCode=document.getElementById('code').value; handleLogin(); } });
+    /* ⚠️ 2026-08-26 移除：這裡原本監聽登入頁的 Enter 鍵。
+       那個登入頁已經整個拿掉了（見下方 status 的說明）。 */
 
     render();
   </script>
