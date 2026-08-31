@@ -518,5 +518,116 @@ ok('detail or e.reason' in _srv_code,
 ok(_srv_code.count('_ocr_texts(') >= 2,
    '★ 兩階段辨識都要經過 _ocr_texts（格式相容的唯一入口）')
 
+# ═══════════════════════════════════════════════════════════
+section('C-7 兩段 ROI 要蓋得住老師實際截圖的位置')
+# ═══════════════════════════════════════════════════════════
+# ⚠️⚠️ 2026-08-26 老師回報：明明選了「水餃工廠」卻判「關卡名稱不符合」。
+#    量測他四張截圖後找到原因：兩階段優化把裁切框縮得太小。
+#      ‧ 分頁標題「水餃工廠」字高只有 13～14px（整張圖最小的字），
+#        分頁一多還會被 Chrome 截成「水餃工…」。
+#      ‧ 舊版掃 20% 高 × 70% 寬，**網址列在範圍內** ——
+#        網址含 portioned-dumplings 這種英文關卡名，是 eng 的來源，
+#        中文讀不清時靠它兜底。
+#      ‧ 新版縮到 4% 高 × 25% 寬，兜底整條被切掉。
+#    ⇒ 用他真實截圖的座標當測資，數字改動就會被擋下來。
+_roi = re.search(r'level_roi = _crop\(([\d.,\s]+)\)', _srv_code)
+_sroi = re.search(r'success_roi = _crop\(([\d.,\s]+)\)', _srv_code)
+ok(bool(_roi and _sroi), '★ 兩段 ROI 都找得到')
+
+if _roi and _sroi:
+    lx0, ly0, lx1, ly1 = [float(v) for v in _roi.group(1).split(',')]
+    sx0, sy0, sx1, sy1 = [float(v) for v in _sroi.group(1).split(',')]
+    # (名稱, 寬, 高, 網址列, 分頁標題, 挑戰成功徽章)  ← 目測自老師的截圖
+    SHOTS = [
+        ('視窗模式 1024x833', 1024, 833,
+         (250, 38, 420, 55), (30, 9, 135, 22), (455, 168, 625, 205)),
+        ('全螢幕 1920x1032', 1920, 1032,
+         (310, 30, 450, 50), (28, 5, 120, 19), (875, 190, 1045, 222)),
+    ]
+    for name, W, H, url, title, badge in SHOTS:
+        ok(title[2] <= W * lx1 and title[3] <= H * ly1,
+           '★ %s：分頁標題在第一段框內' % name)
+        ok(url[2] <= W * lx1 and url[3] <= H * ly1,
+           '★★ %s：**網址列**也要在框內（中文讀不清時的唯一兜底）' % name)
+        ok(badge[0] >= W * sx0 and badge[2] <= W * sx1
+           and badge[1] >= H * sy0 and badge[3] <= H * sy1,
+           '★ %s：挑戰成功徽章在第二段框內' % name)
+
+# ⚠️ 13px 的字放 1.5 倍才 20px，PaddleOCR 辨識率很低。
+ok('_ocr_scaled(level_roi, 2.5)' in _srv_code,
+   '★ 第一段起跳倍率至少 2.5（分頁標題只有 13～14px）')
+
+# ⚠️ 只說「關卡名稱不符合」的話，沒有人知道問題出在哪。
+ok('系統在截圖上緣讀到' in _srv_code and '一個字都沒讀到' in _srv_code,
+   '★★ 關卡不符時要說出「系統讀到什麼」，否則無從判斷是截錯還是沒讀到')
+
+# ═══════════════════════════════════════════════════════════
+section('C-8 十關交叉驗證：自己要中、別關不可以中')
+# ═══════════════════════════════════════════════════════════
+# ⚠️ 老師 2026-08-26：「其他關卡尚未大規模測試，能預先防止嗎？」
+#    ★ 可以，而且**不需要 OCR** —— 判定邏輯是純函式，
+#      把十關的真實關鍵字餵進去交叉跑一遍就知道會不會互相誤中。
+#      這支測試每次提交都會跑，等於在災情發生前先掃一遍。
+_lv = load_funcs(marker='def _level_matched',
+                 want=('_norm_text', '_ordered_match', '_level_matched'))
+_norm, _matched = _lv['_norm_text'], _lv['_level_matched']
+
+# 十關的中文名與英文名（取自 11501/thinking.html，不是我編的）
+LEVELS = [
+    ('跳格子', 'number hopscotch'), ('任意門', 'dokodemo door'),
+    ('滑梯公園', 'slide park'), ('水餃工廠', 'portioned dumplings'),
+    ('無括號計算機', 'bracketless calculator'), ('遊覽車共乘', 'bus sharing'),
+    ('扭蛋轉轉樂', 'spinning gacha'), ('換零錢機', 'exchange machine'),
+    ('打地鼠', 'whac mole'), ('拔蘿蔔', 'carrot harvest'),
+]
+
+# 每一關的英文名正規化後都要夠長 —— 新規則用 len>=6 當「可單獨成立」的門檻
+_short = [(c, e) for c, e in LEVELS if len(_norm(e)) < 6]
+ok(not _short, '★ 十關的英文名都夠長，可以當單獨證據' +
+   ('　←　太短：%s' % _short if _short else ''))
+
+# ① 自己那一關一定要中（模擬 OCR 讀到分頁標題＋網址）
+_self_fail = []
+for ch, en in LEVELS:
+    seen = ['%s - Google Chrome' % ch,
+            'adl.edu.tw/modules/New_CR/ntnu/%s-benjamin-release/index.html'
+            % en.replace(' ', '-')]
+    if not _matched(seen, _norm(ch), _norm(en)):
+        _self_fail.append(ch)
+ok(not _self_fail, '★★ 十關各自都判得中' +
+   ('　←　沒中：%s' % '、'.join(_self_fail) if _self_fail else ''))
+
+# ②⚠️ 最重要：**別關的截圖不可以判成這一關**。
+#    英文名可以單獨成立之後，這條就是防誤放的唯一防線。
+_cross = []
+for i, (ch_i, en_i) in enumerate(LEVELS):
+    seen = ['%s - Google Chrome' % ch_i,
+            'adl.edu.tw/modules/New_CR/ntnu/%s-benjamin-release/index.html'
+            % en_i.replace(' ', '-')]
+    for j, (ch_j, en_j) in enumerate(LEVELS):
+        if i == j:
+            continue
+        if _matched(seen, _norm(ch_j), _norm(en_j)):
+            _cross.append('%s 的截圖被判成 %s' % (ch_i, ch_j))
+ok(not _cross, '★★ 十關兩兩交叉共 90 組，不可以互相誤中' +
+   ('　←　%s' % '；'.join(_cross[:3]) if _cross else ''))
+
+# ③ OCR 誤辨的容錯：中文整個讀壞，但網址完整 → 仍要過
+#    （這正是「滑梯公園」失敗率高的情境）
+ok(_matched(['滑棒公圈 - Google Chrome',
+             'adl.edu.tw/.../slide-park-benjamin-release/index.html'],
+            _norm('滑梯公園'), _norm('slide park')),
+   '★★ 中文讀壞兩個字、但網址完整時要通過（滑梯公園那個災情）')
+
+# ④ 中文完整、網址沒讀到 → 也要過
+ok(_matched(['滑梯公園 - Google Chrome'], _norm('滑梯公園'), _norm('slide park')),
+   '★ 只讀到中文標題也要過')
+
+# ⑤⚠️ 什麼都沒讀到 → 一定不可以過
+ok(not _matched([], _norm('滑梯公園'), _norm('slide park')),
+   '★★ 一個字都沒讀到時不可以放行')
+ok(not _matched(['一些不相干的字'], _norm('滑梯公園'), _norm('slide park')),
+   '★★ 讀到不相干的字也不可以放行')
+
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
 sys.exit(1 if fail_n else 0)
