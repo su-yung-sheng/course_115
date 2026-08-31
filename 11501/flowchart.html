@@ -258,6 +258,38 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     /** Mermaid 官方網站沒有「用網址帶程式碼」的公開格式，所以做成「複製 → 貼上」 */
     const MERMAID_SITE = 'https://mermaid.ai/';
 
+    /* ── Mermaid 面板（過關畫面與「再看一次」畫面共用同一份）────────
+       ⚠️⚠️ 2026-08-26 老師問：「忘記複製直接離開，是不是要重玩一次？
+          是不是少了一個記錄點？」
+       ★ 查下來**沒有東西需要記錄**：這段程式碼是 toMermaid(u.steps) ——
+         來自單元定義的**正確步驟**，對每個學生、每一次都一模一樣。
+         它不是學生的作品，是這一關的標準流程圖。
+       ⇒ 缺的不是記錄點，是**入口**：排對過的關卡應該隨時能再拿到它。
+         所以抽成函式，讓關卡列表也叫得到。
+       ⚠️ 抽出來的另一個理由：原本只有過關畫面有這一段，
+          再抄一份到別的畫面就會變成兩份各改各的。 */
+    function mermaidPanel(u){
+      return `              <details class="text-left bg-indigo-50 border border-indigo-200 rounded-xl mb-5" open>
+                <summary class="cursor-pointer px-4 py-3 font-bold text-indigo-800 text-sm">
+                  🧜 把這張流程圖變成真的圖（Mermaid）
+                </summary>
+                <div class="px-4 pb-4">
+                  <p class="text-xs text-indigo-900/70 leading-relaxed mb-2">
+                    下面是這張流程圖的 <b>Mermaid 程式碼</b>。複製起來貼到
+                    <a href="${MERMAID_SITE}" target="_blank" rel="noopener" class="underline font-bold">mermaid.ai</a>，
+                    就會畫出正式的流程圖。<br>
+                    注意形狀：<b>圓角</b>＝開始／結束、<b>矩形</b>＝處理、
+                    <b>菱形</b>＝判斷、<b>平行四邊形</b>＝輸入／輸出。
+                  </p>
+                  <pre id="mmd-code" class="bg-white border border-indigo-200 rounded-lg p-3 text-[11px] leading-relaxed overflow-auto max-h-56 whitespace-pre">${esc(toMermaid(u.steps))}</pre>
+                  <div class="flex flex-wrap gap-2 mt-2">
+                    <button id="copy-mmd" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition">📋 複製程式碼</button>
+                    <a href="${MERMAID_SITE}" target="_blank" rel="noopener" class="bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-300 text-xs font-bold px-4 py-2 rounded-lg transition">開啟 Mermaid →</a>
+                  </div>
+                </div>
+              </details>`;
+    }
+
     const COLORS = {
       blue:'bg-blue-100 text-blue-600 border-blue-400', cyan:'bg-cyan-100 text-cyan-600 border-cyan-400',
       purple:'bg-purple-100 text-purple-600 border-purple-400', green:'bg-green-100 text-green-600 border-green-400',
@@ -357,7 +389,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       return shuffle([...u.steps, ...distractors]);
     }
 
-    let state = { status:'loading', studentId:'', studentName:'', slowNote:'', done:{}, progDone:{},
+    let state = { status:'loading', studentId:'', studentName:'', slowNote:'', mmdUnit:null, done:{}, progDone:{},
                   progStars:{}, imgUnits:{}, vidUnits:{}, unit:null, candidates:[], selected:{}, selMsg:'', placed:[], pool:[], mistakes:0,
                   qIdx:0, qPicked:null, qScore:0, refOpen:false, leadOpen:false, graderOpen:false,
                   readLeft:0, hintUsed:false, hintLeft:0, selTries:0,
@@ -832,6 +864,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 open ? (u.desc || u.subtitle || '') : '完成前一關才會開啟'}</p>
               <p class="mt-3 text-xs font-bold ${both?'text-emerald-600':open?'text-purple-600':'text-slate-400'}">${nextLine}</p>
               ${(open && done && !both)?`<span data-prog="${u.no}" class="go-prog inline-block mt-2 text-[11px] font-black bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1 rounded-full transition">🐱 直接去程式設計 →</span>`:''}
+              ${(open && done)?`<span data-mmd="${u.no}" class="go-mmd inline-block mt-2 ml-2 text-[11px] font-black bg-indigo-100 hover:bg-indigo-200 text-indigo-700 border border-indigo-300 px-2.5 py-1 rounded-full transition" title="排對過就隨時看得到，不用重排">🧜 流程圖代碼</span>`:''}
             </button>`;
         }).join('');
         el.innerHTML = `
@@ -1031,6 +1064,26 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         return;
       }
 
+      /* 「再看一次流程圖代碼」——只給**排對過**的關卡，純檢視、不動進度。
+         ⚠️ 沒排過的關卡看不到：那等於直接給答案。 */
+      if(state.status==='mermaid'){
+        const u = state.mmdUnit;
+        el.innerHTML = `
+          <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 pop">
+              <div class="text-[11px] text-slate-400 font-mono">第 ${u.no} 關 · ${u.id}</div>
+              <h2 class="font-black text-2xl mb-1">${u.title}</h2>
+              <p class="text-sm text-slate-500 mb-4">
+                你已經排對過這一關的流程圖，程式碼隨時可以再拿 —— 不用重排。
+              </p>
+              ${mermaidPanel(u)}
+              <div class="flex flex-wrap gap-2">
+                <button id="back-menu2" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-5 py-2.5 rounded-lg transition">回關卡列表</button>
+              </div>
+            </div>
+          </div>`;
+        return;
+      }
       if(state.status==='clear'){
         const u=state.unit;
         const fc = u.steps.map((s,i)=>`<div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-purple-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${i+1}</span><span class="text-sm">${s}</span></div>${i<u.steps.length-1?'<div class="text-purple-300 text-center leading-none">↓</div>':''}`).join('');
@@ -1048,25 +1101,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                    圓角起訖、矩形處理、菱形判斷、平行四邊形輸入輸出。
                    貼到 Mermaid 看到它長成正式的流程圖，那些形狀才會變成
                    自己畫得出來的東西，而不只是課本上的圖。 -->
-              <details class="text-left bg-indigo-50 border border-indigo-200 rounded-xl mb-5" open>
-                <summary class="cursor-pointer px-4 py-3 font-bold text-indigo-800 text-sm">
-                  🧜 把這張流程圖變成真的圖（Mermaid）
-                </summary>
-                <div class="px-4 pb-4">
-                  <p class="text-xs text-indigo-900/70 leading-relaxed mb-2">
-                    下面是這張流程圖的 <b>Mermaid 程式碼</b>。複製起來貼到
-                    <a href="${MERMAID_SITE}" target="_blank" rel="noopener" class="underline font-bold">mermaid.ai</a>，
-                    就會畫出正式的流程圖。<br>
-                    注意形狀：<b>圓角</b>＝開始／結束、<b>矩形</b>＝處理、
-                    <b>菱形</b>＝判斷、<b>平行四邊形</b>＝輸入／輸出。
-                  </p>
-                  <pre id="mmd-code" class="bg-white border border-indigo-200 rounded-lg p-3 text-[11px] leading-relaxed overflow-auto max-h-56 whitespace-pre">${esc(toMermaid(u.steps))}</pre>
-                  <div class="flex flex-wrap gap-2 mt-2">
-                    <button id="copy-mmd" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition">📋 複製程式碼</button>
-                    <a href="${MERMAID_SITE}" target="_blank" rel="noopener" class="bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-300 text-xs font-bold px-4 py-2 rounded-lg transition">開啟 Mermaid →</a>
-                  </div>
-                </div>
-              </details>
+              ${mermaidPanel(u)}
               <div class="flex flex-wrap gap-2 justify-center">
                 <button id="to-program" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2.5 rounded-lg transition">🐱 接著做程式設計 →</button>
                 <button id="back-menu2" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-5 py-2.5 rounded-lg transition">回關卡列表</button>
@@ -1182,6 +1217,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         return;
       }
       // 流程圖已通關的關卡：點「直接去程式設計」跳過重排（必須放在 unit-btn 之前攔截）
+      /* 🧜 再看一次流程圖代碼 —— 純檢視，不碰進度也不重排。 */
+      const gm=e.target.closest('.go-mmd');
+      if(gm){
+        const no=+gm.dataset.mmd;
+        clearTimers(); state.mmdUnit=UNITS[no-1]; state.status='mermaid'; render(); return;
+      }
       const gp=e.target.closest('.go-prog');
       if(gp){
         const no=+gp.dataset.prog;

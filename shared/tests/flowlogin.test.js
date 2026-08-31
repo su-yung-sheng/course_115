@@ -49,5 +49,30 @@ ok(/status\s*===?\s*'login'/.test(HUB), 'hub.html 仍然有 login 狀態');
 ok(!/type="password"[^>]*maxlength="6"/.test(HUB),
    '★ hub 的登入頁不是驗證碼輸入（已改成學校 Google 帳號）');
 
+section('★★ 排對過的關卡要能再拿到 Mermaid 代碼');
+/* ⚠️⚠️ 2026-08-26 老師問：「忘記複製直接離開，是不是要重玩一次？
+      是不是少了一個記錄點？」
+   ★ 沒有東西需要記錄 —— 那段程式碼是 toMermaid(u.steps)，
+     來自單元定義的**正確步驟**，每個學生每一次都一樣。
+     缺的是**入口**：原本它只出現在剛過關的那一個畫面（status==='clear'），
+     離開就回不去，只能重排一次流程圖。 */
+ok(/function mermaidPanel\(/.test(CODE),
+   '★ Mermaid 面板抽成共用函式（過關畫面與再看一次畫面共用）');
+ok((SRC.match(/把這張流程圖變成真的圖/g) || []).length === 1,
+   '★★ 面板只有一份 —— 抄成兩份就會各改各的');
+ok(/status\s*===?\s*'mermaid'/.test(CODE), '有「再看一次」的檢視畫面');
+ok(/data-mmd=/.test(CODE) && /go-mmd/.test(CODE), '關卡列表上有進入的入口');
+
+/* ⚠️ 入口的條件：**排對過**才給。沒排過就看得到，等於直接給答案。 */
+const entry = CODE.match(/\$\{\(([^)]*)\)\?`<span data-mmd=/);
+ok(!!entry && /done/.test(entry[1]) && /open/.test(entry[1]),
+   '★★ 只有「已開啟 ＋ 流程圖排對過」的關卡才看得到（' +
+   (entry ? entry[1] : '找不到條件') + '）');
+
+/* ⚠️ 檢視畫面不可以動到進度 —— 它只是再看一次，不是重新過關。 */
+const view = CODE.match(/status\s*===?\s*'mermaid'[^]{0,1200}?\n      \}/);
+ok(!!view && !/state\.done\s*\[/.test(view[0]) && !/setDoc|updateDoc/.test(view[0]),
+   '★★ 檢視畫面不寫進度、不碰資料庫');
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
