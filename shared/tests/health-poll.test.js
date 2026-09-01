@@ -273,6 +273,23 @@ section('★ 後端：要看得出時間花在哪');
      '★★ 要記「平均跑了幾次偵測」—— 接近 2 就代表第一發都沒中');
   ok(/avg_decode/.test(NBCODE) && /avg_level/.test(NBCODE),
      '★ 解碼與辨識要分開算，才知道該優化哪一段');
+
+  /* ⚠️ 老師 2026-08-26：「所以要在什麼時候記錄？還是可以自動搜集資料？」
+     ★ 只存在記憶體的話，Colab 一重啟就沒了，而且要老師記得在下課前
+       去查 /health —— 「忘記」在上課當下幾乎是必然的。
+     ⇒ 自動寫進 Firestore。 */
+  ok(/def record_ocr_stats/.test(NBCODE) && /def list_ocr_stats/.test(NBCODE),
+     '★★ 統計要自動存進 Firestore，不能只留在記憶體');
+  ok(/_OCR_STATS_FLUSH_EVERY/.test(NBCODE),
+     '★ 每累積幾張就自動存一次（中途斷線也留得住前面的）');
+  /* ⚠️⚠️ 寫 Firestore 是網路 I/O，佔著鎖會卡住其他辨識執行緒。 */
+  const fl = NBCODE.indexOf('if _flush_payload:');
+  const unlock = NBCODE.indexOf('_ocr_stats_flushed["n"] = _n_all');
+  ok(fl > 0 && unlock > 0 && fl > unlock,
+     '★★ 寫入要放在鎖外面（網路 I/O 佔著鎖會卡住辨識）');
+  /* ⚠️ 這是純觀測資料，寫失敗絕不可以影響學生的判定。 */
+  ok(/統計沒寫進去（不影響辨識）/.test(NBCODE),
+     '★★ 寫失敗要吞掉並說明，不可以讓觀測資料弄壞辨識');
 }
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
