@@ -554,8 +554,20 @@ if _roi and _sroi:
            '★ %s：挑戰成功徽章在第二段框內' % name)
 
 # ⚠️ 13px 的字放 1.5 倍才 20px，PaddleOCR 辨識率很低。
-ok('_ocr_scaled(level_roi, 2.5)' in _srv_code,
-   '★ 第一段起跳倍率至少 2.5（分頁標題只有 13～14px）')
+# ⚠️⚠️ 這一條原本寫「起跳倍率至少 2.5」，用字串比對 ——
+#    而**回退**倍率也是 2.5，所以把起跳降成 1.5 之後測試照樣綠。
+#    典型的假通過。⇒ 改成分別抓兩個倍率、比較它們的關係。
+# ★ 而且 2026-08-26 的實測推翻了原本的理由：
+#      2.5 倍 0.68 MP → 26.9 秒；1.5 倍 0.24 MP → 16.1 秒
+#    1.5 倍時中文只錯一字，靠網址兜底仍然判得過 ⇒ 降倍率是划算的。
+#    真正要守住的不是某個數字，而是「回退倍率一定比起跳大」。
+_scales = [float(x) for x in
+           re.findall(r'_ocr_scaled\(level_roi, ([0-9.]+)\)', _srv_code)]
+ok(len(_scales) == 2,
+   '★ 第一段要有「起跳 ＋ 回退」兩種倍率（找到 %s）' % _scales)
+ok(len(_scales) == 2 and _scales[1] > _scales[0],
+   '★★ 回退倍率要比起跳大（目前 %s → %s）'
+   % (_scales[0] if _scales else '?', _scales[1] if len(_scales) > 1 else '?'))
 
 # ⚠️ 只說「關卡名稱不符合」的話，沒有人知道問題出在哪。
 ok('系統在截圖上緣讀到' in _srv_code and '一個字都沒讀到' in _srv_code,
