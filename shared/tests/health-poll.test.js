@@ -152,7 +152,10 @@ section('★ 後端：要分得出「排隊久」和「每張變慢」');
 
   ok(/queue_wait_seconds/.test(NBCODE),
      '★★ timing 要分開記「排隊等待」，否則分不出瓶頸在哪');
-  ok(/def ocr_run\(img, timeout=180, stats=None\)/.test(NBCODE),
+  /* ⚠️ 這一條原本寫死 timeout=180 —— 後來把它換成 OCR_STALE_SECONDS
+     常數（讓等待方和佇列丟棄共用同一個數字），這條就紅了。
+     釘的應該是「有 stats 這個出口」，不是那個數字長什麼樣。 */
+  ok(/def ocr_run\(img, timeout=[^,]+, stats=None\)/.test(NBCODE),
      '★ ocr_run 要能把等待時間回報給呼叫端');
   ok(/box\["waited"\]/.test(NBCODE), '★ OCR 執行緒要記下這張等了多久');
   ok(/_ocr_cpu_sem/.test(NBCODE) && /with _ocr_cpu_sem:/.test(NBCODE),
@@ -221,6 +224,41 @@ section('★★ 後端：平均秒數要用實測的');
   /* ⚠️ 還沒有任何實測資料時要有預設值，不可以除以零或報 0 秒。 */
   ok(/if not _ocr_recent:/.test(NBCODE) && /return float\(AVG_OCR_SECONDS\)/.test(NBCODE),
      '★ 沒有樣本時退回預設值');
+}
+
+section('★★ 下課／關機之後，佇列裡沒人等的工作要丟掉');
+{
+  /* ⚠️ 老師 2026-08-26：「10:00 下課，之前送出的會一直持續下去嗎？
+     關機之後，送出的要求還是一直卡住嗎？」—— 本來兩個都是「會」。
+     圖片進了佇列，OCR 執行緒就無條件處理，它不知道對面已經
+     關機、關分頁、或等到逾時放棄了。白做工還卡住後面的人。 */
+  const NBCODE = JSON.parse(fs.readFileSync(path.join(ROOT, 'shared', 'backend.ipynb'), 'utf8'))
+    .cells.map(c => (c.source || []).join('')).join('\n')
+    .split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
+
+  ok(/OCR_STALE_SECONDS/.test(NBCODE), '★ 有「多久算沒人等了」的常數');
+  ok(/def ocr_run\(img, timeout=OCR_STALE_SECONDS/.test(NBCODE),
+     '★★ 等待方的逾時和佇列的丟棄用**同一個數字** —— '
+     + '兩邊不同步就會出現「這邊放棄了、那邊還留著」');
+  ok(/box\["abandoned"\] = True/.test(NBCODE),
+     '★ 等待方逾時要標記「我不要了」');
+  ok(/box\.get\("abandoned"\)/.test(NBCODE) && /box\["waited"\] > OCR_STALE_SECONDS/.test(NBCODE),
+     '★★ 取出時兩種都要檢查：標記放棄的、以及排太久的（關機屬於後者）');
+
+  /* ⚠️ 檢查必須在 predict() **之前**，否則跑完才發現沒人要，等於沒改。 */
+  const loop = NBCODE.slice(NBCODE.indexOf('while True:'));
+  const iChk = loop.indexOf('box.get("abandoned")');
+  const iRun = loop.indexOf('predict(img)');
+  ok(iChk > 0 && iRun > 0 && iChk < iRun,
+     '★★ 丟棄的判斷要在真的辨識之前');
+
+  /* ⚠️ 兩個逾時的關係：學號鎖必須**比**佇列丟棄晚放開。
+     反過來的話，鎖先開、學生重傳，舊的那張卻還在跑，
+     等於同一個人真的佔了兩個位置 —— 正是這次要擋掉的事。 */
+  const stale = Number((NBCODE.match(/OCR_STALE_SECONDS = (\d+)/) || [])[1]);
+  const busy = Number((NBCODE.match(/_OCR_BUSY_TTL = (\d+)/) || [])[1]);
+  ok(stale > 0 && busy > 0 && busy >= stale,
+     '★★ 學號鎖的 TTL（' + busy + 's）要 >= 佇列丟棄（' + stale + 's）');
 }
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
