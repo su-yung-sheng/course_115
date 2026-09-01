@@ -465,8 +465,16 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                        學生就再也傳不出去 —— 後端其實還活著
                      ‧ 沒有逾時，慢的請求會一直堆積
                    ⇒ 頻率降下來、失敗要容忍、背景分頁不打、請求要有逾時。 */
+                /* ⚠️⚠️ 2026-08-26 老師再回報：「有一次後端當機，無法重啟，
+                   前端還一直送要求進來。」—— 判定離線之後照樣每 25 秒敲一次，
+                   30 台瀏覽器一起敲，網域一恢復就被打爆，反而更難重啟。
+                   ⇒ **指數退避**：連續失敗越多，間隔拉得越長（上限 5 分鐘），
+                     讓老師有空間把後端救回來；一旦成功立刻回到正常頻率。 */
                 const MISS_LIMIT = 3;        // 連續失敗這麼多次才算真的離線
+                const BASE_MS = 25000, MAX_MS = 300000;
                 let misses = 0, alive = true;
+                const nextDelay = () => (misses < MISS_LIMIT ? BASE_MS
+                    : Math.min(MAX_MS, BASE_MS * Math.pow(2, misses - MISS_LIMIT + 1)));
                 const checkHealth = async () => {
                     if(isProcessing) return;         // 自己正在辨識就不用問
                     if(document.hidden) return;      // 分頁在背景，不要浪費配額
@@ -487,9 +495,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         clearTimeout(timer);
                     }
                 };
-                checkHealth();
-                interval = setInterval(checkHealth, 25000);
-                return () => { alive = false; clearInterval(interval); };
+                /* 用 setTimeout 遞迴而不是 setInterval —— 間隔要能隨失敗次數變長。 */
+                const loop = async () => {
+                    await checkHealth();
+                    if(alive) interval = setTimeout(loop, nextDelay());
+                };
+                loop();
+                /* 「立刻再試一次」：離線時給學生／老師一個不用等退避的出口。 */
+                window.__retryHealth = () => { misses = 0; setNetNote("重新檢查中..."); loop(); };
+                return () => { alive = false; clearTimeout(interval); window.__retryHealth = null; };
             }, [isProcessing]);
 
             const handleFileChange = (e) => {
@@ -542,13 +556,22 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     } catch (e) { /* 查不到就不顯示排隊資訊 */ }
                 };
                 pollQueue();
-                qTimer = setInterval(pollQueue, 3000);
+                /* ⚠️ 這裡原本是 3 秒一次。辨識期間 30 人同時等，
+                   就是**每分鐘 600 次**請求 —— 比健康檢查還兇，
+                   而且正好發生在後端最忙的時候。排隊人數不需要這麼即時。 */
+                qTimer = setInterval(pollQueue, 8000);
 
+                /* ⚠️ 這個請求原本**沒有逾時**：後端當掉時會一直掛在那裡，
+                   學生看到的是永遠轉不完的圈圈，也不會回到可以重試的狀態。
+                   OCR 要排隊，所以給得寬一點（三分鐘），但一定要有上限。 */
+                const upCtl = new AbortController();
+                const upTimer = setTimeout(() => upCtl.abort(), 180000);
                 try {
                     const res = await fetch(API_BASE + "/analyze", {
                         method: 'POST',
                         headers: { 'ngrok-skip-browser-warning': '1' },
-                        body: formData
+                        body: formData,
+                        signal: upCtl.signal
                     });
                     if(!res.ok) throw new Error("伺服器拒絕連線");
                     
@@ -591,6 +614,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-sm font-semibold text-slate-500 mb-6 shadow-sm transition-colors">
                                 <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse shadow-[0_0_0_4px_rgba(16,185,129,0.2)]' : 'bg-slate-300'}`}></span>
                                 <span>{isOnline ? "伺服器連線成功" : netNote}</span>
+                                {!isOnline && (
+                                    <button onClick={() => window.__retryHealth && window.__retryHealth()}
+                                        className="ml-2 text-xs font-bold underline text-slate-500 hover:text-slate-800">
+                                        立刻再試
+                                    </button>
+                                )}
                             </div>
                             <h2 className="text-3xl sm:text-4xl font-black text-slate-800 mb-3 tracking-tight">運算思維通關確認系統</h2>
                             <p className="text-slate-500 font-medium">自動辨識通關截圖，並結構化輸出成績資料</p>
