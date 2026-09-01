@@ -544,15 +544,44 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 formData.append("file", selectedFile);
                 formData.append("keywords", `挑戰成功,${challenge.title},${engTitle}`);
                 formData.append("password", (CLASS_PASS || "").trim());
+                /* ⚠️ 帶學號：後端要靠它擋「同一個人開兩個分頁一起傳」。
+                   OCR 是單執行緒，一個人佔兩個位置就是全班多等一輪。 */
+                formData.append("student_id",
+                    (sessionStorage.getItem('sid' + ((window.CONFIG && window.CONFIG.TERM) || '11501')) || '').trim());
 
                 // 先看看目前有幾位同學在辨識，並在等待期間持續更新
                 let qTimer = null;
+                /* ⚠️⚠️ 2026-08-26 老師問：「有顯示排隊人數，但為什麼會變多？有人插隊？」
+                   沒有人插隊 —— 是拿 pending 當位置用錯了。
+                   pending 是「此刻同時在場的人數」，後面進來的人也算進去，
+                   所以先送出的人反而看到數字變大。
+                   ⇒ 改用**號碼牌**：送出前先記下目前發到第幾號，我的就是它 +1；
+                     之後 位置 = 我的號碼 − 已完成 − 1，這個數字只會遞減。 */
+                let myTicket = null, shownAhead = null;
+                try {
+                    const q0 = await (await fetch(API_BASE + "/queue",
+                        { headers: { 'ngrok-skip-browser-warning': '1' }, cache: 'no-store' })).json();
+                    if (Number.isFinite(Number(q0.ticket))) myTicket = Number(q0.ticket) + 1;
+                } catch (e) { /* 問不到就退回舊的顯示方式 */ }
+
                 const pollQueue = async () => {
                     try {
                         // 共用後端的 OCR 佇列（與 Scratch 批改的 /api/student/queue 分開算）
                         const q = await (await fetch(API_BASE + "/queue",
                             { headers: { 'ngrok-skip-browser-warning': '1' }, cache: 'no-store' })).json();
-                        setQueueAhead(Math.max(0, (Number(q.pending) || 0) - 1));
+                        let ahead;
+                        if (myTicket != null && Number.isFinite(Number(q.served))) {
+                            ahead = Math.max(0, myTicket - Number(q.served) - 1);
+                            /* 估算難免有誤差（送出的前後都可能有人進來），
+                               但**顯示出來的數字只准變小** —— 變大就又是一次
+                               「被插隊」的錯覺，那正是這次要修掉的東西。 */
+                            shownAhead = (shownAhead == null) ? ahead : Math.min(shownAhead, ahead);
+                            ahead = shownAhead;
+                        } else {
+                            /* 後端還是舊版（沒有 served）時的退路 */
+                            ahead = Math.max(0, (Number(q.pending) || 0) - 1);
+                        }
+                        setQueueAhead(ahead);
                     } catch (e) { /* 查不到就不顯示排隊資訊 */ }
                 };
                 pollQueue();
@@ -573,7 +602,13 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         body: formData,
                         signal: upCtl.signal
                     });
-                    if(!res.ok) throw new Error("伺服器拒絕連線");
+                    if(!res.ok) {
+                        /* ⚠️ 429 是後端在說「你已經有一張正在辨識中」——
+                           它寫得很清楚，不要用「伺服器拒絕連線」蓋掉。 */
+                        let why = "伺服器拒絕連線";
+                        try { const j = await res.json(); if (j && j.message) why = j.message; } catch (e) {}
+                        throw new Error(why);
+                    }
                     
                     const data = await res.json();
                     

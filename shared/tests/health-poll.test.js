@@ -84,5 +84,60 @@ for (const term of ['11501', '11502']) {
      '★★ /analyze 的上傳要有逾時');
 }
 
+/* ═══════════════════════════════════════════════════════
+   排隊位置與「一人一次」
+   -------------------------------------------------------
+   ⚠️⚠️ 老師 2026-08-26 兩個問題：
+     ①「同一個人開兩個上傳，排隊也可以？」→ 以前可以，完全沒擋。
+        /analyze 收到的資料裡**沒有學號**，後端根本不知道是誰。
+     ②「有顯示排隊人數，但為什麼會變多？有人插隊？」→ 沒有人插隊，
+        是拿 pending（此刻同時在場人數）當「你前面還有幾個」用。
+        後面進來的人也被算進去，先送出的反而看到數字變大。
+   ═══════════════════════════════════════════════════════ */
+for (const term of ['11501', '11502']) {
+  section('★★ ' + term + '：排隊位置要用號碼牌');
+  const SRC = fs.readFileSync(path.join(ROOT, term, 'thinking.html'), 'utf8');
+  const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, ' ');
+
+  ok(/formData\.append\("student_id"/.test(CODE),
+     '★★ 上傳要帶學號（後端才擋得掉同一人開兩個分頁）');
+  ok(/myTicket/.test(CODE) && /q\.served/.test(CODE),
+     '★★ 用「我的號碼 − 已完成」算位置，不是用 pending');
+  ok(/shownAhead/.test(CODE) && /Math\.min\(shownAhead/.test(CODE),
+     '★★ 顯示的數字只准變小（變大就是又一次「被插隊」的錯覺）');
+  ok(/j\.message/.test(CODE),
+     '★ 429 的原因要透出來，不可以被「伺服器拒絕連線」蓋掉');
+  /* ⚠️ 後端如果還是舊版（沒有 served），要能退回舊的顯示方式，
+     不可以整個壞掉 —— Colab 那本不一定跟前端同時更新。 */
+  ok(/q\.pending/.test(CODE),
+     '★ 舊後端沒有 served 時要有退路');
+}
+
+section('★★ 後端：一人一次 ＋ 已完成數');
+{
+  const NBSRC = fs.readFileSync(path.join(ROOT, 'shared', 'backend.ipynb'), 'utf8');
+  const NBCODE = JSON.parse(NBSRC).cells
+    .map(c => (c.source || []).join(''))
+    .join('\n')
+    .split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
+
+  ok(/"served"/.test(NBCODE), '★ 佇列狀態要有 served（已完成數）');
+  ok(/_ocr_qstate\["served"\] \+= 1/.test(NBCODE), '★ 每完成一張要 +1');
+  ok(/_ocr_busy_sids/.test(NBCODE), '★★ 有「同一學號同時只能一張」的名單');
+  /* ⚠️ 這一條原本只檢查「有 _OCR_BUSY_TTL 這個名字」——太寬：
+     把它改名成 _OCR_BUSY_TTL_X（等於停用）測試照樣綠，
+     突變測試才發現。⇒ 要檢查**清理迴圈真的在用它**。 */
+  ok(/>\s*_OCR_BUSY_TTL\b/.test(NBCODE) && /_ocr_busy_sids\.pop\(_k/.test(NBCODE),
+     '★★ 名單要有逾時自動釋放且真的在清 —— '
+     + '否則一次異常就讓那個學生整堂課傳不了');
+  ok(/429/.test(NBCODE), '★ 重複上傳要回 429，讓前端分得出來');
+  /* ⚠️ 429 提早 return 時**不可以**走到 finally 的清理，
+     不然會把別人（其實是自己第一張）的鎖解掉、pending 也算錯。 */
+  const an = NBCODE.slice(NBCODE.indexOf('def ocr_analyze'));
+  const i429 = an.indexOf('429'), iTry = an.indexOf('\n    try:');
+  ok(i429 > 0 && iTry > 0 && i429 < iTry,
+     '★★ 擋下重複上傳的 return 要在 try 之前（否則會誤觸 finally 的清理）');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
