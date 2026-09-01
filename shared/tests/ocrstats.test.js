@@ -93,5 +93,23 @@ for (const term of ['11501', '11502']) {
   ok(/多等約 30 秒/.test(T), '★ ' + term + ' 引擎還沒載入時要先告知');
 }
 
+section('★★ 模型載入的時間要量出來，而且不該由學生承擔');
+/* ⚠️ 老師 2026-08-26：「這是第一張，之後可能會加速嗎？
+   PaddleOCR 首次載入模型？」
+   ★ 從單張數據只能推論（第一次 39 秒、第二次 17 秒）。
+     ⇒ 直接把載入時間量出來，不要再靠推論。
+   ⚠️⚠️ 更重要的是：那二十幾秒本來是**第一個按下按鈕的學生**在承擔，
+      他等了快一分鐘而且不知道發生什麼事。伺服器一上線就該先載好。 */
+ok(/_OCR_MODEL_LOAD_SECONDS/.test(NBCODE), '★ 要記錄模型載入花了幾秒');
+ok(/"ocr_model_load_seconds"/.test(NBCODE), '★ /health 要回報它');
+ok(/def _preload_ocr/.test(NBCODE), '★★ 啟動後要背景預載模型');
+/* ⚠️ 預載一定要在背景執行緒：卡在啟動格會讓老師以為當掉。 */
+const pre = NBCODE.slice(NBCODE.indexOf('def _preload_ocr'));
+ok(/_threading\.Thread\(target=_preload_ocr, daemon=True\)/.test(NBCODE),
+   '★★ 預載要用背景執行緒（不可以卡住啟動）');
+/* ⚠️ 預載失敗不可以影響伺服器啟動 —— 批改那一邊根本不需要 PaddleOCR。 */
+ok(/預載失敗（不影響啟動）/.test(NBCODE),
+   '★★ 預載失敗只印訊息，不可以讓伺服器起不來');
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

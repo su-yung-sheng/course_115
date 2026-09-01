@@ -306,9 +306,17 @@ for (const term of ['11501', '11502']) {
      '★★ ' + term + '：驗證成功後要禁用按鈕');
   ok(/已完成（要重驗請重新選圖）/.test(T),
      '★ ' + term + '：按鈕文字要說明怎麼重驗');
-  /* 失敗不可以被擋住 */
-  ok(!/result\?\.status === 'fail'/.test(C) && !/result\?\.status === 'error'/.test(C),
-     '★★ ' + term + '：失敗**不可以**被擋（那是重試）');
+  /* ⚠️⚠️ 三種狀態的性質不同，不可以一視同仁（老師 2026-08-26 追問）：
+       pass  已經過了
+       fail  判定不通過 —— OCR 是確定性的，同一張圖再驗結果一定一樣，
+             白等一次辨識（實測約 34 秒）還佔掉別人的位置 ⇒ 也要擋
+       error 系統／連線問題 ⇒ **重按有意義，絕對不可以擋** */
+  ok(/disabled=\{[^}]*result\?\.status === 'fail'/.test(C),
+     '★★ ' + term + '：判定不通過也要擋（同一張圖結果一樣）');
+  ok(!/disabled=\{[^}]*result\?\.status === 'error'/.test(C),
+     '★★ ' + term + '：系統錯誤**不可以**擋（那是唯一能重試的情況）');
+  ok(/請換一張截圖再驗/.test(T),
+     '★ ' + term + '：擋住時要說「換一張圖」，不能只是變暗');
   /* 換圖要解鎖 */
   const fc = C.slice(C.indexOf('const handleFileChange'), C.indexOf('const handleFileChange') + 700);
   ok(/setResult\(null\)/.test(fc),

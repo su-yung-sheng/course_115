@@ -718,20 +718,24 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
                                 <button 
                                     onClick={startAnalysis} 
-                                    /* ⚠️⚠️ 2026-08-26 老師問：「不管驗成功或失敗都會重新啟用按鈕，
-                                       這樣會不會誤按？」——會。
-                                       成功之後再按就是又送一次 OCR：老師實測一次辨識要 17 秒，
-                                       而且會佔掉排隊裡別人的位置。⇒ 成功後禁用。
-                                       ⚠️ 失敗**要**能再按（那是重試），所以只擋 pass。
-                                       ⚠️ 重新選圖時 handleFileChange 會清掉 result，
-                                          按鈕自然又亮起來 —— 不會把想換圖的學生鎖死。 */
-                                    disabled={!isOnline || !selectedFile || isProcessing || result?.status === 'pass'}
+                                    /* ⚠️⚠️ 2026-08-26 老師問：「失敗如果沒有重新上傳圖片，也能直接按嗎？」
+                                       ★ 三種狀態的性質不同，不可以一視同仁：
+                                           pass  已經過了，不必再驗
+                                           fail  **判定不通過**（截圖內容不符）——
+                                                 OCR 是確定性的，同一張圖再驗結果一定一樣，
+                                                 白等一次辨識（實測約 34 秒）還佔掉別人的位置
+                                           error 系統／連線問題 ⇒ **重按有意義，不可以擋**
+                                       ⇒ 擋 pass 與 fail，放行 error。
+                                       ⚠️ 換圖時 handleFileChange 會清掉 result，按鈕自然解鎖。 */
+                                    disabled={!isOnline || !selectedFile || isProcessing || result?.status === 'pass' || result?.status === 'fail'}
                                     className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-bold flex justify-center items-center gap-2 shadow-[0_10px_20px_-10px_rgba(99,102,241,1)] hover:-translate-y-1 hover:shadow-[0_15px_25px_-10px_rgba(99,102,241,1)] transition-all disabled:bg-slate-300 disabled:shadow-none disabled:transform-none disabled:cursor-not-allowed mt-2"
                                 >
                                     {isProcessing ? (
                                         <><i className="fa-solid fa-hourglass-half"></i> 資料萃取中...</>
                                     ) : result?.status === 'pass' ? (
                                         <><i className="fa-solid fa-circle-check"></i> 已完成（要重驗請重新選圖）</>
+                                    ) : result?.status === 'fail' ? (
+                                        <><i className="fa-solid fa-image"></i> 請換一張截圖再驗</>
                                     ) : !isOnline ? (
                                         <><i className="fa-solid fa-plug-circle-xmark"></i> 等待伺服器連線</>
                                     ) : !selectedFile ? (
