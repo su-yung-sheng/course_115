@@ -760,5 +760,59 @@ ok('wrong_level_count' in _srv2 and 'avg_level_attempts_ok' in _srv2,
    '★ 兩個新欄位都要回報出去（/health 和自動存檔）')
 
 
+# ═══════════════════════════════════════════════════════════
+section('C-11 十關對照表只能有一份，而且要和學生端一致')
+# ═══════════════════════════════════════════════════════════
+# ⚠️⚠️ 2026-08-26 老師傳「扭蛋轉轉樂」的截圖跑切法實驗，六種切法
+#    **關卡欄全部 ❌** —— 看起來像「怎麼切都讀不到」。
+#    ★ 實際上那一格的 LEVEL 硬編成 ('滑梯公園',…)：
+#      拿 A 關的名字去比對 B 關的截圖，當然全不過。
+#      同一張圖在批次自檢裡是「關卡:O 成功標示:O」，兩格結論打架。
+#    ⚠️ 更糟的是我接著「順手補一份對照表」，**十關打錯七關** ——
+#      憑印象重打的表，錯了沒有人會發現，只會看到判定都不過，
+#      然後以為是切法不好、跑去調倍率。
+#    ⇒ 表只留在 core.LEVEL_NAMES，其他地方一律引用。
+_core_src = _code_of(_nb_cells[6])
+ok('LEVEL_NAMES = {' in _core_src,
+   '★ 十關對照表住在 scratch_grader_core')
+ok('def level_from_filename' in _core_src,
+   '★ 從檔名認關卡的規則也只有一份')
+
+# 自檢（14）和切法實驗（20）都不可以再自己打一份
+_dup = [(i, len(re.findall("'[\u4e00-\u9fff]+': '", _code_of(_nb_cells[i]))))
+        for i in (14, 20)]
+ok(all(n == 0 for _, n in _dup),
+   '★★ 自檢／切法實驗不可以再手打對照表　←　目前 %s' % _dup)
+ok('LEVEL = None' in _code_of(_nb_cells[20]),
+   '★ 切法實驗改成從檔名判斷關卡（不再硬編成某一關）')
+ok('那個 ❌ 是假的' in _code_of(_nb_cells[20]),
+   '★ 認不出關卡時要講明「這個 ❌ 是假的」，不然又會去調錯參數')
+
+# ★★ 真正的來源是學生端：對照表和 thinking.html 對不起來的話，
+#    自檢會全綠、上課會全錯。
+_ns_lv = load_funcs(marker='LEVEL_NAMES = {',
+                    want=('level_from_filename',))
+_lv_names = _ns_lv['LEVEL_NAMES'] if 'LEVEL_NAMES' in _ns_lv else None
+if _lv_names is None:
+    _l = _core_src.split('\n')
+    _i = next(k for k, x in enumerate(_l) if x.startswith('LEVEL_NAMES'))
+    _j = next(k for k in range(_i + 1, len(_l))
+              if _l[k].startswith('def level_from_filename'))
+    _tmp = {}
+    exec('\n'.join(_l[_i:_j]), _tmp)
+    _lv_names = _tmp['LEVEL_NAMES']
+_html = io.open(os.path.join(ROOT, '11501', 'thinking.html'),
+                encoding='utf8').read()
+_m = re.search(r'englishMappings\s*=\s*\{(.*?)\}', _html, re.S)
+_web = dict(re.findall(r"['\"]([^'\"]+)['\"]\s*:\s*['\"]([^'\"]+)['\"]",
+                       _m.group(1))) if _m else {}
+ok(len(_web) == 10, '★ thinking.html 讀得到十關（讀到 %d 關）' % len(_web))
+_diff = {k: (v, _lv_names.get(k)) for k, v in _web.items()
+         if _lv_names.get(k) != v}
+ok(not _diff,
+   '★★ 後端對照表要和學生端 thinking.html 完全一致　←　%s'
+   % ('一致' if not _diff else _diff))
+
+
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
 sys.exit(1 if fail_n else 0)
