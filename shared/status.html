@@ -498,6 +498,55 @@ if (!window.CONFIG) {
     });
   }
 
+  /* ── 檢查 7：截圖辨識效能 ────────────────────────────
+     ⚠️ 老師 2026-08-26 要把 Colab 那格的統計搬到這裡。
+     ★ 判讀**不在前端做** —— 後端的 core.ocr_stats_verdict() 是唯一一份，
+       Colab 的統計格看到的和這裡完全一樣。
+       在前端再寫一次判讀，同一組數字就會在兩個地方給出不同建議，
+       而那種不一致沒有人會發現。
+     ⚠️ 資料也不直接讀 Firestore：照這一頁的原則問後端
+       （後端有服務帳戶，不必為了看統計去改安全規則）。 */
+  function checkOcrStats(el, health) {
+    if (!health) { set(el, 'bad', '無法檢查', '<span class="text-slate-500">後端連不上，跳過。</span>'); return; }
+    return getJSON(SERVER + '/api/ocr-stats', 10000).then(function (j) {
+      if (!j || !j.ok) throw new Error('端點沒有回應');
+      var live = j.live || {}, hist = j.history || [];
+      var basis = (j.basis === 'live')
+        ? '這次執行階段（' + (live.count || 0) + ' 張）'
+        : (hist.length ? '最近一次上課（' + (hist[0].count || 0) + ' 張）' : '尚無資料');
+      var d = row('資料來源', basis);
+      var b = (j.basis === 'live') ? live : (hist[0] || {});
+      if (b && b.avg_total) {
+        d += row('每張平均', b.avg_total + ' 秒')
+           + row('解碼／關卡／徽章',
+                 (b.avg_decode || 0) + ' ／ ' + (b.avg_level || 0) + ' ／ ' + (b.avg_success || 0) + ' 秒')
+           + row('平均試幾次',
+                 '關卡 ' + (b.avg_level_attempts || 0) + '　徽章 ' + (b.avg_success_attempts || 0));
+      }
+      var v = (j.verdict || []);
+      if (v.length) {
+        d += '<div class="mt-2 space-y-1">' +
+             v.map(function (t) { return '<div>' + esc(t) + '</div>'; }).join('') +
+             '</div>';
+      }
+      /* ⚠️ 有警告就顯示 warn —— 這一頁的用途是「有沒有要處理的事」，
+         全部正常才給綠燈。 */
+      var hasWarn = v.some(function (t) { return t.indexOf('⚠️') >= 0; });
+      if (!hist.length && !(live.count > 0)) {
+        set(el, 'warn', '尚無資料', d +
+            '<div class="mt-2 text-amber-700">上一次課、讓學生實際傳幾張截圖之後再看。' +
+            '（每辨識 5 張才寫一筆）</div>');
+      } else if (hasWarn) {
+        set(el, 'warn', '有可以調整的地方', d);
+      } else {
+        set(el, 'ok', '辨識效能正常', d);
+      }
+    }).catch(function (e) {
+      set(el, 'warn', '讀不到統計', '<span class="text-slate-500">' + esc(String(e.message || e)) +
+          '</span><div class="mt-2 text-amber-700">Colab 跑的可能是舊版 notebook（新版才有 /api/ocr-stats）。</div>');
+    });
+  }
+
   // ── 主流程 ──────────────────────────────────────────
   function run() {
     btn.disabled = true;
@@ -511,6 +560,7 @@ if (!window.CONFIG) {
     var c4 = card('criteria','④ 兩學期批改標準是否分開');
     var c5 = card('rules',   '⑤ Firestore 安全規則');
     var c6 = card('gas',     '⑥ AI 引導的 Apps Script');
+    var c7 = card('ocr',     '⑦ 截圖辨識效能（要不要調參數）');
 
     checkBackend(c1).then(function (health) {
       checkKeys(c2, health);
@@ -518,7 +568,8 @@ if (!window.CONFIG) {
         checkQueue(c3, health),
         checkCriteria(c4, health),
         checkRules(c5),
-        checkGas(c6)
+        checkGas(c6),
+        checkOcrStats(c7, health)
       ]);
     }).catch(function (e) {
       console.error(e);
