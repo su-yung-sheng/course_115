@@ -514,7 +514,16 @@ if (!window.CONFIG) {
       var basis = (j.basis === 'live')
         ? '這次執行階段（' + (live.count || 0) + ' 張）'
         : (hist.length ? '最近一次上課（' + (hist[0].count || 0) + ' 張）' : '尚無資料');
-      var d = row('資料來源', basis);
+      /* ⚠️ 老師重跑 Colab 時最容易誤判的一件事：
+         「全部執行」要到步驟 4 才會關掉舊的 Flask，在那之前
+         學生連到的還是舊程式碼。boot_at 就是用來分辨這件事的。 */
+      var d = row('程式碼載入於', esc(String(j.boot_at || '—')) +
+                  (j.version ? '　（版本 ' + esc(String(j.version)) + '）' : '')) +
+              row('辨識引擎',
+                  j.ocr_state === 'ready' ? '已載入，可以辨識'
+                  : j.ocr_state === 'error' ? '<span class="text-red-600">載入失敗</span>'
+                  : '尚未載入（第一次辨識會多等幾十秒）') +
+              row('資料來源', basis);
       var b = (j.basis === 'live') ? live : (hist[0] || {});
       if (b && b.avg_total) {
         d += row('每張平均', b.avg_total + ' 秒')

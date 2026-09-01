@@ -398,6 +398,10 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
             const OFFLINE_NOTE = "連不上伺服器 —— 請告訴老師（可能是後端沒開，或同時上線的人太多）";
             const [isOnline, setIsOnline] = useState(false);
             const [netNote, setNetNote] = useState("伺服器連線中...");
+            /* ⚠️ 「伺服器活著」不等於「可以辨識」：剛重啟時 Flask 已經在服務，
+               但 PaddleOCR 模型要等第一次辨識才載入，第一位上傳的人會多等幾十秒。
+               引擎載入失敗時更要講出來 —— 那時傳什麼都會失敗。 */
+            const [ocrState, setOcrState] = useState("");
             const [isProcessing, setIsProcessing] = useState(false);
             const [selectedFile, setSelectedFile] = useState(null);
             const [previewUrl, setPreviewUrl] = useState(null);
@@ -440,7 +444,11 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                             signal: ctl.signal
                         });
                         if(!alive) return;
-                        if(res.ok){ misses = 0; setIsOnline(true); setNetNote("伺服器連線中..."); }
+                        if(res.ok){
+                            misses = 0; setIsOnline(true); setNetNote("伺服器連線中...");
+                            try { const j = await res.json(); setOcrState(j.ocr_state || ""); }
+                            catch (e) { setOcrState(""); }
+                        }
                         else if(++misses >= MISS_LIMIT){ setIsOnline(false); setNetNote(OFFLINE_NOTE); }
                     } catch(e) {
                         if(!alive) return;
@@ -683,7 +691,10 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                         <div className="text-center mb-8">
                             <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-sm font-semibold text-slate-500 mb-6 shadow-sm transition-colors">
                                 <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse shadow-[0_0_0_4px_rgba(16,185,129,0.2)]' : 'bg-slate-300'}`}></span>
-                                <span>{isOnline ? "伺服器連線成功" : netNote}</span>
+                                <span>{!isOnline ? netNote
+                                    : ocrState === "error" ? "⚠️ 辨識引擎沒有就緒，請告訴老師"
+                                    : ocrState === "idle" ? "伺服器連線成功（第一位上傳的同學會多等約 30 秒載入引擎）"
+                                    : "伺服器連線成功"}</span>
                                 {!isOnline && (
                                     <button onClick={() => window.__retryHealth && window.__retryHealth()}
                                         className="ml-2 text-xs font-bold underline text-slate-500 hover:text-slate-800">

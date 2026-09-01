@@ -62,5 +62,36 @@ ok(/不可以放寬比對門檻/.test(NBCODE),
 ok(/挑戰失敗/.test(NBCODE),
    '★ 而且要講出後果（門檻降到 0.5 會把「挑戰失敗」判成過關）');
 
+section('★★ 要分得出「學生連到的是新版還是舊版」');
+/* ⚠️⚠️ 老師 2026-08-26：「為什麼我正在重跑 Colab，學生端顯示連線成功？」
+   ★ 因為「全部執行」時，舊的 Flask 要到**步驟 4**才被關掉
+     （serve_background 會先 shutdown 上一台）。在那之前的一到三分鐘
+     （步驟 1b 在裝 PaddleOCR），舊後端還活著、還在服務學生 ——
+     顯示連線成功是真的，但學生用的是**舊程式碼**。
+   ⚠️ 這其實是好事（服務不中斷），壞的是「看不出來」。 */
+ok(/_SERVER_BOOT_AT/.test(NBCODE), '★★ 後端要記下這份程式碼的載入時間');
+ok(/"boot_at"/.test(NBCODE), '★ /health 與 /api/ocr-stats 都要回報它');
+ok(/boot_at/.test(STCODE) && /程式碼載入於/.test(ST),
+   '★★ 教師端要顯示出來，否則老師沒有辦法分辨');
+/* ⚠️ 這個變數的宣告用到 time，而它自己 import —— 
+   用下面才 import 的 _busy_time 會 NameError，
+   那會讓整個 colab_server 載入失敗、後端完全起不來。 */
+const bootIdx = NBCODE.indexOf('_SERVER_BOOT_AT =');
+const ownImport = NBCODE.lastIndexOf('import time as _boot_time', bootIdx);
+ok(ownImport > 0 && ownImport < bootIdx,
+   '★★ 啟動時間的 import 要在它自己前面（用後面才 import 的名字會 NameError）');
+
+section('★ 「伺服器活著」不等於「可以辨識」');
+/* ⚠️ 剛重啟時 Flask 已經在服務，但 PaddleOCR 模型要等第一次辨識才載入。
+   學生看到「連線成功」就傳，然後乾等幾十秒不知道發生什麼事。 */
+ok(/"ocr_state"/.test(NBCODE), '★ 後端要回報辨識引擎的狀態');
+ok(/idle|ready|error/.test(NBCODE), '★ 三種狀態要分得出來');
+for (const term of ['11501', '11502']) {
+  const T = fs.readFileSync(path.join(ROOT, term, 'thinking.html'), 'utf8');
+  ok(/ocrState/.test(T), '★ ' + term + ' 前端要讀引擎狀態');
+  ok(/辨識引擎沒有就緒/.test(T), '★ ' + term + ' 引擎異常時要講出來');
+  ok(/多等約 30 秒/.test(T), '★ ' + term + ' 引擎還沒載入時要先告知');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
