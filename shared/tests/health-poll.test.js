@@ -292,5 +292,40 @@ section('★ 後端：要看得出時間花在哪');
      '★★ 寫失敗要吞掉並說明，不可以讓觀測資料弄壞辨識');
 }
 
+section('★★ 驗證成功之後不可以再按一次');
+/* ⚠️ 老師 2026-08-26：「不管驗成功或失敗都會重新啟用按鈕，會不會誤按？」
+   ★ 會。成功後再按就是又送一次 OCR —— 老師實測一次辨識 17 秒，
+     而且會佔掉排隊裡別人的位置。
+   ⚠️ 但**失敗要能再按**（那是重試），所以只擋 pass。
+   ⚠️⚠️ 而且擋了之後，「換一張圖」一定要能解鎖，
+      否則想重驗的學生會被永遠鎖住 —— 11501 原本就漏了 setResult(null)。 */
+for (const term of ['11501', '11502']) {
+  const T = fs.readFileSync(path.join(ROOT, term, 'thinking.html'), 'utf8');
+  const C = T.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  ok(/disabled=\{[^}]*result\?\.status === 'pass'/.test(C),
+     '★★ ' + term + '：驗證成功後要禁用按鈕');
+  ok(/已完成（要重驗請重新選圖）/.test(T),
+     '★ ' + term + '：按鈕文字要說明怎麼重驗');
+  /* 失敗不可以被擋住 */
+  ok(!/result\?\.status === 'fail'/.test(C) && !/result\?\.status === 'error'/.test(C),
+     '★★ ' + term + '：失敗**不可以**被擋（那是重試）');
+  /* 換圖要解鎖 */
+  const fc = C.slice(C.indexOf('const handleFileChange'), C.indexOf('const handleFileChange') + 700);
+  ok(/setResult\(null\)/.test(fc),
+     '★★ ' + term + '：換檔案要清掉上次結果，否則想重驗的學生會被鎖死');
+}
+
+section('★ 等待估計的預設值要貼近實測');
+{
+  const NBCODE = JSON.parse(fs.readFileSync(path.join(ROOT, 'shared', 'backend.ipynb'), 'utf8'))
+    .cells.map(c => (c.source || []).join('')).join('\n')
+    .split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
+  const avg = Number((NBCODE.match(/AVG_OCR_SECONDS = (\d+)/) || [])[1]);
+  /* ⚠️ 老師 2026-08-26 實測：純辨識 17 秒 × 2 次 ≈ 34 秒。
+     原本寫 3 秒，差十倍以上 —— 學生看到的等待會嚴重低估。 */
+  ok(avg >= 10,
+     '★★ 沒有樣本時的預設值不可以太樂觀（目前 ' + avg + ' 秒；實測約 34 秒）');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
