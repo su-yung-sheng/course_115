@@ -139,5 +139,44 @@ section('★★ 後端：一人一次 ＋ 已完成數');
      '★★ 擋下重複上傳的 return 要在 try 之前（否則會誤觸 finally 的清理）');
 }
 
+section('★ 後端：要分得出「排隊久」和「每張變慢」');
+{
+  /* ⚠️ 老師 2026-08-26：「全班同時排隊時，為什麼平均下來的時間
+     會比單人測試多很多？」
+     ★ OCR 執行緒只做 predict()，解碼／縮放／字串比對全在各自的
+       HTTP 執行緒 —— 30 個一起搶 2 個 vCPU。
+     ⚠️ 但「是排隊久還是每張變慢」不能用猜的，要量得出來。 */
+  const NBCODE = JSON.parse(fs.readFileSync(path.join(ROOT, 'shared', 'backend.ipynb'), 'utf8'))
+    .cells.map(c => (c.source || []).join('')).join('\n')
+    .split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
+
+  ok(/queue_wait_seconds/.test(NBCODE),
+     '★★ timing 要分開記「排隊等待」，否則分不出瓶頸在哪');
+  ok(/def ocr_run\(img, timeout=180, stats=None\)/.test(NBCODE),
+     '★ ocr_run 要能把等待時間回報給呼叫端');
+  ok(/box\["waited"\]/.test(NBCODE), '★ OCR 執行緒要記下這張等了多久');
+  ok(/_ocr_cpu_sem/.test(NBCODE) && /with _ocr_cpu_sem:/.test(NBCODE),
+     '★ 解碼與縮放要有並發閘門');
+  ok(/cpu_count/.test(NBCODE),
+     '★ 閘門跟著核心數走，不要寫死（不同機器核心數不同）');
+  /* ⚠️ 閘門不可以包住等待 OCR 的時間 —— 那會讓佇列前面的人
+     擋住後面的人做前處理，比不加閘門更慢。 */
+  /* ⚠️ 這一條原本用 /with _ocr_cpu_sem:[^]{0,200}?ocr_run/ ——
+     那個正規式會**跨越 with 區塊**，分不出「在裡面」和「在後面」，
+     程式明明是對的卻judge成錯。⇒ 改用縮排判斷，那才是 Python 的語意。 */
+  const lines = NBCODE.split('\n');
+  const si = lines.findIndex(l => l.includes('def _ocr_scaled'));
+  let verdict = false;
+  if (si >= 0) {
+    const body = lines.slice(si + 1, si + 12);
+    const wi = body.findIndex(l => l.includes('with _ocr_cpu_sem:'));
+    const ri = body.findIndex(l => l.includes('ocr_run('));
+    const ind = l => l.length - l.trimStart().length;
+    // ocr_run 的縮排必須「不深於」with 那一行 → 代表它在 with 之外
+    verdict = wi >= 0 && ri >= 0 && ind(body[ri]) <= ind(body[wi]);
+  }
+  ok(verdict, '★★ 閘門只包 CPU 動作，不可以包住等待 OCR 的時間');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
