@@ -178,5 +178,50 @@ section('★ 後端：要分得出「排隊久」和「每張變慢」');
   ok(verdict, '★★ 閘門只包 CPU 動作，不可以包住等待 OCR 的時間');
 }
 
+/* ═══════════════════════════════════════════════════════
+   等待時間要講得出來，而且要準
+   -------------------------------------------------------
+   ⚠️ 老師 2026-08-26：「能讓學生理解自己排隊的順位以及可能時間嗎？」
+      順位可以，時間本來不行：
+        ‧ 11501 完全沒報時間
+        ‧ 11502 用寫死的 6 秒，後端常數卻是 3 秒 —— 三個數字互不相同
+        ‧ 而且那都是**單人**速度，全班一起用時每張慢很多 ⇒ 一定低估
+      說「約 1 分鐘」卻等了 3 分鐘，學生會以為壞掉而重按，比不報更糟。
+   ═══════════════════════════════════════════════════════ */
+for (const term of ['11501', '11502']) {
+  section('★★ ' + term + '：等待時間');
+  const SRC = fs.readFileSync(path.join(ROOT, term, 'thinking.html'), 'utf8');
+  const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, ' ');
+
+  ok(/waitText/.test(CODE), '★ 有把秒數講成人話的函式');
+  ok(/avg_seconds/.test(CODE),
+     '★★ 要用後端回報的實測平均，不可以自己寫死秒數');
+  /* ⚠️ 寫死的數字是這次要消滅的東西 —— 兩學期都不可以再出現。 */
+  ok(!/\*\s*6\s*\/\s*60/.test(CODE),
+     '★★ 不可以再用寫死的 6 秒估時間');
+  ok(/位同學/.test(CODE) && /大約還要/.test(CODE.replace(/\\/g, '')),
+     '★ 位置和時間都要說出來');
+}
+
+section('★★ 後端：平均秒數要用實測的');
+{
+  const NBCODE = JSON.parse(fs.readFileSync(path.join(ROOT, 'shared', 'backend.ipynb'), 'utf8'))
+    .cells.map(c => (c.source || []).join('')).join('\n')
+    .split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
+
+  ok(/_ocr_recent\b/.test(NBCODE) && /def _ocr_avg_seconds/.test(NBCODE),
+     '★★ 要維護「最近幾張的實際處理時間」');
+  ok(/"avg_seconds"/.test(NBCODE), '★ /queue 要把它回報給前端');
+  /* ⚠️ 只能記「真正處理」的時間：把排隊也算進去的話，
+     人越多平均越高、估出來的時間會滾雪球，越等越久越報越久。 */
+  ok(/total - _q_stats\.get\("wait"/.test(NBCODE),
+     '★★ 記的是 total 扣掉排隊等待，不可以把排隊算進平均');
+  ok(/del _ocr_recent\[:-_OCR_RECENT_N\]/.test(NBCODE),
+     '★ 只留最近 N 筆（否則早上的數字會一直拖累下午）');
+  /* ⚠️ 還沒有任何實測資料時要有預設值，不可以除以零或報 0 秒。 */
+  ok(/if not _ocr_recent:/.test(NBCODE) && /return float\(AVG_OCR_SECONDS\)/.test(NBCODE),
+     '★ 沒有樣本時退回預設值');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

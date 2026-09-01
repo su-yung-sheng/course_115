@@ -445,6 +445,22 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             const [netNote, setNetNote] = useState("伺服器連線中...");
             const [isProcessing, setIsProcessing] = useState(false);
             const [queueAhead, setQueueAhead] = useState(0);   // 前面還有幾位在辨識
+            const [queueAvg, setQueueAvg] = useState(0);       // 後端回報的每張實際秒數
+            /* ⚠️ 老師 2026-08-26：「能讓學生理解自己排隊的順位以及可能時間嗎？」
+               順位可以，時間本來不行 —— 11501 完全沒報時間，
+               11502 用寫死的 6 秒，而後端的常數是 3 秒，三個數字互不相同。
+               而且那都是**單人**的速度，全班一起用時每張慢很多，
+               報出來一定低估：說「約 1 分鐘」卻等了 3 分鐘，
+               學生會以為系統壞了而重按 —— 比不報更糟。
+               ⇒ 改用後端回報的 avg_seconds（最近幾張的實際處理時間）。 */
+            const waitText = (ahead, avgSec) => {
+                const per = Number(avgSec) > 0 ? Number(avgSec) : 3;
+                const sec = Math.round(ahead * per);
+                if (ahead <= 0) return "輪到你了";
+                if (sec < 60) return `大約還要 ${Math.max(5, Math.round(sec / 5) * 5)} 秒`;
+                return `大約還要 ${Math.round(sec / 60 * 10) / 10} 分鐘`;
+            };
+
             const [selectedFile, setSelectedFile] = useState(null);
             const [previewUrl, setPreviewUrl] = useState(null); // 這邊會存放 Base64
             const [result, setResult] = useState(null); 
@@ -582,6 +598,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             ahead = Math.max(0, (Number(q.pending) || 0) - 1);
                         }
                         setQueueAhead(ahead);
+                        if (Number(q.avg_seconds) > 0) setQueueAvg(Number(q.avg_seconds));
                     } catch (e) { /* 查不到就不顯示排隊資訊 */ }
                 };
                 pollQueue();
@@ -704,7 +721,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                         <i className="fa-solid fa-spinner text-3xl text-indigo-500 animate-spin mb-3"></i>
                                         <div className="text-slate-500 font-semibold text-sm">
                                             {queueAhead > 0
-                                                ? `前面還有 ${queueAhead} 位同學在辨識中，請稍候不要重複按`
+                                                ? `前面還有 ${queueAhead} 位同學在辨識中，${waitText(queueAhead, queueAvg)}（請不要重複按）`
                                                 : 'AI 正在深度掃描圖片文字中...'}
                                         </div>
                                     </div>

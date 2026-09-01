@@ -482,19 +482,34 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                    所以先送出的人反而看到數字變大。
                    ⇒ 改用**號碼牌**：送出前先記下目前發到第幾號，我的就是它 +1；
                      之後 位置 = 我的號碼 − 已完成 − 1，這個數字只會遞減。 */
-                let myPos = 1, myTicket = null, shownAhead = null;
+                /* ⚠️ 老師 2026-08-26：「能讓學生理解自己排隊的順位以及可能時間嗎？」
+                   順位可以，時間本來不行 —— 11501 完全沒報時間，
+                   11502 用寫死的 6 秒，而後端的常數是 3 秒，三個數字互不相同。
+                   而且那都是**單人**的速度，全班一起用時每張慢很多，
+                   報出來一定低估：說「約 1 分鐘」卻等了 3 分鐘，
+                   學生會以為系統壞了而重按 —— 比不報更糟。
+                   ⇒ 改用後端回報的 avg_seconds（最近幾張的實際處理時間）。 */
+                const waitText = (ahead, avgSec) => {
+                    const per = Number(avgSec) > 0 ? Number(avgSec) : 3;
+                    const sec = Math.round(ahead * per);
+                    if (ahead <= 0) return "輪到你了";
+                    if (sec < 60) return `大約還要 ${Math.max(5, Math.round(sec / 5) * 5)} 秒`;
+                    return `大約還要 ${Math.round(sec / 60 * 10) / 10} 分鐘`;
+                };
+                let myPos = 1, myTicket = null, shownAhead = null, avgSec = 0;
                 try {
                     const q = await (await fetch(API_BASE + "/queue", {
                         headers: { 'ngrok-skip-browser-warning': '1' }, cache: 'no-store'
                     })).json();
                     myPos = (q.pending || 0) + 1;
                     if (Number.isFinite(Number(q.ticket))) myTicket = Number(q.ticket) + 1;
+                    if (Number(q.avg_seconds) > 0) avgSec = Number(q.avg_seconds);
                 } catch (e) { /* 問不到就當自己第一個，不影響流程 */ }
 
                 setResult({
                     status: 'queued',
                     msg: myPos > 1
-                        ? `🧠 已送出！你排第 ${myPos} 位，前面還有 ${myPos - 1} 位同學（約 ${Math.max(1, Math.round((myPos - 1) * 6 / 60 * 10) / 10)} 分鐘）`
+                        ? `🧠 已送出！你排第 ${myPos} 位，前面還有 ${myPos - 1} 位同學（${waitText(myPos - 1, avgSec)}）`
                         : '🧠 已送出，正在辨識中…'
                 });
 
@@ -504,6 +519,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                         const q = await (await fetch(API_BASE + "/queue", {
                             headers: { 'ngrok-skip-browser-warning': '1' }, cache: 'no-store'
                         })).json();
+                        if (Number(q.avg_seconds) > 0) avgSec = Number(q.avg_seconds);
                         let ahead;
                         if (myTicket != null && Number.isFinite(Number(q.served))) {
                             ahead = Math.max(0, myTicket - Number(q.served) - 1);
@@ -517,7 +533,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                         setResult({
                             status: 'queued',
                             msg: ahead > 0
-                                ? `🧠 辨識中…前面還有 ${ahead} 位同學，請稍候不要重複按`
+                                ? `🧠 辨識中…前面還有 ${ahead} 位同學，${waitText(ahead, avgSec)}（請不要重複按）`
                                 : '🧠 輪到你了，辨識中…請稍候'
                         });
                     } catch (e) { /* 忽略單次失敗 */ }
