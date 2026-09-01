@@ -714,5 +714,51 @@ ok(bool(_thr) and all(float(t) >= 0.70 for t in _thr),
    '★★ 挑戰成功的門檻不可以低於 0.70（實測：0.50 就會把「挑戰失敗」判成過關）'
    + ('　←　目前 %s' % _thr if _thr else '　←　找不到那一行'))
 
+# ═══════════════════════════════════════════════════════════
+section('C-10 判讀不可以把「故意的錯圖」算成「倍率不夠」')
+# ═══════════════════════════════════════════════════════════
+# ⚠️⚠️ 2026-08-26：老師回報 avg_level_attempts=1.5，看起來正是我
+#    預先設的警告線（「第一發常沒中 → 把倍率調回去」）。
+#    ★ 但老師接著說：「那是我故意上傳錯誤圖片的。」
+#      —— 關卡沒對上的截圖**必然跑滿重試**（本來就找不到，
+#      放大幾次都一樣）。拿它評估倍率＝用失敗樣本算成功率，
+#      得到的結論會剛好相反：真正該說的是「倍率不用動」。
+#    ⚠️ 這個坑很陰險：數字沒錯、判讀邏輯也沒錯，
+#      錯在**分母裡混進了不該算的樣本**。
+_V = load_funcs(marker='def ocr_stats_verdict',
+                want=('ocr_stats_verdict',))['ocr_stats_verdict']
+
+_row_bad = {"avg_level_attempts": 1.5, "avg_level_attempts_ok": 1.0,
+            "ok_count": 1, "wrong_level_count": 1,
+            "avg_success_attempts": 1.0, "avg_decode": 3.0,
+            "avg_level": 34.05, "avg_success": 5.0, "avg_total": 42.29}
+_said = ' '.join(_V(_row_bad))
+ok('倍率不用動' in _said,
+   '★★ 兩張裡一張是故意的錯圖 → 結論要是「倍率不用動」')
+ok('調高起跳倍率' not in _said,
+   '★★ 不可以因為錯圖把平均拉高就建議調倍率')
+ok('沒對上' in _said,
+   '★ 但要把「幾張關卡沒對上」講出來（那是另一個問題：截圖指引）')
+
+# 反過來：關卡有對上、卻真的常常要重試 → 這才該調倍率
+_row_slow = dict(_row_bad, avg_level_attempts_ok=1.8, wrong_level_count=0)
+ok('調高起跳倍率' in ' '.join(_V(_row_slow)),
+   '★★ 真的是「對上了還要重試」時，仍然要建議調倍率')
+
+# 舊資料沒有新欄位 → 退回舊算法，不可以崩、也不可以無中生有
+_row_old = {"avg_level_attempts": 1.5, "avg_success_attempts": 0.5,
+            "avg_total": 42.29, "avg_level": 34.05}
+okc(lambda: '調高起跳倍率' in ' '.join(_V(_row_old)),
+    '★ 舊資料（沒有 avg_level_attempts_ok）要能退回舊算法')
+
+_srv2 = _code_of(_nb_cells[8])
+ok('"n_ok"' in _srv2 and 'ok_level_attempts' in _srv2,
+   '★★ 伺服器要分開累計「關卡有對上」的樣本')
+ok('if result != "wrong_level":' in _srv2,
+   '★★ 累加時要把 wrong_level 排除在倍率評估組之外')
+ok('wrong_level_count' in _srv2 and 'avg_level_attempts_ok' in _srv2,
+   '★ 兩個新欄位都要回報出去（/health 和自動存檔）')
+
+
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
 sys.exit(1 if fail_n else 0)
