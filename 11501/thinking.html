@@ -438,7 +438,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             // ⚠️ 班級密碼：需與後端 Colab Secrets 的 CLASS_PASSCODE 一致（僅擋外部亂打，非機密）
             const CLASS_PASS = window.CONFIG.CLASS_PASS;
 
+            /* ⚠️ 以前「還在連」和「連不上」顯示的是同一句「伺服器連線中...」——
+               老師因此分不出後端是還沒連上、還是根本掛了。分成兩句。 */
+            const OFFLINE_NOTE = "連不上伺服器 —— 請告訴老師（可能是後端沒開，或同時上線的人太多）";
             const [isOnline, setIsOnline] = useState(false);
+            const [netNote, setNetNote] = useState("伺服器連線中...");
             const [isProcessing, setIsProcessing] = useState(false);
             const [queueAhead, setQueueAhead] = useState(0);   // 前面還有幾位在辨識
             const [selectedFile, setSelectedFile] = useState(null);
@@ -452,20 +456,40 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
             useEffect(() => {
                 let interval;
+                /* ⚠️⚠️ 2026-08-26 老師回報：多人連線之後卡在「伺服器連線中...」。
+                   原因是這個輪詢本身：
+                     ‧ 原本每 5 秒一次，一個班 30 人就是**每分鐘 360 次**
+                       打到 ngrok，很容易撞到免費方案的請求上限
+                     ‧ 而且 setIsOnline(res.ok) 是**一次失敗就判離線**，
+                       上傳按鈕（disabled={!isOnline...}）跟著鎖死，
+                       學生就再也傳不出去 —— 後端其實還活著
+                     ‧ 沒有逾時，慢的請求會一直堆積
+                   ⇒ 頻率降下來、失敗要容忍、背景分頁不打、請求要有逾時。 */
+                const MISS_LIMIT = 3;        // 連續失敗這麼多次才算真的離線
+                let misses = 0, alive = true;
                 const checkHealth = async () => {
-                    if(isProcessing) return;
+                    if(isProcessing) return;         // 自己正在辨識就不用問
+                    if(document.hidden) return;      // 分頁在背景，不要浪費配額
+                    const ctl = new AbortController();
+                    const timer = setTimeout(() => ctl.abort(), 8000);
                     try {
                         const res = await fetch(API_BASE + "/health", {
-                            headers: { 'ngrok-skip-browser-warning': '1' }
+                            headers: { 'ngrok-skip-browser-warning': '1' },
+                            signal: ctl.signal
                         });
-                        setIsOnline(res.ok);
+                        if(!alive) return;
+                        if(res.ok){ misses = 0; setIsOnline(true); setNetNote("伺服器連線中..."); }
+                        else if(++misses >= MISS_LIMIT){ setIsOnline(false); setNetNote(OFFLINE_NOTE); }
                     } catch(e) {
-                        setIsOnline(false);
+                        if(!alive) return;
+                        if(++misses >= MISS_LIMIT){ setIsOnline(false); setNetNote(OFFLINE_NOTE); }
+                    } finally {
+                        clearTimeout(timer);
                     }
                 };
                 checkHealth();
-                interval = setInterval(checkHealth, 5000);
-                return () => clearInterval(interval);
+                interval = setInterval(checkHealth, 25000);
+                return () => { alive = false; clearInterval(interval); };
             }, [isProcessing]);
 
             const handleFileChange = (e) => {
@@ -566,7 +590,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         <div className="text-center mb-8">
                             <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-sm font-semibold text-slate-500 mb-6 shadow-sm transition-colors">
                                 <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse shadow-[0_0_0_4px_rgba(16,185,129,0.2)]' : 'bg-slate-300'}`}></span>
-                                <span>{isOnline ? "伺服器連線成功" : "伺服器連線中..."}</span>
+                                <span>{isOnline ? "伺服器連線成功" : netNote}</span>
                             </div>
                             <h2 className="text-3xl sm:text-4xl font-black text-slate-800 mb-3 tracking-tight">運算思維通關確認系統</h2>
                             <p className="text-slate-500 font-medium">自動辨識通關截圖，並結構化輸出成績資料</p>
