@@ -261,5 +261,19 @@ section('★★ 下課／關機之後，佇列裡沒人等的工作要丟掉');
      '★★ 學號鎖的 TTL（' + busy + 's）要 >= 佇列丟棄（' + stale + 's）');
 }
 
+section('★ 後端：要看得出時間花在哪');
+{
+  /* ⚠️ 老師 2026-08-26：「處理 30 人，還能有什麼加速建議？」
+     ★ 在調參數之前要先知道時間花在哪 —— 不然改一堆卻沒變快。 */
+  const NBCODE = JSON.parse(fs.readFileSync(path.join(ROOT, 'shared', 'backend.ipynb'), 'utf8'))
+    .cells.map(c => (c.source || []).join('')).join('\n')
+    .split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
+  ok(/session_stats/.test(NBCODE), '★ /health 要回報這一節課的累計統計');
+  ok(/avg_level_attempts/.test(NBCODE),
+     '★★ 要記「平均跑了幾次偵測」—— 接近 2 就代表第一發都沒中');
+  ok(/avg_decode/.test(NBCODE) && /avg_level/.test(NBCODE),
+     '★ 解碼與辨識要分開算，才知道該優化哪一段');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
