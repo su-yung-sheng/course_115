@@ -137,6 +137,10 @@ before = len(ns['_jobs'])
 c.get('/result/whatever')
 ok(len(ns['_jobs']) == 0 and before > 0,
    '★ TTL 到了要清掉（記憶體不能一直長）　←　清掉 %d 張' % before)
+# ⚠️⚠️ 一定要還原：這個測試段有副作用，_JOB_TTL 留在 0 的話，
+#    後面每一段的 job 都會在建立的當下就被 _jobs_gc() 清掉 ——
+#    「開兩個分頁」那段就會看不到第一張，然後說「沒擋到」（假紅）。
+ns['_JOB_TTL'] = 1800
 
 print('\n── 班級密碼：新入口也要守門 ──')
 # ⚠️⚠️ /analyze 是同步的，密碼錯當場回絕、不進排隊。
@@ -159,6 +163,43 @@ ns['CLASS_PASSCODES'] = set()   # 還原：沒設密碼時不檢查
 ok(c.post('/analyze-async', data={'file': (_io.BytesIO(b'x' * 100), 'a.png')},
           content_type='multipart/form-data').status_code == 200,
    '★ 沒設 CLASS_PASSCODE 時不檢查（老師沒設就是停用）')
+
+print('\n── 開兩個分頁 ──')
+ns['_JOB_TTL'] = 1800   # ⚠️ 上一段可能動過（見那裡的說明）
+# ⚠️⚠️ 「同一個學號同時只能一張」原本只寫在 ocr_analyze 裡。
+#    號碼牌制下它還是擋得到（背景跑起來會回 429），但**擋得太晚**：
+#    第二個分頁已經拿到號碼牌、整張圖已經讀進記憶體、執行緒也開了。
+# ★ 又是「新入口沒有沿用舊入口守門」這個型態 —— 這已經是第二次。
+_slow = {'go': threading.Event()}
+_orig = ns['ocr_analyze']
+
+def _hold():
+    _slow['go'].wait(3)
+    return _orig()
+
+ns['ocr_analyze'] = _hold
+_r1 = post(student_id='S1')
+ok(_r1.status_code == 200 and _r1.get_json().get('ticket'),
+   '★ 第一張照常拿到號碼牌')
+time.sleep(0.05)
+_r2 = post(student_id='S1')
+ok(_r2.status_code == 429, '★★ 同一學號第二張要當場回 429（不是等背景才發現）')
+ok('ticket' not in (_r2.get_json() or {}),
+   '★★ 而且不可以發第二張號碼牌（發了就等於佔兩個位置）')
+ok('開兩個分頁' in (_r2.get_json() or {}).get('message', ''),
+   '★ 訊息要講清楚為什麼（不然學生會以為系統壞了）')
+# 別人不受影響
+ok(post(student_id='S2').status_code == 200, '★ 別的學號不受影響')
+_slow['go'].set()
+time.sleep(0.4)
+ns['ocr_analyze'] = _orig
+# 前一張跑完之後，同一個人可以再傳
+for _ in range(60):
+    if all(v.get('state') == 'done' for v in ns['_jobs'].values()):
+        break
+    time.sleep(0.05)
+ok(post(student_id='S1').status_code == 200,
+   '★★ 前一張跑完之後，同一個人要能再傳（不然就變成一人只能傳一次）')
 
 print('\n── 上傳大小上限 ──')
 # ⚠️⚠️ 號碼牌制之後，排隊中的圖片會全部留在記憶體（closure 抓著 _raw）。
