@@ -436,7 +436,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
         // --- 證書製作/通關確認 Modal 組件 ---
         const CertVerificationModal = ({ onClose, user, challenge, studyTime, onComplete }) => {
-            const API_BASE = window.CONFIG.SERVER_URL;                  // 設定集中在 config.js
+            /* ⚠️ 運算思維走 OCR_SERVER_URL（沒設就退回 SERVER_URL）。
+               OCR 會把 CPU 吃滿，和 Scratch 批改擠在同一台時，
+               批改那邊的 /health 會回得慢、學生端誤判離線。
+               ⇒ 兩門課同一節一起上時，把 OCR 拆到第二台 Colab。
+               ⚠️ 留空一定要退回 SERVER_URL —— 只開一台時才不會
+                  連到一台沒開的機器。 */
+            const API_BASE = (window.CONFIG.OCR_SERVER_URL || '').trim()
+                             || window.CONFIG.SERVER_URL;
             // ⚠️ 班級密碼：需與後端 Colab Secrets 的 CLASS_PASSCODE 一致（僅擋外部亂打，非機密）
             const CLASS_PASS = window.CONFIG.CLASS_PASS;
 

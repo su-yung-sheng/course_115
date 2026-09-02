@@ -150,6 +150,13 @@ if (!window.CONFIG) {
 
   var C = window.CONFIG || {};
   var SERVER = C.SERVER_URL || '';
+  /* ⚠️⚠️ 2026-09-02：OCR 可以拆到第二台 Colab（見 config.js 的說明）。
+     OCR 會把兩顆 CPU 吃滿，和 Scratch 批改擠在一起時，
+     批改那邊的 /health 會回得慢、學生端誤判離線。
+     ⇒ 沒設 OCR_SERVER_URL 就是共用一台，這裡兩個變數會相等，
+       檢查項自動退回原本的樣子（不會多出一張沒意義的卡）。 */
+  var OCR_SERVER = (C.OCR_SERVER_URL || '').trim() || SERVER;
+  var TWO_HOSTS = OCR_SERVER !== SERVER;
   var FB = C.FIREBASE || {};
   var TERMS = ['11501', '11502'];
 
@@ -267,7 +274,11 @@ if (!window.CONFIG) {
            兩個 8 位數字一比就知道 Colab 跑的是不是最新那份。
          ⚠️ 舊後端不會回報 fingerprint —— 那時要明講「這一版看不出來」，
             不可以留白（留白會被當成「比對過了、沒問題」）。 */
-      var d = row('版本', '<span class="font-mono">' + esc(j.version || '不明') + '</span>') +
+      /* ⚠️ 拆成兩台時要講明「這一張說的是哪一台」——
+         不然 ① 綠燈、學生卻連不上 OCR，會找錯方向。 */
+      var d = (TWO_HOSTS ? row('這一台', '批改用；OCR 在 <span class="font-mono text-xs">'
+                               + esc(OCR_SERVER) + '</span>') : '') +
+              row('版本', '<span class="font-mono">' + esc(j.version || '不明') + '</span>') +
               row('程式指紋', j.fingerprint
                     ? '<span class="font-mono">' + esc(j.fingerprint) + '</span>' +
                       '<span class="text-slate-400 text-xs">　← 和 <span class="font-mono">python shared/check.py</span> 印的那組比對</span>'
@@ -540,7 +551,7 @@ if (!window.CONFIG) {
     if (!health) { set(el, 'bad', '無法檢查', '<span class="text-slate-500">後端連不上，跳過。</span>'); return; }
     return Promise.all([
       getJSON(SERVER + '/api/student/queue', 8000).catch(function () { return null; }),
-      getJSON(SERVER + '/queue', 8000).catch(function () { return null; })
+      getJSON(OCR_SERVER + '/queue', 8000).catch(function () { return null; })
     ]).then(function (r) {
       var g = r[0], o = r[1];
       var d = row('AI 批改', g ? (g.pending || 0) + ' 人排隊中' : '<span class="text-red-600">端點沒有回應</span>') +
@@ -560,7 +571,7 @@ if (!window.CONFIG) {
        （後端有服務帳戶，不必為了看統計去改安全規則）。 */
   function checkOcrStats(el, health) {
     if (!health) { set(el, 'bad', '無法檢查', '<span class="text-slate-500">後端連不上，跳過。</span>'); return; }
-    return getJSON(SERVER + '/api/ocr-stats', 10000).then(function (j) {
+    return getJSON(OCR_SERVER + '/api/ocr-stats', 10000).then(function (j) {
       if (!j || !j.ok) throw new Error('端點沒有回應');
       var live = j.live || {}, hist = j.history || [];
       var basis = (j.basis === 'live')

@@ -200,5 +200,29 @@ section('★★ 版本要看得出「Colab 跑的是不是這一份」');
      '★★ 舊後端沒回報時要明講「無法確認」，不可以留白');
 }
 
+section('★ OCR 拆到第二台時，檢查項要問對機器');
+{
+  /* ⚠️⚠️ 2026-09-02：OCR 會把 Colab 的兩顆 CPU 吃滿，和 Scratch 批改
+     擠在一起時，批改那邊的 /health 會回得慢 → 學生端連三次逾時 →
+     判離線、把按鈕鎖住，而後端明明還活著。
+     ⇒ 可以把 OCR 拆到第二台 Colab（第二個 ngrok 帳號有自己的 dev domain）。 */
+  ok(/OCR_SERVER_URL/.test(CODE), '★ 讀得到 OCR_SERVER_URL');
+  ok(/\|\|\s*SERVER;/.test(CODE),
+     '★★ 沒設就要退回 SERVER —— 只開一台時不可以連到一台沒開的機器');
+  ok(/OCR_SERVER \+ '\/queue'/.test(CODE),
+     '★★ 截圖佇列要問 OCR 那一台');
+  ok(/OCR_SERVER \+ '\/api\/ocr-stats'/.test(CODE),
+     '★★ 辨識效能統計要問 OCR 那一台');
+  /* ⚠️ 不可以只寫 /SERVER \+ .../ —— 「OCR_SERVER」這個字串本身就以
+     SERVER 結尾，把批改佇列改成問 OCR 那台照樣綠（突變時抓到）。 */
+  ok(/[^_]SERVER \+ '\/api\/student\/queue'/.test(CODE),
+     '★ 批改佇列仍然問批改那一台');
+  /* ⚠️ 拆成兩台時 ① 要講明說的是哪一台 —— 不然 ① 綠燈、
+     學生卻連不上 OCR，老師會找錯方向。 */
+  ok(/TWO_HOSTS/.test(CODE) && /這一台/.test(CODE),
+     '★★ 兩台時 ① 要標示「這一張說的是哪一台」');
+}
+
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

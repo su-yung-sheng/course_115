@@ -112,6 +112,23 @@ window.CONFIG = {
   //   ⚠️ 換網域時，這裡與 11501/config.js 都要改。
   SERVER_URL: 'https://flanking-snort-cyclic.ngrok-free.dev',
 
+  /*   運算思維 OCR 專用的後端。留空 = 和上面共用一台。
+   *
+   *   ⚠️⚠️ 為什麼會有這一項：OCR 會把 Colab 的兩顆 CPU 吃滿，
+   *      而 Scratch 批改雖然不搶同一個閘門，卻會被 CPU 爭用拖慢；
+   *      更明顯的是 /health 回得慢 → 學生端連三次逾時 → 判離線、
+   *      把按鈕鎖住，後端明明還活著。
+   *   ⇒ 兩門課同一節要一起上時，把 OCR 拆到第二台 Colab
+   *      （第二個 ngrok 帳號有自己的 dev domain），互不影響。
+   *
+   *   ⚠️ 兩台跑的是**同一本 backend.ipynb**，差別只在裝什麼、設什麼：
+   *        這台（OCR）  → 要跑步驟 1b（PaddleOCR）、要設 CLASS_PASSCODE
+   *        另一台（批改）→ 跳過 1b，要設 GEMINI_API_KEY_1
+   *      兩台都要設 NGROK_TOKEN（各自帳號的）與 FIREBASE_SA。
+   *   ⚠️ 只開一台時就把這裡留空 —— 留空會自動退回 SERVER_URL，
+   *      不會因為「忘了改回來」而連到一台沒開的機器。 */
+  OCR_SERVER_URL: '',
+
   //   班級密碼：需與 Colab Secrets 的 CLASS_PASSCODE2 一致（留空 = 後端不檢查）
   CLASS_PASS: '1502class',
 
