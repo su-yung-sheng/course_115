@@ -105,8 +105,37 @@ for (const term of ['11501', '11502']) {
      '★★ 用「我的號碼 − 已完成」算位置，不是用 pending');
   ok(/shownAhead/.test(CODE) && /Math\.min\(shownAhead/.test(CODE),
      '★★ 顯示的數字只准變小（變大就是又一次「被插隊」的錯覺）');
-  ok(/j\.message/.test(CODE),
-     '★ 429 的原因要透出來，不可以被「伺服器拒絕連線」蓋掉');
+
+  /* ⚠️⚠️ 號碼牌制（2026-09-02）：原本是 POST /analyze 掛著等，180 秒逾時，
+     而實測一張要 24 秒 —— 只夠撐到第 7～8 位。第 9 位以後後端跑完也判過了，
+     前端卻已經放棄連線，那張圖白跑。
+     ★ 這幾條對**兩個學期都跑**，就是為了防「一邊改了一邊沒改」——
+       這個 repo 已經在 autoSizeGraderFrame、setResult(null) 上各吃過一次。 */
+  /* ⚠️ 不可以只檢查字串有沒有出現 —— 註解裡也寫著這個檔名，
+     把 <script> 整行刪掉測試照樣綠（2026-09-02 突變時抓到）。 */
+  ok(/<script src="\.\.\/shared\/ocrclient\.js">/.test(SRC),
+     '★★ 要真的有 <script> 載入共用的 ocrclient.js');
+  ok(/window\.submitScreenshot\(/.test(CODE),
+     '★★ 上傳要走 submitScreenshot');
+  ok(!/fetch\(API_BASE \+ "\/analyze"/.test(CODE),
+     '★★ 不可以再直接 POST /analyze（那條路有 180 秒天花板）');
+  /* ⚠️ 一樣要釘「真的傳進去了」，不是「檔案裡有這個字」。 */
+  ok(/storageKey:\s*'/.test(CODE),
+     '★ 要帶 storageKey（關掉頁面才接得回）');
+  ok(/challengeId:\s*challenge\.id/.test(CODE),
+     '★★ 要帶 challengeId —— 沒有的話換了關卡會沿用舊號碼牌，拿到別關的結果');
+  /* ⚠️ 這一條原本釘 /j\.message/ —— 那是「直接對 res 呼叫 .json()」時代的寫法。
+     2026-09-02 改成號碼牌制之後，後端的話是從 out.data.message 出來的，
+     這條就紅了。★ 釘的應該是「後端說得清楚的話要照原樣顯示」這個行為，
+     不是它從哪個變數取出來。 */
+  ok(/\.message/.test(CODE) && /伺服器拒絕連線/.test(CODE),
+     '★ 429／號碼牌過期的原因要透出來，不可以被「伺服器拒絕連線」蓋掉');
+  /* ⚠️ 而且反過來：真的斷線時不可以再叫學生去「確認 API 網址」——
+     那是講給老師聽的，學生看了只會不知所措。 */
+  ok(!/請確認伺服器正在執行，且 API 網址正確/.test(CODE),
+     '★★ 不可以再對學生說「確認 API 網址正確」');
+  ok(/這不是你的截圖有問題/.test(CODE),
+     '★★ 連不上時要明講「不是你的截圖有問題」');
   /* ⚠️ 後端如果還是舊版（沒有 served），要能退回舊的顯示方式，
      不可以整個壞掉 —— Colab 那本不一定跟前端同時更新。 */
   ok(/q\.pending/.test(CODE),
@@ -158,8 +187,15 @@ section('★ 後端：要分得出「排隊久」和「每張變慢」');
   ok(/def ocr_run\(img, timeout=[^,]+, stats=None\)/.test(NBCODE),
      '★ ocr_run 要能把等待時間回報給呼叫端');
   ok(/box\["waited"\]/.test(NBCODE), '★ OCR 執行緒要記下這張等了多久');
-  ok(/_ocr_cpu_sem/.test(NBCODE) && /with _ocr_cpu_sem:/.test(NBCODE),
+  /* ⚠️ 原本釘 /with _ocr_cpu_sem:/ 這個字面。2026-09-02 把閘門包成
+     _CpuGate（為了記下「等了多久」），這條就紅了 ——
+     而實際上閘門還在，只是換了進出的方式。
+     ★ 釘的應該是「有閘門」和「等待有被記錄」。 */
+  ok(/_ocr_cpu_sem/.test(NBCODE) && /_CpuGate\(_q_stats\)/.test(NBCODE),
      '★ 解碼與縮放要有並發閘門');
+  ok(/cpu_wait/.test(NBCODE),
+     '★★ 等閘門的時間一定要記下來 —— 不記的話它會混進「解碼時間」，'
+     + '而 2026-09-02 就是這樣得出「解碼佔 34%、該讓前端裁切」的錯誤結論');
   ok(/cpu_count/.test(NBCODE),
      '★ 閘門跟著核心數走，不要寫死（不同機器核心數不同）');
   /* ⚠️ 閘門不可以包住等待 OCR 的時間 —— 那會讓佇列前面的人
@@ -172,7 +208,7 @@ section('★ 後端：要分得出「排隊久」和「每張變慢」');
   let verdict = false;
   if (si >= 0) {
     const body = lines.slice(si + 1, si + 12);
-    const wi = body.findIndex(l => l.includes('with _ocr_cpu_sem:'));
+    const wi = body.findIndex(l => /with (_ocr_cpu_sem:|_CpuGate\()/.test(l));
     const ri = body.findIndex(l => l.includes('ocr_run('));
     const ind = l => l.length - l.trimStart().length;
     // ocr_run 的縮排必須「不深於」with 那一行 → 代表它在 with 之外

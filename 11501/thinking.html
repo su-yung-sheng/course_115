@@ -17,6 +17,8 @@
 <!-- 登入邏輯單一來源（含「不要蓋掉 Google 身分」的匿名登入把關）-->
 <script src="../shared/auth.js"></script>
   <script src="../shared/grading.js"></script>
+  <!-- 截圖上傳的號碼牌制（兩學期共用一份；見那支檔案開頭的說明） -->
+  <script src="../shared/ocrclient.js"></script>
     <!-- 引入 React 和 ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -620,28 +622,48 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                    而且正好發生在後端最忙的時候。排隊人數不需要這麼即時。 */
                 qTimer = setInterval(pollQueue, 8000);
 
-                /* ⚠️ 這個請求原本**沒有逾時**：後端當掉時會一直掛在那裡，
-                   學生看到的是永遠轉不完的圈圈，也不會回到可以重試的狀態。
-                   OCR 要排隊，所以給得寬一點（三分鐘），但一定要有上限。 */
+                /* ⚠️⚠️ 這裡原本是「POST /analyze 然後掛著等回應，180 秒逾時」。
+                   2026-09-02 實測：一張要 24 秒（2 個 CPU 名額並行時完成一張的間隔），
+                   180 秒**只夠撐到第 7～8 位**。第 9 位以後，後端其實跑完也判過了，
+                   前端卻已經放棄連線 —— 學生看到「連線錯誤」，那張圖白跑，
+                   重傳還要重新排到最後。
+                   ★ 這不是「等太久」的體驗問題，是「後半班一定失敗」的可靠性問題。
+                   ⇒ 改成號碼牌制（shared/ocrclient.js，兩學期共用一份）：
+                     上傳完立刻拿到號碼牌、連線就結束，之後拿號碼牌換結果。
+                   ⚠️ 舊後端沒有 /analyze-async 時，那支會自動退回原本的同步流程 ——
+                      老師還沒重新執行 notebook 的那段時間，這一頁不可以壞。 */
                 const upCtl = new AbortController();
-                const upTimer = setTimeout(() => upCtl.abort(), 180000);
+                /* ★ 仍然留一個「最後防線」的上限，但放得很寬：
+                     號碼牌制下連線是短的，這個 timer 只用來擋「整個流程卡死」。
+                     真正的放棄邏輯在 ocrclient.js 的 GIVE_UP_MS（20 分鐘）。 */
+                const upTimer = setTimeout(() => upCtl.abort(), 25 * 60 * 1000);
                 try {
-                    const res = await fetch(API_BASE + "/analyze", {
-                        method: 'POST',
-                        headers: { 'ngrok-skip-browser-warning': '1' },
-                        body: formData,
-                        signal: upCtl.signal
+                    const out = await window.submitScreenshot({
+                        base: API_BASE,
+                        formData,
+                        signal: upCtl.signal,
+                        storageKey: 'thinkingTicket',
+                        challengeId: challenge.id,
+                        /* 排隊資訊改由後端在號碼牌流程裡直接給，比另外去問 /queue 準 */
+                        onQueue: (ahead, avg) => {
+                            if (Number(avg) > 0) setQueueAvg(Number(avg));
+                            /* ★ 和 pollQueue 共用 shownAhead：顯示出來的數字**只准變小**。
+                               變大就又是一次「被插隊」的錯覺，那正是先前修掉的東西。 */
+                            shownAhead = (shownAhead == null) ? ahead : Math.min(shownAhead, ahead);
+                            setQueueAhead(shownAhead);
+                        },
                     });
-                    if(!res.ok) {
-                        /* ⚠️ 429 是後端在說「你已經有一張正在辨識中」——
-                           它寫得很清楚，不要用「伺服器拒絕連線」蓋掉。 */
+                    if (!out.ok && out.status !== 'done') {
+                        /* ⚠️ 429 是後端在說「你已經有一張正在辨識中」，
+                           gone 是「號碼牌過期／後端重啟過」——
+                           它們都寫得很清楚，不要用「伺服器拒絕連線」蓋掉。 */
                         let why = "伺服器拒絕連線";
-                        try { const j = await res.json(); if (j && j.message) why = j.message; } catch (e) {}
+                        if (out.data && out.data.message) why = out.data.message;
                         throw new Error(why);
                     }
-                    
-                    const data = await res.json();
-                    
+
+                    const data = out.data || {};
+
                     if(data.status === "success") {
                         const rawTexts = data.raw_text || [];
                         const ocrText = rawTexts.join(" ").replace(/\s+/g, " ").slice(0, 300); // 稽核用摘要
@@ -660,7 +682,20 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         setResult({ status: 'error', msg: "辨識失敗：" + data.message });
                     }
                 } catch(err) {
-                    setResult({ status: 'error', msg: "連線錯誤：請確認伺服器正在執行，且 API 網址正確。" });
+                    /* ⚠️⚠️ 這裡原本一律顯示「請確認伺服器正在執行，且 API 網址正確」——
+                       那是講給老師聽的，學生看了只會不知所措；而且它把
+                       「後端有話要說」（429、號碼牌過期）和「真的斷線」
+                       兩種完全不同的情況蓋成同一句。
+                       ⇒ 後端說得清楚的就照原話，其餘才用通則。 */
+                    const raw = (err && err.message) || '';
+                    const isOwn = raw && raw !== 'Failed to fetch'
+                                  && !/aborted|NetworkError|Load failed/i.test(raw);
+                    setResult({
+                        status: 'error',
+                        msg: isOwn ? raw
+                             : "連不上辨識伺服器 —— 可能是後端還沒開，或正在忙。"
+                               + "⚠️ 這不是你的截圖有問題，等一下再試一次；還是不行就告訴老師。"
+                    });
                 } finally {
                     if (qTimer) clearInterval(qTimer);
                     setQueueAhead(0);

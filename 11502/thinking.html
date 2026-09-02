@@ -46,6 +46,8 @@
 <script src="../shared/sso.js"></script>
 <!-- 星等門檻的單一來源 -->
 <script src="../shared/grading.js"></script>
+<!-- 截圖上傳的號碼牌制（兩學期共用一份；見那支檔案開頭的說明） -->
+<script src="../shared/ocrclient.js"></script>
 <!-- 進度回報的單一來源（hub 亮燈靠它）-->
 <script src="../shared/report.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -573,28 +575,46 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                 formData.append("student_id",
                     (sessionStorage.getItem('sid' + ((window.CONFIG && window.CONFIG.TERM) || '11502')) || '').trim());
 
-                /* ⚠️ 這個請求原本**沒有逾時**：後端當掉時會一直掛在那裡，
-                   學生看到的是永遠轉不完的圈圈，也不會回到可以重試的狀態。
-                   OCR 要排隊，所以給得寬一點（三分鐘），但一定要有上限。 */
+                /* ⚠️⚠️ 這裡原本是「POST /analyze 然後掛著等回應，180 秒逾時」。
+                   2026-09-02 實測：一張要 24 秒（2 個 CPU 名額並行時完成一張的間隔），
+                   180 秒**只夠撐到第 7～8 位**。第 9 位以後，後端其實跑完也判過了，
+                   前端卻已經放棄連線 —— 學生看到「連線錯誤」，那張圖白跑。
+                   ★ 這不是「等太久」的體驗問題，是「後半班一定失敗」的可靠性問題。
+                   ⇒ 改用號碼牌制（shared/ocrclient.js，和 11501 共用同一份）。
+                   ⚠️ 舊後端沒有 /analyze-async 時會自動退回原本的同步流程 ——
+                      老師還沒重新執行 notebook 的那段時間，這一頁不可以壞。 */
                 const upCtl = new AbortController();
-                const upTimer = setTimeout(() => upCtl.abort(), 180000);
+                /* ★ 最後防線，放得很寬；真正的放棄邏輯在 ocrclient.js（20 分鐘）。 */
+                const upTimer = setTimeout(() => upCtl.abort(), 25 * 60 * 1000);
                 try {
-                    const res = await fetch(API_BASE + "/analyze", {
-                        method: 'POST',
-                        headers: { 'ngrok-skip-browser-warning': '1' },
-                        body: formData,
-                        signal: upCtl.signal
+                    const out = await window.submitScreenshot({
+                        base: API_BASE,
+                        formData,
+                        signal: upCtl.signal,
+                        storageKey: 'thinkingTicket',
+                        challengeId: challenge.id,
+                        onQueue: (ahead, avg) => {
+                            if (Number(avg) > 0) avgSec = Number(avg);
+                            /* ★ 和 queueTimer 共用 shownAhead：數字只准變小。 */
+                            shownAhead = (shownAhead == null) ? ahead : Math.min(shownAhead, ahead);
+                            setResult({
+                                status: 'queued',
+                                msg: shownAhead > 0
+                                    ? `🧠 辨識中…前面還有 ${shownAhead} 位同學，${waitText(shownAhead, avgSec)}（請不要重複按）`
+                                    : '🧠 輪到你了，辨識中…請稍候'
+                            });
+                        },
                     });
-                    if(!res.ok) {
-                        /* ⚠️ 429 是後端在說「你已經有一張正在辨識中」——
-                           它寫得很清楚，不要用「伺服器拒絕連線」蓋掉。 */
+                    if (!out.ok && out.status !== 'done') {
+                        /* ⚠️ 429（同一人已有一張在跑）、gone（號碼牌過期／後端重啟）
+                           都寫得很清楚，不要用「伺服器拒絕連線」蓋掉。 */
                         let why = "伺服器拒絕連線";
-                        try { const j = await res.json(); if (j && j.message) why = j.message; } catch (e) {}
+                        if (out.data && out.data.message) why = out.data.message;
                         throw new Error(why);
                     }
-                    
-                    const data = await res.json();
-                    
+
+                    const data = out.data || {};
+
                     if(data.status === "success") {
                         const rawTexts = data.raw_text || [];
 
@@ -674,7 +694,19 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                         setResult({ status: 'error', msg: "辨識失敗：" + data.message });
                     }
                 } catch(err) {
-                    setResult({ status: 'error', msg: "連線錯誤：請確認伺服器正在執行，且 API 網址正確。" });
+                    /* ⚠️⚠️ 這裡原本一律顯示「請確認伺服器正在執行，且 API 網址正確」——
+                       那是講給老師聽的，學生看了只會不知所措；而且它把
+                       「後端有話要說」（429、號碼牌過期）和「真的斷線」
+                       蓋成同一句。⇒ 後端說得清楚的就照原話。 */
+                    const raw = (err && err.message) || '';
+                    const isOwn = raw && raw !== 'Failed to fetch'
+                                  && !/aborted|NetworkError|Load failed/i.test(raw);
+                    setResult({
+                        status: 'error',
+                        msg: isOwn ? raw
+                             : "連不上辨識伺服器 —— 可能是後端還沒開，或正在忙。"
+                               + "⚠️ 這不是你的截圖有問題，等一下再試一次；還是不行就告訴老師。"
+                    });
                 } finally {
                     clearInterval(queueTimer);   // 停掉排隊輪詢
                     setIsProcessing(false);
