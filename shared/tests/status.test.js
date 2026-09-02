@@ -104,10 +104,22 @@ section('★ Apps Script 的版本要看得到');
 
 section('卡片與說明對得起來');
 {
-  const cards = (CODE.match(/card\('/g) || []).length;
-  ok(cards === 6, '六張卡（' + cards + '）');
+  /* ⚠️⚠️ 2026-09-02：這一條寫死「六張卡」，而 ⑦ 截圖辨識效能加進來之後
+     它就一直是紅的 —— 沒有人發現，因為 pre-commit 在老師的環境
+     找不到 node 會**靜默略過**所有 *.test.js（見 hook 裡那段 if）。
+     ★ 寫死數量的斷言每次加卡片都要手動改，遲早會漏。
+     ⇒ 改成「每張卡都要有對應的自救說明」——
+       這才是這一節本來想保護的事，而且加卡片時它會自己要求你補說明。 */
+  const cards = [...CODE.matchAll(/card\('(\w+)',\s*'([^']+)'/g)].map(m => m[2]);
+  ok(cards.length >= 7, '至少七張卡（目前 ' + cards.length + '）');
+  const helpTitles = [...SRC.matchAll(/<dt class="font-bold text-slate-800">([^<]+)<\/dt>/g)]
+    .map(m => m[1]);
+  ok(helpTitles.length >= cards.length,
+     '★★ 「檢查不過時怎麼辦」的條目不可以少於卡片數　←　說明 ' +
+     helpTitles.length + ' 條 / 卡片 ' + cards.length + ' 張');
   ['後端離線', '後端是舊版', '沒有 Gemini 金鑰', '批改標準未設定',
-   'Apps Script 版本不對', '安全規則到底有沒有發布成功'].forEach(t => {
+   'Apps Script 版本不對', '安全規則到底有沒有發布成功',
+   '截圖辨識變慢'].forEach(t => {
     ok(SRC.indexOf(t) >= 0, '「檢查不過時怎麼辦」有寫：' + t);
   });
 }
@@ -121,6 +133,54 @@ section('★ 沒有殘留合併前的路徑');
      '★ 沒有 course_11501/ 這種合併前的路徑（那些資料夾已經不存在）');
   ok(/\?term=11501/.test(CODE) || /term=/.test(CODE),
      '   改用 ?term= 的說法');
+}
+
+section('★★ 後端連不上時，不可以說成別的原因');
+{
+  /* ⚠️⚠️ 2026-09-02 老師的檢查結果：
+       ① 連不上　②③「後端連不上，跳過」
+       ④「後端沒回報 → Colab 跑的是舊版 notebook，請重新上傳並全部執行」
+     ★ 後端根本沒開的時候，④ 把老師支使去做一件完全不相干的事。
+       而且它聽起來很具體 —— 比「不知道」更容易被相信，也更浪費時間。
+     ⚠️ 根因：那一項只判斷「有沒有 criteria」，沒有先判斷「有沒有 health」。
+       連不上 → health 是 null → 一路掉進「舊版」那個分支。
+     ⇒ 每一個吃 health 的檢查都必須先擋 !health 才能談別的原因。
+       這一條是結構性的：以後新增檢查項漏擋，這裡就會紅。 */
+  const bodies = [...CODE.matchAll(/function (check\w+)\(el, health\)([\s\S]{0,700})/g)];
+  ok(bodies.length >= 4,
+     '找得到吃 health 的檢查項（' + bodies.length + ' 個）');
+  const missing = bodies
+    .filter(m => m[2].indexOf('if (!health)') < 0)
+    .map(m => m[1]);
+  ok(missing.length === 0,
+     '★★ 每個吃 health 的檢查都要先擋「後端連不上」　←　' +
+     (missing.length ? '漏掉：' + missing.join('、') : '都有擋'));
+
+  // ★ 而且「舊版 notebook」這種具體指示，一定要在擋完 health 之後才出現
+  const crit = /function checkCriteria\(el, health\)([\s\S]*?)\n  \}/.exec(CODE);
+  ok(!!crit, '找得到 checkCriteria');
+  if (crit) {
+    const iGuard = crit[1].indexOf('if (!health)');
+    const iOld = crit[1].indexOf('舊版 notebook');
+    ok(iGuard >= 0 && iOld > iGuard,
+       '★★ 「請重新上傳 notebook」必須排在「後端連不上」之後');
+  }
+}
+
+section('★ 失敗原因要講人話，不要丟瀏覽器的原生訊息');
+{
+  /* ⚠️ 老師看到的原因是「signal is aborted without reason」——
+     那是 AbortController 的原生說法，對人沒有意義，
+     而且把「等太久」講得像程式當掉。 */
+  ok(/function whyFetchFailed/.test(CODE),
+     '★ 有一支把 fetch 例外翻成人話的函式');
+  ok(/等了 .*秒沒有回應/.test(CODE),
+     '★★ 逾時要講成「等了 N 秒沒有回應」');
+  ok(/AbortError|abort/i.test(CODE),
+     '   而且真的有認出 AbortError');
+  // 秒數要從實際的逾時算出來，不可以寫死（寫死就會和 getJSON 的設定不一致）
+  ok(/waitMs|wait \|\| 12000/.test(CODE),
+     '★ 秒數要從實際逾時算，不是寫死的數字');
 }
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);

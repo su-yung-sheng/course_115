@@ -128,6 +128,13 @@ if (!window.CONFIG) {
             <span class="text-slate-400">（規則裡只要有一個未定義的函式，整份都不會上線，
             而學生端只會看到一行 permission-denied。）</span></dd>
       </div>
+      <div>
+        <dt class="font-bold text-slate-800">截圖辨識變慢，或常常判不過</dt>
+        <dd>看第 ⑦ 張卡的結論就好，它會直接說「要不要調參數」。
+            <span class="text-slate-400">（每辨識 5 張才寫一筆統計，所以要先上過一次課才有資料。
+            另外「關卡沒對上」的張數是分開算的 —— 那個數字高代表要改的是
+            關卡說明或截圖指引，不是辨識參數。）</span></dd>
+      </div>
     </dl>
   </section>
 
@@ -200,7 +207,8 @@ if (!window.CONFIG) {
   // ── 通用取值 ─────────────────────────────────────────
   function getJSON(url, ms) {
     var ctl = new AbortController();
-    var timer = setTimeout(function () { ctl.abort(); }, ms || 12000);
+    var wait = ms || 12000;
+    var timer = setTimeout(function () { ctl.abort(); }, wait);
     return fetch(url, {
       headers: { 'ngrok-skip-browser-warning': '1' },
       cache: 'no-store',
@@ -208,7 +216,27 @@ if (!window.CONFIG) {
     }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
+    }).catch(function (e) {
+      /* ⚠️⚠️ 2026-09-02 老師看到的原因是「signal is aborted without reason」——
+         那是瀏覽器對 AbortController 的原生說法，對人沒有任何意義，
+         而且它把「等太久」講得像程式當掉。
+         ⇒ 逾時就講成「等了幾秒沒有回應」，並說出那代表什麼。 */
+      throw new Error(whyFetchFailed(e, wait));
     }).finally(function () { clearTimeout(timer); });
+  }
+
+  /* 把 fetch 的例外翻成老師看得懂的一句話。 */
+  function whyFetchFailed(e, waitMs) {
+    var m = String((e && e.message) || e || '');
+    if ((e && e.name === 'AbortError') || /abort/i.test(m)) {
+      return '等了 ' + Math.round((waitMs || 12000) / 1000) + ' 秒沒有回應';
+    }
+    if (/HTTP 4\d\d/.test(m)) return m + '（伺服器有回應，但拒絕了這個要求）';
+    if (/HTTP 5\d\d/.test(m)) return m + '（伺服器有回應，但它自己出錯了）';
+    if (/failed to fetch|networkerror|load failed/i.test(m)) {
+      return '連不上這個網址（網路不通，或網址已經失效）';
+    }
+    return m;
   }
 
   // Firestore REST：不需登入也能讀的部分用來數筆數；被規則擋下時會回 403，
@@ -307,7 +335,18 @@ if (!window.CONFIG) {
        安全規則把那兩個集合收成只有老師之後，這裡一律讀不到，
        然後把「讀不到」誤判成「老師還沒設定」—— 老師明明設過。
        改由後端回報（它有服務帳戶，讀得到），這頁只負責呈現。 */
-    var c = health && health.criteria;
+    /* ⚠️⚠️ 2026-09-02 老師的檢查結果：① 連不上、②③ 都寫「後端連不上，跳過」，
+       唯獨這一項說「Colab 跑的是舊版 notebook，請重新上傳並全部執行」。
+       ★ 後端根本沒開的時候，這句話把老師支使去做一件完全不相干的事 ——
+         而且它聽起來很具體，反而比「不知道」更容易被相信。
+       ⚠️ 根因是這裡只判斷「有沒有 criteria」，沒有先判斷「有沒有 health」。
+         連不上 → health 是 null → 一路掉進「舊版」那個分支。
+       ⇒ 先擋 health（和 ②③ 同一句話），確定後端活著才談版本。 */
+    if (!health) {
+      set(el, 'bad', '無法檢查', '<span class="text-slate-500">後端連不上，跳過。</span>');
+      return Promise.resolve();
+    }
+    var c = health.criteria;
     if (!c) {
       set(el, 'warn', '後端沒回報',
           '<div class="text-amber-700">Colab 跑的是舊版 notebook（新版才會在 /api/health 帶出批改標準摘要）。'
