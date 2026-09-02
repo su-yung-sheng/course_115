@@ -1006,5 +1006,85 @@ ok('值得讓前端先裁切' not in _old,
    '★★ 不可以再對舊資料建議「前端先裁切」—— 那個建議建立在錯的數字上')
 
 
+# ═══════════════════════════════════════════════════════════
+section('C-16 通關紀錄：後端只記事實，而且要冪等')
+# ═══════════════════════════════════════════════════════════
+# ⚠️⚠️ 2026-09-02 老師問「學生關機還是會持續驗證嗎」——
+#    後端會跑完，但**成績是前端寫進 Firestore 的**：學生一關機，
+#    辨識白跑、成績沒記，他回來只能重傳、再排一次隊。
+#    ★ 號碼牌制讓「中途離開」從意外變成常態，所以這個洞非補不可 ——
+#      等於是前一個改動帶出來的後果。
+# ★ 設計上只記「過了哪幾關」這個**事實**，不算星星：
+#   分數規則留在 shared/grading.js 這個單一來源。
+#   兩邊各算一次，遲早會對不上，而且對不上時沒有人會發現。
+_store = {}
+
+
+def _fake_fs(method, url, body=None):
+    if method == 'GET':
+        if url not in _store:
+            raise RuntimeError('404')
+        return _store[url]
+    _store[url] = body
+    return {}
+
+
+_ns_p = {'json': json, 'FIREBASE': {'enabled': True, 'api_key': 'k',
+                                    'project_id': 'p'},
+         '_fs_http': _fake_fs, '_fs_docs_base': lambda: 'base',
+         '_now_str': lambda: 'now', 'resolve_term': lambda t=None: (t or '11501')}
+_core_lines = _code_of(_nb_cells[6]).split('\n')
+_raw_lines = ''.join(_nb_cells[6]['source']).split('\n')
+for _fn in ('_to_fs_fields', '_from_fs_fields', 'ocr_passed_collection',
+            'record_ocr_pass', 'list_ocr_passed'):
+    _i = next((k for k, l in enumerate(_raw_lines)
+               if l.startswith('def ' + _fn)), None)
+    if _i is None:
+        ok(False, '★ 找不到 ' + _fn)
+        continue
+    _j = next(k for k in range(_i + 1, len(_raw_lines))
+              if _raw_lines[k][:1] not in ('', ' ', '\t'))
+    exec('\n'.join(_raw_lines[_i:_j]), _ns_p)
+
+_R = _ns_p['record_ocr_pass']
+_L = _ns_p['list_ocr_passed']
+ok(_R('1410905', '3') == ['3'], '★ 記下第一關')
+ok(_R('1410905', '7') == ['3', '7'], '★ 再記一關')
+ok(_R('1410905', '3') == ['3', '7'],
+   '★★ 同一關驗兩次不可以重複記（學生一定會重驗）')
+ok(_L('1410905') == ['3', '7'], '★★ 讀得回來')
+ok(_L('9999999') == [], '★ 沒紀錄的學號回空清單，不可以拋例外')
+ok(_R('', '3') is None and _R('1410905', '') is None,
+   '★ 缺學號或關卡就不要寫（會生出一份沒有意義的文件）')
+
+# ⚠️ 存成 JSON 字串，不是 arrayValue —— _to_fs_fields 沒有支援陣列，
+#    硬塞會變成字串 "['1','2']"，讀回來就不是陣列了。
+_doc = list(_store.values())[0]['fields']
+ok('passed_json' in _doc and 'stringValue' in _doc['passed_json'],
+   '★★ 清單要存成 JSON 字串（_to_fs_fields 不支援 arrayValue）')
+ok(json.loads(_doc['passed_json']['stringValue']) == ['3', '7'],
+   '   而且讀回來要還原成陣列')
+
+# 寫失敗不可以影響判定
+def _boom(*_a, **_k):
+    raise RuntimeError('Firestore 掛了')
+
+
+_ns_p['_fs_http'] = _boom
+okc(lambda: _R('1410905', '9') is None,
+    '★★ 寫失敗要回 None，不可以往外拋（判定不能被它拖累）')
+okc(lambda: _L('1410905') == [],
+    '★★ 讀失敗要回空清單，不可以往外拋')
+
+_srv6 = _code_of(_nb_cells[8])
+ok('core.record_ocr_pass(sid' in _srv6, '★ 判定通過時要記下來')
+ok('/api/my-passed' in _srv6, '★★ 要有讓前端來問「我漏了哪幾關」的端點')
+ok('student_id' in _srv6 and 'list_ocr_passed' in _srv6,
+   '★ 那支端點要照學號查')
+# ⚠️ 不可以提供整批查詢 —— 那等於開放全班成績
+ok('pageSize' not in _srv6.split('/api/my-passed')[1][:900],
+   '★★ 不可以在這支端點提供整批查詢（等於開放全班成績）')
+
+
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
 sys.exit(1 if fail_n else 0)
