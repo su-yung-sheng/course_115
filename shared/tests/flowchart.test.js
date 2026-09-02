@@ -210,8 +210,26 @@ is(/!window\.READHOLD/.test(sCode), true, '沒載到就放行，不是把學生�
      '★ 真的從進度文件把 imgUnits 讀進來（本來完全沒讀）');
   is(/state\.vidUnits = \(mods\.scratch && mods\.scratch\.vidUnits\) \|\| \{\}/.test(code), true,
      '   vidUnits 同上');
-  is(/state\.imgUnits=\{\}; state\.vidUnits=\{\}/.test(code), true,
-     '★ 登出要一起清掉 —— 電腦教室是共用的，殘留會讓下一位看到別人的加分');
+  /* ⚠️⚠️ 這一條原本釘 `state.imgUnits={}; state.vidUnits={}` 這個字面，
+     而它從 2026-08-26 起就一直是紅的 —— 沒有人發現，
+     因為 pre-commit 找不到 node 會**靜默略過**所有 *.test.js。
+
+     ★ 但這次查下來，**程式碼沒有壞，是斷言過期了**：
+       那一版把登出從「留在本頁、切回登入畫面」改成
+       `location.replace(hub)` —— 整頁重載，state 自然歸零，
+       手動清除那一長串因此被拿掉。
+     ⚠️ 我一開始把這條紅燈判成「登出沒清乾淨，下一位會看到別人的加分」，
+        那是沒讀程式碼就下的結論。實際上 imgUnits／vidUnits 是登入後
+        **依學號**從 Firestore 讀的，換人登入就是換一份。
+
+     ⇒ 釘的應該是「真正保護這件事的兩個機制」，不是舊寫法長什麼樣：
+        ① 登出要清掉存著學號的那個 key
+        ② 登出要**離開這一頁**（這才是讓 state 歸零的原因） */
+  is(/sessionStorage\.removeItem\(SAVED_KEY\)/.test(code), true,
+     '★★ 登出要清掉存著學號的 key（教室電腦是共用的）');
+  is(/location\.replace\(hub\)/.test(code), true,
+     '★★ 登出要離開本頁 —— 整頁重載才是 state 歸零的機制；'
+     + '如果哪天改回「留在本頁」，那一長串手動清除就得補回來');
 
   /* 表頭要把「合計」講出來，那就是闖關基地那張卡的數字。 */
   is(/const grand = doneCount\*STARS_PER_UNIT \+ progStarTotal \+ bonusAll;/.test(code), true,
