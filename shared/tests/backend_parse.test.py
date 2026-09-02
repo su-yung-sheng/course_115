@@ -900,16 +900,110 @@ _real = {"avg_decode": 12.07, "avg_level": 24.51, "avg_success": 23.67,
 _said2 = ' '.join(_V2(_real))
 ok('關卡 70%' not in _said2 and '徽章 68%' not in _said2,
    '★★ 不可以再印那組加起來 172% 的百分比')
-ok('等 CPU 的時間' in _said2,
+ok('等 CPU 名額' in _said2,
    '★★ 要說明為什麼加起來會超過（不然下次還是會有人拿去算）')
-ok('解碼佔了 34%' in _said2,
-   '★ 解碼那一項仍然要報 —— 它不進閘門，比例是可信的')
+# ⚠️⚠️ 這裡原本有一條「解碼那一項仍然要報 —— 它不進閘門，比例是可信的」。
+#    **那條斷言本身是錯的。** 我沒有去讀程式碼就下了結論，
+#    實際上解碼那一段也包在 `with _ocr_cpu_sem` 裡（行 1128），
+#    12.07 秒裡絕大部分是等名額，不是解圖片。
+#    ★ 我還據此建議老師「讓前端先裁切再上傳」——
+#      一個建立在錯數字上的優化建議，做了也不會變快。
+#    ⇒ 改成反向斷言：舊資料**不可以**再出現那個建議。
+ok('值得讓前端先裁切' not in _said2,
+   '★★ 舊資料不可以再建議「前端先裁切」（那是我讀錯 decode_seconds 得到的結論）')
 
 # 各段加起來沒有超過時（例如單人測試），照樣印百分比
 _solo = dict(_real, avg_level=12.0, avg_success=10.0, avg_decode=11.0,
              avg_total=35.03)
 ok('時間佔比' in ' '.join(_V2(_solo)),
    '★ 加起來沒超過時（單人測試）仍然印百分比')
+
+
+# ═══════════════════════════════════════════════════════════
+section('C-15 每一段時間都要扣掉等待，加起來才等於實際處理')
+# ═══════════════════════════════════════════════════════════
+# ⚠️⚠️ 2026-09-02：136 張實測「解碼 12.07 秒、佔 34%」，
+#    我據此建議老師讓前端先裁切再上傳 —— **那個建議是錯的**。
+#    decode_seconds 是從 ocr_analyze() 第一行算到解碼完，
+#    中間包著 `with _ocr_cpu_sem`：30 人同時、只有 2 個名額，
+#    那 12 秒絕大部分在等名額（1920x1032 的 imdecode 只要幾十毫秒）。
+#    ★ 三段全都含等待，所以加起來是 172%。
+#      不分離等待，任何效能判讀都是猜的 —— 而且會猜錯方向。
+import threading as _th
+import time as _tm
+
+_srv5 = _code_of(_nb_cells[8])
+ok('class _CpuGate' in _srv5, '★ 有把 CPU 閘門包起來計時')
+ok('with _ocr_cpu_sem:' not in _srv5,
+   '★★ 不可以再有裸的 with _ocr_cpu_sem（那種等待不會被記錄）')
+ok(_srv5.count('_CpuGate(_q_stats)') >= 2,
+   '★ 解碼和縮放兩處都要走 gate')
+ok('def _spent' in _srv5, '★ 有「扣掉等待之後花了多久」的統一算法')
+for _seg in ('decode_seconds = _spent()',
+             '_level_started = _spent()',
+             'level_seconds = _spent() - _level_started',
+             '_success_started = _spent()',
+             'success_seconds = _spent() - _success_started'):
+    ok(_seg in _srv5, '★★ 這一段要用 _spent()：' + _seg)
+ok('"cpu_wait_seconds"' in _srv5, '★ /health 要看得到等 CPU 的時間')
+
+# ★ 真的跑一遍：兩個名額、四個並行，三段加起來要等於 busy
+_i = _srv5.index('class _CpuGate')
+_j = _srv5.index('def _ocr_avg_seconds')
+_ns_g = {'_busy_time': _tm, '_threading': _th,
+         '_ocr_cpu_sem': _th.Semaphore(2)}
+exec(_srv5[_i:_j].split('\ndef ')[0], _ns_g)
+_Gate = _ns_g['_CpuGate']
+_out = []
+
+
+def _one():
+    st = {}
+    t0 = _tm.perf_counter()
+
+    def sp():
+        return (_tm.perf_counter() - t0 - st.get("wait", 0.0)
+                - st.get("cpu_wait", 0.0))
+    with _Gate(st):
+        _tm.sleep(0.15)
+    d = sp()
+    a0 = sp()
+    with _Gate(st):
+        _tm.sleep(0.10)
+    st["wait"] = st.get("wait", 0.0) + 0.20
+    _tm.sleep(0.20)
+    _tm.sleep(0.15)
+    lv = sp() - a0
+    b0 = sp()
+    with _Gate(st):
+        _tm.sleep(0.10)
+    sc = sp() - b0
+    tot = _tm.perf_counter() - t0
+    busy = tot - st.get("wait", 0.0) - st.get("cpu_wait", 0.0)
+    _out.append((d + lv + sc, busy, st.get("cpu_wait", 0.0)))
+
+
+_ths = [_th.Thread(target=_one) for _ in range(4)]
+for _t in _ths:
+    _t.start()
+for _t in _ths:
+    _t.join()
+ok(all(abs(seg - busy) < 0.06 for seg, busy, _ in _out),
+   '★★ 四個並行、兩個名額時，三段加起來要等於 busy　←　'
+   + '；'.join('%.2f vs %.2f' % (s, b) for s, b, _ in _out))
+ok(any(cw > 0.01 for *_, cw in _out),
+   '★★ 等 CPU 的時間真的有被記下來（全是 0 代表 gate 沒作用）')
+
+# 判讀：舊資料要說「不能比較」，新資料才給百分比
+_V3 = load_funcs(marker='def ocr_stats_verdict',
+                 want=('ocr_stats_verdict',))['ocr_stats_verdict']
+_old = ' '.join(_V3({"avg_decode": 12.07, "avg_level": 24.51, "avg_success": 23.67,
+                     "avg_total": 35.03, "avg_success_attempts": 0.85,
+                     "avg_level_attempts_ok": 1.0, "cpu_limit": 2}))
+ok('不能算百分比' in _old and '重跑後端之後' in _old,
+   '★★ 舊資料要明講「不能算百分比、要重跑後端才可信」')
+ok('值得讓前端先裁切' not in _old,
+   '★★ 不可以再對舊資料建議「前端先裁切」—— 那個建議建立在錯的數字上')
 
 
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
