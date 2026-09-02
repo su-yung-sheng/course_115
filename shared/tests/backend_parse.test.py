@@ -1036,7 +1036,7 @@ _ns_p = {'json': json, 'FIREBASE': {'enabled': True, 'api_key': 'k',
 _core_lines = _code_of(_nb_cells[6]).split('\n')
 _raw_lines = ''.join(_nb_cells[6]['source']).split('\n')
 for _fn in ('_to_fs_fields', '_from_fs_fields', 'ocr_passed_collection',
-            'record_ocr_pass', 'list_ocr_passed'):
+            'record_ocr_pass', 'list_ocr_passed', 'ocr_passed_urls'):
     _i = next((k for k, l in enumerate(_raw_lines)
                if l.startswith('def ' + _fn)), None)
     if _i is None:
@@ -1076,11 +1076,33 @@ okc(lambda: _R('1410905', '9') is None,
 okc(lambda: _L('1410905') == [],
     '★★ 讀失敗要回空清單，不可以往外拋')
 
+# ★ 截圖網址：學生中途離開時，補記的那一關要靠它才顯示得出圖 ——
+#   沒有它，證書上那一塊只會是一個虛線空框（圖其實在雲端硬碟裡，
+#   只是 Firestore 沒有那個連結）。
+_U = _ns_p['ocr_passed_urls']
+_store.clear()
+_ns_p['_fs_http'] = _fake_fs
+_R('1410905', '3')
+ok(_U('1410905') == {}, '★ 還沒傳圖時網址是空的（不可以拋例外）')
+_R('1410905', '3', None, 'https://drive/x3')
+ok(_U('1410905') == {'3': 'https://drive/x3'}, '★★ 補寫網址')
+_R('1410905', '5', None, 'https://drive/x5')
+ok(_U('1410905') == {'3': 'https://drive/x3', '5': 'https://drive/x5'},
+   '★★ 多關各有各的網址')
+ok(_L('1410905') == ['3', '5'], '★ 補網址不可以弄壞關卡清單')
+_R('1410905', '3')          # 再驗一次、沒帶網址
+ok(_U('1410905').get('3') == 'https://drive/x3',
+   '★★ 沒帶網址時不可以把既有的洗掉（重驗一次就沒圖了）')
+
 _srv6 = _code_of(_nb_cells[8])
 ok('core.record_ocr_pass(sid' in _srv6, '★ 判定通過時要記下來')
 ok('/api/my-passed' in _srv6, '★★ 要有讓前端來問「我漏了哪幾關」的端點')
 ok('student_id' in _srv6 and 'list_ocr_passed' in _srv6,
    '★ 那支端點要照學號查')
+ok('ocr_passed_urls' in _srv6 and '"urls": urls' in _srv6,
+   '★★ 端點要一併回傳截圖網址（不然補記的那一關證書是空框）')
+ok('drive_url=_drive_url' in _srv6,
+   '★★ 截圖傳好之後要把網址補記回去')
 # ⚠️ 不可以提供整批查詢 —— 那等於開放全班成績
 ok('pageSize' not in _srv6.split('/api/my-passed')[1][:900],
    '★★ 不可以在這支端點提供整批查詢（等於開放全班成績）')

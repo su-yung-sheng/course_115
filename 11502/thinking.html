@@ -1127,7 +1127,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                         if (!base) return;
                         const ctl = new AbortController();
                         const t = setTimeout(() => ctl.abort(), 8000);
-                        let list = [];
+                        let list = [], urls = {};
                         try {
                             const r = await fetch(base + '/api/my-passed?student_id='
                                 + encodeURIComponent(sid) + '&term=' + encodeURIComponent(term),
@@ -1135,6 +1135,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                   cache: 'no-store', signal: ctl.signal });
                             const j = await r.json();
                             list = (j && Array.isArray(j.passed)) ? j.passed : [];
+                            urls = (j && j.urls && typeof j.urls === 'object') ? j.urls : {};
                         } finally { clearTimeout(t); }
                         if (!alive || !list.length) return;
 
@@ -1150,8 +1151,12 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                             if (!Number.isFinite(cid)) continue;
                             /* ⚠️ 截圖不在手上（那正是「中途離開」的定義）。
                                後端已經把圖傳到雲端硬碟了，缺的只是 Firestore 裡的網址。 */
+                            /* ★ 第三個參數就是截圖網址（後端上傳成功時記下來的）。
+                               沒有它，證書上那一塊只會是空的 ——
+                               圖其實在雲端硬碟裡，只是 Firestore 沒有那個連結。 */
                             await handleChallengeComplete(
-                                cid, new Date().toISOString().slice(0, 10), "");
+                                cid, new Date().toISOString().slice(0, 10),
+                                urls[String(id)] || "");
                         }
                     } catch (e) {
                         /* 後端沒開、連不上、回傳格式怪 —— 都安靜跳過。

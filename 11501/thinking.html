@@ -1142,7 +1142,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         const term = (window.CONFIG && window.CONFIG.TERM) || '11501';
                         const ctl = new AbortController();
                         const t = setTimeout(() => ctl.abort(), 8000);
-                        let list = [];
+                        let list = [], urls = {};
                         try {
                             const r = await fetch(base + '/api/my-passed?student_id='
                                 + encodeURIComponent(user.sid) + '&term=' + encodeURIComponent(term),
@@ -1150,6 +1150,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                   cache: 'no-store', signal: ctl.signal });
                             const j = await r.json();
                             list = (j && Array.isArray(j.passed)) ? j.passed : [];
+                            urls = (j && j.urls && typeof j.urls === 'object') ? j.urls : {};
                         } finally { clearTimeout(t); }
                         if (!alive || !list.length) return;
 
@@ -1167,9 +1168,13 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             /* ⚠️ 截圖不在手上（那正是「中途離開」的定義），
                                所以 base64 傳 null —— 後端已經把圖傳到雲端硬碟了，
                                這裡缺的只是 Firestore 裡的那個網址。 */
+                            /* ★ 截圖網址：後端在上傳成功時記下來的。
+                               沒有它，證書上那一塊只會是一個虛線空框 ——
+                               圖其實在雲端硬碟裡，只是 Firestore 沒有那個連結。 */
                             await handleChallengeComplete(
                                 cid, new Date().toISOString().slice(0, 10), null,
-                                '（上次未完成的驗證，系統自動補記）', null);
+                                '（上次未完成的驗證，系統自動補記）',
+                                urls[String(id)] || null);
                         }
                         if (alive) {
                             console.log('[補記] 補上 ' + missing.length + ' 關');
