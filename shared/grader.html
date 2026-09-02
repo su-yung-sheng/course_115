@@ -347,8 +347,15 @@ async function grade(){
   }, 4000);
   const fd=new FormData(); fd.append('file',chosen); fd.append('student_id',sid); fd.append('unit',UNIT||'');
   fd.append('term', window.CONFIG.TERM);        // 共用後端：批改結果寫回本學期的集合
+  /* ⚠️⚠️ 這個請求原本**沒有任何逾時**：後端當掉或被回收時，fetch 會一直掛著，
+     學生看到永遠轉不完的圈圈，而且 gradeBtn 停在 disabled —— 連重試都按不了。
+     ★ 運算思維那邊 2026-08-26 就修過同一個坑（/analyze 的 180 秒），
+       這一支漏掉了。2026-09-02 清點才發現。
+     ⇒ AI 批改要等 Gemini，比 OCR 久，所以給得寬（4 分鐘），但一定要有上限。 */
+  const gCtl = new AbortController();
+  const gTimer = setTimeout(()=>gCtl.abort(), 240000);
   try{
-    const r=await fetch(base()+'/api/student/grade',{method:'POST',headers:H,body:fd});
+    const r=await fetch(base()+'/api/student/grade',{method:'POST',headers:H,body:fd,signal:gCtl.signal});
     const j=await r.json();
     clearInterval(qTimer);
     if(!j.ok){ setStatus('❌ '+(j.error||'自評失敗'),'err'); $('gradeBtn').disabled=false; return; }
@@ -373,7 +380,20 @@ async function grade(){
         }
       }
     }catch(err){ setStatus('⚠️ 星星記錄失敗（分數仍有效，請告訴老師）','err'); }
-  }catch(e){ clearInterval(qTimer); setStatus('❌ '+e.message,'err'); $('gradeBtn').disabled=false; }
+  }catch(e){
+    clearInterval(qTimer);
+    /* ⚠️ 「signal is aborted without reason」是瀏覽器對 AbortController 的原生說法，
+       對學生完全沒有意義，而且把「等太久」講得像自己的檔案有問題。
+       ⇒ 逾時要講成人話，並且明確告訴他「不是你的檔案壞了」。 */
+    const why = (e && e.name === 'AbortError')
+      ? '等了 4 分鐘還是沒有回應 —— 後端可能沒開，或正在忙。'
+        + '⚠️ 這不是你的作品有問題，請告訴老師，稍後再上傳一次。'
+      : (e && e.message) || '連線失敗';
+    setStatus('❌ '+why,'err');
+    $('gradeBtn').disabled=false;
+  }finally{
+    clearTimeout(gTimer);
+  }
 }
 
 function render(d){

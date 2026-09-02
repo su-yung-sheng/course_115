@@ -69,5 +69,42 @@ section('★ 不可以再各寫一份量高度的程式');
   });
 }
 
+section('★★ 批改請求一定要有逾時（後端當掉時學生要回得到可重試的狀態）');
+{
+  const SRC = read('shared/grader.html');
+  /* ⚠️⚠️ 2026-09-02 清點時發現：這一支對 /api/student/grade 的呼叫
+     **完全沒有 AbortController**。後端當掉或被回收時 fetch 會一直掛著，
+     學生看到永遠轉不完的圈圈，而且 gradeBtn 停在 disabled ——
+     連重試都按不了。
+     ★ 運算思維那邊 2026-08-26 就修過同一個坑（/analyze 的 180 秒），
+       這一支漏掉了。⇒ 兩邊都要有。 */
+  ok(/new AbortController\(\)/.test(SRC), '★★ 要有 AbortController');
+  const m = /setTimeout\(\(\)\s*=>\s*\w+\.abort\(\),\s*(\d+)\)/.exec(SRC);
+  ok(!!m, '★★ 要真的設逾時（不是只建了 controller）');
+  // AI 批改要等 Gemini，比 OCR 久；但也不能久到學生放棄
+  ok(!!m && Number(m[1]) >= 120000 && Number(m[1]) <= 600000,
+     '★ 逾時要落在 2～10 分鐘　←　目前 ' + (m ? Number(m[1])/1000 + ' 秒' : '找不到'));
+  ok(/signal\s*:\s*\w+\.signal/.test(SRC),
+     '★★ signal 要真的傳進 fetch（漏掉的話 controller 形同虛設）');
+  ok(/clearTimeout/.test(SRC), '★ 成功時要清掉 timer');
+
+  /* ⚠️ 逾時訊息不可以是瀏覽器的原生說法 */
+  ok(/AbortError/.test(SRC), '★ 要認得出 AbortError');
+  ok(/這不是你的作品有問題/.test(SRC),
+     '★★ 逾時要明講「不是你的作品有問題」—— 不然學生會去改沒壞的東西');
+  ok(!/setStatus\('❌ '\+e\.message/.test(SRC),
+     '★★ 不可以再把 e.message 直接丟給學生');
+
+  /* 逾時之後一定要讓他能重按 */
+  /* ⚠️ 不可以用 indexOf('}catch(e){') —— 這個檔案裡有好幾個 catch，
+     抓到的是別人的區塊，於是「還原之後測試照樣紅」。
+     ⇒ 從那句逾時訊息本身往後看，位置才唯一。 */
+  const wi = SRC.indexOf("setStatus('❌ '+why,'err')");
+  const cat = wi >= 0 ? SRC.slice(wi, wi + 300) : '';
+  ok(/disabled\s*=\s*false/.test(cat),
+     '★★ 失敗時要把按鈕解鎖（不然學生卡死，連重試都按不了）');
+}
+
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
