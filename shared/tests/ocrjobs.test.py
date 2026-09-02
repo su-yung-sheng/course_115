@@ -39,10 +39,14 @@ except ImportError:
     sys.exit(0)
 
 src = ''.join(json.load(_io.open(NB, encoding='utf8'))['cells'][8]['source'])
-if '_JOB_TTL' not in src:
-    print('❌ backend.ipynb 裡找不到號碼牌那一段（_JOB_TTL）—— 是不是被移走了？')
-    sys.exit(1)
-seg = src[src.index('_JOB_TTL = 1800'):src.index('# ── ngrok 遠端清除')]
+for _need in ('_JOB_TTL', 'MAX_UPLOAD_MB'):
+    if _need not in src:
+        print('❌ backend.ipynb 裡找不到 %s —— 是不是被移走了？' % _need)
+        sys.exit(1)
+# ⚠️ 起點要從上傳上限那一段開始 —— 只從 _JOB_TTL 起算的話，
+#    MAX_CONTENT_LENGTH 和 413 的 errorhandler 都不會被抽進來，
+#    測試會說「沒有上限」，但實際上是有的（假紅）。
+seg = src[src.index('MAX_UPLOAD_MB = 30'):src.index('# ── ngrok 遠端清除')]
 
 app = Flask(__name__)
 calls = {'n': 0}
@@ -133,6 +137,38 @@ before = len(ns['_jobs'])
 c.get('/result/whatever')
 ok(len(ns['_jobs']) == 0 and before > 0,
    '★ TTL 到了要清掉（記憶體不能一直長）　←　清掉 %d 張' % before)
+
+print('\n── 上傳大小上限 ──')
+# ⚠️⚠️ 號碼牌制之後，排隊中的圖片會全部留在記憶體（closure 抓著 _raw）。
+#    30 人 × 2～3 MB ≈ 90 MB，Colab 有 12 GB，本身沒問題。
+#    ★ 有問題的是「沒有上限」：原本同步處理當場就釋放，現在會累積，
+#      一張異常大的圖就能把記憶體吃光，而那會讓**整個後端連同
+#      還在排隊的人一起死**。
+ok(app.config.get('MAX_CONTENT_LENGTH'), '★★ 要有上傳大小上限')
+_mb = (app.config.get('MAX_CONTENT_LENGTH') or 0) / 1024 / 1024
+ok(20 <= _mb <= 60,
+   '★ 上限要照顧到 .sb3（Scratch 專案比截圖大得多）　←　目前 %.0f MB' % _mb)
+
+_big = _io.BytesIO(b'x' * int(app.config['MAX_CONTENT_LENGTH'] + 1024))
+_r = c.post('/analyze-async', data={'file': (_big, 'big.png')},
+            content_type='multipart/form-data')
+ok(_r.status_code == 413, '★ 超過就擋掉')
+# ⚠️ Flask 預設的 413 是一頁 HTML —— 前端拿去 .json() 會炸，
+#    然後顯示成「連線錯誤」，學生完全不知道是檔案太大。
+_j = None
+try:
+    _j = _r.get_json()
+except Exception:
+    _j = None
+ok(bool(_j), '★★ 413 一定要回 JSON（不然前端會顯示成「連線錯誤」）')
+ok(bool(_j) and 'MB' in _j.get('message', ''),
+   '★★ 訊息要說出上限，而且要講「該怎麼辦」')
+
+_small = _io.BytesIO(b'\x89PNG' + b'x' * 900)
+ok(c.post('/analyze-async', data={'file': (_small, 'ok.png')},
+          content_type='multipart/form-data').status_code == 200,
+   '★ 正常大小的截圖不受影響')
+
 
 print('\n通過 %d／失敗 %d' % (P, F))
 sys.exit(1 if F else 0)
