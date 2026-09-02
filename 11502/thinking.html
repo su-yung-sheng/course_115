@@ -574,6 +574,20 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                    OCR 是單執行緒，一個人佔兩個位置就是全班多等一輪。 */
                 formData.append("student_id",
                     (sessionStorage.getItem('sid' + ((window.CONFIG && window.CONFIG.TERM) || '11502')) || '').trim());
+                /* ⚠️⚠️ 2026-09-02：截圖改由**後端**上傳到雲端硬碟。
+                   原本是前端在判定通過之後才傳，學生一旦中途離開，
+                   那張圖只存在他的瀏覽器記憶體裡就跟著沒了 ——
+                   成績記得到，證書的截圖卻缺一張。
+                   ★ 後端本來就握著那張圖（它要拿來辨識），由它上傳最直接，
+                     而且「證書上的截圖」和「判定用的截圖」保證是同一張。
+                   ⇒ 這幾個欄位是 GAS 拼資料夾路徑用的，缺一個就不會傳。
+                   ⚠️ 後端沒設 GAS Secrets 時會回 drive_url = null，
+                      前端就照舊自己傳（向後相容，不會漏備份）。 */
+                formData.append("term", (window.CONFIG && window.CONFIG.TERM) || '11502');
+                formData.append("class_room", String((user && user.classRoom) || ''));
+                formData.append("seat_no", String((user && user.seatNo) || ''));
+                formData.append("challenge_id", String(challenge.id));
+
 
                 /* ⚠️⚠️ 這裡原本是「POST /analyze 然後掛著等回應，180 秒逾時」。
                    2026-09-02 實測：一張要 24 秒（2 個 CPU 名額並行時完成一張的間隔），
@@ -624,10 +638,17 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                             setResult({ status: 'uploading', msg: "截圖驗證成功！正在上傳備份至雲端硬碟..." });
                             
                             // 開始上傳截圖至 Google Drive (GAS)
-                            let finalImageUrl = "";
+                            /* ⚠️⚠️ 2026-09-02：截圖改由**後端**上傳（它本來就握著那張圖）。
+                               原本只有前端會傳，學生一旦中途離開，那張圖就跟著瀏覽器沒了 ——
+                               成績記得到，證書的截圖卻缺一張。
+                               ⇒ 後端傳好就用它的網址；後端沒設 GAS Secrets（或傳失敗）時
+                                 data.drive_url 是 null，就退回前端自己傳（不會漏備份）。 */
+                            let finalImageUrl = data.drive_url || "";
                             let uploadNote = "";        // 失敗時要讓學生／老師看得到，不能只寫 console
                             try {
-                                if (!GAS_WEB_APP_URL || !GAS_WEB_APP_URL.startsWith("http")) {
+                                if (finalImageUrl) {
+                                    /* 後端已經傳好了，這裡什麼都不用做 */
+                                } else if (!GAS_WEB_APP_URL || !GAS_WEB_APP_URL.startsWith("http")) {
                                     uploadNote = "（截圖備份未設定，僅記錄通關）";
                                 } else {
                                     const base64Data = await new Promise((resolve) => {

@@ -579,6 +579,20 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                    OCR 是單執行緒，一個人佔兩個位置就是全班多等一輪。 */
                 formData.append("student_id",
                     (sessionStorage.getItem('sid' + ((window.CONFIG && window.CONFIG.TERM) || '11501')) || '').trim());
+                /* ⚠️⚠️ 2026-09-02：截圖改由**後端**上傳到雲端硬碟。
+                   原本是前端在判定通過之後才傳，學生一旦中途離開，
+                   那張圖只存在他的瀏覽器記憶體裡就跟著沒了 ——
+                   成績記得到，證書的截圖卻缺一張。
+                   ★ 後端本來就握著那張圖（它要拿來辨識），由它上傳最直接，
+                     而且「證書上的截圖」和「判定用的截圖」保證是同一張。
+                   ⇒ 這幾個欄位是 GAS 拼資料夾路徑用的，缺一個就不會傳。
+                   ⚠️ 後端沒設 GAS Secrets 時會回 drive_url = null，
+                      前端就照舊自己傳（向後相容，不會漏備份）。 */
+                formData.append("term", (window.CONFIG && window.CONFIG.TERM) || '11501');
+                formData.append("class_room", String((user && user.classRoom) || ''));
+                formData.append("seat_no", String((user && user.seatNo) || ''));
+                formData.append("challenge_id", String(challenge.id));
+
 
                 // 先看看目前有幾位同學在辨識，並在等待期間持續更新
                 let qTimer = null;
@@ -672,7 +686,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         if(data.pass === true) {
                             setResult({ status: 'pass', msg: "驗證成功！正在為您上傳截圖與存檔..." });
                             // 傳遞截圖(Base64) 與 OCR 文字給主程式儲存（截圖上雲＋文字存檔＝可稽核）
-                            await onComplete(challenge.id, certDate, previewUrl, ocrText);
+                            /* ★ data.drive_url：後端已經傳好的話就直接用它，
+                               前端不必再傳一次（也不必還握著那張圖）。 */
+                            await onComplete(challenge.id, certDate, previewUrl, ocrText, data.drive_url);
                             setResult({ status: 'pass', msg: "驗證成功！已為您生成通關證書並儲存於雲端。" });
                         } else {
                             const errors = (data.reasons && data.reasons.length) ? data.reasons : ["截圖未通過驗證"];
@@ -956,14 +972,19 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             }, [selectedChallenge, user, completedChallenges]);
 
             // 📌 修改：接收第三個參數 Base64 截圖，並觸發上傳
-            const handleChallengeComplete = async (challengeId, passDate, base64Image, ocrText) => {
+            const handleChallengeComplete = async (challengeId, passDate, base64Image, ocrText, backendUrl) => {
                 if (!completedChallenges.includes(challengeId)) {
                     
-                    let driveUrl = null;
+                    /* ⚠️⚠️ 2026-09-02：截圖改由**後端**上傳（它本來就握著那張圖）。
+                       原本只有前端會傳，學生一旦中途離開，那張圖就跟著瀏覽器沒了 ——
+                       成績記得到，證書的截圖卻缺一張。
+                       ⇒ 後端傳好就用它的網址；後端沒設 GAS Secrets（或傳失敗）時
+                         backendUrl 是 null，就退回前端自己傳（不會漏備份）。 */
+                    let driveUrl = backendUrl || null;
                     const GAS_UPLOAD_URL = window.CONFIG.GAS_UPLOAD_URL;   // 設定集中在 config.js
 
-                    // 若有圖片資料則發起上傳請求
-                    if (base64Image && GAS_UPLOAD_URL) {
+                    // 後端沒傳成功、而且前端還有圖，才自己傳
+                    if (!driveUrl && base64Image && GAS_UPLOAD_URL) {
                         try {
                             const formattedChallengeId = String(challengeId).padStart(2, '0');
                             const payload = {

@@ -124,6 +124,28 @@ for (const term of ['11501', '11502']) {
      '★ 要帶 storageKey（關掉頁面才接得回）');
   ok(/challengeId:\s*challenge\.id/.test(CODE),
      '★★ 要帶 challengeId —— 沒有的話換了關卡會沿用舊號碼牌，拿到別關的結果');
+
+  /* ⚠️⚠️ 截圖改由後端上傳（2026-09-02）：原本是前端在判定通過之後才傳，
+     學生一旦中途離開，那張圖只存在瀏覽器記憶體裡就跟著沒了 ——
+     成績記得到，證書的截圖卻缺一張。號碼牌制讓「中途離開」變成常態，
+     所以這件事非修不可。
+     ★ 後端本來就握著那張圖（要拿來辨識），由它上傳還保證
+       「證書上的截圖」和「判定用的截圖」是同一張。 */
+  ['term', 'class_room', 'seat_no', 'challenge_id'].forEach(f => {
+    ok(new RegExp('formData\\.append\\("' + f + '"').test(CODE),
+       '★ 要帶 ' + f + '（GAS 拼資料夾路徑用，缺一個就不會傳）');
+  });
+  ok(/drive_url/.test(CODE),
+     '★★ 要接後端回報的 drive_url');
+  /* ⚠️ 而且一定要保留「後端沒傳成功就自己傳」這條退路 ——
+     老師還沒在 Colab Secrets 設 GAS 金鑰的那段時間，
+     drive_url 一直會是 null，那時前端不傳就等於完全沒備份。 */
+  /* ⚠️ 不可以用 /finalImageUrl \?/ 這種寬鬆的樣式 —— 11502 在別處
+     （顯示訊息那行）也有 `finalImageUrl ?`，把整條退路拿掉照樣綠。
+     ⇒ 兩個學期各釘自己那條「後端沒給就自己傳」的分支。 */
+  ok(/!driveUrl && base64Image && GAS_UPLOAD_URL/.test(CODE)
+     || /else if \(!GAS_WEB_APP_URL/.test(CODE),
+     '★★ 後端沒傳成功時要退回前端自己傳（不然改設定前的那段時間會漏備份）');
   /* ⚠️ 這一條原本釘 /j\.message/ —— 那是「直接對 res 呼叫 .json()」時代的寫法。
      2026-09-02 改成號碼牌制之後，後端的話是從 out.data.message 出來的，
      這條就紅了。★ 釘的應該是「後端說得清楚的話要照原樣顯示」這個行為，
