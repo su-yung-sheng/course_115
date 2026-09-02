@@ -66,7 +66,7 @@ ns = dict(io=_io, os=os, traceback=traceback, _threading=threading,
           _busy_time=time, app=app, request=request, jsonify=jsonify,
           ocr_analyze=fake_analyze, _ocr_qlock=threading.Lock(),
           _ocr_qstate={'pending': 0, 'served': 0, 'ticket': 0},
-          _ocr_avg_seconds=lambda: 24.0)
+          _ocr_avg_seconds=lambda: 24.0, CLASS_PASSCODES=set())
 exec(seg, ns)
 c = app.test_client()
 
@@ -137,6 +137,28 @@ before = len(ns['_jobs'])
 c.get('/result/whatever')
 ok(len(ns['_jobs']) == 0 and before > 0,
    '★ TTL 到了要清掉（記憶體不能一直長）　←　清掉 %d 張' % before)
+
+print('\n── 班級密碼：新入口也要守門 ──')
+# ⚠️⚠️ /analyze 是同步的，密碼錯當場回絕、不進排隊。
+#    改成號碼牌之後，如果只在背景的 ocr_analyze 裡驗，
+#    密碼錯的人一樣拿得到號碼牌、一樣開一條執行緒、
+#    一樣把整張圖留在記憶體 —— 「擋掉外部亂打 API」的效果就沒了。
+# ★ 這是加號碼牌時差點留下的迴歸：**新的入口沒有沿用舊入口的守門**。
+ns['CLASS_PASSCODES'] = {'right-pass'}
+_r = c.post('/analyze-async',
+            data={'password': 'wrong', 'file': (_io.BytesIO(b'x' * 100), 'a.png')},
+            content_type='multipart/form-data')
+ok(_r.status_code == 403, '★★ 密碼錯要當場回絕（不可以先發號碼牌）')
+ok('ticket' not in (_r.get_json() or {}), '★★ 而且不可以給號碼牌')
+_before = len(ns['_jobs'])
+_r2 = c.post('/analyze-async',
+             data={'password': 'right-pass', 'file': (_io.BytesIO(b'x' * 100), 'a.png')},
+             content_type='multipart/form-data')
+ok(_r2.status_code == 200 and _r2.get_json().get('ticket'), '★ 密碼對的照常拿到號碼牌')
+ns['CLASS_PASSCODES'] = set()   # 還原：沒設密碼時不檢查
+ok(c.post('/analyze-async', data={'file': (_io.BytesIO(b'x' * 100), 'a.png')},
+          content_type='multipart/form-data').status_code == 200,
+   '★ 沒設 CLASS_PASSCODE 時不檢查（老師沒設就是停用）')
 
 print('\n── 上傳大小上限 ──')
 # ⚠️⚠️ 號碼牌制之後，排隊中的圖片會全部留在記憶體（closure 抓著 _raw）。
