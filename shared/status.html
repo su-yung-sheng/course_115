@@ -258,7 +258,20 @@ if (!window.CONFIG) {
       var have = j.features || [];
       var missing = need.filter(function (f) { return have.indexOf(f) < 0; });
 
+      /* ⚠️⚠️ 2026-09-02：版本字串是**手寫的**，而 09-01 的三次改動都沒動到它。
+         老師看到「2026-08-26」時分不出是「跑的是舊版」還是「沒人改字串」。
+         ★ 和 firestore.rules 一樣的病：手動維護的日期一定會漂，
+           而且漂掉時沒有任何徵兆。
+         ⇒ 加上指紋（後端算自己那份 colab_server.py 的 sha1 前 8 碼）。
+           repo 這一份的指紋在 `python shared/check.py` 的最後一行，
+           兩個 8 位數字一比就知道 Colab 跑的是不是最新那份。
+         ⚠️ 舊後端不會回報 fingerprint —— 那時要明講「這一版看不出來」，
+            不可以留白（留白會被當成「比對過了、沒問題」）。 */
       var d = row('版本', '<span class="font-mono">' + esc(j.version || '不明') + '</span>') +
+              row('程式指紋', j.fingerprint
+                    ? '<span class="font-mono">' + esc(j.fingerprint) + '</span>' +
+                      '<span class="text-slate-400 text-xs">　← 和 <span class="font-mono">python shared/check.py</span> 印的那組比對</span>'
+                    : '<span class="text-amber-700">這一版後端不會回報 —— 無法確認 Colab 跑的是哪一份</span>') +
               row('網址', '<span class="font-mono text-xs">' + esc(SERVER) + '</span>');
 
       /* ⚠️ 這裡刻意「先把 d 湊齊，最後才 set 一次」。

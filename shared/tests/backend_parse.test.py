@@ -814,5 +814,50 @@ ok(not _diff,
    % ('一致' if not _diff else _diff))
 
 
+# ═══════════════════════════════════════════════════════════
+section('C-12 指紋要算得出來，而且和 repo 端算法一致')
+# ═══════════════════════════════════════════════════════════
+# ⚠️⚠️ 這個機制只有在「兩邊算出同一個值」時才有用。
+#    對不上的話會變成每次都說不一致的**假警報** —— 比沒有更糟，
+#    因為老師會開始忽略它。
+import hashlib as _hl
+import tempfile as _tf
+
+_srv3 = _code_of(_nb_cells[8])
+ok('SERVER_FINGERPRINT' in _srv3, '★ 後端有算指紋')
+ok('.strip()' in _srv3 and 'sha1' in _srv3,
+   '★★ 要先 strip 再算 —— %%writefile 可能差一個結尾換行')
+# ⚠️ cell 8 沒有 import io：用 io.open 會 NameError 被 except 吞掉，
+#    指紋永遠回 "unknown" 而且完全沒有徵兆。
+_fp_body = _srv3[_srv3.index('def _server_fingerprint'):]
+_fp_body = _fp_body[:_fp_body.index('SERVER_FINGERPRINT =')]
+ok('io.open' not in _fp_body,
+   '★★ 指紋函式不可以用 io.open（cell 8 沒 import io，會靜默回 unknown）')
+
+# ★ 真的跑一遍：模擬 %%writefile 寫出檔案，比對兩邊的值
+_raw = ''.join(_nb_cells[8]['source'])
+_body = '\n'.join(_raw.split('\n')[1:])
+_d = _tf.mkdtemp()
+_fp_path = os.path.join(_d, 'colab_server.py')
+io.open(_fp_path, 'w', encoding='utf8').write(_body)
+_ns_fp = {'__file__': _fp_path}
+exec(_fp_body, _ns_fp)
+_got = _ns_fp['_server_fingerprint']()
+_want = _hl.sha1(_body.strip().encode('utf8')).hexdigest()[:8]
+ok(_got == _want,
+   '★★ 後端算的和 repo 算的要一致　←　後端 %s / repo %s' % (_got, _want))
+ok(_got != 'unknown', '★★ 指紋不可以是 unknown（那代表整段被例外吞掉了）')
+
+# 結尾多一個換行也要算出同一個值
+io.open(_fp_path, 'w', encoding='utf8').write(_body + '\n')
+ok(_ns_fp['_server_fingerprint']() == _want,
+   '★ 結尾多一個換行時仍是同一個指紋（不然會變成假警報）')
+
+# 四個端點都要回報
+_n_fp = len([l for l in _srv3.split('\n')
+             if '"fingerprint": SERVER_FINGERPRINT' in l])
+ok(_n_fp >= 4, '★ 每個回報 version 的端點都要一併回報指紋（%d 處）' % _n_fp)
+
+
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
 sys.exit(1 if fail_n else 0)

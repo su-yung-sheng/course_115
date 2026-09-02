@@ -807,6 +807,44 @@ def check_py_tests():
                            else f'（看完整輸出：python shared/tests/{name}）'))
 
 
+def backend_fingerprint():
+    """repo 這一份 colab_server.py 的內容指紋（sha1 前 8 碼）。
+
+    ⚠️⚠️ 2026-09-02 老師問「backend.ipynb 目前是最新版本嗎」。
+       檔案本身好查（git 就知道），難的是**Colab 上跑的那份是不是它**。
+       SERVER_VERSION 是手寫的日期，而 09-01 那三次改動都沒動到它 ——
+       老師看到 "2026-08-26" 時分不出「跑的是舊版」還是「沒人改字串」。
+       ★ 和 firestore.rules 一樣的病：手動維護的日期一定會漂，
+         而且漂掉時沒有任何徵兆。
+    ⇒ 這裡印出 repo 版的指紋，後端的 /api/health 會回報它算出來的那份，
+      兩個 8 位數字一比就知道 Colab 跑的是不是這一份。
+
+    ⚠️ 算法要和後端的 _server_fingerprint() 完全一致：
+       %%writefile 寫出的是「cell 內容去掉第一行」，
+       而且兩邊都先 .strip()（吸收結尾換行的差異，
+       不然會變成每次都說不一致的假警報 —— 比沒有更糟）。
+    """
+    # ⚠️ check.py 頂層只 import os/re/sys/glob/shutil/subprocess/tempfile，
+    #    io 和 json 都沒有 —— 在這裡就地 import，不要假設它們在。
+    import hashlib
+    import io as _io
+    import json as _json
+    nb_path = os.path.join(ROOT, 'shared', 'backend.ipynb')
+    if not os.path.isfile(nb_path):
+        return None
+    try:
+        with _io.open(nb_path, encoding='utf-8') as f:
+            nb = _json.load(f)
+    except Exception:                               # noqa: BLE001
+        return None
+    for cell in nb.get('cells', []):
+        src = ''.join(cell.get('source', []))
+        if src.startswith('%%writefile colab_server.py'):
+            body = '\n'.join(src.split('\n')[1:]).strip()
+            return hashlib.sha1(body.encode('utf-8')).hexdigest()[:8]
+    return None
+
+
 def main():
     log('檢查中…\n')
     check_empty()
@@ -838,7 +876,13 @@ def main():
         print(f'\n共 {len(errors)} 個問題。')
         return 1
 
-    log('✅ 檢查通過，可以推送。')
+    fp = backend_fingerprint()
+    if fp:
+        log(f'✅ 檢查通過，可以推送。（後端指紋 {fp} —— '
+            f'和 /api/health 回報的 fingerprint 比對，'
+            f'就知道 Colab 跑的是不是這一份）')
+    else:
+        log('✅ 檢查通過，可以推送。')
     return 0
 
 
