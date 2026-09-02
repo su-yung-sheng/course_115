@@ -1117,6 +1117,71 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 return null;
             };
 
+
+            /* ══════════════════════════════════════════════════════
+               「關機也不白跑」的最後一哩
+               ══════════════════════════════════════════════════════
+               ⚠️⚠️ 2026-09-02：後端判定通過之後，**成績是這一頁寫進 Firestore 的**。
+                  學生一關機（或關掉分頁、換一台電腦），辨識白跑、
+                  截圖存了、成績卻沒記 —— 他回來只能重傳、再排一次隊。
+                  ★ 號碼牌制讓「中途離開」從意外變成常態，所以非補不可。
+               ⇒ 登入完成後問後端「我過了哪幾關」，把本地沒記的補回來。
+               ★★ 補記走的是既有的 handleChallengeComplete，**不另寫一套**：
+                  星星怎麼算、要寫哪幾份文件，全部只有那一份邏輯。
+                  另寫一套的話，兩邊遲早會給出不一樣的成績。
+               ⚠️ 不依賴 localStorage —— 教室電腦有還原卡，關機就重置。
+                  這條路只認學號，換一台電腦登入照樣補得回來。
+               ⚠️ 後端沒開就安靜跳過（下次登入再補），不可以擋住上課。 */
+            useEffect(() => {
+                if (!user || !user.sid || !fbStore.db) return;
+                let alive = true;
+                (async () => {
+                    try {
+                        const base = (window.CONFIG && window.CONFIG.SERVER_URL) || '';
+                        if (!base) return;
+                        const term = (window.CONFIG && window.CONFIG.TERM) || '11501';
+                        const ctl = new AbortController();
+                        const t = setTimeout(() => ctl.abort(), 8000);
+                        let list = [];
+                        try {
+                            const r = await fetch(base + '/api/my-passed?student_id='
+                                + encodeURIComponent(user.sid) + '&term=' + encodeURIComponent(term),
+                                { headers: { 'ngrok-skip-browser-warning': '1' },
+                                  cache: 'no-store', signal: ctl.signal });
+                            const j = await r.json();
+                            list = (j && Array.isArray(j.passed)) ? j.passed : [];
+                        } finally { clearTimeout(t); }
+                        if (!alive || !list.length) return;
+
+                        /* 後端說過了、本地卻沒記的，才要補 */
+                        const mine = new Set(completedChallenges.map(String));
+                        const missing = list.filter(id => !mine.has(String(id)));
+                        if (!missing.length) return;
+
+                        for (const id of missing) {
+                            if (!alive) return;
+                            /* ⚠️ 關卡編號要還原成和本地同型別，不然
+                               completedChallenges.includes() 會判不出來、重複補。 */
+                            const cid = Number(id);
+                            if (!Number.isFinite(cid)) continue;
+                            /* ⚠️ 截圖不在手上（那正是「中途離開」的定義），
+                               所以 base64 傳 null —— 後端已經把圖傳到雲端硬碟了，
+                               這裡缺的只是 Firestore 裡的那個網址。 */
+                            await handleChallengeComplete(
+                                cid, new Date().toISOString().slice(0, 10), null,
+                                '（上次未完成的驗證，系統自動補記）', null);
+                        }
+                        if (alive) {
+                            console.log('[補記] 補上 ' + missing.length + ' 關');
+                        }
+                    } catch (e) {
+                        /* 後端沒開、連不上、回傳格式怪 —— 都安靜跳過。
+                           ⚠️ 這是附加保障，絕對不可以擋住學生上課。 */
+                    }
+                })();
+                return () => { alive = false; };
+            }, [user && user.sid]);
+
             // 本頁的登入表單已停用：一律導回闖關基地，登入後自動跳回來。
             const handleLogin = async (e) => {
                 e.preventDefault();
