@@ -113,6 +113,21 @@ for (const term of ['11501', '11502']) {
        這個 repo 已經在 autoSizeGraderFrame、setResult(null) 上各吃過一次。 */
   /* ⚠️ 不可以只檢查字串有沒有出現 —— 註解裡也寫著這個檔名，
      把 <script> 整行刪掉測試照樣綠（2026-09-02 突變時抓到）。 */
+  /* ⚠️⚠️ 2026-09-03：號碼牌制讓「後端忙」變成正常狀態，
+     而健康檢查還把「回得慢」判成「掛了」——
+     ★ 對已經送出的學生，那個判定完全沒有意義：他的截圖在後端跑著。
+       而畫面說「等待伺服器連線」會讓他以為白傳了、重開視窗再傳，
+       分頁和輪詢加倍 → CPU 更擠 → 更多人被判離線。
+       這是會自我放大的故障，2026-09-03 實際發生過。 */
+  ok(/const goOffline/.test(CODE),
+     '★★ 判離線要走同一個出口（才有辦法在有號碼牌時例外）');
+  ok(/hasTicket\(\)/.test(CODE) && /伺服器忙碌中/.test(CODE),
+     '★★ 手上有號碼牌時要說「忙碌中」，不可以說成離線');
+  ok(!/\{ setIsOnline\(false\); setNetNote\(OFFLINE_NOTE\); \}/.test(CODE),
+     '★ 不可以再有繞過 goOffline 的直接判離線');
+  ok(/localStorage\.getItem\('thinkingTicket'\)/.test(CODE),
+     '★ 要用 localStorage 判斷（isProcessing 是 state，在 useEffect 閉包裡會過期）');
+
   ok(/<script src="\.\.\/shared\/ocrclient\.js">/.test(SRC),
      '★★ 要真的有 <script> 載入共用的 ocrclient.js');
   ok(/window\.submitScreenshot\(/.test(CODE),

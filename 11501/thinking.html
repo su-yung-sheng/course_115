@@ -499,6 +499,29 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                    30 台瀏覽器一起敲，網域一恢復就被打爆，反而更難重啟。
                    ⇒ **指數退避**：連續失敗越多，間隔拉得越長（上限 5 分鐘），
                      讓老師有空間把後端救回來；一旦成功立刻回到正常頻率。 */
+                /* ⚠️⚠️ 2026-09-03 老師問：「之前不是說全部上傳檔案在後端完成 OCR 嗎？」
+                   —— 對，而這正是矛盾所在：號碼牌制讓「後端忙」變成**正常狀態**，
+                   健康檢查卻還停在舊模型，把「回得慢」判成「掛了」。
+                   ★ 對已經送出的學生來說，那個離線判定**完全沒有意義**：
+                     他的截圖在後端跑著，前端連不連得上都不影響結果。
+                     而畫面說「等待伺服器連線」會讓他以為白傳了，
+                     於是重開視窗再傳一次 —— 分頁和輪詢加倍，
+                     CPU 更擠、更多人被判離線。這是會自我放大的故障。
+                   ⇒ 手上有號碼牌時，改說「伺服器忙碌中」並**不鎖按鈕**。
+                   ⚠️ 用 localStorage 而不是 isProcessing：後者是 state，
+                      在這個 useEffect 的閉包裡會是過期的值。 */
+                const hasTicket = () => {
+                    try { return !!localStorage.getItem('thinkingTicket'); }
+                    catch (e) { return false; }
+                };
+                const goOffline = () => {
+                    if (hasTicket()) {
+                        setNetNote('伺服器忙碌中 —— 你的截圖已經在排隊，結果不會不見');
+                        return;                 // ★ 不鎖按鈕、不判離線
+                    }
+                    setIsOnline(false);
+                    setNetNote(OFFLINE_NOTE);
+                };
                 const MISS_LIMIT = 3;        // 連續失敗這麼多次才算真的離線
                 const BASE_MS = 25000, MAX_MS = 300000;
                 let misses = 0, alive = true;
@@ -528,10 +551,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             try { const j = await res.json(); setOcrState(j.ocr_state || ""); }
                             catch (e) { setOcrState(""); }
                         }
-                        else if(++misses >= MISS_LIMIT){ setIsOnline(false); setNetNote(OFFLINE_NOTE); }
+                        else if(++misses >= MISS_LIMIT){ goOffline(); }
                     } catch(e) {
                         if(!alive) return;
-                        if(++misses >= MISS_LIMIT){ setIsOnline(false); setNetNote(OFFLINE_NOTE); }
+                        if(++misses >= MISS_LIMIT){ goOffline(); }
                     } finally {
                         clearTimeout(timer);
                     }
