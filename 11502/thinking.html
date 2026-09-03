@@ -1216,8 +1216,9 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                            ⇒ 後端有網址、而這裡沒有的，就把網址補回去。
                            ⚠️ 只補網址，**不動**通關清單和完成日期
                               （那兩個維持「保留第一次」）。
-                           ⚠️ 後端也沒有網址的，代表那張圖根本沒上傳成功過 ——
-                              救不回來，只能請學生重傳一次。 */
+                           ⚠️ 後端也沒有網址的**不代表圖不在** —— 2026-09-03 老師實測：
+                              某位學生第 4 關的圖確實在雲端硬碟裡，只是兩邊都沒記到
+                              那個 fileId。⇒ 那種要靠下面第三段（直接問 GAS）。 */
                         const needUrl = list.filter(id =>
                             mine.has(String(id)) && urls[String(id)] && !(completedImages && completedImages[String(id)]));
 
