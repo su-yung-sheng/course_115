@@ -153,6 +153,83 @@ section('① 舊後端沒有 /analyze-async 時要退回同步流程');
     ok(env6.win.resumeScreenshot({ base: 'http://x', storageKey: 'nope' }) === null,
       '★ 沒有暫存時要回 null（呼叫端當成「沒事發生」，不是錯誤）');
 
+    section('⑧ 雲端路徑：上傳打 GAS，不碰 Colab');
+    /* ⚠️⚠️ 2026-09-03 老師：「圖片都上傳到雲端了，為什麼還會滿載
+       讓使用者無法上傳？」—— 因為上傳原本還是打在 Colab 上。
+       ★ 這條路把上傳打到 GAS：Colab 掛掉、滿載都不影響學生上傳。 */
+    const envC = makeEnv((url, opt) => {
+      if (url.indexOf('script.google') >= 0) {
+        const body = JSON.parse(opt.body);
+        return reply({ success: true, fileId: 'f1', fileName: body.fileName });
+      }
+      throw new Error('雲端上傳不可以打到 ' + url);
+    });
+    envC.ctx.FileReader = function () {
+      this.readAsDataURL = function () { this.result = 'data:image/png;base64,QUJD'; this.onload(); };
+    };
+    const rc = await envC.win.submitViaCloud({
+      gasUrl: 'https://script.google.com/x/exec', gasKey: 'k', term: '11501',
+      sid: '1410700', file: { name: '滑梯公園 - Google Chrome.png', type: 'image/png' }
+    });
+    ok(rc.ok && rc.status === 'queued', '★★ 上傳成功回 queued');
+    ok(rc.upName === '1410700-滑梯公園 - Google Chrome.png',
+       '★★ 檔名要是「學號-原檔名」　←　' + rc.upName);
+    ok(envC.calls.every(c => c.url.indexOf('script.google') >= 0),
+       '★★ 整個上傳過程不可以打到 Colab');
+    // ⚠️ 只加一個「-」：關卡名和時間戳裡也有「-」，切多了檔名會壞
+    ok((rc.upName.match(/-/g) || []).length >= 1 &&
+       rc.upName.split('-')[0] === '1410700',
+       '★ 學號用第一個「-」隔開（後端用 partition 切第一個）');
+
+    const envD = makeEnv(() => reply({ success: false, message: '額度爆了' }));
+    envD.ctx.FileReader = envC.ctx.FileReader;
+    const rd = await envD.win.submitViaCloud({
+      gasUrl: 'https://script.google.com/x/exec', gasKey: 'k',
+      sid: '1', file: { name: 'a.png' } });
+    ok(!rd.ok && /沒有上傳成功/.test(rd.data.message),
+       '★★ 上傳失敗要講清楚（這是唯一會讓學生白做的一步）');
+
+    section('⑨ 雲端路徑：等結果靠「從清單消失」');
+    /* ⚠️⚠️ 最容易錯的一條：後端每 8 秒才掃一次暫存區，
+       剛上傳的那幾秒清單裡本來就沒有 ——
+       沒有 seenInQueue 這個判斷，學生一送出就會被告知「沒過」。 */
+    let phase = 0;
+    const envE = makeEnv((url) => {
+      if (url.indexOf('/api/queue-list') >= 0) {
+        phase++;
+        // 前兩輪：還沒被掃到（清單裡沒有我）
+        if (phase <= 2) return reply({ queue: [] });
+        // 中間兩輪：排隊中
+        if (phase <= 4) return reply({ queue: [{ student_id: '1410700', name: 'x.png' }] });
+        // 之後：消失了
+        return reply({ queue: [] });
+      }
+      if (url.indexOf('/api/my-passed') >= 0) return reply({ passed: ['3'] });
+      throw new Error('不該打到 ' + url);
+    });
+    const re = await envE.win.waitViaCloud(
+      { base: 'http://c', sid: '1410700', term: '11501', challengeId: 3, level: '滑梯公園' },
+      '1410700-x.png');
+    ok(re.status === 'done' && re.data.pass === true,
+       '★★ 從清單消失＋成績有記 → 判定通過');
+    ok(phase > 4, '★★ 上傳後還沒被掃到時不可以就下結論　←　問了 ' + phase + ' 輪');
+
+    section('⑩ Colab 掛掉時不可以判學生失敗');
+    let n2 = 0;
+    const envF = makeEnv((url) => {
+      if (url.indexOf('/api/queue-list') >= 0) {
+        n2++;
+        if (n2 <= 3) throw new TypeError('Failed to fetch');   // Colab 掛了
+        if (n2 <= 5) return reply({ queue: [{ student_id: '1', name: 'y.png' }] });
+        return reply({ queue: [] });
+      }
+      return reply({ passed: ['7'] });
+    });
+    const rf = await envF.win.waitViaCloud(
+      { base: 'http://c', sid: '1', term: '11501', challengeId: 7 }, '1-y.png');
+    ok(rf.data.pass === true,
+       '★★ 中途連不上 Colab 也要繼續等（圖在雲端，之後會處理）');
+
     section('⑦ 一定要有總上限');
     ok(/GIVE_UP_MS/.test(SRC), '★★ 有總上限常數');
     const g = /GIVE_UP_MS\s*=\s*([\d\s*]+);/.exec(SRC);

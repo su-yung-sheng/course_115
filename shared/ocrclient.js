@@ -171,6 +171,146 @@
     return await waitForResult(opt, ticket);
   }
 
+  /* ══════════════════════════════════════════════════════════
+     雲端路徑：圖片直接傳到 GAS，Colab 有空再取來辨識
+     ══════════════════════════════════════════════════════════
+     ⚠️⚠️ 2026-09-03 老師：「圖片都上傳到雲端了，為什麼還會滿載
+        讓使用者無法上傳？」—— 因為上傳這個動作原本**還是打在 Colab 上**。
+        Colab 一忙，/health 回得慢、判離線、鎖按鈕，學生連傳都傳不出去。
+     ★ 這條路把上傳打到 GAS：Colab 掛掉、滿載都不影響學生上傳。
+       圖在雲端等著，後端有空再處理。
+
+     ⚠️ 進度和結果仍然問 Colab（讀它的記憶體快取，很快）——
+        Colab 掛掉時看不到進度，但**圖已經安全**，之後會處理完，
+        學生下次登入也會自動補記。這是刻意的取捨：
+        上傳不能依賴 Colab，顯示可以。
+
+     ★ 「還在暫存區」＝「還沒處理完」。所以判斷「我好了沒」的方式是
+       「我的檔案從排隊清單消失了」，不必另外做狀態機。 */
+
+  function fileToBase64(file) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () {
+        var s = String(r.result || '');
+        var i = s.indexOf(',');
+        res(i >= 0 ? s.slice(i + 1) : s);
+      };
+      r.onerror = function () { rej(new Error('讀不到這個檔案')); };
+      r.readAsDataURL(file);
+    });
+  }
+
+  /* opt = { gasUrl, gasKey, term, sid, file, base（Colab）, onQueue, signal } */
+  async function submitViaCloud(opt) {
+    var fname = (opt.file && opt.file.name) || 'shot.png';
+    /* ⚠️ 檔名前面加學號 —— 後端靠它認出是誰傳的，
+       而關卡靠原檔名本身（「滑梯公園 - Google Chrome ….png」）。
+       ★ 只加一個「-」：後端用 partition('-') 切第一個，
+         關卡名和時間戳裡的「-」不會被切壞。 */
+    var upName = (String(opt.sid || '').trim() ? opt.sid + '-' : '') + fname;
+
+    var b64 = await fileToBase64(opt.file);
+    var r = await fetch(opt.gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        kind: 'temp', key: opt.gasKey, term: String(opt.term || ''),
+        fileName: upName,
+        mimeType: (opt.file && opt.file.type) || 'image/png',
+        base64: b64
+      }),
+      signal: opt.signal
+    });
+    var j = null;
+    try { j = await r.json(); } catch (e) { }
+    if (!j || !j.success) {
+      /* ⚠️ 上傳失敗是**唯一**會讓學生白做的一步，訊息要具體。 */
+      return { ok: false, status: 'upload_failed',
+               data: { status: 'error',
+                       message: '截圖沒有上傳成功 —— ' +
+                                ((j && j.message) || '請檢查網路，再試一次。') } };
+    }
+    return { ok: true, status: 'queued', data: j, upName: upName };
+  }
+
+  /* 等雲端那條路的結果。
+     ★ 判斷「我好了沒」＝「我的檔案從排隊清單消失了」——
+       不必另外做狀態機，因為後端處理完就刪檔。
+     opt = { base, sid, term, level, onQueue, signal } */
+  async function waitViaCloud(opt, upName) {
+    var started = Date.now();
+    var wait = POLL_START_MS;
+    var seenInQueue = false;      /* ⚠️ 見下 */
+    var gone = 0;
+
+    while (true) {
+      if (Date.now() - started > GIVE_UP_MS) {
+        return { ok: false, status: 'timeout', data: { status: 'error',
+          message: '等超過 20 分鐘還沒有結果。⚠️ 你的截圖已經在雲端，'
+                 + '不會不見 —— 請告訴老師，之後會自動補記。' } };
+      }
+      await sleep(wait, opt.signal);
+      wait = Math.min(POLL_MAX_MS, Math.round(wait * 1.3));
+
+      var list = null;
+      try {
+        var qr = await fetch(opt.base + '/api/queue-list',
+                             { headers: H, cache: 'no-store', signal: opt.signal });
+        var qj = await qr.json();
+        list = (qj && qj.queue) || [];
+      } catch (e) {
+        if (e && e.name === 'AbortError') throw e;
+        /* ⚠️ 問不到排隊清單**不算失敗**：Colab 可能忙或掛了，
+           但圖在雲端，之後照樣會被處理。繼續等就好。 */
+        continue;
+      }
+
+      if (opt.onQueue) opt.onQueue(list);
+
+      var mine = list.some(function (x) {
+        return ((x.student_id ? x.student_id + '-' : '') + x.name) === upName;
+      });
+      if (mine) { seenInQueue = true; gone = 0; continue; }
+
+      /* ⚠️⚠️ 還沒在清單裡出現過 → **不能當成處理完了**。
+         後端每 8 秒才掃一次暫存區，剛上傳的那幾秒清單裡本來就沒有。
+         沒有這個判斷的話，學生一送出就會被告知「沒過」。 */
+      if (!seenInQueue) continue;
+
+      /* 消失了 —— 但成績寫入和刪檔之間有時間差，多確認一輪再下結論 */
+      gone += 1;
+      if (gone < 2) continue;
+
+      var passed = [];
+      try {
+        var pr = await fetch(opt.base + '/api/my-passed?student_id='
+                   + encodeURIComponent(opt.sid) + '&term='
+                   + encodeURIComponent(opt.term),
+                   { headers: H, cache: 'no-store', signal: opt.signal });
+        var pj = await pr.json();
+        passed = (pj && Array.isArray(pj.passed)) ? pj.passed : [];
+      } catch (e) {
+        if (e && e.name === 'AbortError') throw e;
+        continue;
+      }
+
+      var ok2 = passed.map(String).indexOf(String(opt.challengeId)) >= 0;
+      return {
+        ok: true, status: 'done',
+        data: ok2
+          ? { status: 'success', pass: true, level: opt.level }
+          : { status: 'success', pass: false, level: opt.level,
+              reasons: ['這張截圖上找不到「挑戰成功」',
+                        '請先在遊戲裡完成挑戰，看到成功畫面之後再截圖。'
+                        + '⚠️ 截圖要包含中間那塊成功標示。'] }
+      };
+    }
+  }
+
+  window.waitViaCloud = waitViaCloud;
+  window.submitViaCloud = submitViaCloud;
+  window.fileToBase64 = fileToBase64;
   window.submitScreenshot = submitScreenshot;
   window.resumeScreenshot = function (opt) {
     /* 頁面重開時：如果上次有沒領走的號碼牌，就接回去。
