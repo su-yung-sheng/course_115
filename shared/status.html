@@ -129,6 +129,14 @@ if (!window.CONFIG) {
             而學生端只會看到一行 permission-denied。）</span></dd>
       </div>
       <div>
+        <dt class="font-bold text-slate-800">OCR 那台連不上（拆成兩台時）</dt>
+        <dd>①b 紅的時候，第 ③ 的「截圖辨識」和第 ⑦ 一定也會紅 ——
+            <b>那是同一個問題，不是三個</b>。去開 OCR 那台的 Colab 就好。
+            <span class="text-slate-400">（⚠️ 這時程式設計的批改**不受影響**，那是另一台。
+            另外要確認那台的 <span class="font-mono">NGROK_DOMAIN</span> 和
+            <span class="font-mono">config.js</span> 的 <span class="font-mono">OCR_SERVER_URL</span> 是同一個網域。）</span></dd>
+      </div>
+      <div>
         <dt class="font-bold text-slate-800">截圖辨識變慢，或常常判不過</dt>
         <dd>看第 ⑦ 張卡的結論就好，它會直接說「要不要調參數」。
             <span class="text-slate-400">（每辨識 5 張才寫一筆統計，所以要先上過一次課才有資料。
@@ -619,6 +627,41 @@ if (!window.CONFIG) {
     });
   }
 
+  /* ── 檢查 ①b：OCR 那一台 ────────────────────────────
+     ⚠️ 問的是 /health（OCR 專用的健康檢查），不是 /api/health ——
+        只有前者會回報辨識引擎的狀態（ocr_state）。
+        引擎沒就緒時，伺服器活著也沒有用：學生傳什麼都會失敗。 */
+  function checkOcrBackend(el) {
+    return getJSON(OCR_SERVER + '/health', 10000).then(function (j) {
+      var d = row('網址', '<span class="font-mono text-xs">' + esc(OCR_SERVER) + '</span>') +
+              row('版本', '<span class="font-mono">' + esc(j.version || '不明') + '</span>') +
+              row('程式指紋', j.fingerprint
+                    ? '<span class="font-mono">' + esc(j.fingerprint) + '</span>'
+                    : '<span class="text-amber-700">這一版後端不會回報</span>');
+      var st = j.ocr_state || '';
+      if (st === 'error') {
+        set(el, 'bad', '辨識引擎壞了', d +
+            '<div class="mt-2 text-red-700">引擎沒有載入成功 —— 伺服器活著也沒用，'
+          + '學生傳什麼都會失敗。請看 Colab 步驟 1b 的輸出。</div>');
+      } else if (st === 'idle') {
+        set(el, 'warn', '引擎還沒載入', d +
+            '<div class="mt-2 text-amber-700">第一位上傳的同學會多等約 30 秒。'
+          + '想先暖機的話，在 Colab 跑一次步驟 5（OCR 自我測試）。</div>');
+      } else {
+        set(el, 'ok', '上線中', d);
+      }
+    }).catch(function (e) {
+      /* ⚠️ 這一張紅的時候，第 ③ 的「截圖辨識」和第 ⑦ 一定也會紅 ——
+         那不是三個問題，是同一個。這裡把話講完，另外兩張就不必再猜。 */
+      set(el, 'bad', '連不上', row('網址', '<span class="font-mono text-xs">' + esc(OCR_SERVER) + '</span>') +
+                     row('原因', esc(e.message)) +
+                     '<div class="mt-2 text-red-700">OCR 那台 Colab 沒開，或閒置太久被回收。'
+                   + '⚠️ 這時學生的截圖驗證會全部失敗，但**程式設計的批改不受影響**'
+                   + '（那是另一台）。下面第 ③ 的「截圖辨識」和第 ⑦ 也會跟著紅，那是同一個原因。</div>');
+      return null;
+    });
+  }
+
   // ── 主流程 ──────────────────────────────────────────
   function run() {
     btn.disabled = true;
@@ -626,7 +669,12 @@ if (!window.CONFIG) {
     btn.textContent = '檢查中…';
     cards.innerHTML = '';
 
-    var c1 = card('backend', '① Colab 後端版本');
+    var c1 = card('backend', '① Colab 後端版本' + (TWO_HOSTS ? '（批改）' : ''));
+    /* ⚠️⚠️ 拆成兩台之後，① 只驗得到批改那台。OCR 那台掛了的話，
+       ① 照樣綠燈，而學生的截圖驗證全部失敗 ——
+       老師會從一張綠燈的卡開始找問題，那是最糟的起點。
+       ⇒ 兩台時多一張專屬的卡。只開一台時不會出現（TWO_HOSTS 為 false）。 */
+    var c1b = TWO_HOSTS ? card('backend2', '①b 截圖辨識後端（OCR）') : null;
     var c2 = card('keys',    '② Gemini API 金鑰');
     var c3 = card('queue',   '③ 排隊機制');
     var c4 = card('criteria','④ 兩學期批改標準是否分開');
@@ -637,6 +685,7 @@ if (!window.CONFIG) {
     checkBackend(c1).then(function (health) {
       checkKeys(c2, health);
       return Promise.all([
+        c1b ? checkOcrBackend(c1b) : null,
         checkQueue(c3, health),
         checkCriteria(c4, health),
         checkRules(c5),
