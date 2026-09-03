@@ -1108,5 +1108,82 @@ ok('pageSize' not in _srv6.split('/api/my-passed')[1][:900],
    '★★ 不可以在這支端點提供整批查詢（等於開放全班成績）')
 
 
+# ═══════════════════════════════════════════════════════════
+section('C-17 colab_server 不可以裸用 core 的名稱')
+# ═══════════════════════════════════════════════════════════
+# ⚠️⚠️ 2026-09-02 老師回報「GRADER_TERM is not defined」。
+#    我在三個地方寫了 request.form.get("term", GRADER_TERM) ——
+#    而 GRADER_TERM 定義在 **cell 6（scratch_grader_core）**，
+#    cell 8 只有 `import scratch_grader_core as core`，
+#    所以那是 NameError。
+# ★ 最糟的是它藏在 `if _passed:` 裡：
+#   **只有真的通關的學生會踩到** —— 判定過了、卻拿不到證書，
+#   而沒過的人一切正常。上課到一半才會發現。
+# ⚠️ 而現有的測試全部沒抓到：ocrjobs 用假的 ocr_analyze，
+#   根本不會走到那一段。⇒ 改用靜態分析，一次涵蓋這一整類錯誤。
+import ast as _ast
+import builtins as _bi
+
+
+def _cell_code(i):
+    _L = ''.join(_nb_cells[i]['source']).split('\n')
+    return '\n'.join(('pass' if l.startswith(('!', '%%')) else l) for l in _L)
+
+
+def _toplevel(t):
+    out = set()
+    for n in t.body:
+        if isinstance(n, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.ClassDef)):
+            out.add(n.name)
+        elif isinstance(n, _ast.Assign):
+            for x in n.targets:
+                if isinstance(x, _ast.Name):
+                    out.add(x.id)
+        elif isinstance(n, _ast.AnnAssign) and isinstance(n.target, _ast.Name):
+            out.add(n.target.id)
+        elif isinstance(n, (_ast.Import, _ast.ImportFrom)):
+            for a in n.names:
+                out.add((a.asname or a.name).split('.')[0])
+    return out
+
+
+def _bound(t):
+    """這個 cell 裡任何被綁定過的名稱（含函式內的區域變數與參數）。"""
+    out = _toplevel(t)
+    for n in _ast.walk(t):
+        if isinstance(n, _ast.Name) and isinstance(n.ctx, (_ast.Store, _ast.Del)):
+            out.add(n.id)
+        elif isinstance(n, (_ast.FunctionDef, _ast.AsyncFunctionDef)):
+            out.add(n.name)
+            a = n.args
+            for x in list(a.args) + list(a.posonlyargs) + list(a.kwonlyargs):
+                out.add(x.arg)
+            if a.vararg:
+                out.add(a.vararg.arg)
+            if a.kwarg:
+                out.add(a.kwarg.arg)
+        elif isinstance(n, (_ast.Import, _ast.ImportFrom)):
+            for x in n.names:
+                out.add((x.asname or x.name).split('.')[0])
+        elif isinstance(n, _ast.ExceptHandler) and n.name:
+            out.add(n.name)
+    return out
+
+
+_t6 = _ast.parse(_cell_code(6))
+_t8 = _ast.parse(_cell_code(8))
+_used = {n.id for n in _ast.walk(_t8)
+         if isinstance(n, _ast.Name) and isinstance(n.ctx, _ast.Load)}
+_leak = (_used & _toplevel(_t6)) - _bound(_t8) - set(dir(_bi))
+ok(not _leak,
+   '★★ colab_server 用到 core 的東西一律要加 core. 前綴　←　'
+   + ('沒有裸用' if not _leak else '裸用了：' + '、'.join(sorted(_leak))))
+
+# ★ 那三處現在改用 core.resolve_term()：它會驗學期合法性，
+#   比直接取 GRADER_TERM 當預設更好（帶了 11503 之類也擋得掉）。
+ok(_code_of(_nb_cells[8]).count('core.resolve_term(request.form.get("term"))') >= 3,
+   '★ 學期一律走 core.resolve_term（會驗合法性，不是只取預設）')
+
+
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
 sys.exit(1 if fail_n else 0)
