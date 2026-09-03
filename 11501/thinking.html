@@ -1268,7 +1268,18 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                               救不回來，只能請學生重傳一次。 */
                         const needUrl = list.filter(id =>
                             mine.has(String(id)) && urls[String(id)] && !(certificateUrls && certificateUrls[String(id)]));
-                        if (!missing.length && !needUrl.length) return;
+
+                        /* ⚠️⚠️ 這裡**不可以**寫成
+                             if (!missing.length && !needUrl.length) return;
+                           那樣會讓下面「去雲端硬碟找回網址」永遠跑不到 ——
+                           而老師 2026-09-03 遇到的正是那種：五關都已經記在本地、
+                           後端的 urls 又是空的 ⇒ missing 和 needUrl 都是 0，
+                           直接就 return 了，可是圖明明在雲端硬碟裡。
+                           ⇒ 三件事各自判斷，缺哪個補哪個。
+                           ★ have：這一輪之內已經補上的也要算進去，
+                             不然同一批網址會被查兩次（setState 是非同步的，
+                             這個閉包裡的 certificateUrls 不會即時更新）。 */
+                        const have = Object.assign({}, certificateUrls || {});
 
                         for (const id of missing) {
                             if (!alive) return;
@@ -1304,9 +1315,66 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                       lastUpdated: new Date().toISOString() },
                                     { merge: true });
                                 setCertificateUrls(prev => ({ ...prev, ...patch }));
+                                Object.assign(have, patch);      // ★ 這一輪已補的也要算
                                 console.log('[證書] 補回', needUrl.length, '張截圖網址');
                             } catch (e) {
                                 /* 補不了就算了 —— 這是修補，不可以擋住上課 */
+                            }
+                        }
+
+                        /* ══════════════════════════════════════════════
+                           最後一道：直接去雲端硬碟把網址找回來
+                           ══════════════════════════════════════════════
+                           ⚠️⚠️ 2026-09-03 老師實測：某位學生 passed 有
+                              2,3,4,5,6 五關，urls 卻只有第 6 關 ——
+                              而那幾關的圖**確實在雲端硬碟裡**。
+                           ★ 後端的 urls 是 record_ocr_pass 在 2026-09-02
+                             之後才開始寫的，更早通關的、或當初後端拿不到
+                             班級座號沒上傳成功的，那份紀錄裡都沒有網址。
+                             ⇒ 拿後端的紀錄去補，救不了舊資料。
+                           ★ 但路徑是固定的（<根>/學期/thinking/班級/座號/關卡.png），
+                             缺的只是 Drive 隨機給的 fileId ⇒ 問 GAS 就有。
+                           ⚠️ **一次查整格**，一位學生只花一次 GAS 額度
+                              （Apps Script 每天只有約 90 分鐘）。
+                           ⚠️ 而且只在「真的還缺」的時候才查 —— 不缺就一次都不打。 */
+                        const stillMissing = completedChallenges.filter(
+                            cid => !have[String(cid)]);
+                        if (stillMissing.length && window.CONFIG.GAS_UPLOAD_URL
+                            && user.classRoom && user.seatNo) {
+                            try {
+                                const fr = await fetch(window.CONFIG.GAS_UPLOAD_URL, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                    body: JSON.stringify({
+                                        kind: 'find', key: window.CONFIG.GAS_UPLOAD_KEY,
+                                        term: term, unit: 'screenshot',
+                                        classRoom: user.classRoom, seatNo: user.seatNo
+                                    })
+                                });
+                                const fj = await fr.json();
+                                const found = (fj && fj.success && fj.urls) ? fj.urls : {};
+                                const patch2 = {};
+                                stillMissing.forEach(cid => {
+                                    if (found[String(cid)]) patch2[String(cid)] = found[String(cid)];
+                                });
+                                if (Object.keys(patch2).length) {
+                                    await fbStore.setDoc(
+                                        fbStore.doc(fbStore.db, 'artifacts', 'comp-think-app',
+                                                    'public', 'data', 'progress', user.docId),
+                                        { certificateUrls: patch2,
+                                          lastUpdated: new Date().toISOString() },
+                                        { merge: true });
+                                    setCertificateUrls(prev => ({ ...prev, ...patch2 }));
+                                    console.log('[證書] 從雲端硬碟找回', Object.keys(patch2).length, '張');
+                                }
+                                /* ★ 查完還是沒有的，就是**雲端上真的沒有那張圖** ——
+                                   只能請學生重傳。印出來讓老師查得到是哪幾關。 */
+                                const reallyGone = stillMissing.filter(cid => !found[String(cid)]);
+                                if (reallyGone.length) {
+                                    console.warn('[證書] 雲端硬碟也沒有這幾關的圖，需要重傳：', reallyGone);
+                                }
+                            } catch (e) {
+                                /* 查不到就算了 —— 這是修補，不可以擋住上課 */
                             }
                         }
                     } catch (e) {

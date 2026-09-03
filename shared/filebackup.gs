@@ -63,6 +63,15 @@ var CLASSES     = ["801","802","803","804","805","806","807","808","809","810","
 // ────────────────────────────────────────────────────────
 
 
+/** 只找、不建立。⚠️ 查詢用這個 —— 用 getOrCreateFolder 的話，
+    查一個不存在的班級會**生出一個空資料夾**，久了雲端硬碟全是垃圾。 */
+function findFolder(parent, name) {
+  if (!parent) return null;
+  var it = parent.getFoldersByName(String(name || ""));
+  return it.hasNext() ? it.next() : null;
+}
+
+
 /** 取得子資料夾；沒有就建立 */
 function getOrCreateFolder(parent, name) {
   var it = parent.getFoldersByName(name);
@@ -205,6 +214,41 @@ function doPost(e) {
       return json({ success: true, deleted: String(data.fileId) });
     }
 
+    /* ── 查一位學生已經備份的截圖網址 ────────────────
+       ⚠️⚠️ 2026-09-03 老師：「有些學生的通關證書沒有截圖，
+          可是雲端上有圖。」★ 圖確實在，缺的只是那個 **fileId** ——
+          路徑是固定的（<根>/學期/thinking/班級/座號/關卡.png），
+          但 fileId 是 Drive 隨機給的，前端猜不出來。
+       ⇒ 開一支唯讀查詢，把那一格資料夾裡的檔案全部列出來。
+       ★ **一次回整格**（不是一關問一次）：一位學生只花一次 GAS 額度，
+         而 Apps Script 每天只有約 90 分鐘執行時間。
+       ⚠️ 檔名是補零的（03.png），回傳時要正規化成 "3" ——
+          前端的 challenge.id 是數字，對不起來就等於沒查到。 */
+    if (data.kind === "find") {
+      checkKey(data.key);
+      var t4 = checkTerm(data.term);
+      var unit4 = UNIT_FOLDER[data.unit || "screenshot"];
+      if (!unit4) throw new Error("不認得的查詢種類：" + data.unit);
+      var f4 = findFolder(DriveApp.getFolderById(ROOT_ID), t4);
+      f4 = findFolder(f4, unit4);
+      f4 = findFolder(f4, String(data.classRoom || ""));
+      f4 = findFolder(f4, pad2(data.seatNo));
+      var urls4 = {};
+      if (f4) {
+        var it4 = f4.getFiles();
+        while (it4.hasNext()) {
+          var ff = it4.next();
+          // 03.png -> "3"（去副檔名、去前導零）
+          var k4 = ff.getName().replace(/\.[^.]+$/, "").replace(/^0+/, "");
+          if (k4) {
+            urls4[k4] = "https://drive.google.com/thumbnail?id=" + ff.getId() + "&sz=w1000";
+          }
+        }
+      }
+      return json({ success: true, term: t4, unit: unit4,
+                    found: Object.keys(urls4).length, urls: urls4 });
+    }
+
     var kind = data.kind || "screenshot";          // "screenshot"（預設）或 "sb3"
     var unit = UNIT_FOLDER[kind];
     if (!unit) throw new Error("不認得的上傳種類：" + kind);
@@ -273,7 +317,7 @@ function doGet(e) {
        看 features 有沒有 temp 那三個就好 —— 兩邊網址各貼一次，
        一眼就知道是不是同一份。 */
   var out = { script: "filebackup（兩學期共用）", allowedTerms: ALLOWED_TERMS, keyRequired: !!UPLOAD_KEY, maxMB: MAX_MB, ok: true,
-              features: ["screenshot", "sb3", "temp", "temp_list", "temp_delete"] };
+              features: ["screenshot", "sb3", "temp", "temp_list", "temp_delete", "find"] };
   try {
     var root = DriveApp.getFolderById(ROOT_ID);
     out.rootId   = ROOT_ID;

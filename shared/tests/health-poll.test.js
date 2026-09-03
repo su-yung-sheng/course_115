@@ -202,8 +202,16 @@ for (const term of ['11501', '11502']) {
   /* ⚠️⚠️ 2026-09-03 老師問「為什麼有些學生的證書沒有截圖」——
      補記只挑「本地沒記過」的關卡，一旦某關被記成「通關但沒圖」，
      它就永遠落在 missing 之外，再也沒有人回頭補那張圖。 */
-  ok(/needUrl/.test(CODE) && /!missing\.length && !needUrl\.length/.test(CODE),
-     '★★★ 已通關但缺圖的關卡也要回頭補（否則證書永遠是空框）');
+  /* ⚠️ 這一條原本釘 `!missing.length && !needUrl.length` 那個早退 ——
+     後來發現那個早退**正是 bug**：兩個都是 0 時就直接 return，
+     而老師遇到的情況（本地都記了、後端 urls 又空的）剛好就是那樣，
+     於是「去雲端硬碼找回網址」永遠跑不到。⇒ 改釘三條修補路徑都在。 */
+  ok(/needUrl/.test(CODE),
+     '★★ 後端有網址、本地沒有的要補回來');
+  ok(/stillMissing/.test(CODE) && /kind:\s*'find'/.test(CODE),
+     '★★★ 補完還缺的要直接去雲端硬碟找 —— 舊資料的網址只有 Drive 知道');
+  ok(!/!missing\.length && !needUrl\.length\) return/.test(CODE),
+     '★★★ 不可以在查雲端硬碟之前就早退（那正是證書永遠空框的原因）');
   ok(/lastUpdated/.test(CODE) && !/completed:\s*fbStore\.arrayUnion[\s\S]{0,200}needUrl/.test(CODE),
      '★★ 補圖只補網址，不可以動通關清單和日期（那兩個維持「保留第一次」）');
   /* ⚠️ 後端沒開時要安靜跳過，絕對不可以擋住上課 */
