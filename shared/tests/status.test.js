@@ -222,7 +222,7 @@ section('★ OCR 拆到第二台時，檢查項要問對機器');
   ok(/TWO_HOSTS/.test(CODE) && /這一台/.test(CODE),
      '★★ 兩台時 ① 要標示「這一張說的是哪一台」');
 
-  /* ⚠️⚠️ 拆成兩台之後，① 只驗得到Scratch 那台。OCR 那台掛了的話 ① 照樣綠燈，
+  /* ⚠️⚠️ 拆成兩台之後，① 只驗得到 Scratch 那台。OCR 那台掛了的話 ① 照樣綠燈，
      而學生的截圖驗證全部失敗 —— 老師會從一張綠燈的卡開始找問題，
      那是最糟的起點。⇒ 兩台時要有一張專屬的卡。 */
   ok(/function checkOcrBackend/.test(CODE),
@@ -241,6 +241,23 @@ section('★ OCR 拆到第二台時，檢查項要問對機器');
      '★★ 要講明「③ 和 ⑦ 跟著紅是同一個原因」');
   ok(/批改不受影響|批改\*\*不受影響\*\*/.test(SRC),
      '★ 要講明Scratch 那台不受影響（不然老師會兩台一起重開）');
+}
+
+
+section('★ 「重新檢查」要真的能拿到最新的 config');
+{
+  /* ⚠️⚠️ 2026-09-03 老師回報：按這顆沒用，要按瀏覽器的重新整理。
+     ★ run() 只重跑檢查，不會重新載入 config.js ——
+       而那支是靜態檔、GitHub Pages 快取 10 分鐘，
+       這一頁只在**開頁時**用 ?v=Date.now() 繞過它。
+       按這顆時 SERVER_URL 還是舊值，而畫面看起來有重跑、
+       結果卻照舊 —— 完全沒有徵兆。 */
+  ok(/location\.reload\(\)/.test(CODE),
+     '★★ 「重新檢查」要整頁重載（不然拿不到新的 config.js）');
+  ok(!/btn\.addEventListener\('click', run\)/.test(CODE),
+     '★★ 不可以只重跑 run()（那不會重新載入 config.js）');
+  ok(/\?v=' \+ Date\.now\(\)/.test(SRC),
+     '★ 開頁時仍要用 ?v= 繞過 config.js 的快取');
 }
 
 

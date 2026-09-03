@@ -670,7 +670,7 @@ if (!window.CONFIG) {
     cards.innerHTML = '';
 
     var c1 = card('backend', '① Colab 後端版本' + (TWO_HOSTS ? '（Scratch）' : ''));
-    /* ⚠️⚠️ 拆成兩台之後，① 只驗得到Scratch 那台。OCR 那台掛了的話，
+    /* ⚠️⚠️ 拆成兩台之後，① 只驗得到 Scratch 那台。OCR 那台掛了的話，
        ① 照樣綠燈，而學生的截圖驗證全部失敗 ——
        老師會從一張綠燈的卡開始找問題，那是最糟的起點。
        ⇒ 兩台時多一張專屬的卡。只開一台時不會出現（TWO_HOSTS 為 false）。 */
@@ -703,7 +703,21 @@ if (!window.CONFIG) {
     });
   }
 
-  btn.addEventListener('click', run);
+  /* ⚠️⚠️ 2026-09-03 老師回報：「按網頁上的重新檢查按鈕不行，
+     要按瀏覽器的重新整理。」
+     ★ 原因是 run() 只重跑檢查，**不會重新載入 config.js** ——
+       那支是靜態檔，GitHub Pages 會快取 10 分鐘，而這一頁在載入時
+       用 ?v=Date.now() 繞過快取。按這顆不會重新載入它，
+       所以 SERVER_URL 還是舊值（頁首那段註解早就寫過這個坑，
+       但只防到「開頁那一次」，沒防到「按重新檢查」）。
+     ⚠️ 而且症狀完全沒有徵兆：畫面看起來有重跑、結果卻是照舊。
+     ⇒ 讓這顆做使用者以為它會做的事 —— 整頁重來。
+       這一頁是一次性的檢查工具，重載成本本來就很低。 */
+  btn.addEventListener('click', function () {
+    btn.disabled = true;
+    btn.textContent = '重新載入…';
+    location.reload();
+  });
   run();   // 開頁就自動跑一次
 
   // 嵌入 iframe 時隱藏返回鍵
