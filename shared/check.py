@@ -208,7 +208,10 @@ def check_js():
         try:
             with os.fdopen(fd, 'w', encoding='utf-8') as f:
                 f.write(code)
-            r = subprocess.run([node, '--check', tmp], capture_output=True, text=True)
+            # ⚠️ 同上：不指定編碼的話，node 的錯誤訊息在繁中 Windows 上
+            #    會用 cp950 解碼而炸掉（檔名、訊息都可能含非 ASCII）。
+            r = subprocess.run([node, '--check', tmp], capture_output=True,
+                               text=True, encoding='utf-8', errors='replace')
             if r.returncode:
                 line = next((l for l in r.stderr.splitlines()
                              if 'Error' in l or 'error' in l), r.stderr.strip()[:120])
@@ -718,7 +721,9 @@ def check_sb3_levels():
              "(0, eval)(require('fs').readFileSync(process.argv[1], 'utf8'));"
              "console.log(JSON.stringify(window.BLOCK_LEVELS));",
              lvpath],
-            capture_output=True, text=True, timeout=20)
+            # ⚠️ 同上：一律寫死 utf-8，不要看系統語系
+            capture_output=True, text=True, timeout=20,
+            encoding='utf-8', errors='replace')
         if out.returncode != 0:
             # 挑「看得懂的那一行」—— node 的錯誤訊息最後一行常常只是版本號
             lines = (out.stderr or '').strip().splitlines()
@@ -794,13 +799,30 @@ def check_py_tests():
     for f in sorted(glob.glob(os.path.join(d, '*.test.py'))):
         name = os.path.basename(f)
         try:
+            # ⚠️⚠️ encoding 一定要寫死 utf-8。
+            #    text=True 但不指定編碼時，Python 會用**系統語系**去解碼子程序的
+            #    輸出 —— 在老師的 Windows 上那是 cp950，而測試印的是 UTF-8 的
+            #    ✅ ❌ ⚠️（✅ 的第一個位元組就是 0xe2）。
+            #    2026-09-03 老師實際看到的是三條這個：
+            #        Exception in thread Thread-1 (_readerthread)
+            #        UnicodeDecodeError: 'cp950' codec can't decode byte 0xe2
+            #    ★ 更糟的是它**不會讓檢查失敗** —— 炸的是 subprocess 內部的
+            #      讀取執行緒，r.returncode 照樣是 0，於是畫面上印一堆
+            #      traceback 卻結論「檢查通過」。而真的有測試紅了的時候，
+            #      下面那行 r.stdout + r.stderr 會因為 None 直接 TypeError，
+            #      hook 只會說「檢查程式本身出錯了」，看不到是哪一條紅。
+            #    ⇒ 寫死 utf-8（測試那端也各自 reconfigure 成 utf-8），
+            #      errors='replace' 讓萬一有壞位元組也只是顯示成 ?，不會中斷。
             r = subprocess.run([sys.executable, f],
-                               capture_output=True, text=True, timeout=120)
+                               capture_output=True, text=True, timeout=120,
+                               encoding='utf-8', errors='replace')
         except Exception as e:                      # noqa: BLE001
             warns.append(f'{name} 跑不起來（{e}）—— 沒測到，不是通過')
             continue
         if r.returncode != 0:
-            bad = [l.strip() for l in (r.stdout + r.stderr).split('\n')
+            # ⚠️ 用 `or ''`：串流真的拿不到時不要再變成 TypeError，
+            #    那會把「測試紅了」蓋成「檢查程式壞了」。
+            bad = [l.strip() for l in ((r.stdout or '') + (r.stderr or '')).split('\n')
                    if l.strip().startswith('❌')]
             errors.append(f'{name} 沒過：' +
                           ('；'.join(bad[:4]) if bad
