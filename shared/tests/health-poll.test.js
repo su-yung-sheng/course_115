@@ -199,6 +199,13 @@ for (const term of ['11501', '11502']) {
      圖其實在雲端硬碟裡（後端傳的），只是 Firestore 沒有那個連結。 */
   ok(/urls\[String\(id\)\]/.test(CODE),
      '★★ 補記要帶上後端記下的截圖網址（不然證書少一張圖）');
+  /* ⚠️⚠️ 2026-09-03 老師問「為什麼有些學生的證書沒有截圖」——
+     補記只挑「本地沒記過」的關卡，一旦某關被記成「通關但沒圖」，
+     它就永遠落在 missing 之外，再也沒有人回頭補那張圖。 */
+  ok(/needUrl/.test(CODE) && /!missing\.length && !needUrl\.length/.test(CODE),
+     '★★★ 已通關但缺圖的關卡也要回頭補（否則證書永遠是空框）');
+  ok(/lastUpdated/.test(CODE) && !/completed:\s*fbStore\.arrayUnion[\s\S]{0,200}needUrl/.test(CODE),
+     '★★ 補圖只補網址，不可以動通關清單和日期（那兩個維持「保留第一次」）');
   /* ⚠️ 後端沒開時要安靜跳過，絕對不可以擋住上課 */
   ok(/catch \(e\) \{[\s\S]{0,400}?安靜跳過/.test(SRC),
      '★★ 後端連不上要安靜跳過（這是附加保障，不能擋住上課）');

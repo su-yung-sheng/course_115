@@ -1322,9 +1322,20 @@ ok('"fails": 0' in _srv8 and '_temp_last_scan["fails"]' in _srv8,
 ok('_temp_last_scan' in _srv8 and '"scan": scan' in _srv8,
    '★★★ 掃描狀態要露到 /api/queue-list —— 沒有它就分不出'
    '「沒人排隊」和「後端壞了」')
+# ⚠️ 這一條原本用「第幾個 except Exception」定位 —— 那是釘**位置**，
+#    2026-09-03 加了「撈昨天」的內層 except 之後就指錯地方了（假紅）。
+#    ⇒ 改釘內容：失敗時要記 ok=False，而且外層那句訊息要還在。
 _ws = _srv8[_srv8.index('def _temp_worker_loop'):]
-ok('"ok": False' in _ws.split('except Exception')[1][:400],
-   '★★ 掃描失敗要記下來（而且不要清空快取，清空看起來像一切正常）')
+ok('"ok": False' in _ws and '_temp_last_scan["fails"]' in _ws,
+   '★★ 掃描失敗要記下來（連續失敗次數也要）')
+# ⚠️ 不要釘註解文字 —— _code_of() 會把整行註解剝掉（我剛剛就這樣假紅一次）。
+#    要釘的是行為：失敗那條路裡**不可以**出現清空快取的動作。
+ok('掃描出錯，下一輪再試' in _ws,
+   '★ 失敗時要在 Colab 印出來（老師才查得到原因）')
+_fail_branch = _ws[_ws.rindex('except Exception'):]
+ok('_temp_queue_cache[:]' not in _fail_branch,
+   '★★ 失敗時不可以清空排隊快取（清空會顯示成「目前沒有人在排隊」，'
+   '看起來像一切正常）')
 
 # ⚠️⚠️ 「執行緒起來了」≠「它真的連得上」。2026-09-03 老師看到
 #    「✅ 暫存區工作者已啟動」，但它每 8 秒都在失敗 —— 錯誤被後面的
@@ -1346,6 +1357,17 @@ ok(_st.index('_threading.Thread') > _st.index('except Exception'),
 #    「丟掉同名舊檔、建新 fileId」，而前端已通關的關卡不會再更新網址
 #    ⇒ 重驗一次，第一次的證書圖就變破圖（而成績、日期、清單都好好的，
 #      要等學生去看證書才會發現）。
+# ⚠️⚠️ 暫存區是用**日期**分資料夾的，而工作者只掃今天 ——
+#    跨過午夜的那一節課、或後端當掉隔天才重開，昨天那批就沒人處理，
+#    學生的成績直接不見，而且今天的清單是空的、看起來一切正常。
+ok('core.taipei_day(-1)' in _srv8,
+   '★★★ 要順便撈昨天的殘留（否則跨日的上傳會永遠沒人處理）')
+ok('def taipei_day' in _core_src,
+   '★★ 日期換算要用台北時間，而且只有一份（Colab 的時鐘是 UTC）')
+_yb = _srv8[_srv8.index('core.taipei_day(-1)'):][:400]
+ok('except Exception' in _yb,
+   '★★ 昨天那批撈不到不可以害今天的停擺')
+
 ok('core.ocr_passed_urls(sid, _term).get(str(_cid))' in _srv8,
    '★★★ 已經有圖的關要沿用第一張，不可以重傳（會把舊檔丟進垃圾桶）')
 _pb = _srv8[_srv8.index('if _passed:'):]

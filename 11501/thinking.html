@@ -1251,7 +1251,24 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         /* 後端說過了、本地卻沒記的，才要補 */
                         const mine = new Set(completedChallenges.map(String));
                         const missing = list.filter(id => !mine.has(String(id)));
-                        if (!missing.length) return;
+
+                        /* ══════════════════════════════════════════════
+                           自我修復：已經記了通關、但證書少一張圖的那些
+                           ══════════════════════════════════════════════
+                           ⚠️⚠️ 2026-09-03 老師問：「為什麼有些學生的通關證書
+                              沒有截圖？」★ 上面那行 missing 只挑「本地沒記過」
+                              的關卡 —— 一旦某一關被記成「通關但沒有圖」
+                              （例如當初後端還拿不到班級座號、圖沒傳成功，
+                              或補記時後端手上還沒有網址），它就永遠落在
+                              missing 之外，**再也沒有人回頭補那張圖**。
+                           ⇒ 後端有網址、而這裡沒有的，就把網址補回去。
+                           ⚠️ 只補網址，**不動**通關清單和完成日期
+                              （那兩個維持「保留第一次」）。
+                           ⚠️ 後端也沒有網址的，代表那張圖根本沒上傳成功過 ——
+                              救不回來，只能請學生重傳一次。 */
+                        const needUrl = list.filter(id =>
+                            mine.has(String(id)) && urls[String(id)] && !(certificateUrls && certificateUrls[String(id)]));
+                        if (!missing.length && !needUrl.length) return;
 
                         for (const id of missing) {
                             if (!alive) return;
@@ -1272,6 +1289,25 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         }
                         if (alive) {
                             console.log('[補記] 補上 ' + missing.length + ' 關');
+                        }
+
+                        /* ★ 把後端記得、這裡缺的那幾張網址補回 Firestore。
+                           冪等：值一樣就等於沒改，重複跑不會有副作用。 */
+                        if (needUrl.length && fbStore.db && user) {
+                            try {
+                                const patch = {};
+                                needUrl.forEach(id => { patch[String(id)] = urls[String(id)]; });
+                                await fbStore.setDoc(
+                                    fbStore.doc(fbStore.db, 'artifacts', 'comp-think-app',
+                                                'public', 'data', 'progress', user.docId),
+                                    { certificateUrls: patch,
+                                      lastUpdated: new Date().toISOString() },
+                                    { merge: true });
+                                setCertificateUrls(prev => ({ ...prev, ...patch }));
+                                console.log('[證書] 補回', needUrl.length, '張截圖網址');
+                            } catch (e) {
+                                /* 補不了就算了 —— 這是修補，不可以擋住上課 */
+                            }
                         }
                     } catch (e) {
                         /* 後端沒開、連不上、回傳格式怪 —— 都安靜跳過。
