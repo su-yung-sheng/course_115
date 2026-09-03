@@ -498,6 +498,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                ★ 「還在清單裡」＝「還沒處理完」，不必另外做狀態機。 */
             const [queue, setQueue] = useState([]);
             const [myUpName, setMyUpName] = useState("");
+            /* 後端最近一次掃暫存區成功了沒。⚠️ 失敗時**不可以**顯示成
+               「目前沒有人在排隊」—— 那會讓學生以為系統好好的。 */
+            const [scanOk, setScanOk] = useState(true);
+            const [scanErr, setScanErr] = useState("");
 
             /* 一列排隊資料 -> 「1410700 滑梯公園」。
                ⚠️ 認不出關卡就只顯示學號，不要編一個關卡名出來。 */
@@ -563,6 +567,13 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             try {
                                 const j = await res.json();
                                 setQueue(Array.isArray(j.queue) ? j.queue : []);
+                                /* ⚠️⚠️ 「掃到 0 筆」和「根本掃不到」在 queue 上
+                                   長得一模一樣。後端現在會回 scan.ok —— 沒有它的話
+                                   畫面會顯示「目前沒有人在排隊」，學生就對著一個
+                                   壞掉的系統一直等（2026-09-03 實際發生過）。
+                                   ⚠️ 舊後端沒有 scan 欄位（undefined）→ 當成正常。 */
+                                setScanOk(!(j.scan && j.scan.ok === false));
+                                setScanErr((j.scan && j.scan.error) || "");
                                 setOcrState(j.ocr_state || "");
                                 /* ⚠️ 舊後端沒有 worker 這個欄位（undefined）——
                                    那時不要顯示警告，不然每次都在喊狼來了。 */
@@ -749,7 +760,20 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                 </div>
                                 <div className="text-xs font-bold text-slate-400">{queue.length} 張等待辨識</div>
                             </div>
-                            {queue.length === 0 ? (
+                            {queue.length === 0 && !scanOk ? (
+                                <div className="text-sm bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-800">
+                                    <div className="font-bold mb-1">
+                                        <i className="fa-solid fa-triangle-exclamation mr-2"></i>
+                                        後端看不到暫存區 —— 請告訴老師
+                                    </div>
+                                    <div className="text-xs font-medium leading-relaxed">
+                                        ⚠️ 這不是你的問題，你的截圖已經上傳到雲端了，不會不見。<br />
+                                        老師：多半是 GAS 沒重新部署，或 Colab Secrets 的
+                                        GAS_UPLOAD_KEY 和 Apps Script 的 UPLOAD_KEY 對不起來。
+                                        {scanErr && <span className="block mt-1 opacity-75 break-all">（{scanErr}）</span>}
+                                    </div>
+                                </div>
+                            ) : queue.length === 0 ? (
                                 <div className="text-sm text-slate-400 py-2">
                                     目前沒有人在排隊 —— 現在傳最快。
                                     {/* ⚠️ 「伺服器活著」不等於「可以辨識」：剛重啟時模型還沒載入，

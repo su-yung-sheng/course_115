@@ -1291,6 +1291,32 @@ ok('setTrashed(true)' in _gs and 'temp_delete' in _gs,
 #   才被告知失敗；後端則一直重跑同一張，CPU 和 GAS 額度一起燒光。
 #   **每一張都會這樣**，等於整套不能用。
 # ⚠️ 而且它不會有任何錯誤訊息 —— 每一步分開看都「成功」了。
+# ⚠️⚠️ 時區：學生端上傳（ocrclient.js）**不送 day**，所以 GAS 用
+#    Asia/Taipei 算資料夾。後端這邊如果自己用 time.localtime() 算，
+#    那是 Colab 的 UTC —— 台北 00:00~07:59 會差一天，
+#    後端就去翻**昨天**的資料夾，列到的永遠是空的。
+#    ★ 症狀：圖明明在暫存區，排隊清單卻是空的，學生一直轉圈圈到 20 分鐘
+#      上限；而第一節課正好落在那個時段。日誌一樣乾乾淨淨。
+ok('strftime("%Y%m%d"' not in _srv8,
+   '★★★ 後端不可以自己算暫存區的日期 —— 一律讓 GAS 用台北時間決定'
+   '（Colab 是 UTC，早上會差一天）')
+ok('body = {"kind": "temp_list", "term": str(term)}' in _srv8,
+   '★★ 列清單時不帶 day（GAS 會補台北今天）')
+
+# ⚠️⚠️ 「掃到 0 筆」和「根本掃不到」不可以長得一樣。
+#    2026-09-03 老師實測卡在這裡：/api/queue-list 回 worker:true、queue:[]，
+#    畫面顯示「目前沒有人在排隊」，圖卻好好地躺在暫存區 ——
+#    後端其實每 8 秒都在失敗，而外面**完全看不出來**。
+ok('raise RuntimeError' in _srv8 and 'if out is None:' in _srv8,
+   '★★★ gas_temp_list 問不到要丟例外，不可以回空清單'
+   '（空清單會被顯示成「沒有人在排隊」）')
+ok('_temp_last_scan' in _srv8 and '"scan": scan' in _srv8,
+   '★★★ 掃描狀態要露到 /api/queue-list —— 沒有它就分不出'
+   '「沒人排隊」和「後端壞了」')
+_ws = _srv8[_srv8.index('def _temp_worker_loop'):]
+ok('"ok": False' in _ws.split('except Exception')[1][:400],
+   '★★ 掃描失敗要記下來（而且不要清空快取，清空看起來像一切正常）')
+
 ok('"from_temp": "1"' in _srv8,
    '★★★ 工作者的內部呼叫要帶 from_temp（這張本來就是從暫存區抓下來的）')
 ok('if not (request.form.get("from_temp") or "").strip():' in _srv8,
