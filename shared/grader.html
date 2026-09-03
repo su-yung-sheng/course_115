@@ -303,9 +303,17 @@ async function loadTask(){
         $('themeText').textContent=c.theme||'（老師尚未設定作業主題）';
         $('rulesText').textContent=c.rules?('評分重點：\n'+c.rules):'';
       }
+      /* ⚠️⚠️ 2026-09-03：這裡原本寫「老師尚未完成設定」——
+         老師看到就去找「批改標準是不是沒設」，但**批改標準跟這件事無關**。
+         has_api_key 為 false 的實際意思是「這台後端沒有 GEMINI_API_KEY_1」，
+         而拆成兩台之後最容易發生的正是這個：
+         評分站連到了 OCR 那台，或批改那台的金鑰存取權沒打開。
+         ★ 訊息要指向真正該檢查的東西，不然只會把人帶去看沒問題的地方。 */
       if(!c.has_api_key){
-        $('setupHint').textContent='⚠️ 老師尚未完成設定，暫時無法自評。';
-        setLight('on','🟢 已連線（老師尚未完成設定）');
+        $('setupHint').textContent=
+          '⚠️ 這台後端沒有 Gemini 金鑰，還不能批改（和作業主題有沒有設定無關）。'
+          +'請告訴老師：到 Colab Secrets 確認 GEMINI_API_KEY_1，並打開這本 notebook 的存取權。';
+        setLight('on','🟢 已連線，但這台沒有金鑰、不能批改');
       }else{
         setLight('on','🟢 已連線，可以開始自評');
       }
