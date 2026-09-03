@@ -284,7 +284,7 @@ if (!window.CONFIG) {
             不可以留白（留白會被當成「比對過了、沒問題」）。 */
       /* ⚠️ 拆成兩台時要講明「這一張說的是哪一台」——
          不然 ① 綠燈、學生卻連不上 OCR，會找錯方向。 */
-      var d = (TWO_HOSTS ? row('這一台', '批改用；OCR 在 <span class="font-mono text-xs">'
+      var d = (TWO_HOSTS ? row('這一台', 'Scratch 用；OCR 在 <span class="font-mono text-xs">'
                                + esc(OCR_SERVER) + '</span>') : '') +
               row('版本', '<span class="font-mono">' + esc(j.version || '不明') + '</span>') +
               row('程式指紋', j.fingerprint
@@ -669,8 +669,8 @@ if (!window.CONFIG) {
     btn.textContent = '檢查中…';
     cards.innerHTML = '';
 
-    var c1 = card('backend', '① Colab 後端版本' + (TWO_HOSTS ? '（批改）' : ''));
-    /* ⚠️⚠️ 拆成兩台之後，① 只驗得到批改那台。OCR 那台掛了的話，
+    var c1 = card('backend', '① Colab 後端版本' + (TWO_HOSTS ? '（Scratch）' : ''));
+    /* ⚠️⚠️ 拆成兩台之後，① 只驗得到Scratch 那台。OCR 那台掛了的話，
        ① 照樣綠燈，而學生的截圖驗證全部失敗 ——
        老師會從一張綠燈的卡開始找問題，那是最糟的起點。
        ⇒ 兩台時多一張專屬的卡。只開一台時不會出現（TWO_HOSTS 為 false）。 */

@@ -123,7 +123,7 @@ window.CONFIG = {
    *
    *   ⚠️ 兩台跑的是**同一本 backend.ipynb**，差別只在裝什麼、設什麼：
    *        這台（OCR）  → 要跑步驟 1b（PaddleOCR）、要設 CLASS_PASSCODE
-   *        另一台（批改）→ 跳過 1b，要設 GEMINI_API_KEY_1
+   *        另一台（Scratch）→ 跳過 1b，要設 GEMINI_API_KEY_1
    *      兩台都要設 NGROK_TOKEN（各自帳號的）與 FIREBASE_SA。
    *   ⚠️ 只開一台時就把這裡留空 —— 留空會自動退回 SERVER_URL，
    *      不會因為「忘了改回來」而連到一台沒開的機器。 */
