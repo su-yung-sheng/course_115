@@ -389,7 +389,24 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
         };
 
         // --- 證書製作/通關確認 Modal 組件 ---
-        const CertVerificationModal = ({ onClose, user, challenge, studyTime, onComplete }) => {
+        /* ══════════════════════════════════════════════════════════
+           通關確認：學生把截圖傳到**雲端**，Colab 有空再取來辨識
+           ══════════════════════════════════════════════════════════
+           ⚠️⚠️ 2026-09-03 老師：「圖片都上傳到雲端了，為什麼還會滿載
+              讓使用者無法上傳？」—— 因為上傳這個動作原本**還是打在 Colab 上**。
+              Colab 一忙（兩顆 CPU 被 OCR 佔滿），/health 就回得慢、
+              學生端判離線、鎖住按鈕 —— 學生連傳都傳不出去。
+           ★ 改成：上傳打 GAS（雲端硬碟），Colab 掛掉、滿載都不影響學生上傳。
+
+           ⚠️⚠️ 這個元件有一條**不可以再破掉的規則**：
+              上傳按鈕**不准**因為「連不上 Colab」而變灰。
+              （health-poll.test.js 盯著這一條。）
+
+           ★ 不再需要選關卡：關卡由檔名判定（和後端同一套規則，
+             見 shared/ocrclient.js 的 levelFromFilename）。
+           ★★ 這一份和 11501/thinking.html 是**同一套流程**，
+              兩邊要一起改 —— 這個 repo 已經在「只改一邊」上吃過好幾次虧。 */
+        const CertVerificationModal = ({ onClose, user, challenges, studyTime, onComplete, onOpenCerts }) => {
             // 設定集中在 config.js（換網址、換密碼只改那一支）
             /* ⚠️ 運算思維走 OCR_SERVER_URL（沒設就退回 SERVER_URL）。
                OCR 會把 CPU 吃滿，和 Scratch 批改擠在同一台時，
@@ -400,18 +417,49 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
             const API_BASE = (window.CONFIG.OCR_SERVER_URL || '').trim()
                              || window.CONFIG.SERVER_URL;
             const CLASS_PASS = window.CONFIG.CLASS_PASS;      // 需與 Colab Secrets 的 CLASS_PASSCODE2 一致
+            /* ★ 上傳的目的地：GAS（雲端硬碟的暫存區），不是 Colab。
+               ⚠️ 沒設定的話這一頁等於不能交作業 —— 要講出來，
+                  不可以只在 console 印一行然後讓按鈕默默沒反應。 */
             const GAS_WEB_APP_URL = window.CONFIG.GAS_UPLOAD_URL;
+            const GAS_URL = (GAS_WEB_APP_URL || '').trim();
+            const GAS_KEY = window.CONFIG.GAS_UPLOAD_KEY;
+            const TERM = (window.CONFIG && window.CONFIG.TERM) || '11502';
+            const SID = (() => {
+                try { return (sessionStorage.getItem('sid' + TERM) || '').trim(); }
+                catch (e) { return ''; }
+            })();
 
             /* ⚠️ 以前「還在連」和「連不上」顯示的是同一句「伺服器連線中...」——
-               老師因此分不出後端是還沒連上、還是根本掛了。分成兩句。 */
-            const OFFLINE_NOTE = "連不上伺服器 —— 請告訴老師（可能是後端沒開，或同時上線的人太多）";
+               老師因此分不出後端是還沒連上、還是根本掛了。分成兩句。
+               ⚠️⚠️ 2026-09-03 之後「連不上」的**意思變了**：
+                  上傳打的是 GAS，Colab 連不上並不影響交作業，
+                  只是看不到排隊清單而已。⇒ 話要跟著改。 */
+            const OFFLINE_NOTE = "看不到排隊清單（後端可能還沒開）—— 截圖照樣傳得出去，之後會自動處理";
             const [isOnline, setIsOnline] = useState(false);
-            const [netNote, setNetNote] = useState("伺服器連線中...");
+            const [netNote, setNetNote] = useState("連線中...");
             /* ⚠️ 「伺服器活著」不等於「可以辨識」：剛重啟時 Flask 已經在服務，
                但 PaddleOCR 模型要等第一次辨識才載入，第一位上傳的人會多等幾十秒。
-               引擎載入失敗時更要講出來 —— 那時傳什麼都會失敗。 */
+               引擎載入失敗時更要講出來 —— 那時排隊清單會一直不動。 */
             const [ocrState, setOcrState] = useState("");
+            /* ⚠️⚠️ 暫存區工作者沒起來（後端沒設 GAS Secrets）時，
+               圖會一直留在雲端沒有人取 —— 清單只增不減。 */
+            const [worker, setWorker] = useState(true);
             const [isProcessing, setIsProcessing] = useState(false);
+            /* 排隊清單：後端把暫存區的檔案列出來就是它（檔名帶學號和關卡）。
+               ★ 「還在清單裡」＝「還沒處理完」，不必另外做狀態機。 */
+            const [queue, setQueue] = useState([]);
+            const [myUpName, setMyUpName] = useState("");
+            /* 這次選到的關卡（由檔名判定）與看不懂檔名時要說的話 */
+            const [matched, setMatched] = useState(null);
+            const [nameNote, setNameNote] = useState("");
+
+            /* 一列排隊資料 -> 「1410700 智慧選卡」。
+               ⚠️ 認不出關卡就只顯示學號，不要編一個關卡名出來。 */
+            const queueLabel = (row) => {
+                const lv = window.levelFromFilename(row.name || '', challenges);
+                return (row.student_id || '') + (lv ? ' ' + lv.title : '');
+            };
+
             const [selectedFile, setSelectedFile] = useState(null);
             const [previewUrl, setPreviewUrl] = useState(null);
             const [result, setResult] = useState(null); 
@@ -421,86 +469,68 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
             const [certDate] = useState(formatDate(new Date()));
             const [certTime] = useState(formatTime(studyTime));
 
+            /* ══════════════════════════════════════════════════════
+               背景輪詢：排隊清單 ＝ 連線指示燈（同一支請求兼兩件事）
+               ══════════════════════════════════════════════════════
+               ⚠️⚠️ 2026-08-26 老師回報：多人連線之後卡在「伺服器連線中...」。
+                  原因是這個輪詢本身：每 5 秒一次 × 30 人 = 每分鐘 360 次、
+                  一次失敗就判離線（上傳按鈕跟著鎖死）、請求沒有逾時。
+               ⇒ 頻率降下來、失敗要容忍、背景分頁不打、請求要有逾時。
+               ⚠️⚠️ 2026-09-03 起再改一件更根本的事：**離線不再鎖按鈕**。
+                  上傳打的是 GAS，Colab 活不活著跟「能不能交作業」無關；
+                  以前那個連動正是「全班變成等待連線中」的最後一哩。
+               ★ 順便把 /health 併掉：這一支已經要問排隊清單，
+                 清單回得來就代表後端活著，不必再多打一種請求。 */
             useEffect(() => {
                 let interval;
-                /* ⚠️⚠️ 2026-08-26 老師回報：多人連線之後卡在「伺服器連線中...」。
-                   原因是這個輪詢本身：
-                     ‧ 原本每 5 秒一次，一個班 30 人就是**每分鐘 360 次**
-                       打到 ngrok，很容易撞到免費方案的請求上限
-                     ‧ 而且 setIsOnline(res.ok) 是**一次失敗就判離線**，
-                       上傳按鈕（disabled={!isOnline...}）跟著鎖死，
-                       學生就再也傳不出去 —— 後端其實還活著
-                     ‧ 沒有逾時，慢的請求會一直堆積
-                   ⇒ 頻率降下來、失敗要容忍、背景分頁不打、請求要有逾時。 */
-                /* ⚠️⚠️ 2026-08-26 老師再回報：「有一次後端當機，無法重啟，
-                   前端還一直送要求進來。」—— 判定離線之後照樣每 25 秒敲一次，
-                   30 台瀏覽器一起敲，網域一恢復就被打爆，反而更難重啟。
-                   ⇒ **指數退避**：連續失敗越多，間隔拉得越長（上限 5 分鐘），
-                     讓老師有空間把後端救回來；一旦成功立刻回到正常頻率。 */
-                /* ⚠️⚠️ 2026-09-03 老師問：「之前不是說全部上傳檔案在後端完成 OCR 嗎？」
-                   —— 對，而這正是矛盾所在：號碼牌制讓「後端忙」變成**正常狀態**，
-                   健康檢查卻還停在舊模型，把「回得慢」判成「掛了」。
-                   ★ 對已經送出的學生來說，那個離線判定**完全沒有意義**：
-                     他的截圖在後端跑著，前端連不連得上都不影響結果。
-                     而畫面說「等待伺服器連線」會讓他以為白傳了，
-                     於是重開視窗再傳一次 —— 分頁和輪詢加倍，
-                     CPU 更擠、更多人被判離線。這是會自我放大的故障。
-                   ⇒ 手上有號碼牌時，改說「伺服器忙碌中」並**不鎖按鈕**。
-                   ⚠️ 用 localStorage 而不是 isProcessing：後者是 state，
-                      在這個 useEffect 的閉包裡會是過期的值。 */
-                const hasTicket = () => {
-                    try { return !!localStorage.getItem('thinkingTicket'); }
-                    catch (e) { return false; }
-                };
-                const goOffline = () => {
-                    if (hasTicket()) {
-                        setNetNote('伺服器忙碌中 —— 你的截圖已經在排隊，結果不會不見');
-                        return;                 // ★ 不鎖按鈕、不判離線
-                    }
-                    setIsOnline(false);
-                    setNetNote(OFFLINE_NOTE);
-                };
                 const MISS_LIMIT = 3;        // 連續失敗這麼多次才算真的離線
                 const BASE_MS = 25000, MAX_MS = 300000;
                 let misses = 0, alive = true;
+                /* ⚠️⚠️ 後端當機時，30 台瀏覽器一起每 25 秒敲一次，網域一恢復
+                   就被打爆，反而更難重啟。⇒ 指數退避。 */
                 const nextDelay = () => (misses < MISS_LIMIT ? BASE_MS
                     : Math.min(MAX_MS, BASE_MS * Math.pow(2, misses - MISS_LIMIT + 1)));
-                const checkHealth = async () => {
-                    if(isProcessing) return;         // 自己正在辨識就不用問
-                    if(document.hidden) return;      // 分頁在背景，不要浪費配額
+                const goOffline = () => {
+                    /* ⚠️ 只改文字，**不動上傳按鈕**。
+                       這是 2026-09-03 那次故障的核心教訓。 */
+                    setIsOnline(false);
+                    setNetNote(OFFLINE_NOTE);
+                };
+                const checkQueue = async () => {
+                    // 自己正在等結果時，waitViaCloud 已經在問同一支了，不重複打
+                    if (isProcessing) return;
+                    if (document.hidden) return;      // 分頁在背景，不要浪費配額
                     const ctl = new AbortController();
-                    /* ⚠️⚠️ 2026-09-03 老師回報：很多人開兩個視窗上傳之後，
-                       **全部都變成「等待連線中」**。
-                       ★ 後端沒事 —— /health 只讀記憶體、很快。問題是 Colab 只有
-                         2 顆 CPU，OCR 一跑就 100%，Flask 的執行緒排不到 CPU，
-                         回應因此超過 8 秒 → 連續三次 → 判離線 → 按鈕鎖住。
-                         而學生看到「等待伺服器連線」就會重開視窗，讓事情更糟。
-                       ⇒ 逾時放寬到 15 秒：後端忙的時候本來就該多等一下，
-                         真的掛掉時仍然三次就判離線（最多晚 21 秒發現）。 */
                     const timer = setTimeout(() => ctl.abort(), 15000);
                     try {
-                        const res = await fetch(API_BASE + "/health", {
+                        const res = await fetch(API_BASE + "/api/queue-list", {
                             headers: { 'ngrok-skip-browser-warning': '1' },
-                            signal: ctl.signal
+                            cache: 'no-store', signal: ctl.signal
                         });
-                        if(!alive) return;
-                        if(res.ok){
-                            misses = 0; setIsOnline(true); setNetNote("伺服器連線中...");
-                            try { const j = await res.json(); setOcrState(j.ocr_state || ""); }
-                            catch (e) { setOcrState(""); }
+                        if (!alive) return;
+                        if (res.ok) {
+                            misses = 0; setIsOnline(true); setNetNote("連線中...");
+                            try {
+                                const j = await res.json();
+                                setQueue(Array.isArray(j.queue) ? j.queue : []);
+                                setOcrState(j.ocr_state || "");
+                                /* ⚠️ 舊後端沒有 worker 這個欄位（undefined）——
+                                   那時不要顯示警告，不然每次都在喊狼來了。 */
+                                setWorker(j.worker !== false);
+                            } catch (e) { /* 回的不是 JSON：當成這一輪沒問到 */ }
                         }
-                        else if(++misses >= MISS_LIMIT){ goOffline(); }
-                    } catch(e) {
-                        if(!alive) return;
-                        if(++misses >= MISS_LIMIT){ goOffline(); }
+                        else if (++misses >= MISS_LIMIT) { goOffline(); }
+                    } catch (e) {
+                        if (!alive) return;
+                        if (++misses >= MISS_LIMIT) { goOffline(); }
                     } finally {
                         clearTimeout(timer);
                     }
                 };
                 /* 用 setTimeout 遞迴而不是 setInterval —— 間隔要能隨失敗次數變長。 */
                 const loop = async () => {
-                    await checkHealth();
-                    if(alive) interval = setTimeout(loop, nextDelay());
+                    await checkQueue();
+                    if (alive) interval = setTimeout(loop, nextDelay());
                 };
                 loop();
                 /* 「立刻再試一次」：離線時給學生／老師一個不用等退避的出口。 */
@@ -512,262 +542,146 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                 if(e.target.files.length > 0) {
                     const file = e.target.files[0];
                     setSelectedFile(file);
+
+                    /* ══════════════════════════════════════════════
+                       關卡由檔名判定 —— 認不出來就當場擋下
+                       ══════════════════════════════════════════════
+                       ★ Windows 的「視窗擷取」會存成
+                         「智慧選卡 - Google Chrome 2027_2_10 下午 03_47_38.png」，
+                         關卡名就在裡面 —— 正常流程一定認得出來。
+                       ⚠️ 但 Win+Shift+S 存出來的是「螢幕擷取畫面 ….png」，
+                          裡面沒有任何關卡資訊。這種**一定要在這裡擋**：
+                          放它出去的話，學生要排完 20 分鐘的隊，
+                          才會被告知「不知道你傳的是哪一關」。 */
+                    const lv = window.levelFromFilename(file.name, challenges);
+                    setMatched(lv);
+                    setNameNote(lv ? "" : file.name);
+
                     setPreviewUrl(URL.createObjectURL(file));
                     setResult(null);
+                    setMyUpName("");
                 }
             };
 
+            /* ══════════════════════════════════════════════════════
+               送出：圖上雲端，然後等「從排隊清單消失」
+               ══════════════════════════════════════════════════════
+               ⚠️⚠️ 這裡**不打 Colab**。以前是 POST /analyze-async 拿號碼牌，
+                  Colab 一忙就送不出去 —— 那正是要修掉的東西。
+               ★ 判斷「我好了沒」＝「我的檔案從暫存區的清單裡消失了」，
+                 因為後端處理完就刪檔。 */
             const startAnalysis = async () => {
-                if(!selectedFile) return;
+                if(!selectedFile || !matched) return;
+                if(!GAS_URL) {
+                    setResult({ status: 'error',
+                        msg: "這一頁還沒設定截圖上傳位置（GAS_UPLOAD_URL）—— 請告訴老師，不是你的問題。" });
+                    return;
+                }
                 setIsProcessing(true);
                 setResult(null);
 
-                // ── 排隊回饋：先問目前排隊人數，讓學生知道自己排第幾個 ──
-                //    30 人同時上傳時，沒有回饋學生會一直重按，反而把佇列塞爆。
-                /* ⚠️⚠️ 2026-08-26 老師問：「有顯示排隊人數，但為什麼會變多？有人插隊？」
-                   沒有人插隊 —— 是拿 pending 當位置用錯了。
-                   pending 是「此刻同時在場的人數」，後面進來的人也算進去，
-                   所以先送出的人反而看到數字變大。
-                   ⇒ 改用**號碼牌**：送出前先記下目前發到第幾號，我的就是它 +1；
-                     之後 位置 = 我的號碼 − 已完成 − 1，這個數字只會遞減。 */
-                /* ⚠️ 老師 2026-08-26：「能讓學生理解自己排隊的順位以及可能時間嗎？」
-                   順位可以，時間本來不行 —— 11501 完全沒報時間，
-                   11502 用寫死的 6 秒，而後端的常數是 3 秒，三個數字互不相同。
-                   而且那都是**單人**的速度，全班一起用時每張慢很多，
-                   報出來一定低估：說「約 1 分鐘」卻等了 3 分鐘，
-                   學生會以為系統壞了而重按 —— 比不報更糟。
-                   ⇒ 改用後端回報的 avg_seconds（最近幾張的實際處理時間）。 */
-                const waitText = (ahead, avgSec) => {
-                    const per = Number(avgSec) > 0 ? Number(avgSec) : 3;
-                    const sec = Math.round(ahead * per);
-                    if (ahead <= 0) return "輪到你了";
-                    if (sec < 60) return `大約還要 ${Math.max(5, Math.round(sec / 5) * 5)} 秒`;
-                    return `大約還要 ${Math.round(sec / 60 * 10) / 10} 分鐘`;
-                };
-                let myPos = 1, myTicket = null, shownAhead = null, avgSec = 0;
-                try {
-                    const q = await (await fetch(API_BASE + "/queue", {
-                        headers: { 'ngrok-skip-browser-warning': '1' }, cache: 'no-store'
-                    })).json();
-                    myPos = (q.pending || 0) + 1;
-                    if (Number.isFinite(Number(q.ticket))) myTicket = Number(q.ticket) + 1;
-                    if (Number(q.avg_seconds) > 0) avgSec = Number(q.avg_seconds);
-                } catch (e) { /* 問不到就當自己第一個，不影響流程 */ }
-
-                setResult({
-                    status: 'queued',
-                    msg: myPos > 1
-                        ? `🧠 已送出！你排第 ${myPos} 位，前面還有 ${myPos - 1} 位同學（${waitText(myPos - 1, avgSec)}）`
-                        : '🧠 已送出，正在辨識中…'
-                });
-
-                // 等待期間持續更新前面還有幾位
-                const queueTimer = setInterval(async () => {
-                    try {
-                        const q = await (await fetch(API_BASE + "/queue", {
-                            headers: { 'ngrok-skip-browser-warning': '1' }, cache: 'no-store'
-                        })).json();
-                        if (Number(q.avg_seconds) > 0) avgSec = Number(q.avg_seconds);
-                        let ahead;
-                        if (myTicket != null && Number.isFinite(Number(q.served))) {
-                            ahead = Math.max(0, myTicket - Number(q.served) - 1);
-                            /* 估算難免有誤差，但**顯示出來的數字只准變小** ——
-                               變大就又是一次「被插隊」的錯覺。 */
-                            shownAhead = (shownAhead == null) ? ahead : Math.min(shownAhead, ahead);
-                            ahead = shownAhead;
-                        } else {
-                            ahead = Math.max(0, (q.pending || 1) - 1);   // 舊後端的退路
-                        }
-                        setResult({
-                            status: 'queued',
-                            msg: ahead > 0
-                                ? `🧠 辨識中…前面還有 ${ahead} 位同學，${waitText(ahead, avgSec)}（請不要重複按）`
-                                : '🧠 輪到你了，辨識中…請稍候'
-                        });
-                    } catch (e) { /* 忽略單次失敗 */ }
-                /* ⚠️ 這裡原本是 3 秒一次。辨識期間 30 人同時等，
-                   就是**每分鐘 600 次**請求 —— 比健康檢查還兇，
-                   而且正好發生在後端最忙的時候。排隊人數不需要這麼即時。 */
-                }, 8000);
-
-                const englishMappings = {
-                    "智慧選卡": "card search",
-                    "必勝棋局": "winnable chess",
-                    "變數謎題": "variable puzzle",
-                    "遊園專車": "amusement park bus",
-                    "智慧圓環": "enter ring",
-                    "烤車輪餅": "grilled wheel pie",
-                    "合作學習": "cooperative learning",
-                    "校慶點心": "school anniversary",
-                    "夾娃娃機": "claw machine",
-                    "兌領福袋": "blind box exchange"
-                };
-                const engTitle = englishMappings[challenge.title] || "";
-
-                const formData = new FormData();
-                formData.append("file", selectedFile);
-                formData.append("keywords", `挑戰成功,${challenge.title},${engTitle}`);
-                formData.append("password", (CLASS_PASS || "").trim());
-                /* ⚠️ 帶學號：後端要靠它擋「同一個人開兩個分頁一起傳」。
-                   OCR 是單執行緒，一個人佔兩個位置就是全班多等一輪。 */
-                formData.append("student_id",
-                    (sessionStorage.getItem('sid' + ((window.CONFIG && window.CONFIG.TERM) || '11502')) || '').trim());
-                /* ⚠️⚠️ 2026-09-02：截圖改由**後端**上傳到雲端硬碟。
-                   原本是前端在判定通過之後才傳，學生一旦中途離開，
-                   那張圖只存在他的瀏覽器記憶體裡就跟著沒了 ——
-                   成績記得到，證書的截圖卻缺一張。
-                   ★ 後端本來就握著那張圖（它要拿來辨識），由它上傳最直接，
-                     而且「證書上的截圖」和「判定用的截圖」保證是同一張。
-                   ⇒ 這幾個欄位是 GAS 拼資料夾路徑用的，缺一個就不會傳。
-                   ⚠️ 後端沒設 GAS Secrets 時會回 drive_url = null，
-                      前端就照舊自己傳（向後相容，不會漏備份）。 */
-                formData.append("term", (window.CONFIG && window.CONFIG.TERM) || '11502');
-                formData.append("class_room", String((user && user.classRoom) || ''));
-                formData.append("seat_no", String((user && user.seatNo) || ''));
-                formData.append("challenge_id", String(challenge.id));
-
-
-                /* ⚠️⚠️ 這裡原本是「POST /analyze 然後掛著等回應，180 秒逾時」。
-                   2026-09-02 實測：一張要 24 秒（2 個 CPU 名額並行時完成一張的間隔），
-                   180 秒**只夠撐到第 7～8 位**。第 9 位以後，後端其實跑完也判過了，
-                   前端卻已經放棄連線 —— 學生看到「連線錯誤」，那張圖白跑。
-                   ★ 這不是「等太久」的體驗問題，是「後半班一定失敗」的可靠性問題。
-                   ⇒ 改用號碼牌制（shared/ocrclient.js，和 11501 共用同一份）。
-                   ⚠️ 舊後端沒有 /analyze-async 時會自動退回原本的同步流程 ——
-                      老師還沒重新執行 notebook 的那段時間，這一頁不可以壞。 */
                 const upCtl = new AbortController();
-                /* ★ 最後防線，放得很寬；真正的放棄邏輯在 ocrclient.js（20 分鐘）。 */
+                /* ★ 最後防線，放得很寬：真正的放棄邏輯在 ocrclient.js
+                     的 GIVE_UP_MS（20 分鐘）。 */
                 const upTimer = setTimeout(() => upCtl.abort(), 25 * 60 * 1000);
                 try {
-                    const out = await window.submitScreenshot({
-                        base: API_BASE,
-                        formData,
-                        signal: upCtl.signal,
-                        storageKey: 'thinkingTicket',
-                        challengeId: challenge.id,
-                        onQueue: (ahead, avg) => {
-                            if (Number(avg) > 0) avgSec = Number(avg);
-                            /* ★ 和 queueTimer 共用 shownAhead：數字只准變小。 */
-                            shownAhead = (shownAhead == null) ? ahead : Math.min(shownAhead, ahead);
-                            setResult({
-                                status: 'queued',
-                                msg: shownAhead > 0
-                                    ? `🧠 辨識中…前面還有 ${shownAhead} 位同學，${waitText(shownAhead, avgSec)}（請不要重複按）`
-                                    : '🧠 輪到你了，辨識中…請稍候'
-                            });
-                        },
+                    /* ① 上傳到雲端暫存區。⚠️ 這是唯一會讓學生白做的一步。 */
+                    const up = await window.submitViaCloud({
+                        gasUrl: GAS_URL, gasKey: GAS_KEY, term: TERM,
+                        sid: SID, file: selectedFile, signal: upCtl.signal
                     });
-                    if (!out.ok && out.status !== 'done') {
-                        /* ⚠️ 429（同一人已有一張在跑）、gone（號碼牌過期／後端重啟）
-                           都寫得很清楚，不要用「伺服器拒絕連線」蓋掉。 */
-                        let why = "伺服器拒絕連線";
-                        if (out.data && out.data.message) why = out.data.message;
-                        throw new Error(why);
+                    if (!up.ok) {
+                        throw new Error((up.data && up.data.message) || '截圖沒有上傳成功');
                     }
+                    setMyUpName(up.upName || "");
+
+                    /* ② 等結果。中途 Colab 掛掉也繼續等 —— 圖已經在雲端了。 */
+                    const out = await window.waitViaCloud({
+                        base: API_BASE, sid: SID, term: TERM,
+                        challengeId: matched.id, level: matched.title,
+                        onQueue: (list) => setQueue(Array.isArray(list) ? list : []),
+                        signal: upCtl.signal
+                    }, up.upName);
 
                     const data = out.data || {};
+                    if (out.status !== 'done') {
+                        throw new Error(data.message || '等不到結果');
+                    }
+                    // 🔒 判定由後端裁決（成績寫在後端的通關紀錄裡），前端只負責顯示
+                    if (data.pass === true) {
+                        setResult({ status: 'uploading', msg: "驗證成功！正在上傳備份至雲端硬碟..." });
 
-                    if(data.status === "success") {
-                        const rawTexts = data.raw_text || [];
-
-                        // 🔒 判定改由「後端」裁決（data.pass）：關鍵字比對全部在伺服器做，
-                        //    前端只負責顯示結果，學生用開發者工具改不了通關條件。
-                        if(data.pass === true) {
-                            setResult({ status: 'uploading', msg: "截圖驗證成功！正在上傳備份至雲端硬碟..." });
-                            
-                            // 開始上傳截圖至 Google Drive (GAS)
-                            /* ⚠️⚠️ 2026-09-02：截圖改由**後端**上傳（它本來就握著那張圖）。
-                               原本只有前端會傳，學生一旦中途離開，那張圖就跟著瀏覽器沒了 ——
-                               成績記得到，證書的截圖卻缺一張。
-                               ⇒ 後端傳好就用它的網址；後端沒設 GAS Secrets（或傳失敗）時
-                                 data.drive_url 是 null，就退回前端自己傳（不會漏備份）。 */
-                            let finalImageUrl = data.drive_url || "";
-                            let uploadNote = "";        // 失敗時要讓學生／老師看得到，不能只寫 console
-                            try {
-                                if (finalImageUrl) {
-                                    /* 後端已經傳好了，這裡什麼都不用做 */
-                                } else if (!GAS_WEB_APP_URL || !GAS_WEB_APP_URL.startsWith("http")) {
-                                    uploadNote = "（截圖備份未設定，僅記錄通關）";
-                                } else {
-                                    const base64Data = await new Promise((resolve) => {
-                                        const reader = new FileReader();
-                                        reader.readAsDataURL(selectedFile);
-                                        reader.onload = () => resolve(reader.result.split(',')[1]);
-                                    });
-
-                                    const gasPayload = {
-                                        // 共用 GAS 靠 term 決定寫進哪個學期資料夾，不可省略
-                                        term: window.CONFIG.TERM,
-                                        key: window.CONFIG.GAS_UPLOAD_KEY,
-                                        classRoom: user.classRoom,
-                                        seatNo: user.seatNo,
-                                        challengeId: String(challenge.id).padStart(2, '0'),
-                                        mimeType: selectedFile.type,
-                                        base64: base64Data
-                                    };
-
-                                    const gasRes = await fetch(GAS_WEB_APP_URL, {
-                                        method: 'POST',
-                                        body: JSON.stringify(gasPayload),
-                                        headers: { 'Content-Type': 'text/plain;charset=utf-8' } // 避免 CORS 預檢
-                                    });
-
-                                    const raw = await gasRes.text();
-                                    let gasData = null;
-                                    try { gasData = JSON.parse(raw); } catch (_) {}
-
-                                    if (!gasData) {
-                                        // GAS 回傳 HTML 幾乎都是「部署權限不是『任何人』」造成的
-                                        uploadNote = "（截圖備份失敗：Apps Script 沒有回傳 JSON，"
-                                                   + "請確認部署設定的『誰可以存取』是「任何人」）";
-                                        console.error("GAS 非 JSON 回應：", raw.slice(0, 300));
-                                    } else if (gasData.success) {
-                                        finalImageUrl = gasData.url;
-                                        // 印出實際落點，方便老師核對存放位置是否正確
-                                        console.log('[截圖備份] 已存到：', gasData.path, gasData.url);
-                                    } else {
-                                        uploadNote = "（截圖備份失敗：" + (gasData.message || "未知錯誤") + "）";
-                                        console.error("GAS 儲存返回錯誤:", gasData.message);
-                                    }
-                                }
-                            } catch (uploadErr) {
-                                uploadNote = "（截圖備份失敗：" + uploadErr.message + "）";
-                                console.error("圖片上傳 Drive 失敗:", uploadErr);
-                            }
-
-                            setResult({
-                                status: 'pass',
-                                msg: finalImageUrl
-                                    ? "存檔完成！已為您生成通關證書。"
-                                    : "已記錄通關並生成證書 " + uploadNote
+                        /* ⚠️⚠️ 截圖備份還是要前端做：雲端這條路後端拿不到
+                           班級和座號（檔名裡只有學號），gas_upload_shot 缺欄位
+                           就不會上傳。⇒ 這張圖還在手上時把它傳好，
+                           不然證書那一格會是空的。
+                           ⚠️ 失敗要讓學生／老師看得到，不能只寫 console。 */
+                        let finalImageUrl = "";
+                        let uploadNote = "";
+                        try {
+                            const base64Data = await window.fileToBase64(selectedFile);
+                            const gasPayload = {
+                                // 共用 GAS 靠 term 決定寫進哪個學期資料夾，不可省略
+                                term: TERM,
+                                key: GAS_KEY,
+                                classRoom: user.classRoom,
+                                seatNo: user.seatNo,
+                                challengeId: String(matched.id).padStart(2, '0'),
+                                mimeType: selectedFile.type,
+                                base64: base64Data
+                            };
+                            const gasRes = await fetch(GAS_URL, {
+                                method: 'POST',
+                                body: JSON.stringify(gasPayload),
+                                headers: { 'Content-Type': 'text/plain;charset=utf-8' } // 避免 CORS 預檢
                             });
-                            onComplete(challenge.id, certDate, finalImageUrl);
-                        } else {
-                            // 失敗理由也由後端提供，前端不再自行判斷
-                            const errors = (data.reasons && data.reasons.length)
-                                ? data.reasons
-                                : ["截圖未通過驗證，請確認畫面有『挑戰成功』與關卡名稱"];
-                            setResult({ status: 'fail', msg: "截圖驗證失敗，請確認圖片內容：", errors: errors });
+                            const raw = await gasRes.text();
+                            let gasData = null;
+                            try { gasData = JSON.parse(raw); } catch (_) {}
+
+                            if (!gasData) {
+                                // GAS 回傳 HTML 幾乎都是「部署權限不是『任何人』」造成的
+                                uploadNote = "（截圖備份失敗：Apps Script 沒有回傳 JSON，"
+                                           + "請確認部署設定的『誰可以存取』是「任何人」）";
+                                console.error("GAS 非 JSON 回應：", raw.slice(0, 300));
+                            } else if (gasData.success) {
+                                finalImageUrl = gasData.url;
+                                console.log('[截圖備份] 已存到：', gasData.path, gasData.url);
+                            } else {
+                                uploadNote = "（截圖備份失敗：" + (gasData.message || "未知錯誤") + "）";
+                            }
+                        } catch (uploadErr) {
+                            uploadNote = "（截圖備份失敗：" + uploadErr.message + "）";
+                            console.error("圖片上傳 Drive 失敗:", uploadErr);
                         }
+
+                        onComplete(matched.id, certDate, finalImageUrl);
+                        setResult({ status: 'pass',
+                            msg: (SID ? SID + ' ' : '') + matched.title
+                                 + ' 證書完成　請到證書區查看',
+                            note: uploadNote });
                     } else {
-                        setResult({ status: 'error', msg: "辨識失敗：" + data.message });
+                        // 失敗理由也由後端提供，前端不再自行判斷
+                        const errors = (data.reasons && data.reasons.length)
+                            ? data.reasons
+                            : ["截圖未通過驗證，請確認畫面有『挑戰成功』與關卡名稱"];
+                        setResult({ status: 'fail', msg: "截圖驗證失敗，請確認圖片內容：", errors: errors });
                     }
                 } catch(err) {
                     /* ⚠️⚠️ 這裡原本一律顯示「請確認伺服器正在執行，且 API 網址正確」——
-                       那是講給老師聽的，學生看了只會不知所措；而且它把
-                       「後端有話要說」（429、號碼牌過期）和「真的斷線」
-                       蓋成同一句。⇒ 後端說得清楚的就照原話。 */
+                       那是講給老師聽的，學生看了只會不知所措。
+                       ⇒ 上傳／後端說得清楚的就照原話，其餘才用通則。 */
                     const raw = (err && err.message) || '';
                     const isOwn = raw && raw !== 'Failed to fetch'
                                   && !/aborted|NetworkError|Load failed/i.test(raw);
                     setResult({
                         status: 'error',
                         msg: isOwn ? raw
-                             : "連不上辨識伺服器 —— 可能是後端還沒開，或正在忙。"
-                               + "⚠️ 這不是你的截圖有問題，等一下再試一次；還是不行就告訴老師。"
+                             : "截圖沒有送出去 —— ⚠️ 這不是你的截圖有問題，"
+                               + "請檢查網路，等一下再試一次；還是不行就告訴老師。"
                     });
                 } finally {
-                    clearInterval(queueTimer);   // 停掉排隊輪詢
+                    clearTimeout(upTimer);
                     setIsProcessing(false);
                 }
             };
@@ -782,10 +696,12 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                         <div className="text-center mb-8">
                             <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-sm font-semibold text-slate-500 mb-6 shadow-sm transition-colors">
                                 <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse shadow-[0_0_0_4px_rgba(16,185,129,0.2)]' : 'bg-slate-300'}`}></span>
+                                {/* ⚠️ 老師 2026-09-03：「上方只顯示連線中，下面列排隊清單。」
+                                    ★ 這一列**只是狀態**，不再暗示「能不能上傳」。 */}
                                 <span>{!isOnline ? netNote
                                     : ocrState === "error" ? "⚠️ 辨識引擎沒有就緒，請告訴老師"
-                                    : ocrState === "idle" ? "伺服器連線成功（第一位上傳的同學會多等約 30 秒載入引擎）"
-                                    : "伺服器連線成功"}</span>
+                                    : !worker ? "⚠️ 後端沒有在收件（排隊清單不會前進），請告訴老師"
+                                    : "連線中"}</span>
                                 {!isOnline && (
                                     <button onClick={() => window.__retryHealth && window.__retryHealth()}
                                         className="ml-2 text-xs font-bold underline text-slate-500 hover:text-slate-800">
@@ -794,7 +710,49 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                 )}
                             </div>
                             <h2 className="text-3xl sm:text-4xl font-black text-slate-800 mb-3 tracking-tight">運算思維通關確認系統</h2>
-                            <p className="text-slate-500 font-medium">自動辨識通關截圖，並結構化輸出成績資料</p>
+                            <p className="text-slate-500 font-medium">上傳通關截圖，系統會自己認出是哪一關</p>
+                        </div>
+
+                        {/* ══════════════════════════════════════════════
+                            排隊清單 ＝ 雲端暫存區裡還沒處理完的檔案
+                            ══════════════════════════════════════════════
+                            ★ 「還在清單裡」＝「還沒輪到」，「不在清單裡」＝「處理完了」。
+                            ⚠️ 自己那一列要標出來 —— 30 人的清單裡找不到自己
+                               等於沒有這個功能。 */}
+                        <div className="mb-8 bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="text-sm font-bold text-slate-700">
+                                    <i className="fa-solid fa-list-ol text-green-500 mr-2"></i>目前排隊
+                                </div>
+                                <div className="text-xs font-bold text-slate-400">{queue.length} 張等待辨識</div>
+                            </div>
+                            {queue.length === 0 ? (
+                                <div className="text-sm text-slate-400 py-2">
+                                    目前沒有人在排隊 —— 現在傳最快。
+                                    {/* ⚠️ 「伺服器活著」不等於「可以辨識」：剛重啟時模型還沒載入，
+                                        第一位上傳的人會多等幾十秒。這件事要先講，
+                                        不然他會以為卡住了而重傳。
+                                        ★ 放在這裡而不是上面那一列 —— 老師要的是
+                                          「上方只顯示連線中」。 */}
+                                    {ocrState === "idle" && (
+                                        <span className="block text-xs mt-1">（第一位上傳的同學會多等約 30 秒載入辨識引擎）</span>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="max-h-40 overflow-y-auto flex flex-col gap-1">
+                                    {queue.map((row, i) => {
+                                        const mine = myUpName &&
+                                            ((row.student_id ? row.student_id + '-' : '') + row.name) === myUpName;
+                                        return (
+                                            <div key={i} className={`text-sm px-3 py-1.5 rounded-lg font-medium flex items-center gap-2 ${mine ? 'bg-green-600 text-white' : 'text-slate-600'}`}>
+                                                <span className={`text-xs font-mono ${mine ? 'text-green-200' : 'text-slate-400'}`}>({i + 1})</span>
+                                                <span>{queueLabel(row)}</span>
+                                                {mine && <span className="text-xs font-bold ml-auto">← 你</span>}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -814,10 +772,35 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                             <>
                                                 <i className="fa-solid fa-cloud-arrow-up text-4xl text-slate-400 mb-4 group-hover:text-green-500 group-hover:scale-110 transition-transform"></i>
                                                 <div className="text-slate-500 font-medium">點擊或拖曳圖片至此處</div>
-                                                <div className="text-xs text-slate-400 mt-2">系統將驗證是否包含「{challenge.title}」與「挑戰成功」</div>
+                                                <div className="text-xs text-slate-400 mt-2">系統會自己從檔名認出關卡，不用先選</div>
                                             </>
                                         )}
                                     </div>
+
+                                    {/* ★ 認出關卡就講出來 —— 學生要看得到系統認成哪一關，
+                                        才有機會在送出前發現自己傳錯圖。 */}
+                                    {selectedFile && matched && (
+                                        <div className="mt-3 text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
+                                            <i className="fa-solid fa-circle-check mr-2"></i>
+                                            系統認出這是「{matched.title}」的截圖
+                                        </div>
+                                    )}
+
+                                    {/* ⚠️⚠️ 檔名認不出關卡 —— 在這裡擋住，不要讓他傳出去白排隊。 */}
+                                    {selectedFile && !matched && (
+                                        <div className="mt-3 text-sm bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-800">
+                                            <div className="font-bold mb-1">
+                                                <i className="fa-solid fa-triangle-exclamation mr-2"></i>
+                                                這個檔名看不出是哪一關，先不要傳
+                                            </div>
+                                            <div className="text-xs font-medium mb-2 text-amber-700 break-all">你選的是：{nameNote}</div>
+                                            <div className="text-xs font-medium leading-relaxed">
+                                                檔名要含關卡名，例如「智慧選卡 - Google Chrome ….png」。<br />
+                                                ⇒ 請用 <b>Windows + Alt + PrintScreen</b>（擷取整個視窗）重截一次，
+                                                或把檔名改成關卡名開頭再上傳。
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <button 
@@ -830,8 +813,15 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                                  白等一次辨識（實測約 34 秒）還佔掉別人的位置
                                            error 系統／連線問題 ⇒ **重按有意義，不可以擋**
                                        ⇒ 擋 pass 與 fail，放行 error。
-                                       ⚠️ 換圖時 handleFileChange 會清掉 result，按鈕自然解鎖。 */
-                                    disabled={!isOnline || !selectedFile || isProcessing || result?.status === 'uploading' || result?.status === 'queued' || result?.status === 'pass' || result?.status === 'fail'}
+                                       ⚠️ 換圖時 handleFileChange 會清掉 result，按鈕自然解鎖。
+
+                                       ⚠️⚠️ 2026-09-03：**這裡不可以再看 isOnline**。
+                                          上傳打的是 GAS，Colab 活不活著跟能不能交作業無關；
+                                          舊的 `!isOnline ||` 正是「全班變成等待連線中、
+                                          按鈕全灰」那次故障的最後一哩。
+                                          （health-poll.test.js 盯著這一條。）
+                                       ★ 改成擋「檔名認不出關卡」：那才是真的不能傳。 */
+                                    disabled={!selectedFile || !matched || isProcessing || result?.status === 'uploading' || result?.status === 'queued' || result?.status === 'pass' || result?.status === 'fail'}
                                     className="w-full py-4 bg-green-500 text-white rounded-2xl font-bold flex justify-center items-center gap-2 shadow-[0_10px_20px_-10px_rgba(99,102,241,1)] hover:-translate-y-1 hover:shadow-[0_15px_25px_-10px_rgba(99,102,241,1)] transition-all disabled:bg-slate-300 disabled:shadow-none disabled:transform-none disabled:cursor-not-allowed mt-2"
                                 >
                                     {isProcessing ? (
@@ -842,19 +832,25 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                         <><i className="fa-solid fa-image"></i> 請換一張截圖再驗</>
                                     ) : result?.status === 'uploading' ? (
                                         <><i className="fa-solid fa-cloud-arrow-up animate-bounce"></i> 圖片上傳雲端硬碟中...</>
-                                    ) : !isOnline ? (
-                                        <><i className="fa-solid fa-plug-circle-xmark"></i> 等待伺服器連線</>
                                     ) : !selectedFile ? (
                                         <><i className="fa-solid fa-upload"></i> 請先上傳截圖</>
+                                    ) : !matched ? (
+                                        <><i className="fa-solid fa-file-circle-question"></i> 檔名看不出關卡，請重截一次</>
                                     ) : (
                                         <><i className="fa-solid fa-wand-magic-sparkles"></i> 驗證截圖並產生證書</>
                                     )}
                                 </button>
 
                                 {isProcessing && (
-                                    <div className="text-center mt-6 animate-pulse">
+                                    <div className="text-center mt-6">
                                         <i className="fa-solid fa-spinner text-3xl text-green-500 animate-spin mb-3"></i>
-                                        <div className="text-slate-500 font-semibold text-sm">AI 正在深度掃描圖片文字中...</div>
+                                        {/* ⚠️ 不報「大約還要幾分鐘」：那是估的，估低了學生會
+                                            以為系統壞掉而重按。⇒ 看上面的排隊清單。 */}
+                                        <div className="text-slate-500 font-semibold text-sm">
+                                            截圖已經送到雲端了（<span className="font-bold text-green-600">不會不見</span>），
+                                            正在等後端處理 —— 看上面的排隊清單，輪到你就會有結果。<br />
+                                            <span className="text-xs text-slate-400">請不要重複按，也不要重開視窗。</span>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -904,45 +900,31 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                     </div>
                                 )}
 
+                                {/* ⚠️ 老師 2026-09-03：「輪到自己完成時顯示
+                                    『1410700 智慧選卡 證書完成 請到證書區查看』。」
+                                    ★ 這裡不再把整張證書畫出來 —— 證書統一在「我的證書」看，
+                                      兩個地方各畫一次遲早會不一樣（而且這裡那張是用
+                                      記憶體裡的圖，關掉就沒了）。
+                                    ⇒ 只留「完成了」和「去哪裡看」。 */}
                                 {result && result.status === 'pass' && (
-                                    <div className="bg-white border-2 border-green-100 rounded-[20px] overflow-hidden shadow-lg flex flex-col flex-1 h-full animate-[fadeIn_0.5s_ease-out] relative">
-                                        <div className="bg-gradient-to-r from-green-500 via-purple-500 to-green-600 px-6 py-4 text-white text-center relative overflow-hidden">
-                                            <div className="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiNmZmYiLz48L3N2Zz4=')]"></div>
-                                            <h3 className="font-black text-xl tracking-widest relative z-10 flex items-center justify-center gap-2">
-                                                <i className="fa-solid fa-award text-yellow-300 text-2xl"></i> 運算思維通關證書
-                                            </h3>
+                                    <div className="flex-1 flex flex-col items-center justify-center text-center bg-emerald-50 border-2 border-emerald-200 rounded-[20px] p-8 min-h-[300px] animate-[fadeIn_0.5s_ease-out]">
+                                        <div className="bg-white text-emerald-500 shadow-sm w-20 h-20 rounded-full flex items-center justify-center mb-5">
+                                            <i className="fa-solid fa-award text-4xl"></i>
                                         </div>
-                                        
-                                        <div className="p-5 flex flex-col gap-4 flex-1">
-                                            <div className="bg-green-50/50 p-4 rounded-xl border border-green-100 flex items-center gap-4">
-                                                <div className="bg-white text-green-500 shadow-sm p-3 rounded-full shrink-0">
-                                                    <i className="fa-solid fa-user-graduate text-2xl"></i>
-                                                </div>
-                                                <div>
-                                                    <div className="text-[11px] font-bold text-green-500 mb-0.5 uppercase tracking-wider">挑戰者資訊</div>
-                                                    <div className="text-xl font-black text-indigo-950">{user.classRoom} 班 {user.seatNo} 號 - {user.name}</div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                                                    <div className="text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider"><i className="fa-solid fa-gamepad mr-1"></i>通關關卡</div>
-                                                    <div className="text-lg font-black text-emerald-600">{challenge.title}</div>
-                                                </div>
-                                                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                                                    <div className="text-[11px] font-bold text-slate-500 mb-1 uppercase tracking-wider"><i className="fa-regular fa-clock mr-1"></i>完成紀錄</div>
-                                                    <div className="text-sm font-bold text-slate-800">{certDate}</div>
-                                                    <div className="text-sm font-bold text-green-600 mt-0.5">學習耗時: {certTime}</div>
-                                                </div>
-                                            </div>
-
-                                            <div className="mt-1 flex-1 min-h-[140px] border-2 border-dashed border-green-100 rounded-xl overflow-hidden relative flex items-center justify-center bg-slate-50 group">
-                                                <img src={previewUrl} className="max-h-full max-w-full object-contain p-2" alt="通關證明" />
-                                                <div className="absolute bottom-2 right-2 bg-green-900/70 text-white text-[10px] px-2.5 py-1 rounded-md backdrop-blur-sm font-bold tracking-wider">
-                                                    <i className="fa-solid fa-check-circle mr-1 text-emerald-400"></i>VERIFIED
-                                                </div>
-                                            </div>
+                                        <div className="text-2xl font-black text-emerald-800 leading-relaxed">{result.msg}</div>
+                                        <div className="text-sm font-medium text-emerald-700 mt-3">
+                                            {user.classRoom} 班 {user.seatNo} 號 {user.name}　·　{certDate}　·　學習耗時 {certTime}
                                         </div>
+                                        {/* ⚠️ 截圖備份失敗要講出來：成績有記，但證書那一格會是空的。 */}
+                                        {result.note && (
+                                            <div className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">{result.note}</div>
+                                        )}
+                                        {onOpenCerts && (
+                                            <button onClick={() => { onClose(); onOpenCerts(); }}
+                                                className="mt-6 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold shadow-md transition-all transform hover:scale-105">
+                                                <i className="fa-solid fa-trophy mr-2"></i>開啟我的證書
+                                            </button>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -1274,7 +1256,10 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
 
             return (
                 <div className="h-full bg-slate-100 flex flex-col font-sans relative">
-                    {showCertModal && <CertVerificationModal onClose={() => setShowCertModal(false)} user={user} challenge={selectedChallenge} studyTime={studyTime} onComplete={handleChallengeComplete} />}
+                    {/* ⚠️ 2026-09-03 起**不傳 challenge**：關卡由截圖檔名判定。
+                        傳整份 challenges 是給它兩件事用的：認關卡、把排隊清單
+                        裡的檔名翻成關卡名。⇒ 對照表仍然只有這一份。 */}
+                    {showCertModal && <CertVerificationModal onClose={() => setShowCertModal(false)} user={user} challenges={challenges} studyTime={studyTime} onComplete={handleChallengeComplete} onOpenCerts={() => setShowMyCertsModal(true)} />}
                     
                     {showMyCertsModal && <MyCertificatesModal onClose={() => setShowMyCertsModal(false)} user={user} completedChallenges={completedChallenges} completedDates={completedDates} completedImages={completedImages} challenges={challenges} />}
                     
@@ -1350,13 +1335,14 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                         >
                                             <i className="fa-solid fa-trophy text-xl mr-2"></i> 我的證書
                                         </button>
+                                        {/* ⚠️⚠️ 2026-09-03：這顆按鈕以前要「先選關卡」才會亮。
+                                            現在關卡由截圖檔名判定，**不必先選** ——
+                                            學生打完一關直接來傳圖就好。
+                                            ★ 順手修掉一個舊坑：學生常在別的分頁打完關卡回來，
+                                              左邊其實沒選任何東西，於是被 alert 擋住。 */}
                                         <button 
-                                            onClick={() => selectedChallenge ? setShowCertModal(true) : alert("請先在左側選擇挑戰關卡，再製作證書！")} 
-                                            className={`w-full sm:w-auto px-5 py-3 rounded-xl font-bold flex items-center justify-center shadow-md transition-all ${
-                                                selectedChallenge 
-                                                    ? 'bg-gradient-to-r from-green-500 to-purple-600 hover:from-green-600 hover:to-purple-700 text-white transform hover:scale-105' 
-                                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                            }`}
+                                            onClick={() => setShowCertModal(true)} 
+                                            className="w-full sm:w-auto px-5 py-3 rounded-xl font-bold flex items-center justify-center shadow-md transition-all bg-gradient-to-r from-green-500 to-purple-600 hover:from-green-600 hover:to-purple-700 text-white transform hover:scale-105"
                                         >
                                             <i className="fa-solid fa-award text-xl mr-2"></i> 證書製作
                                         </button>

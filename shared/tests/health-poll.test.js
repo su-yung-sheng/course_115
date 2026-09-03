@@ -72,12 +72,16 @@ for (const term of ['11501', '11502']) {
 
   /* ⚠️ 辨識期間的排隊輪詢才是最大的流量來源：
      30 人同時等、每 3 秒一次 = 每分鐘 600 次，
-     而且正好發生在後端最忙的時候。 */
-  const qi = SRC.slice(SRC.indexOf('/queue'), SRC.indexOf('/queue') + 3000);
-  const ms = [...qi.matchAll(/\}, (\d+)\);|setInterval\(pollQueue, (\d+)\)/g)]
-             .map(m => Number(m[1] || m[2]));
-  ok(ms.length > 0 && Math.min(...ms) >= 8000,
-     '★★ 排隊輪詢至少 8 秒（目前最小 ' + (ms.length ? Math.min(...ms) / 1000 + ' 秒' : '找不到') + '）');
+     而且正好發生在後端最忙的時候。
+     ⚠️⚠️ 2026-09-03 改成雲端路徑之後，這一頁只剩**一支**背景輪詢
+        （/api/queue-list，兼做連線指示燈）；等結果那一段的節奏
+        住在 shared/ocrclient.js（POLL_START_MS/POLL_MAX_MS，
+        由 ocrclient.test.js 顧）。
+     ⇒ 這裡守的是「背景那一支不可以打得太密」。 */
+  ok(/\/api\/queue-list/.test(CODE),
+     '★★ 排隊清單要問後端的記憶體快取（不可以讓 30 個人直接輪詢 GAS）');
+  ok(!/fetch\(API_BASE \+ "\/health"/.test(CODE),
+     '★ 不要再另外打一支 /health —— 排隊清單回得來就代表後端活著');
 
   /* ⚠️ 上傳沒有逾時的話，後端當掉時學生會停在永遠轉不完的圈圈上。 */
   ok(/upCtl/.test(CODE) && /upCtl\.abort\(\)/.test(CODE),
@@ -99,67 +103,63 @@ for (const term of ['11501', '11502']) {
   const SRC = fs.readFileSync(path.join(ROOT, term, 'thinking.html'), 'utf8');
   const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, ' ');
 
-  ok(/formData\.append\("student_id"/.test(CODE),
-     '★★ 上傳要帶學號（後端才擋得掉同一人開兩個分頁）');
-  ok(/myTicket/.test(CODE) && /q\.served/.test(CODE),
-     '★★ 用「我的號碼 − 已完成」算位置，不是用 pending');
-  ok(/shownAhead/.test(CODE) && /Math\.min\(shownAhead/.test(CODE),
-     '★★ 顯示的數字只准變小（變大就是又一次「被插隊」的錯覺）');
-
-  /* ⚠️⚠️ 號碼牌制（2026-09-02）：原本是 POST /analyze 掛著等，180 秒逾時，
-     而實測一張要 24 秒 —— 只夠撐到第 7～8 位。第 9 位以後後端跑完也判過了，
-     前端卻已經放棄連線，那張圖白跑。
-     ★ 這幾條對**兩個學期都跑**，就是為了防「一邊改了一邊沒改」——
-       這個 repo 已經在 autoSizeGraderFrame、setResult(null) 上各吃過一次。 */
-  /* ⚠️ 不可以只檢查字串有沒有出現 —— 註解裡也寫著這個檔名，
-     把 <script> 整行刪掉測試照樣綠（2026-09-02 突變時抓到）。 */
-  /* ⚠️⚠️ 2026-09-03：號碼牌制讓「後端忙」變成正常狀態，
-     而健康檢查還把「回得慢」判成「掛了」——
-     ★ 對已經送出的學生，那個判定完全沒有意義：他的截圖在後端跑著。
-       而畫面說「等待伺服器連線」會讓他以為白傳了、重開視窗再傳，
-       分頁和輪詢加倍 → CPU 更擠 → 更多人被判離線。
-       這是會自我放大的故障，2026-09-03 實際發生過。 */
-  ok(/const goOffline/.test(CODE),
-     '★★ 判離線要走同一個出口（才有辦法在有號碼牌時例外）');
-  ok(/hasTicket\(\)/.test(CODE) && /伺服器忙碌中/.test(CODE),
-     '★★ 手上有號碼牌時要說「忙碌中」，不可以說成離線');
-  ok(!/\{ setIsOnline\(false\); setNetNote\(OFFLINE_NOTE\); \}/.test(CODE),
-     '★ 不可以再有繞過 goOffline 的直接判離線');
-  ok(/localStorage\.getItem\('thinkingTicket'\)/.test(CODE),
-     '★ 要用 localStorage 判斷（isProcessing 是 state，在 useEffect 閉包裡會過期）');
-
+  /* ══════════════════════════════════════════════════════
+     2026-09-03：上傳改打 GAS，關卡改由檔名判定
+     ══════════════════════════════════════════════════════
+     ⚠️⚠️ 老師：「圖片都上傳到雲端了，為什麼還會滿載讓使用者無法上傳？」
+        —— 因為上傳這個動作原本**還是打在 Colab 上**。Colab 一忙，
+        /health 回得慢 → 判離線 → 按鈕鎖住 → 學生連傳都傳不出去。
+        那次「全班變成等待連線中」就是這樣來的。
+     ★ 下面這幾條全都在守同一件事：**交作業不可以依賴 Colab**。
+     ⚠️ 這幾條對兩個學期都跑 —— 這個 repo 已經在
+        autoSizeGraderFrame、setResult(null) 上各吃過一次「只改一邊」的虧。 */
   ok(/<script src="\.\.\/shared\/ocrclient\.js">/.test(SRC),
      '★★ 要真的有 <script> 載入共用的 ocrclient.js');
-  ok(/window\.submitScreenshot\(/.test(CODE),
-     '★★ 上傳要走 submitScreenshot');
-  ok(!/fetch\(API_BASE \+ "\/analyze"/.test(CODE),
-     '★★ 不可以再直接 POST /analyze（那條路有 180 秒天花板）');
-  /* ⚠️ 一樣要釘「真的傳進去了」，不是「檔案裡有這個字」。 */
-  ok(/storageKey:\s*'/.test(CODE),
-     '★ 要帶 storageKey（關掉頁面才接得回）');
-  ok(/challengeId:\s*challenge\.id/.test(CODE),
-     '★★ 要帶 challengeId —— 沒有的話換了關卡會沿用舊號碼牌，拿到別關的結果');
+  /* ⚠️ 不可以只檢查字串有沒有出現 —— 註解裡也寫著這些名字，
+     把整段刪掉測試照樣綠（2026-09-02 突變時抓到）。⇒ 釘呼叫式本身。 */
+  ok(/window\.submitViaCloud\(/.test(CODE),
+     '★★ 上傳要走 submitViaCloud（打 GAS，不碰 Colab）');
+  ok(/window\.waitViaCloud\(/.test(CODE),
+     '★★ 等結果要走 waitViaCloud（靠「從排隊清單消失」判斷）');
+  ok(!/fetch\(API_BASE \+ "\/analyze"/.test(CODE)
+     && !/analyze-async/.test(CODE),
+     '★★ 上傳不可以再打到 Colab（/analyze 或 /analyze-async）');
+  ok(/gasUrl:\s*GAS_URL/.test(CODE) && /sid:\s*SID/.test(CODE),
+     '★★ 上傳要帶學號（後端靠檔名前綴認出是誰傳的）');
 
-  /* ⚠️⚠️ 截圖改由後端上傳（2026-09-02）：原本是前端在判定通過之後才傳，
-     學生一旦中途離開，那張圖只存在瀏覽器記憶體裡就跟著沒了 ——
-     成績記得到，證書的截圖卻缺一張。號碼牌制讓「中途離開」變成常態，
-     所以這件事非修不可。
-     ★ 後端本來就握著那張圖（要拿來辨識），由它上傳還保證
-       「證書上的截圖」和「判定用的截圖」是同一張。 */
-  ['term', 'class_room', 'seat_no', 'challenge_id'].forEach(f => {
-    ok(new RegExp('formData\\.append\\("' + f + '"').test(CODE),
-       '★ 要帶 ' + f + '（GAS 拼資料夾路徑用，缺一個就不會傳）');
+  /* ⚠️⚠️ 這是 2026-09-03 那次故障的**核心教訓**，也是最容易被
+     「順手加回去」的一行：上傳按鈕不可以看 isOnline。
+     ★ 加回 `!isOnline ||` 的話，Colab 一忙全班的按鈕又會變灰，
+       而他們其實可以正常交作業。 */
+  const _btn = (CODE.match(/disabled=\{[^}]*\}/g) || []).join(' ');
+  ok(!/isOnline/.test(_btn),
+     '★★ 上傳按鈕**不准**被 isOnline 鎖住（上傳打的是 GAS，跟 Colab 無關）');
+  ok(/!matched/.test(_btn),
+     '★★ 要擋的是「檔名認不出關卡」—— 那才是真的不能傳');
+
+  /* ★ 關卡由檔名判定（規則和後端 core.level_from_filename 同一套）。
+     ⚠️ 認不出時要在**選檔當下**就講，不要讓學生排完 20 分鐘才知道。 */
+  ok(/window\.levelFromFilename\(/.test(CODE),
+     '★★ 關卡要用共用的 levelFromFilename 判（不要各寫一份比對規則）');
+  ok(/challengeId:\s*matched\.id/.test(CODE),
+     '★★ 成績要記在檔名判出來的那一關');
+  ok(/這個檔名看不出是哪一關/.test(SRC),
+     '★★ 認不出關卡要當場說，而且要教他怎麼重截');
+
+  /* ⚠️⚠️ 截圖備份：雲端這條路後端拿不到班級和座號（檔名裡只有學號），
+     gas_upload_shot 缺欄位就不會上傳 ——
+     ⇒ 備份只剩前端這一條路。這幾個欄位缺一個，GAS 就拼不出資料夾路徑，
+       成績記得到、證書那一格卻是空的。 */
+  ['classRoom', 'seatNo', 'challengeId'].forEach(f => {
+    ok(new RegExp(f + ':').test(CODE),
+       '★★ 截圖備份要帶 ' + f + '（GAS 拼資料夾路徑用，缺一個就不會傳）');
   });
-  ok(/drive_url/.test(CODE),
-     '★★ 要接後端回報的 drive_url');
 
-  /* ══════════════════════════════════════════════════════
-     「關機也不白跑」的最後一哩（2026-09-02）
-     ══════════════════════════════════════════════════════
-     ⚠️⚠️ 後端判定通過之後，**成績是這一頁寫進 Firestore 的**。
-        學生一關機，辨識白跑、截圖存了、成績卻沒記 ——
-        他回來只能重傳、再排一次隊。
-        ★ 號碼牌制讓「中途離開」從意外變成常態，所以非補不可。 */
+  /* ⚠️ 排隊清單要看得到自己那一列 —— 30 人的清單裡找不到自己
+     等於沒有這個功能。 */
+  ok(/myUpName/.test(CODE) && /queueLabel/.test(CODE),
+     '★ 排隊清單要標出「這一列是我」並顯示學號與關卡');
+
   ok(/\/api\/my-passed/.test(CODE),
      '★★ 登入後要問後端「我過了哪幾關」');
   /* ★★ 最重要的一條：補記一定要走既有的 handleChallengeComplete。
@@ -192,25 +192,31 @@ for (const term of ['11501', '11502']) {
   /* ⚠️ 不可以用 /finalImageUrl \?/ 這種寬鬆的樣式 —— 11502 在別處
      （顯示訊息那行）也有 `finalImageUrl ?`，把整條退路拿掉照樣綠。
      ⇒ 兩個學期各釘自己那條「後端沒給就自己傳」的分支。 */
+  /* ⚠️⚠️ 2026-09-03 之後這條退路變成**唯一**的一條：雲端路徑上
+     後端拿不到班級和座號，gas_upload_shot 缺欄位就不會上傳。
+     ⇒ 前端不傳＝完全沒有截圖備份，證書那一格永遠是空的。 */
   ok(/!driveUrl && base64Image && GAS_UPLOAD_URL/.test(CODE)
-     || /else if \(!GAS_WEB_APP_URL/.test(CODE),
-     '★★ 後端沒傳成功時要退回前端自己傳（不然改設定前的那段時間會漏備份）');
+     || /window\.fileToBase64\(selectedFile\)/.test(CODE),
+     '★★ 截圖備份一定要有人傳（雲端路徑上後端不會傳，只剩前端這條）');
   /* ⚠️ 這一條原本釘 /j\.message/ —— 那是「直接對 res 呼叫 .json()」時代的寫法。
      2026-09-02 改成號碼牌制之後，後端的話是從 out.data.message 出來的，
      這條就紅了。★ 釘的應該是「後端說得清楚的話要照原樣顯示」這個行為，
      不是它從哪個變數取出來。 */
-  ok(/\.message/.test(CODE) && /伺服器拒絕連線/.test(CODE),
-     '★ 429／號碼牌過期的原因要透出來，不可以被「伺服器拒絕連線」蓋掉');
+  /* ★ 釘的是「後端／上傳說得清楚的話要照原樣顯示」這個行為，
+     不是它從哪個變數取出來，也不是某一句固定的話。 */
+  ok(/isOwn \? raw/.test(CODE) && /err && err\.message/.test(CODE),
+     '★ 上傳失敗的具體原因要透出來，不可以被一句通則蓋掉');
   /* ⚠️ 而且反過來：真的斷線時不可以再叫學生去「確認 API 網址」——
      那是講給老師聽的，學生看了只會不知所措。 */
   ok(!/請確認伺服器正在執行，且 API 網址正確/.test(CODE),
      '★★ 不可以再對學生說「確認 API 網址正確」');
   ok(/這不是你的截圖有問題/.test(CODE),
      '★★ 連不上時要明講「不是你的截圖有問題」');
-  /* ⚠️ 後端如果還是舊版（沒有 served），要能退回舊的顯示方式，
-     不可以整個壞掉 —— Colab 那本不一定跟前端同時更新。 */
-  ok(/q\.pending/.test(CODE),
-     '★ 舊後端沒有 served 時要有退路');
+  /* ⚠️ 後端如果還是舊版（/api/queue-list 沒有 worker 欄位），
+     不可以就跳出警告 —— Colab 那本不一定跟前端同時更新，
+     每次都喊狼來了的話，真的出事時沒有人會理它。 */
+  ok(/j\.worker !== false/.test(CODE),
+     '★ 舊後端沒有 worker 欄位時要當成正常（undefined ≠ 停擺）');
 }
 
 section('★★ 後端：一人一次 ＋ 已完成數');
@@ -305,19 +311,28 @@ section('★ 後端：要分得出「排隊久」和「每張變慢」');
         ‧ 而且那都是**單人**速度，全班一起用時每張慢很多 ⇒ 一定低估
       說「約 1 分鐘」卻等了 3 分鐘，學生會以為壞掉而重按，比不報更糟。
    ═══════════════════════════════════════════════════════ */
+/* ⚠️⚠️ 2026-09-03 把「估計還要幾分鐘」整個拿掉了。
+   ★ 為什麼：那個數字是估的，而估低了的後果特別壞 ——
+     說「約 1 分鐘」卻等了 3 分鐘，學生會以為系統壞掉而重按，
+     重按又讓後端更擠。以前修的方向是「把估算做準」，
+     但雲端路徑上根本不必估：**排隊清單就是事實本身**
+     （自己那一列還在＝還沒輪到，消失＝好了）。
+   ⇒ 這一節現在守的是「不要又長回一個估出來的數字」。 */
 for (const term of ['11501', '11502']) {
-  section('★★ ' + term + '：等待時間');
+  section('★★ ' + term + '：不要再估等待時間');
   const SRC = fs.readFileSync(path.join(ROOT, term, 'thinking.html'), 'utf8');
   const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, ' ');
 
-  ok(/waitText/.test(CODE), '★ 有把秒數講成人話的函式');
-  ok(/avg_seconds/.test(CODE),
-     '★★ 要用後端回報的實測平均，不可以自己寫死秒數');
-  /* ⚠️ 寫死的數字是這次要消滅的東西 —— 兩學期都不可以再出現。 */
+  ok(!/大約還要/.test(CODE.replace(/\\/g, '')),
+     '★★ 不可以再對學生報「大約還要幾分鐘」（估低了他會以為壞掉而重按）');
+  /* ⚠️ 寫死的數字是更早那次要消滅的東西 —— 兩學期都不可以再出現。 */
   ok(!/\*\s*6\s*\/\s*60/.test(CODE),
      '★★ 不可以再用寫死的 6 秒估時間');
-  ok(/位同學/.test(CODE) && /大約還要/.test(CODE.replace(/\\/g, '')),
-     '★ 位置和時間都要說出來');
+  ok(/queue\.map\(/.test(CODE),
+     '★★ 改用排隊清單（清單是事實，估算不是）');
+  ok(/不會不見/.test(SRC),
+     '★★ 等的時候要講「圖已經在雲端，不會不見」—— '
+     + '否則學生會重開視窗再傳一次，那正是故障自我放大的起點');
 }
 
 section('★★ 後端：平均秒數要用實測的');

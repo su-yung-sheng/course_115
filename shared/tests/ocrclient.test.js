@@ -230,6 +230,32 @@ section('① 舊後端沒有 /analyze-async 時要退回同步流程');
     ok(rf.data.pass === true,
        '★★ 中途連不上 Colab 也要繼續等（圖在雲端，之後會處理）');
 
+    section('⑪ 檔名認關卡：規則要和後端一模一樣');
+    /* ⚠️⚠️ 2026-09-03「不用選關卡」之後，關卡完全由檔名決定。
+       ★ 這一支和後端 scratch_grader_core.level_from_filename 是**同一套規則**
+         的兩份實作（一份 JS 給學生端當場擋、一份 Python 給後端判定）。
+         寫得不一樣的話會出現「學生端說可以、後端說不知道這是哪一關」——
+         而那時圖已經傳出去了，學生要排完 20 分鐘才知道。
+       ⚠️ 下面這幾個例子和 shared/tests/levelmap.test.py 是同一組 ——
+          兩邊要一起改。 */
+    const LV = [
+      { id: 1, title: '跳格子' }, { id: 3, title: '滑梯公園' },
+      { id: 4, title: '水餃工廠' }, { id: 10, title: '拔蘿蔔' },
+    ];
+    const envG = makeEnv(() => reply({}));
+    const F = envG.win.levelFromFilename;
+    ok(F('滑梯公園 - Google Chrome 2026_8_31 下午 03_47_38.png', LV) &&
+       F('滑梯公園 - Google Chrome 2026_8_31 下午 03_47_38.png', LV).id === 3,
+       '★★ 老師實際的檔名格式認得出（開頭是關卡名）');
+    ok(F('1410700-滑梯公園 - Google Chrome.png', LV) &&
+       F('1410700-滑梯公園 - Google Chrome.png', LV).id === 3,
+       '★★ 關卡名不在開頭時也要認得出（學號前綴）');
+    ok(F('螢幕擷取畫面 2026-09-03 103015.png', LV) === null,
+       '★★ Win+Shift+S 那種檔名要回 null —— 呼叫端得靠它擋下來，'
+       + '不可以硬猜一關（猜錯＝成績記到別人的關卡上）');
+    ok(F('', LV) === null && F('滑梯公園.png', null) === null,
+       '★ 空檔名、沒有關卡清單都要回 null（不可以爆掉）');
+
     section('⑦ 一定要有總上限');
     ok(/GIVE_UP_MS/.test(SRC), '★★ 有總上限常數');
     const g = /GIVE_UP_MS\s*=\s*([\d\s*]+);/.exec(SRC);

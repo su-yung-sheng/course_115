@@ -27,6 +27,20 @@ import threading
 import time
 import traceback
 
+# ⚠️⚠️ Windows 的繁中主控台預設是 cp950，**編不出 ✅ ❌ ⚠️ 這些字元**。
+#    印一個勾勾就 UnicodeEncodeError → 整支 crash → 離開碼非 0，
+#    而 check.py 的 check_py_tests() 只看離開碼 —— 它會回報成
+#    「這支測試沒過」，於是 **pre-commit 取消提交**。
+#    ★ 老師看到的是「提交前檢查 檢查沒過」，完全看不出是「印字印掛了」。
+#    ⚠️ check.py 自己早就這樣修過（見那支開頭的說明），但它是用
+#      subprocess 跑這些測試的，**子程序不會繼承那個修正**，要各自修。
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass          # 舊 Python 沒有 reconfigure；印不出來也不該中斷檢查
+
+
 NB = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))), 'shared', 'backend.ipynb')
 
@@ -232,6 +246,66 @@ ok(c.post('/analyze-async', data={'file': (_small, 'ok.png')},
           content_type='multipart/form-data').status_code == 200,
    '★ 正常大小的截圖不受影響')
 
+
+print('\n── 暫存區工作者：處理完要真的少一張 ──')
+# ═══════════════════════════════════════════════════════════
+# ⚠️⚠️⚠️ 2026-09-03 讀 /analyze 時抓到的迴圈（還沒上過課就先擋掉）：
+#    工作者是用 test_request_context 重跑 ocr_analyze()，
+#    而 ocr_analyze 會把收到的圖**存進暫存區** ——
+#    於是處理完一張，那張又被寫回去了。GAS 的 replaceFile 是
+#    「砍掉同名舊檔、**建一個新 fileId**」，而 _temp_seen 用 fileId 記，
+#    新 id 完全擋不住：處理 A → 寫回成 B → 刪掉 A → 下一輪撈到 B → …
+#    ★ 學生看到的是「排隊清單裡的自己永遠不會消失」，
+#      等到 20 分鐘上限才被告知失敗；後端則一直重跑同一張。
+#    ⚠️ 每一步分開看都「成功」，所以沒有任何錯誤訊息。
+# ⇒ 這一段用一個**會照著 GAS 行為動作的假暫存區**跑一輪，
+#   直接看「清單有沒有真的變短」，而不是看程式碼長什麼樣。
+_store = {'f1': ('1410700-滑梯公園 - Google Chrome.png', b'\x89PNGdata')}
+_next_id = {'n': 2}
+_seen_flags = []
+
+def _fake_fetch(fid):
+    got = _store.get(fid)
+    return got[1] if got else None
+
+def _fake_delete(fid):
+    _store.pop(fid, None)
+    return True
+
+def _analyze_that_saves_back():
+    """模擬真的 ocr_analyze：**除非帶了 from_temp，否則會存回暫存區**。"""
+    _seen_flags.append(request.form.get('from_temp'))
+    if not (request.form.get('from_temp') or '').strip():
+        # GAS 的 replaceFile：砍掉同名舊檔、建一個新 fileId
+        f = request.files.get('file')
+        name = ('%s-%s' % (request.form.get('student_id', ''), f.filename))
+        for k, v in list(_store.items()):
+            if v[0] == name:
+                _store.pop(k)
+        nid = 'f%d' % _next_id['n']; _next_id['n'] += 1
+        _store[nid] = (name, b'again')
+    return jsonify({'status': 'success', 'pass': True})
+
+ns['gas_temp_fetch'] = _fake_fetch
+ns['gas_temp_delete'] = _fake_delete
+ns['ocr_analyze'] = _analyze_that_saves_back
+
+_item = {'id': 'f1', 'name': _store['f1'][0]}
+_done = ns['_temp_process_one'](_item, '11501')
+ok(_done is True, '★ 處理成功要回 True（工作者才會去刪檔）')
+ok(_seen_flags == ['1'],
+   '★★★ 內部呼叫一定要帶 from_temp　←　實際帶的是 %r' % (_seen_flags,))
+ns['gas_temp_delete']('f1')
+ok(_store == {},
+   '★★★ 處理完暫存區要真的空了 —— 還有東西就是那個停不下來的迴圈'
+   '（症狀：學生那一列永遠不會從排隊清單消失）　←　剩下 %r' % (_store,))
+
+# ★ 順帶確認拆檔名：學號和原檔名要分得開（關卡靠原檔名判）
+ok(ns['_temp_split_name']('1410700-滑梯公園 - Google Chrome.png')
+   == ('1410700', '滑梯公園 - Google Chrome.png'),
+   '★★ 只切第一個「-」（關卡名和時間戳裡也有「-」，切多了檔名會壞）')
+ok(ns['_temp_split_name']('滑梯公園 - Google Chrome.png')[0] == '',
+   '★ 沒有學號前綴時不可以把關卡名當成學號')
 
 print('\n通過 %d／失敗 %d' % (P, F))
 sys.exit(1 if F else 0)

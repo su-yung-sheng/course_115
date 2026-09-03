@@ -41,6 +41,19 @@ import os
 import re
 import sys
 
+# ⚠️⚠️ Windows 的繁中主控台預設是 cp950，**編不出 ✅ ❌ ⚠️ 這些字元**。
+#    印一個勾勾就 UnicodeEncodeError → 整支 crash → 離開碼非 0，
+#    而 check.py 的 check_py_tests() 只看離開碼 —— 它會回報成
+#    「這支測試沒過」，於是 **pre-commit 取消提交**。
+#    ★ 老師看到的是「提交前檢查 檢查沒過」，完全看不出是「印字印掛了」。
+#    ⚠️ check.py 自己早就這樣修過（見那支開頭的說明），但它是用
+#      subprocess 跑這些測試的，**子程序不會繼承那個修正**，要各自修。
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass          # 舊 Python 沒有 reconfigure；印不出來也不該中斷檢查
+
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 NB = os.path.join(ROOT, 'shared', 'backend.ipynb')
 
@@ -778,10 +791,13 @@ section('C-11 十關對照表只能有一份，而且要和學生端一致')
 #      然後以為是切法不好、跑去調倍率。
 #    ⇒ 表只留在 core.LEVEL_NAMES，其他地方一律引用。
 _core_src = _code_of(_nb_cells[6])
-ok('LEVEL_NAMES = {' in _core_src,
-   '★ 十關對照表住在 scratch_grader_core')
+ok('LEVEL_NAMES_BY_TERM = {' in _core_src,
+   '★ 十關對照表住在 scratch_grader_core（2026-09-03 起依學期分表）')
 ok('def level_from_filename' in _core_src,
    '★ 從檔名認關卡的規則也只有一份')
+ok('def level_id' in _core_src,
+   '★★ 關卡名 -> challenge.id 的換算也在這裡 ——'
+   '沒有它，雲端那條路的 challenge_id 會是空的，成績一筆都記不下去')
 
 # 自檢（14）和切法實驗（20）都不可以再自己打一份
 _dup = [(i, len(re.findall("'[\u4e00-\u9fff]+': '", _code_of(_nb_cells[i]))))
@@ -793,30 +809,13 @@ ok('LEVEL = None' in _code_of(_nb_cells[20]),
 ok('那個 ❌ 是假的' in _code_of(_nb_cells[20]),
    '★ 認不出關卡時要講明「這個 ❌ 是假的」，不然又會去調錯參數')
 
-# ★★ 真正的來源是學生端：對照表和 thinking.html 對不起來的話，
-#    自檢會全綠、上課會全錯。
-_ns_lv = load_funcs(marker='LEVEL_NAMES = {',
-                    want=('level_from_filename',))
-_lv_names = _ns_lv['LEVEL_NAMES'] if 'LEVEL_NAMES' in _ns_lv else None
-if _lv_names is None:
-    _l = _core_src.split('\n')
-    _i = next(k for k, x in enumerate(_l) if x.startswith('LEVEL_NAMES'))
-    _j = next(k for k in range(_i + 1, len(_l))
-              if _l[k].startswith('def level_from_filename'))
-    _tmp = {}
-    exec('\n'.join(_l[_i:_j]), _tmp)
-    _lv_names = _tmp['LEVEL_NAMES']
-_html = io.open(os.path.join(ROOT, '11501', 'thinking.html'),
-                encoding='utf8').read()
-_m = re.search(r'englishMappings\s*=\s*\{(.*?)\}', _html, re.S)
-_web = dict(re.findall(r"['\"]([^'\"]+)['\"]\s*:\s*['\"]([^'\"]+)['\"]",
-                       _m.group(1))) if _m else {}
-ok(len(_web) == 10, '★ thinking.html 讀得到十關（讀到 %d 關）' % len(_web))
-_diff = {k: (v, _lv_names.get(k)) for k, v in _web.items()
-         if _lv_names.get(k) != v}
-ok(not _diff,
-   '★★ 後端對照表要和學生端 thinking.html 完全一致　←　%s'
-   % ('一致' if not _diff else _diff))
+# ★★ 「對照表和 thinking.html 對不對得起來」交給 shared/tests/levelmap.test.py：
+#    那一支會**兩個學期**逐關比對名稱、順序、challenge.id，
+#    而這裡原本只比 11501 的英文名 —— 依學期分表之後那個比法已經不夠。
+#    ⚠️ 不要在這裡再比一次：同一件事兩支測試各比一次，
+#       改規則時一定會有一支被忘記，然後它會安靜地繼續綠。
+ok(os.path.exists(os.path.join(ROOT, 'shared', 'tests', 'levelmap.test.py')),
+   '★★ 對照表和學生端的一致性由 levelmap.test.py 顧著（那支不見了就沒有人在看了）')
 
 
 # ═══════════════════════════════════════════════════════════
@@ -887,8 +886,9 @@ for _need, _why in [
     ok(_need in _srv4, '★ ' + _why)
 ok('_level_matched(level_texts, _norm_text(_cn), _norm_text(_en))' in _srv4,
    '★★ 「這是不是別關」要用同一套比對規則，不可以退化成字面比對')
-ok('getattr(core, "LEVEL_NAMES", {})' in _srv4,
-   '★ 關卡清單一樣只用 core 那一份（舊 core 沒有時要能撐住）')
+ok('core.level_names(_term)' in _srv4,
+   '★ 關卡清單一樣只用 core 那一份，而且要**依學期**取'
+   '（直接讀 core.LEVEL_NAMES 會永遠拿到上學期那十關）')
 
 # ═══════════════════════════════════════════════════════════
 section('C-14 加起來超過 100% 的「時間佔比」不可以印出去')
@@ -1131,6 +1131,7 @@ import ast as _ast
 import builtins as _bi
 
 
+
 def _cell_code(i):
     _L = ''.join(_nb_cells[i]['source']).split('\n')
     return '\n'.join(('pass' if l.startswith(('!', '%%')) else l) for l in _L)
@@ -1187,8 +1188,15 @@ ok(not _leak,
 
 # ★ 那三處現在改用 core.resolve_term()：它會驗學期合法性，
 #   比直接取 GRADER_TERM 當預設更好（帶了 11503 之類也擋得掉）。
-ok(_code_of(_nb_cells[8]).count('core.resolve_term(request.form.get("term"))') >= 3,
+# ⚠️ 2026-09-03：/analyze 裡那幾處收斂成一個 `_term`（算一次、到處用），
+#    所以這裡不再數次數 —— 數次數會逼著後面的人為了讓測試綠而重複呼叫。
+#    要守的是「**有**走 core.resolve_term」，不是「走了幾次」。
+_srv_t = _code_of(_nb_cells[8])
+ok('_term = core.resolve_term(request.form.get("term"))' in _srv_t,
    '★ 學期一律走 core.resolve_term（會驗合法性，不是只取預設）')
+ok('core.resolve_term(request.form.get("term"))' in _srv_t
+   and 'GRADER_TERM' not in _srv_t.split('def ocr_analyze')[-1].split('@app.route')[0],
+   '★ /analyze 裡不可以繞過去直接用 GRADER_TERM（前端送的 term 會被忽略）')
 
 
 # ═══════════════════════════════════════════════════════════
@@ -1202,8 +1210,18 @@ section('C-18 關卡先看檔名，但辨識要留著當兜底')
 #   （學生用 Win+Shift+S，檔名是「螢幕擷取畫面…」），就沒得退。
 # ⇒ 檔名認得出走快路，認不出**照舊辨識**。這一節盯著兜底不可以被拿掉。
 _srv7 = _code_of(_nb_cells[8])
-ok('core.level_from_filename(_up_name)' in _srv7,
-   '★ 先從檔名認關卡')
+ok('core.level_from_filename(_up_name, _term)' in _srv7,
+   '★ 先從檔名認關卡（而且要帶 term —— 兩個學期的關卡表不一樣）')
+# ⚠️⚠️ 2026-09-03 的坑：雲端那條路（暫存區工作者）呼叫這一支時
+#    **沒有 challenge_id**，而 record_ocr_pass 遇到空的 challenge_id
+#    會直接 return None、一個字都不寫。症狀完全不像故障：
+#    圖處理完了、暫存區的檔也刪了、日誌乾乾淨淨，
+#    但學生端問 /api/my-passed 拿到空的 —— **全班都判「沒過」**。
+ok('_cid = (request.form.get("challenge_id") or "").strip()' in _srv7
+   and 'core.level_id(_lv_from_name[0], _term)' in _srv7,
+   '★★ 沒送 challenge_id 時要從關卡名推出來（不然成績一筆都記不下去）')
+ok('core.record_ocr_pass(sid, _cid, _term)' in _srv7,
+   '★★ 通關紀錄要用推出來的那個編號')
 ok('_lv_from_name and (not _want_lv or _lv_from_name[0] == _want_lv)' in _srv7,
    '★★ 快路的條件：檔名認得出**而且**和學生選的那一關一致')
 # ⚠️ 不可以只檢查那句訊息在不在 —— 把 if 條件改成 False，
@@ -1219,26 +1237,10 @@ ok('level_roi = _crop(' in _srv7 and '_matches_level(level_texts)' in _srv7,
 ok('系統在截圖上緣一個字都沒讀到' in _srv7,
    '★ 兜底那條路的訊息也要留著（那是實戰調出來的）')
 
-_ns_f = {}
-_rl = ''.join(_nb_cells[6]['source']).split('\n')
-_i = next(k for k, l in enumerate(_rl) if l.startswith('LEVEL_NAMES'))
-_j = next(k for k in range(_i + 1, len(_rl))
-          if _rl[k].startswith('def ocr_stats_verdict'))
-exec('\n'.join(_rl[_i:_j]), _ns_f)
-_F = _ns_f['level_from_filename']
-ok(_F('滑梯公園 - Google Chrome 2026_8_31 下午 03_47_38.png')[0] == '滑梯公園',
-   '★★ 老師實際的檔名格式認得出')
-# ⚠️ 學生自己加學號、或之後要用學號前綴存檔，都不可以認不出
-ok(_F('1410700-滑梯公園 - Google Chrome.png')[0] == '滑梯公園',
-   '★★ 關卡名不在開頭時也要認得出（學號前綴）')
-ok(_F('螢幕擷取畫面 2026-09-03 103015.png') is None,
-   '★ 檔名沒有關卡資訊時回 None（走兜底，不是硬猜一個）')
-# ★★ 放寬成「任何位置」的前提：關卡名兩兩不互相包含
-_nm = list(_ns_f['LEVEL_NAMES'])
-_dup2 = [(x, y) for x in _nm for y in _nm if x != y and x in y]
-ok(not _dup2,
-   '★★ 關卡名不可以互相包含（放寬比對的前提）　←　%s'
-   % ('沒有' if not _dup2 else _dup2))
+# ★ 檔名判定本身（老師的檔名格式、學號前綴、認不出時回 None、
+#   關卡名不可以互相包含）改由 shared/tests/levelmap.test.py 驗 ——
+#   那一支**兩個學期都跑**，而這裡原本只跑得動 11501 那一份。
+# ⚠️ 不要在這裡也留一份：同一件事兩支各驗一次，改規則時會有一支被忘記。
 
 
 # ═══════════════════════════════════════════════════════════
@@ -1275,6 +1277,31 @@ ok('function safeName' in _gs,
    '★★ 檔名要消毒 —— 直接用學生上傳的檔名，路徑穿越要擋掉')
 ok('setTrashed(true)' in _gs and 'temp_delete' in _gs,
    '★ 刪除走垃圾桶（刪錯還撈得回來），不是永久刪除')
+
+# ═══════════════════════════════════════════════════════════
+# ⚠️⚠️⚠️ 停不下來的迴圈（2026-09-03 讀 /analyze 時抓到，還沒上過課）
+# ═══════════════════════════════════════════════════════════
+# 暫存區工作者是用 app.test_request_context 重跑 ocr_analyze()，
+# 而 ocr_analyze 會把收到的圖**存進暫存區**。所以工作者處理完一張，
+# 那張又被寫回去了 —— 而 GAS 的 replaceFile 是
+# 「砍掉同名舊檔、**建一個新 fileId**」，
+# _temp_seen 又是用 fileId 記的，新 id 完全擋不住：
+#     處理 A → 寫回成 B → 刪掉 A → 下一輪撈到 B → 寫回成 C → …
+# ★ 學生看到的是「排隊清單裡的自己永遠不會消失」，等到 20 分鐘上限
+#   才被告知失敗；後端則一直重跑同一張，CPU 和 GAS 額度一起燒光。
+#   **每一張都會這樣**，等於整套不能用。
+# ⚠️ 而且它不會有任何錯誤訊息 —— 每一步分開看都「成功」了。
+ok('"from_temp": "1"' in _srv8,
+   '★★★ 工作者的內部呼叫要帶 from_temp（這張本來就是從暫存區抓下來的）')
+ok('if not (request.form.get("from_temp") or "").strip():' in _srv8,
+   '★★★ ocr_analyze 看到 from_temp 就不可以再存回暫存區 —— '
+   '否則會變成處理不完的迴圈（症狀：排隊清單永遠不會消）')
+# ⚠️ 不可以只檢查旗標在不在：存檔那段要真的在 if 底下。
+#    把 if 拿掉、旗標留著，上面兩條照樣綠。
+_ts = _srv8.index('if not (request.form.get("from_temp") or "").strip():')
+_tv = _srv8.index('target=gas_temp_save')
+ok(_ts < _tv < _ts + 700,
+   '★★ 而且 gas_temp_save 要真的包在那個 if 裡面（不是擺在旁邊）')
 
 
 # ═══════════════════════════════════════════════════════════

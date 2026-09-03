@@ -308,6 +308,38 @@
     }
   }
 
+  /* ══════════════════════════════════════════════════════════
+     檔名 -> 關卡（學生端這一份）
+     ══════════════════════════════════════════════════════════
+     ⚠️⚠️ 2026-09-03「不用選關卡」之後，關卡完全由**檔名**決定。
+        後端認不出檔名時，沒有任何人知道那是哪一關 ——
+        兜底的關卡辨識也沒有 title 可以比對，成績會記不下去。
+     ★ 所以要在「學生選檔案的當下」就擋，不要讓他傳出去白等：
+       傳了才發現，他已經排了 20 分鐘的隊，而且圖還佔了暫存區。
+
+     ⚠️ 規則要和後端 scratch_grader_core.level_from_filename **完全一樣**：
+        ① 先看檔名開頭是不是關卡名
+        ② 再看檔名任何位置有沒有關卡名（學號前綴、老師另存的檔名）
+        兩邊寫得不一樣的話，會出現「學生端說可以、後端說不行」
+        這種最難查的落差。⇒ 改一邊就要改另一邊，
+        shared/tests/levelmap.test.py 盯著後端那一份和關卡表。
+
+     challenges = thinking.html 的那個陣列（[{id, title, ...}]）。
+     認不出來回 null —— 呼叫端要當成「這張不能傳」，不是「隨便挑一關」。 */
+  function levelFromFilename(name, challenges) {
+    var text = String(name || '');
+    var list = challenges || [];
+    var i;
+    for (i = 0; i < list.length; i++) {
+      if (list[i] && list[i].title && text.indexOf(list[i].title) === 0) return list[i];
+    }
+    for (i = 0; i < list.length; i++) {
+      if (list[i] && list[i].title && text.indexOf(list[i].title) >= 0) return list[i];
+    }
+    return null;
+  }
+
+  window.levelFromFilename = levelFromFilename;
   window.waitViaCloud = waitViaCloud;
   window.submitViaCloud = submitViaCloud;
   window.fileToBase64 = fileToBase64;
