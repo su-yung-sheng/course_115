@@ -1277,6 +1277,11 @@ ok('function safeName' in _gs,
    '★★ 檔名要消毒 —— 直接用學生上傳的檔名，路徑穿越要擋掉')
 ok('setTrashed(true)' in _gs and 'temp_delete' in _gs,
    '★ 刪除走垃圾桶（刪錯還撈得回來），不是永久刪除')
+# ⚠️⚠️ Apps Script 服務的是「已部署的版本」，不是存檔的程式碼。
+#    改完沒重新部署，網址服務的還是舊的 —— 而從外面看不出來。
+#    2026-09-03 只能靠「不認得的上傳種類：temp_list」這句間接推理。
+ok('features:' in _gs and '"temp_list"' in _gs,
+   '★★ doGet 要列出 features，用瀏覽器打開網址就能分辨部署是新是舊')
 
 # ═══════════════════════════════════════════════════════════
 # ⚠️⚠️⚠️ 停不下來的迴圈（2026-09-03 讀 /analyze 時抓到，還沒上過課）
@@ -1316,6 +1321,18 @@ ok('_temp_last_scan' in _srv8 and '"scan": scan' in _srv8,
 _ws = _srv8[_srv8.index('def _temp_worker_loop'):]
 ok('"ok": False' in _ws.split('except Exception')[1][:400],
    '★★ 掃描失敗要記下來（而且不要清空快取，清空看起來像一切正常）')
+
+# ⚠️⚠️ 「執行緒起來了」≠「它真的連得上」。2026-09-03 老師看到
+#    「✅ 暫存區工作者已啟動」，但它每 8 秒都在失敗 —— 錯誤被後面的
+#    輸出洗掉，而他在看的正是那幾行啟動訊息。
+ok('_n0 = len(gas_temp_list(' in _srv8,
+   '★★★ 啟動時要先探一次暫存區，把結果印在啟動訊息裡')
+ok('暫存區**連不上**' in _srv8 and '沒有人會處理' in _srv8,
+   '★★ 探測失敗要講清楚後果（學生傳得出去，但沒人處理）')
+# ⚠️ 探測失敗也要把執行緒起起來：改完 Secret 重跑就會自己接上。
+_st = _srv8[_srv8.index('def start_temp_worker'):]
+ok(_st.index('_threading.Thread') > _st.index('except Exception'),
+   '★★ 探測失敗仍要啟動執行緒（修好之後要能自己接上）')
 
 ok('"from_temp": "1"' in _srv8,
    '★★★ 工作者的內部呼叫要帶 from_temp（這張本來就是從暫存區抓下來的）')

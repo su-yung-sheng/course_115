@@ -263,7 +263,17 @@ function doOptions(e) {
  *   ‧ 打得開但資料夾名稱不對 → 上面設定區的 ROOT_ID 要換
  */
 function doGet(e) {
-  var out = { script: "filebackup（兩學期共用）", allowedTerms: ALLOWED_TERMS, keyRequired: !!UPLOAD_KEY, maxMB: MAX_MB, ok: true };
+  /* ⚠️⚠️ 2026-09-03 加 features：**用來分辨「這個部署是新的還是舊的」**。
+     Apps Script 服務的是「已部署的版本」，不是你存檔的程式碼 ——
+     改完沒有重新部署（版本選「新版本」），網址服務的還是舊的。
+     ★ 那天的症狀：學生上傳成功，後端卻一直
+       `[GAS] temp_list 回報失敗：不認得的上傳種類：temp_list`。
+       那句是最後那個泛用處理器丟的，等於在說「我沒有 temp_list 這個分支」。
+     ⚠️ 以前要靠這種間接推理才知道部署是舊的。現在用瀏覽器打開網址，
+       看 features 有沒有 temp 那三個就好 —— 兩邊網址各貼一次，
+       一眼就知道是不是同一份。 */
+  var out = { script: "filebackup（兩學期共用）", allowedTerms: ALLOWED_TERMS, keyRequired: !!UPLOAD_KEY, maxMB: MAX_MB, ok: true,
+              features: ["screenshot", "sb3", "temp", "temp_list", "temp_delete"] };
   try {
     var root = DriveApp.getFolderById(ROOT_ID);
     out.rootId   = ROOT_ID;
