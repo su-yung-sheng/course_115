@@ -522,7 +522,11 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                    畫面會顯示「目前沒有人在排隊」，學生就對著一個
                                    壞掉的系統一直等（2026-09-03 實際發生過）。
                                    ⚠️ 舊後端沒有 scan 欄位（undefined）→ 當成正常。 */
-                                setScanOk(!(j.scan && j.scan.ok === false));
+                                /* ⚠️⚠️ 要**連續**失敗才算壞掉。第一版只看 ok，
+                                   結果 GAS 偶爾抖一下（下一輪 8 秒後就好了）
+                                   學生螢幕上就跳紅字 —— 全班一起被嚇到。
+                                   ★ 和健康檢查的 MISS_LIMIT 同一個原則。 */
+                                setScanOk(!(j.scan && (j.scan.fails || 0) >= 3));
                                 setScanErr((j.scan && j.scan.error) || "");
                                 setOcrState(j.ocr_state || "");
                                 /* ⚠️ 舊後端沒有 worker 這個欄位（undefined）——
@@ -743,11 +747,16 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                         <i className="fa-solid fa-triangle-exclamation mr-2"></i>
                                         後端看不到暫存區 —— 請告訴老師
                                     </div>
+                                    {/* ⚠️ 學生看到的要**短**。原始例外訊息（好幾行、講的是
+                                        GAS 部署和金鑰）對他完全沒有可行動的指引，
+                                        整段砸過去只會讓他更慌。⇒ 詳情收在老師那一行裡，
+                                        而且只取第一行。 */}
                                     <div className="text-xs font-medium leading-relaxed">
-                                        ⚠️ 這不是你的問題，你的截圖已經上傳到雲端了，不會不見。<br />
-                                        老師：多半是 GAS 沒重新部署，或 Colab Secrets 的
-                                        GAS_UPLOAD_KEY 和 Apps Script 的 UPLOAD_KEY 對不起來。
-                                        {scanErr && <span className="block mt-1 opacity-75 break-all">（{scanErr}）</span>}
+                                        你的截圖<b>已經上傳到雲端了，不會不見</b> —— 等老師處理好就會自動補記。
+                                        <span className="block mt-1 opacity-70">
+                                            老師：看 Colab 上 <code>[GAS]</code> 開頭那一行
+                                            {scanErr && <span className="break-all">（{String(scanErr).split('\n')[0].slice(0, 80)}）</span>}
+                                        </span>
                                     </div>
                                 </div>
                             ) : queue.length === 0 ? (

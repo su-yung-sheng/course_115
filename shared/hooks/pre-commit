@@ -66,14 +66,38 @@ fi
 #   那是「這台機器沒裝」，不是「程式壞了」——
 #   因為缺套件就擋住提交，只會讓人養成 --no-verify 的習慣，
 #   那比沒有 hook 更糟。
-if command -v node >/dev/null 2>&1; then
+#
+# ⚠️⚠️ 2026-09-03 才發現：老師用 GitHub Desktop 提交時，這裡拿到的 PATH
+#    **沒有 node** —— 於是這 70 支測試從第一天起就沒跑過，
+#    而畫面上只有一行「⚠️ 找不到 node，略過測試」，看起來像個無害的提醒。
+#    ★ 這正是這支 hook 檔頭在講的「看起來有保護、其實沒有」。
+# ⇒ 不要只信 PATH，直接去常見的安裝位置找。
+find_node() {
+  command -v node >/dev/null 2>&1 && { echo node; return; }
+  for c in \
+    "/c/Program Files/nodejs/node.exe" \
+    "/c/Program Files (x86)/nodejs/node.exe" \
+    "$HOME/AppData/Local/Programs/nodejs/node.exe" \
+    "$HOME/AppData/Local/Volta/bin/node.exe" \
+    "$HOME/scoop/apps/nodejs/current/node.exe" \
+    "/usr/local/bin/node" \
+    "/opt/homebrew/bin/node" \
+    "/usr/bin/node"
+  do
+    [ -f "$c" ] && { echo "$c"; return; }
+  done
+  echo ""
+}
+NODE=$(find_node)
+
+if [ -n "$NODE" ]; then
   echo ""
   echo "── 跑測試 ─────────────────────────────────"
   FAILED=""
   SKIPPED=""
   for f in shared/tests/*.test.js; do
     [ -f "$f" ] || continue
-    OUT=$(node "$f" 2>&1)
+    OUT=$("$NODE" "$f" 2>&1)
     if [ $? -ne 0 ]; then
       case "$OUT" in
         *"npm install"*|*"Cannot find module"*) SKIPPED="$SKIPPED $(basename "$f")" ;;
@@ -96,7 +120,19 @@ if command -v node >/dev/null 2>&1; then
   fi
   echo "✅ 測試全過"
 else
-  echo "⚠️  找不到 node，略過測試"
+  # ⚠️⚠️ 這裡**不擋提交**（缺套件不算失敗，擋了只會養成 --no-verify 的習慣），
+  #    但一定要講得夠大聲 —— 一行小小的提醒會被當成無害，
+  #    而實際後果是「這次提交的東西一條測試都沒驗過」。
+  echo ""
+  echo "  ========================================================"
+  echo "  ⚠️⚠️  找不到 node —— 這次提交的 70 支測試**一支都沒跑**"
+  echo ""
+  echo "     只有 check.py 跑過（檔案完整性），行為對不對完全沒驗。"
+  echo "     ⇒ 請安裝 Node.js（https://nodejs.org），裝完重開 GitHub Desktop。"
+  echo "     已經裝了還是找不到的話，把它的安裝路徑告訴 Claude，"
+  echo "     加進 shared/hooks/pre-commit 的 find_node()。"
+  echo "  ========================================================"
+  echo ""
 fi
 
 echo ""

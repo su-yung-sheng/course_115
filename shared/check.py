@@ -196,11 +196,45 @@ def check_html():
                               '（本機可以開，GitHub Pages 會 404）')
 
 
+
+def _find_node():
+    """找 node —— **不要只靠 PATH**。
+
+    ⚠️⚠️ 2026-09-03 才發現：老師用 GitHub Desktop 提交時，
+       hook 拿到的 PATH 裡**沒有 node**。於是
+         · check.py 的 JS 語法檢查被跳過
+         · pre-commit 的 70 支 *.test.js **從來沒跑過**
+       而畫面上只有一行「⚠️ 找不到 node」，看起來像個無害的提醒 ——
+       那是「看起來有保護、其實沒有」的典型（見 hook 檔頭的說明）。
+    ★ Node 的安裝位置就那幾個，直接找比要老師改環境變數可靠。
+    ⚠️ 找不到時**不擋提交**（缺套件不算失敗），但要講得夠大聲。
+    """
+    p = shutil.which('node')
+    if p:
+        return p
+    cands = [
+        r'C:\Program Files\nodejs\node.exe',
+        r'C:\Program Files (x86)\nodejs\node.exe',
+        os.path.expanduser(r'~\AppData\Local\Programs\nodejs\node.exe'),
+        os.path.expanduser(r'~\AppData\Local\Volta\bin\node.exe'),
+        os.path.expanduser(r'~\scoop\apps\nodejs\current\node.exe'),
+        '/usr/local/bin/node', '/opt/homebrew/bin/node', '/usr/bin/node',
+    ]
+    # nvm（macOS／Linux）：挑版本號最大的那個
+    cands += sorted(glob.glob(os.path.expanduser('~/.nvm/versions/node/*/bin/node')),
+                    reverse=True)
+    for c in cands:
+        if os.path.isfile(c):
+            return c
+    return None
+
+
 # ── 3. JS 語法檢查（需要 node；沒有就跳過並提醒）────────
 def check_js():
-    node = shutil.which('node')
+    node = _find_node()
     if not node:
-        warns.append('找不到 node，跳過 JS 語法檢查')
+        warns.append('找不到 node，跳過 JS 語法檢查 —— '
+                     '⚠️ 提交前的 70 支測試也一起沒跑到，見最後的提醒')
         return
 
     def node_check(code, label, is_module=False):
@@ -711,7 +745,7 @@ def check_sb3_levels():
     # ⚠️ 而且「node 沒裝」和「資料讀不出來」要分開講。
     #    混成同一句的話，真的壞掉時看起來就像環境問題。
     import subprocess
-    if not shutil.which('node'):
+    if not _find_node():
         warns.append('找不到 node，略過與 .sb3 的比對（不是失敗，是這台機器沒裝）')
         return
     try:

@@ -1315,6 +1315,10 @@ ok('body = {"kind": "temp_list", "term": str(term)}' in _srv8,
 ok('raise RuntimeError' in _srv8 and 'if out is None:' in _srv8,
    '★★★ gas_temp_list 問不到要丟例外，不可以回空清單'
    '（空清單會被顯示成「沒有人在排隊」）')
+# ⚠️ 單次失敗不算失敗：GAS 偶爾抖一下，下一輪 8 秒後就好了，
+#    不可以因此讓全班的螢幕跳紅字（和健康檢查的 MISS_LIMIT 同一個原則）。
+ok('"fails": 0' in _srv8 and '_temp_last_scan["fails"]' in _srv8,
+   '★★ 掃描要記**連續**失敗次數，成功要歸零')
 ok('_temp_last_scan' in _srv8 and '"scan": scan' in _srv8,
    '★★★ 掃描狀態要露到 /api/queue-list —— 沒有它就分不出'
    '「沒人排隊」和「後端壞了」')
