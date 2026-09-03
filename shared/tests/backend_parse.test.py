@@ -1277,5 +1277,38 @@ ok('setTrashed(true)' in _gs and 'temp_delete' in _gs,
    '★ 刪除走垃圾桶（刪錯還撈得回來），不是永久刪除')
 
 
+# ═══════════════════════════════════════════════════════════
+section('C-20 判定出來的關卡要回傳給前端')
+# ═══════════════════════════════════════════════════════════
+# ⚠️ 2026-09-03 老師：「不用選關卡，關卡由後端判斷。」
+#    ⇒ 前端要拿得到「後端認為這是哪一關」才記得了成績。
+_srv9 = _code_of(_nb_cells[8])
+ok('"level": (_lv_from_name[0] if _lv_from_name else "")' in _srv9,
+   '★★ 回應要帶上判定出來的關卡')
+ok('"level_source"' in _srv9,
+   '★ 也要說是怎麼判的（檔名 or 辨識）—— 之後要看快路命中率')
+# ⚠️ 走兜底時 _lv_from_name 是 None，那時要回空字串而不是 null／undefined，
+#    否則前端拿去查對照表會炸。
+ok('else ""' in _srv9,
+   '★★ 認不出時回空字串（前端不可以拿 undefined 去查對照表）')
+
+# ★★ 前端要用關卡名反查 challenge.id，所以兩邊的名稱必須逐字相同。
+#    core.LEVEL_NAMES 和 thinking.html 的 englishMappings 已有測試把關（C-11），
+#    這裡再確認 challenges 陣列的 title 也對得上 —— 那才是反查用的那一份。
+_html2 = io.open(os.path.join(ROOT, '11501', 'thinking.html'), encoding='utf8').read()
+_titles = set(re.findall(r'\{ id: \d+, title: "([^"]+)"', _html2))
+_ns_t = {}
+_rl2 = ''.join(_nb_cells[6]['source']).split('\n')
+_i3 = next(k for k, l in enumerate(_rl2) if l.startswith('LEVEL_NAMES'))
+_j3 = next(k for k in range(_i3 + 1, len(_rl2))
+           if _rl2[k].startswith('def level_from_filename'))
+exec('\n'.join(_rl2[_i3:_j3]), _ns_t)
+_miss = set(_ns_t['LEVEL_NAMES']) - _titles
+ok(len(_titles) == 10, '★ challenges 陣列讀得到十關（讀到 %d）' % len(_titles))
+ok(not _miss,
+   '★★ 後端的關卡名要和 challenges 的 title 逐字相同（前端靠它反查 id）　←　%s'
+   % ('全部對得上' if not _miss else '對不上：' + '、'.join(sorted(_miss))))
+
+
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
 sys.exit(1 if fail_n else 0)
