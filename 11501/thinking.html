@@ -508,7 +508,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     if(isProcessing) return;         // 自己正在辨識就不用問
                     if(document.hidden) return;      // 分頁在背景，不要浪費配額
                     const ctl = new AbortController();
-                    const timer = setTimeout(() => ctl.abort(), 8000);
+                    /* ⚠️⚠️ 2026-09-03 老師回報：很多人開兩個視窗上傳之後，
+                       **全部都變成「等待連線中」**。
+                       ★ 後端沒事 —— /health 只讀記憶體、很快。問題是 Colab 只有
+                         2 顆 CPU，OCR 一跑就 100%，Flask 的執行緒排不到 CPU，
+                         回應因此超過 8 秒 → 連續三次 → 判離線 → 按鈕鎖住。
+                         而學生看到「等待伺服器連線」就會重開視窗，讓事情更糟。
+                       ⇒ 逾時放寬到 15 秒：後端忙的時候本來就該多等一下，
+                         真的掛掉時仍然三次就判離線（最多晚 21 秒發現）。 */
+                    const timer = setTimeout(() => ctl.abort(), 15000);
                     try {
                         const res = await fetch(API_BASE + "/health", {
                             headers: { 'ngrok-skip-browser-warning': '1' },
