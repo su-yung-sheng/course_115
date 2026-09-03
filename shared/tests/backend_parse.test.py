@@ -1191,5 +1191,50 @@ ok(_code_of(_nb_cells[8]).count('core.resolve_term(request.form.get("term"))') >
    '★ 學期一律走 core.resolve_term（會驗合法性，不是只取預設）')
 
 
+# ═══════════════════════════════════════════════════════════
+section('C-18 關卡先看檔名，但辨識要留著當兜底')
+# ═══════════════════════════════════════════════════════════
+# ⚠️⚠️ 2026-09-03 老師提出用檔名取代關卡辨識（省 12.35 秒 ＋ 一次
+#    呼叫的 9.3 秒固定成本，一張從 23.27 降到約 11 秒，CPU 佔用減半）。
+# ★ 我第一版**直接把關卡辨識刪掉**，14 條測試跟著紅 ——
+#   那些斷言記的是實戰踩過的坑（水餃工廠誤判、亂碼訊息、ROI 範圍）。
+#   刪掉程式碼等於刪掉退路：萬一檔名方案在課堂上不管用
+#   （學生用 Win+Shift+S，檔名是「螢幕擷取畫面…」），就沒得退。
+# ⇒ 檔名認得出走快路，認不出**照舊辨識**。這一節盯著兜底不可以被拿掉。
+_srv7 = _code_of(_nb_cells[8])
+ok('core.level_from_filename(_up_name)' in _srv7,
+   '★ 先從檔名認關卡')
+ok('_lv_from_name and (not _want_lv or _lv_from_name[0] == _want_lv)' in _srv7,
+   '★★ 快路的條件：檔名認得出**而且**和學生選的那一關一致')
+ok('選的關卡和截圖檔名對不上' in _srv7,
+   '★★ 檔名說 A、學生選 B 要當場擋掉（放行會把成績記到別關）')
+# ★★ 兜底必須還在 —— 這是這一節最重要的一條
+ok('level_roi = _crop(' in _srv7 and '_matches_level(level_texts)' in _srv7,
+   '★★ 關卡辨識要留著當兜底（檔名認不出時學生才不會卡住）')
+ok('系統在截圖上緣一個字都沒讀到' in _srv7,
+   '★ 兜底那條路的訊息也要留著（那是實戰調出來的）')
+
+_ns_f = {}
+_rl = ''.join(_nb_cells[6]['source']).split('\n')
+_i = next(k for k, l in enumerate(_rl) if l.startswith('LEVEL_NAMES'))
+_j = next(k for k in range(_i + 1, len(_rl))
+          if _rl[k].startswith('def ocr_stats_verdict'))
+exec('\n'.join(_rl[_i:_j]), _ns_f)
+_F = _ns_f['level_from_filename']
+ok(_F('滑梯公園 - Google Chrome 2026_8_31 下午 03_47_38.png')[0] == '滑梯公園',
+   '★★ 老師實際的檔名格式認得出')
+# ⚠️ 學生自己加學號、或之後要用學號前綴存檔，都不可以認不出
+ok(_F('1410700-滑梯公園 - Google Chrome.png')[0] == '滑梯公園',
+   '★★ 關卡名不在開頭時也要認得出（學號前綴）')
+ok(_F('螢幕擷取畫面 2026-09-03 103015.png') is None,
+   '★ 檔名沒有關卡資訊時回 None（走兜底，不是硬猜一個）')
+# ★★ 放寬成「任何位置」的前提：關卡名兩兩不互相包含
+_nm = list(_ns_f['LEVEL_NAMES'])
+_dup2 = [(x, y) for x in _nm for y in _nm if x != y and x in y]
+ok(not _dup2,
+   '★★ 關卡名不可以互相包含（放寬比對的前提）　←　%s'
+   % ('沒有' if not _dup2 else _dup2))
+
+
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
 sys.exit(1 if fail_n else 0)
