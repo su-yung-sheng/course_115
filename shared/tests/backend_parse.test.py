@@ -1241,5 +1241,41 @@ ok(not _dup2,
    % ('沒有' if not _dup2 else _dup2))
 
 
+# ═══════════════════════════════════════════════════════════
+section('C-19 雲端暫存區：每張都留一份，而且不可以拖累判定')
+# ═══════════════════════════════════════════════════════════
+# ⚠️⚠️ 2026-09-03 老師提的架構：截圖先進雲端暫存區，
+#    後端再慢慢取來辨識 —— 工作就脫離 Colab 的生命週期
+#    （現在圖放在記憶體，Colab 一重啟排隊中的全丟）。
+# ★ 這一步先做「存」：每一張都留下來（不只通過的），
+#   這是「相信檔名」的稽核配套；而留在暫存區的 = 還沒處理完的，
+#   本身就是一份待處理清單。
+_srv8 = _code_of(_nb_cells[8])
+ok('def gas_temp_save' in _srv8, '★ 有存進暫存區的函式')
+# ⚠️ 一定要背景做：上傳幾 MB 到 GAS 要好幾秒，
+#    同步做會把「讀檔名省下的 12 秒」整個吃掉。
+ok('target=gas_temp_save' in _srv8 and 'daemon=True' in _srv8,
+   '★★ 要用背景執行緒（同步上傳會抵銷掉檔名快路省下的時間）')
+ok('args=(raw,' in _srv8,
+   '★ 要存原始 bytes（存解碼後的就失去稽核價值）')
+# ⚠️ 失敗不可以影響判定 —— 和 record_ocr_stats 同一個原則
+_i2 = _srv8.index('def gas_temp_save')
+_body2 = _srv8[_i2:_i2 + 2200]
+ok('except Exception' in _body2 and 'return None' in _body2,
+   '★★ 上傳失敗要吞掉並回 None（附加保障不能拖累判定）')
+ok('沒設 GAS' in _srv8 or 'if not (GAS_UPLOAD_URL and GAS_UPLOAD_KEY)' in _body2,
+   '★ 沒設 GAS Secrets 時要安靜跳過')
+
+# GAS 那一側
+_gs = io.open(os.path.join(ROOT, 'shared', 'filebackup.gs'), encoding='utf8').read()
+ok('data.kind === "temp"' in _gs, '★ GAS 要認得 temp 這種上傳')
+ok('function tempFolder' in _gs and '[t2, day, fn]' in _gs,
+   '★ 路徑是 <根>/學期/日期/檔名')
+ok('function safeName' in _gs,
+   '★★ 檔名要消毒 —— 直接用學生上傳的檔名，路徑穿越要擋掉')
+ok('setTrashed(true)' in _gs and 'temp_delete' in _gs,
+   '★ 刪除走垃圾桶（刪錯還撈得回來），不是永久刪除')
+
+
 print('\n通過 %d／失敗 %d' % (pass_n, fail_n))
 sys.exit(1 if fail_n else 0)

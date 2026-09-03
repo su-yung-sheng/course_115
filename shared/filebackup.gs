@@ -126,9 +126,58 @@ function replaceFile(folder, fileName, base64, mimeType) {
 }
 
 
+/* ══════════════════════════════════════════════════════════════
+   暫存區：<根>/11501/20260903/1410700-滑梯公園 - Google Chrome ….png
+   ══════════════════════════════════════════════════════════════
+   ⚠️⚠️ 2026-09-03 老師提的架構：截圖先進雲端暫存區，後端再慢慢取來辨識。
+   ★ 這樣工作就**脫離 Colab 的生命週期** —— 目前圖片放在 Colab 記憶體，
+     一重啟或被回收，排隊中的全丟。放雲端之後，下課了也跑得完。
+   ★ 而且它同時解決了稽核：每一張都在，不只通過的那些。
+   ⚠️ 檔名直接用學生上傳的原檔名（前面加學號），因為關卡資訊就在裡面 ——
+      2026-09-03 起判定就是靠它。
+   ⚠️ 路徑用日期分層，一天一個資料夾，好清也好找。 */
+function tempFolder(term, day) {
+  var root = DriveApp.getFolderById(ROOT_ID);
+  return getOrCreateFolder(getOrCreateFolder(root, term), day);
+}
+
+/* ⚠️ 檔名要擋掉路徑穿越：Drive 不會真的建子目錄，但 "../" 這種東西
+   出現在檔名裡只會讓之後很難找。順便擋掉控制字元。 */
+function safeName(name) {
+  var n = String(name || "").replace(/[\/\\]/g, "_").replace(/[\x00-\x1f]/g, "");
+  n = n.replace(/\.\./g, "_");
+  return n.slice(0, 180) || "unnamed.png";
+}
+
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
+
+    /* ── 暫存區：存一張待處理的截圖 ────────────────── */
+    if (data.kind === "temp") {
+      checkKey(data.key);
+      checkSize(data.base64);
+      var t2  = checkTerm(data.term);
+      var day = String(data.day || "").replace(/\D/g, "");
+      if (day.length !== 8) {
+        day = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMdd");
+      }
+      var fn = safeName(data.fileName);
+      var f2 = replaceFile(tempFolder(t2, day), fn,
+                           data.base64, data.mimeType || "image/png");
+      return json({ success: true, term: t2, day: day,
+                    fileId: f2.getId(), fileName: fn,
+                    path: [t2, day, fn].join("/") });
+    }
+
+    /* ── 暫存區：處理完就刪掉 ──────────────────────
+       ⚠️ 用 setTrashed 而不是永久刪除：萬一刪錯，垃圾桶還撈得回來。 */
+    if (data.kind === "temp_delete") {
+      checkKey(data.key);
+      DriveApp.getFileById(String(data.fileId)).setTrashed(true);
+      return json({ success: true, deleted: String(data.fileId) });
+    }
+
     var kind = data.kind || "screenshot";          // "screenshot"（預設）或 "sb3"
     var unit = UNIT_FOLDER[kind];
     if (!unit) throw new Error("不認得的上傳種類：" + kind);
