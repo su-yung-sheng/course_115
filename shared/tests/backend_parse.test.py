@@ -1206,8 +1206,13 @@ ok('core.level_from_filename(_up_name)' in _srv7,
    '★ 先從檔名認關卡')
 ok('_lv_from_name and (not _want_lv or _lv_from_name[0] == _want_lv)' in _srv7,
    '★★ 快路的條件：檔名認得出**而且**和學生選的那一關一致')
-ok('選的關卡和截圖檔名對不上' in _srv7,
+# ⚠️ 不可以只檢查那句訊息在不在 —— 把 if 條件改成 False，
+#    訊息還在檔案裡，測試照樣綠（2026-09-03 突變時抓到）。
+#    ⇒ 要釘住**判斷式本身**。
+ok('if _lv_from_name and _want_lv and _lv_from_name[0] != _want_lv:' in _srv7,
    '★★ 檔名說 A、學生選 B 要當場擋掉（放行會把成績記到別關）')
+ok('選的關卡和截圖檔名對不上' in _srv7,
+   '   而且要講清楚是哪一關對哪一關')
 # ★★ 兜底必須還在 —— 這是這一節最重要的一條
 ok('level_roi = _crop(' in _srv7 and '_matches_level(level_texts)' in _srv7,
    '★★ 關卡辨識要留著當兜底（檔名認不出時學生才不會卡住）')
