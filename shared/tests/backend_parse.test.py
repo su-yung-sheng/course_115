@@ -1338,6 +1338,27 @@ _st = _srv8[_srv8.index('def start_temp_worker'):]
 ok(_st.index('_threading.Thread') > _st.index('except Exception'),
    '★★ 探測失敗仍要啟動執行緒（修好之後要能自己接上）')
 
+# ⚠️⚠️ 「傳完就能走」是這套架構的目標。成績本來就跑不掉（後端自己寫
+#    Firestore），但**證書截圖**原本靠學生端在判定通過後自己傳 ——
+#    學生一關視窗就沒人傳，證書那格永遠是空的。
+#    ⇒ 後端沒收到班級／座號時要用學號去查名冊，自己把圖傳好。
+# ⚠️⚠️ 重複通關要保留第一張截圖。GAS 的 replaceFile 是
+#    「丟掉同名舊檔、建新 fileId」，而前端已通關的關卡不會再更新網址
+#    ⇒ 重驗一次，第一次的證書圖就變破圖（而成績、日期、清單都好好的，
+#      要等學生去看證書才會發現）。
+ok('core.ocr_passed_urls(sid, _term).get(str(_cid))' in _srv8,
+   '★★★ 已經有圖的關要沿用第一張，不可以重傳（會把舊檔丟進垃圾桶）')
+_pb = _srv8[_srv8.index('if _passed:'):]
+ok(_pb.index('gas_upload_shot') > _pb.index('ocr_passed_urls'),
+   '★★ 而且要**先查有沒有舊圖**再決定傳不傳')
+
+ok('core.roster_lookup(sid)' in _srv8,
+   '★★★ 沒帶班級座號時要查名冊 —— 否則「上傳完可以關掉」不成立'
+   '（成績有、證書圖沒有）')
+_gu = _srv8[_srv8.index('_drive_url = gas_upload_shot'):][:200]
+ok('_room, _seat, _cid' in _gu,
+   '★★ 查到的班級座號要真的傳給 gas_upload_shot')
+
 ok('"from_temp": "1"' in _srv8,
    '★★★ 工作者的內部呼叫要帶 from_temp（這張本來就是從暫存區抓下來的）')
 ok('if not (request.form.get("from_temp") or "").strip():' in _srv8,

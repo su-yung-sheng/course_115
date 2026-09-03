@@ -307,5 +307,38 @@ ok(ns['_temp_split_name']('1410700-滑梯公園 - Google Chrome.png')
 ok(ns['_temp_split_name']('滑梯公園 - Google Chrome.png')[0] == '',
    '★ 沒有學號前綴時不可以把關卡名當成學號')
 
+print("\n── 沒有結論的那張不可以被刪掉 ──")
+# ⚠️⚠️ 2026-09-03：_temp_process_one 以前把 ocr_analyze() 的回傳值整個丟掉、
+#    無條件 return True ⇒ 只要不丟例外就刪檔。
+#    ★ 但「辨識引擎沒載入」「圖解不開」「429 同一人已有一張在跑」
+#      都是回 status=error，**不是丟例外** —— 於是學生的圖被刪掉、
+#      成績沒記，他等到 20 分鐘上限才知道失敗，而截圖在雲端也沒了。
+#    ⚠️ 這違背暫存區的核心約定：「還在資料夾裡」＝「還沒處理完」。
+_store2 = {'g1': ('1410700-跳格子 - Google Chrome.png', b'\x89PNGx')}
+ns['gas_temp_fetch'] = lambda fid: (_store2.get(fid) or (None, None))[1]
+
+def _analyze_engine_down():
+    return jsonify({'status': 'error', 'message': '後端還沒有安裝辨識套件'})
+
+ns['ocr_analyze'] = _analyze_engine_down
+ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is False,
+   '★★★ 後端回 status=error 時要回 False（＝不要刪檔，下一輪再試）')
+
+def _analyze_verdict_fail():
+    # 判定「沒通過」也是一種結論 —— 這種要刪，不然會一直重跑
+    return jsonify({'status': 'success', 'pass': False, 'reasons': ['沒看到挑戰成功']})
+
+ns['ocr_analyze'] = _analyze_verdict_fail
+ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is True,
+   '★★ 判定「沒通過」是有結論 → 要回 True（可以刪，否則會無限重跑）')
+
+def _analyze_tuple():
+    # flask 的 view 可以回 (body, code)
+    return jsonify({'status': 'success', 'pass': True}), 200
+
+ns['ocr_analyze'] = _analyze_tuple
+ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is True,
+   '★ view 回 (body, code) 這種形狀也要看得懂')
+
 print('\n通過 %d／失敗 %d' % (P, F))
 sys.exit(1 if F else 0)

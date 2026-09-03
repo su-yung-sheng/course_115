@@ -879,10 +879,19 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                         <i className="fa-solid fa-spinner text-3xl text-green-500 animate-spin mb-3"></i>
                                         {/* ⚠️ 不報「大約還要幾分鐘」：那是估的，估低了學生會
                                             以為系統壞掉而重按。⇒ 看上面的排隊清單。 */}
+                                        {/* ⚠️⚠️ 2026-09-03 老師指出：這裡原本寫「不要重開視窗」——
+                                            **那和整套設計的目標剛好相反**。
+                                            成績是**後端**寫進 Firestore 的（見 record_ocr_pass），
+                                            和這個視窗開不開完全無關；下次登入還會自動補記。
+                                            ★ 寫「不要關」等於把學生綁在電腦前，
+                                              而「傳完就能走」正是這次改架構要換到的東西。 */}
                                         <div className="text-slate-500 font-semibold text-sm">
                                             截圖已經送到雲端了（<span className="font-bold text-green-600">不會不見</span>），
                                             正在等後端處理 —— 看上面的排隊清單，輪到你就會有結果。<br />
-                                            <span className="text-xs text-slate-400">請不要重複按，也不要重開視窗。</span>
+                                            <span className="text-xs text-emerald-600 font-bold">
+                                                下課了可以直接關掉：成績會記在雲端，下次登入自動補上。
+                                            </span><br />
+                                            <span className="text-xs text-slate-400">只要不要重複按送出就好。</span>
                                         </div>
                                     </div>
                                 )}
