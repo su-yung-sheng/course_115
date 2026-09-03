@@ -80,7 +80,7 @@ window.CONFIG = {
    *      兩台都要設 NGROK_TOKEN（各自帳號的）與 FIREBASE_SA。
    *   ⚠️ 只開一台時就把這裡留空 —— 留空會自動退回 SERVER_URL，
    *      不會因為「忘了改回來」而連到一台沒開的機器。 */
-  OCR_SERVER_URL: '',
+  OCR_SERVER_URL: 'https://shuffle-unclaimed-jovial.ngrok-free.dev',
 
   //   班級密碼：需與 Colab Secrets 的 CLASS_PASSCODE 一致（留空 = 後端不檢查）
   CLASS_PASS: '1501class',
