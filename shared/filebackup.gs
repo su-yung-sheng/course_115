@@ -170,6 +170,33 @@ function doPost(e) {
                     path: [t2, day, fn].join("/") });
     }
 
+    /* ── 暫存區：列出待處理的（後端輪詢用）──────────
+       ⚠️⚠️ **這一支不可以給前端輪詢**。Apps Script 每天只有約 90 分鐘
+          執行時間，30 人每 5 秒問一次會在一分鐘內燒光額度。
+          ⇒ 只有後端呼叫（幾秒一次），前端要看排隊清單是問後端的記憶體快取。
+       ★ 回傳的順序＝建立時間，所以「先傳的先處理」天然成立。 */
+    if (data.kind === "temp_list") {
+      checkKey(data.key);
+      var t3  = checkTerm(data.term);
+      var d3  = String(data.day || "").replace(/\D/g, "");
+      if (d3.length !== 8) {
+        d3 = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMdd");
+      }
+      var it = tempFolder(t3, d3).getFiles();
+      var list = [];
+      while (it.hasNext() && list.length < 200) {
+        var f3 = it.next();
+        list.push({
+          id: f3.getId(),
+          name: f3.getName(),
+          size: f3.getSize(),
+          at: f3.getDateCreated().getTime()
+        });
+      }
+      list.sort(function (a, b) { return a.at - b.at; });   // 先傳的先處理
+      return json({ success: true, term: t3, day: d3, files: list });
+    }
+
     /* ── 暫存區：處理完就刪掉 ──────────────────────
        ⚠️ 用 setTrashed 而不是永久刪除：萬一刪錯，垃圾桶還撈得回來。 */
     if (data.kind === "temp_delete") {
