@@ -1392,11 +1392,22 @@ ok('if cid not in dates:' in _core_src,
 ok('"dates": dates' in _srv8,
    '★★ /api/my-passed 要把日期一起回去')
 
-ok('core.taipei_day(-1)' in _srv8,
-   '★★★ 要順便撈昨天的殘留（否則跨日的上傳會永遠沒人處理）')
+ok('core.taipei_day(-_d)' in _srv8 and 'range(1, 8)' in _srv8,
+   '★★★ 要撈舊日期的殘留：開機那輪掃過去一週（後端可能整個週末沒開），'
+   '之後每 5 分鐘看昨天')
+
+# ⚠️⚠️ 「有結論」不等於「成績記進去了」。record_ocr_pass 失敗時
+#    /analyze 原本照樣回 status=success ⇒ 工作者把檔案刪掉 ⇒
+#    學生通過了、圖沒了、成績也沒有，而且完全無聲。
+ok('"recorded": bool(_recorded)' in _srv8,
+   '★★★ 回應要說「成績有沒有真的寫進去」')
+ok('core.record_ocr_pass(sid, _cid, _term) is not None' in _srv8,
+   '★★★ 不可以把寫入失敗吞掉（雲端路徑上它就是成績本身）')
+ok('not _j.get("pass") or _j.get("recorded", True)' in _srv8,
+   '★★★ 判定通過但沒記成功的，暫存區那張不可以刪')
 ok('def taipei_day' in _core_src,
    '★★ 日期換算要用台北時間，而且只有一份（Colab 的時鐘是 UTC）')
-_yb = _srv8[_srv8.index('core.taipei_day(-1)'):][:400]
+_yb = _srv8[_srv8.index('core.taipei_day(-_d)'):][:400]
 ok('except Exception' in _yb,
    '★★ 昨天那批撈不到不可以害今天的停擺')
 

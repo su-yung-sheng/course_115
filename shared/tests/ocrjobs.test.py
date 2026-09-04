@@ -332,6 +332,30 @@ ns['ocr_analyze'] = _analyze_verdict_fail
 ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is True,
    '★★ 判定「沒通過」是有結論 → 要回 True（可以刪，否則會無限重跑）')
 
+def _analyze_pass_not_recorded():
+    # ⚠️⚠️ 判定通過、但成績沒寫進 Firestore（record_ocr_pass 回 None）。
+    #    刪了就等於學生白做：他通過了、圖沒了、成績也沒有。
+    return jsonify({'status': 'success', 'pass': True, 'recorded': False})
+
+ns['ocr_analyze'] = _analyze_pass_not_recorded
+ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is False,
+   '★★★ 判定通過但成績沒記進去 → 要回 False（留著重試，不可以刪）')
+
+def _analyze_pass_recorded():
+    return jsonify({'status': 'success', 'pass': True, 'recorded': True})
+
+ns['ocr_analyze'] = _analyze_pass_recorded
+ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is True,
+   '★★ 記進去了才可以刪')
+
+def _analyze_old_backend():
+    # 舊後端沒有 recorded 欄位 —— 要維持原本行為（當成有記）
+    return jsonify({'status': 'success', 'pass': True})
+
+ns['ocr_analyze'] = _analyze_old_backend
+ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is True,
+   '★ 舊後端沒有 recorded 欄位時要當成有記（不然全部卡住重試）')
+
 def _analyze_tuple():
     # flask 的 view 可以回 (body, code)
     return jsonify({'status': 'success', 'pass': True}), 200
