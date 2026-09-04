@@ -1295,6 +1295,19 @@ ok('find_spec("paddleocr") is None' in _pre and 'return' in _pre,
    '★★ 沒裝 PaddleOCR 就安靜跳過預載，不可以印 ⚠️（批改機那是正常的）')
 ok('_iu_msg.find_spec("paddleocr") is not None' in _srv7,
    '★★ 「辨識引擎正在背景載入…」也要判斷，否則批改機在等一個不會來的完成訊息')
+
+# ⚠️⚠️ 老師 2026-09-04 問：「之前為了即時回饋設計的程式還會執行嗎？」
+#    ★ /queue 讀的是 Colab **記憶體裡**的 OCR 佇列。改成雲端暫存區之後，
+#      工作者是一張一張做（for item in files），深度永遠 0 或 1 ——
+#      暫存區積 50 張時，狀態頁照樣顯示「0 人排隊中／兩條佇列正常」。
+#      這是最糟的綠燈：它出現的時機正好是出事的時候。
+#    ⇒ 狀態頁的排隊卡一律讀 /api/queue-list，不可以退回 /queue。
+ok("OCR_SERVER + '/queue'" not in _st,
+   "★★★ 狀態頁不可以再用 /queue 當截圖排隊人數（暫存區積圖時它是 0）")
+ok("OCR_SERVER + '/api/queue-list'" in _st,
+   '★★ 截圖排隊要讀暫存區的真實待處理數')
+ok('沒有人在處理截圖' in _st and 'o.worker' in _st,
+   '★★★ 工作者沒起來要紅燈 —— 學生傳得出去但沒人取，症狀只是「一直轉圈圈」')
 ok('perceptual' not in _core_src.lower() and 'imagehash' not in _core_src.lower(),
    '★★ 不可以改用相似度比對（同款遊戲畫面會全班誤判）')
 

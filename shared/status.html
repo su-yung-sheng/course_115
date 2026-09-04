@@ -636,15 +636,56 @@ if (!window.CONFIG) {
   // ── 檢查 5：排隊機制 ────────────────────────────────
   function checkQueue(el, health) {
     if (!health) { set(el, 'bad', '無法檢查', '<span class="text-slate-500">後端連不上，跳過。</span>'); return; }
+    /* ⚠️⚠️ 老師 2026-09-04 問：「之前為了即時回饋設計的程式還會執行嗎？」
+       ★ 查出來這裡是**壞的**：截圖那一欄本來讀 /queue，那是 Colab
+         **記憶體裡**的 OCR 佇列。改成雲端暫存區之後，工作者是
+         「一張一張做」（for item in files），佇列深度永遠是 0 或 1 ——
+         於是暫存區積了 50 張沒人處理，這張卡照樣顯示
+         「0 人排隊中／兩條佇列正常」。這是最糟的一種綠燈：
+         它出現的時機正好是出事的時候。
+       ⇒ 改讀 /api/queue-list（暫存區的真實待處理數），
+         並且把「工作者有沒有起來」「掃得到掃不到」一起看 ——
+         有圖但沒人掃，就是要立刻知道的事。 */
     return Promise.all([
       getJSON(SERVER + '/api/student/queue', 8000).catch(function () { return null; }),
-      getJSON(OCR_SERVER + '/queue', 8000).catch(function () { return null; })
+      getJSON(OCR_SERVER + '/api/queue-list', 8000).catch(function () { return null; })
     ]).then(function (r) {
       var g = r[0], o = r[1];
-      var d = row('AI 批改', g ? (g.pending || 0) + ' 人排隊中' : '<span class="text-red-600">端點沒有回應</span>') +
-              row('截圖辨識', o ? (o.pending || 0) + ' 人排隊中' : '<span class="text-red-600">端點沒有回應</span>');
-      if (g && o) set(el, 'ok', '兩條佇列正常', d);
-      else set(el, 'warn', '有端點缺漏', d + '<div class="mt-2 text-amber-700">後端版本可能過舊。</div>');
+      var n = o ? (o.count || 0) : 0;
+      var eta = o && o.eta_seconds ? '，估計還要 ' + Math.ceil(o.eta_seconds / 60) + ' 分鐘' : '';
+      var d = row('AI 批改', g ? (g.pending || 0) + ' 人排隊中'
+                              : '<span class="text-red-600">端點沒有回應</span>') +
+              row('截圖待處理', o ? (n + ' 張' + (n ? eta : '（暫存區是空的）'))
+                              : '<span class="text-red-600">端點沒有回應</span>');
+      if (o) {
+        d += row('暫存區工作者', o.worker
+                 ? '運作中（每 8 秒掃一次）'
+                 : '<span class="text-red-600">沒有啟動</span>');
+        var sc = o.scan || {};
+        if (sc.ok === false) {
+          d += row('最近一次掃描', '<span class="text-red-600">失敗：' + esc(String(sc.error || '')) + '</span>');
+        }
+      }
+      if (!g || !o) {
+        set(el, 'warn', '有端點缺漏', d +
+            '<div class="mt-2 text-amber-700">後端版本可能過舊 —— 在 Colab 重跑步驟 2、3、4。</div>');
+      } else if (!o.worker) {
+        /* ★ 學生傳得出去（打的是 GAS），但沒有人會取來辨識。
+           症狀是「一直轉圈圈」，而這一頁必須直接講出原因。 */
+        set(el, 'bad', '沒有人在處理截圖', d +
+            '<div class="mt-2 text-red-700">學生傳得出去，但圖會一直留在暫存區。'
+          + '請確認那台 Colab 的 Secrets 有 GAS_UPLOAD_URL 與 GAS_UPLOAD_KEY。</div>');
+      } else if ((o.scan || {}).ok === false) {
+        set(el, 'bad', '暫存區連不上', d +
+            '<div class="mt-2 text-red-700">工作者活著但掃不到資料夾 —— '
+          + 'GAS_UPLOAD_URL 多半指到舊的部署。</div>');
+      } else if (n > 30) {
+        set(el, 'warn', '積了 ' + n + ' 張', d +
+            '<div class="mt-2 text-amber-700">會處理完，只是要等。'
+          + '連續上課時累積是正常的。</div>');
+      } else {
+        set(el, 'ok', '兩條佇列正常', d);
+      }
     });
   }
 
