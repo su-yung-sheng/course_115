@@ -871,7 +871,11 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                     className="w-full py-4 bg-green-500 text-white rounded-2xl font-bold flex justify-center items-center gap-2 shadow-[0_10px_20px_-10px_rgba(99,102,241,1)] hover:-translate-y-1 hover:shadow-[0_15px_25px_-10px_rgba(99,102,241,1)] transition-all disabled:bg-slate-300 disabled:shadow-none disabled:transform-none disabled:cursor-not-allowed mt-2"
                                 >
                                     {isProcessing ? (
-                                        <><i className="fa-solid fa-hourglass-half"></i> 資料萃取中...</>
+                                        myUpName
+                                            /* ★ 已經排進去了就別再說「處理中」——
+                                               那會讓學生覺得自己還得盯著。 */
+                                            ? <><i className="fa-solid fa-circle-check"></i> 已排進佇列（可以關視窗）</>
+                                            : <><i className="fa-solid fa-cloud-arrow-up"></i> 上傳中…請稍候</>
                                     ) : result?.status === 'pass' ? (
                                         <><i className="fa-solid fa-circle-check"></i> 已完成（要重驗請重新選圖）</>
                                     ) : result?.status === 'fail' ? (
@@ -887,24 +891,46 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                     )}
                                 </button>
 
-                                {isProcessing && (
+                                {/* ══════════════════════════════════════════
+                                    上傳中 vs 已進入排隊 —— **要分成兩段**
+                                    ══════════════════════════════════════════
+                                    ⚠️⚠️ 2026-09-03 老師：「怕按下就直接關閉，
+                                       確認進入認證排隊後，應該要有訊息提醒可以關閉視窗。」
+                                    ★ 關鍵在**時機**：按下送出到 GAS 確認收到之間還有幾秒，
+                                      那段時間關掉，圖是真的會掉的。
+                                      而原本那句「可以直接關掉」是按下當下就出現的小灰字 ——
+                                      講得太早，而且藏在轉圈圈底下沒人會看。
+                                    ⇒ 沒有 myUpName ＝ 還在上傳 → 叫他先別關
+                                      有 myUpName ＝ GAS 已經收下 → 大聲告訴他可以走了 */}
+                                {isProcessing && !myUpName && (
                                     <div className="text-center mt-6">
-                                        <i className="fa-solid fa-spinner text-3xl text-green-500 animate-spin mb-3"></i>
-                                        {/* ⚠️ 不報「大約還要幾分鐘」：那是估的，估低了學生會
-                                            以為系統壞掉而重按。⇒ 看上面的排隊清單。 */}
-                                        {/* ⚠️⚠️ 2026-09-03 老師指出：這裡原本寫「不要重開視窗」——
-                                            **那和整套設計的目標剛好相反**。
-                                            成績是**後端**寫進 Firestore 的（見 record_ocr_pass），
-                                            和這個視窗開不開完全無關；下次登入還會自動補記。
-                                            ★ 寫「不要關」等於把學生綁在電腦前，
-                                              而「傳完就能走」正是這次改架構要換到的東西。 */}
+                                        <i className="fa-solid fa-cloud-arrow-up text-3xl text-green-500 animate-bounce mb-3"></i>
                                         <div className="text-slate-500 font-semibold text-sm">
-                                            截圖已經送到雲端了（<span className="font-bold text-green-600">不會不見</span>），
-                                            正在等後端處理 —— 看上面的排隊清單，輪到你就會有結果。<br />
-                                            <span className="text-xs text-emerald-600 font-bold">
-                                                下課了可以直接關掉：成績會記在雲端，下次登入自動補上。
-                                            </span><br />
-                                            <span className="text-xs text-slate-400">只要不要重複按送出就好。</span>
+                                            正在把截圖上傳到雲端…<br />
+                                            <span className="text-xs text-amber-600 font-bold">
+                                                ⚠️ 這幾秒請先不要關掉視窗
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {isProcessing && myUpName && (
+                                    <div className="mt-6 bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-5 text-center animate-[fadeIn_0.3s_ease-out]">
+                                        <div className="text-emerald-700 font-black text-base">
+                                            <i className="fa-solid fa-circle-check mr-2"></i>上傳成功，已經排進認證佇列
+                                        </div>
+                                        <div className="text-2xl font-black text-emerald-800 my-3 leading-snug">
+                                            可以關掉視窗了，不用在這裡等
+                                        </div>
+                                        {/* ⚠️ 不報「大約還要幾分鐘」：那是估的，估低了學生會
+                                            以為系統壞掉而重按。 */}
+                                        <div className="text-sm font-medium text-emerald-700">
+                                            後端會自己處理完，成績記在雲端 ——<br />
+                                            下次登入就會看到證書，<b>不會不見</b>。
+                                        </div>
+                                        <div className="text-xs text-slate-500 mt-3">
+                                            想看進度也可以留著：上面的排隊清單裡有你那一列。<br />
+                                            只要不要重複按送出就好。
                                         </div>
                                     </div>
                                 )}
