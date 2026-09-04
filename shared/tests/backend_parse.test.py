@@ -1403,8 +1403,32 @@ ok('"recorded": bool(_recorded)' in _srv8,
    '★★★ 回應要說「成績有沒有真的寫進去」')
 ok('core.record_ocr_pass(sid, _cid, _term) is not None' in _srv8,
    '★★★ 不可以把寫入失敗吞掉（雲端路徑上它就是成績本身）')
-ok('not _j.get("pass") or _j.get("recorded", True)' in _srv8,
+ok('return "rejected"' in _srv8 and 'if _j.get("recorded", True):' in _srv8,
    '★★★ 判定通過但沒記成功的，暫存區那張不可以刪')
+# ⚠️⚠️ 判定不通過的要**移到 rejected 留存**，不是刪 ——
+#    學生來申訴「我明明有通關」時，那張圖要調得出來。
+ok('def gas_temp_reject' in _srv8 and 'temp_reject' in _gs,
+   '★★★ 判定不通過要移去 rejected 留存（前後端都要有）')
+ok('gas_temp_reject(fid, term)' in _srv8,
+   '★★ 工作者要真的呼叫它，不是只定義')
+_mv = _srv8[_srv8.index('_what = _temp_process_one'):][:900]
+ok('if _ok_move:' in _mv,
+   '★★★ 移不動就留著重試，絕對不可以改成刪掉')
+ok('moveTo' in _gs,
+   '★★ GAS 要用 moveTo 搬過去（保留同一個檔案，不是複製）')
+
+# ⚠️⚠️ 2026-09-03 老師：資料夾結構改成 根／學期／等待驗證／日期。
+#    ★ 改路徑最大的風險是「舊路徑裡還躺著沒處理完的圖」——
+#      不撿就永遠沒人處理，而且完全沒有徵兆（新路徑是空的，看起來正常）。
+ok('TEMP_FOLDER_NAME = "等待驗證"' in _gs and 'REJECT_FOLDER_NAME = "未通過"' in _gs,
+   '★★ 兩個資料夾名稱要有具名常數（避免字串散落各處）')
+ok('function legacyTempFolder' in _gs and 'data.legacy' in _gs,
+   '★★★ GAS 要能列**舊路徑**（<根>/{學期}/{日期}/）的殘留')
+ok('legacy=True' in _srv8 and 'range(0, 8)' in _srv8,
+   '★★★ 後端開機那一輪要撿舊路徑（含今天，往前七天）')
+_lgf = _srv8[_srv8.index('def legacyTempFolder'):] if 'def legacyTempFolder' in _srv8 else ''
+ok('findFolder' in _gs and 'if (!src3)' in _gs,
+   '★★ 舊路徑不存在時要回空清單，**不可以建立**那個資料夾')
 ok('def taipei_day' in _core_src,
    '★★ 日期換算要用台北時間，而且只有一份（Colab 的時鐘是 UTC）')
 _yb = _srv8[_srv8.index('core.taipei_day(-_d)'):][:400]

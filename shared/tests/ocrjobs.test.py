@@ -292,7 +292,7 @@ ns['ocr_analyze'] = _analyze_that_saves_back
 
 _item = {'id': 'f1', 'name': _store['f1'][0]}
 _done = ns['_temp_process_one'](_item, '11501')
-ok(_done is True, '★ 處理成功要回 True（工作者才會去刪檔）')
+ok(_done == 'passed', "★ 判定通過且有記進去 → 回 'passed'（工作者才會去刪檔）")
 ok(_seen_flags == ['1'],
    '★★★ 內部呼叫一定要帶 from_temp　←　實際帶的是 %r' % (_seen_flags,))
 ns['gas_temp_delete']('f1')
@@ -321,16 +321,18 @@ def _analyze_engine_down():
     return jsonify({'status': 'error', 'message': '後端還沒有安裝辨識套件'})
 
 ns['ocr_analyze'] = _analyze_engine_down
-ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is False,
-   '★★★ 後端回 status=error 時要回 False（＝不要刪檔，下一輪再試）')
+ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') == '',
+   "★★★ 後端回 status=error 時要回 ''（＝不要動它，下一輪再試）")
 
 def _analyze_verdict_fail():
     # 判定「沒通過」也是一種結論 —— 這種要刪，不然會一直重跑
     return jsonify({'status': 'success', 'pass': False, 'reasons': ['沒看到挑戰成功']})
 
 ns['ocr_analyze'] = _analyze_verdict_fail
-ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is True,
-   '★★ 判定「沒通過」是有結論 → 要回 True（可以刪，否則會無限重跑）')
+# ⚠️⚠️ 2026-09-03 老師：「留存改成移到 rejected 資料夾」——
+#    以前判定不通過就直接刪，學生來說「我明明有通關」時沒有任何證據。
+ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') == 'rejected',
+   "★★★ 判定「沒通過」要回 'rejected'：移去留存，**不是刪掉**")
 
 def _analyze_pass_not_recorded():
     # ⚠️⚠️ 判定通過、但成績沒寫進 Firestore（record_ocr_pass 回 None）。
@@ -338,14 +340,14 @@ def _analyze_pass_not_recorded():
     return jsonify({'status': 'success', 'pass': True, 'recorded': False})
 
 ns['ocr_analyze'] = _analyze_pass_not_recorded
-ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is False,
-   '★★★ 判定通過但成績沒記進去 → 要回 False（留著重試，不可以刪）')
+ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') == '',
+   "★★★ 判定通過但成績沒記進去 → 回 ''（留著重試，不可以刪）")
 
 def _analyze_pass_recorded():
     return jsonify({'status': 'success', 'pass': True, 'recorded': True})
 
 ns['ocr_analyze'] = _analyze_pass_recorded
-ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is True,
+ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') == 'passed',
    '★★ 記進去了才可以刪')
 
 def _analyze_old_backend():
@@ -353,7 +355,7 @@ def _analyze_old_backend():
     return jsonify({'status': 'success', 'pass': True})
 
 ns['ocr_analyze'] = _analyze_old_backend
-ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is True,
+ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') == 'passed',
    '★ 舊後端沒有 recorded 欄位時要當成有記（不然全部卡住重試）')
 
 def _analyze_tuple():
@@ -361,7 +363,7 @@ def _analyze_tuple():
     return jsonify({'status': 'success', 'pass': True}), 200
 
 ns['ocr_analyze'] = _analyze_tuple
-ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') is True,
+ok(ns['_temp_process_one']({'id': 'g1', 'name': _store2['g1'][0]}, '11501') == 'passed',
    '★ view 回 (body, code) 這種形狀也要看得懂')
 
 print('\n通過 %d／失敗 %d' % (P, F))

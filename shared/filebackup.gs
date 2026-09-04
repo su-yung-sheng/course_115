@@ -136,7 +136,8 @@ function replaceFile(folder, fileName, base64, mimeType) {
 
 
 /* ══════════════════════════════════════════════════════════════
-   暫存區：<根>/11501/20260903/1410700-滑梯公園 - Google Chrome ….png
+   暫存區：<根>/11501/等待驗證/20260903/1410700-滑梯公園 - Google Chrome ….png
+   沒過的：<根>/11501/未通過/20260903/103045-1410700-滑梯公園 ….png
    ══════════════════════════════════════════════════════════════
    ⚠️⚠️ 2026-09-03 老師提的架構：截圖先進雲端暫存區，後端再慢慢取來辨識。
    ★ 這樣工作就**脫離 Colab 的生命週期** —— 目前圖片放在 Colab 記憶體，
@@ -145,9 +146,23 @@ function replaceFile(folder, fileName, base64, mimeType) {
    ⚠️ 檔名直接用學生上傳的原檔名（前面加學號），因為關卡資訊就在裡面 ——
       2026-09-03 起判定就是靠它。
    ⚠️ 路徑用日期分層，一天一個資料夾，好清也好找。 */
+var TEMP_FOLDER_NAME = "等待驗證";     // 還沒辨識的
+var REJECT_FOLDER_NAME = "未通過";     // 辨識過但沒過的（留存給老師調閱）
+
 function tempFolder(term, day) {
   var root = DriveApp.getFolderById(ROOT_ID);
-  return getOrCreateFolder(getOrCreateFolder(root, term), day);
+  return getOrCreateFolder(
+           getOrCreateFolder(getOrCreateFolder(root, term), TEMP_FOLDER_NAME),
+           day);
+}
+
+/* ⚠️ 舊版的暫存區是 <根>/{學期}/{日期}/（沒有「等待驗證」那一層）。
+   2026-09-03 改版時，那裡可能還躺著沒處理完的截圖 ——
+   後端開機那一輪會用 legacy:true 掃一次，把它們撿回來處理。
+   ★ 撿完就空了，這支之後可以刪掉。 */
+function legacyTempFolder(term, day) {
+  var root = DriveApp.getFolderById(ROOT_ID);
+  return findFolder(findFolder(root, term), day);
 }
 
 /* ⚠️ 檔名要擋掉路徑穿越：Drive 不會真的建子目錄，但 "../" 這種東西
@@ -191,7 +206,13 @@ function doPost(e) {
       if (d3.length !== 8) {
         d3 = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMdd");
       }
-      var it = tempFolder(t3, d3).getFiles();
+      /* ⚠️ legacy：撿舊版路徑（<根>/{學期}/{日期}/）留下來的那些。
+         找不到那個資料夾就回空清單，不要建立它。 */
+      var src3 = data.legacy ? legacyTempFolder(t3, d3) : tempFolder(t3, d3);
+      if (!src3) {
+        return json({ success: true, term: t3, day: d3, files: [] });
+      }
+      var it = src3.getFiles();
       var list = [];
       while (it.hasNext() && list.length < 200) {
         var f3 = it.next();
@@ -204,6 +225,33 @@ function doPost(e) {
       }
       list.sort(function (a, b) { return a.at - b.at; });   // 先傳的先處理
       return json({ success: true, term: t3, day: d3, files: list });
+    }
+
+    /* ── 暫存區：判定不通過的移去留存，不要刪 ──────────
+       ⚠️⚠️ 2026-09-03 老師：「留存改成移到 rejected 資料夾」。
+          原本判定不通過就直接刪 —— 可是學生來說「我明明有通關」的時候，
+          那張圖已經不在了，而那正是最需要證據的時刻。
+       ★ 放 <根>/{學期}/rejected/{日期}/，**和暫存區是兄弟資料夾**：
+         暫存區是 <根>/{學期}/{日期}/，工作者只掃那裡，
+         所以移過去之後不會再被撈出來重跑。
+       ⚠️ 檔名前面加時間戳：同一關失敗兩次都要留得住，而且看得出先後。
+          （直接同名放進去 Drive 會變成兩個同名檔案，很難分辨。） */
+    if (data.kind === "temp_reject") {
+      checkKey(data.key);
+      var t5  = checkTerm(data.term);
+      var d5  = String(data.day || "").replace(/\D/g, "");
+      if (d5.length !== 8) {
+        d5 = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyyMMdd");
+      }
+      var rf  = getOrCreateFolder(
+                  getOrCreateFolder(getOrCreateFolder(
+                    DriveApp.getFolderById(ROOT_ID), t5), REJECT_FOLDER_NAME), d5);
+      var f5  = DriveApp.getFileById(String(data.fileId));
+      var ts  = Utilities.formatDate(new Date(), "Asia/Taipei", "HHmmss");
+      f5.setName(ts + "-" + f5.getName());
+      f5.moveTo(rf);
+      return json({ success: true, term: t5, day: d5,
+                    movedTo: [t5, REJECT_FOLDER_NAME, d5, f5.getName()].join("/") });
     }
 
     /* ── 暫存區：處理完就刪掉 ──────────────────────
@@ -317,7 +365,7 @@ function doGet(e) {
        看 features 有沒有 temp 那三個就好 —— 兩邊網址各貼一次，
        一眼就知道是不是同一份。 */
   var out = { script: "filebackup（兩學期共用）", allowedTerms: ALLOWED_TERMS, keyRequired: !!UPLOAD_KEY, maxMB: MAX_MB, ok: true,
-              features: ["screenshot", "sb3", "temp", "temp_list", "temp_delete", "find"] };
+              features: ["screenshot", "sb3", "temp", "temp_list", "temp_delete", "temp_reject", "find"] };
   try {
     var root = DriveApp.getFolderById(ROOT_ID);
     out.rootId   = ROOT_ID;
