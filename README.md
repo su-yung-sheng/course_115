@@ -532,12 +532,17 @@ Colab 用 **服務帳戶**存取 Firestore（金鑰放 Colab Secrets 的 `FIREBA
 順序錯了會出事，尤其是第 2 步在第 3 步之前。
 
 1. **Firebase Console** → Authentication 只啟用 Google；授權網域含 GitHub Pages 網域
-2. **Colab** → Secrets 設好 `FIREBASE_SA` → 執行階段**重新啟動** → 從步驟 1 跑到 4
+2. **Colab（兩台都要）** → Secrets 設好 `FIREBASE_SA` → 執行階段**重新啟動** → 從步驟 1 跑到 4
    → `/api/health` 的 `fs_auth_mode` 要是 **`service_account`**
+   → 看啟動訊息的「── 這一台實際提供的服務 ──」，確認這台在做的是你以為的那件事
 3. **發布 `shared/firestore.rules`**（在第 2 步確認之後才做）
 4. **推送前端**
-5. 教師端 → 🩺 **狀態檢查** → 五項全綠
+5. 教師端 → 🩺 **狀態檢查** → 全綠
 6. 用學生帳號實際登入 → 闖一關 → 確認星數有寫進去
+
+> 🖥️ **後端是兩台 Colab**（Scratch 批改一台、運算思維 OCR 一台），跑同一本
+> `shared/backend.ipynb`，靠 Secrets 自動分工。兩台各要設哪些 Secret、
+> 啟動訊息該長什麼樣，看 [`shared/docs/04_後端與資料庫.md`](shared/docs/04_後端與資料庫.md)。
 
 **每次上課前**跑 notebook 的步驟 5（OCR）與步驟 6（資料庫存取）——
 步驟 6 會一次印出「用哪個帳號、批改標準讀不讀得到、哪幾關已經設定好」。

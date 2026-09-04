@@ -134,8 +134,16 @@
     }
   }
 
-  /* ── 主要入口 ──────────────────────────────────────
-     opt = { base, formData, signal, storageKey, challengeId, onQueue, onTicket } */
+  /* ── 號碼牌路徑（同步等結果）────────────────────────
+     opt = { base, formData, signal, storageKey, challengeId, onQueue, onTicket }
+
+     ⚠️⚠️⚠️ 2026-09-04 現況：**沒有任何頁面在叫這一支**。
+        thinking.html 兩份都改走 submitViaCloud（圖傳 GAS，不打 Colab），
+        學生送出後可以直接關視窗。
+     ★ 為什麼不刪：這是 GAS 部署出問題時的臨時退路 ——
+       把 thinking.html 改回這一支就能撐完一節課。
+     ⇒ 要刪請等寒假，而且要連後端的 /analyze-async、/api/result/<ticket>、
+       /queue 一起，不要只拆前端這一半。 */
   async function submitScreenshot(opt) {
     var ticket = null;
 

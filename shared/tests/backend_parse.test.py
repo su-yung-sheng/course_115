@@ -1308,6 +1308,14 @@ ok("OCR_SERVER + '/api/queue-list'" in _st,
    '★★ 截圖排隊要讀暫存區的真實待處理數')
 ok('沒有人在處理截圖' in _st and 'o.worker' in _st,
    '★★★ 工作者沒起來要紅燈 —— 學生傳得出去但沒人取，症狀只是「一直轉圈圈」')
+
+# ⚠️⚠️ 2026-09-04：暫存區工作者的啟動條件是「這台能不能處理」，
+#    不是「有沒有金鑰」。兩台金鑰設一樣時，沒有 OCR 的那台也會
+#    每 8 秒去搶同一批圖 —— 重複抓、做不出結論、一起燒 GAS 額度，
+#    而且兩邊都說自己正常。
+_stw = _srv7[_srv7.index('def start_temp_worker'):][:1400]
+ok('_iu_w.find_spec("paddleocr") is None' in _stw and 'return False' in _stw,
+   '★★★ 沒裝 OCR 的機器不可以啟動暫存區工作者（會和 OCR 機搶同一批圖）')
 ok('perceptual' not in _core_src.lower() and 'imagehash' not in _core_src.lower(),
    '★★ 不可以改用相似度比對（同款遊戲畫面會全班誤判）')
 
