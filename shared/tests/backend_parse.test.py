@@ -1343,6 +1343,12 @@ ok('raise RuntimeError' in _srv8 and 'if out is None:' in _srv8,
 #    不可以因此讓全班的螢幕跳紅字（和健康檢查的 MISS_LIMIT 同一個原則）。
 ok('"fails": 0' in _srv8 and '_temp_last_scan["fails"]' in _srv8,
    '★★ 掃描要記**連續**失敗次數，成功要歸零')
+# ⚠️ 老師要判斷「連續上課會不會積起來」，需要看得到積量和消化速度。
+#    ★ 這是給老師的數字，**學生端不顯示** —— 對學生報估計時間，
+#      估低了他會以為系統壞掉而重按（先前才修掉的問題）。
+ok('"eta_seconds"' in _srv8 and '_ocr_avg_seconds()' in _srv8,
+   '★★ /api/queue-list 要回報積量的消化時間（用實測平均，不是寫死）')
+
 ok('_temp_last_scan' in _srv8 and '"scan": scan' in _srv8,
    '★★★ 掃描狀態要露到 /api/queue-list —— 沒有它就分不出'
    '「沒人排隊」和「後端壞了」')

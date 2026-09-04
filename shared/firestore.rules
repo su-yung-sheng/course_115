@@ -310,6 +310,27 @@ service cloud.firestore {
       allow get: if docId == 'schedule' && isSignedIn();
     }
 
+    /* 後端記的「這個學號過了哪幾關」（運算思維截圖判定）
+       ══════════════════════════════════════════════════════
+       ⚠️⚠️ 2026-09-03：星星是**學生的瀏覽器**寫進 {學期}-progress 的。
+          改成「上傳完就能關掉」之後，學生傳完就走 ——
+          後端明明已經評完、也記在這裡了，老師端卻完全看不到，
+          要等那個學生下次登入才會同步。
+       ⇒ 開給老師讀，教師端就能用 shared/grading.js 當場換算星星。
+       ★ 只給讀、只給老師：這份是後端用**服務帳戶**寫的
+         （服務帳戶不受規則限制），所以這裡完全不需要開放寫入。
+       ⚠️ 學生也不給讀 —— 他們要的是自己那一份，走後端的
+          /api/my-passed（那支只回自己的），不必開放整個集合。
+       ⚠️⚠️ 這份規則**沒有發布**的話，教師端會拿到 permission-denied。
+          那邊已經包了 try/catch，畫面不會壞，只是看不到未同步的部分 ——
+          症狀是「明明有學生通關了，老師端卻沒有」。 */
+    match /11501-ocr-passed/{sid} {
+      allow read: if isTeacher();
+    }
+    match /11502-ocr-passed/{sid} {
+      allow read: if isTeacher();
+    }
+
     // 統一進度／星星（hub 儀表板；闖關紀錄也在這裡的 history）
     match /11501-progress/{sid} {
       allow get: if isSignedIn();

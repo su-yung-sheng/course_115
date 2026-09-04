@@ -25,8 +25,17 @@
   var POLL_START_MS = 3000;
   var POLL_MAX_MS = 10000;
   /* ⚠️ 一定要有總上限：後端如果卡住不動，不能讓學生無限等下去。
-     20 分鐘 ≈ 全班 30 人跑完還有餘裕（實測 24 秒／張）。 */
-  var GIVE_UP_MS = 20 * 60 * 1000;
+     ⚠️⚠️ 2026-09-03 老師給了實際數字：「一節課應該最多有 50 張未處理完」。
+        ★ 50 張 × 23 秒 ≈ **19.2 分鐘** —— 排最後那個人幾乎剛好撞到
+          原本的 20 分鐘上限；每張只要稍微慢一點（25 秒 → 20.8 分鐘）
+          他就會看到「等超過 20 分鐘」，**而他的圖其實好好地在排隊**。
+        ⚠️ 而且會中的正是「留下來等結果的人」—— 想看到自己過關的那幾個。
+        ⚠️ 這個上限原本估的是「30 人、11 秒／張」；後來為了防改檔名
+           加回關卡辨識，一張變成約 23 秒，這個數字就過期了。
+     ⇒ 放寬到 40 分鐘。★ 現在放寬比以前安全：後端真的卡住的話，
+       /api/queue-list 的 scan.ok 會是 false，上面那段就不會誤判成
+       「處理完了」，所以不必再靠這個上限去偵測故障。 */
+  var GIVE_UP_MS = 40 * 60 * 1000;
   /* 號碼牌在後端只留 30 分鐘（_JOB_TTL），這邊留短一點，
      免得拿一張後端已經清掉的牌去問。 */
   var TICKET_KEEP_MS = 25 * 60 * 1000;
@@ -84,7 +93,7 @@
           ok: false, status: 'timeout',
           data: {
             status: 'error',
-            message: '等超過 20 分鐘還沒有結果 —— 後端可能中途停掉了。'
+            message: '等超過 40 分鐘還沒有結果 —— 後端可能中途停掉了。'
               + '⚠️ 這不是你的截圖有問題，請告訴老師，稍後再傳一次。'
           }
         };
@@ -247,18 +256,20 @@
     while (true) {
       if (Date.now() - started > GIVE_UP_MS) {
         return { ok: false, status: 'timeout', data: { status: 'error',
-          message: '等超過 20 分鐘還沒有結果。⚠️ 你的截圖已經在雲端，'
+          message: '等超過 40 分鐘還沒有結果。⚠️ 你的截圖已經在雲端，'
                  + '不會不見 —— 請告訴老師，之後會自動補記。' } };
       }
       await sleep(wait, opt.signal);
       wait = Math.min(POLL_MAX_MS, Math.round(wait * 1.3));
 
       var list = null;
+      var scan = null;
       try {
         var qr = await fetch(opt.base + '/api/queue-list',
                              { headers: H, cache: 'no-store', signal: opt.signal });
         var qj = await qr.json();
         list = (qj && qj.queue) || [];
+        scan = (qj && qj.scan) || null;
       } catch (e) {
         if (e && e.name === 'AbortError') throw e;
         /* ⚠️ 問不到排隊清單**不算失敗**：Colab 可能忙或掛了，
@@ -267,6 +278,24 @@
       }
 
       if (opt.onQueue) opt.onQueue(list);
+
+      /* ══════════════════════════════════════════════════════
+         「清單裡沒有我」不一定代表「我被處理完了」
+         ══════════════════════════════════════════════════════
+         ⚠️⚠️ 2026-09-03 老師問：「是不是檔案離開暫存區就代表驗證走完了？」
+            —— 不完全是。清單是後端**最近一次掃描**的結果，
+            而掃描本身可能還沒發生或失敗：
+              · 後端剛重啟：快取是空的，要等第一次掃描（約 8 秒）
+                ★ 這段空窗裡，已經看過自己的人會以為自己好了，
+                  然後去問 /api/my-passed 拿到「沒有」→ **誤判失敗**。
+                  老師今天重跑 Colab 很多次，這條很容易踩到。
+              · 掃描失敗：快取現在會留著上一份（不清空），但仍要防著
+              · 老師手動搬走檔案
+         ⇒ 只有在「後端真的掃過、而且這次掃成功」時，
+           檔案不見才算數。
+         ⚠️ 舊後端沒有 scan 欄位 → scan 是 null → 當成正常（維持原行為）。 */
+      var scanUsable = !scan || (scan.ok !== false && scan.at);
+      if (!scanUsable) continue;
 
       var mine = list.some(function (x) {
         return ((x.student_id ? x.student_id + '-' : '') + x.name) === upName;

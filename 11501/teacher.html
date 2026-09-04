@@ -758,6 +758,33 @@
       const attMap = {};
       progressSnap.forEach(d => { const pd = d.data(); progMap[d.id] = pd.modules || {}; histMap[d.id] = pd.history || []; attMap[d.id] = pd.attendance || {}; });
 
+      /* ══════════════════════════════════════════════════════
+         運算思維：後端已經評完、但學生還沒回來同步的那些
+         ══════════════════════════════════════════════════════
+         ⚠️⚠️ 2026-09-03：星星是**學生的瀏覽器**寫進 11501-progress 的。
+            改成「上傳完就能關掉」之後學生傳完就走，
+            後端明明評完了、也記在 11501-ocr-passed，
+            這裡卻看不到 —— 要等那個學生下次登入。
+         ⇒ 直接讀後端那份事實，用 shared/grading.js 換算星星。
+         ★ 星星規則仍然**只有一份**（GRADING.thinkingStars）——
+           沒有在這裡另外寫一套算法。
+         ⚠️⚠️ 讀不到就當作沒有，**絕對不可以讓整頁壞掉**：
+            這份規則要手動發布，沒發布會拿到 permission-denied，
+            而那時老師最需要的是成績簿還能開。 */
+      const ocrPassMap = {};
+      let ocrPendingCount = 0;   // 只用來提示，**不影響任何星星數字**
+      try {
+        const ocrSnap = await extDb.collection('11501-ocr-passed').get();
+        ocrSnap.forEach(d => {
+          const od = d.data() || {};
+          let arr = [];
+          try { arr = JSON.parse(od.passed_json || '[]'); } catch (e) { arr = []; }
+          if (Array.isArray(arr)) ocrPassMap[d.id] = arr.length;
+        });
+      } catch (e) {
+        console.warn('[運算思維] 讀不到後端通關紀錄（規則可能還沒發布）：', e && e.message);
+      }
+
       const sheets = {};
       rosterSnap.forEach(d => {
         const r = d.data();
@@ -772,6 +799,15 @@
           if (sub.key === 'scratch' && us) {
             v = Object.values(us).reduce((a, b) => a + (Number(b) > 0 ? Number(b) : 0), 0);
           }
+          /* ⚠️⚠️ 2026-09-03：這裡一度改成「後端算出來比較多就用後端的」。
+             **那是錯的，已經退掉。** 老師當場指出：
+               「不能教師端與學生端資料不同步，這樣會造成系統錯誤吧」
+             ★ 那樣會讓同一個學生在老師端顯示 12 顆、在學生端顯示 6 顆；
+               而這一格按「儲存到雲端」會被寫回 11501-progress，
+               和學生端下次登入的重算互相覆蓋。
+             ⇒ 星星**只有一個來源**：11501-progress。
+               「後端已評、學生還沒回來」是另一件事，
+               用 __thinkingPending 另外標示，不混進這個數字。 */
           student[sub.key] = v;
         });
         /* 繳交加分（交流程圖圖片 +1⭐、交程式錄影 +1⭐）另外存一份。
@@ -786,6 +822,15 @@
         const __b = (window.GRADING && GRADING.starsWithBonus)
           ? GRADING.starsWithBonus({ modules: mods }) : {};
         student.__bonusMap = { flowchart: __b.flowchartBonus || 0, scratch: __b.scratchBonus || 0 };
+        /* ★ 後端已經評完、學生還沒回來同步的那些 —— **只標記，不改星星**。
+           星星維持和學生端同一個來源（11501-progress），兩邊永遠一致。 */
+        if (ocrPassMap[student.id] != null && window.GRADING && GRADING.thinkingStars) {
+          const backStars = GRADING.thinkingStars(ocrPassMap[student.id]);
+          if (backStars > (student.thinking || 0)) {
+            student.__thinkingPending = ocrPassMap[student.id];
+            ocrPendingCount++;
+          }
+        }
         student.__modules = mods;               // 各模組 meta（level/score…）供明細用
         student.history = histMap[student.id] || [];  // 過關歷程供明細分析
         student.attendance = attMap[student.id] || {};  // 出席紀錄（日期 → 首次登入時間）
@@ -805,6 +850,14 @@
       subjects = applyCustomMappingToSubjects(rawSubjects);
       updateAvailableCategories();
       activeSheet = Object.keys(spreadsheetData)[0];
+
+      /* ★ 讓老師知道「這次有幾筆是後端補上來的」——
+         那些學生傳完就走、還沒回來同步，畫面上的星星是後端那份。
+         ⚠️ 只是告知，資料沒有被寫回去；按「儲存到雲端」才會寫。 */
+      if (ocrPendingCount > 0) {
+        showToast('📥 有 ' + ocrPendingCount + ' 位學生後端已經評完、但還沒回來同步'
+                  + '（畫面上的星星仍是學生端那份，兩邊一致）', false);
+      }
     }
 
     function loadFallbackData() {

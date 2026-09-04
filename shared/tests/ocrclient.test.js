@@ -214,6 +214,35 @@ section('① 舊後端沒有 /analyze-async 時要退回同步流程');
        '★★ 從清單消失＋成績有記 → 判定通過');
     ok(phase > 4, '★★ 上傳後還沒被掃到時不可以就下結論　←　問了 ' + phase + ' 輪');
 
+    section('⑨a 後端還沒掃過時，「清單裡沒有我」不算數');
+    /* ⚠️⚠️ 2026-09-03 老師問：「是不是檔案離開暫存區就代表驗證走完了？」
+       ★ 後端剛重啟時排隊快取是空的（要等第一次掃描，約 8 秒）——
+         已經看過自己的人會以為自己好了，去問 /api/my-passed 拿到
+         「沒有」→ **誤判失敗**。老師今天重跑 Colab 很多次，很容易踩到。 */
+    let phS = 0;
+    const envS = makeEnv((url) => {
+      if (url.indexOf('/api/queue-list') >= 0) {
+        phS++;
+        // 前兩輪：我在排隊裡（掃描正常）
+        if (phS <= 2) {
+          return reply({ queue: [{ student_id: '1', name: 's.png' }],
+                         scan: { ok: true, at: 111, fails: 0 } });
+        }
+        // 第三輪：後端剛重啟 —— 快取空的、而且**還沒掃過**
+        if (phS <= 4) return reply({ queue: [], scan: { ok: false, at: 0, fails: 0 } });
+        // 之後恢復正常，而且我真的不見了
+        return reply({ queue: [], scan: { ok: true, at: 222, fails: 0 } });
+      }
+      if (url.indexOf('/api/my-passed') >= 0) return reply({ passed: ['5'] });
+      if (url.indexOf('/api/my-verdict') >= 0) return reply({ found: false });
+      throw new Error('不該打到 ' + url);
+    });
+    const rs = await envS.win.waitViaCloud(
+      { base: 'http://c', sid: '1', term: '11501', challengeId: 5 }, '1-s.png');
+    ok(rs.data.pass === true,
+       '★★★ 後端還沒掃過的空窗不可以當成「我好了」（會誤判失敗）');
+    ok(phS > 4, '★★ 要撐過那個空窗才下結論　←　問了 ' + phS + ' 輪');
+
     section('⑨b 沒過的時候要拿後端「真正的」理由');
     /* ⚠️⚠️ 2026-09-03：這裡以前**寫死**一句「找不到挑戰成功」——
        但學生實際上可能是截錯關卡、或截圖沒含網址列，
@@ -304,7 +333,14 @@ section('① 舊後端沒有 /analyze-async 時要退回同步流程');
     ok(/GIVE_UP_MS/.test(SRC), '★★ 有總上限常數');
     const g = /GIVE_UP_MS\s*=\s*([\d\s*]+);/.exec(SRC);
     ok(!!g, '★ 找得到那個值');
-    ok(/等超過 20 分鐘/.test(SRC), '★★ 放棄時要講人話，並說明「不是你的截圖有問題」');
+    ok(/等超過 40 分鐘/.test(SRC), '★★ 放棄時要講人話，並說明「不是你的截圖有問題」');
+    /* ⚠️⚠️ 老師 2026-09-03：「一節課應該最多有 50 張未處理完。」
+       ★ 50 × 23 秒 ≈ 19.2 分鐘 —— 排最後的人幾乎剛好撞到舊的 20 分鐘上限，
+         而他的圖其實好好地在排隊。上限要撐得住一整節課的積量。 */
+    const gv = Number((/GIVE_UP_MS = (\d+) \* 60/.exec(SRC) || [])[1]);
+    ok(gv >= 35,
+       '★★★ 總上限至少 35 分鐘（50 張 × 23 秒 ≈ 19 分鐘，要留餘裕）　←　目前 '
+       + (gv || '找不到') + ' 分鐘');
     ok(/localStorage/.test(SRC) && (SRC.match(/try\s*\{/g) || []).length >= 4,
       '★ localStorage 的讀寫都包 try（無痕模式會直接拋，不能因此讓上傳失敗）');
 
