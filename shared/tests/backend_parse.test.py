@@ -1220,9 +1220,16 @@ ok('core.level_from_filename(_up_name, _term)' in _srv7,
 #    會直接 return None、一個字都不寫。症狀完全不像故障：
 #    圖處理完了、暫存區的檔也刪了、日誌乾乾淨淨，
 #    但學生端問 /api/my-passed 拿到空的 —— **全班都判「沒過」**。
-ok('_cid = (request.form.get("challenge_id") or "").strip()' in _srv7
-   and 'core.level_id(_lv_from_name[0], _term)' in _srv7,
-   '★★ 沒送 challenge_id 時要從關卡名推出來（不然成績一筆都記不下去）')
+# ⚠️⚠️⚠️ 成績記在哪一關只能由後端自己判。原本是「表單送了就以它為準」——
+#    學生開 devtools 直接打 /analyze，檔名給第 1 關（驗得過）、
+#    challenge_id 給 10 ⇒ 第 10 關被記成通過。
+#    ★ 關卡驗證擋不住它：驗的是第 1 關、記的是第 10 關，兩者原本沒人比對。
+_ci = _srv7.index('_cid = ""')
+_ci_blk = _srv7[_ci:_ci + 320]
+ok('core.level_id(_lv_from_name[0], _term)' in _ci_blk
+   and _ci_blk.index('core.level_id') < _ci_blk.index('request.form.get("challenge_id")'),
+   '★★★ challenge_id 要**先**用檔名判出來的那一關，表單送的只能當退路'
+   '（否則學生可以指定要把成績記到哪一關）')
 ok('core.record_ocr_pass(sid, _cid, _term)' in _srv7,
    '★★ 通關紀錄要用推出來的那個編號')
 # ⚠️⚠️ 2026-09-03 老師：「只看檔名判斷關卡，似乎有可能發生改檔名，
@@ -1238,6 +1245,48 @@ ok('if _lv_from_name and not title:' in _srv7
    '★★★ 檔名要當成「比對目標」餵給 OCR，不是當成結論')
 # ⚠️⚠️ 雲端那條路上前端看不到 /analyze 的回應，所以失敗理由要另外留一份。
 #    沒有它，學生一律看到「找不到挑戰成功」—— 截錯關卡的人會照著錯的指示重截。
+# ⚠️⚠️ 借圖偵測：OCR 看不出「借同學的截圖」，但同一個檔案出現在
+#    兩個學生名下是機器抓得到的。⚠️ 只標記**不擋通關** ——
+#    誤判會讓正當的學生當場被冤枉，而現場沒有人能申訴。
+ok('def record_shot_hash' in _core_src and 'hashlib.sha256' in _core_src,
+   '★★ 判定通過時要記截圖的雜湊')
+ok('def list_dupe_shots' in _core_src and '/api/dupe-shots' in _srv7,
+   '★★ 要有給教師端看的重複清單')
+_rsh = _core_src[_core_src.index('def record_shot_hash'):][:2600]
+ok('return []' in _rsh and 'except Exception' in _rsh,
+   '★★★ 借圖偵測失敗一律吞掉（稽核不可以影響判定）')
+ok('str(o.get("sid")) != sid' in _rsh,
+   '★★ 同一個學生自己重傳同一張不算借圖')
+# ⚠️⚠️ 老師 2026-09-03 問：「圖片都長一樣，這樣判斷不會有誤判嗎？」
+#    ★ 不會 —— sha256 是**位元組完全相同**才算，一個像素不同就完全不同。
+#      刻意**不用**相似度比對（perceptual hash）：同一款遊戲的成功畫面
+#      本來就長得幾乎一樣，相似度一定爆表，全班都會被標記，
+#      那個清單就沒有人會看了。
+#    ⇒ 狀態頁必須把「這是完全相同、不是長得像」講出來，
+#      否則老師（和我）以後會誤讀那個綠燈。
+_st = io.open(os.path.join(ROOT, 'shared', 'status.html'), encoding='utf8').read()
+ok('位元組完全相同' in _st and '不等於沒有借圖' in _st,
+   '★★★ 狀態頁要講明「完全相同才算」以及「沒發現不等於沒借圖」')
+# ⚠️⚠️ 老師 2026-09-03 追問：「是由下次開始判斷吧」
+#    ★ 對 —— 雜湊只有「後端更新之後上傳的圖」才有，舊通關紀錄沒有。
+#      ⇒ total=0 的時候**不可以顯示綠燈**，否則「還沒開始記」會被讀成「沒人借圖」。
+ok('def dupe_shot_report' in _core_src, '★ 借圖稽核要回報已建檔張數（total）')
+_rep = _core_src[_core_src.index('def dupe_shot_report'):][:2200]
+ok('"total": len(docs)' in _rep, '★ total = 已建檔的雜湊筆數')
+ok('nextPageToken' in _rep, '★ 超過一頁要標 truncated，不然 total 會被當成全部')
+ok(_core_src.count('_fs_http("GET", url)') >= 1 and 'resp = _fs_http' in _rep,
+   '★ 只打一次 Firestore（不要為了 truncated 再打一次）')
+ok('return dupe_shot_report(term, limit)["dupes"]'
+   in _core_src[_core_src.index('def list_dupe_shots'):][:400],
+   '★ 舊的 list_dupe_shots 要保留成薄殼，不要有兩份邏輯')
+_dupe_api = _srv7[_srv7.index('def api_dupe_shots'):][:900]
+ok('"total"' in _dupe_api and '"truncated"' in _dupe_api,
+   '★★ /api/dupe-shots 要把 total 傳給教師端')
+ok("!total" in _st and '還沒有資料可以比對' in _st,
+   '★★★ total=0 時狀態頁要顯示「還沒有資料」而不是綠燈')
+ok('perceptual' not in _core_src.lower() and 'imagehash' not in _core_src.lower(),
+   '★★ 不可以改用相似度比對（同款遊戲畫面會全班誤判）')
+
 ok('def _remember_verdict' in _srv7 and '/api/my-verdict' in _srv7,
    '★★★ 要把最近一次判定留起來，學生端才拿得到真正的失敗原因')
 ok(_srv7.count('_remember_verdict(sid,') >= 3,

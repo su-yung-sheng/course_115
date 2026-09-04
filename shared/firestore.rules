@@ -327,6 +327,15 @@ service cloud.firestore {
     match /11501-ocr-passed/{sid} {
       allow read: if isTeacher();
     }
+    /* 借圖偵測：截圖的 sha256 -> 用過這張圖的學號們。
+       ⚠️ 後端用服務帳戶寫（不受規則限制），這裡只要開給老師讀。
+       ⚠️ 學生不給讀 —— 那等於公布誰跟誰用了同一張圖。 */
+    match /11501-shot-hashes/{h} {
+      allow read: if isTeacher();
+    }
+    match /11502-shot-hashes/{h} {
+      allow read: if isTeacher();
+    }
     match /11502-ocr-passed/{sid} {
       allow read: if isTeacher();
     }

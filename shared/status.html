@@ -208,6 +208,85 @@ if (!window.CONFIG) {
     if (detailHtml != null) el.querySelector('.detail').innerHTML = detailHtml;
   }
 
+  /* ══════════════════════════════════════════════════════════
+     ⑧ 借圖檢查：同一張截圖被兩個以上不同學號用過
+     ══════════════════════════════════════════════════════════
+     ⚠️⚠️ 2026-09-03 老師採用。OCR 只讀文字，看不出「借同學的截圖」，
+        也看不出把徽章 P 上去 —— 那是這套判定的**先天上限**。
+     ★ 但「同一個檔案出現在兩個學生名下」是機器抓得到的：
+       後端在判定通過時算 sha256 記下來，這裡把重複的列出來。
+     ⚠️ 這是**線索不是結論**：要老師看過截圖再判斷
+        （通過的在證書區、沒過的在「未通過」資料夾）。
+     ⚠️ 舊後端沒有這支 → 顯示「後端還沒有這個功能」，不是紅燈。 */
+  function checkDupeShots(el) {
+    if (!OCR_SERVER) {
+      set(el, 'wait', '沒有設定辨識後端網址', row('問題', 'config.js 沒有 OCR_SERVER_URL／SERVER_URL'));
+      return Promise.resolve(null);
+    }
+    /* ⚠️ 這一頁沒有 TERM／H 這兩個變數（我一開始寫錯了）——
+       學期用 C.TERM（?term= 決定載哪一份 config），
+       標頭要帶 ngrok-skip-browser-warning，不然 ngrok 會回警告頁而不是 JSON。 */
+    return fetch(OCR_SERVER + '/api/dupe-shots?term=' + encodeURIComponent(C.TERM || ''),
+                 { headers: { 'ngrok-skip-browser-warning': '1' }, cache: 'no-store' })
+      .then(function (r) {
+        if (r.status === 404) {
+          set(el, 'wait', '後端還沒有這個功能',
+              row('怎麼辦', '在 Colab 重跑 shared/backend.ipynb 的步驟 2、3、4'));
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j) return null;
+        var d = (j && j.dupes) || [];
+        /* ⚠️ 老師 2026-09-03 問了兩件事，兩個答案都必須寫在卡片上：
+           ①「圖片都長一樣，這樣判斷不會有誤判嗎」
+             → 不會。比對的是整個檔案的 sha256，**位元組完全相同**才算，
+               一個像素不同、或重新存一次，雜湊就完全不同。
+               （刻意不用相似度比對：同款遊戲的成功畫面本來就長得幾乎一樣，
+                 那樣會全班被標記，清單就沒有人看了。）
+           ②「是由下次開始判斷吧」
+             → 對。雜湊是後端更新之後上傳的圖才開始記，舊紀錄沒有。
+               所以「已建檔 0 張」的綠燈是「還沒資料」，不是「沒人借圖」。
+               ⇒ total 一定要顯示出來。 */
+        var total = (j && j.total) || 0;
+        var scope = '已建檔 ' + total + (j && j.truncated ? '+' : '') + ' 張'
+                  + '（只含後端更新之後上傳的圖，舊的通關紀錄沒有雜湊）';
+        if (!d.length) {
+          if (!total) {
+            set(el, 'wait', '還沒有資料可以比對',
+                row('原因', '雜湊是從後端更新之後上傳的圖才開始記的，目前一張都還沒有。')
+              + row('注意', '這個狀態**不代表**沒有人借圖，只代表還沒開始累積。'));
+            return j;
+          }
+          set(el, 'ok', '沒有發現重複的截圖',
+              row('範圍', scope)
+            + row('怎麼比', '整個檔案的 sha256 —— 位元組完全相同才算。'
+                          + '所以命中＝同一個檔案，不會因為「畫面長得像」誤判。')
+            + row('⚠️ 但是', '學生自己重截一次就抓不到 —— '
+                          + '「沒有發現重複」不等於沒有借圖。'));
+          return j;
+        }
+        var html = d.slice(0, 20).map(function (x) {
+          return row(esc(x.students.join('、')),
+                     '同一張圖（' + esc(x.hash) + '…）被這幾位用過');
+        }).join('');
+        set(el, 'warn', '有 ' + d.length + ' 張圖被不同學號重複使用',
+            html
+            + row('範圍', scope)
+            + row('可信度', 'sha256 完全相同 —— 是同一個檔案，不是「長得像」。這個不會誤判。')
+            + row('怎麼判斷',
+              '但仍是線索不是結論：也可能是同一台電腦、或幫同學代傳。'
+              + '請到雲端硬碟看那幾張截圖再決定 —— '
+              + '通過的在 {學期}/thinking/，沒過的在 {學期}/未通過/。'));
+        return j;
+      })
+      .catch(function (e) {
+        set(el, 'wait', '問不到（後端可能沒開）', row('訊息', esc(e.message)));
+        return null;
+      });
+  }
+
   function row(k, v) {
     return '<div class="flex gap-2"><span class="text-slate-400 shrink-0">' + k + '</span>' +
            '<span class="font-medium break-all">' + v + '</span></div>';
@@ -681,6 +760,7 @@ if (!window.CONFIG) {
     var c5 = card('rules',   '⑤ Firestore 安全規則');
     var c6 = card('gas',     '⑥ AI 引導的 Apps Script');
     var c7 = card('ocr',     '⑦ 截圖辨識效能（要不要調參數）');
+    var c8 = card('dupe',    '⑧ 借圖檢查（同一張圖被不同人用過）');
 
     checkBackend(c1).then(function (health) {
       checkKeys(c2, health);
@@ -690,7 +770,8 @@ if (!window.CONFIG) {
         checkCriteria(c4, health),
         checkRules(c5),
         checkGas(c6),
-        checkOcrStats(c7, health)
+        checkOcrStats(c7, health),
+        checkDupeShots(c8)
       ]);
     }).catch(function (e) {
       console.error(e);

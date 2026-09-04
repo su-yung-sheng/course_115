@@ -324,7 +324,35 @@
         continue;
       }
 
-      var ok2 = passed.map(String).indexOf(String(opt.challengeId)) >= 0;
+      /* ══════════════════════════════════════════════════════
+         先問後端「我這次送的那張，判成怎樣」
+         ══════════════════════════════════════════════════════
+         ⚠️⚠️ 2026-09-03：原本只看「這一關在不在 passed 清單裡」——
+            那對**已經通過的關卡**是錯的：學生拿一張爛圖重驗，
+            清單裡本來就有那一關 ⇒ 顯示「通過」，
+            而後端其實判它沒過。
+         ★ 後端現在會留下這次的判定（/api/my-verdict，含 age_seconds）。
+         ⚠️ 只有在「這個判定是**我開始等之後**才產生的」才採信 ——
+            不然會拿到上一次送同一關留下的舊判定。
+         ⚠️ 拿不到就退回看 passed 清單（後端重啟過、或還是舊版）。 */
+      var elapsed = (Date.now() - started) / 1000;
+      var verdict = null;
+      try {
+        var vr0 = await fetch(opt.base + '/api/my-verdict?student_id='
+                   + encodeURIComponent(opt.sid) + '&challenge_id='
+                   + encodeURIComponent(opt.challengeId),
+                   { headers: H, cache: 'no-store', signal: opt.signal });
+        var vj0 = await vr0.json();
+        if (vj0 && vj0.found && vj0.verdict
+            && Number(vj0.age_seconds) <= elapsed + 5) {
+          verdict = vj0.verdict;
+        }
+      } catch (e) {
+        if (e && e.name === 'AbortError') throw e;
+      }
+
+      var ok2 = verdict ? (verdict.pass === true)
+                        : (passed.map(String).indexOf(String(opt.challengeId)) >= 0);
       if (ok2) {
         return { ok: true, status: 'done',
                  data: { status: 'success', pass: true, level: opt.level } };
@@ -346,20 +374,9 @@
       var fallback = ['這張截圖上找不到「挑戰成功」',
                       '請先在遊戲裡完成挑戰，看到成功畫面之後再截圖。'
                       + '⚠️ 截圖要包含中間那塊成功標示。'];
-      var reasons = fallback;
-      try {
-        var vr = await fetch(opt.base + '/api/my-verdict?student_id='
-                   + encodeURIComponent(opt.sid),
-                   { headers: H, cache: 'no-store', signal: opt.signal });
-        var vj = await vr.json();
-        if (vj && vj.found && vj.verdict && vj.verdict.pass === false
-            && Array.isArray(vj.verdict.reasons) && vj.verdict.reasons.length) {
-          reasons = vj.verdict.reasons;
-        }
-      } catch (e) {
-        if (e && e.name === 'AbortError') throw e;
-        /* 問不到就用 fallback —— 這是「講得更準」的加分，不是必要條件 */
-      }
+      /* ★ 上面已經問過 /api/my-verdict 了，這裡直接用，不要再打一次。 */
+      var reasons = (verdict && Array.isArray(verdict.reasons) && verdict.reasons.length)
+                    ? verdict.reasons : fallback;
 
       return {
         ok: true, status: 'done',

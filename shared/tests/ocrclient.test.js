@@ -257,7 +257,8 @@ section('① 舊後端沒有 /analyze-async 時要退回同步流程');
       }
       if (url.indexOf('/api/my-passed') >= 0) return reply({ passed: [] });
       if (url.indexOf('/api/my-verdict') >= 0) {
-        return reply({ found: true, verdict: { pass: false,
+        // ⚠️ age_seconds 是真的 API 會回的欄位，樁要跟著走
+        return reply({ found: true, age_seconds: 1, verdict: { pass: false,
           reasons: ['關卡名稱不符合', '這張看起來是「跳格子」的畫面，你要驗的是「拔蘿蔔」。'] } });
       }
       throw new Error('不該打到 ' + url);
@@ -286,6 +287,59 @@ section('① 舊後端沒有 /analyze-async 時要退回同步流程');
       { base: 'http://c', sid: '1', term: '11501', challengeId: 10 }, '1-w.png');
     ok(/找不到「挑戰成功」/.test(rw.data.reasons.join('')),
        '★★ 問不到就退回原本那句（舊後端、或重啟過都不可以壞掉）');
+
+    section('⑨c 已經通過的關卡，重驗一張爛圖不可以顯示成功');
+    /* ⚠️⚠️ 2026-09-03：原本只看「這一關在不在 passed 清單裡」——
+       對**已經通過**的關卡是錯的：學生拿爛圖重驗，清單裡本來就有那一關
+       ⇒ 顯示「通過」，而後端其實判它沒過。
+       ★ 改成以後端這次的判定為準，清單只當退路。 */
+    let phR = 0;
+    const envR = makeEnv((url) => {
+      if (url.indexOf('/api/queue-list') >= 0) {
+        phR++;
+        if (phR <= 2) return reply({ queue: [{ student_id: '1', name: 'r.png' }],
+                                     scan: { ok: true, at: 9, fails: 0 } });
+        return reply({ queue: [], scan: { ok: true, at: 9, fails: 0 } });
+      }
+      // 這一關**之前就過了**，所以清單裡有它
+      if (url.indexOf('/api/my-passed') >= 0) return reply({ passed: ['3'] });
+      if (url.indexOf('/api/my-verdict') >= 0) {
+        return reply({ found: true, age_seconds: 2,
+                       verdict: { pass: false, challenge_id: '3',
+                                  reasons: ['本關卡尚未完成'] } });
+      }
+      throw new Error('不該打到 ' + url);
+    });
+    const rr = await envR.win.waitViaCloud(
+      { base: 'http://c', sid: '1', term: '11501', challengeId: 3 }, '1-r.png');
+    ok(rr.data.pass === false,
+       '★★★ 後端說沒過就是沒過，不可以因為「這關以前過了」而顯示成功');
+    ok(/本關卡尚未完成/.test(rr.data.reasons.join('')),
+       '★★ 而且要用後端這次的理由');
+
+    section('⑨d 舊的判定不可以拿來當這次的結果');
+    /* ⚠️ 同一關上次送過就會留下判定。這次送的還沒被處理完的話，
+       拿到的是**上一次**那筆 —— 用 age_seconds 擋掉。 */
+    let phO = 0;
+    const envO = makeEnv((url) => {
+      if (url.indexOf('/api/queue-list') >= 0) {
+        phO++;
+        if (phO <= 2) return reply({ queue: [{ student_id: '1', name: 'o.png' }],
+                                     scan: { ok: true, at: 9, fails: 0 } });
+        return reply({ queue: [], scan: { ok: true, at: 9, fails: 0 } });
+      }
+      if (url.indexOf('/api/my-passed') >= 0) return reply({ passed: ['4'] });
+      if (url.indexOf('/api/my-verdict') >= 0) {
+        // 一小時前那次失敗的判定
+        return reply({ found: true, age_seconds: 3600,
+                       verdict: { pass: false, reasons: ['很久以前的失敗'] } });
+      }
+      throw new Error('不該打到 ' + url);
+    });
+    const ro = await envO.win.waitViaCloud(
+      { base: 'http://c', sid: '1', term: '11501', challengeId: 4 }, '1-o.png');
+    ok(ro.data.pass === true,
+       '★★★ 太舊的判定要忽略，退回看 passed 清單（否則會被上次的失敗卡住）');
 
     section('⑩ Colab 掛掉時不可以判學生失敗');
     let n2 = 0;
