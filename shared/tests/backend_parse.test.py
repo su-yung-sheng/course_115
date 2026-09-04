@@ -1038,7 +1038,10 @@ def _fake_fs(method, url, body=None):
 _ns_p = {'json': json, 'FIREBASE': {'enabled': True, 'api_key': 'k',
                                     'project_id': 'p'},
          '_fs_http': _fake_fs, '_fs_docs_base': lambda: 'base',
-         '_now_str': lambda: 'now', 'resolve_term': lambda t=None: (t or '11501')}
+         # ⚠️ 樁要和真的一樣寬：_now_str(fmt) 是可以帶格式的
+         #    （2026-09-03 記通關日期時就是被這個零參數的樁絆到）。
+         '_now_str': lambda fmt=None: ('2026-09-03' if fmt == '%Y-%m-%d' else 'now'),
+         'resolve_term': lambda t=None: (t or '11501')}
 _core_lines = _code_of(_nb_cells[6]).split('\n')
 _raw_lines = ''.join(_nb_cells[6]['source']).split('\n')
 for _fn in ('_to_fs_fields', '_from_fs_fields', 'ocr_passed_collection',
@@ -1360,6 +1363,14 @@ ok(_st.index('_threading.Thread') > _st.index('except Exception'),
 # ⚠️⚠️ 暫存區是用**日期**分資料夾的，而工作者只掃今天 ——
 #    跨過午夜的那一節課、或後端當掉隔天才重開，昨天那批就沒人處理，
 #    學生的成績直接不見，而且今天的清單是空的、看起來一切正常。
+# ⚠️ 每一關要記「通關那天」：沒有它，前端補記只能填今天。
+ok('dates_json' in _core_src and 'def ocr_passed_dates' in _core_src,
+   '★★ 後端要記每一關通關的日期，而且讀得回來')
+ok('if cid not in dates:' in _core_src,
+   '★★ 日期只記第一次（重複通關維持「保留第一次」）')
+ok('"dates": dates' in _srv8,
+   '★★ /api/my-passed 要把日期一起回去')
+
 ok('core.taipei_day(-1)' in _srv8,
    '★★★ 要順便撈昨天的殘留（否則跨日的上傳會永遠沒人處理）')
 ok('def taipei_day' in _core_src,

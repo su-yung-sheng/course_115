@@ -208,6 +208,17 @@ for (const term of ['11501', '11502']) {
      於是「去雲端硬碼找回網址」永遠跑不到。⇒ 改釘三條修補路徑都在。 */
   ok(/needUrl/.test(CODE),
      '★★ 後端有網址、本地沒有的要補回來');
+  /* ⚠️⚠️ 2026-09-03 老師：「證書的日期格式似乎不同。」
+     補記那條路原本寫死 new Date().toISOString().slice(0,10)（2026-09-03），
+     和正常通關的 formatDate（2026年9月3日 星期四）不一樣；
+     而且填的是**今天**，學生週三通關週五才登入就寫成週五。 */
+  ok(!/toISOString\(\)\.slice\(0, 10\)/.test(CODE),
+     '★★★ 補記不可以自己組日期字串（格式會和正常通關不一致）');
+  ok(/passDateOf/.test(CODE) && /dates\[String\(id\)\]/.test(CODE),
+     '★★ 要用後端記的「真正通關那天」，不是今天');
+  ok(/showDate/.test(CODE),
+     '★★ 顯示時要正規化舊資料（舊的 2026-09-03 已經躺在 Firestore 裡了）');
+
   ok(/stillMissing/.test(CODE) && /kind:\s*'find'/.test(CODE),
      '★★★ 補完還缺的要直接去雲端硬碟找 —— 舊資料的網址只有 Drive 知道');
   ok(!/!missing\.length && !needUrl\.length\) return/.test(CODE),

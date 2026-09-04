@@ -276,9 +276,22 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
             );
 
             const currentChallenge = challenges.find(c => c.id === selectedId);
-            const todayStr = formatDate(new Date()); 
+            const todayStr = formatDate(new Date());
+            /* ⚠️⚠️ 2026-09-03 老師：「證書的日期格式似乎不同。」
+               ★ 兩種來源：正常通關寫的是 formatDate（2026年9月3日 星期四），
+                 而自動補記那條路寫的是 toISOString().slice(0,10)（2026-09-03）。
+               ⇒ 新資料已經統一了，但**舊資料還躺在 Firestore 裡**。
+                 顯示時就地正規化，不必去改資料庫。 */
+            const showDate = (v) => {
+                const s = String(v || '');
+                if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+                    const d = new Date(s + 'T00:00:00');
+                    if (!isNaN(d)) return formatDate(d);
+                }
+                return s;
+            };
             
-            const passDate = completedDates[selectedId] || todayStr;
+            const passDate = showDate(completedDates[selectedId]) || todayStr;
             const passImage = completedImages[selectedId];
 
             return (
@@ -1189,7 +1202,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                         if (!base) return;
                         const ctl = new AbortController();
                         const t = setTimeout(() => ctl.abort(), 8000);
-                        let list = [], urls = {};
+                        let list = [], urls = {}, dates = {};
                         try {
                             const r = await fetch(base + '/api/my-passed?student_id='
                                 + encodeURIComponent(sid) + '&term=' + encodeURIComponent(term),
@@ -1198,8 +1211,24 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                             const j = await r.json();
                             list = (j && Array.isArray(j.passed)) ? j.passed : [];
                             urls = (j && j.urls && typeof j.urls === 'object') ? j.urls : {};
+                            dates = (j && j.dates && typeof j.dates === 'object') ? j.dates : {};
                         } finally { clearTimeout(t); }
                         if (!alive || !list.length) return;
+
+                        /* ★ 日期：用後端記的「真正通關那天」，格式和正常通關一致。
+                           ⚠️⚠️ 原本寫死 new Date().toISOString().slice(0,10) ——
+                              兩個問題：格式不一樣（2026-09-03 vs 2026年9月3日 星期四），
+                              而且填的是**今天**，學生週三通關週五才登入就寫成週五。
+                           ⚠️ 舊資料沒有 dates（後端 2026-09-03 才開始記），
+                              那時只能退回今天 —— 但至少格式是對的。 */
+                        const passDateOf = (id) => {
+                            const iso = dates[String(id)];
+                            if (iso) {
+                                const d = new Date(String(iso) + 'T00:00:00');
+                                if (!isNaN(d)) return formatDate(d);
+                            }
+                            return formatDate(new Date());
+                        };
 
                         const mine = new Set(completedChallenges.map(String));
                         const missing = list.filter(id => !mine.has(String(id)));
@@ -1246,7 +1275,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                沒有它，證書上那一塊只會是空的 ——
                                圖其實在雲端硬碟裡，只是 Firestore 沒有那個連結。 */
                             await handleChallengeComplete(
-                                cid, new Date().toISOString().slice(0, 10),
+                                cid, passDateOf(id),
                                 urls[String(id)] || "");
                         }
 
