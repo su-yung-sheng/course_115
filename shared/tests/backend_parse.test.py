@@ -1284,6 +1284,17 @@ ok('"total"' in _dupe_api and '"truncated"' in _dupe_api,
    '★★ /api/dupe-shots 要把 total 傳給教師端')
 ok("!total" in _st and '還沒有資料可以比對' in _st,
    '★★★ total=0 時狀態頁要顯示「還沒有資料」而不是綠燈')
+
+# ⚠️⚠️ 老師 2026-09-04 問：「Scratch 的機器上為什麼會跑以下程序？」
+#    ★ 因為那台沒設 SKIP_OCR ⇒ 步驟 1b 照裝 ⇒ 這裡照載。這是設計（預設要做對的事）。
+#    ⚠️ 但設好 SKIP_OCR 之後，預載會失敗並印 ⚠️ ——
+#      在批改專用機上那是**正常狀態**，印警告只會讓老師以為壞了。
+#      步驟 5 早就是「沒裝就安靜跳過」，這裡必須一致。
+_pre = _srv7[_srv7.index('def _preload_ocr'):][:900]
+ok('find_spec("paddleocr") is None' in _pre and 'return' in _pre,
+   '★★ 沒裝 PaddleOCR 就安靜跳過預載，不可以印 ⚠️（批改機那是正常的）')
+ok('_iu_msg.find_spec("paddleocr") is not None' in _srv7,
+   '★★ 「辨識引擎正在背景載入…」也要判斷，否則批改機在等一個不會來的完成訊息')
 ok('perceptual' not in _core_src.lower() and 'imagehash' not in _core_src.lower(),
    '★★ 不可以改用相似度比對（同款遊戲畫面會全班誤判）')
 
