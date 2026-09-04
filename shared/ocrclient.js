@@ -296,14 +296,45 @@
       }
 
       var ok2 = passed.map(String).indexOf(String(opt.challengeId)) >= 0;
+      if (ok2) {
+        return { ok: true, status: 'done',
+                 data: { status: 'success', pass: true, level: opt.level } };
+      }
+
+      /* ══════════════════════════════════════════════════════
+         沒過的時候，去問後端**真正的**理由
+         ══════════════════════════════════════════════════════
+         ⚠️⚠️ 2026-09-03 老師：「如果失敗就直接換下一張嗎？」
+            —— 後端處理完（含判定不通過）就刪檔換下一張，那是對的；
+            問題是這裡看不到後端的回應，所以以前**寫死**一句
+            「這張截圖上找不到『挑戰成功』」。
+         ★ 但學生實際上可能是**截錯關卡**、或截圖沒含網址列 ——
+           被指去重截徽章，照著錯的指示做，第二次還是不會過。
+           而後端那幾句訊息是實戰一次次調出來的，最有診斷價值。
+         ⇒ 後端把最近一次判定留在記憶體（/api/my-verdict），這裡去拿。
+         ⚠️ 拿不到就退回原本那句 —— 後端重啟過、或舊版沒有這支，
+            都不可以因此讓學生看到一個錯誤畫面。 */
+      var fallback = ['這張截圖上找不到「挑戰成功」',
+                      '請先在遊戲裡完成挑戰，看到成功畫面之後再截圖。'
+                      + '⚠️ 截圖要包含中間那塊成功標示。'];
+      var reasons = fallback;
+      try {
+        var vr = await fetch(opt.base + '/api/my-verdict?student_id='
+                   + encodeURIComponent(opt.sid),
+                   { headers: H, cache: 'no-store', signal: opt.signal });
+        var vj = await vr.json();
+        if (vj && vj.found && vj.verdict && vj.verdict.pass === false
+            && Array.isArray(vj.verdict.reasons) && vj.verdict.reasons.length) {
+          reasons = vj.verdict.reasons;
+        }
+      } catch (e) {
+        if (e && e.name === 'AbortError') throw e;
+        /* 問不到就用 fallback —— 這是「講得更準」的加分，不是必要條件 */
+      }
+
       return {
         ok: true, status: 'done',
-        data: ok2
-          ? { status: 'success', pass: true, level: opt.level }
-          : { status: 'success', pass: false, level: opt.level,
-              reasons: ['這張截圖上找不到「挑戰成功」',
-                        '請先在遊戲裡完成挑戰，看到成功畫面之後再截圖。'
-                        + '⚠️ 截圖要包含中間那塊成功標示。'] }
+        data: { status: 'success', pass: false, level: opt.level, reasons: reasons }
       };
     }
   }

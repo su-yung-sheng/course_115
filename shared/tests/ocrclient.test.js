@@ -214,6 +214,50 @@ section('① 舊後端沒有 /analyze-async 時要退回同步流程');
        '★★ 從清單消失＋成績有記 → 判定通過');
     ok(phase > 4, '★★ 上傳後還沒被掃到時不可以就下結論　←　問了 ' + phase + ' 輪');
 
+    section('⑨b 沒過的時候要拿後端「真正的」理由');
+    /* ⚠️⚠️ 2026-09-03：這裡以前**寫死**一句「找不到挑戰成功」——
+       但學生實際上可能是截錯關卡、或截圖沒含網址列，
+       被指去重截徽章，照著錯的指示做第二次還是不會過。
+       ★ 後端那幾句訊息是實戰一次次調出來的，最有診斷價值。 */
+    let ph2 = 0;
+    const envV = makeEnv((url) => {
+      if (url.indexOf('/api/queue-list') >= 0) {
+        ph2++;
+        if (ph2 <= 2) return reply({ queue: [{ student_id: '1', name: 'v.png' }] });
+        return reply({ queue: [] });
+      }
+      if (url.indexOf('/api/my-passed') >= 0) return reply({ passed: [] });
+      if (url.indexOf('/api/my-verdict') >= 0) {
+        return reply({ found: true, verdict: { pass: false,
+          reasons: ['關卡名稱不符合', '這張看起來是「跳格子」的畫面，你要驗的是「拔蘿蔔」。'] } });
+      }
+      throw new Error('不該打到 ' + url);
+    });
+    const rv = await envV.win.waitViaCloud(
+      { base: 'http://c', sid: '1', term: '11501', challengeId: 10 }, '1-v.png');
+    ok(rv.data.pass === false, '★ 沒過就是沒過');
+    ok(/關卡名稱不符合/.test(rv.data.reasons.join('')),
+       '★★★ 要用後端真正的理由，不可以寫死「找不到挑戰成功」');
+    ok(envV.calls.some(c => c.url.indexOf('/api/my-verdict') >= 0),
+       '★★ 真的有去問 /api/my-verdict');
+
+    let ph3 = 0;
+    const envW = makeEnv((url) => {
+      if (url.indexOf('/api/queue-list') >= 0) {
+        ph3++;
+        if (ph3 <= 2) return reply({ queue: [{ student_id: '1', name: 'w.png' }] });
+        return reply({ queue: [] });
+      }
+      if (url.indexOf('/api/my-passed') >= 0) return reply({ passed: [] });
+      /* 舊後端沒有這支 */
+      if (url.indexOf('/api/my-verdict') >= 0) return reply({}, 404);
+      throw new Error('不該打到 ' + url);
+    });
+    const rw = await envW.win.waitViaCloud(
+      { base: 'http://c', sid: '1', term: '11501', challengeId: 10 }, '1-w.png');
+    ok(/找不到「挑戰成功」/.test(rw.data.reasons.join('')),
+       '★★ 問不到就退回原本那句（舊後端、或重啟過都不可以壞掉）');
+
     section('⑩ Colab 掛掉時不可以判學生失敗');
     let n2 = 0;
     const envF = makeEnv((url) => {

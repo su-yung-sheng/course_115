@@ -1225,8 +1225,29 @@ ok('_cid = (request.form.get("challenge_id") or "").strip()' in _srv7
    '★★ 沒送 challenge_id 時要從關卡名推出來（不然成績一筆都記不下去）')
 ok('core.record_ocr_pass(sid, _cid, _term)' in _srv7,
    '★★ 通關紀錄要用推出來的那個編號')
-ok('_lv_from_name and (not _want_lv or _lv_from_name[0] == _want_lv)' in _srv7,
-   '★★ 快路的條件：檔名認得出**而且**和學生選的那一關一致')
+# ⚠️⚠️ 2026-09-03 老師：「只看檔名判斷關卡，似乎有可能發生改檔名，
+#    所以還是要有第二層把關才給證書。」
+#    ★ 原本有一條快路：檔名認得出就 has_level = True、**完全不辨識關卡** ——
+#      把第 1 關的成功截圖改名成「拔蘿蔔….png」就能拿到第 10 關的證書。
+#    ⇒ 快路已移除。檔名只決定「要比對哪一關」，OCR 仍然要驗。
+ok('if False:' not in _srv7 and 'has_level = True' not in _srv7,
+   '★★★ 不可以有「檔名認得出就直接 has_level = True」的快路'
+   '（改檔名就能拿到別關的證書）')
+ok('if _lv_from_name and not title:' in _srv7
+   and 'title = _norm_text(_lv_from_name[0])' in _srv7,
+   '★★★ 檔名要當成「比對目標」餵給 OCR，不是當成結論')
+# ⚠️⚠️ 雲端那條路上前端看不到 /analyze 的回應，所以失敗理由要另外留一份。
+#    沒有它，學生一律看到「找不到挑戰成功」—— 截錯關卡的人會照著錯的指示重截。
+ok('def _remember_verdict' in _srv7 and '/api/my-verdict' in _srv7,
+   '★★★ 要把最近一次判定留起來，學生端才拿得到真正的失敗原因')
+ok(_srv7.count('_remember_verdict(sid,') >= 3,
+   '★★ 三條失敗路徑都要記（尤其「關卡名稱不符合」那條，訊息最有用）'
+   '　←　目前 %d 處' % _srv7.count('_remember_verdict(sid,'))
+ok('_VERDICT_TTL' in _srv7,
+   '★ 要有存活時間（這是給「剛剛那一張」用的，不是紀錄）')
+
+ok('"level_verified": bool(has_level)' in _srv7,
+   '★★ 回應要分開講「關卡怎麼決定的」和「有沒有驗過」')
 # ⚠️ 不可以只檢查那句訊息在不在 —— 把 if 條件改成 False，
 #    訊息還在檔案裡，測試照樣綠（2026-09-03 突變時抓到）。
 #    ⇒ 要釘住**判斷式本身**。
