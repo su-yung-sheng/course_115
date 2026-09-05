@@ -833,29 +833,84 @@ ok('.strip()' in _srv3 and 'sha1' in _srv3,
    '★★ 要先 strip 再算 —— %%writefile 可能差一個結尾換行')
 # ⚠️ cell 8 沒有 import io：用 io.open 會 NameError 被 except 吞掉，
 #    指紋永遠回 "unknown" 而且完全沒有徵兆。
-_fp_body = _srv3[_srv3.index('def _server_fingerprint'):]
-_fp_body = _fp_body[:_fp_body.index('SERVER_FINGERPRINT =')]
+_fp_body = _srv3[_srv3.index('def _file_fingerprint'):]
+_fp_body = _fp_body[:_fp_body.index('SERVER_FINGERPRINT = _combined_fingerprint()')
+                    + len('SERVER_FINGERPRINT = _combined_fingerprint()')]
 ok('io.open' not in _fp_body,
    '★★ 指紋函式不可以用 io.open（cell 8 沒 import io，會靜默回 unknown）')
 
-# ★ 真的跑一遍：模擬 %%writefile 寫出檔案，比對兩邊的值
-_raw = ''.join(_nb_cells[8]['source'])
-_body = '\n'.join(_raw.split('\n')[1:])
+# ⛔⛔ 2026-09-05：指紋原本**只涵蓋 colab_server.py**，
+#    而 load_config／single_agent_grading／parse_chain_recursive 都在 core。
+#    當天的實例：model_name 那個 bug 修在 core，指紋沒變 ——
+#    老師只比指紋會看到「一樣」，以為不必重跑步驟 2。
+ok('scratch_grader_core.py' in _fp_body,
+   '★★★ 指紋一定要涵蓋 core —— 決定分數的程式全在那一格')
+
+# ★ 真的跑一遍：模擬 %%writefile 寫出**兩個**檔案，
+#   再和 check.py 的 backend_fingerprint() 對答案。
+#   ⚠️ 這一段才是重點：兩邊的演算法只要有一點不同，
+#      就會變成「永遠不一致」的假警報，而假警報比沒有更糟。
+def _cell_body(marker):
+    for _c in _nb_cells:
+        _r = ''.join(_c.get('source', []))
+        if _r.startswith('%%writefile ' + marker):
+            return '\n'.join(_r.split('\n')[1:])
+    return None
+
+
+_core_body = _cell_body('scratch_grader_core.py')
+_srv_body = _cell_body('colab_server.py')
+ok(bool(_core_body and _srv_body), '★ 兩個 %%writefile 儲存格都找得到')
+
 _d = _tf.mkdtemp()
+io.open(os.path.join(_d, 'scratch_grader_core.py'), 'w',
+        encoding='utf8').write(_core_body)
 _fp_path = os.path.join(_d, 'colab_server.py')
-io.open(_fp_path, 'w', encoding='utf8').write(_body)
-_ns_fp = {'__file__': _fp_path}
-exec(_fp_body, _ns_fp)
-_got = _ns_fp['_server_fingerprint']()
-_want = _hl.sha1(_body.strip().encode('utf8')).hexdigest()[:8]
-ok(_got == _want,
-   '★★ 後端算的和 repo 算的要一致　←　後端 %s / repo %s' % (_got, _want))
-ok(_got != 'unknown', '★★ 指紋不可以是 unknown（那代表整段被例外吞掉了）')
+io.open(_fp_path, 'w', encoding='utf8').write(_srv_body)
+
+_cwd0 = os.getcwd()
+os.chdir(_d)                      # _file_fingerprint 用相對路徑找 core
+try:
+    _ns_fp = {'__file__': _fp_path}
+    exec(_fp_body, _ns_fp)
+    _got = _ns_fp['SERVER_FINGERPRINT']
+    _got_core = _ns_fp['CORE_FINGERPRINT']
+    _got_srv = _ns_fp['SERVER_FINGERPRINT_ONLY']
+finally:
+    os.chdir(_cwd0)
+
+_want_core = _hl.sha1(_core_body.strip().encode('utf8')).hexdigest()[:8]
+_want_srv = _hl.sha1(_srv_body.strip().encode('utf8')).hexdigest()[:8]
+_want = _hl.sha1((_want_core + '\n' + _want_srv).encode('utf8')).hexdigest()[:8]
+ok(_got_core == _want_core, '★★ core 指紋一致　←　後端 %s / repo %s'
+   % (_got_core, _want_core))
+ok(_got_srv == _want_srv, '★★ server 指紋一致　←　後端 %s / repo %s'
+   % (_got_srv, _want_srv))
+ok(_got == _want, '★★ 合併指紋一致　←　後端 %s / repo %s' % (_got, _want))
+ok('unknown' not in (_got, _got_core, _got_srv),
+   '★★ 指紋不可以是 unknown（那代表整段被例外吞掉了）')
+
+# ★★★ 和 check.py 真正的實作對答案 —— 上面那些是我自己重算的，
+#     只證明「後端和我的算法一致」；老師比對的是 check.py 印出來的數字。
+# ⚠️ 要給 __file__（check.py 的第 51 行會用它算 ROOT），
+#    而且 __name__ 不能是 '__main__'，不然會把整支檢查跑起來 ——
+#    那會遞迴呼叫這支測試自己。
+_ck_path = os.path.join(ROOT, 'shared', 'check.py')
+_ck = {'__file__': _ck_path, '__name__': 'check_under_test'}
+exec(compile(io.open(_ck_path, encoding='utf8').read(), _ck_path, 'exec'), _ck)
+_ck_fp = _ck['backend_fingerprint']()
+ok(_ck_fp is not None and _ck_fp[0] == _got,
+   '★★★ check.py 印的和後端算的要一模一樣　←　check.py %s / 後端 %s'
+   % (_ck_fp[0] if _ck_fp else None, _got))
 
 # 結尾多一個換行也要算出同一個值
-io.open(_fp_path, 'w', encoding='utf8').write(_body + '\n')
-ok(_ns_fp['_server_fingerprint']() == _want,
-   '★ 結尾多一個換行時仍是同一個指紋（不然會變成假警報）')
+io.open(_fp_path, 'w', encoding='utf8').write(_srv_body + '\n')
+os.chdir(_d)
+try:
+    ok(_ns_fp['_file_fingerprint']((_fp_path,)) == _want_srv,
+       '★ 結尾多一個換行時仍是同一個指紋（不然會變成假警報）')
+finally:
+    os.chdir(_cwd0)
 
 # 四個端點都要回報
 _n_fp = len([l for l in _srv3.split('\n')

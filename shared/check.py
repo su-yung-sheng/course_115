@@ -893,12 +893,28 @@ def backend_fingerprint():
             nb = _json.load(f)
     except Exception:                               # noqa: BLE001
         return None
-    for cell in nb.get('cells', []):
-        src = ''.join(cell.get('source', []))
-        if src.startswith('%%writefile colab_server.py'):
-            body = '\n'.join(src.split('\n')[1:]).strip()
-            return hashlib.sha1(body.encode('utf-8')).hexdigest()[:8]
-    return None
+    # ⛔⛔ 2026-09-05：這裡原本**只算 colab_server.py**。
+    #    而 scratch_grader_core.py 裡是 load_config、single_agent_grading、
+    #    parse_chain_recursive —— 決定學生分數的東西全在那一格。
+    #    ★ 當天的實例：model_name 那個 bug 修在 core，指紋從頭到尾沒變 ——
+    #      老師只比指紋會看到「一樣」，然後以為不必重跑步驟 2。
+    #    ⇒ 兩格都算。順序 core 在前、server 在後，中間一個 \n；
+    #      演算法要和 colab_server.py 的 _combined_fingerprint() 完全一致，
+    #      改一邊就要改另一邊，不然會變成永遠不一致的假警報。
+    def _one(marker):
+        for cell in nb.get('cells', []):
+            src = ''.join(cell.get('source', []))
+            if src.startswith('%%writefile ' + marker):
+                body = '\n'.join(src.split('\n')[1:]).strip()
+                return hashlib.sha1(body.encode('utf-8')).hexdigest()[:8]
+        return None
+
+    core = _one('scratch_grader_core.py')
+    server = _one('colab_server.py')
+    if not core or not server:
+        return None
+    joined = core + '\n' + server
+    return (hashlib.sha1(joined.encode('utf-8')).hexdigest()[:8], core, server)
 
 
 def main():
@@ -934,9 +950,13 @@ def main():
 
     fp = backend_fingerprint()
     if fp:
-        log(f'✅ 檢查通過，可以推送。（後端指紋 {fp} —— '
+        # ★ 分開印兩份：合起來的那個拿去和 /api/health 的 fingerprint 比；
+        #   兩個分項是「對不上時，到底是哪一格沒重跑」的答案。
+        log(f'✅ 檢查通過，可以推送。（後端指紋 {fp[0]} —— '
             f'和 /api/health 回報的 fingerprint 比對，'
             f'就知道 Colab 跑的是不是這一份）')
+        log(f'   分項：core {fp[1]}（步驟 2）／server {fp[2]}（步驟 3）'
+            f' —— 對不上的那一格就是沒重跑的那一格')
     else:
         log('✅ 檢查通過，可以推送。')
     return 0
