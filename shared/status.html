@@ -263,15 +263,34 @@ if (!window.CONFIG) {
         var total = (j && j.total) || 0;
         var scope = '已建檔 ' + total + (j && j.truncated ? '+' : '') + ' 張'
                   + '（只含後端更新之後上傳的圖，舊的通關紀錄沒有雜湊）';
+        /* ⚠️⚠️ 老師 2026-09-05：「1410100～1411200 都是測試帳號，所以會用
+           同一張圖 —— 這種訊息怎麼處理？」
+           ★ 後端改成**分類不是過濾**：查名冊，全部都不在名冊 = 測試帳號。
+             （這個專案對測試帳號的定義本來就是「不在名冊裡」，見 README。）
+           ⚠️ 不可以直接濾掉不顯示 —— 被藏起來的東西一定要能叫出來，
+              否則哪天分類錯了，老師沒有任何辦法發現。⇒ 摺起來，可展開。 */
+        var td = (j && j.test_dupes) || [];
+        var testNote = td.length
+          ? row('測試帳號', td.length + ' 組（不在名冊裡，是你自己測功能留下的，已摺起）'
+              + '<details class="mt-1"><summary class="cursor-pointer text-slate-400">展開看</summary>'
+              + '<div class="mt-1 space-y-1">'
+              + td.slice(0, 20).map(function (x) {
+                  return '<div class="text-slate-500">' + esc(x.students.join('、'))
+                       + '　<span class="font-mono text-xs">' + esc(x.hash) + '…</span></div>';
+                }).join('')
+              + '</div></details>')
+          : '';
         if (!d.length) {
           if (!total) {
             set(el, 'wait', '還沒有資料可以比對',
                 row('原因', '雜湊是從後端更新之後上傳的圖才開始記的，目前一張都還沒有。')
-              + row('注意', '這個狀態**不代表**沒有人借圖，只代表還沒開始累積。'));
+              + row('注意', '這個狀態<b>不代表</b>沒有人借圖，只代表還沒開始累積。')
+              + testNote);
             return j;
           }
-          set(el, 'ok', '沒有發現重複的截圖',
+          set(el, 'ok', '沒有發現重複的截圖（真的學生）',
               row('範圍', scope)
+            + testNote
             + row('怎麼比', '整個檔案的 sha256 —— 位元組完全相同才算。'
                           + '所以命中＝同一個檔案，不會因為「畫面長得像」誤判。')
             + row('⚠️ 但是', '學生自己重截一次就抓不到 —— '
@@ -280,11 +299,13 @@ if (!window.CONFIG) {
         }
         var html = d.slice(0, 20).map(function (x) {
           return row(esc(x.students.join('、')),
-                     '同一張圖（' + esc(x.hash) + '…）被這幾位用過');
+                     (x.kind === 'unknown' ? '⚠️ 名冊讀不到，分不出是不是測試帳號 —— ' : '')
+                     + '同一張圖（' + esc(x.hash) + '…）被這幾位用過');
         }).join('');
         set(el, 'warn', '有 ' + d.length + ' 張圖被不同學號重複使用',
             html
             + row('範圍', scope)
+            + testNote
             + row('可信度', 'sha256 完全相同 —— 是同一個檔案，不是「長得像」。這個不會誤判。')
             + row('怎麼判斷',
               '但仍是線索不是結論：也可能是同一台電腦、或幫同學代傳。'

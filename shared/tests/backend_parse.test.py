@@ -1340,6 +1340,35 @@ ok('"total"' in _dupe_api and '"truncated"' in _dupe_api,
 ok("!total" in _st and '還沒有資料可以比對' in _st,
    '★★★ total=0 時狀態頁要顯示「還沒有資料」而不是綠燈')
 
+# ⚠️⚠️ 老師 2026-09-05：「1410100～1411200 都是測試帳號，所以會用同一張圖 ——
+#    這種訊息怎麼處理？」
+#    ★ 分類，不是過濾。這個專案對測試帳號的定義是「不在名冊裡」（README）。
+#    ⛔ 不可以寫死號碼範圍：哪天真的學生落在那個範圍內就永遠不會被標。
+ok('def roster_known' in _core_src, '★★ 要能分辨「在不在名冊裡」')
+_rk = _core_src[_core_src.index('def roster_known'):][:1500]
+ok('return None' in _rk and 'e.code == 404' in _rk,
+   '★★★ 名冊讀不到要回 None（讀失敗當成「不在名冊」會讓整份稽核安靜空掉）')
+ok('_ROSTER_KNOWN[sid] = False' in _rk,
+   '★ 只有 404 才算「不在名冊」')
+import re as _re_t
+_rep2 = _core_src[_core_src.index('def dupe_shot_report'):][:3000]
+ok('"kind"' in _rep2 and '"unknown"' in _rep2,
+   '★★ 每一組要標出是學生／測試帳號／分不出來')
+# ⚠️ 這一條原本寫成「整個 core 都不可以出現 141xxxx」，結果命中
+#    level_from_filename 的 docstring 裡合法的檔名範例
+#    （「1410700-滑梯公園 - Google Chrome.png」）——
+#    這是我今天第四次被自己的說明文字誤判。⇒ 只管分類邏輯那一段。
+ok(not _re_t.search(r'141\d{4}', _rep2),
+   '★★★ 借圖分類不可以寫死學號範圍')
+ok('roster_known(' in _rep2,
+   '★★★ 分類一定要走名冊 —— 那才是這個專案對「測試帳號」的定義')
+ok('"test_dupes"' in _rep2 and '"test_dupes"' in _srv7,
+   '★★ 測試帳號那一組要分開回傳')
+ok('test_dupes' in _st and '展開看' in _st,
+   '★★★ 摺起來可以，但一定要能展開 —— 被藏起來的東西要叫得出來')
+ok('名冊讀不到' in _st,
+   '★★ kind=unknown 要講出來，不可以混在正常結果裡')
+
 # ⚠️⚠️ 老師 2026-09-04 問：「Scratch 的機器上為什麼會跑以下程序？」
 #    ★ 因為那台沒設 SKIP_OCR ⇒ 步驟 1b 照裝 ⇒ 這裡照載。這是設計（預設要做對的事）。
 #    ⚠️ 但設好 SKIP_OCR 之後，預載會失敗並印 ⚠️ ——
