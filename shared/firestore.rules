@@ -4,8 +4,8 @@ rules_version = '2';
 //  Firestore 安全規則 — 專案 suyungsheng-5f948
 //  涵蓋：115 學年【上學期 11501】＋【下學期 11502】
 //  貼上位置：Firebase Console → Firestore Database → 規則 → 發佈
-//  規則本體最後更新：2026-09-03
-//  規則本體指紋：bc73a90d　（154 行，不含註解）
+//  規則本體最後更新：2026-09-05
+//  規則本體指紋：a6c73e1e　（160 行，不含註解）
 //
 //  ★ 怎麼確認「線上跑的是不是這一份」
 //    Firebase Console 的規則第一段也看得到上面兩行。比對**指紋**就好。
@@ -334,6 +334,16 @@ service cloud.firestore {
       allow read: if isTeacher();
     }
     match /11502-shot-hashes/{h} {
+      allow read: if isTeacher();
+    }
+    /* 重複作品偵測：.sb3 的 sha256 -> 傳過這個檔案的學號們。
+       ⚠️ 和 shot-hashes 分開放：那一份會自動不計分，這一份只標記
+          （.sb3 是 ZIP，重存一次雜湊就變，抓得到的只有原封不動轉傳）。
+       ⚠️ 學生不給讀 —— 那等於公布誰跟誰交了同一份程式。 */
+    match /11501-work-hashes/{h} {
+      allow read: if isTeacher();
+    }
+    match /11502-work-hashes/{h} {
       allow read: if isTeacher();
     }
     match /11502-ocr-passed/{sid} {

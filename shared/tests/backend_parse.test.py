@@ -1343,6 +1343,43 @@ ok('順序不代表對錯' in _st_here or '上傳順序' in _st_here,
    '★★★ 教師端要講明順序不代表對錯，否則會拿它當判決依據')
 ok('held_by' in _core_src and 'rejected' in _st_here,
    '★★ 稽核要看得到「誰算數、誰被擋」')
+
+# ══════════════════════════════════════════════════════════
+# 程式作品（.sb3）的重複檔案（老師 2026-09-05）
+# ══════════════════════════════════════════════════════════
+# ★ 和截圖**刻意不同**：.sb3 是 ZIP，在 Scratch 重存一次雜湊就變，
+#   抓得到的只有「原封不動轉傳」。而批改是即時回饋，
+#   誤判的代價比截圖那條非同步的路高。⇒ 只標記，分數不動。
+ok('def record_work_hash' in _core_src, '★★ 程式作品要有檔案雜湊')
+ok('def work_hash_collection' in _core_src,
+   '★ 和截圖分開放（一個會自動不計分、一個只標記，混在一起會誤用）')
+_rwh = _core_src[_core_src.index('def record_work_hash'):][:2000]
+ok('return []' in _rwh and 'except Exception' in _rwh,
+   '★★ 稽核失敗絕對不可以影響評分')
+ok('str(o.get("sid")) != sid' in _rwh, '★ 同一個學生自己重傳不算')
+# ⛔ 這一支**不可以**有拒絕能力 —— 老師明確只要標記
+ok('rejected' not in _rwh,
+   '★★★ 程式作品只標記：.sb3 重存就繞過了，自動扣分的誤判代價太高')
+_sg2 = _srv7[_srv7.index('def student_grade'):][:6000]
+ok('record_work_hash' in _sg2, '★★ 批改流程要記檔案雜湊')
+ok(_sg2.index('grade_project_file') < _sg2.index('record_work_hash'),
+   '★ 先評分再記雜湊 —— 稽核排在後面，壞了也不影響分數')
+ok('def dupe_work_report' in _core_src and '/api/dupe-works' in _srv7,
+   '★★ 要有給教師端看的清單')
+ok('collection or shot_hash_collection' in _core_src,
+   '★★ 兩種雜湊共用同一套分類邏輯（抄第二份的話改了一邊另一邊會用舊的）')
+# ⚠️ .sb3 是**批改那一台**收的，不是 OCR 那一台
+# ⚠️ 不可以只比 "SERVER + '/api/dupe-works" —— 「OCR_SERVER」這個字串
+#    本身就以 SERVER 結尾，寫錯成 OCR_SERVER 也會通過。
+#    （status.test.js 早就為了同一件事留過這個註解。）
+import re as _re_w
+ok(bool(_re_w.search(r"[^_]SERVER \+ '/api/dupe-works", _st_here)),
+   '★★★ 程式作品要問批改那一台（OCR_SERVER 是另一台機器）')
+ok('不等於' in _st_here and '原封不動' in _st_here,
+   '★★★ 綠燈只代表「沒有人原封不動轉傳」，不可以讀成「沒有人抄」')
+_rules = io.open(os.path.join(ROOT, 'shared', 'firestore.rules'), encoding='utf8').read()
+ok('11501-work-hashes' in _rules and '11502-work-hashes' in _rules,
+   '★★ 新集合要有教師讀取規則（沒有的話清單永遠是空的，而且不會報錯）')
 # ⚠️⚠️ 老師 2026-09-03 問：「圖片都長一樣，這樣判斷不會有誤判嗎？」
 #    ★ 不會 —— sha256 是**位元組完全相同**才算，一個像素不同就完全不同。
 #      刻意**不用**相似度比對（perceptual hash）：同一款遊戲的成功畫面

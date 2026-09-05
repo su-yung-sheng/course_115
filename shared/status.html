@@ -144,7 +144,7 @@ if (!window.CONFIG) {
             關卡說明或截圖指引，不是辨識參數。）</span></dd>
       </div>
       <div>
-        <dt class="font-bold text-slate-800">第 ⑧ 張卡說有人重複使用截圖</dt>
+        <dt class="font-bold text-slate-800">第 ⑧ 張卡說有重複的檔案</dt>
         <dd>那是<b>同一個檔案</b>被兩個學號傳過 —— 比對的是整份檔案的 sha256，
             位元組完全相同才算，<b>不會</b>因為「畫面長得像」誤判。
             但它<b>是線索不是結論</b>：也可能是同一台電腦、或幫同學代傳，
@@ -152,7 +152,10 @@ if (!window.CONFIG) {
             沒過的在 <code>{學期}/未通過/</code>）。
             <span class="text-slate-400">（反過來也要知道：學生自己重截一次就抓不到，
             所以「沒有發現重複」<b>不等於</b>沒有借圖。另外雜湊是後端更新之後上傳的圖
-            才開始記的，顯示「還沒有資料可以比對」是正常的，不是壞掉。）</span></dd>
+            才開始記的，顯示「還沒有資料可以比對」是正常的，不是壞掉。）</span>
+            <div class="mt-1"><b>程式作品那一段不一樣</b>：.sb3 是 ZIP，在 Scratch
+            重存一次雜湊就完全不同，所以只抓得到「原封不動轉傳」，而且<b>分數不會
+            自動調整</b>——那一段純粹是線索，要你自己看過再決定。</div></dd>
       </div>
     </dl>
   </section>
@@ -217,6 +220,16 @@ if (!window.CONFIG) {
     el.classList.remove('border-slate-200');
     el.classList.add(t.box);
     if (detailHtml != null) el.querySelector('.detail').innerHTML = detailHtml;
+  }
+
+  /* 只換燈號與標題，保留已經畫好的內容。
+     用在「同一張卡有兩個來源，後到的那個更嚴重」的情況。 */
+  function bumpTone(el, tone, state) {
+    var t = TONE[tone] || TONE.wait;
+    el.querySelector('.dot').className = 'dot mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ' + t.dot;
+    el.querySelector('.state').className = 'state text-sm font-bold ' + t.txt;
+    el.querySelector('.state').textContent = t.icon + ' ' + state;
+    el.classList.add(t.box);
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -330,6 +343,55 @@ if (!window.CONFIG) {
       .catch(function (e) {
         set(el, 'wait', '問不到（後端可能沒開）', row('訊息', esc(e.message)));
         return null;
+      });
+  }
+
+  /* ── 程式作品（.sb3）的重複檔案 ────────────────────────
+     ⚠️⚠️ 老師 2026-09-05：「程式也會有上傳動作，檔案也能有比對機制嗎？」
+     ★ 可以，但**證據強度和截圖不同**，所以處理方式也不同：
+       · 截圖是 PNG，位元組相同＝同一個檔案 ⇒ 已改成自動不計分
+       · .sb3 是 ZIP，存了時間戳記和 Scratch 的 meta ——
+         借來的專案在 Scratch 開起來**重存一次**，雜湊就完全不同。
+         而借程式的人通常會改一點東西讓它「像自己的」⇒ 很容易繞過。
+     ⇒ 這一份**只標記，分數不動**。老師要的是線索，不是自動處分。
+     ⚠️ 所以綠燈的意思只有「沒有人原封不動轉傳」，
+        絕對不等於「沒有人抄」—— 這句話一定要寫在卡片上。 */
+  function checkDupeWorks(el) {
+    /* ⚠️ 用 SERVER 不是 OCR_SERVER —— .sb3 是**批改那一台**收的。
+       （這一頁的既有測試就在盯這種張冠李戴。） */
+    return fetch(SERVER + '/api/dupe-works?term=' + encodeURIComponent(C.TERM || ''),
+                 { headers: { 'ngrok-skip-browser-warning': '1' }, cache: 'no-store' })
+      .then(function (r) { return r.status === 404 ? null : r.json(); })
+      .then(function (j) {
+        if (!j) return { html: row('程式作品', '後端還沒有這個功能（重跑步驟 2、3、4）'), warn: false };
+        var d = (j.dupes) || [];
+        var total = j.total || 0;
+        var td = (j.test_dupes) || [];
+        var note = td.length ? '（另有 ' + td.length + ' 組是測試帳號，已略過）' : '';
+        if (!total) {
+          return { html: row('程式作品',
+                     '還沒有資料可以比對' + note
+                   + '<div class="text-slate-400">雜湊是後端更新之後上傳的 .sb3 才開始記的。</div>'),
+                   warn: false };
+        }
+        if (!d.length) {
+          return { html: row('程式作品',
+                     '已建檔 ' + total + ' 份，沒有發現原封不動轉傳的' + note
+                   + '<div class="text-slate-400">⚠️ .sb3 重存一次雜湊就變 —— '
+                   + '這<b>不等於</b>沒有人抄，只代表沒有人直接轉傳檔案。</div>'),
+                   warn: false };
+        }
+        return { html: row('程式作品',
+                   '<span class="text-amber-700">有 ' + d.length + ' 份被不同學號傳過</span>' + note)
+                 + d.slice(0, 10).map(function (x) {
+                     return row('　' + esc(x.hash) + '…', esc(x.students.join('、')));
+                   }).join('')
+                 + row('　說明', '這是<b>同一個檔案原封不動</b>被傳了兩次。'
+                     + '分數<b>沒有</b>自動調整 —— 請自己看過再決定。'),
+                 warn: true };
+      })
+      .catch(function (e) {
+        return { html: row('程式作品', '問不到：' + esc(e.message)), warn: false };
       });
   }
 
@@ -882,7 +944,7 @@ if (!window.CONFIG) {
     var c5 = card('rules',   '⑤ Firestore 安全規則');
     var c6 = card('gas',     '⑥ AI 引導的 Apps Script');
     var c7 = card('ocr',     '⑦ 截圖辨識效能（要不要調參數）');
-    var c8 = card('dupe',    '⑧ 借圖檢查（同一張圖被不同人用過）');
+    var c8 = card('dupe',    '⑧ 重複檔案檢查（截圖／程式作品）');
 
     checkBackend(c1).then(function (health) {
       checkKeys(c2, health);
@@ -893,7 +955,20 @@ if (!window.CONFIG) {
         checkRules(c5),
         checkGas(c6),
         checkOcrStats(c7, health),
-        checkDupeShots(c8)
+        /* ⚠️ 兩個來源要一起呈現在同一張卡：
+           分成兩張卡的話，「檢查不過時怎麼辦」也要跟著多一條說明
+           （status.test.js 盯著卡片數 vs 說明數），而這兩件事
+           本來就是同一個問題的兩面 —— 合在一起看比較清楚。 */
+        checkDupeShots(c8).then(function () { return checkDupeWorks(c8); })
+          .then(function (w) {
+            if (!w) return;
+            c8.querySelector('.detail').insertAdjacentHTML('beforeend',
+              '<div class="mt-2 pt-2 border-t border-slate-200">' + w.html + '</div>');
+            /* ⚠️ 程式作品有發現、而截圖那半是綠燈時，卡片會變成
+               「綠燈但裡面寫著有問題」—— 那是最容易被略過的樣子。
+               ⇒ 只調燈號和標題，不動已經畫好的內容。 */
+            if (w.warn) bumpTone(c8, 'warn', '有重複的程式作品');
+          })
       ]);
     }).catch(function (e) {
       console.error(e);
