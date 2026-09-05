@@ -1303,15 +1303,46 @@ ok('if _lv_from_name and not title:' in _srv7
 # ⚠️⚠️ 借圖偵測：OCR 看不出「借同學的截圖」，但同一個檔案出現在
 #    兩個學生名下是機器抓得到的。⚠️ 只標記**不擋通關** ——
 #    誤判會讓正當的學生當場被冤枉，而現場沒有人能申訴。
-ok('def record_shot_hash' in _core_src and 'hashlib.sha256' in _core_src,
+ok('def claim_shot_hash' in _core_src and 'hashlib.sha256' in _core_src,
    '★★ 判定通過時要記截圖的雜湊')
 ok('def list_dupe_shots' in _core_src and '/api/dupe-shots' in _srv7,
    '★★ 要有給教師端看的重複清單')
-_rsh = _core_src[_core_src.index('def record_shot_hash'):][:2600]
-ok('return []' in _rsh and 'except Exception' in _rsh,
+_rsh = _core_src[_core_src.index('def claim_shot_hash'):][:3400]
+ok('return (True, [])' in _rsh and 'except Exception' in _rsh,
    '★★★ 借圖偵測失敗一律吞掉（稽核不可以影響判定）')
 ok('str(o.get("sid")) != sid' in _rsh,
    '★★ 同一個學生自己重傳同一張不算借圖')
+
+# ══════════════════════════════════════════════════════════
+# 2026-09-05 老師改成自動不計分：「後一張就自動不計分嗎？」
+# ══════════════════════════════════════════════════════════
+# ⛔ 三個非做不可的防護，少一個就會冤枉學生。
+ok('not o.get("rejected")' in _rsh,
+   '★★★ 被拒絕過的不算佔位 —— 否則第一個被誤擋的人會把後面全部一起擋掉')
+ok('"rejected": True' in _rsh,
+   '★★ 被擋的要留一筆稽核記錄，但不佔所有權')
+# ⛔ 基礎設施壞掉時放行 —— 不可以變成「全班都不算通關」
+_tail = _rsh[_rsh.rindex('except Exception'):]
+ok('return (True, [])' in _tail,
+   '★★★ 查不動 Firestore 一律放行（稽核機制不可以害全班不及格）')
+# ⛔ 一定要在 record_ocr_pass **之前**擋，不然成績已經寫進去了
+ok(_srv7.index('claim_shot_hash') < _srv7.index('record_ocr_pass'),
+   '★★★ 借圖檢查要在寫成績之前 —— 寫完再擋是擋不掉的')
+ok('_ok_claim = True' in _srv7,
+   '★★★ claim 丟例外時要放行，不可以讓稽核失敗變成判定失敗')
+# ⛔ 被擋的人不可以永久卡死：他自己那張原圖雜湊一樣，會一直被擋
+_reason = _srv7[_srv7.index('reasons.append('):][:600]
+ok('重新截一張' in _srv7,
+   '★★★ 拒絕訊息一定要叫他重新截一張 —— '
+   '不然他傳自己的原圖也會一直被擋，而且不知道為什麼')
+ok('抄襲' not in _srv7 and '作弊' not in _srv7,
+   '★★ 訊息不可以寫成指控 —— 系統分不出誰是原作者（上傳順序≠截圖順序）')
+# ⚠️ _st（status.html）是在檔案更後面才讀進來的，這裡要自己讀一份。
+_st_here = io.open(os.path.join(ROOT, 'shared', 'status.html'), encoding='utf8').read()
+ok('順序不代表對錯' in _st_here or '上傳順序' in _st_here,
+   '★★★ 教師端要講明順序不代表對錯，否則會拿它當判決依據')
+ok('held_by' in _core_src and 'rejected' in _st_here,
+   '★★ 稽核要看得到「誰算數、誰被擋」')
 # ⚠️⚠️ 老師 2026-09-03 問：「圖片都長一樣，這樣判斷不會有誤判嗎？」
 #    ★ 不會 —— sha256 是**位元組完全相同**才算，一個像素不同就完全不同。
 #      刻意**不用**相似度比對（perceptual hash）：同一款遊戲的成功畫面
@@ -1326,7 +1357,9 @@ ok('位元組完全相同' in _st and '不等於沒有借圖' in _st,
 #    ★ 對 —— 雜湊只有「後端更新之後上傳的圖」才有，舊通關紀錄沒有。
 #      ⇒ total=0 的時候**不可以顯示綠燈**，否則「還沒開始記」會被讀成「沒人借圖」。
 ok('def dupe_shot_report' in _core_src, '★ 借圖稽核要回報已建檔張數（total）')
-_rep = _core_src[_core_src.index('def dupe_shot_report'):][:2200]
+# ⚠️ 切片長度要夠 —— 這支函式 2026-09-05 加了 held_by／rejected 之後變長，
+#    原本的 2200 字讀不到 total／nextPageToken，測試就假紅了。
+_rep = _core_src[_core_src.index('def dupe_shot_report'):][:4200]
 ok('"total": len(docs)' in _rep, '★ total = 已建檔的雜湊筆數')
 ok('nextPageToken' in _rep, '★ 超過一頁要標 truncated，不然 total 會被當成全部')
 ok(_core_src.count('_fs_http("GET", url)') >= 1 and 'resp = _fs_http' in _rep,
