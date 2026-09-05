@@ -1370,10 +1370,24 @@ ok('"model_name"' in _lc,
    '否則 Colab 重開就退回一天 20 次的預設模型')
 ok('is not None' in _lc,
    '★★ 用 is not None 判斷：student_show_score=False 會被真值判斷吃掉')
-_sc = _core_src[_core_src.index('def save_config'):][:1600]
+_sc = _core_src[_core_src.index('def save_config'):][:2400]
 ok('_fs_save_config' in _sc, '★★ 執行設定也要同步寫進 Firestore')
 ok('api_key' not in _sc.split('_fs_save_config')[0].split('_runtime = {')[-1],
    '★★★ 只同步指定的執行設定，金鑰絕對不可以落地')
+# ⛔⛔ model_name 的擁有者是**教師端**（teacher.html 的 gdSaveModel 直接寫
+#    {學期}-grader/criteria），後端只讀不寫。後端也寫的話會有這條災難路徑：
+#      Firestore 讀失敗 → load_config 退回預設 → 老師存別的設定
+#      → 用 gemini-2.5-flash 蓋掉他設好的 gemma，畫面還顯示「已儲存」。
+ok('"model_name"' not in _sc.split('_runtime = {')[-1].split('}')[0],
+   '★★★ 後端不可以回寫 model_name —— 讀失敗時會拿預設值蓋掉老師的設定')
+ok('not _CFG_ERROR.get("msg")' in _sc,
+   '★★★ 上一次讀取失敗過就不要回寫（手上這份可能是預設值）')
+# ★ 寫入端和讀取端必須對得上：教師端存的欄位，後端要讀得到。
+_th = io.open(os.path.join(ROOT, '11501', 'teacher.html'), encoding='utf8').read()
+ok('model_name: m' in _th, '★ 教師端「批改標準」有存 model_name')
+ok('model_name' in _lc,
+   '★★★ 教師端存了 model_name，後端就必須讀 —— '
+   '漏掉的話兩邊都顯示成功，而批改用的是別的模型（2026-09-05 的實際災情）')
 ok('"model_name": _model_now()' in _srv7,
    '★★ /api/health 要回報實際使用的模型')
 ok('model_is_default' in _srv7 and 'model_is_default' in _st,
