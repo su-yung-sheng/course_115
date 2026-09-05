@@ -1355,9 +1355,49 @@ ok('_grade_recent' in _srv7 and '_grade_avg_seconds' in _srv7,
    '★★ 要累積最近幾次的實際批改秒數，不要只靠寫死的常數')
 ok('q.avg_seconds' in _gh,
    '★★★ 前端要用後端回報的平均，不可以自己再寫死一個 25')
-_eta = _srv7[_srv7.index('def student_queue'):][:900]
+_eta = _srv7[_srv7.index('def student_queue'):][:1400]
 ok('pending * AVG_GRADE_SECONDS' not in _eta,
    '★★ eta 不可以乘上 pending —— 同時跑的人不必互相等')
+
+# ══════════════════════════════════════════════════════════
+# 2026-09-05：老師問「30 個人一起上傳沒問題嗎？」查出來的三件事
+# ══════════════════════════════════════════════════════════
+# ① model_name 只存在 Colab 本機 → 重開就靜默退回 gemini-2.5-flash
+#    （免費層一天 20 次），而且 health 不報、狀態頁不顯示、check.py 看不到。
+_lc = _core_src[_core_src.index('def load_config'):][:2200]
+ok('"model_name"' in _lc,
+   '★★★ load_config 要從 Firestore 撈回 model_name，'
+   '否則 Colab 重開就退回一天 20 次的預設模型')
+ok('is not None' in _lc,
+   '★★ 用 is not None 判斷：student_show_score=False 會被真值判斷吃掉')
+_sc = _core_src[_core_src.index('def save_config'):][:1600]
+ok('_fs_save_config' in _sc, '★★ 執行設定也要同步寫進 Firestore')
+ok('api_key' not in _sc.split('_fs_save_config')[0].split('_runtime = {')[-1],
+   '★★★ 只同步指定的執行設定，金鑰絕對不可以落地')
+ok('"model_name": _model_now()' in _srv7,
+   '★★ /api/health 要回報實際使用的模型')
+ok('model_is_default' in _srv7 and 'model_is_default' in _st,
+   '★★★ 退回預設模型要看得出來 —— 這種壞法什麼都不會報錯')
+ok('core.load_config' in _srv7[_srv7.index('def _model_now'):][:600],
+   '★★ _model_now 要走 load_config，直接讀 DEFAULT_CONFIG 會永遠回預設值')
+
+# ② 兩把金鑰同專案等於沒分流，但從金鑰查不到專案 —— 要誠實講「驗到什麼程度」
+ok('keys_identical' in _srv7 and 'keys_identical' in _st,
+   '★★ 至少要抓「兩個 Secret 填同一把」這種明確錯誤')
+ok('Google 專案' in _st or 'AI Studio' in _st,
+   '★★★ 綠燈旁要講明「只驗有沒有值」，不可以讓它冒充已驗證')
+
+# ③ 併發：jitter ＋ 重試次數脫鉤 ＋ 並發上限
+_aa = _core_src[_core_src.index('def ask_agent'):][:2600]
+ok('random.random()' in _aa,
+   '★★★ 退避要有隨機抖動 —— 固定退避會讓 30 條執行緒同時重試（thundering herd）')
+ok('max(4, len(api_keys) * 2)' in _aa,
+   '★★ 重試次數不可以綁金鑰數量：只有一把時原本只重試一次')
+ok('import random' in _core_src, '★ 有 import random 才不會 NameError')
+ok('_grade_sem' in _srv7 and 'with _grade_sem:' in _srv7,
+   '★★★ 要有並發上限，否則「會不會爆」只能看 Gemini 臉色')
+ok(_srv7.index('_save_upload_to_temp(request.files') < _srv7.index('with _grade_sem:'),
+   '★★ 號誌只包住真正吃資源的那一段，不要連存檔一起包進去')
 ok('perceptual' not in _core_src.lower() and 'imagehash' not in _core_src.lower(),
    '★★ 不可以改用相似度比對（同款遊戲畫面會全班誤判）')
 

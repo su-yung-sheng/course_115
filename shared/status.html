@@ -442,12 +442,47 @@ if (!window.CONFIG) {
     var n = (k.GEMINI_API_KEY_1 ? 1 : 0) + (k.GEMINI_API_KEY_2 ? 1 : 0);
     var d = row('金鑰 1', k.GEMINI_API_KEY_1 ? '已設定' : '<span class="text-slate-400">未設定</span>') +
             row('金鑰 2', k.GEMINI_API_KEY_2 ? '已設定' : '<span class="text-slate-400">未設定</span>');
+
+    /* ⚠️⚠️ 2026-09-05：這張卡以前只顯示「2 組可輪替」的綠燈，而它其實
+       **只驗到「有沒有值」**。額度是按 Google 專案算的 —— 兩把同專案
+       就等於一把（老師自己的 README 寫了這一條），而綠燈完全看不出來。
+       ★ 從 API 金鑰查不到它屬於哪個專案（沒有這種端點），所以後端也驗不了。
+       ⇒ 那就把「驗到什麼程度」講出來，不要讓綠燈冒充「已驗證」。 */
+    if (health.keys_identical) {
+      d += row('⚠️ 兩把一樣', '<span class="text-red-600">兩個 Secret 填的是<b>同一把金鑰</b> —— '
+                            + '等於只有一把，沒有輪替效果。</span>');
+    }
+
+    /* ★ 模型也放進這張卡：它只存在執行設定裡，Colab 重開會退回預設值，
+       而預設的 gemini-2.5-flash 在免費層是一天 20 次（老師 2026-08-07 實測）。
+       沒有這一行，「今天跑的是哪個模型」在外面完全看不出來。 */
+    var model = health.model_name || '';
+    d += row('批改模型', model
+      ? (health.model_is_default
+          ? '<span class="text-red-600"><b>' + esc(model) + '</b>（這是預設值）</span>'
+          : '<span class="font-mono">' + esc(model) + '</span>')
+      : '<span class="text-slate-400">後端沒回報（版本較舊）</span>');
+
     if (n === 0) {
       set(el, 'bad', '沒有金鑰', d + '<div class="mt-2 text-red-700">AI 批改無法使用。請到 Colab Secrets 新增 GEMINI_API_KEY_1。</div>');
+    } else if (health.keys_identical) {
+      set(el, 'bad', '兩把是同一把', d +
+          '<div class="mt-2 text-red-700">請把其中一把換成<b>另一個 Google 專案</b>發的金鑰 —— '
+        + '額度按專案算，同專案發兩把不會增加額度。</div>');
+    } else if (model && health.model_is_default) {
+      /* ⚠️ 這是最容易被忽略的一種壞法：什麼都沒報錯，只是模型變回預設的。 */
+      set(el, 'warn', '模型退回預設值了', d +
+          '<div class="mt-2 text-amber-700">執行設定存在 Colab 本機，執行階段被回收就會清空。'
+        + '如果你平常用的不是 <span class="font-mono">' + esc(model) + '</span>，'
+        + '請到教師端主介面重設一次模型（新版後端會同步存進 Firestore，之後就記得住）。</div>');
     } else if (n === 1) {
-      set(el, 'warn', '只有 1 組', d + '<div class="mt-2 text-amber-700">免費額度每天 250 次。全班同時上傳可能不夠，建議再加第二組（不同 Google 專案才有獨立額度）。</div>');
+      set(el, 'warn', '只有 1 組', d + '<div class="mt-2 text-amber-700">全班同時上傳可能撞到每分鐘上限，建議再加第二組（<b>要不同 Google 專案</b>才有獨立額度）。</div>');
     } else {
-      set(el, 'ok', '2 組可輪替', d);
+      set(el, 'ok', '2 組可輪替', d +
+          '<div class="mt-2 text-slate-500">⚠️ 這裡只驗「兩個 Secret 都有值」。'
+        + '額度按 <b>Google 專案</b>算 —— 兩把如果來自同一個專案，'
+        + '等於只有一把，而這一頁看不出來。'
+        + '請到 Google AI Studio 的 API 金鑰頁確認兩把的專案名稱不一樣。</div>');
     }
   }
 
