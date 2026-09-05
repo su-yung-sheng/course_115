@@ -333,23 +333,34 @@ async function grade(){
   sessionStorage.setItem('sid11501', sid);   // 記住學號，其他關卡也能沿用
   $('gradeBtn').disabled=true;
 
-  // 先問一下目前排隊人數，讓學生知道自己排第幾個
-  let myPos = 1;
+  /* ⚠️⚠️ 2026-09-04 修掉兩個錯誤的說法（老師問「批改有排隊機制吧？」查出來的）：
+     ① 「前面還有 N 位」是**錯的**。後端沒有序列化 —— Flask 是 threaded=True，
+        大家的批改是**同時**在跑的，你不必等前面的人做完。
+        講成「前面還有 3 位（約 1.3 分鐘）」會讓學生嚴重高估等待時間，
+        而高估的下場就是他以為當掉了、重按 —— 正好是我們要避免的事。
+        ⇒ 改講「同時有 N 位在批改」，時間不乘上人數。
+     ② 時間寫死 25 秒。後端的 AVG_GRADE_SECONDS 也是 25，**同一個數字寫死兩次**，
+        改一邊另一邊不會跟著動。OCR 那邊 2026-08-26 就學過這個教訓
+        （寫死的估計一定失準，而失準比不報時間更糟）。
+        ⇒ 改用後端回報的 avg_seconds（最近 10 次的實測）。 */
+  let avgSec = 30;                     // 問不到時的保守預設
+  const sayWait = (n)=> setStatus(
+    n>1 ? `🧠 已送出！目前同時有 ${n} 位在批改（大家同時跑，不用排隊等）—— 約 ${Math.round(avgSec)} 秒`
+        : `🧠 AI 助教正在仔細檢查你的積木…（約 ${Math.round(avgSec)} 秒）`, 'busy');
   try{
     const q = await (await fetch(base()+'/api/student/queue',{headers:H,cache:'no-store'})).json();
-    myPos = (Number(q.pending)||0) + 1;
-  }catch(e){}
-  setStatus(myPos>1
-    ? `🧠 已送出！你排第 ${myPos} 位，前面還有 ${myPos-1} 位同學（約 ${Math.round((myPos-1)*25/60*10)/10} 分鐘）`
-    : '🧠 AI 助教正在仔細檢查你的積木…（約 20～40 秒）','busy');
+    if(Number(q.avg_seconds)>0) avgSec = Number(q.avg_seconds);
+    sayWait((Number(q.pending)||0) + 1);
+  }catch(e){ sayWait(1); }
 
-  // 等待期間持續更新前面還有幾位
+  // 等待期間持續更新（同樣不要講成「前面還有幾位」）
   const qTimer = setInterval(async ()=>{
     try{
       const q = await (await fetch(base()+'/api/student/queue',{headers:H,cache:'no-store'})).json();
-      const ahead = Math.max(0, (Number(q.pending)||1) - 1);
-      setStatus(ahead>0
-        ? `🧠 批改中…前面還有 ${ahead} 位同學，請稍候不要重複按`
+      if(Number(q.avg_seconds)>0) avgSec = Number(q.avg_seconds);
+      const n = Math.max(1, Number(q.pending)||1);
+      setStatus(n>1
+        ? `🧠 批改中…目前同時有 ${n} 位（請不要重複按，重按會多花一次 AI 額度）`
         : '🧠 AI 助教正在檢查你的積木…快好了！','busy');
     }catch(e){}
   }, 4000);

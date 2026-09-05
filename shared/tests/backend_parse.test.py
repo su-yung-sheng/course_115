@@ -1316,6 +1316,48 @@ ok('沒有人在處理截圖' in _st and 'o.worker' in _st,
 _stw = _srv7[_srv7.index('def start_temp_worker'):][:1400]
 ok('_iu_w.find_spec("paddleocr") is None' in _stw and 'return False' in _stw,
    '★★★ 沒裝 OCR 的機器不可以啟動暫存區工作者（會和 OCR 機搶同一批圖）')
+
+# ══════════════════════════════════════════════════════════
+# Scratch 批改：那不是佇列，是計數器（老師 2026-09-04 問）
+# ══════════════════════════════════════════════════════════
+# ★ Flask threaded=True，30 個人同時按就是 30 條執行緒同時打 Gemini，
+#   中間沒有鎖。pending 是「同時在跑幾個」，不是「排在你前面幾個」。
+_sg = _srv7[_srv7.index('def student_grade'):][:4200]
+_gh = io.open(os.path.join(ROOT, 'shared', 'grader.html'), encoding='utf8').read()
+
+# ③ 防重複送出 —— 沒有這道守門，學生連按三次＝三倍 Gemini 額度
+ok('_grade_busy_sids' in _sg and '429' in _sg,
+   '★★★ 同一個學號同時只能有一份在批改（重按會多花額度）')
+ok(_sg.index('_grade_busy_sids[student_id] = _now_busy')
+   < _sg.index('_save_upload_to_temp'),
+   '★★ 守門要擋在做事之前 —— 擋在批改後面等於白花一次額度')
+ok('_GRADE_BUSY_TTL' in _srv7,
+   '★★ 要有 TTL 自動釋放：finally 沒跑到的話學生會被永遠鎖住，'
+   '而畫面只說「你已經有一份在批改中」（壞掉和正常長得一樣）')
+# ⚠️⚠️ 存檔在 try 外面的話，它一失敗 finally 整段就不跑 ——
+#    pending 只增不減，而且那個學號會被鎖到 TTL 到期。
+ok(_sg.index('try:') < _sg.index('_save_upload_to_temp'),
+   '★★★ 存檔要在 try 裡面：進場登記和離場清理之間不可以有 try 外的動作')
+ok('if path:' in _sg, '★ path 可能是 None（存檔就失敗了），刪檔前要判斷')
+
+# ① 不可以說「前面還有 N 位」—— 沒有序列化，大家是同時跑的
+# ⚠️⚠️ 這裡**不可以**直接 grep「前面還有」—— 我上面的說明註解自己就寫了那四個字，
+#    2026-09-04 第一版這樣寫，測試當場紅給我看（和之前 _code_of 那次是同一個毛病）。
+#    ⇒ 比對真正會顯示出去的樣板字串：UI 裡的一定帶 ${...} 內插。
+ok('前面還有 ${' not in _gh,
+   '★★★ 批改是並行的，講「前面還有 N 位」會讓學生嚴重高估等待而重按')
+ok('同時有 ${' in _gh, '★★ 要改講「同時有 N 位在批改」')
+
+# ② 時間不可以寫死（後端和前端各寫死一次 25，改一邊另一邊不會動）
+ok('avg_seconds' in _sg or 'avg_seconds' in _srv7,
+   '★★ /api/student/queue 要回報實測平均')
+ok('_grade_recent' in _srv7 and '_grade_avg_seconds' in _srv7,
+   '★★ 要累積最近幾次的實際批改秒數，不要只靠寫死的常數')
+ok('q.avg_seconds' in _gh,
+   '★★★ 前端要用後端回報的平均，不可以自己再寫死一個 25')
+_eta = _srv7[_srv7.index('def student_queue'):][:900]
+ok('pending * AVG_GRADE_SECONDS' not in _eta,
+   '★★ eta 不可以乘上 pending —— 同時跑的人不必互相等')
 ok('perceptual' not in _core_src.lower() and 'imagehash' not in _core_src.lower(),
    '★★ 不可以改用相似度比對（同款遊戲畫面會全班誤判）')
 

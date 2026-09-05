@@ -209,8 +209,16 @@ section('★ OCR 拆到第二台時，檢查項要問對機器');
   ok(/OCR_SERVER_URL/.test(CODE), '★ 讀得到 OCR_SERVER_URL');
   ok(/\|\|\s*SERVER;/.test(CODE),
      '★★ 沒設就要退回 SERVER —— 只開一台時不可以連到一台沒開的機器');
-  ok(/OCR_SERVER \+ '\/queue'/.test(CODE),
-     '★★ 截圖佇列要問 OCR 那一台');
+  /* ⚠️⚠️ 2026-09-04 改：這裡原本釘住 `/queue`，而那支讀的是 Colab
+     **記憶體裡**的 OCR 佇列。改成雲端暫存區之後，工作者是一張一張做，
+     佇列深度永遠 0 或 1 —— 暫存區積 50 張時這一頁照樣顯示
+     「0 人排隊中／兩條佇列正常」。綠燈出現的時機正好是出事的時候。
+     ⇒ 釘 /api/queue-list（暫存區的真實待處理數），
+       並且**禁止**退回 /queue。 */
+  ok(/OCR_SERVER \+ '\/api\/queue-list'/.test(CODE),
+     '★★ 截圖佇列要問 OCR 那一台的暫存區');
+  ok(!/OCR_SERVER \+ '\/queue'/.test(CODE),
+     '★★★ 不可以退回 /queue —— 暫存區積圖時它是 0，會給出假綠燈');
   ok(/OCR_SERVER \+ '\/api\/ocr-stats'/.test(CODE),
      '★★ 辨識效能統計要問 OCR 那一台');
   /* ⚠️ 不可以只寫 /SERVER \+ .../ —— 「OCR_SERVER」這個字串本身就以
