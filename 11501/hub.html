@@ -289,11 +289,21 @@
       let stars=0, level=0, levelSum=0; const sts=[];
       m.combines.forEach(id=>{
         const dd=mods[id]||{};
-        // 程式設計：由「各關星數」重算，不信任可能過時的匯總欄位
+        /* 程式設計：由「各關星數」重算，不信任可能過時的匯總欄位。
+           ⛔⛔ 2026-09-06 老師：「1410500 程式設計有星星，但入口沒看到，
+              要點入才會顯示。」
+              ★ 原因就在下一行：`{}` 在 JavaScript 是 **truthy**。
+                unitStars 存在但**是空的、或每一關都是 0** 時，
+                重算出來的 0 會把本來好好的 dd.stars **蓋掉** ——
+                入口變成 0 顆星，而內頁不走這條路所以照常顯示。
+              ⇒ 只有真的算得出東西時才覆蓋；算出 0 就沿用原本的匯總值。
+           ⚠️ 不可以改成 Math.max(重算, 匯總)：那會讓「老師扣掉一關的星」
+              永遠生效不了（舊的匯總值會一直贏）。要的是
+              「有各關資料就以各關為準，沒有才退回匯總」。 */
         let st = Number(dd.stars)||0, lv = Number(dd.level)||0;
         if(id==='scratch' && dd.unitStars){
           const vals = Object.values(dd.unitStars).map(Number).filter(v=>v>0);
-          st = vals.reduce((a,b)=>a+b,0); lv = vals.length;
+          if(vals.length){ st = vals.reduce((a,b)=>a+b,0); lv = vals.length; }
         }
         st += bonusOf(mods, id);          // ★ 老師給的加分星也要算進去
         stars+=st; levelSum+=lv; if(lv) level=Math.max(level,lv); sts.push(dd.status||'todo');

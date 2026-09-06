@@ -394,9 +394,13 @@
         let stars = Number(d.stars)||0;
         /* 程式設計：由「各關星數」重算，不信任可能過時的匯總欄位 ——
            闖關地圖也是用 unitStars 現算的，兩邊要對得起來。 */
+        /* ⛔⛔ 2026-09-06：`{}` 是 truthy —— unitStars 存在但空的（或全 0）時，
+           這裡會用 0 蓋掉本來好好的 d.stars，入口就變成「沒有星星」，
+           而內頁不走這條路所以照常顯示。（11501 同一個 bug 一起修。）
+           ⇒ 只有真的算得出東西時才覆蓋。 */
         if(m.id==='scratch' && d.unitStars){
-          stars = Object.values(d.unitStars).map(Number)
-                    .filter(v=>v>0).reduce((a,b)=>a+b,0);
+          const _v = Object.values(d.unitStars).map(Number).filter(v=>v>0);
+          if(_v.length) stars = _v.reduce((a,b)=>a+b,0);
         }
         stars += bonusOf(mods, m.id);
         return Object.assign({ levelSum: Number(d.level)||0 }, d, { stars });
