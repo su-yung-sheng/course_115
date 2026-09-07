@@ -1502,6 +1502,24 @@ ok('already been initialized' in _boot_err,
    '★★★ 那句英文要翻成人話，並直接說要按哪裡')
 ok('中斷連線並刪除執行階段' in ''.join(_nb_cells[8].get('source', [])),
    '★★ 重啟還是不行時要給第二招（換一台乾淨的機器）')
+
+# ⛔⛔⛔ 2026-09-07：「already initialized」會**把真正的原因藏起來**。
+#    如果第一次 import paddleocr 中途失敗，paddlex 已經被初始化，
+#    但 Python 會把 paddleocr 從 sys.modules 移除 ——
+#    之後每一次 import 都變成那句話，第一手的錯誤再也看不到。
+#    ★ 唯一分得出真相的方法：在**子行程**裡試一次 import。
+#      它有自己乾淨的 sys.modules，印出來的是第一手錯誤，
+#      而且不會污染這個 kernel。
+ok('子行程' in _inst_raw and 'subprocess.run' in _inst,
+   '★★★ 安裝後要在子行程裡驗證 import —— 那是唯一看得到第一手錯誤的方法')
+ok('paddlex' in _inst,
+   '★★★ paddlex 版本要一起印：paddleocr 3.2.0 要求 <3.3.0，'
+   '而從 3.7 降版時它不見得會一起降，對不起來就會在 import 中途炸掉')
+ok('第一手的錯誤' in _inst_raw,
+   '★★ 子行程失敗時要講明「這才是真正要解決的問題」')
+ok('純粹是' in _inst_raw or 'kernel 被前一次污染' in _inst_raw,
+   '★★ 子行程成功時要講明「磁碟是好的，問題只在 kernel」—— '
+   '這兩種情況的處理方式完全不同')
 ok('版本：paddleocr' in _srv7,
    '★★★ 載入模型前也要印版本（出事時第一個要知道的就是它）')
 
