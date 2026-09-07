@@ -1483,6 +1483,25 @@ ok('paddlepaddle' in _inst and "_ver('paddleocr')" in _inst,
 #    而步驟 4 還在用舊版，然後又 RAM 用盡 —— 老師會以為鎖版本沒有用。
 ok("_sys_chk.modules" in _inst and '重新啟動' in _inst_raw,
    '★★★ 換過版本要明確要求重啟 —— 不然「裝好了」和「生效了」會被混為一談')
+
+# ⛔⛔ 2026-09-07：老師連續兩次撞到
+#    RuntimeError: PDX has already been initialized.
+#    ★ 意思其實很單純：這個執行階段已經載入過另一版的 paddleocr。
+#      paddlex 的全域初始化是行程層級的一次性狀態，
+#      重跑儲存格清不掉，只有重新啟動工作階段會。
+#    ⚠️ 那句英文對老師沒有意義，查了只會找到一堆不相干的 issue。
+ok("_md_pre.version('paddleocr')" in _inst and '_loaded != _on_disk' in _inst,
+   '★★★ 安裝前要先比對「已載入的版本」和「磁碟上的版本」')
+ok('_loaded and _on_disk and _loaded != _on_disk' in _inst,
+   '★★ 版本一樣時不可以擋 —— 那只是重跑一次全部執行，'
+   '擋下來只會逼老師做一次沒必要的重啟')
+ok('SystemExit' in _inst,
+   '★★ 對不起來就要停在這裡，不要讓他白等三分鐘安裝')
+_boot_err = _srv7[_srv7.index('_ocr_boot_error = e'):][:1400]
+ok('already been initialized' in _boot_err,
+   '★★★ 那句英文要翻成人話，並直接說要按哪裡')
+ok('中斷連線並刪除執行階段' in ''.join(_nb_cells[8].get('source', [])),
+   '★★ 重啟還是不行時要給第二招（換一台乾淨的機器）')
 ok('版本：paddleocr' in _srv7,
    '★★★ 載入模型前也要印版本（出事時第一個要知道的就是它）')
 
