@@ -65,6 +65,7 @@
 <!-- 本頁住在 shared/，設定檔在各學期資料夾裡（11501/config.js、11502/config.js）。
      用網址參數決定要載入哪一份，例如：grader.html?term=11502&unit=2-1-2
      沒帶參數就依今天的日期判斷。做法與 shared/status.html 一致。 -->
+<script src="waittime.js"></script>   <!-- 等待時間的說法：和運算思維共用同一份 -->
 <script src="semester.js"></script>
 <script>
 (function () {
@@ -356,18 +357,10 @@ async function grade(){
   let avgSec = 90;                     // 問不到後端時的起始值（和 AVG_GRADE_SECONDS 一致）
   let avgIsGuess = true;               // 後端還沒有實測樣本＝這個數字是估的
 
-  /* 秒數 → 人話。⚠️ 一律**往上**取整到好唸的刻度：
-     估多了學生是驚喜，估少了是客訴。 */
-  const fmtWait = (sec)=>{
-    if(!(sec>0)) return '一下子';
-    if(sec < 50) return `約 ${Math.ceil(sec/10)*10} 秒`;
-    /* ⚠️ 不要輸出「約 2.5 分鐘」——中文不是這樣講時間的，
-       而且小數點會讓人以為是精確值。⇒ 半分鐘一格，講成「2 分半」。 */
-    const half = Math.ceil(sec/30)/2;
-    return Number.isInteger(half) ? `約 ${half} 分鐘` : `約 ${Math.floor(half)} 分半`;
-  };
-  const fmtElapsed = (sec)=> sec < 60 ? `${sec} 秒`
-        : `${Math.floor(sec/60)} 分 ${String(sec%60).padStart(2,'0')} 秒`;
+  /* ★ 說法只留一份，在 shared/waittime.js —— 運算思維那邊也用同一份。
+     ⚠️ 不要在這裡再寫一次：這個 repo 已經在「同一件事兩個地方各做一次」
+        上吃過好幾次虧（25 秒寫死兩次就是最近的一次）。 */
+  const fmtWait = WaitTime.fmtWait, fmtElapsed = WaitTime.fmtElapsed;
 
   const readQ = (q)=>{
     if(Number(q.avg_seconds)>0) avgSec = Number(q.avg_seconds);

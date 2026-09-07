@@ -19,6 +19,7 @@
   <script src="../shared/grading.js"></script>
   <!-- 截圖上傳的號碼牌制（兩學期共用一份；見那支檔案開頭的說明） -->
   <script src="../shared/ocrclient.js"></script>
+<script src="../shared/waittime.js"></script>
     <!-- 引入 React 和 ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -510,6 +511,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             /* 排隊清單：後端把暫存區的檔案列出來就是它（檔名帶學號和關卡）。
                ★ 「還在清單裡」＝「還沒處理完」，不必另外做狀態機。 */
             const [queue, setQueue] = useState([]);
+            /* 每張的實測平均秒數（後端 /api/queue-list 回報）。
+               ⚠️ 問不到就是 0 —— 那時**不要**估時間，寧可只講張數。
+                  用寫死的秒數估等於把 2026-09-04 那個坑再挖一次。 */
+            const [ocrAvg, setOcrAvg] = useState(0);
             const [myUpName, setMyUpName] = useState("");
             /* 後端最近一次掃暫存區成功了沒。⚠️ 失敗時**不可以**顯示成
                「目前沒有人在排隊」—— 那會讓學生以為系統好好的。 */
@@ -522,6 +527,18 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 const lv = window.levelFromFilename(row.name || '', challenges);
                 return (row.student_id || '') + (lv ? ' ' + lv.title : '');
             };
+
+            /* 一列排隊資料的識別字串（和上傳時記下的 myUpName 同一個格式）。
+               ⚠️⚠️ 這個算法原本**只寫在下面的 row.map 裡**，現在多了一個
+                  「你大概還要等多久」也要用它。分開寫兩份的話，改一邊
+                  另一邊不會跟著動，而且**不會有任何錯誤訊息** ——
+                  症狀會是「清單上標成你，估的時間卻是別人的」。 */
+            const rowKey = (row) => (row.student_id ? row.student_id + '-' : '') + row.name;
+            /* 自己前面還有幾張。⚠️ 找不到自己時當作 queue.length（排最後），
+               不要當作 0 —— 剛上傳、清單還沒刷新到那一輪就是這種情況，
+               估成 0 會顯示「現在傳最快」，那是最容易讓人重按的一句話。 */
+            const myIdx = myUpName ? queue.findIndex((r) => rowKey(r) === myUpName) : -1;
+            const myAhead = myIdx >= 0 ? myIdx : queue.length;
 
             const [selectedFile, setSelectedFile] = useState(null);
             const [previewUrl, setPreviewUrl] = useState(null); // 這邊會存放 Base64
@@ -580,6 +597,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             try {
                                 const j = await res.json();
                                 setQueue(Array.isArray(j.queue) ? j.queue : []);
+                                setOcrAvg(Number(j.avg_seconds) || 0);
                                 /* ⚠️⚠️ 「掃到 0 筆」和「根本掃不到」在 queue 上
                                    長得一模一樣。後端現在會回 scan.ok —— 沒有它的話
                                    畫面會顯示「目前沒有人在排隊」，學生就對著一個
@@ -775,7 +793,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                 <div className="text-sm font-bold text-slate-700">
                                     <i className="fa-solid fa-list-ol text-indigo-500 mr-2"></i>目前排隊
                                 </div>
-                                <div className="text-xs font-bold text-slate-400">{queue.length} 張等待辨識</div>
+                                <div className="text-xs font-bold text-slate-400">
+                                    {queue.length} 張等待辨識
+                                    {/* ★ 只給張數，學生分不出那是兩分鐘還是二十分鐘。
+                                        ⚠️ 這是一次一張的佇列，時間要**乘上**張數 ——
+                                           和程式批改（同時 8 份、不乘人數）剛好相反。 */}
+                                    {ocrAvg > 0 && queue.length > 0 &&
+                                        <span className="ml-1 font-medium">（全部跑完 {WaitTime.fmtQueue(queue.length, ocrAvg)}）</span>}
+                                </div>
                             </div>
                             {queue.length === 0 && !scanOk ? (
                                 <div className="text-sm bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-800">
@@ -810,8 +835,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             ) : (
                                 <div className="max-h-40 overflow-y-auto flex flex-col gap-1">
                                     {queue.map((row, i) => {
-                                        const mine = myUpName &&
-                                            ((row.student_id ? row.student_id + '-' : '') + row.name) === myUpName;
+                                        const mine = myUpName && rowKey(row) === myUpName;
                                         return (
                                             <div key={i} className={`text-sm px-3 py-1.5 rounded-lg font-medium flex items-center gap-2 ${mine ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}>
                                                 <span className={`text-xs font-mono ${mine ? 'text-indigo-200' : 'text-slate-400'}`}>({i + 1})</span>
@@ -944,8 +968,21 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                         <div className="text-2xl font-black text-emerald-800 my-3 leading-snug">
                                             可以關掉視窗了，不用在這裡等
                                         </div>
-                                        {/* ⚠️ 不再報「大約還要幾分鐘」：那是估的，估低了學生會
-                                            以為系統壞掉而重按。 */}
+                                        {/* ⚠️⚠️ 這裡原本**刻意不報**「大約還要幾分鐘」，理由是「那是估的，
+                                            估低了學生會以為系統壞掉而重按」。那個理由是對的，
+                                            但問題出在**估法**，不在報不報：
+                                            2026-09-08 說法統一成 WaitTime 之後，半分鐘一格、
+                                            一律往上取，任何情況都不會低估。
+                                            ★ 而完全不講也有代價 —— 上面寫「27 張等待辨識」，
+                                              學生不知道那是兩分鐘還是二十分鐘，一樣會一直重整。
+                                            ⚠️ 只在問得到平均秒數時才講（ocrAvg > 0）。 */}
+                                        {ocrAvg > 0 && (
+                                            <div className="text-base font-bold text-emerald-800 mb-2">
+                                                {myAhead === 0
+                                                    ? '你排在最前面，馬上就輪到你'
+                                                    : `你前面還有 ${myAhead} 張，大約還要 ${WaitTime.fmtQueue(myAhead, ocrAvg)}`}
+                                            </div>
+                                        )}
                                         <div className="text-sm font-medium text-emerald-700">
                                             後端會自己處理完，成績記在雲端 ——<br />
                                             下次登入就會看到證書，<b>不會不見</b>。
