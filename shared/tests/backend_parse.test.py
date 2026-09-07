@@ -1446,6 +1446,17 @@ _sag = _core_src[_core_src.index('def single_agent_grading'):][:2600]
 ok('_sz_tpl' in _sag and '_sz_ex' in _sag and '_sz_stu' in _sag,
    '★★ 要分項印 —— 只印總數的話不知道該砍哪一份')
 
+# ⚠️⚠️ 2026-09-07 老師：「評一個評了十分鐘。」
+#    ★ ask_agent 每次批改只被呼叫一次，但內部最多重試 4 次 ⇒
+#      十分鐘只可能是「一次呼叫十分鐘」或「四次各兩三分鐘」。
+#      這兩種的處理方式完全不同（縮 prompt vs 處理額度），
+#      而在加這段之前**分不出來**。
+_aa2 = _core_src[_core_src.index('def ask_agent'):][:3600]
+ok('第 %d 次呼叫成功' in _aa2 and '總共 %.1f 秒' in _aa2,
+   '★★★ 每一次呼叫都要記時間 —— 沒有數字就只能猜')
+ok('第 %d 次呼叫失敗（等了' in _aa2,
+   '★★★ 失敗也要記時間：等三分鐘才回 429，和立刻回 429 是不同的問題')
+
 # ⛔⛔ 2026-09-07：OCR 在**建構模型的那一刻**吃光 11 GB。
 #    那是 PaddleOCR 3.x 的已知上游回歸（issue #17955：
 #    3.x CPU 推論配置約 43 GB，2.x 同樣工作只用 1～2 GB），
