@@ -1414,9 +1414,15 @@ ok('j.memory && j.memory.total_mb' in _st_here,
 
 # ⚠️⚠️ 2026-09-07 第二次：加了 gc.collect() **沒有用** ——
 #    所以「累積的垃圾」那個判斷是錯的，是一次性就吃掉了 ⇒ 嫌疑在模型。
-_load = _srv7[_srv7.index('_kw_lean'):][:2600]
+# ⚠️ 從 _kw_min 開始切 —— 2026-09-07 加了「最精簡」那一層之後，
+#    原本從 _kw_lean 起算會把它切在外面，測試就假紅了。
+_load = _srv7[_srv7.index('_kw_min'):][:3600]
 ok('use_doc_orientation_classify=False' in _load and 'use_doc_unwarping=False' in _load,
    '★★ 截圖是正的、平的 —— 文件方向／扭曲校正那兩個模型不要載')
+ok('_kw_min' in _load and 'use_textline_orientation=False' in _load,
+   '★★ 最精簡那一層：橫排 UI 文字永遠是正的，方向分類等於沒作用')
+ok(_load.index('_kw_min') < _load.index('_kw_lean'),
+   '★★ 最精簡要排第一 —— 現在的處境是整台起不來，少一個模型很划算')
 # ⛔ 換掉 det／rec 模型會換掉繁中辨識模型，而辨識變差是**安靜的**
 ok('text_recognition_model_name' not in _srv7 and 'text_detection_model_name' not in _srv7,
    '★★★ 不可以改 det／rec 模型名稱：辨識變差不會報錯，只會莫名判不過')
@@ -1448,8 +1454,19 @@ ok('_sz_tpl' in _sag and '_sz_ex' in _sag and '_sz_stu' in _sag,
 #      不鎖版本 = 每天早上都在賭別人昨晚有沒有改壞東西。
 _inst = _code_of(_nb_cells[4])
 ok('_PIN_LADDER' in _inst, '★★★ OCR 套件一定要鎖版本')
-ok("'paddleocr==3.0.0'" in _inst or 'paddleocr==3.0.0' in _inst,
-   '★★ 梯子要由舊到新 —— 這裡要的是「能上課」，不是「最新」')
+# ⚠️⚠️ 第一版梯子寫 3.0.0／3.1.0，**兩組都裝不起來**（paddleocr 3.0.0
+#    → paddlex 3.0.0 → GPUtil，而 GPUtil 只有原始碼沒有 wheel，
+#    --only-binary=:all: 對相依也生效），一路掉到不鎖版本，
+#    裝到 3.7.0／3.3.1 —— 正是 #17955 那一版。等於白鎖。
+#    ⇒ 梯子裡的版本必須是**實際解析過**可以裝的，不可以憑版本號猜。
+ok('paddleocr==3.2.0' in _inst and 'paddlepaddle==3.2.2' in _inst,
+   '★★★ 梯子要用實測可安裝的組合（3.0.0／3.1.x 的相依解不開）')
+# ⚠️ 這一條要看**原始碼含註解**：_code_of 會把註解剝掉，
+#    而「為什麼裝不起來」本來就只可能寫在註解裡。
+#    （今天第五次被自己的說明文字絆到，記在這裡免得再犯。）
+_inst_raw = ''.join(_nb_cells[4].get('source', []))
+ok('GPUtil' in _inst_raw,
+   '★★ 要寫下 3.0.0 為什麼裝不起來 —— 不然下次又會有人把它加回去')
 ok("'paddleocr>=3.0,<4'" in _inst,
    '★★ 最後一格保留不鎖版本：全部鎖版都沒有 wheel 時至少還裝得到東西')
 ok('paddlepaddle' in _inst and '__version__' in _inst,
