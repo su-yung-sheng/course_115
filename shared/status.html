@@ -1020,19 +1020,25 @@ if (!window.CONFIG) {
       checkKeys(c2, health);
       return Promise.all([
         c1b ? checkOcrBackend(c1b) : null,
-        checkQueue(c3, health),
+        /* ⛔⛔ 2026-09-07：批改紀錄**一定要接在 checkQueue 後面**，不可以並行。
+           set() 是 `.detail.innerHTML = …`（整段覆蓋），而 /api/grade-log
+           通常回得比 /api/queue-list 快（它在另一台、而且只讀記憶體）——
+           並行的話會先 append、再被 checkQueue 蓋掉，
+           症狀是「批改紀錄時有時無」。間歇性的 bug 最難查，
+           而這裡完全可以用順序避免。
+           ⚠️ 兩個來源放同一張卡的理由：分成兩張的話「檢查不過時怎麼辦」
+              也要跟著多一條說明（status.test.js 盯著卡片數 vs 說明數），
+              而排隊和批改本來就是同一件事的兩面。 */
+        checkQueue(c3, health)
+          .then(function () { return checkGradeLog(c3); })
+          .then(function (h) {
+            if (h) c3.querySelector('.detail').insertAdjacentHTML('beforeend',
+              '<div class="mt-2 pt-2 border-t border-slate-200">' + h + '</div>');
+          }),
         checkCriteria(c4, health),
         checkRules(c5),
         checkGas(c6),
         checkOcrStats(c7, health),
-        /* ⚠️ 兩個來源要一起呈現在同一張卡：
-           分成兩張卡的話，「檢查不過時怎麼辦」也要跟著多一條說明
-           （status.test.js 盯著卡片數 vs 說明數），而這兩件事
-           本來就是同一個問題的兩面 —— 合在一起看比較清楚。 */
-        checkGradeLog(c3).then(function (h) {
-          if (h) c3.querySelector('.detail').insertAdjacentHTML('beforeend',
-            '<div class="mt-2 pt-2 border-t border-slate-200">' + h + '</div>');
-        }),
         checkDupeShots(c8).then(function () { return checkDupeWorks(c8); })
           .then(function (w) {
             if (!w) return;

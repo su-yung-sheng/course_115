@@ -1490,6 +1490,12 @@ ok('/api/grade-log' in _srv7 and 'GRADE_LOG' in _srv7,
    '★★ 要有端點讓教師端問得到')
 ok('grade-log' in _st_here and '展開看' in _st_here,
    '★★★ 狀態頁要顯示 —— 這才是老師真的會看的地方')
+# ⛔⛔ set() 是 .detail.innerHTML = …（整段覆蓋）。
+#    批改紀錄和 checkQueue 並行的話，先 append 的那一份會被蓋掉 ——
+#    症狀是「時有時無」，間歇性的 bug 最難查，而順序就能避免。
+ok('checkQueue(c3, health)\n          .then(function () { return checkGradeLog(c3); })'
+   in _st_here,
+   '★★★ 批改紀錄要接在 checkQueue 後面，不可以並行（會被 set() 蓋掉）')
 
 # ⚠️ 老師 2026-09-07：「不能都使用①？」
 #    ★ 用「①b」是我想錯了：那讀起來像「① 的附屬品」，
