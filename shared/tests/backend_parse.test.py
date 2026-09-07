@@ -1593,6 +1593,20 @@ ok('不會不見' in ''.join(_nb_cells[8].get('source', [])),
    '不然老師會以為學生的成績掉了')
 ok(_run.index('OCR_MEM_REFUSE_PCT') < _run.index('_ocr_q.put'),
    '★★ 檢查要在進佇列之前 —— 進去了才擋等於沒擋')
+
+# ⛔⛔⛔ 2026-09-07 老師：「count:191 似乎沒有減少。」
+#    ★ 我加了煞車卻**沒有給它一盞燈**。踩下去的症狀是
+#      「工作者活著、圖沒少」—— 和「後端掛掉」「每張都判不出結論」
+#      長得一模一樣，從外面完全分不出來。
+#    ⇒ 任何會讓系統停止前進的機制，都必須從外面看得到它在作用。
+ok('_ocr_refused' in _srv7,
+   '★★★ 煞車踩下去要記下來')
+ok('"mem_paused"' in _srv7 and '"mem_refused"' in _srv7,
+   '★★★ /api/queue-list 要報出來 —— 不然和「後端掛了」分不出來')
+ok('mem_paused' in _st_here and '已暫停處理' in _st_here,
+   '★★★ 狀態頁要顯示煞車燈')
+ok('圖不會不見' in _st_here,
+   '★★ 要講明學生的圖還在 —— 不然老師會以為成績掉了')
 ok('版本：paddleocr' in _srv7,
    '★★★ 載入模型前也要印版本（出事時第一個要知道的就是它）')
 

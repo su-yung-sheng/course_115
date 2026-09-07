@@ -804,6 +804,18 @@ if (!window.CONFIG) {
         d += row('暫存區工作者', o.worker
                  ? '運作中（每 8 秒掃一次）'
                  : '<span class="text-red-600">沒有啟動</span>');
+        /* ⚠️⚠️ 老師 2026-09-07：「count:191 似乎沒有減少。」
+           ★ 記憶體煞車一旦踩下去，症狀是「工作者活著、圖沒少」——
+             和「後端掛掉」「每張都判不出結論」長得一模一樣。
+             ⇒ 任何會讓系統停止前進的機制，都必須從外面看得到它在作用。 */
+        if (o.mem_paused) {
+          d += row('⛔ 已暫停處理',
+              '<span class="text-red-600 font-bold">記憶體不足，已擋下 '
+            + (o.mem_refused || 0) + ' 張</span>'
+            + '<div class="text-red-700">工作者還活著、圖也還在暫存區，'
+            + '但每一張都被擋下來 —— 所以張數不會減少。'
+            + '「執行階段 → 重新啟動工作階段」再跑步驟 1b～4 就會繼續。</div>');
+        }
         var sc = o.scan || {};
         if (sc.ok === false) {
           d += row('最近一次掃描', '<span class="text-red-600">失敗：' + esc(String(sc.error || '')) + '</span>');
@@ -812,6 +824,11 @@ if (!window.CONFIG) {
       if (!g || !o) {
         set(el, 'warn', '有端點缺漏', d +
             '<div class="mt-2 text-amber-700">後端版本可能過舊 —— 在 Colab 重跑步驟 2、3、4。</div>');
+      } else if (o.mem_paused) {
+        set(el, 'bad', '因記憶體不足暫停處理', d +
+            '<div class="mt-2 text-red-700">這不是當機 —— 是後端主動踩煞車，'
+          + '因為硬跑下去 Colab 會砍掉整個工作階段。'
+          + '<b>學生的圖不會不見</b>，重啟後會自己接著處理。</div>');
       } else if (!o.worker) {
         /* ★ 學生傳得出去（打的是 GAS），但沒有人會取來辨識。
            症狀是「一直轉圈圈」，而這一頁必須直接講出原因。 */
