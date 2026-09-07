@@ -1457,6 +1457,21 @@ ok('第 %d 次呼叫成功' in _aa2 and '總共 %.1f 秒' in _aa2,
 ok('第 %d 次呼叫失敗（等了' in _aa2,
    '★★★ 失敗也要記時間：等三分鐘才回 429，和立刻回 429 是不同的問題')
 
+# ⚠️⚠️ 2026-09-07：我一度懷疑「gemma 不支援 response_schema」，
+#    但老師說「今天早上有評分成功過」—— 直接推翻了那個假設。
+#    ★ 降級機制留著（無害的韌性），但**不可以無條件降級**：
+#      那會把「額度用完」也誤判成「模型不支援」，
+#      然後我們就再也看不到真正的原因了。
+# ⚠️ 這一段在 _aa 定義之前，不可以用它（今天已經被「切片／變數順序」絆到四次）。
+_aa_here = _core_src[_core_src.index('def ask_agent'):][:7000]
+_ns = _aa_here[_aa_here.index('_no_schema'):][:3000] if '_no_schema' in _aa_here else ''
+ok('_no_schema' in _aa_here, '★ 有結構化輸出的降級退路')
+ok('response_schema' in _ns and 'unsupported' in _ns,
+   '★★★ 只在錯誤訊息真的指向 schema／mime 時才降級')
+ok('回傳格式' in _core_src,
+   '★★★ 降級後要用文字講清楚 JSON 格式 —— schema 原本是模型唯一的格式來源，'
+   '不補這一段，降級只會產生垃圾')
+
 # ⛔⛔ 2026-09-07：OCR 在**建構模型的那一刻**吃光 11 GB。
 #    那是 PaddleOCR 3.x 的已知上游回歸（issue #17955：
 #    3.x CPU 推論配置約 43 GB，2.x 同樣工作只用 1～2 GB），
@@ -1802,7 +1817,9 @@ ok('Google 專案' in _st or 'AI Studio' in _st,
    '★★★ 綠燈旁要講明「只驗有沒有值」，不可以讓它冒充已驗證')
 
 # ③ 併發：jitter ＋ 重試次數脫鉤 ＋ 並發上限
-_aa = _core_src[_core_src.index('def ask_agent'):][:2600]
+# ⚠️ 切片要夠長：ask_agent 2026-09-07 加了逐次計時與結構化輸出降級之後變長，
+#    原本 2600 字讀不到退避那一段。（今天第三次被切片長度絆到。）
+_aa = _core_src[_core_src.index('def ask_agent'):][:7000]
 ok('random.random()' in _aa,
    '★★★ 退避要有隨機抖動 —— 固定退避會讓 30 條執行緒同時重試（thundering herd）')
 ok('max(4, len(api_keys) * 2)' in _aa,
