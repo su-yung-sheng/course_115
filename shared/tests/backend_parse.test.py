@@ -1393,7 +1393,10 @@ ok('return (0, 0, 0)' in _mi,
    '★★★ 讀不到要回 0 不可以丟例外 —— 這是給人看的資訊，不是判定依據')
 ok('"memory"' in _srv7,
    '★★ /api/health 與 /api/ocr-stats 要回報記憶體')
-_loop = _srv7[_srv7.index('def _ocr_loop'):][:4000]
+# ⚠️ 切片要夠長 —— 2026-09-07 在模型載入那段加了版本／記憶體的輸出之後，
+#    原本的 4000 字讀不到 while 迴圈裡的 finally，測試就假紅了。
+#    （同一天已經因為切片太短假紅過一次，見 dupe_shot_report。）
+_loop = _srv7[_srv7.index('def _ocr_loop'):][:9000]
 ok('img = None' in _loop and '_gc.collect()' in _loop,
    '★★ 每張處理完要放掉影像，並定期回收')
 ok('_OCR_GC_EVERY' in _srv7,
@@ -1436,6 +1439,25 @@ ok('[批改] 送出' in _core_src,
 _sag = _core_src[_core_src.index('def single_agent_grading'):][:2600]
 ok('_sz_tpl' in _sag and '_sz_ex' in _sag and '_sz_stu' in _sag,
    '★★ 要分項印 —— 只印總數的話不知道該砍哪一份')
+
+# ⛔⛔ 2026-09-07：OCR 在**建構模型的那一刻**吃光 11 GB。
+#    那是 PaddleOCR 3.x 的已知上游回歸（issue #17955：
+#    3.x CPU 推論配置約 43 GB，2.x 同樣工作只用 1～2 GB），
+#    而我們寫的是 'paddleocr>=3.0,<4' —— **沒有鎖版本**。
+#    ⇒ 前幾週好好的、我們什麼都沒改，變的是上游。
+#      不鎖版本 = 每天早上都在賭別人昨晚有沒有改壞東西。
+_inst = _code_of(_nb_cells[4])
+ok('_PIN_LADDER' in _inst, '★★★ OCR 套件一定要鎖版本')
+ok("'paddleocr==3.0.0'" in _inst or 'paddleocr==3.0.0' in _inst,
+   '★★ 梯子要由舊到新 —— 這裡要的是「能上課」，不是「最新」')
+ok("'paddleocr>=3.0,<4'" in _inst,
+   '★★ 最後一格保留不鎖版本：全部鎖版都沒有 wheel 時至少還裝得到東西')
+ok('paddlepaddle' in _inst and '__version__' in _inst,
+   '★★★ 要印出實際裝到的版本 —— 下次出事時那是「哪一版可用」的唯一依據')
+ok('版本：paddleocr' in _srv7,
+   '★★★ 載入模型前也要印版本（出事時第一個要知道的就是它）')
+ok('下一行如果沒出現' in _srv7,
+   '★★ 要標出「死在哪裡」的分界點：只看到前面那行＝死在建構模型')
 # ⚠️⚠️ 老師 2026-09-03 問：「圖片都長一樣，這樣判斷不會有誤判嗎？」
 #    ★ 不會 —— sha256 是**位元組完全相同**才算，一個像素不同就完全不同。
 #      刻意**不用**相似度比對（perceptual hash）：同一款遊戲的成功畫面
