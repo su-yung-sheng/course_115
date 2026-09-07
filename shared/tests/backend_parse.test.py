@@ -1491,10 +1491,23 @@ ok('省下 %d 字' in _core_src,
 #      然後我們就再也看不到真正的原因了。
 # ⚠️ 這一段在 _aa 定義之前，不可以用它（今天已經被「切片／變數順序」絆到四次）。
 _aa_here = _core_src[_core_src.index('def ask_agent'):][:7000]
-_ns = _aa_here[_aa_here.index('_no_schema'):][:3000] if '_no_schema' in _aa_here else ''
+# ⚠️ 錨在真正的降級判斷上，不要錨在第一個 _no_schema ——
+#    2026-09-07 在它前面加了一大段說明之後，切片就切不到了。
+_ns = (_aa_here[_aa_here.index('not _no_schema[0]) and any('):][:1500]
+       if 'not _no_schema[0]) and any(' in _aa_here else '')
 ok('_no_schema' in _aa_here, '★ 有結構化輸出的降級退路')
 ok('response_schema' in _ns and 'unsupported' in _ns,
    '★★★ 只在錯誤訊息真的指向 schema／mime 時才降級')
+# ⛔⛔⛔ 2026-09-07 實測定案：gemma 帶 response_schema 會**立刻**回
+#    500 INTERNAL（0.9～2.3 秒），不帶就成功（86 秒）。
+#    ⇒ 已知不支援的就不要試，省掉每次白白失敗三次。
+ok('def _model_wants_plain_text' in _core_src,
+   '★★★ 已知不支援結構化輸出的模型要直接跳過，不要每次白白失敗三次')
+_mw = _core_src[_core_src.index('def _model_wants_plain_text'):][:900]
+ok('"gemma" in str(model_name' in _mw,
+   '★★ 用「型號裡有沒有 gemma」判斷，不要寫死版本號')
+ok('return False' not in _mw.split('return "gemma"')[0],
+   '★ 認不出來的照常帶 schema（自動降級還在後面接著）')
 ok('回傳格式' in _core_src,
    '★★★ 降級後要用文字講清楚 JSON 格式 —— schema 原本是模型唯一的格式來源，'
    '不補這一段，降級只會產生垃圾')
