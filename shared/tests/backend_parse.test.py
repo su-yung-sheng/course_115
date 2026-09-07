@@ -1498,6 +1498,24 @@ ok('沒有評分標準' in _core_src and 'rules or ""' in _core_src,
 ok('_sz_rules < 100' in _core_src,
    '★★ 標準過短要提醒：多半是只吃到全域預設值，不是這一關自己的規則')
 
+# ⚠️⚠️ 2026-09-08 老師追問：「自訂的評分標準並沒有給 AI 當成參考？」
+#    ★ 有給 —— rules 確實會進【老師設定的評分法律】。
+#      但 criteria_for_unit 有一個**安靜的退路**：units_json 裡沒有這一關的
+#      鍵時，會悄悄改用全域的 theme／rules，老師完全不會知道。
+#      症狀就是「我明明為第 3 關寫了很細的標準，怎麼分數怪怪的」。
+_cfu = _core_src[_core_src.index('def criteria_for_unit'):][:1600]
+ok('rules_source' in _cfu,
+   '★★★ 要記下規則是「這一關自己的」還是「全域預設」')
+ok('units_json 裡找不到' in ''.join(_nb_cells[6].get('source', [])),
+   '★★★ units_json 有東西卻沒有這一關 = 關卡代號對不上，'
+   '要和「根本沒設過」分開講')
+ok('評分標準來源：%s｜開頭：%s' in _core_src,
+   '★★★ 只給字數老師無法判斷 —— 要印出來源和開頭幾十個字')
+ok('[:80]' in _core_src,
+   '★★ 只印前 80 字：整份倒進紀錄會把其他訊息洗掉')
+ok('rules_source=cfg.get("rules_source"' in _core_src,
+   '★★ 來源要真的傳進批改函式，不然那一行永遠印「未指定」')
+
 # ⚠️⚠️ 2026-09-07：我一度懷疑「gemma 不支援 response_schema」，
 #    但老師說「今天早上有評分成功過」—— 直接推翻了那個假設。
 #    ★ 降級機制留著（無害的韌性），但**不可以無條件降級**：
