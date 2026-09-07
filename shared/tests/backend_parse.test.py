@@ -1408,6 +1408,22 @@ ok('不會不見' in _srv7 and '不會不見' in _st_here,
    '★★ 警告要同時講「已上傳的圖不會不見」—— 不然老師會不敢重開')
 ok('j.memory && j.memory.total_mb' in _st_here,
    '★★★ 舊後端沒有這個欄位時要留白，不可以顯示 0%（那會被當成很健康）')
+
+# ⚠️⚠️ 2026-09-07 第二次：加了 gc.collect() **沒有用** ——
+#    所以「累積的垃圾」那個判斷是錯的，是一次性就吃掉了 ⇒ 嫌疑在模型。
+_load = _srv7[_srv7.index('_kw_lean'):][:2600]
+ok('use_doc_orientation_classify=False' in _load and 'use_doc_unwarping=False' in _load,
+   '★★ 截圖是正的、平的 —— 文件方向／扭曲校正那兩個模型不要載')
+# ⛔ 換掉 det／rec 模型會換掉繁中辨識模型，而辨識變差是**安靜的**
+ok('text_recognition_model_name' not in _srv7 and 'text_detection_model_name' not in _srv7,
+   '★★★ 不可以改 det／rec 模型名稱：辨識變差不會報錯，只會莫名判不過')
+ok(_load.count('except (TypeError, ValueError)') >= 1 and '_kw2' in _load,
+   '★★★ 要有退路：舊版沒有那兩個參數時不可以整台起不來')
+ok('三組參數都建不起' in _load,
+   '★★ 三組都失敗要講清楚，不可以留一個 None 讓後面 AttributeError')
+# ★ 沒有數字就只能繼續猜，而每猜錯一次老師的課堂就再壞一次
+ok('載入模型前' in _load and '模型本身約' in _load,
+   '★★★ 要印出載入模型前後的記憶體 —— 這幾行的價值是「下一次不必猜」')
 # ⚠️⚠️ 老師 2026-09-03 問：「圖片都長一樣，這樣判斷不會有誤判嗎？」
 #    ★ 不會 —— sha256 是**位元組完全相同**才算，一個像素不同就完全不同。
 #      刻意**不用**相似度比對（perceptual hash）：同一款遊戲的成功畫面
