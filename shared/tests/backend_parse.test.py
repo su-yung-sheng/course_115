@@ -1520,6 +1520,45 @@ ok('第一手的錯誤' in _inst_raw,
 ok('純粹是' in _inst_raw or 'kernel 被前一次污染' in _inst_raw,
    '★★ 子行程成功時要講明「磁碟是好的，問題只在 kernel」—— '
    '這兩種情況的處理方式完全不同')
+
+# ⚠️⚠️ 2026-09-07：老師連續兩次貼的都是**步驟 4、5** 的輸出，
+#    而我把診斷放在步驟 1b —— 要了三次都沒拿到。
+#    ★ 教訓：診斷要放在**老師會看的那一格**，不是我覺得該放的那一格。
+#      自我測試（步驟 5）就是他每次貼給我的東西。
+_self = _code_of(_nb_cells[12])
+_self_raw = ''.join(_nb_cells[12].get('source', []))
+ok('__import__' not in _self,
+   '★★★ 自我測試取版本不可以用 __import__ —— '
+   '那會印出「❌ 載入失敗：PDX…」，那不是版本資訊，是第二個錯誤')
+ok('importlib.metadata' in _self,
+   '★★ 版本要讀 dist-info（不碰程式碼、不觸發初始化）')
+ok("'paddlex'" in _self,
+   '★★★ 環境那一段要印 paddlex —— 它和 paddleocr 版本對不起來時，'
+   '錯誤會被 already initialized 蓋掉，永遠看不到')
+ok('subprocess' in _self and '第一手的錯誤' in _self_raw,
+   '★★★ 自我測試也要跑子行程 import —— 診斷要出現在老師會看的那一格')
+
+# ⛔⛔⛔ 2026-09-07 真正的元兇（被 "already initialized" 藏了兩天）：
+#      from langchain.docstore.document import Document
+#      ModuleNotFoundError: No module named 'langchain.docstore'
+#    ★ 因果鏈（paddlex/.../retriever/base.py）：
+#        if is_dep_available("langchain"):   ← 只檢查「有沒有裝」
+#            from langchain.docstore.document import Document
+#      而 langchain.docstore 在新版已被移除。
+#      **Colab 預裝新版 langchain** ⇒ 檢查說「有」⇒ import 不存在的子模組。
+#    ★ 已在乾淨容器完整重現並驗證：
+#        裝 langchain 1.4.0 → 同一個錯誤
+#        pip uninstall langchain → paddleocr 3.2.0 正常 import
+ok('langchain' in _inst,
+   '★★★ 要自動處理 langchain 衝突（Colab 預裝的新版會讓 paddlex import 掛掉）')
+_lc = _inst[_inst.index('langchain'):] if 'langchain' in _inst else ''
+ok("'uninstall'" in _inst and "'langchain'" in _inst,
+   '★★ 偵測到就直接移掉 —— 這本 notebook 完全沒有用到 langchain')
+ok("_chk.stderr" in _inst,
+   '★★ 要依「錯誤訊息裡有沒有 langchain」判斷，不要無條件移除別人的套件')
+ok('langchain-core' not in _inst and 'langchain_community' not in _inst,
+   '★★ 只移 langchain 本體 —— core／community 的 import 路徑在新版仍有效，'
+   '動它們是多餘的風險')
 ok('版本：paddleocr' in _srv7,
    '★★★ 載入模型前也要印版本（出事時第一個要知道的就是它）')
 
