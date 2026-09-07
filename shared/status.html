@@ -346,6 +346,32 @@ if (!window.CONFIG) {
       });
   }
 
+  /* ── 批改紀錄：把 Colab 裡難找的那幾行搬到這裡 ──────────
+     ⚠️⚠️ 老師 2026-09-07 問了兩次「這個在哪裡看？」——那就是設計不好。
+     ★ serve_background 是背景執行緒，它的 print 會落在
+       「當下正在執行的那一格」，全部執行完之後常常在最後一格。
+     ⇒ 原則和這一頁其他地方一樣：**診斷要放在人會看的地方**。 */
+  function checkGradeLog(el) {
+    return fetch(SERVER + '/api/grade-log',
+                 { headers: { 'ngrok-skip-browser-warning': '1' }, cache: 'no-store' })
+      .then(function (r) { return r.status === 404 ? null : r.json(); })
+      .then(function (j) {
+        if (!j || !j.ok) {
+          return row('批改紀錄', '後端還沒有這個功能（重跑步驟 2、3、4）');
+        }
+        var L = j.lines || [];
+        if (!L.length) {
+          return row('批改紀錄', '這次開機後還沒有人上傳作品');
+        }
+        return row('批改紀錄（最近 ' + L.length + ' 筆）',
+          '<details><summary class="cursor-pointer text-slate-500">展開看</summary>'
+          + '<pre class="mt-1 text-[11px] leading-relaxed whitespace-pre-wrap '
+          + 'bg-slate-50 border border-slate-200 rounded p-2 overflow-x-auto">'
+          + L.slice(-25).map(esc).join('\n') + '</pre></details>');
+      })
+      .catch(function (e) { return row('批改紀錄', '問不到：' + esc(e.message)); });
+  }
+
   /* ── 程式作品（.sb3）的重複檔案 ────────────────────────
      ⚠️⚠️ 老師 2026-09-05：「程式也會有上傳動作，檔案也能有比對機制嗎？」
      ★ 可以，但**證據強度和截圖不同**，所以處理方式也不同：
@@ -998,6 +1024,10 @@ if (!window.CONFIG) {
            分成兩張卡的話，「檢查不過時怎麼辦」也要跟著多一條說明
            （status.test.js 盯著卡片數 vs 說明數），而這兩件事
            本來就是同一個問題的兩面 —— 合在一起看比較清楚。 */
+        checkGradeLog(c3).then(function (h) {
+          if (h) c3.querySelector('.detail').insertAdjacentHTML('beforeend',
+            '<div class="mt-2 pt-2 border-t border-slate-200">' + h + '</div>');
+        }),
         checkDupeShots(c8).then(function () { return checkDupeWorks(c8); })
           .then(function (w) {
             if (!w) return;

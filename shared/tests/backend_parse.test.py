@@ -1472,6 +1472,25 @@ ok('回傳格式' in _core_src,
    '★★★ 降級後要用文字講清楚 JSON 格式 —— schema 原本是模型唯一的格式來源，'
    '不補這一段，降級只會產生垃圾')
 
+# ⚠️⚠️ 2026-09-07 老師問了**兩次**「這個在哪裡看？」——那就是設計不好。
+#    ★ serve_background 是背景執行緒，它的 print 會落在
+#      「當下正在執行的那一格」，全部執行完之後常常在最後一格，
+#      老師要在 Colab 裡翻半天才找得到。
+#    ⇒ 原則：**診斷要放在人會看的地方**，不是放在技術上正確的地方。
+ok('GRADE_LOG' in _core_src and 'deque(maxlen=' in _core_src,
+   '★★★ 批改紀錄要留一份在記憶體給教師端問')
+ok('print("[批改]' not in _core_src,
+   '★★ 那幾行要走 _glog（同時印出來並留一份），不可以只 print')
+ok(_core_src.count('_glog("[批改]') >= 4,
+   '★★ 送出字數、成功耗時、失敗原因都要進紀錄')
+_gl = _core_src[_core_src.index('def _glog'):][:600]
+ok('except Exception' in _gl and 'print(msg)' in _gl,
+   '★★★ 記錄失敗絕不可以影響批改 —— 吞例外，而且照樣印出來')
+ok('/api/grade-log' in _srv7 and 'GRADE_LOG' in _srv7,
+   '★★ 要有端點讓教師端問得到')
+ok('grade-log' in _st_here and '展開看' in _st_here,
+   '★★★ 狀態頁要顯示 —— 這才是老師真的會看的地方')
+
 # ⛔⛔ 2026-09-07：OCR 在**建構模型的那一刻**吃光 11 GB。
 #    那是 PaddleOCR 3.x 的已知上游回歸（issue #17955：
 #    3.x CPU 推論配置約 43 GB，2.x 同樣工作只用 1～2 GB），
