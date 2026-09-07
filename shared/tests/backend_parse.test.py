@@ -1516,6 +1516,26 @@ ok('[:80]' in _core_src,
 ok('rules_source=cfg.get("rules_source"' in _core_src,
    '★★ 來源要真的傳進批改函式，不然那一行永遠印「未指定」')
 
+# ⚠️⚠️ 2026-09-08 老師貼回實測：一份 91.6 秒，而預估值寫 25。
+#    ★ 每天第一批學生會被告知「約 25 秒」然後等一分半 ——
+#      那正是他們以為當掉、跑去重按的時機。
+#    ⚠️ 這幾條也有一份 JS 版（waitwording.test.js），但 *.test.js 只掛在
+#      pre-commit hook 上，而這個 repo 因為 hook 要跑 2 分 50 秒常用
+#      --no-verify ⇒ **不能只靠 JS 那一份**，這裡要自己擋一次。
+_avg = re.search(r'AVG_GRADE_SECONDS = (\d+)', _srv_src)
+ok(_avg and int(_avg.group(1)) >= 60,
+   '★★★ 沒有實測樣本時的起始值要和實際同量級（≥60 秒）'
+   '　←　現在是 %s' % (_avg.group(1) if _avg else '找不到'))
+ok('"samples": samples' in _srv_src,
+   '★★★ /api/student/queue 要回報 samples —— 0 筆代表 avg_seconds '
+   '還是開機預設值，前端要分得出「估的」和「量到的」')
+_sq = _srv_src[_srv_src.index('def student_queue'):][:1600]
+ok('\n    avg = _grade_avg_seconds()' in _sq,
+   '★★★ avg = _grade_avg_seconds() 必須在 with _queue_lock 外面（縮排 4 格）'
+   ' —— 它自己會拿同一把非重入鎖，放進去就是整台後端死鎖')
+ok('samples = len(_grade_recent)' in _sq,
+   '★★ samples 要在鎖裡面讀：_grade_recent 是別的執行緒在改的')
+
 # ⚠️⚠️ 2026-09-07：我一度懷疑「gemma 不支援 response_schema」，
 #    但老師說「今天早上有評分成功過」—— 直接推翻了那個假設。
 #    ★ 降級機制留著（無害的韌性），但**不可以無條件降級**：

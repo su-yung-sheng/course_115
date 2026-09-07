@@ -343,26 +343,70 @@ async function grade(){
         改一邊另一邊不會跟著動。OCR 那邊 2026-08-26 就學過這個教訓
         （寫死的估計一定失準，而失準比不報時間更糟）。
         ⇒ 改用後端回報的 avg_seconds（最近 10 次的實測）。 */
-  let avgSec = 30;                     // 問不到時的保守預設
+  /* ⚠️⚠️ 2026-09-08 老師貼回的實測：一份 91.6 秒。而這裡寫 30、後端寫 25 ——
+       每天第一批學生會被告知「約 25 秒」然後等一分半。
+       ⇒ ① 起始值改成和後端一致的 90（後端 AVG_GRADE_SECONDS 也改了）。
+          ② 秒數不要直接報。「約 92 秒」這種寫法有兩個問題：
+             精確到個位數看起來像倒數計時（其實只是平均值），
+             而且超過一分鐘之後人是用「幾分幾」在感覺時間的。
+             ⇒ 一律換算成人話：約 40 秒／約 1 分鐘／約 1 分半／約 2 分鐘。
+          ③ 等待中要把**已經過了多久**顯示出來。原本整段等待期間畫面
+             一句話都不動，學生沒有任何「它還在跑」的證據 ——
+             那正是重按的時機。 */
+  let avgSec = 90;                     // 問不到後端時的起始值（和 AVG_GRADE_SECONDS 一致）
+  let avgIsGuess = true;               // 後端還沒有實測樣本＝這個數字是估的
+
+  /* 秒數 → 人話。⚠️ 一律**往上**取整到好唸的刻度：
+     估多了學生是驚喜，估少了是客訴。 */
+  const fmtWait = (sec)=>{
+    if(!(sec>0)) return '一下子';
+    if(sec < 50) return `約 ${Math.ceil(sec/10)*10} 秒`;
+    /* ⚠️ 不要輸出「約 2.5 分鐘」——中文不是這樣講時間的，
+       而且小數點會讓人以為是精確值。⇒ 半分鐘一格，講成「2 分半」。 */
+    const half = Math.ceil(sec/30)/2;
+    return Number.isInteger(half) ? `約 ${half} 分鐘` : `約 ${Math.floor(half)} 分半`;
+  };
+  const fmtElapsed = (sec)=> sec < 60 ? `${sec} 秒`
+        : `${Math.floor(sec/60)} 分 ${String(sec%60).padStart(2,'0')} 秒`;
+
+  const readQ = (q)=>{
+    if(Number(q.avg_seconds)>0) avgSec = Number(q.avg_seconds);
+    // samples 是後端累積的實測筆數；0 代表 avg_seconds 還是開機預設值。
+    if(q.samples !== undefined) avgIsGuess = !(Number(q.samples) > 0);
+  };
   const sayWait = (n)=> setStatus(
-    n>1 ? `🧠 已送出！目前同時有 ${n} 位在批改（大家同時跑，不用排隊等）—— 約 ${Math.round(avgSec)} 秒`
-        : `🧠 AI 助教正在仔細檢查你的積木…（約 ${Math.round(avgSec)} 秒）`, 'busy');
+    (n>1 ? `🧠 已送出！目前同時有 ${n} 位在批改（大家同時跑，不用排隊等）—— `
+         : '🧠 AI 助教正在仔細檢查你的積木…')
+    + `預計 ${fmtWait(avgSec)}`
+    + (avgIsGuess ? '（今天第一批，實際時間可能有出入）' : ''), 'busy');
+
+  const t0 = Date.now();
   try{
     const q = await (await fetch(base()+'/api/student/queue',{headers:H,cache:'no-store'})).json();
-    if(Number(q.avg_seconds)>0) avgSec = Number(q.avg_seconds);
+    readQ(q);
     sayWait((Number(q.pending)||0) + 1);
   }catch(e){ sayWait(1); }
 
   // 等待期間持續更新（同樣不要講成「前面還有幾位」）
   const qTimer = setInterval(async ()=>{
+    const el = Math.round((Date.now()-t0)/1000);
     try{
       const q = await (await fetch(base()+'/api/student/queue',{headers:H,cache:'no-store'})).json();
-      if(Number(q.avg_seconds)>0) avgSec = Number(q.avg_seconds);
+      readQ(q);
       const n = Math.max(1, Number(q.pending)||1);
-      setStatus(n>1
-        ? `🧠 批改中…目前同時有 ${n} 位（請不要重複按，重按會多花一次 AI 額度）`
-        : '🧠 AI 助教正在檢查你的積木…快好了！','busy');
-    }catch(e){}
+      /* ⚠️ 超過預估時間之後**不可以**再報預估值 —— 那會變成
+         「約 1 分半」卻已經等了 3 分鐘，看起來就是壞掉。
+         ⇒ 改成明講「比平常久」，但同時說清楚它還在跑。 */
+      const late = el > avgSec * 1.3;
+      setStatus(
+        (late ? `🧠 還在批改…已經 ${fmtElapsed(el)}，比平常久一點（沒有當掉，AI 還在讀你的積木）`
+              : `🧠 批改中…已經 ${fmtElapsed(el)} ／ 預計 ${fmtWait(avgSec)}`)
+        + (n>1 ? `　目前同時有 ${n} 位` : '')
+        + '　請不要重複按，重按會多花一次 AI 額度', 'busy');
+    }catch(e){
+      // 問不到後端也要讓畫面繼續動，否則看起來就是當掉。
+      setStatus(`🧠 批改中…已經 ${fmtElapsed(el)}（暫時問不到進度，請再等一下）`, 'busy');
+    }
   }, 4000);
   const fd=new FormData(); fd.append('file',chosen); fd.append('student_id',sid); fd.append('unit',UNIT||'');
   fd.append('term', window.CONFIG.TERM);        // 共用後端：批改結果寫回本學期的集合
