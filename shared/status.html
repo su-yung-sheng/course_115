@@ -130,7 +130,7 @@ if (!window.CONFIG) {
       </div>
       <div>
         <dt class="font-bold text-slate-800">OCR 那台連不上（拆成兩台時）</dt>
-        <dd>①b 紅的時候，第 ③ 的「截圖辨識」和第 ⑦ 一定也會紅 ——
+        <dd>「① 後端版本（🧠 運算思維 OCR）」紅的時候，第 ③ 的「截圖辨識」和第 ⑦ 一定也會紅 ——
             <b>那是同一個問題，不是三個</b>。去開 OCR 那台的 Colab 就好。
             <span class="text-slate-400">（⚠️ 這時程式設計的批改**不受影響**，那是另一台。
             另外要確認那台的 <span class="font-mono">NGROK_DOMAIN</span> 和
@@ -955,7 +955,7 @@ if (!window.CONFIG) {
     });
   }
 
-  /* ── 檢查 ①b：OCR 那一台 ────────────────────────────
+  /* ── 檢查 ①（OCR 那一台）────────────────────────────
      ⚠️ 問的是 /health（OCR 專用的健康檢查），不是 /api/health ——
         只有前者會回報辨識引擎的狀態（ocr_state）。
         引擎沒就緒時，伺服器活著也沒有用：學生傳什麼都會失敗。 */
@@ -997,12 +997,17 @@ if (!window.CONFIG) {
     btn.textContent = '檢查中…';
     cards.innerHTML = '';
 
-    var c1 = card('backend', '① Colab 後端版本' + (TWO_HOSTS ? '（Scratch）' : ''));
     /* ⚠️⚠️ 拆成兩台之後，① 只驗得到 Scratch 那台。OCR 那台掛了的話，
        ① 照樣綠燈，而學生的截圖驗證全部失敗 ——
        老師會從一張綠燈的卡開始找問題，那是最糟的起點。
-       ⇒ 兩台時多一張專屬的卡。只開一台時不會出現（TWO_HOSTS 為 false）。 */
-    var c1b = TWO_HOSTS ? card('backend2', '①b 截圖辨識後端（OCR）') : null;
+       ⇒ 兩台時多一張專屬的卡。只開一台時不會出現（TWO_HOSTS 為 false）。
+       ★ 老師 2026-09-07：「不能都使用①？」—— 對，用 ①b 是我想錯了。
+         「①b」讀起來像「① 的附屬品」，但那是**另一台獨立的機器**，
+         掛掉的後果一樣嚴重。兩張卡做的是同一種檢查（後端版本），
+         只是對象不同 ⇒ **同樣掛 ①**，用機器名稱區分。 */
+    var c1 = card('backend', TWO_HOSTS ? '① 後端版本（🎨 Scratch 批改）'
+                                       : '① Colab 後端版本');
+    var c1b = TWO_HOSTS ? card('backend2', '① 後端版本（🧠 運算思維 OCR）') : null;
     var c2 = card('keys',    '② Gemini API 金鑰');
     var c3 = card('queue',   '③ 排隊機制');
     var c4 = card('criteria','④ 兩學期批改標準是否分開');

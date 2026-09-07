@@ -1491,6 +1491,20 @@ ok('/api/grade-log' in _srv7 and 'GRADE_LOG' in _srv7,
 ok('grade-log' in _st_here and '展開看' in _st_here,
    '★★★ 狀態頁要顯示 —— 這才是老師真的會看的地方')
 
+# ⚠️ 老師 2026-09-07：「不能都使用①？」
+#    ★ 用「①b」是我想錯了：那讀起來像「① 的附屬品」，
+#      但 OCR 是**另一台獨立的機器**，掛掉的後果一樣嚴重。
+#      兩張卡做的是同一種檢查（後端版本），只是對象不同 ⇒ 同樣掛 ①。
+#    ⚠️ 只比對 code（_code_of 已剝掉註解）—— 說明為什麼改的那段
+#      本來就會提到「①b」三個字。
+_st_code = _st_here  # 這一份含註解，下面要用剝過的
+import re as _re_c
+_st_nocomment = _re_c.sub(r'/\*[\s\S]*?\*/', '', _st_here)
+ok('①b' not in _st_nocomment,
+   '★★ 卡片標題不要用「①b」—— 那讀起來像附屬品，但它是另一台獨立的機器')
+ok('① 後端版本（🧠' in _st_nocomment and '① 後端版本（🎨' in _st_nocomment,
+   '★★ 兩台用同一個編號、以機器名稱區分（同一種檢查、不同對象）')
+
 # ⛔⛔ 2026-09-07：OCR 在**建構模型的那一刻**吃光 11 GB。
 #    那是 PaddleOCR 3.x 的已知上游回歸（issue #17955：
 #    3.x CPU 推論配置約 43 GB，2.x 同樣工作只用 1～2 GB），
