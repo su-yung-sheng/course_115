@@ -1380,6 +1380,34 @@ ok('不等於' in _st_here and '原封不動' in _st_here,
 _rules = io.open(os.path.join(ROOT, 'shared', 'firestore.rules'), encoding='utf8').read()
 ok('11501-work-hashes' in _rules and '11502-work-hashes' in _rules,
    '★★ 新集合要有教師讀取規則（沒有的話清單永遠是空的，而且不會報錯）')
+
+# ══════════════════════════════════════════════════════════
+# 記憶體：Colab 的「RAM 用盡 → 停止工作階段」完全沒有預警
+# ══════════════════════════════════════════════════════════
+# ⚠️ 老師 2026-09-07 實際遇到。最糟的不是它會發生，
+#    而是前一秒還在辨識、下一秒整個執行階段沒了。
+ok('def _mem_info' in _srv7 and '/proc/meminfo' in _srv7,
+   '★★ 要讀得到記憶體用量（用 /proc/meminfo，不要為此裝套件）')
+_mi = _srv7[_srv7.index('def _mem_info'):][:1200]
+ok('return (0, 0, 0)' in _mi,
+   '★★★ 讀不到要回 0 不可以丟例外 —— 這是給人看的資訊，不是判定依據')
+ok('"memory"' in _srv7,
+   '★★ /api/health 與 /api/ocr-stats 要回報記憶體')
+_loop = _srv7[_srv7.index('def _ocr_loop'):][:4000]
+ok('img = None' in _loop and '_gc.collect()' in _loop,
+   '★★ 每張處理完要放掉影像，並定期回收')
+ok('_OCR_GC_EVERY' in _srv7,
+   '★ 回收頻率要是一個看得到的常數（每張都跑太貴、都不跑等於沒做）')
+# ⛔ 這一段在 finally 裡，炸掉會蓋掉已經算好的辨識結果
+_fin = _loop[_loop.index('box["done"].set()'):][:1600]
+ok('except Exception:' in _fin and 'pass' in _fin,
+   '★★★ 記憶體那段絕對不可以丟例外（它在 finally，會蓋掉 box["result"]）')
+ok('>= 85' in _srv7 and '記憶體快用完了' in _srv7,
+   '★★★ 快滿的時候要大聲講，不然老師只會看到「突然就死了」')
+ok('不會不見' in _srv7 and '不會不見' in _st_here,
+   '★★ 警告要同時講「已上傳的圖不會不見」—— 不然老師會不敢重開')
+ok('j.memory && j.memory.total_mb' in _st_here,
+   '★★★ 舊後端沒有這個欄位時要留白，不可以顯示 0%（那會被當成很健康）')
 # ⚠️⚠️ 老師 2026-09-03 問：「圖片都長一樣，這樣判斷不會有誤判嗎？」
 #    ★ 不會 —— sha256 是**位元組完全相同**才算，一個像素不同就完全不同。
 #      刻意**不用**相似度比對（perceptual hash）：同一款遊戲的成功畫面

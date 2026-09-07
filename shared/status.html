@@ -857,6 +857,28 @@ if (!window.CONFIG) {
                   j.ocr_state === 'ready' ? '已載入，可以辨識'
                   : j.ocr_state === 'error' ? '<span class="text-red-600">載入失敗</span>'
                   : '尚未載入（第一次辨識會多等幾十秒）') +
+              /* ⚠️⚠️ 老師 2026-09-07：「OCR 所有可用的 RAM 皆已用盡，
+                 工作階段已停止運作。」最糟的是**完全沒有預警** ——
+                 前一秒還在辨識，下一秒整個執行階段沒了。
+                 ⇒ 把記憶體放上來，讓它在死掉之前看得到。
+                 ⚠️ 舊後端沒有這個欄位，那時要留白而不是顯示 0%
+                    （顯示 0% 會被當成「很健康」）。 */
+              (j.memory && j.memory.total_mb
+                ? row('記憶體',
+                    (j.memory.pct >= 85
+                      ? '<span class="text-red-600 font-bold">' + j.memory.pct + '%'
+                        + '（' + j.memory.used_mb + '／' + j.memory.total_mb + ' MB）'
+                        + ' —— 快用完了，Colab 會直接停止工作階段</span>'
+                        + '<div class="text-red-700">讓學生先別再上傳，等這批跑完就'
+                        + '「執行階段 → 重新啟動」再跑步驟 1b～4。'
+                        + '已上傳的圖留在雲端暫存區<b>不會不見</b>。</div>'
+                      : j.memory.pct >= 70
+                        ? '<span class="text-amber-700">' + j.memory.pct + '%'
+                          + '（' + j.memory.used_mb + '／' + j.memory.total_mb + ' MB）'
+                          + ' —— 偏高，一節課結束後建議重新啟動</span>'
+                        : j.memory.pct + '%（' + j.memory.used_mb + '／'
+                          + j.memory.total_mb + ' MB）'))
+                : row('記憶體', '<span class="text-slate-400">後端沒回報（版本較舊）</span>')) +
               row('資料來源', basis);
       var b = (j.basis === 'live') ? live : (hist[0] || {});
       if (b && b.avg_total) {
