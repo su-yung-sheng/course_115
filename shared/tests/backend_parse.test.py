@@ -1469,10 +1469,37 @@ ok('GPUtil' in _inst_raw,
    '★★ 要寫下 3.0.0 為什麼裝不起來 —— 不然下次又會有人把它加回去')
 ok("'paddleocr>=3.0,<4'" in _inst,
    '★★ 最後一格保留不鎖版本：全部鎖版都沒有 wheel 時至少還裝得到東西')
-ok('paddlepaddle' in _inst and '__version__' in _inst,
+# ⛔⛔ 2026-09-07：安裝格原本 `import paddleocr` 只為了印版本，
+#    炸出 RuntimeError: PDX has already been initialized ——
+#    這個執行階段已經載入過舊版，paddlex 的全域初始化拒絕第二次。
+ok('importlib.metadata' in _inst,
+   '★★★ 讀版本要用 importlib.metadata，不可以 import 套件本身')
+ok('import paddleocr as _po' not in _inst,
+   '★★★ 安裝格不可以 import paddleocr（會觸發 paddlex 初始化）')
+ok('paddlepaddle' in _inst and "_ver('paddleocr')" in _inst,
    '★★★ 要印出實際裝到的版本 —— 下次出事時那是「哪一版可用」的唯一依據')
+# ⛔ 在執行中的 kernel 裡換版本，不重啟不會生效。
+#    沒有這段提醒的話會出現最糟的情況：這一格說「✅ 裝起來了 3.2 組合」，
+#    而步驟 4 還在用舊版，然後又 RAM 用盡 —— 老師會以為鎖版本沒有用。
+ok("_sys_chk.modules" in _inst and '重新啟動' in _inst_raw,
+   '★★★ 換過版本要明確要求重啟 —— 不然「裝好了」和「生效了」會被混為一談')
 ok('版本：paddleocr' in _srv7,
    '★★★ 載入模型前也要印版本（出事時第一個要知道的就是它）')
+
+# ⚠️⚠️ 2026-09-07 老師遇到 ModuleNotFoundError: No module named 'colab_server'。
+#    意思是步驟 2、3 沒跑到（那兩格是 %%writefile）——
+#    執行階段一重開，/content 就被清空。
+#    ★ 但那個 traceback 看起來像「少裝了一個套件」，
+#      人會跑去 pip install colab_server（PyPI 上別人的套件）。
+_boot4 = _code_of(_nb_cells[10])
+ok('scratch_grader_core.py' in _boot4 and '_missing' in _boot4,
+   '★★★ 步驟 4 要自己檢查兩個 .py 在不在，不要丟 ModuleNotFoundError')
+ok('從**步驟 2** 開始' in ''.join(_nb_cells[10].get('source', [])),
+   '★★ 錯誤訊息要直接說「跑哪一格」，不是只說「找不到」')
+ok('pip install colab_server' in ''.join(_nb_cells[10].get('source', [])),
+   '★★ 要明講不要去 pip install 它 —— 那是 PyPI 上不相干的套件')
+ok(_boot4.index('_missing') < _boot4.index('import colab_server'),
+   '★★★ 檢查要在 import 之前，不然還是會先炸出那個沒用的 traceback')
 ok('下一行如果沒出現' in _srv7,
    '★★ 要標出「死在哪裡」的分界點：只看到前面那行＝死在建構模型')
 # ⚠️⚠️ 老師 2026-09-03 問：「圖片都長一樣，這樣判斷不會有誤判嗎？」
