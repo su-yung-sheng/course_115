@@ -1559,6 +1559,29 @@ ok("_chk.stderr" in _inst,
 ok('langchain-core' not in _inst and 'langchain_community' not in _inst,
    '★★ 只移 langchain 本體 —— core／community 的 import 路徑在新版仍有效，'
    '動它們是多餘的風險')
+
+# ⛔⛔ 2026-09-07：langchain 修掉之後模型**載入成功**，然後辨識時 RAM 用盡 ——
+#    正好對上 #17955：「記憶體在推論開始之前都是正常的」。
+# ★ 機制：偵測模型的記憶體和輸入解析度直接相關。
+#   level_roi 是 1056×103，放大 2.5～3 倍 ⇒ 約 3168 px 寬。
+ok('text_det_limit_side_len' in _load and 'text_det_limit_type' in _load,
+   '★★★ 要夾住偵測的輸入長邊 —— 放大後的 ROI 有 3000 px 以上')
+ok('_DET_SIDE' in _srv7,
+   '★★ 夾的數字要是一個看得到的常數（辨識率變差時要調得動）')
+
+# ⛔⛔⛔ 安全網：不依賴上面那個假設是否正確
+#    Colab 的 RAM 用盡是**直接砍掉整個工作階段** —— 老師要從步驟 1b 重來。
+#    而這套架構承受得起「這一張晚點再處理」：圖留在雲端暫存區。
+_run = _srv7[_srv7.index('def ocr_run'):][:2200]
+ok('OCR_MEM_REFUSE_PCT' in _run,
+   '★★★ 起飛前要檢查記憶體 —— 硬跑下去是整台被砍，不是一張失敗')
+ok('_mem_total and _mem_pct' in _run,
+   '★★★ 量不到記憶體時要放行，不要在非 Linux 或格式改變時全部卡死')
+ok('不會不見' in ''.join(_nb_cells[8].get('source', [])),
+   '★★ 拒絕時要講明「圖留在暫存區、之後會自己處理」—— '
+   '不然老師會以為學生的成績掉了')
+ok(_run.index('OCR_MEM_REFUSE_PCT') < _run.index('_ocr_q.put'),
+   '★★ 檢查要在進佇列之前 —— 進去了才擋等於沒擋')
 ok('版本：paddleocr' in _srv7,
    '★★★ 載入模型前也要印版本（出事時第一個要知道的就是它）')
 
