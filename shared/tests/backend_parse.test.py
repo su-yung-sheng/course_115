@@ -1477,6 +1477,28 @@ ok('_next_model' in _aa2 and 'high demand' in _aa2,
 ok('model=_mdl[0]' in _aa2,
    '★★★ 真的要用梯子上的模型送出 —— 還寫 model_name 的話換了等於沒換')
 
+# ⛔⛔⛔ 2026-09-08 最重要的一個發現：**指紋有可能說謊**。
+#    步驟 4 原本只做 importlib.reload(colab_server)，而 colab_server 內部是
+#    `import scratch_grader_core as core` —— core 已經在 sys.modules 裡，
+#    那一行只會拿回快取的舊模組。
+#    ★ 於是「磁碟是新的、跑起來的是舊的」，而 /api/health 的 core 指紋是
+#      **讀磁碟**算的，會一路顯示綠燈。
+#      「我明明改了也重跑了，怎麼沒生效」就是這樣來的。
+_c10 = ''.join(_nb_cells[10].get('source', []))
+_i_core = _c10.find('importlib.reload(scratch_grader_core)')
+_i_srv = _c10.find('importlib.reload(colab_server)')
+ok(_i_core > 0, '★★★ 步驟 4 一定要 reload core —— 只 reload colab_server 會沿用舊 core')
+ok(0 < _i_core < _i_srv,
+   '★★★ 順序：先 reload core 再 reload colab_server —— '
+   '反過來的話 colab_server 綁到的還是舊的 core')
+ok('CORE_LOADED_FINGERPRINT = _core_self_fingerprint()' in _core_src,
+   '★★★ core 要在載入當下幫自己蓋章，才分得出「檔案新」和「跑起來的新」')
+ok('"core_loaded": CORE_LOADED_FINGERPRINT' in _srv_src
+   and '"core_stale": CORE_IS_STALE' in _srv_src,
+   '★★★ health 要把兩個指紋都報出來，這是唯一能從外面看出「重跑了卻沒生效」的方法')
+ok('CORE_IS_STALE = (CORE_LOADED_FINGERPRINT not in ("unknown", CORE_FINGERPRINT))' in _srv_src,
+   '★★ 算不出來（unknown）不可以誤判成過期 —— 那會變成喊狼來了')
+
 # ⛔⛔ 2026-09-07 老師拿到的真正錯誤：
 #      API 錯誤 (gemma-4-31b-it): 500 INTERNAL
 #    不是額度（429），是伺服器端出錯。而原本只重試 429／503 ⇒
