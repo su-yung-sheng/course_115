@@ -2846,6 +2846,23 @@ const __bn = bonusOf(student, sub.key);
     }
     window.revokePass = revokePass;
 
+    /* 「挑戰成功」徽章形狀檢查的開關（上課誤擋時的緊急出口）。
+       ⚠️ 這道檢查目前只驗證過 3 關 2 種配色 —— 誤擋真的通關的學生
+          比漏抓一個偽造嚴重得多，所以一定要能立刻關掉。
+       用法（主控台）： await setBadgeCheck(false)
+       ⚠️ 重開 Colab 會回到「開啟」。 */
+    async function setBadgeCheck(on) {
+      const r = await fetch(GD_SERVER + '/api/teacher/badge-check', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, GD_H),
+        body: JSON.stringify({ on: !!on })
+      });
+      const j = await r.json();
+      console.log(j.on ? '✅ 徽章形狀檢查：開啟' : '⚠️ 徽章形狀檢查：已關閉（重開 Colab 會自動恢復）');
+      return j;
+    }
+    window.setBadgeCheck = setBadgeCheck;
+
     function _gdSay(id, msg, cls) {
       const el = document.getElementById(id);
       el.textContent = msg || '';
