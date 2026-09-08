@@ -2854,6 +2854,48 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
     const GD_SERVER = window.CONFIG.SERVER_URL;                 // 設定集中在 config.js
     const GD_H = { 'ngrok-skip-browser-warning': 'true' };
 
+    // ===== 取消通關（老師用；**刻意不做成按鈕**）=====
+    /* ⚠️⚠️ 這會動到成績。和「重算星星」一樣不放在畫面上 ——
+       那兩個都是按下去就改成績的東西，擺在頁面上遲早會被誤觸
+       （「重算星星」當初就是為此從 UI 移除的，只留 window 函式）。
+       ⇒ 從瀏覽器主控台呼叫：
+           await revokePass('1410101', 3, '自己打字偽造挑戰成功')
+
+       ⚠️⚠️⚠️ 為什麼一定要走後端：這件事要改**兩份**紀錄
+         ① artifacts/…/progress/{驗證碼} 的 completed —— 星星是從這裡算的
+         ② {學期}-ocr-passed/{學號} 的 passed_json —— thinking.html 下次
+            開頁會拿這份去「補記漏掉的關卡」
+         只刪 ① 的話，學生一登入就自己加回去了，**而且完全無聲**。
+         而 ② 的安全規則只開放老師「讀」，前端寫不進去
+         ⇒ 只能由後端用服務帳戶一次改完，不會半套。
+       ★ 後端不算星星（規則留在 grading.js 單一來源）——
+         取消完要再跑 recomputeAllStars() 星數才會更新。 */
+    async function revokePass(sid, challengeId, reason) {
+      sid = String(sid || '').trim();
+      const cid = String(challengeId || '').trim();
+      reason = String(reason || '').trim();
+      if (!/^14\d{5}$/.test(sid)) throw new Error('學號要是 14 開頭的 7 位數字');
+      if (!cid) throw new Error('要指定關卡代號（例如 3）');
+      // ⚠️ 原因不是形式：事後查稽核時「為什麼取消」比「取消了什麼」更重要，
+      //    而當下不寫，之後就永遠補不回來了。後端也會擋一次。
+      if (reason.length < 2) throw new Error('請寫下取消的原因（會存進稽核紀錄）');
+      const r = await fetch(GD_SERVER + '/api/teacher/revoke-pass', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, GD_H),
+        body: JSON.stringify({ student_id: sid, challenge_id: cid,
+                               reason: reason, term: window.CONFIG.TERM })
+      });
+      const j = await r.json();
+      // ★ 兩份分開印：只成功一份是最危險的狀態，一定要看得出是哪一份。
+      console.log('① 星星來源 completed：', j.ct_progress);
+      console.log('② 通關清單（會自動補記的那份）：', j.ocr_passed);
+      console.log('   稽核：', j.audit, '｜進度鍵：', j.key || '（查不到）');
+      if (!j.ok) throw new Error('沒有完全成功 —— 看上面兩行是哪一份沒動到：' + (j.error || ''));
+      console.log('✅ 已取消。★ 接著跑 recomputeAllStars() 星數才會更新。');
+      return j;
+    }
+    window.revokePass = revokePass;
+
     function _gdSay(id, msg, cls) {
       const el = document.getElementById(id);
       el.textContent = msg || '';
