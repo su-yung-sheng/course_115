@@ -983,10 +983,27 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                                     : `你前面還有 ${myAhead} 張，大約還要 ${WaitTime.fmtQueue(myAhead, ocrAvg)}`}
                                             </div>
                                         )}
-                                        <div className="text-sm font-medium text-emerald-700">
-                                            後端會自己處理完，成績記在雲端 ——<br />
-                                            下次登入就會看到證書，<b>不會不見</b>。
-                                        </div>
+                                        {/* ⚠️⚠️ 2026-09-08 老師遇到的：1410511 十關都傳了、圖也在雲端，
+                                            登入卻什麼都沒更新 —— 因為兩台後端都離線了。
+                                            ★ 上傳走的是 GAS 雲端暫存區，**不需要後端**，所以這個
+                                              綠色方塊照樣出現；但「辨識 → 寫紀錄」是後端做的。
+                                            ⛔ 而這句話原本是**無條件**寫「後端會自己處理完」——
+                                               離線時那是錯的，學生完全看不出差別。
+                                            ★ 頁面其實知道後端在不在（isOnline 就是排隊清單問出來的），
+                                              只是這裡沒有用到。⇒ 用它，把話講對。
+                                            ⚠️ 兩種說法都要保住「圖不會不見」：那才是學生真正在怕的事。 */}
+                                        {isOnline ? (
+                                            <div className="text-sm font-medium text-emerald-700">
+                                                後端會自己處理完，成績記在雲端 ——<br />
+                                                下次登入就會看到證書，<b>不會不見</b>。
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                                                你的截圖<b>已經存在雲端，不會不見</b>。<br />
+                                                但老師的辨識電腦<b>目前沒有開</b>，要等它開機才會處理 ——<br />
+                                                到時候<b>重新登入這一頁</b>就會看到證書。
+                                            </div>
+                                        )}
                                         <div className="text-xs text-slate-500 mt-3">
                                             想看進度也可以留著：上面的排隊清單裡有你那一列。<br />
                                             只要不要重複按送出就好。
@@ -1306,22 +1323,50 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 let alive = true;
                 (async () => {
                     try {
-                        const base = (window.CONFIG && window.CONFIG.SERVER_URL) || '';
-                        if (!base) return;
+                        /* ⚠️⚠️ 2026-09-08：這裡原本寫死打 SERVER_URL（🎨 Scratch 那台）。
+                           ★ 但 /api/my-passed 只是讀 Firestore，**完全不需要 paddleocr** ——
+                             兩台跑的是同一份 colab_server.py、都有服務帳戶，兩台都答得出來。
+                           ⛔ 寫死一台的後果：那台掛了就補不回來，而 🧠 OCR 那台常常
+                              因為記憶體被 Colab 砍掉、🎨 Scratch 那台也會被閒置回收。
+                           ⇒ 兩台都試，誰活著就用誰。只有兩台都掛才會停 ——
+                             而那時排隊清單也問不到，上面的離線提示就會亮。
+                           ⚠️⚠️ ngrok 網域離線時回的是 **HTTP 404 加一頁 HTML**，不是連線錯誤。
+                              所以 r.json() 會丟例外 —— 一定要**換下一台**，
+                              不可以當成「這個學生沒有通關紀錄」（那會安靜地什麼都不補）。 */
+                        const bases = [];
+                        [(window.CONFIG && window.CONFIG.SERVER_URL),
+                         (window.CONFIG && window.CONFIG.OCR_SERVER_URL)].forEach(u => {
+                            const s = String(u || '').trim().replace(/\/+$/, '');
+                            if (s && bases.indexOf(s) < 0) bases.push(s);
+                        });
+                        if (!bases.length) return;
                         const term = (window.CONFIG && window.CONFIG.TERM) || '11501';
                         const ctl = new AbortController();
                         const t = setTimeout(() => ctl.abort(), 8000);
-                        let list = [], urls = {}, dates = {};
+                        let list = [], urls = {}, dates = {}, answered = false;
                         try {
-                            const r = await fetch(base + '/api/my-passed?student_id='
-                                + encodeURIComponent(user.sid) + '&term=' + encodeURIComponent(term),
-                                { headers: { 'ngrok-skip-browser-warning': '1' },
-                                  cache: 'no-store', signal: ctl.signal });
-                            const j = await r.json();
-                            list = (j && Array.isArray(j.passed)) ? j.passed : [];
-                            urls = (j && j.urls && typeof j.urls === 'object') ? j.urls : {};
-                            dates = (j && j.dates && typeof j.dates === 'object') ? j.dates : {};
+                            for (const base of bases) {
+                                try {
+                                    const r = await fetch(base + '/api/my-passed?student_id='
+                                        + encodeURIComponent(user.sid) + '&term=' + encodeURIComponent(term),
+                                        { headers: { 'ngrok-skip-browser-warning': '1' },
+                                          cache: 'no-store', signal: ctl.signal });
+                                    const j = await r.json();
+                                    /* ★ 一定要確認是**我們的**後端在回話。離線的 ngrok 會回
+                                       一頁 HTML（上面 r.json() 就丟了），但別的東西可能回
+                                       得出 JSON —— 認 passed 這個欄位才算數。 */
+                                    if (!j || !Array.isArray(j.passed)) continue;
+                                    list = j.passed;
+                                    urls = (j.urls && typeof j.urls === 'object') ? j.urls : {};
+                                    dates = (j.dates && typeof j.dates === 'object') ? j.dates : {};
+                                    answered = true;
+                                    break;
+                                } catch (e) { /* 這一台不通，換下一台 */ }
+                            }
                         } finally { clearTimeout(t); }
+                        /* ⚠️ 兩台都問不到 ≠ 沒有通關紀錄。什麼都不做，等下次登入再補
+                           （上面的離線提示已經在告訴學生後端沒開）。 */
+                        if (!answered) { console.warn('[補記] 兩台後端都問不到，這次跳過'); return; }
                         if (!alive || !list.length) return;
 
                         /* 後端說過了、本地卻沒記的，才要補 */

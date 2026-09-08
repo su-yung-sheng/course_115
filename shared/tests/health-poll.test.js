@@ -415,6 +415,41 @@ for (const term of ['11501', '11502']) {
      + '估成 0 會顯示「馬上」，那是最容易讓人重按的一句話');
 }
 
+/* ⛔⛔ 2026-09-08 老師：「1410511 全部通關、檔案也上傳到雲端了，
+   為什麼登入後通關記錄沒有更新？」
+   查出來：**兩台後端都離線**（ngrok ERR_NGROK_3200）。
+   ★ 上傳走 GAS 雲端暫存區，那條路**不需要後端** —— 所以學生看到
+     「上傳成功，已經排進認證佇列」，圖也真的在雲端；
+     但「辨識 → 寫紀錄」和「登入補記」都要後端。
+   ★★ 而補記原本**寫死打 SERVER_URL（🎨 Scratch 那台）**。
+      /api/my-passed 只是讀 Firestore，兩台都答得出來 ——
+      寫死一台等於平白多一半的失敗機會。 */
+for (const term of ['11501', '11502']) {
+  section('★★ ' + term + '：後端離線時要講實話，補記要兩台都試');
+  const SRC = fs.readFileSync(path.join(ROOT, term, 'thinking.html'), 'utf8');
+  const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ');
+
+  ok(/OCR_SERVER_URL/.test(CODE) && /for \(const base of bases\)/.test(CODE),
+     '★★★ 補記要兩台都試（誰活著用誰）—— 寫死一台，那台掛了就補不回來');
+  ok(/answered/.test(CODE),
+     '★★★ 兩台都問不到 ≠ 沒有通關紀錄 —— '
+     + '離線的 ngrok 回的是 404＋一頁 HTML，當成「沒過」會安靜地什麼都不補');
+  ok(/if \(!j \|\| !Array\.isArray\(j\.passed\)\) continue/.test(CODE),
+     '★★ 要認 passed 欄位才算「我們的後端在回話」');
+
+  /* ⚠️ 綠色方塊原本**無條件**寫「後端會自己處理完」。離線時那是錯的，
+     而學生完全看不出差別 —— 這正是老師這次遇到的狀況。 */
+  ok(/isOnline \? \(/.test(CODE),
+     '★★★ 上傳成功的訊息要看 isOnline —— 頁面本來就知道後端在不在，'
+     + '只是沒有用到');
+  ok(/老師的辨識電腦/.test(SRC) && /目前沒有開/.test(SRC),
+     '★★★ 離線時要明講「辨識電腦沒有開」，不可以還說「後端會自己處理完」');
+  ok((SRC.match(/不會不見/g) || []).length >= 2,
+     '★★★ 離線的說法也要保住「圖不會不見」—— 那才是學生真正在怕的事');
+  ok(/重新登入/.test(SRC),
+     '★★ 要告訴學生「到時候重新登入就會看到」，他才知道要再回來');
+}
+
 section('★★ 後端：平均秒數要用實測的');
 {
   const NBCODE = JSON.parse(fs.readFileSync(path.join(ROOT, 'shared', 'backend.ipynb'), 'utf8'))
