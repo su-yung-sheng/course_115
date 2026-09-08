@@ -1451,11 +1451,31 @@ ok('_sz_tpl' in _sag and '_sz_ex' in _sag and '_sz_stu' in _sag,
 #      十分鐘只可能是「一次呼叫十分鐘」或「四次各兩三分鐘」。
 #      這兩種的處理方式完全不同（縮 prompt vs 處理額度），
 #      而在加這段之前**分不出來**。
-_aa2 = _core_src[_core_src.index('def ask_agent'):][:3600]
+# ⚠️⚠️ 這個切片長度已經因為 ask_agent 變長而失效過兩次（2026-09-07、09-08）。
+#    症狀是「明明有寫，測試卻說沒有」—— 而那會讓人跑去改對的程式碼。
+#    ⇒ 切寬一點。ask_agent 現在含模型梯子與預算檢查，約 6000 字。
+_aa2 = _core_src[_core_src.index('def ask_agent'):][:9000]
 ok('第 %d 次呼叫成功' in _aa2 and '總共 %.1f 秒' in _aa2,
    '★★★ 每一次呼叫都要記時間 —— 沒有數字就只能猜')
 ok('第 %d 次呼叫失敗（等了' in _aa2,
    '★★★ 失敗也要記時間：等三分鐘才回 429，和立刻回 429 是不同的問題')
+
+# ⛔⛔ 2026-09-08 上課實況：503 'This model is currently experiencing high
+#    demand.'，而且**失敗前先掛住** 61.8／150.0／72.6 秒。
+#    ★ 換金鑰救不了 —— 503 是那個模型整體容量不足，不是這把金鑰的額度。
+#    ⚠️ 這幾條只是靜態底線；真正的行為（會不會換模型、會不會準時收手）
+#       由 grade_retry.test.py 實際把 single_agent_grading 跑起來驗證。
+ok('GRADE_BUDGET_SECONDS' in _core_src and 'GRADE_FALLBACK_MODELS' in _core_src,
+   '★★★ 要有總時間預算與備援模型')
+ok(int(re.search(r'GRADE_BUDGET_SECONDS = (\d+)', _core_src).group(1)) < 240,
+   '★★★ 預算要小於學生端 fetch 放棄的 240 秒 —— 否則學生看到的是斷線，'
+   '連我們寫的「服務忙線」都來不及顯示')
+ok('_worst[0] = max(_worst[0]' in _aa2,
+   '★★★ 要記下「最慢的一次」：預算檢查得在出發前算進「這次可能又花多久」')
+ok('_next_model' in _aa2 and 'high demand' in _aa2,
+   '★★★ 撞到 503／high demand 要換模型，不是換金鑰')
+ok('model=_mdl[0]' in _aa2,
+   '★★★ 真的要用梯子上的模型送出 —— 還寫 model_name 的話換了等於沒換')
 
 # ⛔⛔ 2026-09-07 老師拿到的真正錯誤：
 #      API 錯誤 (gemma-4-31b-it): 500 INTERNAL
