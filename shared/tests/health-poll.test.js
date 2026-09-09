@@ -448,6 +448,30 @@ for (const term of ['11501', '11502']) {
      '★★★ 離線的說法也要保住「圖不會不見」—— 那才是學生真正在怕的事');
   ok(/重新登入/.test(SRC),
      '★★ 要告訴學生「到時候重新登入就會看到」，他才知道要再回來');
+
+  /* ⛔⛔⛔ 2026-09-08 老師：「班級通關記錄中有，但是證書沒看到。」
+     ★ 補記那個 useEffect 有三段，最後一段是「直接問 GAS 去雲端硬碟把證書
+       網址找回來」—— 那一段**完全不需要後端**。
+     ⚠️ 但它前面有 `if (!alive || !list.length) return;`：後端那份清單一空，
+        最後一道修補就永遠跑不到。而清單會空的三種情況
+        （後端離線／2026-09-02 前通關的／當初圖沒上傳成功）
+        症狀全都是「成績有、證書是虛線空框」。
+     ⚠️⚠️ 這是**第三次**踩同一個坑：程式碼裡早就有一句
+        「不可以寫成 if (!missing.length && !needUrl.length) return」。
+     ⇒ 規矩：三段各自判斷，任何一段都不可以被前一段的 return 擋掉。 */
+  const eff = CODE.slice(CODE.indexOf('const bases = ['),
+                         CODE.indexOf("kind: 'find'"));
+  ok(eff.length > 200, '★ 有抓到補記那一段（抓不到的話下面幾條等於沒測）');
+  ok(!/!list\.length\)\s*return/.test(eff),
+     '★★★ 不可以因為「後端清單是空的」就 return —— '
+     + '那會讓「去雲端硬碟找回證書網址」永遠跑不到（老師實際遇到的）');
+  ok(!/!answered\)\s*\{[^}]*return/.test(eff),
+     '★★★ 兩台後端都問不到也不可以 return —— GAS 那一段不需要後端');
+  ok(!/!missing\.length[^;]*return/.test(eff),
+     '★★ 也不可以因為「沒有要補記的關卡」就 return（程式碼註解早就警告過）');
+  ok(/const stillMissing = completedChallenges\.filter/.test(CODE),
+     '★★★ 最後一段要用 completedChallenges（本地已通關）算還缺哪幾張，'
+     + '不可以用後端回的 list —— 後端沒有的那些正是要救的');
 }
 
 section('★★ 後端：平均秒數要用實測的');
