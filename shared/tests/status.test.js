@@ -269,5 +269,27 @@ section('★ 「重新檢查」要真的能拿到最新的 config');
 }
 
 
+section('★★ 卡片 ②：付費備援有沒有設要看得見');
+{
+  /* ⛔ 2026-09-09 老師問「狀態檢查會顯示是否設定嗎？」—— 當時不會。
+     ★ 為什麼一定要顯示：Claude 備援是「免費層整個撞牆時這節課還跑不跑
+       得完」的唯一保險，而**沒設的話完全沒有徵兆** —— 平常 Gemma 好好的，
+       你不會知道保險其實沒買，等真的撞牆那天才發現就太晚了。 */
+  ok(/ANTHROPIC_API_KEY/.test(CODE),
+     '★★★ 卡片 ② 要讀 health.keys.ANTHROPIC_API_KEY');
+  ok(/付費備援/.test(SRC),
+     '★★ 要有看得懂的欄位名稱（不是只印一個 true/false）');
+  ok(/hasClaude === undefined/.test(CODE),
+     '★★★ 舊版後端沒有這個欄位（undefined）要說「版本較舊」—— '
+     + '顯示成「未設定」是兩件完全不同的事，會害人去 Colab 重設一把已經有的金鑰');
+  ok(/ANTHROPIC_API_KEY === false/.test(CODE),
+     '★★ 確定沒設時整張卡要降成 warn，不可以只是多一行灰字');
+  /* ⚠️ 順序：沒有備援是「未來會出事」，模型退回預設值是「現在就在出事」。
+     現在就在出事的要排前面，不可以被這一條蓋掉。 */
+  ok(CODE.indexOf("ANTHROPIC_API_KEY === false") < CODE.indexOf("model && health.model_is_default"),
+     '★★★ 「沒有備援」要排在「模型退回預設值」前面 —— '
+     + '兩者都成立時先講哪一個？現在就在出事的那個');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

@@ -579,6 +579,19 @@ if (!window.CONFIG) {
     /* ★ 模型也放進這張卡：它只存在執行設定裡，Colab 重開會退回預設值，
        而預設的 gemini-2.5-flash 在免費層是一天 20 次（老師 2026-08-07 實測）。
        沒有這一行，「今天跑的是哪個模型」在外面完全看不出來。 */
+    /* ★★ 付費備援（老師 2026-09-09 加的 Claude 金鑰）。
+       ⚠️ 為什麼一定要顯示在這裡：它是「免費層整個撞牆時這節課還跑不跑得完」
+          的唯一保險，而**沒設的話完全沒有徵兆** —— 平常 Gemma 好好的，
+          你不會知道保險其實沒買。等到真的撞牆那天才發現就太晚了。
+       ⚠️ 舊版後端不會回報這個欄位（undefined）—— 那時要說「版本較舊」，
+          不可以顯示成「未設定」，那是兩件完全不同的事。 */
+    var hasClaude = (health.keys || {}).ANTHROPIC_API_KEY;
+    d += row('付費備援 (Claude)', hasClaude === undefined
+      ? '<span class="text-slate-400">後端沒回報（版本較舊，重跑步驟 2→4）</span>'
+      : (hasClaude
+          ? '<span class="text-emerald-600">已設定 —— 免費額度用完時會自動接手</span>'
+          : '<span class="text-amber-600">未設定 —— 免費層撞牆時這節課就停了</span>'));
+
     var model = health.model_name || '';
     d += row('批改模型', model
       ? (health.model_is_default
@@ -592,6 +605,15 @@ if (!window.CONFIG) {
       set(el, 'bad', '兩把是同一把', d +
           '<div class="mt-2 text-red-700">請把其中一把換成<b>另一個 Google 專案</b>發的金鑰 —— '
         + '額度按專案算，同專案發兩把不會增加額度。</div>');
+    } else if ((health.keys || {}).ANTHROPIC_API_KEY === false) {
+      /* ⚠️ 這一條放在「模型退回預設值」**前面**還是後面要想清楚：
+         沒有備援是「未來會出事」，模型跑掉是「現在就在出事」。
+         ⇒ 現在就在出事的排前面。這一條只在前面那些都正常時才顯示。 */
+      set(el, 'warn', '沒有付費備援', d +
+          '<div class="mt-2 text-amber-700">Gemini 免費層撞牆時（503 忙線、'
+        + '每日額度用完）就沒有東西接手，整節課的批改會停擺。'
+        + '在 Colab Secrets 新增 <span class="font-mono">ANTHROPIC_API_KEY</span> '
+        + '就會自動當備援 —— 平常不會用到，也就不會計費。</div>');
     } else if (model && health.model_is_default) {
       /* ⚠️ 這是最容易被忽略的一種壞法：什麼都沒報錯，只是模型變回預設的。 */
       set(el, 'warn', '模型退回預設值了', d +
