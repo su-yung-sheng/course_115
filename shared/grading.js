@@ -343,7 +343,18 @@ window.GRADING = {
      *   （下學期的 flowchart.html 是一份綜合測驗，不是逐關排流程圖，
      *     沒有 per-unit 的完成紀錄可以查。）
      */
-    cleared: function (unitId, flowDone, unitStars, playDone) {
+    cleared: function (unitId, flowDone, unitStars, playDone, unlocked) {
+      /* ⛔ 老師手動開放的關卡（老師 2026-09-09：「要通關才能進下一關，
+         卡住會造成學生困擾」）。
+         ★★ 這是**通行證，不是成就**：只讓下一關打得開，
+            星星完全不動（星數是 scratchTotal(unitStars) 另外算的）。
+            那位學生的這一關仍然是 0 星，補到 75 分才會有。
+            —— 這一頁自己的註解早就寫過同一個道理：
+               「概念星是成就，不是通行證」，這裡是反過來用。
+         ⚠️ 存在 roster/{學號} 的 unlocks_json，而 roster 的安全規則是
+            **只有老師能寫、學生只能單筆讀** ⇒ 學生偽造不了。
+            （不可以放進 {學期}-progress —— 那個學生自己寫得動。） */
+      if ((unlocked || {})[unitId]) return true;
       /* 沒有作品要交的關卡（第 5 關）：看「實作體驗」做完了沒。
          ⚠️⚠️ 老實說清楚：這個紀錄是**學生端自己寫的**，按 F12 就能偽造。
             系統裡真正防得住的鎖只有作品星（Colab 批改寫入）——
@@ -372,18 +383,18 @@ window.GRADING = {
      * 回傳「第一個還沒完成的關卡編號」——那一關可以進，再下一關不行。
      * 全部完成就回傳總關數（都可以回去重看）。
      */
-    openUpTo: function (units, leadDone, flowDone, unitStars, playDone) {
+    openUpTo: function (units, leadDone, flowDone, unitStars, playDone, unlocked) {
       if (!leadDone) return 0;
       units = units || [];
       for (var i = 0; i < units.length; i++) {
-        if (!this.cleared(units[i].id, flowDone, unitStars, playDone)) return i + 1;
+        if (!this.cleared(units[i].id, flowDone, unitStars, playDone, unlocked)) return i + 1;
       }
       return units.length;
     },
 
     /** 第 no 關現在能不能進去（no 從 1 起算） */
-    isOpen: function (no, units, leadDone, flowDone, unitStars, playDone) {
-      return Number(no) <= this.openUpTo(units, leadDone, flowDone, unitStars, playDone);
+    isOpen: function (no, units, leadDone, flowDone, unitStars, playDone, unlocked) {
+      return Number(no) <= this.openUpTo(units, leadDone, flowDone, unitStars, playDone, unlocked);
     },
 
     /**
@@ -391,11 +402,11 @@ window.GRADING = {
      * 訊息要講「還缺什麼」，不是只說「被鎖住」——
      * 學生看到「被鎖住」只會來問老師，看到「還差程式作品」就知道要做什麼。
      */
-    reason: function (no, units, leadDone, flowDone, unitStars, playDone) {
+    reason: function (no, units, leadDone, flowDone, unitStars, playDone, unlocked) {
       if (!leadDone) return '要先完成上面的前導教材「Scratch 清單學習機」，才能開始闖關。';
       no = Number(no);
-      if (this.isOpen(no, units, leadDone, flowDone, unitStars, playDone)) return '';
-      var open = this.openUpTo(units, leadDone, flowDone, unitStars, playDone);
+      if (this.isOpen(no, units, leadDone, flowDone, unitStars, playDone, unlocked)) return '';
+      var open = this.openUpTo(units, leadDone, flowDone, unitStars, playDone, unlocked);
       var u = units[open - 1] || {};
       var flow = (flowDone === null) ? true : !!(flowDone || {})[u.id];
       var stars = Number((unitStars || {})[u.id]) || 0;

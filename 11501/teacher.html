@@ -2863,6 +2863,63 @@ const __bn = bonusOf(student, sub.key);
     }
     window.setBadgeCheck = setBadgeCheck;
 
+    /* ══════════════════════════════════════════════════════════
+       學生卡關時，開放他先往下做（老師 2026-09-09）
+       ══════════════════════════════════════════════════════════
+       ★★ 這是**通行證，不是成就**：只讓下一關打得開，星星完全不動。
+          那位學生的這一關仍然是 0 星，補到 75 分才會有 ——
+          所以不會有「老師幫他加分」的問題，成績還是他自己掙的。
+       ⚠️ 存在 roster/{學號} 的 unlocks_json：roster 的安全規則是
+          **只有老師能寫、學生只能單筆讀**，所以學生偽造不了。
+          （不可以放進 {學期}-progress —— 那個學生自己寫得動。）
+       ⚠️ 學生要**重新整理闖關頁**才會生效（那一頁在登入時讀一次名冊）。
+
+       用法（教師端主控台）：
+           await unlockUnit('1410511', '2-1-2')            // 開放
+           await unlockUnit('1410511', '2-1-2', '卡在清單初始化')
+           await listUnlocks('1410511')                    // 看他被開放了哪幾關
+           await lockUnit('1410511', '2-1-2')              // 收回 */
+    function _rosterRef(sid) {
+      return rdb.collection(window.CONFIG.COLLECTIONS.ROSTER).doc(String(sid).trim());
+    }
+    async function _readUnlocks(sid) {
+      const snap = await _rosterRef(sid).get();
+      if (!snap.exists) throw new Error('名冊裡沒有這個學號：' + sid);
+      try { return JSON.parse((snap.data() || {}).unlocks_json || '{}') || {}; }
+      catch (e) { return {}; }
+    }
+    async function unlockUnit(sid, unitId, reason) {
+      sid = String(sid || '').trim(); unitId = String(unitId || '').trim();
+      if (!/^14\d{5}$/.test(sid)) throw new Error('學號要是 14 開頭的 7 位數字');
+      if (!unitId) throw new Error("要指定關卡代號（例如 '2-1-2'）");
+      const cur = await _readUnlocks(sid);
+      cur[unitId] = { at: new Date().toISOString(),
+                      reason: String(reason || '老師課堂開放') };
+      await _rosterRef(sid).set({ unlocks_json: JSON.stringify(cur) }, { merge: true });
+      console.log('✅ 已開放 ' + sid + ' 的第「' + unitId + '」關 —— '
+        + '他的星星沒有變（仍要達 75 分才有）。');
+      console.log('   ★ 請他**重新整理闖關頁**才會生效。');
+      return cur;
+    }
+    async function lockUnit(sid, unitId) {
+      const cur = await _readUnlocks(sid);
+      delete cur[String(unitId || '').trim()];
+      await _rosterRef(sid).set({ unlocks_json: JSON.stringify(cur) }, { merge: true });
+      console.log('✅ 已收回。學生重新整理後會回到原本的規則。');
+      return cur;
+    }
+    async function listUnlocks(sid) {
+      const cur = await _readUnlocks(sid);
+      const ks = Object.keys(cur);
+      console.log(ks.length ? (sid + ' 被開放的關卡：') : (sid + ' 沒有被開放任何關卡'));
+      ks.forEach(k => console.log('   ' + k + '　' + (cur[k].reason || '')
+        + '　(' + String(cur[k].at || '').slice(0, 16).replace('T', ' ') + ')'));
+      return cur;
+    }
+    window.unlockUnit = unlockUnit;
+    window.lockUnit = lockUnit;
+    window.listUnlocks = listUnlocks;
+
     function _gdSay(id, msg, cls) {
       const el = document.getElementById(id);
       el.textContent = msg || '';
