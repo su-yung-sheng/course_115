@@ -120,7 +120,38 @@ class _Clock(object):
         self.now += s
 
 
+class _FakeAnthropicMsg(object):
+    def __init__(self, text, tin=111, tout=22):
+        self.content = [type("B", (), {"text": text})()]
+        self.usage = type("U", (), {"input_tokens": tin, "output_tokens": tout})()
+
+
+def _install_fake_anthropic():
+    """假的 anthropic 模組。⚠️ 一定要真的跑 Claude 那條路 ——
+       它和 Gemini 的 SDK、訊息格式、用量欄位全都不一樣，
+       靜態檢查看不出「system 有沒有帶進去」「max_tokens 有沒有給」。"""
+    m = _pytypes.ModuleType("anthropic")
+
+    class _Messages(object):
+        def create(self, **kw):
+            _CLAUDE_CALLS.append(kw)
+            return _FakeAnthropicMsg(GOOD_TEXT)
+
+    class _Anthropic(object):
+        def __init__(self, api_key=None):
+            _CLAUDE_CALLS.append({"_api_key": api_key})
+            self.messages = _Messages()
+    m.Anthropic = _Anthropic
+    sys.modules["anthropic"] = m
+
+
+_CLAUDE_CALLS = []
+GOOD_TEXT = json.dumps({"creative_highlights": "無", "score": 88,
+                        "comments": "不錯", "deducted_items": "無"},
+                       ensure_ascii=False)
+
 _install_fake_genai()
+_install_fake_anthropic()
 core = load_core()
 
 GOOD = json.dumps({"logic_analysis": "分析", "creative_highlights": "無",
@@ -274,6 +305,49 @@ ok('usage_metadata' in _core_txt and 'token/秒' in _core_txt,
 ok('getattr(response, "usage_metadata", None)' in _core_txt,
    "★★ 用 getattr 取：不同 SDK／模型不一定有這個欄位，"
    "拿不到也不可以讓已經成功的批改失敗")
+
+section("④c 付費 Claude 備援（老師 2026-09-09 已有付費金鑰）")
+# ★ 梯子：老師設的模型 → gemini-2.5-flash → claude（付費，墊底）。
+#   免費的好用時照常省額度，撞牆才動用到會計費的那一個。
+def _s4c(m):
+    if not m.startswith("claude"):
+        raise Exception("503 UNAVAILABLE. 'This model is currently "
+                        "experiencing high demand.'")
+    raise AssertionError("Claude 不該走 genai 這條路")
+
+
+_CLAUDE_CALLS[:] = []
+clock = _Clock(); core.time = clock; core.GRADE_LOG.clear()
+_FakeClient.keys_used = []
+_FakeClient.script = _s4c
+res = core.single_agent_grading(
+    KEYS, "規則", "主題", "學生碼", "空白不一樣", "解答",
+    "gemma-4-31b-it", True, claude_key="sk-ant-TESTKEY000000000000")
+ok(res.get("score") == 88,
+   "★★★ 免費的兩個都撞牆時，要能靠付費 Claude 把這節課跑完　←　%r"
+   % res.get("score"))
+_kw = [c for c in _CLAUDE_CALLS if "model" in c]
+ok(bool(_kw) and _kw[0]["model"].startswith("claude"),
+   "★★ 要真的打到 Claude　←　%r" % (_kw[0].get("model") if _kw else None))
+ok(bool(_kw) and _kw[0].get("system"),
+   "★★★ 評分規則要放進 system —— Claude 的訊息格式和 Gemini 不一樣，"
+   "放錯地方會變成「AI 沒看到評分標準」而且完全看不出來")
+ok(bool(_kw) and _kw[0].get("max_tokens"),
+   "★★★ max_tokens 是必填的（Gemini 那邊不是）—— 沒給會被截成半截 JSON，"
+   "症狀是「模型產生了無效的 JSON」，很難聯想到這裡")
+ok("輸入 111 token" in "\n".join(core.GRADE_LOG),
+   "★★ Claude 這條路也要記 token 用量（兩邊各印各的話，"
+   "遲早只有一邊有數字，而那正是要拿來比較的東西）")
+
+# 沒有付費金鑰時：梯子要把 Claude 濾掉，不要白白失敗一次
+_CLAUDE_CALLS[:] = []
+clock = _Clock(); core.time = clock; core.GRADE_LOG.clear()
+_FakeClient.script = _s4c
+res = core.single_agent_grading(KEYS, "規則", "主題", "學生碼", "空白不一樣",
+                                "解答", "gemma-4-31b-it", True)
+ok(res.get("ok") is False and not _CLAUDE_CALLS,
+   "★★★ 沒設 ANTHROPIC_API_KEY 就完全不要碰 Claude —— "
+   "留在梯子上只會在最後一階白白失敗一次（而那次可能又掛住幾十秒）")
 
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
 _FakeClient.script = lambda m: (_ for _ in ()).throw(AssertionError("不該呼叫 API"))

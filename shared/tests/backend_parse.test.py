@@ -1453,8 +1453,19 @@ ok('_sz_tpl' in _sag and '_sz_ex' in _sag and '_sz_stu' in _sag,
 #      而在加這段之前**分不出來**。
 # ⚠️⚠️ 這個切片長度已經因為 ask_agent 變長而失效過兩次（2026-09-07、09-08）。
 #    症狀是「明明有寫，測試卻說沒有」—— 而那會讓人跑去改對的程式碼。
-#    ⇒ 切寬一點。ask_agent 現在含模型梯子與預算檢查，約 6000 字。
-_aa2 = _core_src[_core_src.index('def ask_agent'):][:9000]
+#    ⇒ 切寬一點。ask_agent 現在含模型梯子、預算檢查與 Claude 分支。
+#    ★ 2026-09-09 第三次失效之後改成切得遠比需要的寬 —— 這個切片
+#      唯一的目的只是「不要掃到下一個函式」，寬一點沒有任何代價，
+#      而每次追著調的代價是「明明有寫、測試卻說沒有」。
+# ⚠️⚠️⚠️ 這一份原本有**四個**各自切了不同長度的 ask_agent 切片
+#    （_aa2 / _aa_ret / _aa_here / _aa），而切片長度已經絆倒過三次：
+#    2026-09-07、09-08、09-09 都出現「明明有寫、測試卻說沒有」，
+#    而那種假紅最危險的地方是**會讓人跑去改本來就對的程式碼**。
+#    ⇒ 改成一份，而且切到函式**真正的結尾**（下一個頂層 def），
+#      以後 ask_agent 再長都不必調。
+_ASK = _core_src[_core_src.index('def ask_agent'):]
+_ASK = _ASK[:_ASK.index('\ndef ')] if '\ndef ' in _ASK else _ASK
+_aa2 = _ASK
 ok('第 %d 次呼叫成功' in _aa2 and '總共 %.1f 秒' in _aa2,
    '★★★ 每一次呼叫都要記時間 —— 沒有數字就只能猜')
 ok('第 %d 次呼叫失敗（等了' in _aa2,
@@ -1510,7 +1521,7 @@ ok('CORE_IS_STALE = (CORE_LOADED_FINGERPRINT not in ("unknown", CORE_FINGERPRINT
 #    不是額度（429），是伺服器端出錯。而原本只重試 429／503 ⇒
 #    500 直接放棄，學生看到「批改沒有完成」而那一次很可能重試就過。
 # ⚠️ 這一段在 _aa_here 定義之前 —— 自己切一份（今天第五次被順序絆到）。
-_aa_ret = _core_src[_core_src.index('def ask_agent'):][:9000]
+_aa_ret = _ASK          # ← 見上面 _ASK 的說明（不要再各切各的）
 ok('"500" in error_msg' in _aa_ret,
    '★★★ 500 也要重試 —— 原本直接放棄，學生白白失敗一次')
 ok('attempt >= max_attempts - 2' in _aa_ret,
@@ -1632,7 +1643,7 @@ ok('MM/dd HH:mm:ss' in _gs,
 #      那會把「額度用完」也誤判成「模型不支援」，
 #      然後我們就再也看不到真正的原因了。
 # ⚠️ 這一段在 _aa 定義之前，不可以用它（今天已經被「切片／變數順序」絆到四次）。
-_aa_here = _core_src[_core_src.index('def ask_agent'):][:7000]
+_aa_here = _ASK          # ← 見上面 _ASK 的說明（不要再各切各的）
 # ⚠️ 錨在真正的降級判斷上，不要錨在第一個 _no_schema ——
 #    2026-09-07 在它前面加了一大段說明之後，切片就切不到了。
 _ns = (_aa_here[_aa_here.index('not _no_schema[0]) and any('):][:1500]
@@ -2055,7 +2066,7 @@ ok('Google 專案' in _st or 'AI Studio' in _st,
 # ③ 併發：jitter ＋ 重試次數脫鉤 ＋ 並發上限
 # ⚠️ 切片要夠長：ask_agent 2026-09-07 加了逐次計時與結構化輸出降級之後變長，
 #    原本 2600 字讀不到退避那一段。（今天第三次被切片長度絆到。）
-_aa = _core_src[_core_src.index('def ask_agent'):][:7000]
+_aa = _ASK          # ← 見上面 _ASK 的說明（不要再各切各的）
 ok('random.random()' in _aa,
    '★★★ 退避要有隨機抖動 —— 固定退避會讓 30 條執行緒同時重試（thundering herd）')
 ok('max(4, len(api_keys) * 2)' in _aa,
