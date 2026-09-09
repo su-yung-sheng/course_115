@@ -483,6 +483,17 @@ function createAllSeatFolders(term) {
    ⚠️ 一律 setTrashed（丟垃圾桶），不做永久刪除 —— 清錯還撈得回來。
    ⚠️ 保留的是**最新建立**的那一張，和 find 查詢的規則一致。 */
 function cleanDuplicateShots(term, doIt) {
+  /* ⚠️⚠️ Apps Script 的 ▶ 執行鈕**不會傳參數** —— 直接對這支按執行，
+     term 是 undefined，checkTerm 會丟「學期參數不合法：「」」。
+     （老師 2026-09-08 就是這樣踩到的，而那個錯誤訊息完全看不出原因。）
+     ⇒ 沒指定就用第一個學期，並且把用了哪一個印出來。
+     ★ 這樣只影響「報告」——真的要清必須帶 doIt=true，
+       而帶參數就只能用下面那幾支包裝函式。 */
+  if (!String(term || "").trim()) {
+    term = ALLOWED_TERMS[0];
+    Logger.log("（沒有指定學期，用 " + term + "；要換學期請執行 "
+               + "cleanDuplicateShots_11502_report 那幾支）");
+  }
   var t = checkTerm(term);
   var root = findFolder(DriveApp.getFolderById(ROOT_ID), t);
   var unit = root ? findFolder(root, UNIT_FOLDER["screenshot"]) : null;
@@ -524,9 +535,19 @@ function cleanDuplicateShots(term, doIt) {
              + (doIt ? "（已丟垃圾桶）" : "（**只報告，沒有動任何檔案**）"));
   report.forEach(function (line) { Logger.log("  " + line); });
   if (!doIt && nDup) {
-    Logger.log("確認沒問題的話，執行 cleanDuplicateShots(\"" + t + "\", true)");
+    Logger.log("確認沒問題的話，執行 cleanDuplicateShots_" + t + "_clean");
   }
 }
+
+
+/* ── 給 ▶ 執行鈕用的包裝（Apps Script 不能從 UI 傳參數）──────────
+   在編輯器上方的函式下拉選單挑一支，按執行，看「執行記錄」。
+   ⚠️ 先跑 _report 看清單，確認沒問題再跑 _clean。
+   ⚠️ _clean 是把舊檔丟垃圾桶（不是永久刪除），清錯撈得回來。 */
+function cleanDuplicateShots_11501_report() { cleanDuplicateShots("11501"); }
+function cleanDuplicateShots_11501_clean()  { cleanDuplicateShots("11501", true); }
+function cleanDuplicateShots_11502_report() { cleanDuplicateShots("11502"); }
+function cleanDuplicateShots_11502_clean()  { cleanDuplicateShots("11502", true); }
 
 
 function checkFolders() {

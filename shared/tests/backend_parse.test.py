@@ -1597,6 +1597,17 @@ ok('function cleanDuplicateShots(' in _gs and 'doIt ?' in _gs,
 ok('setTrashed' in _gs and 'deleteFile' not in _gs,
    '★★ 一律丟垃圾桶，不做永久刪除 —— 清錯還撈得回來')
 
+# ⛔ 2026-09-08 老師實際踩到：對 cleanDuplicateShots 按 ▶ 執行 →
+#    「學期參數不合法：「」」。★ Apps Script 的執行鈕**不會傳參數**，
+#    而那個錯誤訊息完全看不出原因（看起來像前端沒帶 term）。
+ok('function cleanDuplicateShots_11501_report()' in _gs
+   and 'function cleanDuplicateShots_11502_clean()' in _gs,
+   '★★★ 要有無參數的包裝函式 —— Apps Script 的 ▶ 執行鈕沒辦法傳參數，'
+   '沒有包裝就只能改程式碼才跑得動')
+ok('term = ALLOWED_TERMS[0]' in _gs,
+   '★★ 直接對主函式按執行也要跑得起來（沒指定就用第一個學期並印出來），'
+   '不要丟一個看不出原因的錯誤')
+
 # ⚠️⚠️ 2026-09-07：我一度懷疑「gemma 不支援 response_schema」，
 #    但老師說「今天早上有評分成功過」—— 直接推翻了那個假設。
 #    ★ 降級機制留著（無害的韌性），但**不可以無條件降級**：
