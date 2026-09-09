@@ -1578,6 +1578,25 @@ ok('\n    avg = _grade_avg_seconds()' in _sq,
 ok('samples = len(_grade_recent)' in _sq,
    '★★ samples 要在鎖裡面讀：_grade_recent 是別的執行緒在改的')
 
+# ⛔⛔ 2026-09-08 老師：「證書區有重複檔案」「班級通關記錄中有，但證書沒看到」。
+#    ★ 同一個原因：GAS 的證書檔名原本是 String(data.challengeId) + ".png"
+#      —— **不補零**，完全信任呼叫端。只要有任何一版沒補，3.png 和 03.png
+#      就會並存，而 find 把兩者正規化成同一個 key、後者覆蓋前者，
+#      且 getFiles() 的順序不保證 ⇒ 證書可能顯示舊的那張。
+_gs = io.open(os.path.join(ROOT, 'shared', 'filebackup.gs'), encoding='utf8').read()
+ok('fileName = pad2(data.challengeId)' in _gs,
+   '★★★ 證書檔名要由 GAS 自己補零 —— 呼叫端有三個（兩個網頁＋後端），'
+   '漏補的那一個不會有任何錯誤訊息')
+ok('function shotKey(' in _gs and 'function replaceShot(' in _gs,
+   '★★★ 要用正規化後的 key 清同一關的舊檔（3.png／03.png／003.png 都算同一關）')
+ok('at4 > newest[k4].at' in _gs,
+   '★★★ find 遇到重複要取**最新建立**的，不可以靠 getFiles() 的順序 —— '
+   '那個順序不保證，證書會每次不一樣')
+ok('function cleanDuplicateShots(' in _gs and 'doIt ?' in _gs,
+   '★★ 要有一次性清理工具，而且**預設只報告不動檔案**（動的是學生的證書）')
+ok('setTrashed' in _gs and 'deleteFile' not in _gs,
+   '★★ 一律丟垃圾桶，不做永久刪除 —— 清錯還撈得回來')
+
 # ⚠️⚠️ 2026-09-07：我一度懷疑「gemma 不支援 response_schema」，
 #    但老師說「今天早上有評分成功過」—— 直接推翻了那個假設。
 #    ★ 降級機制留著（無害的韌性），但**不可以無條件降級**：

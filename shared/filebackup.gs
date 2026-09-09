@@ -123,6 +123,35 @@ function seatFolder(term, unit, classRoom, seatNo) {
   return f;
 }
 
+/** 關卡檔名正規化：03.png / 3.png / 003.png 都算同一關，回傳 "3"。
+    ⚠️ 和 find 查詢用的是**同一套**規則 —— 兩邊寫不一樣的話，
+       清掉的和查出來的會對不上。 */
+function shotKey(fileName) {
+  return String(fileName || "").replace(/\.[^.]+$/, "").replace(/^0+/, "");
+}
+
+/* ⛔⛔ 2026-09-08 老師：「證書區有重複檔案」「班級通關記錄中有，但證書沒看到」
+   ★ 同一個原因：這支只認**完全同名**，而檔名是呼叫端決定補不補零的
+     （下面 doPost 原本寫 String(data.challengeId) + ".png"）。
+     只要歷史上有任何一版沒補零，就會同時存在 3.png 和 03.png ——
+     兩個都留著，而 find 查詢把兩者正規化成同一個 key、後者覆蓋前者，
+     **且 getFiles() 的順序不保證** ⇒ 證書可能顯示舊的那張。
+   ⇒ 證書區改用 replaceShot：用正規化後的 key 比對，把同一關的舊檔
+     （不管補幾個零）全部丟垃圾桶。
+   ⚠️ replaceFile 保留原樣給暫存區用 —— 那裡的檔名是學生的原檔名，
+      關卡資訊就在裡面，不可以正規化。 */
+function replaceShot(folder, challengeId, base64, mimeType) {
+  var want = shotKey(pad2(challengeId));
+  var olds = folder.getFiles();
+  var doomed = [];
+  while (olds.hasNext()) {
+    var f = olds.next();
+    if (shotKey(f.getName()) === want) doomed.push(f);
+  }
+  doomed.forEach(function (f) { f.setTrashed(true); });
+  return replaceFile(folder, pad2(challengeId) + ".png", base64, mimeType);
+}
+
 /** 同名舊檔先丟垃圾桶，確保每人每關只留一份 */
 function replaceFile(folder, fileName, base64, mimeType) {
   var olds = folder.getFilesByName(fileName);
@@ -283,15 +312,25 @@ function doPost(e) {
       f4 = findFolder(f4, pad2(data.seatNo));
       var urls4 = {};
       if (f4) {
+        /* ⚠️⚠️ 同一關可能有多個檔（3.png 和 03.png，見 replaceShot 的說明）。
+           原本是「後面覆蓋前面」，而 getFiles() 的順序**不保證** ——
+           證書可能顯示舊的那張，而且每次重整還可能不一樣。
+           ⇒ 明確取**最新建立**的那一張。舊資料清乾淨之前，
+             這一條就是證書不會讀錯的保證。 */
         var it4 = f4.getFiles();
+        var newest = {};
         while (it4.hasNext()) {
           var ff = it4.next();
-          // 03.png -> "3"（去副檔名、去前導零）
-          var k4 = ff.getName().replace(/\.[^.]+$/, "").replace(/^0+/, "");
-          if (k4) {
-            urls4[k4] = "https://drive.google.com/thumbnail?id=" + ff.getId() + "&sz=w1000";
+          var k4 = shotKey(ff.getName());       // 03.png -> "3"
+          if (!k4) continue;
+          var at4 = ff.getDateCreated().getTime();
+          if (!newest[k4] || at4 > newest[k4].at) {
+            newest[k4] = { at: at4, id: ff.getId() };
           }
         }
+        Object.keys(newest).forEach(function (k) {
+          urls4[k] = "https://drive.google.com/thumbnail?id=" + newest[k].id + "&sz=w1000";
+        });
       }
       return json({ success: true, term: t4, unit: unit4,
                     found: Object.keys(urls4).length, urls: urls4 });
@@ -314,11 +353,20 @@ function doPost(e) {
       fileName = (data.unitNo ? pad2(data.unitNo) : String(data.unit || "00")) + ".sb3";
       mime     = "application/octet-stream";
     } else {
-      fileName = String(data.challengeId) + ".png";
+      /* ⚠️⚠️ 這裡原本是 String(data.challengeId) + ".png" —— **不補零**，
+         完全信任呼叫端。今天兩個呼叫端都有補（前端 padStart(2,'0')、
+         後端 zfill(2)），但只要有任何一版沒補，就會生出 3.png 和 03.png
+         兩個檔，而證書查詢會在它們之間任意挑一個。
+         ⇒ GAS 自己補零。**不要相信呼叫端** —— 呼叫端有兩個網頁加一個
+           後端，將來還會有第四個，而漏補的那一個不會有任何錯誤訊息。
+         （pad2 的註解本來就寫「座號 / 關卡編號補零」，只是這一行沒用到它。） */
+      fileName = pad2(data.challengeId) + ".png";
       mime     = data.mimeType || "image/png";
     }
 
-    var file = replaceFile(folder, fileName, data.base64, mime);
+    var file = (kind === "sb3")
+             ? replaceFile(folder, fileName, data.base64, mime)
+             : replaceShot(folder, data.challengeId, data.base64, mime);
     url = (kind === "sb3")
         ? "https://drive.google.com/file/d/" + file.getId() + "/view"
         : "https://drive.google.com/thumbnail?id=" + file.getId() + "&sz=w1000";
@@ -419,6 +467,68 @@ function createAllSeatFolders(term) {
  * 【手動執行 · 自我檢查】確認根資料夾看得到、兩學期資料夾都建得起來。
  * 上課前跑一次，比等學生上傳失敗才發現好。
  */
+/* ══════════════════════════════════════════════════════════════
+   一次性清理：證書區同一關的重複檔案
+   ══════════════════════════════════════════════════════════════
+   ⛔ 2026-09-08 老師：「證書區有重複檔案」。原因見 replaceShot 的說明
+      （檔名補零與否不一致，3.png 和 03.png 並存）。
+      新版已經不會再產生，但**已經在那裡的要清掉** ——
+      不清的話，find 雖然改成取最新的，老師打開資料夾還是一團亂。
+
+   用法（Apps Script 編輯器，選這個函式按執行，看「執行記錄」）：
+       cleanDuplicateShots("11501")        ← 只報告，不動任何檔案
+       cleanDuplicateShots("11501", true)  ← 真的清（舊檔丟垃圾桶）
+
+   ⚠️⚠️ 預設是**只報告**。這裡動的是學生的證書，看過報告再決定要不要清。
+   ⚠️ 一律 setTrashed（丟垃圾桶），不做永久刪除 —— 清錯還撈得回來。
+   ⚠️ 保留的是**最新建立**的那一張，和 find 查詢的規則一致。 */
+function cleanDuplicateShots(term, doIt) {
+  var t = checkTerm(term);
+  var root = findFolder(DriveApp.getFolderById(ROOT_ID), t);
+  var unit = root ? findFolder(root, UNIT_FOLDER["screenshot"]) : null;
+  if (!unit) { Logger.log("找不到 " + t + " 的截圖資料夾"); return; }
+  var report = [], nDup = 0, nSeat = 0;
+  var cls = unit.getFolders();
+  while (cls.hasNext()) {
+    var c = cls.next();
+    var seats = c.getFolders();
+    while (seats.hasNext()) {
+      var seat = seats.next();
+      nSeat++;
+      var byKey = {};
+      var files = seat.getFiles();
+      while (files.hasNext()) {
+        var f = files.next();
+        var k = shotKey(f.getName());
+        if (!k) continue;
+        (byKey[k] = byKey[k] || []).push(
+          { id: f.getId(), name: f.getName(), at: f.getDateCreated().getTime(), f: f });
+      }
+      Object.keys(byKey).forEach(function (k) {
+        var arr = byKey[k];
+        if (arr.length < 2) return;
+        arr.sort(function (a, b) { return b.at - a.at; });   // 新的排前面
+        nDup += arr.length - 1;
+        report.push(c.getName() + "/" + seat.getName() + " 第 " + k + " 關："
+                    + arr.map(function (x) { return x.name; }).join("、")
+                    + " ⇒ 保留 " + arr[0].name);
+        if (doIt) {
+          for (var i = 1; i < arr.length; i++) arr[i].f.setTrashed(true);
+          // 順便把保留的那張正規化成補零檔名
+          if (arr[0].name !== pad2(k) + ".png") arr[0].f.setName(pad2(k) + ".png");
+        }
+      });
+    }
+  }
+  Logger.log("掃了 " + nSeat + " 格座號，找到 " + nDup + " 個重複檔案"
+             + (doIt ? "（已丟垃圾桶）" : "（**只報告，沒有動任何檔案**）"));
+  report.forEach(function (line) { Logger.log("  " + line); });
+  if (!doIt && nDup) {
+    Logger.log("確認沒問題的話，執行 cleanDuplicateShots(\"" + t + "\", true)");
+  }
+}
+
+
 function checkFolders() {
   var root = DriveApp.getFolderById(ROOT_ID);
   Logger.log("✅ 根資料夾：" + root.getName() + "　" + root.getUrl());
