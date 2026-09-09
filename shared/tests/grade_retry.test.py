@@ -204,6 +204,44 @@ ok(set(calls) == {"gemini-2.5-flash"},
 ok(len(_FakeClient.keys_used) >= 2 and _FakeClient.keys_used[0] != _FakeClient.keys_used[1],
    "★★ 重試要換另一把金鑰（500／429 換金鑰是有意義的）")
 
+section("③b 同一個模型連續兩次 500 也要換模型")
+# ⛔⛔ 2026-09-09 實際批改紀錄：13:54~13:56 同一位學生連續四次 500 INTERNAL
+#    （3.2／1.1／48.5／46.5 秒）然後失敗 —— 而備援模型**一次都沒被試過**。
+#    原本只有 503 會換模型，理由是「500 多半是暫時的」。連續四次就不是。
+def _s3b(m, n):
+    if m == "gemma-4-31b-it":
+        raise Exception("500 INTERNAL. {'error': {'code': 500, 'message': "
+                        "'Internal error encountered.', 'status': 'INTERNAL'}}")
+    return _FakeResp(GOOD)
+
+
+res, calls, clock = run(_s3b, step=5.0)
+ok(res.get("score") == 88,
+   "★★★ 連續 500 之後要換到備援模型並評出分數　←　%r" % res.get("score"))
+ok(calls.count("gemma-4-31b-it") == 2,
+   "★★★ 第一次還當它是暫時的（重試划算），**第二次**就要換 —— "
+   "不可以四次都賭同一個模型　←　打了 %d 次" % calls.count("gemma-4-31b-it"))
+ok("gemini-2.5-flash" in calls, "★★ 要真的打到備援模型　←　%r" % (calls,))
+ok("連續 2 次 500" in "\n".join(core.GRADE_LOG),
+   "★★ 紀錄要講明為什麼換模型")
+
+# ⚠️ 只算**連續**的：中間夾到別種錯誤要重新計數，否則整場累積下來
+#    會在不相干的時候誤觸。
+def _s3c(m, n):
+    if n == 1:
+        raise Exception("500 INTERNAL. status INTERNAL")
+    if n == 2:
+        raise Exception("429 RESOURCE_EXHAUSTED")
+    if n == 3:
+        raise Exception("500 INTERNAL. status INTERNAL")
+    return _FakeResp(GOOD)
+
+
+res, calls, clock = run(_s3c, step=2.0)
+ok(calls.count("gemma-4-31b-it") == 4 and res.get("score") == 88,
+   "★★★ 500 → 429 → 500 不算連續兩次，不可以換模型　←　主要模型打了 %d 次"
+   % calls.count("gemma-4-31b-it"))
+
 section("④ 退避不可以等太久（等待也要從預算裡扣）")
 def _s4(m, n):
     raise Exception("429 RESOURCE_EXHAUSTED")
