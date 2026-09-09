@@ -141,15 +141,34 @@ function shotKey(fileName) {
    ⚠️ replaceFile 保留原樣給暫存區用 —— 那裡的檔名是學生的原檔名，
       關卡資訊就在裡面，不可以正規化。 */
 function replaceShot(folder, challengeId, base64, mimeType) {
-  var want = shotKey(pad2(challengeId));
-  var olds = folder.getFiles();
-  var doomed = [];
-  while (olds.hasNext()) {
-    var f = olds.next();
-    if (shotKey(f.getName()) === want) doomed.push(f);
+  /* ⛔⛔ 2026-09-08 老師的清理報告：同一格出現 **02.png、02.png 兩個同名檔**。
+     ★ 那不是補零的問題（那是另一種），是這三步**不是不可分割的**：
+         列出同名 → 丟垃圾桶 → 建立
+       Apps Script 的 doPost 可以同時跑好幾個執行，兩個請求同時進來，
+       兩邊都查到「沒有同名檔」，就會各建一個。
+     ⇒ 用 ScriptLock 把整段序列化。
+     ⚠️⚠️ 拿不到鎖**也要繼續做**，不可以因此讓學生的截圖備份失敗 ——
+        多一個重複檔遠比少一張證書輕微，而清理工具本來就撈得回來。 */
+  var lock = null;
+  try {
+    lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+  } catch (e) {
+    lock = null;                                 // 20 秒還拿不到就照做
   }
-  doomed.forEach(function (f) { f.setTrashed(true); });
-  return replaceFile(folder, pad2(challengeId) + ".png", base64, mimeType);
+  try {
+    var want = shotKey(pad2(challengeId));
+    var olds = folder.getFiles();
+    var doomed = [];
+    while (olds.hasNext()) {
+      var f = olds.next();
+      if (shotKey(f.getName()) === want) doomed.push(f);
+    }
+    doomed.forEach(function (f) { f.setTrashed(true); });
+    return replaceFile(folder, pad2(challengeId) + ".png", base64, mimeType);
+  } finally {
+    if (lock) { try { lock.releaseLock(); } catch (e2) {} }
+  }
 }
 
 /** 同名舊檔先丟垃圾桶，確保每人每關只留一份 */
@@ -520,8 +539,16 @@ function cleanDuplicateShots(term, doIt) {
         if (arr.length < 2) return;
         arr.sort(function (a, b) { return b.at - a.at; });   // 新的排前面
         nDup += arr.length - 1;
+        /* ★ 一定要印**建立時間**：兩個同名檔是「同一秒」還是「差好幾天」，
+           指向完全不同的根因 ——
+             同一秒／幾秒內 ⇒ 兩個請求同時進來（已用 ScriptLock 修）
+             差好幾天       ⇒ 有人重驗，而第一次的網址沒被記進 Firestore
+           沒有這個欄位，報告只能告訴我們「有重複」，不能告訴我們為什麼。 */
         report.push(c.getName() + "/" + seat.getName() + " 第 " + k + " 關："
-                    + arr.map(function (x) { return x.name; }).join("、")
+                    + arr.map(function (x) {
+                        return x.name + "(" + Utilities.formatDate(
+                          new Date(x.at), "Asia/Taipei", "MM/dd HH:mm:ss") + ")";
+                      }).join("、")
                     + " ⇒ 保留 " + arr[0].name);
         if (doIt) {
           for (var i = 1; i < arr.length; i++) arr[i].f.setTrashed(true);
