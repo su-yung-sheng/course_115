@@ -253,6 +253,28 @@ ok(clock.slept and max(clock.slept) <= 12.0,
    % (max(clock.slept) if clock.slept else 0))
 ok(len(clock.slept) >= 1, "★ 還是要有退避與抖動（thundering herd）")
 
+section("④b 省輸出：不叫模型寫學生看不到的 logic_analysis")
+# ⛔ 2026-09-09 清點 shared/grader.html 實際顯示的欄位：
+#    creative_highlights / comments / deducted_items 有，logic_analysis **沒有**。
+#    而它的描述是「深度邏輯分析」—— 多半是最長的一個欄位。
+#    ★ LLM 逐字生成 ⇒ 砍掉最長的輸出，時間幾乎等比例下降。
+ok(core.GRADE_WANT_ANALYSIS is False,
+   "★★★ 預設不要 logic_analysis（學生端一個字都沒顯示）")
+# ⚠️ 要用**挖出來的儲存格原始碼**比對，不可以讀 .ipynb 的原始 JSON ——
+#    那裡面的引號是跳脫的（\\"），字串永遠對不上，而且看起來像功能沒做。
+_core_txt = "".join(json.load(io.open(NB, encoding="utf-8"))["cells"][6]["source"])
+ok('不要輸出 logic_analysis 這個欄位' in _core_txt,
+   "★★★ 純文字那一條要**明講**不要輸出它 —— Gemma 走的是純文字，"
+   "改 response_schema 對它完全沒有作用")
+ok('_req.insert(0, "logic_analysis")' in _core_txt,
+   "★★ schema 那一條也要跟著走，否則換成 Gemini 系列時行為會不一致")
+ok('usage_metadata' in _core_txt and 'token/秒' in _core_txt,
+   "★★★ 要記 token 用量 —— 「時間花在讀輸入還是寫輸出」是決定"
+   "砍 prompt 還是砍回覆的唯一依據")
+ok('getattr(response, "usage_metadata", None)' in _core_txt,
+   "★★ 用 getattr 取：不同 SDK／模型不一定有這個欄位，"
+   "拿不到也不可以讓已經成功的批改失敗")
+
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
 _FakeClient.script = lambda m: (_ for _ in ()).throw(AssertionError("不該呼叫 API"))
 core.time = _Clock()
