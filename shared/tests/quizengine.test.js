@@ -42,23 +42,40 @@ function boot(term, bank) {
   const w = dom.window;
   global.window = w; global.document = w.document; global.location = w.location;
   global.sessionStorage = w.sessionStorage; global.localStorage = w.localStorage;
-  ['grading.js', 'qstat.js'].forEach(f =>
+  /* ⚠️ anskey.js 一定要載：2026-08-17 起題庫裡沒有明碼答案，
+     判分走 ANSKEY.check()。沒載的話每一題都會判成答錯，
+     「答對十題完成挑戰」這種測試就永遠跑不完。 */
+  ['grading.js', 'qstat.js', 'anskey.js'].forEach(f =>
     new Function('window', read('shared/' + f))(w));
   new Function('window', read(term + '/content/' + bank))(w);
   new Function('window', read(term + '/config.js'))(w);
+  /* ★ 引擎啟動時會把 window.QUIZ_CONTENT 刪掉（免得學生在 Console 直接讀題庫），
+     所以要在 eval 之前先留一份給測試用。 */
+  const BANK = w.QUIZ_CONTENT;
   /* 身分與進度回報都是別支的事，這裡用最小的替身。 */
   w.SSO = { me: () => ({ cls: '801', no: '01', name: '測試學生' }) };
-  const saved = [];
+  const saved = [], units = [];
   w.REPORT = {
     qstat: (mod, m) => { saved.push(m); return Promise.resolve(); },
-    unit: () => Promise.resolve(),
+    unit: (mod, unitId, opts) => { units.push({ mod, unitId, opts }); return Promise.resolve(); },
     get: () => Promise.resolve(null),
     /* ⚠️ 替身要把引擎真的會呼叫的都補齊。少一支的症狀是
        「送出答案丟例外」—— 和真的壞掉長得一模一樣，會查錯方向。 */
     history: () => Promise.resolve([])
   };
   w.eval(read('shared/quiz-engine.js'));
-  return { w, errs, saved, $: id => w.document.getElementById(id) };
+  /* 題目文字 -> 答案雜湊。測試要「答對」才走得到挑戰結束。 */
+  const ansMap = {};
+  (function walk(o) {
+    if (!o || typeof o !== 'object') return;
+    if (Array.isArray(o)) return o.forEach(walk);
+    if (o.q && o.a) ansMap[o.q] = o.a;
+    Object.keys(o).forEach(k => walk(o[k]));
+  })(BANK);
+  return {
+    w, errs, saved, units, ansOf: q => ansMap[q],
+    $: id => w.document.getElementById(id)
+  };
 }
 const click = (w, el) => el && el.dispatchEvent(new w.Event('click', { bubbles: true }));
 
@@ -152,6 +169,93 @@ section('★★ 失焦遮罩與浮水印');
   const r = boot('11501', 'ethics.js');
   r.w.dispatchEvent(new r.w.Event('blur'));
   ok(!r.$('qz-veil'), '★★ 還沒開始測驗就失焦 → 不會蓋出一個莫名其妙的遮罩');
+}
+
+/* ── ★★ 作答節奏：要記得下「最慢的那一題」──────────────────
+   ⛔⛔ 2026-09-11 實際發生：一位學生 24 次挑戰全部
+      「中位 1 秒／最快 0 秒／正確率 100%」，查出是用瀏覽器外掛自動作答。
+   ★ 當時 pace 只記 med 和 min，而**那兩個數字分不出人和腳本** ——
+     真的很熟的學生也可能又快又準。
+     分得出來的是**最慢那一題**：
+       人　 一定有長尾（某題卡住、回頭重看）→ max 常常十幾二十秒
+       腳本 每題都一樣快　　　　　　　　　 → max 和 min 幾乎相同
+   ⇒ 這一段就是把「人」和「腳本」兩種作答節奏各跑一次，
+     確認 max 真的分得開。拿掉 max 的話下面第二條會紅。
+   ⚠️ 這是**記錄**，不是判定 —— 引擎不會因為節奏擋任何人。 */
+section('★★ 作答節奏要記得下最慢的那一題');
+{
+  /** 用固定的時鐘跑完一次挑戰，回傳回報上去的 pace。
+      @param secs 每一題要「想」幾秒（長度＝連對目標） */
+  function runChallenge(secs) {
+    const r = boot('11501', 'ethics.js');
+    const w = r.w;
+    /* ★ 假時鐘：引擎用 Date.now() 算每題花了幾秒，
+       控制它才做得出「某題卡住 18 秒」這種情境。 */
+    let clock = 1.7e12;
+    const realNow = w.Date.now;
+    w.Date.now = () => clock;
+
+    click(w, [...w.document.querySelectorAll('.qz-open')][0]);
+    click(w, r.$('start-quiz-btn'));
+
+    for (let i = 0; i < secs.length; i++) {
+      const box = r.$('question-container');
+      if (!box || !box.querySelector('h3')) break;      // 挑戰已經結束
+      const qText = box.querySelector('h3').textContent;
+      const a = r.ansOf(qText);
+      const opts = [...w.document.querySelectorAll('.qz-opt')];
+      const idx = opts.findIndex(o => w.ANSKEY.check(qText, o.textContent, a));
+      if (idx < 0) break;                                // 對不到答案就別硬跑
+      click(w, opts[idx]);
+      clock += secs[i] * 1000;                           // ★ 這一題想了幾秒
+      const submit = [...w.document.querySelectorAll('button')]
+        .filter(b => /送出答案/.test(b.textContent))[0];
+      click(w, submit);
+    }
+    w.Date.now = realNow;
+    const last = r.units[r.units.length - 1];
+    return last && last.opts && last.opts.extra && last.opts.extra.pace;
+  }
+
+  /* ① 人：有長尾（第 5 題卡住 18 秒） */
+  const human = runChallenge([3, 5, 2, 4, 18, 3, 6, 2, 4, 3]);
+  ok(!!human, '答對十題之後有回報 pace　←　' + JSON.stringify(human));
+  ok(human && human.max != null,
+     '★★★ pace 要有 max —— 沒有它，教師端分不出「很熟的學生」和「腳本」');
+  ok(human && human.max >= 18, '★★ 人的 max 抓得到那題卡住的 18 秒　←　' + (human && human.max));
+  ok(human && human.n === 10, '★ n ＝ 實際作答題數（' + (human && human.n) + '）');
+  ok(human && human.min <= human.med && human.med <= human.max,
+     '★ min ≦ med ≦ max（排序沒寫反）');
+
+  /* ② 腳本：每題都一樣快 */
+  const bot = runChallenge([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+  ok(bot && bot.max <= 1,
+     '★★★ 腳本的 max 也在 1 秒內 —— 這才是教師端要標紅的條件　←　' + JSON.stringify(bot));
+  ok(human && bot && human.max > bot.max * 5,
+     '★★★ 兩種節奏的 max 差得開（人 ' + (human && human.max) +
+     's vs 腳本 ' + (bot && bot.max) + 's）—— 差不開就標不出來');
+}
+
+/* ── ★★ 教師端要真的用 max 來標紅，而且舊資料不可以被冤枉 ────
+   ⚠️ 上面驗的是「資料有記下來」，這一段驗的是「教師端有在看」。
+      少了這一段，max 可以被記得好好的、卻沒有任何人看得到。 */
+section('★★ 教師端的異常標記');
+{
+  ['11501', '11502'].forEach(term => {
+    const h = read(term + '/teacher.html');
+    ok(/p\.max\s*!=\s*null\s*&&\s*p\.max\s*<=\s*1/.test(h),
+       term + ' ★★ 標紅條件看的是「最慢那一題也在 1 秒內」，不是平均很快');
+    ok(/p\.max\s*!=\s*null/.test(h),
+       term + ' ★★★ 舊紀錄沒有 max 時不可以標紅 —— 寧可漏掉，不可以冤枉人');
+    ok(/\(p\.n\s*\|\|\s*0\)\s*>=\s*5/.test(h),
+       term + ' ★ 題數太少不標（連對三題就結束的沒有統計意義）');
+    ok(/最慢\s*\$\{p\.max\}s/.test(h),
+       term + ' ★★ 畫面上要印出最慢秒數 —— 只標紅不給數字，老師無從判斷');
+    /* ★ 資訊倫理寫的是 unit，不是 chapter（見 shared/report.js）。
+       只認 chapter 的話每一筆都印「完成一項」，分不出重刷了哪幾章。 */
+    ok(/h\.unit\s*\?/.test(h),
+       term + ' ★★★ 逐筆明細要認得 h.unit —— 不然資訊倫理全部印成「完成一項」');
+  });
 }
 
 /* ── ★ 這一條不可以拿掉（看起來和上面重複，其實不是）──────

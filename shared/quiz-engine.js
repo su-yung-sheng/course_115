@@ -532,11 +532,25 @@
     el.textContent = (user.cls || '') + '班 ' + (user.no || '') + '號　' + stamp;
   }
 
-  /** 把每題的秒數濃縮成兩個數字 —— 不存整個陣列（history 有長度上限） */
+  /** 把每題的秒數濃縮成幾個數字 —— 不存整個陣列（history 有長度上限）
+
+     ⛔⛔ 2026-09-11 加上 max，原因是實際遇到的事：
+        某位學生 24 次挑戰全部「中位 1 秒／最快 0 秒／正確率 100%」，
+        後來查出是用瀏覽器外掛自動作答。
+     ★ 光有 med 和 min 分不出人和腳本 —— 真的很熟的學生也可能很快。
+       **分得出來的是最慢那一題**：
+         人　 一定有長尾（某題卡住、回頭重看）→ max 常常十幾二十秒
+         腳本 每題都一樣快　　　　　　　　　 → max 和 min 幾乎相同
+     ⇒ 「連最慢的一題都在 1 秒內」才是那個訊號，不是「平均很快」。
+     ⚠️ 這只是記錄，引擎不會因為它擋任何人 ——
+        擋不擋、怎麼處理，是老師看了教師端之後的決定。
+     ⚠️ 要裝得像人，腳本得刻意做出隨機長尾；那已經不是
+        「隨手裝個外掛」的層次了。這一層擋不死，但拉高了門檻。 */
   function pace() {
     var a = behav.t.slice().sort(function (x, y) { return x - y; });
     if (!a.length) return null;
-    return { med: a[Math.floor(a.length / 2)], min: a[0], n: a.length };
+    return { med: a[Math.floor(a.length / 2)], min: a[0],
+             max: a[a.length - 1], n: a.length };
   }
 
   function startTimer() {

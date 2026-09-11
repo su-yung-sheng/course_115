@@ -1531,22 +1531,48 @@
       if (!items.length) return extra + '<div class="text-xs text-slate-400 px-3 py-2">尚無逐筆明細（可能是舊資料或以「重算星星」產生，僅有總星數）。</div>';
       return extra + items.map((h, i) => {
         const dt = h.at ? new Date(h.at).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-        const what = h.chapter ? `章節 ${h.chapter}` : (h.challenge != null ? `第 ${h.challenge} 關` : '完成一項');
+        /* ⚠⚠ 資訊倫理寫進 history 的欄位是 unit（見 shared/report.js），
+           chapter 是早就沒有人在寫的舊欄位。只認 chapter 的話，
+           倫理的每一筆都會印成「完成一項」——
+           2026-09-11 查一位學生的紀錄時就卡在這裡：26 筆長得一模一樣，
+           分不出他重刷了哪幾章。 */
+        const what = h.chapter ? `章節 ${h.chapter}`
+          : (h.challenge != null ? `第 ${h.challenge} 關`
+          : (h.unit ? (moduleKey === 'ethics' ? `章節 ${h.unit}` : `第 ${h.unit} 關`)
+          : '完成一項'));
         const sc = (h.score != null) ? `　正確率 ${h.score}%` : '';
         /* ⚠️⚠️ 作答過程的參考數字（2026-08-17 加）——
            **不是作弊判定**，系統不會因為這些數字擋任何人。
-             ⏱ 中位／最快：每一題想了幾秒
+             ⏱ 中位／最快／最慢：每一題想了幾秒
              ⧉ 複製：按 Ctrl+C 的次數（題目本來就不給複製，按了只會拿到一句話）
              ↗ 離開：切到別的分頁或 App 的次數（通知跳出來也算）
            ★ 單看一個數字沒有意義，要看**對照**：
-             整份都 3 秒、或難題特別久，那才值得找學生聊一句。 */
+             整份都 3 秒、或難題特別久，那才值得找學生聊一句。
+
+           ⛔⛔ 2026-09-11 實際遇到：某位學生 24 次挑戰全部
+              「⏱ 1s／最快 0s、正確率 100%」，查出是用瀏覽器外掛自動作答。
+              ★ 光看「中位數很小」不夠 —— 真的很熟的學生也可能很快。
+                分得出人和腳本的是**最慢那一題**：
+                  人　 一定有長尾（某題卡住、回頭重看）→ max 常常十幾二十秒
+                  腳本 每題都一樣快　　　　　　　　　 → max 和 min 幾乎相同
+              ⇒ 所以標紅的條件是「**連最慢的一題都在 1 秒內**」，
+                不是「平均很快」——這一條不會誤傷手速快的學生。
+           ⚠️ 標紅只是提醒你去看，**不是判定**，也不會擋任何人的星星。
+           ⚠️ 2026-09-11 以前的舊紀錄沒有 max（那時還沒記），
+              判不出來就不標 —— 寧可漏掉，也不可以冤枉人。 */
         const p = h.pace || null;
+        /* 題數太少沒有統計意義（連對 3 題就結束的不算）。 */
+        const robot = !!(p && p.max != null && p.max <= 1 && (p.n || 0) >= 5);
         const bits = [];
-        if (p && p.med != null) bits.push(`⏱ ${p.med}s／最快 ${p.min}s`);
+        if (p && p.med != null) {
+          bits.push(p.max != null
+            ? `⏱ ${p.med}s／最快 ${p.min}s／最慢 ${p.max}s`
+            : `⏱ ${p.med}s／最快 ${p.min}s`);
+        }
         if (h.copy) bits.push(`⧉ ${h.copy}`);
         if (h.away) bits.push(`↗ ${h.away}`);
         const beh = bits.length
-          ? `<span class="text-gray-400 ml-2" title="作答過程參考：想的秒數／複製次數／切出視窗次數（不是作弊判定）">${bits.join('　')}</span>`
+          ? `<span class="${robot ? 'text-red-600 font-bold' : 'text-gray-400'} ml-2" title="作答過程參考：想的秒數／複製次數／切出視窗次數（不是作弊判定）${robot ? ' ⚠ 連最慢的一題都在 1 秒內 —— 值得看一下，但這不是判定' : ''}">${bits.join('　')}${robot ? '　⚠' : ''}</span>`
           : '';
         return `<div class="text-xs text-gray-600 px-3 py-1.5 border-b border-gray-50 flex justify-between gap-2"><span class="font-medium">${i + 1}. ${what}${sc}${beh}</span><span class="text-gray-400 flex-shrink-0">${dt}</span></div>`;
       }).join('');
