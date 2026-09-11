@@ -21,6 +21,22 @@ import os
 import sys
 import types as _pytypes
 
+# ⚠️⚠️ Windows 的繁中主控台預設是 cp950，**編不出 ✅ ❌ ⚠️ 這些字元**，
+#    連 cell 6 自己在模組層 print 的 📚 也一樣。
+#    印一個勾勾就 UnicodeEncodeError → 整支 crash → 離開碼非 0，
+#    而 check.py 的 check_py_tests() 只看離開碼 —— 它會回報成
+#    「這支測試沒過」，於是 **pre-commit 取消提交**。
+#    ★ 老師看到的是「提交前檢查 檢查沒過」，完全看不出是「印字印掛了」。
+#    ⚠️ check.py 是用 subprocess 跑這些測試的，**子程序不會繼承這個修正**，
+#      所以每一支都要自己加（backend_parse.test.py 已經有了）。
+# ⛔ 2026-09-11 實際發生過：badge_shape / grade_retry / revoke_pass 三支同時
+#    被回報「沒過」，而在 Linux 上三支全綠 —— 差別只在主控台編碼。
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass          # 舊 Python 沒有 reconfigure；印不出來也不該中斷檢查
+
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 NB = os.path.join(ROOT, "shared", "backend.ipynb")
 
@@ -348,6 +364,54 @@ res = core.single_agent_grading(KEYS, "規則", "主題", "學生碼", "空白�
 ok(res.get("ok") is False and not _CLAUDE_CALLS,
    "★★★ 沒設 ANTHROPIC_API_KEY 就完全不要碰 Claude —— "
    "留在梯子上只會在最後一階白白失敗一次（而那次可能又掛住幾十秒）")
+
+section("④d 每一次批改都要留一筆摘要（跨 Colab 重啟）")
+# ⛔ 2026-09-10 老師問「今天批改使用的不是新版?」—— 我答不出來，因為
+#    批改紀錄只在記憶體、重啟就清空，最後靠「logic_analysis 空不空」反推。
+#    而那一次的 token 數字與秒數已經永遠沒了。
+#    ⇒ 老師：「不然怎麼追蹤比對與調整」。
+_FakeClient.script = lambda m: _FakeResp(GOOD)
+clock = _Clock(); core.time = clock; core.GRADE_LOG.clear()
+res = core.single_agent_grading(KEYS, "老師的規則很長很長很長", "主題",
+                                "學生碼", "空白不一樣", "參考解答",
+                                "gemma-4-31b-it", True, rules_source="第 1 關自己的")
+_st = res.get("_stat") or {}
+ok(bool(_st), "★★★ 成功時要把摘要掛在結果上帶出去　←　%r" % list(_st)[:6])
+ok(_st.get("ok") is True and _st.get("model") == "gemma-4-31b-it",
+   "★★ 要記下成敗與**實際用的模型**（備援與否是要比較的重點）")
+ok(_st.get("attempts") == 1 and _st.get("seconds") is not None,
+   "★★ 要記下試了幾次、總共幾秒")
+ok(_st.get("chars_rules") and _st.get("chars_student"),
+   "★★ 字數要分項留著 —— 「輸入重還是輸出重」要靠它判斷")
+ok(_st.get("want_analysis") is False,
+   "★★★ 要記下當時有沒有叫模型寫 logic_analysis —— "
+   "這正是老師這次分不出版本的那個變數")
+ok(_st.get("rules_source") == "第 1 關自己的",
+   "★★ 評分標準來源也要留（分數怪怪的時候第一個要查的就是它）")
+
+# 失敗的也要留 —— 失敗率與原因分布正是要追蹤的東西
+def _s4d(m):
+    raise Exception("500 INTERNAL. status INTERNAL")
+
+
+_FakeClient.script = _s4d
+clock = _Clock(); core.time = clock; core.GRADE_LOG.clear()
+res = core.single_agent_grading(KEYS, "規則", "主題", "學生碼", "空白不一樣",
+                                "解答", "gemma-4-31b-it", True)
+_st = res.get("_stat") or {}
+ok(res.get("ok") is False and _st.get("ok") is False and _st.get("error"),
+   "★★★ 失敗的更要留（失敗那幾次往往花掉最多時間）　←　%r"
+   % str(_st.get("error"))[:40])
+
+_src2 = "".join(json.load(io.open(NB, encoding="utf-8"))["cells"][8]["source"])
+ok('result.pop("_stat", None)' in _src2,
+   "★★★ 回給學生之前一定要 pop 掉 —— 那是內部觀測資料，"
+   "而且不可以跟著 record_submission 寫進成績")
+ok('def record_grade_stat' in "".join(
+      json.load(io.open(NB, encoding="utf-8"))["cells"][6]["source"]),
+   "★★ core 要有 record_grade_stat（寫失敗吞例外，不影響批改）")
+ok('/api/grade-stats' in _src2,
+   "★★ 要有讀得回來的端點，不然存了也看不到")
 
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
 _FakeClient.script = lambda m: (_ for _ in ()).throw(AssertionError("不該呼叫 API"))

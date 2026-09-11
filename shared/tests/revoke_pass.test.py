@@ -21,6 +21,22 @@ import os
 import sys
 import types as _pytypes
 
+# ⚠️⚠️ Windows 的繁中主控台預設是 cp950，**編不出 ✅ ❌ ⚠️ 這些字元**，
+#    連 cell 6 自己在模組層 print 的 📚 也一樣。
+#    印一個勾勾就 UnicodeEncodeError → 整支 crash → 離開碼非 0，
+#    而 check.py 的 check_py_tests() 只看離開碼 —— 它會回報成
+#    「這支測試沒過」，於是 **pre-commit 取消提交**。
+#    ★ 老師看到的是「提交前檢查 檢查沒過」，完全看不出是「印字印掛了」。
+#    ⚠️ check.py 是用 subprocess 跑這些測試的，**子程序不會繼承這個修正**，
+#      所以每一支都要自己加（backend_parse.test.py 已經有了）。
+# ⛔ 2026-09-11 實際發生過：badge_shape / grade_retry / revoke_pass 三支同時
+#    被回報「沒過」，而在 Linux 上三支全綠 —— 差別只在主控台編碼。
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass          # 舊 Python 沒有 reconfigure；印不出來也不該中斷檢查
+
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 NB = os.path.join(ROOT, "shared", "backend.ipynb")
 _pass, _fail = [0], [0]
