@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>臨時工具：開放關卡｜115學年上學期</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+  <script src="config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <!-- ★ 關卡清單從這裡來，不手打 —— 手打的對照表遲早會和實際關卡對不上 -->
+  <script src="content/flowchart.js"></script>
+</head>
+<!--
+  =====================================================================
+   臨時工具：開放關卡（老師 2026-09-12）
+  ---------------------------------------------------------------------
+   ★ 這一頁做的事，和教師端主控台的 unlockUnit() / lockUnit() / listUnlocks()
+     **完全一樣**，只是不用開 F12。上課現場比較好用。
+
+   ★★ 這是「暫時」的頁面，而且是真的可以直接刪掉：
+       · 沒有任何頁面連到它（hub、teacher 都沒有）
+       · 它不被任何程式引用
+       · 它只寫 roster/{學號} 的 unlocks_json —— 和主控台那一版同一個欄位
+       ⇒ 不需要的時候，刪掉這個檔案就結束了，系統其他部分完全不受影響。
+       ⚠️ 刪掉時記得把 shared/tests/reach.test.js 的 KNOWN 裡那一行也刪掉
+          （不然那份測試會說「KNOWN 裡有一個不存在的檔案」）。
+
+   ⚠️⚠️ 安全性：這一頁只寫 roster，**絕對不可以**改成寫 {學期}-progress。
+      roster 的安全規則是「只有老師能寫、學生只能單筆讀」，
+      所以學生偽造不了；而 {學期}-progress 學生自己寫得動 ——
+      把解鎖放進去等於開一個「自己幫自己解鎖」的後門。
+
+   ★ 它給的是**通行證，不是成就**：只讓下一關打得開，星星完全不動。
+     那位學生的這一關仍然是 0 星，補到 2⭐（75 分）才會有。
+  =====================================================================
+-->
+<body class="bg-slate-100 min-h-screen">
+
+  <!-- ── 登入畫面 ───────────────────────────────────────── -->
+  <div id="login-view" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-lg w-full max-w-sm p-8 text-center">
+      <div class="text-4xl mb-3">🔓</div>
+      <h1 class="text-xl font-black text-slate-800">臨時工具：開放關卡</h1>
+      <p class="text-sm text-slate-500 mt-2 mb-6">請用教師帳號登入。</p>
+      <button id="login-btn" onclick="doLogin()"
+        class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition">
+        用學校帳號登入
+      </button>
+      <p id="login-error" class="hidden mt-4 text-sm text-red-600 leading-relaxed"></p>
+    </div>
+  </div>
+
+  <!-- ── 主畫面 ─────────────────────────────────────────── -->
+  <div id="main-view" class="hidden max-w-xl mx-auto p-4 md:p-8">
+
+    <!-- ⚠️ 這個橫幅不要拿掉：它是在提醒「這一頁是暫時的」，
+         免得半年後有人把它當成系統的正式功能去維護。 -->
+    <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 mb-5 text-sm text-amber-900 leading-relaxed">
+      <b>⚠️ 這是臨時工具頁</b><br>
+      沒有任何地方連到這一頁，要用就存書籤。不需要的時候直接刪掉
+      <code class="bg-amber-100 px-1 rounded">11501/unlock.html</code>
+      這個檔案即可，系統其他部分不受影響。
+    </div>
+
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-2xl font-black text-slate-800">🔓 開放關卡</h1>
+      <button onclick="doLogout()" class="text-xs text-slate-400 hover:text-slate-600 underline">登出</button>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow p-5 md:p-6 space-y-4">
+
+      <div>
+        <label class="block text-sm font-bold text-slate-700 mb-1">學號</label>
+        <input id="sid" type="text" inputmode="numeric" maxlength="7" placeholder="1410511"
+          class="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl font-mono text-lg
+                 focus:border-indigo-500 focus:outline-none">
+        <p class="text-xs text-slate-400 mt-1">14 開頭的 7 位數字</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-bold text-slate-700 mb-1">關卡</label>
+        <select id="unit"
+          class="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl text-base bg-white
+                 focus:border-indigo-500 focus:outline-none"></select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-bold text-slate-700 mb-1">
+          原因 <span class="font-normal text-slate-400">（選填，之後查得到）</span>
+        </label>
+        <input id="reason" type="text" placeholder="卡在清單初始化"
+          class="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl text-base
+                 focus:border-indigo-500 focus:outline-none">
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 pt-1">
+        <button onclick="doUnlock()"
+          class="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition text-sm">
+          🔓 開放
+        </button>
+        <button onclick="doLock()"
+          class="py-3 bg-slate-600 hover:bg-slate-700 text-white font-bold rounded-xl transition text-sm">
+          🔒 收回
+        </button>
+        <button onclick="doList()"
+          class="py-3 bg-white border-2 border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl transition text-sm">
+          🔍 查詢
+        </button>
+      </div>
+
+      <div id="result" class="hidden rounded-xl p-4 text-sm leading-relaxed"></div>
+    </div>
+
+    <!-- ★ 這三句是操作說明裡最容易被忘記的，放在畫面上而不是註解裡 -->
+    <div class="mt-5 bg-white rounded-2xl shadow p-5 text-sm text-slate-600 leading-relaxed space-y-2">
+      <p><b class="text-slate-800">這是通行證，不是成就。</b>
+         只讓下一關打得開，<b>星星完全不動</b> —— 那一關仍然是 0 星，
+         學生補到 2⭐（75 分）才會有。成績還是他自己掙的。</p>
+      <p><b class="text-slate-800">學生要重新整理</b>「流程圖與程式設計」那一頁才會生效
+         （那一頁在登入時讀一次名冊）。</p>
+      <p><b class="text-slate-800">收回不是關閉關卡</b>，是撤掉通行證。
+         他如果後來真的補過了，收回沒有任何影響；還沒過的話，
+         <b>後面已經打開的關卡也會跟著關回去</b>，所以收回前先跟他講一聲。</p>
+    </div>
+  </div>
+
+<script>
+'use strict';
+
+/* ── Firebase：和教師端同一個專案、同一組設定 ───────────── */
+if (!firebase.apps.length) firebase.initializeApp(window.CONFIG.FIREBASE);
+var auth = firebase.auth();
+var db   = firebase.firestore();
+
+var ROSTER = (window.CONFIG.COLLECTIONS && window.CONFIG.COLLECTIONS.ROSTER) || 'roster';
+
+/* ── 關卡下拉：從 FLOW_UNITS 生，不手打 ─────────────────── */
+(function fillUnits() {
+  var sel = document.getElementById('unit');
+  var units = window.FLOW_UNITS || [];
+  if (!units.length) {
+    sel.innerHTML = '<option value="">讀不到關卡清單（content/flowchart.js 沒載到）</option>';
+    return;
+  }
+  sel.innerHTML = units.map(function (u, i) {
+    return '<option value="' + u.id + '">第 ' + (i + 1) + ' 關　' +
+           (u.icon || '') + ' ' + (u.title || '') + '　(' + u.id + ')</option>';
+  }).join('');
+})();
+
+/* ── 登入 ───────────────────────────────────────────────
+   ⚠️ 教師端用 compat SDK，shared/auth.js 是照 modular 寫的，
+      所以這裡和 teacher.html 一樣包一層轉接。 */
+AUTH.configure({
+  auth: auth,
+  GoogleAuthProvider: firebase.auth.GoogleAuthProvider,
+  signInWithPopup: function (a, p) { return a.signInWithPopup(p); },
+  signOut: function (a) { return a.signOut(); }
+});
+
+function isTeacherUser(u) {
+  if (!u) return false;
+  /* email／密碼登入：安全規則的 isTeacher() 認的就是這個 */
+  if ((u.providerData || []).some(function (p) { return p && p.providerId === 'password'; })) return true;
+  return !!(u.email && AUTH.isTeacherEmail(u.email));
+}
+
+var shown = false;
+auth.onAuthStateChanged(function (u) {
+  if (!u) return;
+  if (!isTeacherUser(u)) {
+    /* ⚠️ 學生頁留下的登入狀態不能拿來開這一頁 —— 直接登出，
+       不要讓他停在「看起來登入了但什麼都做不了」的狀態。 */
+    console.warn('非教師身分，已登出：', u.email || '(匿名)');
+    auth.signOut();
+    return;
+  }
+  if (shown) return;
+  shown = true;
+  document.getElementById('login-view').classList.add('hidden');
+  document.getElementById('main-view').classList.remove('hidden');
+});
+
+window.doLogin = async function () {
+  var btn = document.getElementById('login-btn');
+  var err = document.getElementById('login-error');
+  var orig = btn.textContent;
+  err.classList.add('hidden');
+  btn.disabled = true; btn.textContent = '登入中…';
+  try {
+    var me = await AUTH.signIn();
+    if (!me.isTeacher) {
+      await AUTH.signOut();
+      throw Object.assign(new Error(''), { friendly: me.email + ' 是學生帳號，不能用這一頁。' });
+    }
+  } catch (e) {
+    err.textContent = e.friendly || AUTH.hintFor((e && e.code) || 'unknown');
+    err.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = orig;
+  }
+};
+
+window.doLogout = function () {
+  auth.signOut().then(function () { location.reload(); });
+};
+
+/* ── 畫結果 ─────────────────────────────────────────────
+   ⚠️ 錯誤要看得出來是錯誤。上課現場沒有人會去開 F12 看 console。 */
+function say(html, kind) {
+  var el = document.getElementById('result');
+  var cls = kind === 'bad'  ? 'bg-red-50 border-2 border-red-300 text-red-800'
+          : kind === 'good' ? 'bg-emerald-50 border-2 border-emerald-300 text-emerald-900'
+          :                   'bg-slate-50 border-2 border-slate-200 text-slate-700';
+  el.className = 'rounded-xl p-4 text-sm leading-relaxed ' + cls;
+  el.innerHTML = html;
+  el.classList.remove('hidden');
+}
+
+/* ── 資料存取：和 teacher.html 的主控台版本同一個欄位、同一個格式 ── */
+function rosterRef(sid) { return db.collection(ROSTER).doc(String(sid).trim()); }
+
+async function readUnlocks(sid) {
+  var snap = await rosterRef(sid).get();
+  if (!snap.exists) throw new Error('名冊裡沒有這個學號：' + sid);
+  try { return JSON.parse((snap.data() || {}).unlocks_json || '{}') || {}; }
+  catch (e) { return {}; }
+}
+
+function readSid() {
+  var sid = String(document.getElementById('sid').value || '').trim();
+  if (!/^14\d{5}$/.test(sid)) throw new Error('學號要是 14 開頭的 7 位數字（目前填的是「' + sid + '」）');
+  return sid;
+}
+
+function unitLabel(id) {
+  var u = (window.FLOW_UNITS || []).filter(function (x) { return x.id === id; })[0];
+  return u ? ((u.icon || '') + ' ' + (u.title || '') + '（' + id + '）') : id;
+}
+
+function fmtList(cur) {
+  var ks = Object.keys(cur);
+  if (!ks.length) return '<div class="text-slate-500">目前沒有被開放任何關卡。</div>';
+  return '<ul class="space-y-1">' + ks.map(function (k) {
+    var at = String(cur[k].at || '').slice(0, 16).replace('T', ' ');
+    return '<li>🔓 <b>' + unitLabel(k) + '</b>' +
+           '<span class="text-slate-500">　' + (cur[k].reason || '') + '　' + at + '</span></li>';
+  }).join('') + '</ul>';
+}
+
+window.doUnlock = async function () {
+  try {
+    var sid = readSid();
+    var unitId = document.getElementById('unit').value;
+    if (!unitId) throw new Error('沒有選到關卡');
+    var reason = String(document.getElementById('reason').value || '').trim() || '老師課堂開放';
+    var cur = await readUnlocks(sid);
+    cur[unitId] = { at: new Date().toISOString(), reason: reason };
+    await rosterRef(sid).set({ unlocks_json: JSON.stringify(cur) }, { merge: true });
+    say('✅ 已開放 <b>' + sid + '</b> 的 <b>' + unitLabel(unitId) + '</b>。<br>' +
+        '他的星星沒有變（仍要達 2⭐ 才有）。<br>' +
+        '<b>請他重新整理闖關頁</b>才會生效。' +
+        '<div class="mt-3 pt-3 border-t border-emerald-200">' + fmtList(cur) + '</div>', 'good');
+  } catch (e) { say('❌ ' + (e.message || e), 'bad'); }
+};
+
+window.doLock = async function () {
+  try {
+    var sid = readSid();
+    var unitId = document.getElementById('unit').value;
+    if (!confirm('要收回 ' + sid + ' 的「' + unitLabel(unitId) + '」嗎？\n\n' +
+                 '他如果還沒真的過這一關，後面已經打開的關卡也會跟著關回去。')) return;
+    var cur = await readUnlocks(sid);
+    delete cur[unitId];
+    await rosterRef(sid).set({ unlocks_json: JSON.stringify(cur) }, { merge: true });
+    say('✅ 已收回 <b>' + sid + '</b> 的 <b>' + unitLabel(unitId) + '</b>。<br>' +
+        '那一關回到原本的規則（流程圖排對＋作品拿到 2⭐）。學生重新整理後生效。' +
+        '<div class="mt-3 pt-3 border-t border-slate-200">' + fmtList(cur) + '</div>');
+  } catch (e) { say('❌ ' + (e.message || e), 'bad'); }
+};
+
+window.doList = async function () {
+  try {
+    var sid = readSid();
+    var cur = await readUnlocks(sid);
+    say('<b>' + sid + '</b> 被開放的關卡：<div class="mt-2">' + fmtList(cur) + '</div>');
+  } catch (e) { say('❌ ' + (e.message || e), 'bad'); }
+};
+</script>
+</body>
+</html>
