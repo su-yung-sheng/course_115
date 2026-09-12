@@ -90,6 +90,30 @@ section('★ 畫面上要講清楚後果');
      '★★ 有講明收回的副作用（後面的關卡會跟著關回去）');
 }
 
+section('★★★ 名冊文件不可以被整份覆蓋');
+{
+  /* ⛔⛔ 2026-09-12 實際發生（差一點）：教師端的「批次匯入對照表」
+     用 batch.set() 寫名冊而**沒有 merge**，等於整份覆蓋。
+     解鎖旗標 unlocks_json 就存在同一份文件裡 ——
+     匯入一次，全班開放過的關卡一起消失，
+     而且畫面照樣顯示「✅ 匯入完成」，沒有任何錯誤。
+     ★ 這一條守的是整個「開放關卡」功能的資料，不只是這一頁。
+     ⚠️ 通則：名冊文件上有一些不是名冊畫面擁有的欄位
+        （unlocks_json、hasCode…），所以**任何**寫入都要 merge。 */
+  ['11501/teacher.html', '11502/teacher.html'].forEach(f => {
+    const abs2 = path.join(root, f);
+    if (!fs.existsSync(abs2)) return;
+    const src = fs.readFileSync(abs2, 'utf8');
+    /* 抓到分號為止 —— 抓到第一個右括號會被 Date.now() 切斷。 */
+    const writes = (src.match(/(?:batch\.set\(rdb\.collection\(COL\)|collection\(COL\)\.doc\([^)]*\)\.set\()[^;]{0,400};/g) || []);
+    const bad = writes.filter(w => !/merge:\s*true/.test(w));
+    ok(writes.length > 0, f + ' 找得到對名冊的寫入（' + writes.length + ' 處）');
+    ok(bad.length === 0,
+       f + ' ★★★ 每一處寫名冊都有 merge —— 少一個就會把 unlocks_json 洗掉' +
+       (bad.length ? '　←　' + bad[0].slice(0, 60) + '…' : ''));
+  });
+}
+
 section('★ 語法與可刪除性');
 {
   let syntaxOk = true, err = '';

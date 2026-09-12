@@ -2260,7 +2260,10 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         const name = document.getElementById('add-name').value.trim();
         if (!no || !id || !name) { showToast('請填座號、學號、姓名', true); return; }
         try {
-          await rdb.collection(COL).doc(id).set({ studentId: id, cls, no: String(no), name, hasCode: false, key: `${cls}_${no}_${name}`, updatedAt: Date.now() });
+          /* ⚠️ 同上：名冊文件上有別人的欄位，整份覆蓋會把它們洗掉。
+             「新增」通常是對還不存在的學號，merge 與否看不出差別；
+             但拿它來修正一個**已存在**學生的姓名時就看得出來了。 */
+          await rdb.collection(COL).doc(id).set({ studentId: id, cls, no: String(no), name, hasCode: false, key: `${cls}_${no}_${name}`, updatedAt: Date.now() }, { merge: true });
           document.getElementById('add-no').value = ''; document.getElementById('add-id').value = ''; document.getElementById('add-name').value = '';
           showToast(`✅ 已新增 ${name}（驗證碼由學生首次登入自設）`, false);
         } catch(e){ showToast('新增失敗：' + e.message, true); }
@@ -2337,7 +2340,15 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
           for (let i = 0; i < rows.length; i += CHUNK) {
             const batch = rdb.batch();
             rows.slice(i, i + CHUNK).forEach(r => {
-              batch.set(rdb.collection(COL).doc(r.id), { studentId: r.id, cls: r.cls, no: r.no, name: r.name, hasCode: !!hasCode[r.id], key: `${r.cls}_${r.no}_${r.name}`, updatedAt: Date.now() });
+              /* ⛔⛔ 2026-09-12：這裡少了 { merge: true }，後果是
+                 **整份覆蓋**名冊文件 —— 老師 2026-09-09 加的「開放關卡」
+                 旗標 unlocks_json 就存在這份文件裡，一匯入就全班一起消失，
+                 而且沒有任何錯誤訊息：畫面照樣說「✅ 匯入完成」。
+                 ⚠️ 而這支的說明文字本來就寫著「重複匯入會保留原有驗證碼」——
+                    也就是**它本來就會被拿來對已存在的學生重跑**。
+                 ★ 通則：名冊文件上有一些不是這個畫面擁有的欄位
+                   （unlocks_json、hasCode…），所以**任何**寫入都要 merge。 */
+              batch.set(rdb.collection(COL).doc(r.id), { studentId: r.id, cls: r.cls, no: r.no, name: r.name, hasCode: !!hasCode[r.id], key: `${r.cls}_${r.no}_${r.name}`, updatedAt: Date.now() }, { merge: true });
             });
             await batch.commit(); ok += Math.min(CHUNK, rows.length - i);
           }
