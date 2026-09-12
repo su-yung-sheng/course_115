@@ -113,6 +113,14 @@
         </button>
       </div>
 
+      <!-- ★ 上面三顆都要先知道學號。這一顆不用 —— 用來回答
+           「我到底開放過誰？」，那是期末結算前一定會問的問題。 -->
+      <button onclick="doAll()"
+        class="w-full py-2.5 bg-white border-2 border-slate-200 hover:bg-slate-50
+               text-slate-600 font-bold rounded-xl transition text-sm">
+        📋 列出目前被開放的所有學生
+      </button>
+
       <div id="result" class="hidden rounded-xl p-4 text-sm leading-relaxed"></div>
     </div>
 
@@ -280,6 +288,46 @@ window.doLock = async function () {
     say('✅ 已收回 <b>' + sid + '</b> 的 <b>' + unitLabel(unitId) + '</b>。<br>' +
         '那一關回到原本的規則（流程圖排對＋作品拿到 2⭐）。學生重新整理後生效。' +
         '<div class="mt-3 pt-3 border-t border-slate-200">' + fmtList(cur) + '</div>');
+  } catch (e) { say('❌ ' + (e.message || e), 'bad'); }
+};
+
+/* 掃整份名冊，列出「目前身上還帶著通行證」的人。
+
+   ★ 為什麼不用另外記一份清單：解鎖旗標本來就寫在 roster/{學號}，
+     而 roster 的安全規則是 `allow list: if isTeacher()` ——
+     老師本來就撈得動整份。另外再記一份只會多一個會不同步的來源。
+   ⚠️ 這一次會讀整份名冊（幾百筆）。偶爾按一下沒問題，
+      不要放進會自動重跑的地方。
+   ⚠️⚠️ 這裡看到的是**現在的狀態**，不是歷史：
+      按過「收回」的那幾筆就真的不見了，這一頁查不出來。
+      要留「曾經開放過又收回」的軌跡，那才需要另外記一筆
+      （像後端的 {學期}-ocr-revoked 那樣）。 */
+window.doAll = async function () {
+  try {
+    say('讀取整份名冊中…');
+    var snap = await db.collection(ROSTER).get();
+    var rows = [];
+    snap.forEach(function (d) {
+      var data = d.data() || {};
+      var u = {};
+      try { u = JSON.parse(data.unlocks_json || '{}') || {}; } catch (e) { u = {}; }
+      if (Object.keys(u).length) {
+        rows.push({ sid: d.id, name: data.name || '', cls: data.cls || '', u: u });
+      }
+    });
+    rows.sort(function (a, b) { return String(a.sid).localeCompare(String(b.sid)); });
+    if (!rows.length) {
+      say('目前全班沒有任何人被開放關卡。（掃了 ' + snap.size + ' 筆名冊）');
+      return;
+    }
+    var html = rows.map(function (r) {
+      return '<div class="py-2 border-t border-slate-200 first:border-t-0">' +
+             '<b>' + r.sid + '</b>　' + r.cls + '　' + r.name +
+             '<div class="mt-1">' + fmtList(r.u) + '</div></div>';
+    }).join('');
+    say('<b>目前被開放的學生：' + rows.length + ' 位</b>' +
+        '<span class="text-slate-500">（掃了 ' + snap.size + ' 筆名冊）</span>' +
+        '<div class="mt-2">' + html + '</div>');
   } catch (e) { say('❌ ' + (e.message || e), 'bad'); }
 };
 
