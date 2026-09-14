@@ -2515,6 +2515,21 @@ const __bn = bonusOf(student, sub.key);
             <button onclick="gdSaveModel()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition">儲存模型</button>
           </div>
           <div id="gdModelStatus" class="text-xs mt-2 font-bold text-slate-500"></div>
+
+          <!-- ⛔⛔ 2026-09-14：備援平常不會被走到 —— 只有 Google 回 503 或
+               連續兩次 500 才會降級。所以它壞掉時沒有人會發現，等到現形
+               已經在上課了（那天連續五次批改全掛）。
+               ⇒ 給老師一顆按鈕，隨時可以確認「付費那條路還通不通」。
+               ⚠️ 這一按會**真的花到付費額度**（一次約台幣 0.1 元），
+                  所以後端有 30 秒的節流。 -->
+          <div class="mt-3 pt-3 border-t border-slate-200">
+            <button onclick="gdCheckFallback()"
+              class="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition">
+              🧪 測試付費備援（Claude）
+            </button>
+            <span class="text-xs text-slate-400 ml-2">會真的呼叫一次，約台幣 0.1 元</span>
+            <div id="gdFallbackStatus" class="text-xs mt-2 font-bold text-slate-500 leading-relaxed"></div>
+          </div>
         </div>
 
         <div>
@@ -3004,8 +3019,40 @@ const __bn = bonusOf(student, sub.key);
         _gdSay('gdModelStatus', '儲存失敗（需教師帳號登入）：' + e.message, 'text-red-600');
       }
     }
+    /* 🧪 測試付費備援 —— 指定 Claude 跑一次很小的批改。
+       ★★ 最重要的是比對 requested 和 answered：
+          要求 Claude 卻由 Gemini 回答 ＝ 那一階失敗後降級了 ＝ **失敗**。
+          只看「有沒有分數」會把降級當成成功，那就白測了。 */
+    async function gdCheckFallback() {
+      _gdSay('gdFallbackStatus', '測試中…（會真的呼叫一次，請等十幾秒）');
+      try {
+        const r = await fetch(GD_SERVER + '/api/teacher/model-check', {
+          method: 'POST',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, GD_H),
+          body: '{}'
+        });
+        const j = await r.json();
+        if (j.ok && j.matched) {
+          _gdSay('gdFallbackStatus',
+            `✅ 備援正常：${j.answered} 回答了，${j.seconds} 秒`
+            + `（輸入 ${j.in_tok}／輸出 ${j.out_tok} token）`, 'text-emerald-600');
+        } else if (j.ok && j.answered) {
+          /* 有分數但不是要求的那個模型 —— 這是降級，等於那一階壞的 */
+          _gdSay('gdFallbackStatus',
+            `⚠️ 要求 ${j.requested}，實際回答的卻是 ${j.answered}`
+            + ` —— 代表那一階失敗後降級了，備援沒有真的通。`, 'text-red-600');
+        } else {
+          _gdSay('gdFallbackStatus',
+            `❌ 備援不通：${j.error || '沒有回傳原因'}`, 'text-red-600');
+        }
+      } catch (e) {
+        _gdSay('gdFallbackStatus', '❌ ' + e.message + '（後端有開嗎？）', 'text-red-600');
+      }
+    }
+
     window.gdLoadModels = gdLoadModels;
     window.gdSaveModel = gdSaveModel;
+    window.gdCheckFallback = gdCheckFallback;
 
     // ① 參考解答：上傳 → 存這一關的虛擬碼 →（可選）AI 自動生成主題與規則
     async function gdUploadExample(autoGen) {

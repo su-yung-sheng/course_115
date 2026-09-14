@@ -483,6 +483,45 @@ ok(_ks.count("bool(") >= 4 and "_SENSITIVE" not in _ks,
    "★★★ keys 裡每一項都是 bool(...)，不可以把金鑰本身吐出來")
 
 
+section("④f 測試備援的端點：要驗真的那一條，而且不可以把降級當成功")
+# ⛔⛔ 2026-09-14 的教訓有兩層：
+#    ① 備援平常不會被走到 ⇒ 壞了沒人知道，要能隨時主動驗
+#    ② 當初的單元測試是綠的，因為假的 SDK 什麼參數都收 ——
+#       **替身比真貨寬容的地方，就是測試看不見的地方**
+#    ⇒ 所以那支端點一定要呼叫 single_agent_grading **本人**。
+#      另外寫一條「測試專用」的呼叫，測到的就不是真正在跑的那一條。
+_nb8b = "".join(json.load(io.open(NB, encoding="utf8"))["cells"][8]["source"])
+_mc = _nb8b[_nb8b.index("def teacher_model_check"):]
+_mc = _mc[:_mc.index("\n@app.route")] if "\n@app.route" in _mc else _mc
+ok("core.single_agent_grading(" in _mc,
+   "★★★ 測試端點要呼叫 single_agent_grading 本人，不可以另外寫一條呼叫路徑")
+ok('"answered"' in _mc and '"matched"' in _mc,
+   "★★★ 要回報**實際回答的是哪個模型** —— 要求 Claude 卻由 Gemini 回答"
+   "是降級、是失敗，只看有沒有分數會把它當成功")
+ok("_MODEL_CHECK_MIN_GAP" in _mc and "429" in _mc,
+   "★★ 要節流：這支會花付費額度，而教師端沒有密碼、ngrok 網址是公開的")
+ok("_allowed" in _mc,
+   "★★ 只能測梯子上的模型 —— 不然有人可以指定最貴的那一個來燒額度")
+ok("anthropic_key" in _mc,
+   "★ 沒設金鑰時直接講明白，不要讓它跑一次才失敗")
+
+# ★ 指定 Claude 而 Claude 壞掉時，**不可以**被 Gemini 的成功蓋過去。
+#   （TypeError 不是 503／500，本來就不該降級 —— 這一條把它釘住。）
+_CLAUDE_REJECT[0] = "max_tokens"
+_CLAUDE_CALLS[:] = []
+clock = _Clock(); core.time = clock; core.GRADE_LOG.clear()
+_FakeClient.keys_used = []
+_FakeClient.script = lambda m: _FakeResp(GOOD)      # Gemini 這邊是好的
+_res_cl = core.single_agent_grading(
+    KEYS, "規則", "主題", "學生碼", "空白不一樣", "解答",
+    "claude-haiku-4-5-20251001", False,
+    claude_key="sk-ant-TESTKEY000000000000")
+ok(_res_cl.get("ok") is False,
+   "★★★ 指定 Claude 而它壞掉時要如實失敗，不可以被 Gemini 的成功蓋過去　←　%r"
+   % _res_cl.get("score"))
+_CLAUDE_REJECT[0] = None
+
+
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
 _FakeClient.script = lambda m: (_ for _ in ()).throw(AssertionError("不該呼叫 API"))
 core.time = _Clock()
