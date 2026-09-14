@@ -150,6 +150,16 @@ def _install_fake_anthropic():
 
     class _Messages(object):
         def create(self, **kw):
+            # ⛔⛔ 2026-09-14 真的發生過：Colab 上裝的 anthropic 版本
+            #    messages.create() **不吃 temperature**。於是 flash 撞 503
+            #    之後換到 Claude 立刻 TypeError —— 連續五次批改全掛，
+            #    學生等了一分多鐘只拿到錯誤訊息。
+            # ★★ 為什麼原本的測試沒抓到：這個假模組的 create(**kw)
+            #    什麼參數都收 —— **替身比真貨寬容**。
+            #    替身寬容的地方，就是測試看不見的地方。
+            if _CLAUDE_REJECT[0] and _CLAUDE_REJECT[0] in kw:
+                raise TypeError("Messages.create() got an unexpected "
+                                "keyword argument '%s'" % _CLAUDE_REJECT[0])
             _CLAUDE_CALLS.append(kw)
             return _FakeAnthropicMsg(GOOD_TEXT)
 
@@ -162,6 +172,8 @@ def _install_fake_anthropic():
 
 
 _CLAUDE_CALLS = []
+# 設成某個參數名，假的 Claude 就會像真的那樣拒絕它（None ＝ 照單全收）
+_CLAUDE_REJECT = [None]
 GOOD_TEXT = json.dumps({"creative_highlights": "無", "score": 88,
                         "comments": "不錯", "deducted_items": "無"},
                        ensure_ascii=False)
@@ -412,6 +424,53 @@ ok('def record_grade_stat' in "".join(
    "★★ core 要有 record_grade_stat（寫失敗吞例外，不影響批改）")
 ok('/api/grade-stats' in _src2,
    "★★ 要有讀得回來的端點，不然存了也看不到")
+
+section("④e 備援的 SDK 參數不合也要跑得完（2026-09-14 上課實況）")
+# ⛔⛔ 那天的完整經過（/api/grade-log 撈出來的）：
+#       09:38  flash 等了 65.8 秒回 503
+#       09:38  → 換備援 claude-haiku
+#       09:38  → Messages.create() got an unexpected keyword argument 'temperature'
+#     連續五次批改都是這個形狀。
+# ★★★ 這裡最貴的一課不是「參數寫錯」，是**備援平常不會被走到**——
+#     它的 bug 只在主力模型已經掛掉的時候現形，也就是最需要它的那一刻。
+#     ⇒ 備援路徑的測試要比主路徑更兇，不可以只測「快樂路徑」。
+_CLAUDE_REJECT[0] = "temperature"
+_CLAUDE_CALLS[:] = []
+clock = _Clock(); core.time = clock; core.GRADE_LOG.clear()
+_FakeClient.keys_used = []
+_FakeClient.script = _s4c
+res = core.single_agent_grading(
+    KEYS, "規則", "主題", "學生碼", "空白不一樣", "解答",
+    "gemini-2.5-flash", True, claude_key="sk-ant-TESTKEY000000000000")
+ok(res.get("score") == 88,
+   "★★★ SDK 不吃 temperature 時要自己退一步再打一次，不可以整次批改陣亡　←　%r"
+   % res.get("score"))
+_kw = [c for c in _CLAUDE_CALLS if "model" in c]
+ok(bool(_kw) and "temperature" not in _kw[0],
+   "★★ 重試那一次不可以再帶 temperature")
+ok(bool(_kw) and _kw[0].get("system") and _kw[0].get("max_tokens"),
+   "★★★ 退一步只能拿掉 temperature —— system 和 max_tokens 一個都不能少")
+ok(any("不吃 temperature" in l for l in core.GRADE_LOG),
+   "★★ 要留一行紀錄 —— 不然下次還是要花一節課才知道是這件事")
+
+# ★ 但不可以變成「TypeError 一律吞掉」：真的把參數名寫錯時要看得見
+_CLAUDE_REJECT[0] = "max_tokens"
+_CLAUDE_CALLS[:] = []
+clock = _Clock(); core.time = clock; core.GRADE_LOG.clear()
+_FakeClient.script = _s4c
+_res_bad = core.single_agent_grading(
+    KEYS, "規則", "主題", "學生碼", "空白不一樣", "解答",
+    "gemini-2.5-flash", True, claude_key="sk-ant-TESTKEY000000000000")
+ok(_res_bad.get("ok") is False and "max_tokens" in str(_res_bad.get("error") or ""),
+   "★★★ 只吞 temperature 那一種 TypeError —— 別的參數寫錯要照樣浮上來，"
+   "全吞的話會變成安靜地跑不動　←　%r" % (_res_bad.get("error") or "")[:60])
+_CLAUDE_REJECT[0] = None
+
+# ★ health 要看得到裝的是哪一版 —— 那天查不出原因就是因為沒有這個數字
+_nb8 = "".join(json.load(io.open(NB, encoding="utf8"))["cells"][8]["source"])
+ok('"sdk"' in _nb8 and "_pkg_version" in _nb8,
+   "★★ /api/health 要報出 anthropic 的版本（備援出事時第一個要查的東西）")
+
 
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
 _FakeClient.script = lambda m: (_ for _ in ()).throw(AssertionError("不該呼叫 API"))
