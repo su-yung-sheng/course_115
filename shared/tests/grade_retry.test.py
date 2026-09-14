@@ -470,6 +470,17 @@ _CLAUDE_REJECT[0] = None
 _nb8 = "".join(json.load(io.open(NB, encoding="utf8"))["cells"][8]["source"])
 ok('"sdk"' in _nb8 and "_pkg_version" in _nb8,
    "★★ /api/health 要報出 anthropic 的版本（備援出事時第一個要查的東西）")
+# ⛔ 2026-09-14：後端斷線後重跑三次才連得上 —— ERR_NGROK_334／108 的
+#    自動清除要 NGROK_API_KEY，而「有沒有設」以前看不出來。
+#    ★ 它真正在驗的是 Secrets 的**筆記本存取權**有沒有打開（最常漏的一步）。
+ok('"NGROK_API_KEY"' in _nb8,
+   "★★ /api/health 要報出 NGROK_API_KEY 設了沒（斷線自動清除靠它）")
+# ⚠️ 只可以報「有沒有」。把金鑰本身放進 health 等於公開它 ——
+#    health 是不用任何驗證就打得開的端點。
+_ks = _nb8[_nb8.index('"keys"'):]
+_ks = _ks[:_ks.index("},") + 2]
+ok(_ks.count("bool(") >= 4 and "_SENSITIVE" not in _ks,
+   "★★★ keys 裡每一項都是 bool(...)，不可以把金鑰本身吐出來")
 
 
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
