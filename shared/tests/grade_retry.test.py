@@ -161,6 +161,10 @@ def _install_fake_anthropic():
                 raise TypeError("Messages.create() got an unexpected "
                                 "keyword argument '%s'" % _CLAUDE_REJECT[0])
             _CLAUDE_CALLS.append(kw)
+            # _CLAUDE_TEXT 是一個「接下來每次要回什麼」的清單，
+            # 用完之後回正常的 JSON。給「第一次回散文、第二次才對」用。
+            if _CLAUDE_TEXT:
+                return _FakeAnthropicMsg(_CLAUDE_TEXT.pop(0))
             return _FakeAnthropicMsg(GOOD_TEXT)
 
     class _Anthropic(object):
@@ -174,6 +178,8 @@ def _install_fake_anthropic():
 _CLAUDE_CALLS = []
 # 設成某個參數名，假的 Claude 就會像真的那樣拒絕它（None ＝ 照單全收）
 _CLAUDE_REJECT = [None]
+# 接下來幾次要回的原始文字（空的就回正常 JSON）
+_CLAUDE_TEXT = []
 GOOD_TEXT = json.dumps({"creative_highlights": "無", "score": 88,
                         "comments": "不錯", "deducted_items": "無"},
                        ensure_ascii=False)
@@ -520,6 +526,54 @@ ok(_res_cl.get("ok") is False,
    "★★★ 指定 Claude 而它壞掉時要如實失敗，不可以被 Gemini 的成功蓋過去　←　%r"
    % _res_cl.get("score"))
 _CLAUDE_REJECT[0] = None
+
+
+section("④g 沒有 schema 的模型要被告知格式，回錯了也要重試")
+# ⛔⛔ 2026-09-14 第二次踩到同一個坑（第一次是 temperature）：
+#    按下「測試備援」→「模型產生了無效的 JSON 字串」。
+#    原因是 Claude 那條路 system=prompt，**沒有帶格式規格** ——
+#    而格式規格當時寫在 Gemini 分支裡面，只有 Gemma 那條路吃得到。
+#    ⇒ Claude 根本不知道要回什麼，回了一段散文。
+# ★★ 諷刺的是正確答案就寫在那段程式旁邊的註解：「沒有這一段，
+#    降級只會產生垃圾，然後每一次批改都在 JSONDecodeError 上失敗」。
+#    我加 Claude 分支時沒有把那個教訓帶過去 ——
+#    **同一個教訓寫在註解裡，不代表下一個人（我）會讀到。**
+_CLAUDE_REJECT[0] = None
+_CLAUDE_TEXT[:] = []
+_CLAUDE_CALLS[:] = []
+clock = _Clock(); core.time = clock; core.GRADE_LOG.clear()
+_FakeClient.keys_used = []
+_FakeClient.script = _s4c
+res = core.single_agent_grading(
+    KEYS, "規則", "主題", "學生碼", "空白不一樣", "解答",
+    "claude-haiku-4-5-20251001", False,
+    claude_key="sk-ant-TESTKEY000000000000")
+_kw = [c for c in _CLAUDE_CALLS if "model" in c]
+ok(bool(_kw) and "回傳格式" in (_kw[0].get("system") or ""),
+   "★★★ Claude 沒有 response_schema ⇒ system 一定要帶格式規格，"
+   "否則它不知道要回 JSON")
+ok(bool(_kw) and "score" in (_kw[0].get("system") or ""),
+   "★★ 規格裡要列出欄位名（score／comments／deducted_items）")
+
+# ★ 就算真的回了散文，也不可以一次就放棄 —— 那是備援，最不該當場陣亡
+_CLAUDE_TEXT[:] = ["我覺得這位同學寫得不錯，建議再加上迴圈。"]
+_CLAUDE_CALLS[:] = []
+clock = _Clock(); core.time = clock; core.GRADE_LOG.clear()
+_FakeClient.script = _s4c
+res2 = core.single_agent_grading(
+    KEYS, "規則", "主題", "學生碼", "空白不一樣", "解答",
+    "claude-haiku-4-5-20251001", False,
+    claude_key="sk-ant-TESTKEY000000000000")
+ok(res2.get("score") == 88,
+   "★★★ 回了散文要重試，不可以一次就放棄整次批改　←　%r" % res2.get("score"))
+ok(len([c for c in _CLAUDE_CALLS if "model" in c]) >= 2,
+   "★★ 真的有再打一次（第一次解析失敗）")
+ok(any("它實際回了" in l for l in core.GRADE_LOG),
+   "★★★ 解析失敗一定要印出**模型到底回了什麼** —— "
+   "「無效的 JSON」這五個字本身沒有任何診斷價值")
+ok(any("我覺得這位同學" in l for l in core.GRADE_LOG),
+   "★★ 印的是真的那段內容，不是佔位字串")
+_CLAUDE_TEXT[:] = []
 
 
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
