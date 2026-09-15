@@ -576,6 +576,76 @@ ok(any("我覺得這位同學" in l for l in core.GRADE_LOG),
 _CLAUDE_TEXT[:] = []
 
 
+section("④h 同一份程式 → 同一個分數（批改結果快取）")
+# ⛔⛔ 2026-09-15 老師實測：1410213 連送三次**一模一樣**的程式
+#    （chars_student 都是 3277），拿到 65 → 85 → 80。通過門檻是 75
+#    ⇒ 第一次不過、第二次一樣的東西就過了。
+# ★ temp 早就是 0.0 了 —— temperature=0 **不保證**每次一樣。
+#   這不是 bug，是 LLM 評分的固有變異，調參數解不掉。
+#   ⇒ 改成「同一份程式不重新評分」，直接回上次的結果。
+_cfg_a = {"rules": "規則A", "theme": "主題", "template_code": "空白",
+          "example_code": "解答", "extension_rules": ""}
+_k1 = core.grade_cache_key(_cfg_a, "學生程式")
+ok(_k1 == core.grade_cache_key(dict(_cfg_a), "學生程式"),
+   "★★★ 同一份程式＋同一份規則 → 同一把鑰匙（不然快取形同虛設）")
+ok(_k1 != core.grade_cache_key(_cfg_a, "學生程式改了一點"),
+   "★★ 程式改了 → 鑰匙要變（改了就該重新評）")
+ok(_k1 != core.grade_cache_key(dict(_cfg_a, rules="規則B"), "學生程式"),
+   "★★★ **老師改了評分標準 → 鑰匙要變**，否則改完規則分數不會跟著動，"
+   "而且完全看不出原因")
+ok(_k1 != core.grade_cache_key(dict(_cfg_a, example_code="別的解答"), "學生程式"),
+   "★★ 參考解答換了也要重評")
+# ★★★ 這一條是整件事的目的：不管哪個模型，同一份程式就是同一個分數。
+#     把模型包進鑰匙的話，降級一次就又會重骰 —— 那就白做了。
+_src_key = "".join(json.load(io.open(NB, encoding="utf8"))["cells"][6]["source"])
+_kf = _src_key[_src_key.index("def grade_cache_key"):]
+_kf = _kf[:_kf.index("\ndef ")]
+ok("model" not in _kf,
+   "★★★ 鑰匙裡不可以有模型名稱 —— 「不管哪個模型都給同一個分數」正是目的")
+
+# ── 寫入：失敗的不可以存，不然錯誤會被記住 ──────────────
+_calls = []
+_old_http, _old_fb = core._fs_http, core.FIREBASE
+_old_base = core._fs_docs_base
+core._fs_http = lambda m, u, b=None: (_calls.append((m, u, b)) or {})
+# ⚠️ _fs_docs_base 會去讀 FIREBASE 裡的專案設定 —— 測試沒有那些欄位，
+#    不換掉的話會丟例外、被 write_grade_cache 的 except 吞掉，
+#    於是「沒有寫入」看起來像是規則正確，其實是壞掉了。
+core._fs_docs_base = lambda: "https://fake/documents"
+core.FIREBASE = {"enabled": True, "api_key": "k"}
+try:
+    core.write_grade_cache("K1", {"ok": False, "score": None, "comments": "壞了"})
+    ok(len(_calls) == 0,
+       "★★★ 評分失敗的**不可以**存進快取 —— 存了的話那位學生這份程式"
+       "永遠拿不到分數，而且他不知道為什麼")
+    core.write_grade_cache("K1", {"score": 88, "comments": "不錯",
+                                  "deducted_items": "無",
+                                  "creative_highlights": "無"}, "some-model")
+    ok(len(_calls) == 1 and _calls[0][0] == "PATCH",
+       "★★ 成功的要存（用 PATCH 寫到固定的文件 id，重複寫不會長出新文件）")
+    ok("K1" in _calls[0][1] and "grade-cache" in _calls[0][1],
+       "★ 存到 {學期}-grade-cache/{鑰匙}")
+finally:
+    core._fs_http, core.FIREBASE = _old_http, _old_fb
+    core._fs_docs_base = _old_base
+
+# ── 接線：查、存、告訴學生、老師試評不走快取 ──────────────
+_gpf = _src_key[_src_key.index("def grade_project_file"):]
+_gpf = _gpf[:_gpf.index("\ndef ")]
+ok("read_grade_cache" in _gpf and "write_grade_cache" in _gpf,
+   "★★ grade_project_file 要真的有查、也有存")
+ok("和你上次送出的完全一樣" in _gpf,
+   "★★★ 命中時一定要**告訴學生**沒有重新評分 —— 不講的話他會一直重送，"
+   "而重送永遠不會改變結果")
+ok("修改程式" in _gpf,
+   "★★ 而且要講清楚下一步是什麼（改程式，不是再按一次）")
+_src8 = "".join(json.load(io.open(NB, encoding="utf8"))["cells"][8]["source"])
+_tt = _src8[_src8.index("def teacher_test"):]
+_tt = _tt[:_tt.index("\n@app.route")]
+ok('cfg["no_cache"] = True' in _tt,
+   "★★★ 老師試評不可以走快取 —— 他是在調規則，看到上次的分數會以為沒生效")
+
+
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
 _FakeClient.script = lambda m: (_ for _ in ()).throw(AssertionError("不該呼叫 API"))
 core.time = _Clock()
