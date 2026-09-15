@@ -227,10 +227,15 @@
       try{
         const s = await getDoc(doc(db, CFG_COL, 'schedule'));
         const d = (s.exists() && s.data()) || {};
-        state.sched = { base: d.base||{}, off: d.off||{}, move: d.move||{} };
+        /* ★ open_json：哪些模組還沒到開放日（見 shared/schedule.js）。
+           和課表放在同一份文件，所以不多一次讀取、也不必改安全規則。 */
+        state.sched = { base: d.base||{}, off: d.off||{}, move: d.move||{},
+                        open_json: d.open_json || '' };
       }catch(e){
         console.warn('讀不到課表，本週成績卡會把出席當成「沒有」', e);
-        state.sched = { base:{}, off:{}, move:{} };
+        /* ⚠️ open_json 留空 ＝ 全部當成已開放。設定讀失敗就把教材鎖住，
+           是拿學生的課去賭一個設定檔。 */
+        state.sched = { base:{}, off:{}, move:{}, open_json:'' };
       }
       render();
     }
@@ -459,6 +464,37 @@
           : '';
         const extra = (d.status==='pass' && d.score!=null) ? `<span class="text-xs opacity-70">分數 ${d.score}</span>`
                     : (d.status==='pass' && d.level!=null) ? `<span class="text-xs opacity-70">通關 ${d.level} 關</span>` : '';
+        /* ── 還沒到開放日的模組（老師 2026-09-15）────────────────
+           ⚠️ 未開放時要畫成 div 區塊而不是 a 連結 —— 只加灰色和
+              pointer-events 的話，鍵盤 Tab 還是走得進去，
+              而且右鍵「開新分頁」照樣打得開。沒有 href 才是真的點不到。
+           ⚠️ 註解裡不要寫出完整的 div 標籤（含角括號）——
+              check.py 是用 `<div[\s>]` 硬數開合數量的，
+              註解裡多一個就會變成「開 57／關 56」而擋住提交。
+              2026-09-15 就是這樣卡住的，錯誤訊息完全指不到註解。
+           ⚠️ 但這只是**把入口藏起來**：知道網址的人照樣打得開。
+              和這個系統其他的前端判斷一樣，要真的擋住得做在後端。 */
+        const openOK = !(window.SCHEDULE && SCHEDULE.moduleOpen)
+                       || SCHEDULE.moduleOpen(state.sched, m.id);
+        const openMsg = (window.SCHEDULE && SCHEDULE.openLabel)
+                       ? SCHEDULE.openLabel(state.sched, m.id) : '';
+        if (!openOK) {
+          return `
+          <div class="relative block ${SZ.pad} rounded-2xl border shadow-md ${m.rot} bg-slate-100 border-slate-300 text-slate-500 grayscale opacity-60 cursor-not-allowed select-none"
+               aria-disabled="true" title="${openMsg}">
+            <span class="tape bg-slate-400/25"></span>
+            <div class="flex items-center justify-between mb-2">
+              <div class="${SZ.icon} grayscale">${m.icon}</div>
+              <span class="${SZ.badge} font-bold px-2.5 py-1 rounded-full border bg-white/60 text-slate-500 border-slate-300">尚未開放</span>
+            </div>
+            <h3 class="${SZ.title} font-black leading-tight mb-1">${m.title}</h3>
+            <p class="${SZ.desc} opacity-75 leading-relaxed mb-3">${m.desc}</p>
+            <div class="flex items-center justify-between">
+              <span class="${SZ.tag} font-bold bg-white/50 px-2.5 py-1 rounded-full border border-black/5">${m.tag}</span>
+            </div>
+            <span class="mt-3 inline-flex items-center gap-1 ${SZ.go} font-bold">🔒 ${openMsg || '尚未開放'}</span>
+          </div>`;
+        }
         return `
           <a href="${m.href}" class="group relative block ${SZ.pad} rounded-2xl border shadow-md hover:shadow-xl transition-all duration-300 ${m.rot} hover:rotate-0 hover:-translate-y-1 ${m.theme} ${st.dim?'opacity-70 hover:opacity-100':''} ${isNext?'ring-2 ring-indigo-500 ring-offset-2':''}">
             <span class="tape ${m.tape}"></span>

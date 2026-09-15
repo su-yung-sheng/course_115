@@ -131,11 +131,63 @@
     return wasHere ? b : 0;
   }
 
+  /* ══════════════════════════════════════════════════════════
+     模組的開放日（老師 2026-09-15）
+     ══════════════════════════════════════════════════════════
+     「智慧家居機電專題」11 月底才上，但那張卡從開學就掛在闖關基地上。
+     ⇒ 未到開放日就畫成灰色、點不進去，並寫明**預計哪一天開放**。
+
+     ★ 存在 {學期}-config/schedule 的 open_json 欄位（一個 JSON 字串）：
+         { "arduino": "2026-11-30" }
+       ⚠️ 為什麼硬要塞進 schedule 這一份：學生端讀得到的 config
+          **只有 schedule 這一個文件**（見這支開頭的說明）。
+          另開一份文件就得改安全規則、重新發布 —— 沒必要。
+       ★ 順帶的好處：hub 本來就會讀這份課表，多這個欄位不多花一次讀取。
+     ⚠️ 用 JSON 字串而不是巢狀 map：和 roster 的 unlocks_json 同一個作法，
+        寫入時一次覆蓋整份，不會有「巢狀欄位各自合併」的意外。
+
+     ⚠️⚠️ 讀不到課表時一律當成**已開放**（見 moduleOpen 的 !d 分支）。
+        設定讀失敗就把教材鎖住，是拿學生的課去賭一個設定檔 ——
+        寧可讓人看到還沒完成的頁面，也不要整班進不去。
+     ⚠️ 這是**把入口藏起來**，不是把頁面鎖起來。知道網址的人照樣打得開，
+        和這個系統其他的前端判斷一樣。要真的擋住得做在後端。 */
+  function openMap(sched) {
+    var raw = (sched || {}).open_json;
+    if (!raw) return {};
+    try { var o = JSON.parse(raw); return (o && typeof o === 'object') ? o : {}; }
+    catch (e) { return {}; }
+  }
+
+  /** 這個模組的開放日（'YYYY-MM-DD'）；沒設定回空字串 */
+  function openDateOf(sched, moduleId) {
+    var d = openMap(sched)[String(moduleId || '')];
+    return (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) ? d : '';
+  }
+
+  /** 現在可以進去了嗎？沒設定、設錯、讀不到 → 一律可以。 */
+  function moduleOpen(sched, moduleId, now) {
+    var d = openDateOf(sched, moduleId);
+    if (!d) return true;
+    var t = new Date(d + 'T00:00:00');
+    if (isNaN(t)) return true;                 // 日期壞掉也不要擋人
+    var n = now ? new Date(now) : new Date();
+    n.setHours(0, 0, 0, 0);
+    return n.getTime() >= t.getTime();         // 當天就算開放
+  }
+
+  /** 給學生看的那一句：'預計於 2026/11/30 開放' */
+  function openLabel(sched, moduleId) {
+    var d = openDateOf(sched, moduleId);
+    return d ? ('預計於 ' + d.replace(/-/g, '/') + ' 開放') : '';
+  }
+
   global.SCHEDULE = {
     PERIODS: PERIODS, WEEK_MS: WEEK_MS,
     mondayOf: mondayOf, key: key, dateOf: dateOf,
     cellInfo: cellInfo, classDatesOfWeek: classDatesOfWeek,
-    attended: attended, weekScore: weekScore
+    attended: attended, weekScore: weekScore,
+    openMap: openMap, openDateOf: openDateOf,
+    moduleOpen: moduleOpen, openLabel: openLabel
   };
 
 })(window);

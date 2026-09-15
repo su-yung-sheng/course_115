@@ -2643,6 +2643,31 @@ const __bn = bonusOf(student, sub.key);
       <div class="p-5">
         <p id="scHint" class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3 leading-relaxed"></p>
         <div id="scGrid" class="overflow-x-auto"></div>
+
+        <!-- ⛔ 2026-09-15 老師：「智慧家居機電專題」11 月底才上，
+             但那張卡從開學就掛在闖關基地上。未到開放日就畫成灰色、
+             點不進去，並寫明預計哪一天開放。
+             ★ 存在同一份 schedule 文件的 open_json 欄位 ——
+               學生端讀得到的 config **只有 schedule 這一個**，
+               另開一份就得改安全規則、重新發布。
+             ⚠️ 要再加別的模組，照下面那一行複製（id 要和
+                hub.html 的 MODULES[].id 一樣，打錯不會報錯、只是沒作用）。 -->
+        <div class="mt-5 pt-4 border-t border-slate-200">
+          <h4 class="text-sm font-black text-slate-700 mb-1">🔒 模組開放日</h4>
+          <p class="text-xs text-slate-500 mb-3 leading-relaxed">
+            還沒到日期的模組，在學生的闖關基地上會是**灰色、點不進去**，
+            並顯示「預計於 ○○○○/○○/○○ 開放」。<b>留空 ＝ 立刻開放。</b><br>
+            ⚠️ 這是把入口藏起來，不是把頁面鎖起來 —— 知道網址的人照樣打得開。
+          </p>
+          <div class="flex items-center gap-3 flex-wrap">
+            <label class="text-sm font-bold text-slate-700 w-44">💡 智慧家居機電專題</label>
+            <input type="date" id="scOpen-arduino"
+                   class="px-3 py-2 border border-slate-300 rounded-lg text-sm">
+            <button onclick="document.getElementById('scOpen-arduino').value=''"
+                    class="text-xs text-slate-400 hover:text-slate-600 underline">清空（立刻開放）</button>
+          </div>
+        </div>
+
         <div class="flex items-center gap-3 mt-4">
           <button onclick="saveSchedule()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition">💾 儲存</button>
           <span id="scStatus" class="text-sm font-bold"></span>
@@ -3293,8 +3318,9 @@ const __bn = bonusOf(student, sub.key);
       try{
         const s=await _gdDb().collection(SC_COL).doc(SC_DOC).get();
         const d=(s.exists && s.data())||{};
-        _sched={ base:d.base||{}, off:d.off||{}, move:d.move||{} };
-      }catch(e){ _sched={ base:{}, off:{}, move:{} }; }
+        _sched={ base:d.base||{}, off:d.off||{}, move:d.move||{},
+                 open_json:d.open_json||'' };
+      }catch(e){ _sched={ base:{}, off:{}, move:{}, open_json:'' }; }
       return _sched;
     }
     async function openSchedModal(){
@@ -3309,6 +3335,14 @@ const __bn = bonusOf(student, sub.key);
       }
       _scMonday=scMondayOf(new Date());
       await loadSchedule();
+      /* 把已經設好的開放日填回輸入框。
+         ⚠️ 不填的話，老師打開只是想改課表、按了儲存，
+            開放日就會被一個空字串洗掉 —— 而且完全沒有徵兆。 */
+      try{
+        const _op=(window.SCHEDULE&&SCHEDULE.openMap)?SCHEDULE.openMap(_sched):{};
+        const _el=document.getElementById('scOpen-arduino');
+        if(_el) _el.value=_op.arduino||'';
+      }catch(e){}
       scRender();
     }
     function closeSchedModal(){
@@ -3411,8 +3445,17 @@ const __bn = bonusOf(student, sub.key);
       const st=document.getElementById('scStatus');
       st.textContent='儲存中…'; st.className='text-sm font-bold text-slate-500';
       try{
+        /* 模組開放日：整份 open_json 一次覆蓋（見 shared/schedule.js 的說明）。
+           ⚠️ 讀的是**畫面上的輸入框**，不是 _sched —— 老師改了日期但
+              沒重新載入時，以畫面上看到的為準。 */
+        const _openEl = document.getElementById('scOpen-arduino');
+        const _open = {};
+        if (_openEl && _openEl.value) _open.arduino = _openEl.value;
         await _gdDb().collection(SC_COL).doc(SC_DOC).set(
-          { base:_sched.base, off:_sched.off, move:_sched.move, updated_at:new Date().toISOString() }, { merge:true });
+          { base:_sched.base, off:_sched.off, move:_sched.move,
+            open_json: JSON.stringify(_open),
+            updated_at:new Date().toISOString() }, { merge:true });
+        _sched.open_json = JSON.stringify(_open);
         st.textContent='✅ 已儲存'; st.className='text-sm font-bold text-emerald-600';
       }catch(e){
         st.textContent='儲存失敗（需教師帳號登入）：'+e.message;
