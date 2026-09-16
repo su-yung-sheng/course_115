@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>程式批改觀測 · 資訊科技課程</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- 本頁住在 shared/，設定檔在各學期資料夾裡。用 ?term= 決定載哪一份，
+     沒帶就依今天的日期判斷（和 review.html／status.html 同一套做法）。 -->
+<script src="semester.js"></script>
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('term');
+  if (!t || /^115\d{2}$/.test(t) === false) {
+    t = (window.SEMESTER && SEMESTER.current) ? SEMESTER.current() : '11501';
+  }
+  window.__TERM = t;
+  /* ?v=… 是防快取：config.js 是靜態檔，GitHub Pages 會叫瀏覽器快取 10 分鐘。
+     SERVER_URL（ngrok 常換）改了之後畫面會沿用舊值而且毫無徵兆。 */
+  document.write('<scr' + 'ipt src="../' + t + '/config.js?v=' + Date.now() + '"></scr' + 'ipt>');
+})();
+</script>
+<script>
+(function () {
+  var v = '?v=' + Date.now();
+  ['auth.js'].forEach(function (f) {
+    document.write('<scr' + 'ipt src="' + f + v + '"></scr' + 'ipt>');
+  });
+})();
+</script>
+
+<style>
+  html,body,button,input,select{font-family:'Noto Sans TC',system-ui,sans-serif}
+  body{background:#e7e5e4}
+
+  /* ── 圖表用的顏色 ────────────────────────────────────────────
+     ⚠️ 這幾個色碼不是挑好看的，是**驗算過**的（2026-09-16）：
+        · 模型用的三個是「類別色」，任兩個在色覺缺陷模擬下的差距
+          ΔE 9.2（門檻 8）、一般色覺 24.0（門檻 15）—— 三個都過。
+        · 分數用的是**同一個色相由淺到深**（序列色），因為分數是
+          有大小的量，不是三個並列的類別。彩虹色在這裡是錯的。
+     ⚠️ #1baf7a 對背景的對比只有 2.74（低於 3:1）⇒ 規定要有「補救」：
+        每一條長條都直接標上數字，而且下面一定有逐筆表格。
+        ⇒ **不要把那些數字拿掉**，拿掉就只剩顏色在表達意思了。 */
+  .viz{
+    color-scheme: light;
+    --surface-1:#fcfcfb;
+    --ink:#0b0b0b; --ink-2:#52514e; --ink-3:#8a8a84;
+    /* 類別（模型）—— 固定順序，不可以循環使用 */
+    --m1:#2a78d6; --m2:#eb6834; --m3:#1baf7a;
+    /* 序列（分數低→高）—— 同一個藍色由淺到深 */
+    --s1:#86b6ef; --s2:#5598e7; --s3:#2a78d6; --s4:#1c5cab; --s5:#104281;
+    /* 狀態色是保留的，不可以拿來當「第四個模型」，而且一定配文字或圖示 */
+    --ok:#0ca30c; --warn:#fab219; --bad:#d03b3b;
+  }
+  /* 長條：細、圓角只給資料那一端、彼此留 2px 縫 */
+  .bar{height:14px;border-radius:0 4px 4px 0;transition:opacity .15s}
+  .bar:hover{opacity:.75}
+</style>
+</head>
+<body class="min-h-screen text-slate-800 viz">
+
+<main class="max-w-5xl mx-auto px-4 py-8">
+  <header class="mb-6">
+    <a href="#" id="back-teacher" class="text-sm font-bold text-slate-400 hover:text-slate-700">← 回教師端</a>
+    <h1 class="text-2xl sm:text-3xl font-black mt-2">📊 程式批改觀測</h1>
+    <p class="text-slate-500 text-sm mt-2 leading-relaxed">
+      這一頁讀的是 <b>{學期}-grade-stats</b> —— 每一次批改的<b>觀測紀錄</b>，
+      不是成績。成功和失敗都在裡面（失敗那幾次往往最花時間，正是要看的東西）。<br>
+      <span class="text-slate-400">資料在 Colab 後端，後端沒開的時候這一頁會是空的 —— 那是「讀不到」，不是「沒有資料」。</span>
+    </p>
+  </header>
+
+  <div id="app"></div>
+</main>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
+         setPersistence, browserSessionPersistence }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+const C = window.CONFIG || {};
+const TERM = window.__TERM;
+const SERVER = C.SERVER_URL || '';
+const H = { 'ngrok-skip-browser-warning': 'true' };
+const app = initializeApp(C.FIREBASE);
+const auth = getAuth(app);
+
+const el = id => document.getElementById(id);
+{ const b = el('back-teacher'); if (b) b.href = '../' + TERM + '/teacher.html'; }
+
+const state = { who:null, rows:null, err:'', busy:'', range:'today', unit:'' };
+
+/* ── 登入：只有老師 ───────────────────────────────────
+   ⚠️ 畫面上有學號，不可以讓學生打開。
+   ⚠️⚠️ 但要說實話：資料來源 /api/grade-stats **本身沒有密碼**，
+      而 ngrok 網址是公開的。所以這個登入擋的是「順手打開這一頁」，
+      不是「拿得到這份資料」。要真的擋住得在後端加驗證。
+   ⚠️ 不能只判斷「有沒有人登入」—— 這台電腦開過學生頁的話 user 就非 null。 */
+function isTeacher(u) {
+  return !!(u && u.email && window.AUTH && AUTH.isTeacherEmail(u.email));
+}
+/* 持久性要和教師端一致（SESSION），而且要在掛 onAuthStateChanged 之前設好，
+   不然會在同一個分頁裡被要求「再登入一次」。 */
+setPersistence(auth, browserSessionPersistence)
+  .catch(e => console.warn('設定持久性失敗', e))
+  .finally(() => {
+    onAuthStateChanged(auth, async (u) => {
+      if (!isTeacher(u)) { state.who = null; render(); return; }
+      state.who = u;
+      await load();
+    });
+  });
+
+async function load() {
+  state.busy = '讀取批改紀錄…'; state.err = ''; render();
+  try {
+    if (!SERVER) throw new Error('這個學期的 config.js 沒有設 SERVER_URL。');
+    const r = await fetch(SERVER + '/api/grade-stats?limit=300&term=' + encodeURIComponent(TERM), { headers: H });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || '讀取失敗');
+    state.rows = j.rows || [];
+  } catch (e) {
+    state.err = e.message + '（請確認 Colab 後端已啟動）';
+    state.rows = [];
+  }
+  state.busy = ''; render();
+}
+
+/* ===== 純資料處理 ===== */
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dayOf = r => String(r.created_at || '').slice(0, 10);
+const todayStr = () => { const d = new Date(); const p = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()); };
+
+function inRange(r) {
+  if (state.range === 'all') return true;
+  const d = dayOf(r); if (!d) return false;
+  if (state.range === 'today') return d === todayStr();
+  const t = new Date(todayStr()); t.setDate(t.getDate() - 6);
+  const p = n => String(n).padStart(2,'0');
+  const from = t.getFullYear() + '-' + p(t.getMonth()+1) + '-' + p(t.getDate());
+  return d >= from;
+}
+function picked() {
+  return (state.rows || []).filter(r => inRange(r) && (!state.unit || r.unit === state.unit));
+}
+function median(a) {
+  if (!a.length) return null;
+  const s = a.slice().sort((x,y) => x - y), m = s.length >> 1;
+  return s.length % 2 ? s[m] : Math.round((s[m-1] + s[m]) / 2);
+}
+
+/* 分數分桶。⚠️ 桶的邊界對齊 75 這條及格線（GATE.PASS_STARS = 2 ＝ 75 分），
+   不然圖上看不出「誰過了」—— 而那正是老師最想知道的一件事。 */
+const BUCKETS = [
+  { lo:0,  hi:24,  label:'0–24',   v:'--s1' },
+  { lo:25, hi:49,  label:'25–49',  v:'--s2' },
+  { lo:50, hi:74,  label:'50–74',  v:'--s3' },
+  { lo:75, hi:89,  label:'75–89',  v:'--s4' },
+  { lo:90, hi:100, label:'90–100', v:'--s5' }
+];
+/* ⚠️ 類別色**不可以循環使用**：第四個模型不是「再回到第一個顏色」，
+   那會讓兩個不同的東西長得一模一樣。梯子目前只有三階，
+   真的多出來就給灰色（＝「其他」），寧可沒有顏色也不要有錯的顏色。 */
+const MODEL_VARS = ['--m1','--m2','--m3'];
+
+/* 「幾乎是同一份程式」的判準。②和③**共用這一個**定義 ——
+   兩邊各寫一份的話，同一組資料會在一段裡算「改過了」、在另一段算「沒改」，
+   而畫面上不會有任何徵兆。
+   ⚠️ 用字數當近似值：它不是雜湊，字數一樣不保證內容一樣。
+      但反過來很可靠 —— 字數差很多就一定改過了。
+   ⚠️ 不可以用「完全相等」：1410212 那一組是 3488 → 3486（差兩個字），
+      用相等去比就會漏掉整件事裡最嚴重的那一筆（flash 50 ↔ haiku 95）。 */
+const NEAR = 0.01;
+function nearlySameCode(chars) {
+  const a = chars.map(Number).filter(n => n > 0);
+  if (a.length < 2) return false;
+  const hi = Math.max(...a), lo = Math.min(...a);
+  return (hi - lo) / hi < NEAR;
+}
+const modelVar = i => (i < MODEL_VARS.length ? 'var(' + MODEL_VARS[i] + ')' : '#8a8a84');
+
+/* ⚠️ 只截掉前綴會變成「2.5-flash」，看起來像版本號不像模型。
+   老師平常講的是「flash」和「haiku」，畫面就該用那個字；
+   完整名稱掛在 title 上，要查的時候滑過去就有。 */
+function shortModel(m) {
+  const s = String(m || '');
+  if (!s) return '（沒記到）';
+  if (/flash/i.test(s)) return 'flash';
+  if (/haiku/i.test(s)) return 'haiku';
+  if (/sonnet/i.test(s)) return 'sonnet';
+  if (/gemma/i.test(s)) return 'gemma';
+  if (/pro/i.test(s)) return 'pro';
+  return s.replace(/^gemini-/, '').replace(/^claude-/, '').replace(/-\d{8}$/, '');
+}
+
+/* ===== 畫面 ===== */
+function render() {
+  const box = el('app');
+  if (!state.who) {
+    box.innerHTML = card(
+      '<p class="text-slate-600 text-sm mb-4">請用老師的 Google 帳號登入。</p>' +
+      '<button id="login" class="px-4 py-2 bg-slate-800 text-white font-bold rounded-lg text-sm">使用 Google 登入</button>');
+    return;
+  }
+  if (state.busy) { box.innerHTML = card('<div class="text-slate-500 text-sm font-bold">' + esc(state.busy) + '</div>'); return; }
+
+  const rows = picked();
+  const units = Array.from(new Set((state.rows || []).map(r => r.unit).filter(Boolean))).sort();
+
+  box.innerHTML =
+    filters(units) +
+    (state.err ? card('<div class="text-sm font-bold" style="color:var(--bad)">⚠️ ' + esc(state.err) + '</div>') : '') +
+    tiles(rows) +
+    scoreSection(rows) +
+    modelSection(rows) +
+    retrySection(rows) +
+    failSection(rows) +
+    tableSection(rows);
+}
+
+function card(inner, cls) {
+  return '<section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-4 ' + (cls || '') + '">' + inner + '</section>';
+}
+function h(t, sub) {
+  return '<h2 class="text-lg font-black text-slate-800">' + t + '</h2>' +
+    (sub ? '<p class="text-xs text-slate-500 mt-1 mb-3 leading-relaxed">' + sub + '</p>' : '<div class="mb-3"></div>');
+}
+
+/* 篩選放在一排，在所有圖表**上面** */
+function filters(units) {
+  const rb = (v, t) => '<button data-range="' + v + '" class="px-3 py-1.5 rounded-lg text-xs font-bold ' +
+    (state.range === v ? 'bg-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-600') + '">' + t + '</button>';
+  const opts = ['<option value="">全部關卡</option>'].concat(
+    units.map(u => '<option value="' + esc(u) + '"' + (state.unit === u ? ' selected' : '') + '>' + esc(u) + '</option>')).join('');
+  return '<div class="flex flex-wrap items-center gap-2 mb-4">' +
+    rb('today','今天') + rb('week','最近 7 天') + rb('all','全部') +
+    '<select id="unitSel" class="px-2 py-1.5 border border-slate-300 rounded-lg text-xs bg-white">' + opts + '</select>' +
+    '<button id="reload" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-slate-300 text-slate-600">↻ 重新讀取</button>' +
+    '</div>';
+}
+
+/* 大數字：這種「一個數字」的東西本來就不需要畫成圖 */
+function tiles(rows) {
+  const okRows = rows.filter(r => r.ok !== false && r.score != null);
+  const bad = rows.filter(r => r.ok === false).length;
+  const cached = rows.filter(r => r.cached).length;
+  const secs = okRows.filter(r => !r.cached).map(r => Number(r.seconds) || 0);
+  const t = (n, lab, color) =>
+    '<div class="bg-white rounded-2xl border border-slate-200 p-4 flex-1 min-w-[130px]">' +
+    '<div class="text-2xl font-black" style="color:' + (color || 'var(--ink)') + '">' + n + '</div>' +
+    '<div class="text-xs text-slate-500 font-bold mt-0.5">' + lab + '</div></div>';
+  return '<div class="flex flex-wrap gap-3 mb-4">' +
+    t(rows.length, '批改次數') +
+    t(bad, '❌ 失敗', bad ? 'var(--bad)' : undefined) +
+    t(cached, '⚡ 快取命中（沒重評）') +
+    t(secs.length ? median(secs) + ' 秒' : '—', '耗時中位數') +
+    '</div>';
+}
+
+/* ① 分數分布（依關卡）*/
+function scoreSection(rows) {
+  const ok = rows.filter(r => r.score != null);
+  if (!ok.length) return card(h('① 分數分布') + '<div class="text-sm text-slate-400">這個範圍裡沒有評分成功的紀錄。</div>');
+  const byUnit = {};
+  ok.forEach(r => { (byUnit[r.unit || '（沒記到關卡）'] = byUnit[r.unit || '（沒記到關卡）'] || []).push(r); });
+
+  const blocks = Object.keys(byUnit).sort().map(u => {
+    const list = byUnit[u], scores = list.map(r => Number(r.score));
+    const counts = BUCKETS.map(b => scores.filter(s => s >= b.lo && s <= b.hi).length);
+    const max = Math.max(1, ...counts);
+    const pass = scores.filter(s => s >= 75).length;
+    const allSame = scores.length >= 5 && Math.min(...scores) === Math.max(...scores);
+
+    const bars = BUCKETS.map((b, i) => {
+      const w = Math.round(counts[i] / max * 100);
+      return '<div class="flex items-center gap-2 mb-[2px]">' +
+        '<span class="w-16 text-right text-[11px] text-slate-500 font-mono">' + b.label + '</span>' +
+        '<div class="flex-1 flex items-center gap-2">' +
+        '<div class="bar" title="' + esc(u) + ' ' + b.label + ' 分：' + counts[i] + ' 筆" ' +
+          'style="width:' + (counts[i] ? Math.max(w, 3) : 0) + '%;background:var(' + b.v + ')"></div>' +
+        '<span class="text-[11px] font-bold text-slate-600">' + counts[i] + '</span></div></div>';
+    }).join('');
+
+    /* ★ 結論寫在圖**上面**：老師沒空自己做減法。
+       ⚠️ 全部同分是一個真的訊號 —— 2026-09-16 的資料裡 2-1-1A 有 11 筆
+          全是 100 分，那一關的分數等於不帶任何資訊。 */
+    const verdict = allSame
+      ? '<div class="text-xs font-black mb-2" style="color:var(--warn)">⚠️ 這一關 ' + scores.length +
+        ' 筆<b>全部都是 ' + scores[0] + ' 分</b> —— 分數沒有鑑別度，看不出誰需要幫忙' +
+        '（要嘛標準太鬆，要嘛這一關本來人人都該過）</div>'
+      : '<div class="text-xs text-slate-500 mb-2">' + scores.length + ' 筆，' +
+        pass + ' 筆達到 75 分（中位數 ' + median(scores) + '）</div>';
+
+    return '<div class="mb-5"><div class="font-bold text-sm text-slate-700">' + esc(u) + '</div>' +
+      verdict + bars + '</div>';
+  }).join('');
+
+  return card(h('① 分數分布（依關卡）',
+    '長條的深淺＝分數高低（同一個顏色由淺到深），不是四種不同的東西。' +
+    '桶的邊界對齊 <b>75 分</b>這條及格線 —— 75–89 和 90–100 那兩格就是「過了」。') + blocks);
+}
+
+/* ② 模型比較 —— 這一段是整頁最重要的 */
+function modelSection(rows) {
+  const ok = rows.filter(r => r.score != null && !r.cached);
+  const byM = {};
+  ok.forEach(r => { const m = r.model || ''; (byM[m] = byM[m] || []).push(Number(r.score)); });
+  const names = Object.keys(byM).sort();
+
+  const tbl = names.map((m, i) => {
+    const a = byM[m];
+    return '<tr class="border-t border-slate-100"><td class="py-1.5 pr-3">' +
+      '<span class="inline-block w-2.5 h-2.5 rounded-sm align-middle mr-1.5" style="background:' +
+        modelVar(i) + '"></span>' +
+      '<span class="font-mono text-xs" title="' + esc(m) + '">' + esc(shortModel(m)) + '</span></td>' +
+      '<td class="py-1.5 pr-3 font-bold">' + a.length + '</td>' +
+      '<td class="py-1.5 pr-3 font-black">' + median(a) + '</td>' +
+      '<td class="py-1.5 text-slate-500">' + Math.min(...a) + ' – ' + Math.max(...a) + '</td></tr>';
+  }).join('');
+
+  /* ★★ 配對比較：同一個學號、同一關、程式長度一樣（＝幾乎同一份程式），
+     卻被不同模型評過。這才是「尺不一樣」的直接證據 ——
+     光看上面那張表的中位數不算數，因為每個模型看到的是不同的學生。
+     ⚠️ 用 chars_student 當「同一份程式」的近似值：它不是雜湊，
+        長度一樣不保證內容一樣。所以下面寫的是「幾乎同一份」，不是「同一份」。 */
+  /* ⚠️ 分組的鑰匙**不可以**把字數算進去。
+     第一版是 [學號, 關卡, 字數]，於是 1410212 的 3488 和 3486 被當成
+     兩份不同的程式 —— 整件事裡最嚴重的那一筆（flash 50 ↔ haiku 95）
+     就這樣從畫面上消失了。⇒ 先按人和關卡分組，再用 nearlySameCode 篩。 */
+  const key = r => [r.student_id, r.unit].join('|');
+  const grp = {};
+  ok.forEach(r => { (grp[key(r)] = grp[key(r)] || []).push(r); });
+  const pairs = Object.keys(grp).map(k => grp[k])
+    .filter(g => new Set(g.map(r => r.model)).size >= 2)
+    .filter(g => nearlySameCode(g.map(r => r.chars_student)))
+    .map(g => {
+      const s = g.map(r => Number(r.score));
+      return { g, spread: Math.max(...s) - Math.min(...s),
+               crosses: Math.min(...s) < 75 && Math.max(...s) >= 75 };
+    })
+    .sort((a, b) => b.spread - a.spread);
+
+  /* ⛔⛔ 2026-09-16 實際畫出來才發現的問題：預設範圍是「今天」，
+     而跨模型的配對多半發生在**別天**（降級是偶發的）——
+     於是整頁最重要的一段，打開來永遠是「沒有紀錄」。
+     ★ 「這個範圍沒有」和「根本沒有」是兩件事，畫面上一定要分得出來，
+       而且要直接告訴老師去哪裡看得到。 */
+  const allPairCount = (function () {
+    const g2 = {}, all = (state.rows || []).filter(r => r.score != null && !r.cached);
+    all.forEach(r => { (g2[key(r)] = g2[key(r)] || []).push(r); });
+    return Object.keys(g2).filter(k => new Set(g2[k].map(r => r.model)).size >= 2
+      && nearlySameCode(g2[k].map(r => r.chars_student))).length;
+  })();
+  const emptyMsg = allPairCount
+    ? '<div class="text-xs py-2" style="color:var(--warn)"><b>這個範圍裡沒有，但「全部」範圍裡有 ' +
+      allPairCount + ' 筆。</b>降級是偶發的，所以跨模型的比較多半不在今天 —— 請按上面的「全部」。</div>'
+    : '<div class="text-xs text-slate-400 py-2">目前完全沒有「同一份程式被兩個以上模型評過」的紀錄。</div>';
+
+  const pairHtml = pairs.length ? pairs.map(p => {
+    const g = p.g;
+    const cells = g.map(r => '<span class="font-mono text-xs mr-3">' + esc(shortModel(r.model)) +
+      ' <b class="text-sm">' + esc(r.score) + '</b></span>').join('');
+    return '<div class="py-1.5 border-t border-slate-100 text-xs">' +
+      (p.crosses ? '<span class="font-black" style="color:var(--bad)">🚨 跨過及格線　</span>'
+                 : (p.spread >= 10 ? '<span class="font-black" style="color:var(--warn)">⚠️ 差 ' + p.spread + ' 分　</span>' : '')) +
+      '<span class="text-slate-500 font-mono">' + esc(g[0].student_id) + '　' + esc(g[0].unit) + '　' +
+      (function () { const c = g.map(r => Number(r.chars_student) || 0);
+        const hi = Math.max(...c), lo = Math.min(...c);
+        return hi === lo ? hi + ' 字' : lo + '–' + hi + ' 字'; })() + '</span><br>' + cells + '</div>';
+  }).join('') : emptyMsg;
+
+  return card(h('② 不同模型給的分數',
+    '⚠️ 上面那張表<b>不能直接比</b> —— 每個模型看到的是不同學生的作品。' +
+    '真正能比的是下面那一段：<b>同一個人、同一關、同樣長度</b>的程式被不同模型評過的那幾筆。') +
+    '<table class="w-full text-left text-sm"><thead class="text-slate-500 text-xs"><tr>' +
+    '<th class="pb-1 pr-3 font-bold">模型</th><th class="pb-1 pr-3 font-bold">筆數</th>' +
+    '<th class="pb-1 pr-3 font-bold">中位數</th><th class="pb-1 font-bold">最低–最高</th>' +
+    '</tr></thead><tbody>' + (tbl || '<tr><td class="py-2 text-slate-400">沒有資料</td></tr>') + '</tbody></table>' +
+    '<div class="mt-4 font-bold text-sm text-slate-700">同一份程式，不同模型</div>' + pairHtml);
+}
+
+/* ③ 重送：同一個人、同一關送了好幾次 */
+/* ⛔⛔ 2026-09-16：這一段的第一版把每一組都標成「進步 N 分」，
+   拿真資料畫出來才發現它在說謊：
+     1410212  50 → 50 → 50 → 95　標成「進步 45 分」
+   —— 但他的程式從 3488 字變成 3486 字，等於沒改。
+      分數會跳是因為那一次降級到 claude-haiku，**不是他變強了**。
+     1410213  65 → 85 → 80　更誇張：完全同一份程式（都是 3277 字）。
+   ★ 把「模型換了」說成「學生進步了」，是這一頁能犯的最嚴重的錯 ——
+     老師會拿它當教學成效的證據。
+   ⇒ 規則：程式幾乎沒改（字數差 < 1%）就**不可以**說進步，
+     要直接指出「程式沒改，分數卻變了」，並且把模型印在每一步旁邊，
+     讓老師自己看得到是不是換了尺。 */
+function retrySection(rows) {
+  const ok = rows.filter(r => r.score != null);
+  const grp = {};
+  ok.forEach(r => { const k = r.student_id + '|' + r.unit; (grp[k] = grp[k] || []).push(r); });
+  const many = Object.keys(grp).map(k => grp[k]).filter(g => g.length >= 2)
+    .map(g => g.slice().sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))))
+    .sort((a, b) => b.length - a.length);
+
+  const body = many.length ? many.map(g => {
+    /* 每一步都帶著模型 —— 這樣「分數變了是因為換了尺」不必我解釋，看得到。 */
+    const seq = g.map(r => '<span class="whitespace-nowrap">' + (r.cached ? '⚡' : '') +
+      '<b>' + esc(r.score) + '</b><span class="text-slate-400 text-[10px] ml-0.5">' +
+      esc(shortModel(r.model)) + '</span></span>').join('<span class="text-slate-300 mx-1">→</span>');
+
+    const c0 = Number(g[0].chars_student) || 0, cN = Number(g[g.length-1].chars_student) || 0;
+    const sc = g.map(r => Number(r.score));
+    const dScore = sc[sc.length-1] - sc[0];
+    const spread = Math.max(...sc) - Math.min(...sc);
+    const models = new Set(g.map(r => r.model).filter(Boolean));
+    // ★ 和②共用同一個判準（見 nearlySameCode）—— 兩邊不可以各算各的
+    const sameCode = nearlySameCode(g.map(r => r.chars_student));
+
+    let note;
+    if (sameCode && spread > 0) {
+      note = '<span class="font-black" style="color:var(--bad)">⚠️ 程式幾乎沒改（' + c0 + ' → ' + cN +
+        ' 字），分數卻差 ' + spread + ' 分' +
+        (models.size > 1 ? '　—— 這一組換過模型（' +
+          Array.from(models).map(shortModel).join(' / ') + '），分數變的是尺，不是他' : '') + '</span>';
+    } else if (sameCode) {
+      note = '<span class="text-slate-400">程式沒改，分數也沒變（快取正常）</span>';
+    } else if (dScore > 0) {
+      note = '<span class="font-bold" style="color:var(--ok)">↑ 進步 ' + dScore + ' 分（程式從 ' +
+        c0 + ' 改到 ' + cN + ' 字）</span>';
+    } else if (dScore < 0) {
+      note = '<span class="font-bold" style="color:var(--warn)">↓ 退 ' + (-dScore) + ' 分（程式改過了）</span>';
+    } else {
+      note = '<span class="text-slate-400">改了程式但分數沒變 —— 他可能不知道要改什麼</span>';
+    }
+
+    return '<div class="py-2 border-t border-slate-100 text-xs">' +
+      '<span class="font-mono text-slate-500">' + esc(g[0].student_id) + '　' + esc(g[0].unit) + '</span>　' +
+      seq + '<br><span class="text-[11px]">' + note + '</span></div>';
+  }).join('') : '<div class="text-xs text-slate-400 py-2">這個範圍裡沒有人送第二次。</div>';
+
+  return card(h('③ 誰在重送',
+    '送很多次卻沒進步，代表他<b>不知道要改什麼</b> —— 那是教學上的訊號，不是系統問題。<br>' +
+    '⚠️ <b>分數變高不一定是進步</b>：程式沒改而分數變了，變的是尺（換了模型），不是他。' +
+    '所以每一步旁邊都印了是哪個模型評的。⚡ 代表那一次是快取命中。') + body);
+}
+
+function failSection(rows) {
+  const bad = rows.filter(r => r.ok === false);
+  /* ⚠️ 沒有失敗的時候**也要留著這一段**：
+     「今天 0 筆失敗」本身就是消息，而且整段消失會讓編號跳號（③ 之後直接 ⑤），
+     看起來像畫面壞掉。 */
+  if (!bad.length) {
+    return card(h('④ 失敗的那幾筆') +
+      '<div class="text-sm font-bold" style="color:var(--ok)">✅ 這個範圍裡沒有失敗。</div>');
+  }
+  const body = bad.map(r => '<div class="py-1.5 border-t border-slate-100 text-xs">' +
+    '<span class="font-mono text-slate-500">' + esc(r.created_at) + '　' + esc(r.student_id) + '　' + esc(r.unit) + '</span><br>' +
+    '<span style="color:var(--bad)">' + esc(r.error || '（沒記到原因）') + '</span></div>').join('');
+  return card(h('④ 失敗的那幾筆',
+    '❌ 失敗<b>不會</b>寫進成績（那是刻意的：故障和交白卷不可以長得一樣），但一定會留在這裡。') + body);
+}
+
+/* 逐筆表格：規定要有「表格版」，而且顏色對比不足的補救也靠它 */
+function tableSection(rows) {
+  const body = rows.slice(0, 120).map(r =>
+    '<tr class="border-t border-slate-100"><td class="py-1 pr-2 font-mono text-[11px] text-slate-500">' + esc(r.created_at) + '</td>' +
+    '<td class="py-1 pr-2 font-mono text-[11px]">' + esc(r.student_id) + '</td>' +
+    '<td class="py-1 pr-2 font-mono text-[11px]">' + esc(r.unit) + '</td>' +
+    '<td class="py-1 pr-2 font-black">' + (r.score != null ? esc(r.score) : '—') + '</td>' +
+    '<td class="py-1 pr-2 text-[11px]">' + esc(shortModel(r.model)) + (r.cached ? ' ⚡' : '') + '</td>' +
+    '<td class="py-1 text-[11px] text-slate-500">' + esc(r.seconds != null ? r.seconds + 's' : '') + '</td></tr>').join('');
+  return card(h('⑤ 逐筆（最多 120 列）') +
+    '<div class="overflow-x-auto"><table class="w-full text-left text-sm min-w-[520px]">' +
+    '<thead class="text-slate-500 text-xs"><tr><th class="pb-1 pr-2 font-bold">時間</th>' +
+    '<th class="pb-1 pr-2 font-bold">學號</th><th class="pb-1 pr-2 font-bold">關卡</th>' +
+    '<th class="pb-1 pr-2 font-bold">分數</th><th class="pb-1 pr-2 font-bold">模型</th>' +
+    '<th class="pb-1 font-bold">耗時</th></tr></thead><tbody>' + body + '</tbody></table></div>');
+}
+
+document.addEventListener('click', async (e) => {
+  if (e.target.closest('#login')) {
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+    catch (err) { state.err = '登入失敗：' + err.message; render(); }
+    return;
+  }
+  const rb = e.target.closest('[data-range]');
+  if (rb) { state.range = rb.dataset.range; render(); return; }
+  if (e.target.closest('#reload')) { load(); return; }
+});
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'unitSel') { state.unit = e.target.value; render(); }
+});
+
+render();
+</script>
+</body>
+</html>

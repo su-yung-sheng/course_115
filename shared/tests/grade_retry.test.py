@@ -673,6 +673,72 @@ ok('cfg["_student_id"] = student_id' in _sg,
    "而且畫面上完全看不出來，只會覺得「怎麼又變慢了」")
 
 
+section("④i 成績要看得出是誰在什麼條件下給的（2026-09-16）")
+# ⛔⛔ 老師 2026-09-16 問「搜集的資料能提供改善方向嗎」，查下去才發現：
+#    成績（{學期}-submissions）裡**沒有**模型、關卡代號、是否走快取。
+#    ★ 那天要回答「同一份程式 flash 給 50、claude 給 95」，
+#      我是拿觀測用的 grade-stats 去對時間戳兜出來的 ——
+#      兩份獨立寫入的資料，隨時可能對不起來。
+# ⚠️ 補欄位愈晚做愈虧：之前的紀錄補不回來。
+_calls2 = []
+_old_http, _old_fb, _old_base = core._fs_http, core.FIREBASE, core._fs_docs_base
+core._fs_http = lambda m, u, b=None: (_calls2.append((m, u, b)) or {})
+core._fs_docs_base = lambda: "https://fake/documents"
+core.FIREBASE = {"enabled": True, "api_key": "k"}
+try:
+    rec = core.record_submission("1420120", {"score": 100, "comments": "好"},
+                                 theme="[2-1-1A] 班級置物櫃", term="11501",
+                                 unit="2-1-1A", model="gemini-2.5-flash",
+                                 cached=True)
+    ok(rec is not None and rec.get("unit") == "2-1-1A",
+       "★★ 成績要記關卡代號 —— theme 裡那個「[2-1-1A]」是給人看的字串，不是欄位")
+    ok(rec is not None and rec.get("model") == "gemini-2.5-flash",
+       "★★★ 成績要記**是誰給的分數**。flash 和 claude 的尺差到 45 分，"
+       "沒有這一欄就永遠回答不了「他那天是被哪把尺量的」")
+    ok(rec is not None and rec.get("cached") is True,
+       "★★ 快取命中的那一筆不是重新評的，統計時要分得出來")
+    rec2 = core.record_submission("1410105", {"score": 75, "comments": "x"})
+    ok(rec2 is not None and rec2.get("unit") == "" and rec2.get("model") == ""
+       and rec2.get("cached") is False,
+       "★ 沒帶的時候要留空，不可以丟例外（舊呼叫端不會因此壞掉）")
+finally:
+    core._fs_http, core.FIREBASE = _old_http, _old_fb
+    core._fs_docs_base = _old_base
+
+# ── 接線：順序錯了會安靜地少一欄 ──────────────────────────
+_sg2 = _src8[_src8.index("def student_grade"):]
+_sg2 = _sg2[:_sg2.index("\n@app.route")]
+ok("_st_keep" in _sg2 and "model=_st_keep" in _sg2,
+   "★★ 路由要真的把模型傳進 record_submission")
+ok(_sg2.index("_st_keep = dict(") < _sg2.index('result.pop("_stat"'),
+   "★★★ **順序**：_stat 要在 pop 之前留下來。pop 完再讀就是空的，"
+   "而空字串寫進成績不會報錯，只會安靜地少一欄")
+
+
+section("④j 跨模型校正（2026-09-16）")
+# ⛔⛔ 為什麼要有這支端點：實測資料顯示 flash 自己很穩（同一份程式 50/50/50），
+#    真正的變異在**模型之間**（flash 50 ↔ claude 95），而且跨過 75 這條及格線。
+#    ⇒ 學生過不過關，取決於那天 flash 有沒有塞車。
+_cal = _src8[_src8.index("def teacher_calibrate"):]
+_cal = _cal[:_cal.index("\n@app.route")]
+ok(_cal.count("clean_json_for_ai") == 1 and
+   _cal.index("clean_json_for_ai") < _cal.index("for _m in _models"),
+   "★★★ clean_code 只算**一次**，再餵給每個模型 —— "
+   "每個模型各自重解一次 .sb3 的話，量到的就不只是模型的差異")
+ok('r.get("matched")' in _cal and "_got = [" in _cal,
+   "★★★ 只有「真的由它自己回答」的那幾格可以拿去算差距 —— "
+   "降級過的那一格量到的不是它自己的尺")
+ok("75" in _cal and "crosses_pass_line" in _cal,
+   "★★★ 要直接算出「有沒有跨過 75 分」—— 差幾分是數字，"
+   "跨不跨過及格線才是老師要做決定的那件事")
+ok("_calib_last[0] = _now" in _cal and
+   _cal.index("_calib_last[0] = _now") < _cal.index("_save_upload_to_temp"),
+   "★★ 節流要**先蓋章再開跑**：放在後面的話，兩個人同時按就兩邊都過關"
+   "（這一支每按一次都會用到付費額度）")
+ok("_CALIB_BUDGET" in _cal,
+   "★ 要有時間上限 —— 三個模型接力可能超過瀏覽器的等待時間")
+
+
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
 _FakeClient.script = lambda m: (_ for _ in ()).throw(AssertionError("不該呼叫 API"))
 core.time = _Clock()

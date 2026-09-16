@@ -182,6 +182,16 @@
                 繳交審核
               </a>
 
+              <!-- 📊 程式批改觀測（分數分布、不同模型給的分數、誰在重送）
+                   ⛔ 2026-09-16：{學期}-grade-stats 從 09-10 就一直在收資料，
+                      但整個 repo 沒有任何前端在讀它 —— 老師想看只能去問 Claude。
+                      收了看不到，等於沒收。 -->
+              <a href="../shared/gradestats.html?term=11501" data-bust
+                 class="px-4 py-2 bg-violet-100 text-violet-700 rounded-full text-sm font-bold hover:bg-violet-200 border border-violet-300 shadow-sm flex items-center gap-1.5 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                批改觀測
+              </a>
+
               <!-- 📊 題目分析（哪幾題全班一直錯 → 下一節要重講什麼） -->
               <a href="../shared/qstat.html?term=11501" data-bust
                  class="px-4 py-2 bg-orange-100 text-orange-700 rounded-full text-sm font-bold hover:bg-orange-200 border border-orange-300 shadow-sm flex items-center gap-1.5 transition-colors">
@@ -2584,9 +2594,16 @@ const __bn = bonusOf(student, sub.key);
           <div class="flex flex-wrap items-center gap-2">
             <input type="file" id="gdTestFile" accept=".sb3" class="text-xs border border-slate-300 rounded-lg p-2">
             <button onclick="gdTestGrade()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-xs transition">▶ 開始試評</button>
+            <!-- ⛔⛔ 2026-09-16 實際資料：1410212 的同一份程式，flash 連三次都給
+                 50 分；只改了兩個字之後由 claude-haiku 評 → 95。
+                 也就是說「那天 flash 有沒有塞車」決定他過不過 75 這條線。
+                 ⇒ 這顆按鈕把同一份程式丟給每個模型各評一次，讓那件事量得到。
+                 ⚠️ 會真的呼叫每一個模型（含付費那一階），後端有 20 秒節流。 -->
+            <button onclick="gdCalibrate()" class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-lg text-xs transition">📐 跨模型校正</button>
           </div>
           <div id="gdTestStatus" class="text-xs mt-2 font-bold text-slate-500"></div>
           <div id="gdTestResult" class="hidden mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-2"></div>
+          <div id="gdCalibResult" class="hidden mt-3 bg-violet-50 border border-violet-200 rounded-xl p-3 text-xs space-y-2"></div>
         </div>
       </div>
     </div>
@@ -2855,6 +2872,7 @@ const __bn = bonusOf(student, sub.key);
         u.template_code ? '✅ 這一關已有空白範本（批改時會比對）' : '這一關尚未上傳空白範本',
         u.template_code ? 'text-emerald-600' : 'text-slate-500');
       document.getElementById('gdTestResult').classList.add('hidden');
+      { const _cb = document.getElementById('gdCalibResult'); if (_cb) _cb.classList.add('hidden'); }
       _gdSay('gdTestStatus', '');
     }
     // 把 _gdCache.units 整包寫回 Firestore（參考解答／範本也在裡面，逐關保存）
@@ -3158,6 +3176,87 @@ const __bn = bonusOf(student, sub.key);
         _gdSay('gdTestStatus', '✅ 試評完成（未記錄成績）', 'text-emerald-600');
       } catch (e) {
         _gdSay('gdTestStatus', '❌ ' + e.message + '（請確認 Colab 後端已啟動、Secrets 已設 GEMINI_API_KEY_1）', 'text-red-600');
+      }
+    }
+
+    /* 📐 跨模型校正：同一份程式，梯子上每個模型各評一次。
+       ⛔⛔ 為什麼需要（2026-09-16 的實測資料）：
+            1410212 同一份程式 flash 50／50／50，換 claude-haiku → 95；
+            1410213 同一份程式 flash 85／flash 80／haiku 65。
+          ⇒ flash 自己很穩（差 5 分），差距在**模型之間**（20～45 分），
+            而且跨過 75 這條及格線。
+       ★ 畫面上最該看見的不是「差幾分」，是**有沒有跨過 75** ——
+         跨過去就代表有學生會因為抽到哪個模型而過或不過。
+       ⚠️ 降級過的那一格（回答的不是要求的那個模型）不算數，要標出來，
+          而且不可以拿去算差距 —— 那量到的不是它自己的尺。 */
+    async function gdCalibrate() {
+      const f = document.getElementById('gdTestFile').files[0];
+      if (!f) { _gdSay('gdTestStatus', '請先選擇要校正的 .sb3', 'text-red-600'); return; }
+      const box = document.getElementById('gdCalibResult');
+      box.classList.add('hidden');
+      try {
+        _gdSay('gdTestStatus', '📐 校正中…每個模型各跑一次，約 40–120 秒，請不要關掉這一頁');
+        const u = (_gdCache && _gdCache.units[_gdUnit()]) || {};
+        const overrides = {
+          theme: document.getElementById('gdTheme').value.trim(),
+          rules: document.getElementById('gdRules').value.trim()
+        };
+        if (u.example_code) overrides.example_code = u.example_code;
+        if (u.template_code) overrides.template_code = u.template_code;
+
+        const fd = new FormData();
+        fd.append('file', f);
+        fd.append('unit', _gdUnit());
+        fd.append('overrides', JSON.stringify(overrides));
+        fd.append('term', window.CONFIG.TERM);
+        const r = await fetch(GD_SERVER + '/api/teacher/calibrate', { method: 'POST', headers: GD_H, body: fd });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '校正失敗');
+
+        const esc = t => String(t == null ? '' : t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+        const rows = (j.rows || []).map(x => {
+          const bad = !x.matched;
+          return '<tr class="' + (bad ? 'text-slate-400' : '') + '">' +
+            '<td class="py-1 pr-3 font-mono">' + esc(x.requested) + '</td>' +
+            '<td class="py-1 pr-3 font-black ' + (bad ? '' : 'text-slate-800') + '">' +
+              (x.score != null ? esc(x.score) + ' 分' : '—') + '</td>' +
+            '<td class="py-1 pr-3">' + (x.seconds != null ? esc(x.seconds) + ' 秒' : '') + '</td>' +
+            '<td class="py-1">' + (bad
+              ? '⚠️ 這一階自己失敗了' + (x.answered ? '，改由 ' + esc(x.answered) + ' 回答' : '') +
+                '（這一格不算數）' + (x.error ? '：' + esc(String(x.error).slice(0, 80)) : '')
+              : '') + '</td></tr>';
+        }).join('');
+
+        /* ★ 這兩句是整個功能的重點，所以放在表格**上面**而不是下面。
+           表格是證據，這兩句才是結論 —— 老師沒空自己做減法。 */
+        let verdict = '';
+        if (j.crosses_pass_line) {
+          verdict = '<div class="font-black text-rose-700 text-sm">🚨 這份程式會因為「抽到哪個模型」而過或不過'
+                  + '（最高和最低差 ' + esc(j.spread) + ' 分，橫跨 75 分這條及格線）</div>';
+        } else if (j.spread != null && j.spread >= 10) {
+          verdict = '<div class="font-black text-amber-700 text-sm">⚠️ 模型之間差了 ' + esc(j.spread)
+                  + ' 分（還沒跨過 75，但這條線附近的學生要注意）</div>';
+        } else if (j.spread != null) {
+          verdict = '<div class="font-black text-emerald-700 text-sm">✅ 模型之間只差 ' + esc(j.spread)
+                  + ' 分 —— 這一關的評分標準夠明確</div>';
+        } else {
+          verdict = '<div class="font-bold text-slate-500 text-sm">只有一個模型跑成功，量不出差距。</div>';
+        }
+
+        const skip = (j.skipped || []).map(x =>
+          '<div class="text-slate-400">略過 ' + esc(x.model) + '：' + esc(x.why) + '</div>').join('');
+
+        box.innerHTML = verdict +
+          '<table class="w-full text-left"><thead class="text-slate-500"><tr>' +
+          '<th class="py-1 pr-3 font-bold">模型</th><th class="py-1 pr-3 font-bold">分數</th>' +
+          '<th class="py-1 pr-3 font-bold">耗時</th><th class="py-1 font-bold"></th>' +
+          '</tr></thead><tbody>' + rows + '</tbody></table>' + skip +
+          '<div class="text-slate-400">同一份清理後的程式（' + esc(j.chars_student) +
+          ' 字）餵給每一個模型，沒有記錄成績。</div>';
+        box.classList.remove('hidden');
+        _gdSay('gdTestStatus', '✅ 校正完成（未記錄成績）', 'text-emerald-600');
+      } catch (e) {
+        _gdSay('gdTestStatus', '❌ ' + e.message, 'text-red-600');
       }
     }
 
@@ -3706,6 +3805,7 @@ const __bn = bonusOf(student, sub.key);
     window.gdUploadExample = gdUploadExample;
     window.gdUploadTemplate = gdUploadTemplate;
     window.gdTestGrade = gdTestGrade;
+    window.gdCalibrate = gdCalibrate;
   </script>
 
 <script>
