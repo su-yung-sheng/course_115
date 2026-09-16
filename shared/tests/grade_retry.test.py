@@ -603,6 +603,25 @@ _kf = _kf[:_kf.index("\ndef ")]
 ok("model" not in _kf,
    "★★★ 鑰匙裡不可以有模型名稱 —— 「不管哪個模型都給同一個分數」正是目的")
 
+# ── 鑰匙要認人（2026-09-16）────────────────────────────────
+# ⛔⛔ 上面那幾條當初全部是綠的，洞照樣存在 ——
+#    因為它們從頭到尾沒有問過一句「換一個學生會怎樣？」
+#    實際後果：1420121 08:51 被評 100 分；1420120 08:53 按送出，
+#    **0 秒**拿到同一份 100 分，而他從來沒有被評分過一次。
+# ★ 這一組測試就是那句沒被問出口的問題。
+_cfg_s1 = dict(_cfg_a, _student_id="1420121")
+_cfg_s2 = dict(_cfg_a, _student_id="1420120")
+ok(core.grade_cache_key(_cfg_s1, "學生程式")
+   == core.grade_cache_key(dict(_cfg_s1), "學生程式"),
+   "★★ 同一個學生＋同一份程式 → 同一把鑰匙（原本的需求要保住：不重骰）")
+ok(core.grade_cache_key(_cfg_s1, "學生程式")
+   != core.grade_cache_key(_cfg_s2, "學生程式"),
+   "★★★ **不同學號、一模一樣的程式 → 不同鑰匙**。少了這一條，"
+   "後按送出的人會 0 秒撿到前一個人的分數（2026-09-16 實際發生）")
+ok(core.grade_cache_key(_cfg_s1, "學生程式")
+   != core.grade_cache_key(_cfg_a, "學生程式"),
+   "★ 有帶學號和沒帶學號不可以算出同一把鑰匙（不然舊資料會被誤命中）")
+
 # ── 寫入：失敗的不可以存，不然錯誤會被記住 ──────────────
 _calls = []
 _old_http, _old_fb = core._fs_http, core.FIREBASE
@@ -639,11 +658,19 @@ ok("和你上次送出的完全一樣" in _gpf,
    "而重送永遠不會改變結果")
 ok("修改程式" in _gpf,
    "★★ 而且要講清楚下一步是什麼（改程式，不是再按一次）")
+ok("_student_id" in _gpf and "not _sid" in _gpf,
+   "★★★ 沒有學號的時候要**完全不查快取** —— 退回原本的全域鑰匙，"
+   "等於在那條路徑上把洞原樣打開，而且不會有任何徵兆")
 _src8 = "".join(json.load(io.open(NB, encoding="utf8"))["cells"][8]["source"])
 _tt = _src8[_src8.index("def teacher_test"):]
 _tt = _tt[:_tt.index("\n@app.route")]
 ok('cfg["no_cache"] = True' in _tt,
    "★★★ 老師試評不可以走快取 —— 他是在調規則，看到上次的分數會以為沒生效")
+_sg = _src8[_src8.index("def student_grade"):]
+_sg = _sg[:_sg.index("\n@app.route")]
+ok('cfg["_student_id"] = student_id' in _sg,
+   "★★★ 路由一定要把學號帶進 cfg —— 漏掉的話快取整個失效（每次都重評），"
+   "而且畫面上完全看不出來，只會覺得「怎麼又變慢了」")
 
 
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")

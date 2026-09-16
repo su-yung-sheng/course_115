@@ -56,6 +56,17 @@ is(/服務.*Classroom/.test(C._explainError('Classroom is not defined')), true,
 is(/selfTest/.test(C._explainError('PERMISSION_DENIED')), true,
    '權限問題 → 叫他先在編輯器跑 selfTest 完成授權');
 is(C._explainError('通行碼不正確。'), '通行碼不正確。', '.gs 已經寫清楚的就原樣顯示，不要再包一層');
+/* ⛔ 2026-09-16 老師實際看到的原文：
+     「classroom.courses.courseWork.studentSubmissions.list API 呼叫失敗
+       (錯誤訊息：Requested entity was not found.)」
+   對老師來說那句話等於沒說 —— 他只知道「偶爾會壞」。
+   ★ 翻譯要連「下一步怎麼辦」一起講，只翻字面沒有用。 */
+is(/換班|課程/.test(C._explainError(
+     'classroom.courses.courseWork.studentSubmissions.list API 呼叫失敗' +
+     ' (錯誤訊息：Requested entity was not found.)')), true,
+   '★★ not found 要翻成「這份作業不屬於目前的課程（剛換班還沒載完）」');
+is(/再按一次|重新選/.test(C._explainError('Requested entity was not found.')), true,
+   '★★ 而且要講下一步 —— 只說「找不到」等於把老師丟在原地');
 
 section('交了沒');
 const row = { state: 'TURNED_IN', attachments: [{ kind: 'drive', title: 'a.png', link: 'x' }] };

@@ -240,13 +240,32 @@ async function autoPickCourse() {
 
 async function pickCourse(id) {
   state.cr.courseId = id; state.cr.workId = ''; state.cr.rows = {};
+  /* ⛔⛔ 2026-09-16：works 這一行原本沒有清。
+       症狀是老師偶爾看到「Requested entity was not found.」，
+       而且「手動在下拉選單選一次就好了」—— 看起來像手動比較可靠。
+     ★ 真相是時間差，不是手動比較可靠：
+       換班之後 courseId 上面那一行**馬上**變成新課程，
+       但下面那個 await 還沒回來，state.cr.works 仍然是**上一門課**的清單。
+       這時候按「讀取這一關」，比對會在舊清單裡配到同名的作業
+       （每一班的作業標題都一樣），於是拿「舊課的作業 id」去問「新課」
+       —— Classroom 回的就是那句 not found。
+       老師手動選那幾秒，剛好夠新清單載完，所以「手動就好了」。
+     ⚠️ 只清空還不夠：連續換兩次班時，第一次的回應可能**晚於**第二次
+        才回來，照樣會把舊清單蓋上去。所以下面要檢查有沒有過期。 */
+  state.cr.works = []; state.cr.matched = ''; state.cr.ambiguous = null;
   // 課名裡有班級就自動篩到那一班（「資訊科技 801」→ 801）
   const course = state.cr.courses.find(c => c.id === id);
   const guess = CLASSROOM.classFromCourseName(course && course.name);
   if (guess && allClasses().indexOf(guess) >= 0) state.klass = guess;
   state.busy = '讀取作業清單…'; render();
-  try { state.cr.works = await CLASSROOM.coursework(id); }
-  catch (e) { state.cr.err = e.message; }
+  let ws = null, err = '';
+  try { ws = await CLASSROOM.coursework(id); }
+  catch (e) { err = e.message; }
+  // ★ 過期的回應只能丟掉，不可以蓋掉比較新的那一次。
+  //   （busy 也交給比較新的那一次去清 —— 這裡清會把它的「讀取中」關掉。）
+  if (state.cr.courseId !== id) return;
+  if (ws) state.cr.works = ws;
+  if (err) state.cr.err = err;
   state.busy = ''; render();
 }
 /**
@@ -259,7 +278,17 @@ async function pickCourse(id) {
  */
 async function loadThisUnit() {
   state.cr.err = ''; state.cr.matched = ''; state.cr.ambiguous = null;
-  const ids = Object.keys(KINDS).map(unitIdOf).filter(Boolean);
+  /* ⚠️ 清單還沒載完的時候不要去比對 —— 比對出來的東西屬於上一門課。
+     而且錯誤訊息要講「還沒載完」，不可以說「找不到」：
+     老師看到「找不到」會去改 Classroom 的作業標題，那是白費工。 */
+  if (!(state.cr.works || []).length) {
+    state.cr.err = '作業清單還沒載完（或這門課裡還沒有作業）。'
+                 + '等一下再按一次「讀取這一關」。';
+    render(); return;
+  }
+  /* ⚠️ 去掉重複：流程圖和程式設計用的是同一組單元代號，
+     不去重的話錯誤訊息會印成「含『2-1-1B』或『2-1-1B』」，看起來像壞了。 */
+  const ids = Array.from(new Set(Object.keys(KINDS).map(unitIdOf).filter(Boolean)));
   const r = CLASSROOM.findWork(state.cr.works, ids);
   if (r.work) { state.cr.matched = r.work.title; return pickWork(r.work.id); }
   state.cr.ambiguous = r.many || [];
@@ -271,15 +300,24 @@ async function loadThisUnit() {
 }
 
 async function pickWork(id) {
+  /* ⚠️ 記住這是**替哪一門課**問的。中途換班的話，回來的資料屬於上一班，
+     蓋上去就是張冠李戴 —— 而且畫面上完全看不出來，
+     老師會對著 801 的繳交，幫 802 的學生加分。 */
+  const cid = state.cr.courseId;
   state.cr.workId = id;
   state.busy = '讀取繳交狀況…'; render();
   try {
     /* Apps Script 回來的就是「學號 → 這一筆繳交」，
        email → 學號 的對應在 .gs 裡面做完了 ——
        這樣回應裡不含姓名與 email，網址萬一外流也不會把全班名單帶出去。 */
-    state.cr.rows = await CLASSROOM.submissions(state.cr.courseId, id);
+    const rows = await CLASSROOM.submissions(cid, id);
+    if (state.cr.courseId !== cid) return;   // 換過課了，這份回應已經過期
+    state.cr.rows = rows;
     state.cr.err = '';
-  } catch (e) { state.cr.err = e.message; }
+  } catch (e) {
+    if (state.cr.courseId !== cid) return;
+    state.cr.err = e.message;
+  }
   state.busy = ''; render();
 }
 

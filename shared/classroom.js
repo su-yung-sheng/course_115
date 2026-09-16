@@ -42,7 +42,7 @@
        （GitHub Pages 快取 10 分鐘）。老師看到的是「我改了但畫面沒變」，
        而「沒變」和「壞了」長得一模一樣，只能猜。
        把版本印在畫面上，就從「猜」變成「看一眼就知道要不要強制重新整理」。 */
-  var VERSION = '2026-08-06-notes';
+  var VERSION = '2026-09-16-stale-course';
 
   var url = '';
   var key = '';
@@ -126,6 +126,18 @@
   function explainError(msg) {
     var t = String(msg || '');
     if (/通行碼/.test(t)) return t;      // .gs 已經寫清楚了
+    /* ⛔⛔ 2026-09-16 老師遇到的：
+         「classroom.courses.courseWork.studentSubmissions.list API 呼叫失敗
+           (錯誤訊息：Requested entity was not found.)」
+       原文對老師來說等於沒說 —— 他只知道「偶爾會壞，手動選一次就好了」。
+       ★ 真正的意思是「這個 courseWorkId 不屬於這個 courseId」，
+         也就是作業清單還停留在上一門課（見 review.html 的 pickCourse）。
+       ⚠️ 這一句要講「下一步怎麼辦」，不是只翻譯字面。 */
+    if (/Requested entity was not found|entity was not found/i.test(t)) {
+      return '這份作業不屬於目前選到的課程 —— 通常是剛換班、作業清單還沒重新' +
+             '載完就按了「讀取這一關」。等一兩秒再按一次就好；' +
+             '如果一直這樣，請在下拉選單裡重新選一次課程。';
+    }
     if (/Classroom is not defined|Classroom 未定義/i.test(t)) {
       return 'Apps Script 專案沒有加入 Classroom 服務 —— 編輯器左側「服務」→ 新增 →' +
              ' Google Classroom API，加完重新部署。';
