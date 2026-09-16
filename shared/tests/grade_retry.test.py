@@ -194,8 +194,11 @@ GOOD = json.dumps({"logic_analysis": "分析", "creative_highlights": "無",
 KEYS = ["AIzaTESTKEY0000000001", "AIzaTESTKEY0000000002"]
 
 
-def run(script, model="gemma-4-31b-it", step=0.0):
-    """跑一次批改。script(model) 回 _FakeResp 或丟例外；step＝每次呼叫花幾秒。"""
+def run(script, model="gemma-4-31b-it", step=0.0, no_fallback=False):
+    """跑一次批改。script(model) 回 _FakeResp 或丟例外；step＝每次呼叫花幾秒。
+
+    no_fallback：校正用的「不准降級」。預設 False，既有呼叫端行為不變。
+    """
     clock = _Clock()
     core.time = clock
     core.GRADE_LOG.clear()
@@ -209,7 +212,7 @@ def run(script, model="gemma-4-31b-it", step=0.0):
     _FakeClient.script = wrapped
     res = core.single_agent_grading(
         KEYS, "評分規則", "主題", "學生的程式碼", "空白範本不一樣", "參考解答",
-        model, True)
+        model, True, no_fallback=no_fallback)
     return res, calls, clock
 
 
@@ -234,6 +237,34 @@ ok(calls.count("gemma-4-31b-it") == 1,
 ok("備援模型" in log, "★★ 紀錄要講明「改用備援模型」，老師才知道在用比較耗額度的那個")
 ok("備援模型" in [l for l in core.GRADE_LOG if "呼叫成功" in l][0],
    "★★ 成功那一行也要標出是備援 —— 只寫「成功」老師會以為主要模型好了")
+
+
+section("①b 校正時**不准**降級（no_fallback）")
+# ⛔⛔ 2026-09-16 老師第一次按「📐 跨模型校正」就踩到：
+#    要求 flash → flash 回 503 → 梯子自動降級到 haiku
+#    ⇒ 兩列都是 haiku 回答的，三個模型的比較塌成一個。
+# ★ 校正問的是「**這個模型自己**會給幾分」，降級等於偷換受測者。
+#   而且若少了 matched 檢查，畫面會印出「差 0 分，標準夠明確」——
+#   一個完全錯誤而且讓人安心的結論。
+# ⚠️ 這一條和上面①是**互相衝突**的需求（平常要降級、校正不准降級），
+#    所以兩邊都要有測試釘住，不然改一邊會把另一邊弄壞。
+res_nf, calls_nf, _ = run(_s1, step=60.0, no_fallback=True)
+ok(calls_nf == ["gemma-4-31b-it"],
+   "★★★ 只准打**被指定的那一個**模型、而且只問一次　←　實際打了 %r" % (calls_nf,))
+# ⚠️ 「只問一次」不是順便：第一版只砍了梯子沒砍重試，於是 503 之後
+#    在同一個模型上重試三次、吃光時間預算，後面的模型根本輪不到 ——
+#    畫面上會變成「校正只跑得出一列」，看起來像那些模型壞了。
+ok("gemini-2.5-flash" not in calls_nf,
+   "★★★ 絕對不可以偷偷換成備援模型 —— 換了就不是在量這個模型的尺")
+ok(res_nf.get("ok") is False and res_nf.get("score") is None,
+   "★★ 問不到就老實回失敗，**不可以**拿別人的分數充數")
+ok("503" in str(res_nf.get("error") or ""),
+   "★★★ 要把失敗原因帶出來（校正頁要印「這次沒問到，原因：503 忙線」）"
+   "　←　%r" % str(res_nf.get("error"))[:60])
+# ★ 平常那條路不可以被這次改動弄壞 —— 再跑一次①的情境確認還會降級
+_res_dn, _calls_dn, _ = run(_s1, step=60.0)
+ok("gemini-2.5-flash" in _calls_dn,
+   "★★★ 學生批改那條路**照樣要降級**（no_fallback 預設關閉）")
 
 section("② 總時間預算：不可以讓學生等到瀏覽器斷線（240 秒）")
 def _s2(m, n):
@@ -737,6 +768,30 @@ ok("_calib_last[0] = _now" in _cal and
    "（這一支每按一次都會用到付費額度）")
 ok("_CALIB_BUDGET" in _cal,
    "★ 要有時間上限 —— 三個模型接力可能超過瀏覽器的等待時間")
+ok("no_fallback=True" in _cal,
+   "★★★ 校正端點一定要傳 no_fallback=True —— 少了它，503 一來就會"
+   "把三個模型的比較塌成一個，而且畫面看起來一切正常")
+
+
+section("④k anthropic 的 temperature（2026-09-16）")
+# ⛔⛔ anthropic **1.x 把 temperature 整個拿掉了**（把 1.6.0 的 wheel 拆開
+#    看過：整個套件裡 temperature 出現 0 次，top_p／top_k 也沒了）。
+#    ★ 症狀不是報錯，是**安靜地換了行為**：
+#      gemini 是 temp=0（固定），Claude 變成用模型預設值 ——
+#      也就是備援模型一直在「會抖」的狀態下評分。
+#      而評分最不該有的就是「同一份程式給不同分數」。
+_src2 = "".join(json.load(io.open(NB, encoding="utf8"))["cells"][2]["source"])
+ok('"anthropic<1"' in _src2 or "'anthropic<1'" in _src2,
+   "★★★ 安裝那一行要把 anthropic 釘在 1.0 以下 —— 1.x 沒有 temperature，"
+   "備援模型會用預設溫度評分")
+ok("temperature" in _src2,
+   "★★ 而且要在原地寫清楚為什麼釘版本 —— 不然下次有人「順手升級」就壞了")
+ok("_anthropic_has_temperature" in _src8 and "anthropic_temperature" in _src8,
+   "★★★ 健康檢查要直接回報「溫度有沒有生效」—— 只報版本號不夠，"
+   "這種不會報錯、只是行為變了的狀況一定要看得見")
+_ant = _src_key[_src_key.index("def single_agent_grading"):]
+ok("不是**在固定溫度" in _ant or "不是**在固定溫度下評分" in _ant,
+   "★★ TypeError 那一行的訊息要講**後果**（分數會抖），不是只講相容性")
 
 
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")

@@ -3221,9 +3221,18 @@ const __bn = bonusOf(student, sub.key);
             '<td class="py-1 pr-3 font-black ' + (bad ? '' : 'text-slate-800') + '">' +
               (x.score != null ? esc(x.score) + ' 分' : '—') + '</td>' +
             '<td class="py-1 pr-3">' + (x.seconds != null ? esc(x.seconds) + ' 秒' : '') + '</td>' +
+            /* ⚠️ 失敗的那一格要講**原因**和**下一步**，不是只說「失敗了」。
+               2026-09-16 第一次跑就遇到 flash 回 503，而畫面只寫
+               「這一階自己失敗了」—— 和我前兩天嫌棄的 Classroom 錯誤訊息
+               是同一個毛病：講了症狀，沒講原因，也沒講該怎麼辦。
+               ⚠️ 校正已經關掉降級，所以正常情況不會有 answered ——
+                  真的出現就代表 no_fallback 沒生效，那要明講。 */
             '<td class="py-1">' + (bad
-              ? '⚠️ 這一階自己失敗了' + (x.answered ? '，改由 ' + esc(x.answered) + ' 回答' : '') +
-                '（這一格不算數）' + (x.error ? '：' + esc(String(x.error).slice(0, 80)) : '')
+              ? (x.answered
+                  ? '⚠️ 竟然改由 ' + esc(x.answered) + ' 回答了（校正不該降級，請回報）'
+                  : '⚠️ 這次沒問到 —— ' +
+                    (x.error ? esc(String(x.error).slice(0, 90)) : '沒有回報原因') +
+                    '　等一下再按一次就好')
               : '') + '</td></tr>';
         }).join('');
 
@@ -3240,7 +3249,11 @@ const __bn = bonusOf(student, sub.key);
           verdict = '<div class="font-black text-emerald-700 text-sm">✅ 模型之間只差 ' + esc(j.spread)
                   + ' 分 —— 這一關的評分標準夠明確</div>';
         } else {
-          verdict = '<div class="font-bold text-slate-500 text-sm">只有一個模型跑成功，量不出差距。</div>';
+          /* ⚠️ 「量不出差距」不等於「沒有差距」—— 這兩件事在畫面上
+             一定要分得出來，不然老師會以為已經驗過了。 */
+          verdict = '<div class="font-bold text-amber-700 text-sm">⚠️ 只有一個模型答出來，'
+                  + '<b>這次量不出差距</b>（不是沒有差距）。其他模型的原因看下面那一欄，'
+                  + '等一下再按一次。</div>';
         }
 
         const skip = (j.skipped || []).map(x =>
