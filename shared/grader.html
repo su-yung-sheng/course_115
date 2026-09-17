@@ -472,7 +472,20 @@ function render(d){
   fill('secCreative','creativeText',d.creative_highlights);
   $('commentText').textContent=d.comments||'—';
   fill('secDeduct','deductText',d.deducted_items);
+  /* ⚠️⚠️ 被嵌進 iframe 時這一行**沒有用**：外層的 iframe 是 scrolling="no"，
+     而且高度是靠下面那個 postMessage 才長出來的 —— 這裡呼叫的當下它還是
+     560px，捲不到任何地方。
+     ⛔ 2026-09-17 老師回報的症狀就是這個：「程式設計評分完成沒有回主頁」——
+        評完了，畫面完全沒有動，學生不知道好了沒、也不知道下一步去哪。
+     ⇒ 自己捲（獨立開啟時有用）＋ **通知外層**（嵌入時由外層捲、並顯示出口）。
+     ⚠️ 只送「評完了」這件事和分數，不要把講評整包送出去 ——
+        外層不需要，而 postMessage 的內容任何頁面都收得到。 */
   $('resultCard').scrollIntoView({behavior:'smooth'});
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'graderDone', score: (sc === null ? null : sc) }, '*');
+    }
+  } catch (e) {}
 }
 function fill(sec,txt,val){
   const empty=!val||val==='無';

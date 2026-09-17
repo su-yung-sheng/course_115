@@ -553,16 +553,39 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
           而且 scrolling="no" 連捲都捲不到。
           高度只有評分站自己最清楚，讓它自己講，兩邊就不會有一邊漏掉。
        ⚠️ 一定要驗 e.source：任何網頁都可以 postMessage 過來。 */
+    /* ⚠️⚠️ 2026-09-17：這一支原本是在 program 畫面**每次重繪都呼叫一次**，
+       而它每次都掛一個新的 window listener —— 學生答十題就疊十個。
+       ⇒ 改成整頁只註冊一次（_graderWired），呼叫幾次都沒關係。 */
+    let _graderWired = false;
     function wireGraderHeight(){
-      const f = document.getElementById('grader-frame');
-      if(!f) return;
+      if(_graderWired) return;
+      _graderWired = true;
       window.addEventListener('message', (e) => {
         const d = e.data;
-        if(!d || d.type !== 'graderHeight') return;
+        if(!d) return;
         const cur = document.getElementById('grader-frame');
-        if(!cur || e.source !== cur.contentWindow) return;
-        const h = Number(d.h) || 0;
-        if(h > 200 && h < 4000) cur.style.height = h + 'px';
+        if(!cur || e.source !== cur.contentWindow) return;   // 只收自家評分站的
+        if(d.type === 'graderHeight'){
+          const h = Number(d.h) || 0;
+          if(h > 200 && h < 4000) cur.style.height = h + 'px';
+          return;
+        }
+        /* ⛔ 評分完成：評分站在 iframe 裡呼叫 scrollIntoView 沒有用 ——
+           那個 iframe 是 scrolling="no"、高度還要靠 postMessage 才長出來，
+           它自己捲不動。結果是「評完了，但畫面完全沒有動」，
+           學生不知道好了沒。⇒ 由外層來捲，而且要等高度回報完再捲。 */
+        if(d.type === 'graderDone'){
+          const bar = document.getElementById('grade-done');
+          if(bar) bar.classList.remove('hidden');
+          setTimeout(() => {
+            const f2 = document.getElementById('grader-frame');
+            if(f2) f2.scrollIntoView({ behavior:'smooth', block:'center' });
+          }, 350);
+          /* ★ 悄悄把進度重讀一次，星數才是新的。
+             ⚠️ **絕對不可以**跟著 render() —— 整頁重繪會把 iframe 換掉，
+                學生剛拿到的評分結果就不見了。 */
+          if(state.studentId){ loadProgress(state.studentId).catch(()=>{}); }
+        }
       });
     }
 
@@ -826,7 +849,25 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     }
 
     // ===== 畫面 =====
+    /* ⛔⛔ 2026-09-17 老師：「按鈕切換功能頁面不是很流暢」。
+       查下來的原因：render() 用 innerHTML 換掉整個畫面，卻**沒有動捲軸**。
+       學生捲到選單底部點第 8 關，新畫面畫好了、捲動位置還停在原處 ——
+       看到的是新畫面的中段，看起來就像頁面壞了。
+       （在這之前只有 refuse() 會捲回頂端，那是「點到鎖住的關卡」那一條路。）
+       ⚠️ 只有**換狀態**時才捲。同一個畫面內的重繪（答一題、開合教材面板）
+          也捲回頂端的話會更煩 —— 學生每答一題就被拉回最上面。
+       ⚠️ 用 instant 不用 smooth：畫面才剛被 innerHTML 整個換掉，
+          再疊一段平滑捲動，看起來是兩件事在打架。 */
+    let _lastStatus = null;
     function render(){
+      paintView();
+      if(state.status !== _lastStatus){
+        _lastStatus = state.status;
+        try{ window.scrollTo({ top:0, behavior:'auto' }); }catch(e){ window.scrollTo(0,0); }
+      }
+    }
+
+    function paintView(){
       const el=document.getElementById('app');
       /* ⚠️ 逾時不再換成登入畫面，只補一行「比較慢」的提示。
          換畫面會讓學生以為要重新登入，而那個登入頁根本沒有功能。 */
@@ -1135,6 +1176,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
               ${mermaidPanel(u)}
               <div class="flex flex-wrap gap-2">
                 <button id="back-menu2" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-5 py-2.5 rounded-lg transition">回關卡列表</button>
+                <a href="hub.html" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-lg transition inline-flex items-center">🏠 回闖關基地</a>
               </div>
             </div>
           </div>`;
@@ -1161,6 +1203,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
               <div class="flex flex-wrap gap-2 justify-center">
                 <button id="to-program" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2.5 rounded-lg transition">🐱 接著做程式設計 →</button>
                 <button id="back-menu2" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-5 py-2.5 rounded-lg transition">回關卡列表</button>
+                <!-- ⛔ 2026-09-17 老師：「通關流程圖回上一頁面…沒有回主頁」。
+                     左上角雖然一直有「← 返回基地」，但慶祝畫面的視線在正中央，
+                     而學生這時候的下一個動作往往就是「回去看我的星星」。
+                     ⇒ 把出口放在他正在看的地方。 -->
+                <a href="hub.html" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-lg transition inline-flex items-center">🏠 回闖關基地</a>
               </div>
             </div>
           </div>`;
@@ -1241,8 +1288,20 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                   <div class="text-[11px] text-orange-700 leading-snug mt-0.5 lg:whitespace-nowrap">寫好存成 <b>.sb3</b> 上傳即可評分：<b>90 分↑ 3⭐、75 分↑ 2⭐</b>；未滿 75 分不給星，要修改後再傳。</div>
                 </div>
                 <iframe id="grader-frame" src="../shared/grader.html?term=${window.CONFIG.TERM}&unit=${u.id}" class="w-full block bg-white" style="height:560px;border:0;overflow:hidden" scrolling="no" title="Scratch 作品評分"></iframe>
+                <!-- ⛔ 2026-09-17 老師：「程式設計評分完成沒有回主頁」。
+                     ⚠️ 這一條要**預先畫好、先藏起來**，不可以等評分完成再
+                        render()：整頁重繪會把上面那個 iframe 一起換掉，
+                        學生剛拿到的評分結果就消失了（同一個陷阱在上面
+                        「直接改按鈕文字，不整頁重繪」那一段也講過一次）。 -->
+                <div id="grade-done" class="hidden p-3 border-t border-emerald-200 bg-emerald-50 text-center">
+                  <p class="text-sm font-black text-emerald-800 mb-2">✅ 評分完成，星數已經更新</p>
+                  <div class="flex flex-wrap gap-2 justify-center">
+                    <button id="back-refresh2" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition">← 回關卡列表</button>
+                    <a href="hub.html" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition inline-flex items-center">🏠 回闖關基地</a>
+                  </div>
+                </div>
                 <div class="p-3 border-t border-slate-100 text-center">
-                  <p class="text-[11px] text-slate-500">上傳後看到「⭐ 已記錄 N 星」就代表這一關完成了，不必再按任何按鈕。<br>要看更新後的星數，點左上角的「← 關卡列表」即可。</p>
+                  <p class="text-[11px] text-slate-500">上傳後看到「⭐ 已記錄 N 星」就代表這一關完成了，不必再按任何按鈕。</p>
                 </div>
               </div>
             </div>
@@ -1255,6 +1314,21 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       // （舊的獨立『評分』步驟已移除：評分改為程式設計頁右欄常駐）
 
       // （程式階段完成畫面已移除：完成與否改由 AI 批改星數認定）
+
+      /* ⛔⛔ 走到這裡＝state.status 是一個**沒有對應畫面**的值。
+         原本會就這樣結束，而症狀非常糟：畫面停在上一個狀態不動，
+         而且**之後每一次 render() 都一樣什麼都不做** ——
+         學生按任何按鈕都沒反應，只能重新整理，畫面上還沒有任何錯誤訊息。
+         ⚠️ 這不是假設性的擔心：`#to-grade` 的處理程式（把 status 設成
+            'grade'）在「獨立評分步驟」被移除之後還留在事件區，
+            只是剛好沒有任何元素帶那個 id 才沒被觸發。那一行已經刪掉了。
+         ⇒ 認不得的狀態一律退回關卡列表，並在主控台留一行給大人看。
+         ⚠️ 要防遞迴：已經是 menu 還走到這裡就停手，不要無限重畫。 */
+      if(state.status !== 'menu'){
+        console.warn('[flowchart] 認不得的畫面狀態：', state.status, '→ 退回關卡列表');
+        state.status = 'menu';
+        paintView();
+      }
     }
 
     // ===== 事件 =====
@@ -1262,7 +1336,6 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       if(e.target.closest('#logout')){ logout(); return; }
       if(e.target.closest('#toggle-lead')){ state.leadOpen=!state.leadOpen; render(); return; }
       if(e.target.closest('#toggle-ref')){ state.refOpen=!state.refOpen; render(); return; }
-      if(e.target.closest('#to-grade')){ state.status='grade'; render(); return; }
       if(e.target.closest('#hint-btn')){
         if(state.hintUsed){                    // 已用掉提示 → 退回上一步重新閱讀（重新計時 30 秒）
           clearTimers();
@@ -1321,7 +1394,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         loadProgress(state.studentId).finally(()=>{ state.status='menu'; render(); });
         return;
       }
-      if(e.target.closest('#back-menu')||e.target.closest('#back-menu2')){ clearTimers(); state.status='menu'; render(); return; }
+      if(e.target.closest('#back-menu')||e.target.closest('#back-menu2')||e.target.closest('#back-refresh2')){ clearTimers(); state.status='menu'; render(); return; }
     });
     document.addEventListener('input', e=>{
     });
