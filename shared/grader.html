@@ -179,7 +179,14 @@ if(window.self!==window.top){
     <div class="sec good" id="secCreative"><h4>💡 創意亮點</h4><div id="creativeText"></div></div>
     <div class="sec" id="secComment"><h4>📝 助教講評</h4><div id="commentText"></div></div>
     <div class="sec bad" id="secDeduct"><h4>📉 可以再加強的地方</h4><div id="deductText"></div></div>
-    <button class="again" onclick="reset()">🔄 修改後再測一次</button>
+    <!-- ⛔ 老師 2026-09-17：「二星應該要有機會挑戰三星」。
+         機會本來就有（下面那顆按鈕、而且星數取最佳絕不會變低），
+         但畫面上從來沒講過 —— 學生看到「⭐ 已記錄 2 星！」就以為結束了。
+         ⇒ 把「再幾分就有三星」直接寫在他正在看的地方。 -->
+    <div id="nextStep" class="sec" style="display:none;background:#fff7ed;border-color:#fdba74">
+      <h4>🎯 下一步</h4><div id="nextText" style="font-weight:700"></div>
+    </div>
+    <button class="again" id="againBtn" onclick="reset()">🔄 修改後再測一次</button>
   </div>
 </div>
 
@@ -427,6 +434,7 @@ async function grade(){
         }else{
           setStatus('已記錄。這一關之前的成績更好，維持原星數；目前共 ' + rep.total + ' 星');
         }
+        paintNextStep(rep);
         // 2⭐ 以上、且「分數比上次高」才備份（每人每關只留一份最佳作品）
         if(rep.star >= 2 && rep.scoreImproved){
           const prevMsg = $('status').textContent;
@@ -483,10 +491,48 @@ function render(d){
   $('resultCard').scrollIntoView({behavior:'smooth'});
   try {
     if (window.parent && window.parent !== window) {
-      window.parent.postMessage({ type: 'graderDone', score: (sc === null ? null : sc) }, '*');
+      /* ⚠️ 星數一起送：外層那條「評分完成」列要分得出
+         「三星了，可以走了」和「兩星，留下來再改」—— 講錯話會把
+         正想挑戰三星的學生推出去。 */
+      window.parent.postMessage({
+        type: 'graderDone',
+        score: (sc === null ? null : sc),
+        star: (sc === null || !window.GRADING) ? null : window.GRADING.scratchStar(sc)
+      }, '*');
     }
   } catch (e) {}
 }
+/* 「下一步」：拿到 2 星時告訴他離 3 星還差幾分。
+   ⚠️ 要用**目前最好的成績**算，不是這一次的分數 ——
+      上次 88 分這次 60 分的話，該說的是「再 2 分」，不是「再 30 分」。
+   ⚠️ 老師把「顯示分數」關掉時就不要講分數（那是老師的設定，不可以繞過），
+      只說「還可以再挑戰三星」。 */
+function paintNextStep(rep){
+  const box=$('nextStep'), txt=$('nextText'), btn=$('againBtn');
+  if(!box||!rep){ return; }
+  const best=Math.max(Number(rep.star)||0, Number(rep.prev)||0);
+  if(best>=3){
+    box.style.display='block';
+    txt.textContent='🏆 三星到手，這一關已經滿星了！可以回關卡列表挑戰下一關。';
+    if(btn) btn.textContent='🔄 還想再改改看';
+    return;
+  }
+  const bestScore=Math.max(Number(rep.prevScore)||0, Number(rep.score)||0);
+  const nx=(window.GRADING&&window.GRADING.scratchNextStar)
+    ? window.GRADING.scratchNextStar(bestScore) : null;
+  box.style.display='block';
+  if(showScore && nx && nx.next){
+    txt.textContent='你目前 '+bestScore+' 分＝'+best+' 星。再 '+nx.need+' 分就有 '
+      +nx.next+' 星（'+(bestScore+nx.need)+' 分以上）。'
+      +'看上面「可以再加強的地方」，改完再傳一次 —— '
+      +'⚠️ 重測**只會變好不會變差**，星數永遠算你最高的那一次。';
+  }else{
+    txt.textContent='還可以再挑戰更高的星數。看上面「可以再加強的地方」，改完再傳一次 —— '
+      +'重測只會變好不會變差，星數永遠算你最高的那一次。';
+  }
+  if(btn) btn.textContent='🔄 改完再傳一次，挑戰 '+(best+1)+' 星';
+}
+
 function fill(sec,txt,val){
   const empty=!val||val==='無';
   $(sec).style.display=empty?'none':'block';
@@ -494,6 +540,7 @@ function fill(sec,txt,val){
 }
 function reset(){
   $('resultCard').style.display='none'; $('scoreBar').style.width='0';
+  { const b=$('nextStep'); if(b) b.style.display='none'; }
   chosen=null; fi.value=''; $('fileName').textContent=''; $('gradeBtn').disabled=true;
   window.scrollTo({top:0,behavior:'smooth'});
 }

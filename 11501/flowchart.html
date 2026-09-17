@@ -576,6 +576,26 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
            學生不知道好了沒。⇒ 由外層來捲，而且要等高度回報完再捲。 */
         if(d.type === 'graderDone'){
           const bar = document.getElementById('grade-done');
+          /* ⛔ 老師 2026-09-17：「二星應該要有機會挑戰三星」。
+             ⚠️ 這一條列是我前一天才加的，而它原本一律寫「✅ 評分完成」
+                ＋兩個離開的按鈕 —— 對一個剛拿到 2 星、正想再試的學生來說，
+                那等於在跟他說「你好了，可以走了」。**把人推出去**。
+             ⇒ 話要看星數講：三星才恭喜他離開，兩星要先講「還有 3 星可以拿」。 */
+          const msg = document.getElementById('grade-done-msg');
+          if(msg){
+            const st = (d.star === null || d.star === undefined) ? null : Number(d.star);
+            if(st === 0){
+              msg.textContent = '⚠️ 還沒通關（要 75 分以上）。看上面「可以再加強的地方」，改完在上面再傳一次。';
+              msg.className = 'text-sm font-black text-rose-700 mb-2';
+            }else if(st !== null && st < 3){
+              msg.textContent = '✅ 已通關 ' + st + ' 星，星數已更新 —— 還可以挑戰 3 星！'
+                              + '改好程式在上面直接再傳一次就好，重測只會變好不會變差。';
+              msg.className = 'text-sm font-black text-orange-700 mb-2';
+            }else{
+              msg.textContent = '🏆 評分完成，星數已經更新';
+              msg.className = 'text-sm font-black text-emerald-800 mb-2';
+            }
+          }
           if(bar) bar.classList.remove('hidden');
           setTimeout(() => {
             const f2 = document.getElementById('grader-frame');
@@ -1285,7 +1305,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
               <div class="bg-white rounded-2xl border-2 border-orange-300 shadow-sm overflow-hidden pop">
                 <div class="bg-orange-50 px-4 py-3 border-b border-orange-200">
                   <div class="text-sm font-black text-orange-800">🤖 程式評分（AI 助教）</div>
-                  <div class="text-[11px] text-orange-700 leading-snug mt-0.5 lg:whitespace-nowrap">寫好存成 <b>.sb3</b> 上傳即可評分：<b>90 分↑ 3⭐、75 分↑ 2⭐</b>；未滿 75 分不給星，要修改後再傳。</div>
+                  <div class="text-[11px] text-orange-700 leading-snug mt-0.5">寫好存成 <b>.sb3</b> 上傳即可評分：<b>90 分↑ 3⭐、75 分↑ 2⭐</b>；未滿 75 分不給星。<br><b>可以一直重傳</b> —— 星數永遠算你最高的那一次，<b>重測只會變好不會變差</b>。</div>
                 </div>
                 <iframe id="grader-frame" src="../shared/grader.html?term=${window.CONFIG.TERM}&unit=${u.id}" class="w-full block bg-white" style="height:560px;border:0;overflow:hidden" scrolling="no" title="Scratch 作品評分"></iframe>
                 <!-- ⛔ 2026-09-17 老師：「程式設計評分完成沒有回主頁」。
@@ -1294,14 +1314,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         學生剛拿到的評分結果就消失了（同一個陷阱在上面
                         「直接改按鈕文字，不整頁重繪」那一段也講過一次）。 -->
                 <div id="grade-done" class="hidden p-3 border-t border-emerald-200 bg-emerald-50 text-center">
-                  <p class="text-sm font-black text-emerald-800 mb-2">✅ 評分完成，星數已經更新</p>
+                  <p id="grade-done-msg" class="text-sm font-black text-emerald-800 mb-2">✅ 評分完成，星數已經更新</p>
                   <div class="flex flex-wrap gap-2 justify-center">
                     <button id="back-refresh2" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition">← 回關卡列表</button>
                     <a href="hub.html" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-sm transition inline-flex items-center">🏠 回闖關基地</a>
                   </div>
                 </div>
                 <div class="p-3 border-t border-slate-100 text-center">
-                  <p class="text-[11px] text-slate-500">上傳後看到「⭐ 已記錄 N 星」就代表這一關完成了，不必再按任何按鈕。</p>
+                  <p class="text-[11px] text-slate-500">上傳後看到「⭐ 已記錄 N 星」就代表成績存好了。<b>拿到 2 星還可以再改、再傳，挑戰 3 星</b> —— 星數取最高，不會變低。</p>
                 </div>
               </div>
             </div>

@@ -199,6 +199,32 @@ window.GRADING = {
     return 0;                    // 0 星＝未通關
   },
 
+  /**
+   * 還差幾分可以多拿一顆星。回 { star, next, need }；已經三星回 next:null。
+   *
+   * ⛔ 老師 2026-09-17：「二星應該要有機會挑戰三星」——
+   *    機會一直都在（結果卡有「🔄 修改後再測一次」，而且星數取最佳、
+   *    重測永遠不會變低），**但畫面從來沒告訴學生這件事**：
+   *    拿到 2 星看到的是「⭐ 已記錄 2 星！」，讀起來就是「我好了」。
+   *    ⇒ 要講的不是「你可以再試」，是**「再幾分就有三星」** ——
+   *      差 8 分和差 40 分，學生的決定完全不一樣。
+   *
+   * ⚠️ 這裡**故意不寫死 90／75**，而是拿 scratchStar 自己往上試。
+   *    抄第二份門檻遲早會和第一份走鐘，而走鐘的那一份不會有人發現
+   *    （這個 repo 已經因為「同一張表抄兩份」吃過虧）。
+   */
+  scratchNextStar: function (score) {
+    var s = Number(score) || 0;
+    var cur = this.scratchStar(s);
+    if (cur >= 3) return { star: cur, next: null, need: 0 };
+    for (var t = Math.max(0, Math.ceil(s)); t <= 100; t++) {
+      if (this.scratchStar(t) > cur) {
+        return { star: cur, next: this.scratchStar(t), need: Math.round((t - s) * 10) / 10 };
+      }
+    }
+    return { star: cur, next: null, need: 0 };
+  },
+
   // 由「各單元最佳星數」的物件算出總星數與已通關單元數（0 星不算通關）
 /* ── 概念檢測：自己一組星星 ──────────────────────
      ★ 兩組星星，各自算各自的
