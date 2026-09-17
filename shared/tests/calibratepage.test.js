@@ -62,6 +62,27 @@ section('★★★ 失敗的那一格');
      '★★ 萬一真的出現降級（no_fallback 失效），要明講而不是默默顯示');
 }
 
+section('★★ 樣本庫（2026-09-17）');
+{
+  const lf = (html.match(/async function gdLoadSamples\(\)[\s\S]*?\n    \}/) || [''])[0];
+  ok(lf.length > 0 && /calib-samples/.test(lf), '有「載入樣本庫」而且打對端點');
+  ok(/window\.gdLoadSamples = gdLoadSamples/.test(html), '★★ 有掛到 window');
+  /* ⚠️ 空的樣本庫很正常（要有人交出 50～89 分的作品才會累積）。
+     顯示成錯誤的話，老師會以為功能壞了然後跑來問。 */
+  ok(/樣本庫還是空的/.test(lf) && /才會開始累積/.test(lf),
+     '★★★ 樣本庫是空的要說「還在累積」，不可以顯示成錯誤');
+  /* ⛔⛔ 這一條最重要：用樣本時後端會以**樣本自己的關卡**為準。
+     前端若還把畫面上的 unit／overrides 一起送，老師會以為他剛改的規則
+     有生效 —— 而實際上完全沒有，且畫面上看不出任何差別。 */
+  ok(/if \(_sample\) \{[\s\S]{0,120}fd\.append\('sample'/.test(fn),
+     '★★★ 選了樣本就只送 sample');
+  ok(/\} else \{[\s\S]{0,200}fd\.append\('overrides'/.test(fn),
+     '★★★ unit 和 overrides 只有「用上傳的檔案」時才送 —— ' +
+     '用樣本時送了，會讓人以為畫面上的規則有生效，其實沒有');
+  ok(/j\.sample \?/.test(fn) && /來源：樣本庫/.test(fn),
+     '★★ 結果要標明這次是用樣本庫的哪一份（不然分不出量的是什麼）');
+}
+
 section('★ 不要留著上一關的結果');
 {
   /* ⚠️ 換了關卡，評分標準就換了，上一關的校正結果完全不適用。

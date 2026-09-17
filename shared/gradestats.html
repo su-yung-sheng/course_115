@@ -145,8 +145,23 @@ function inRange(r) {
   const from = t.getFullYear() + '-' + p(t.getMonth()+1) + '-' + p(t.getDate());
   return d >= from;
 }
+/* ⛔⛔ probe ＝ 系統在降級之後**自動補跑**的那一次，不是學生交的。
+   把它算進「批改次數」「分數分布」「誰在重送」，每一格都會被灌水：
+     · 批改次數會多出學生沒做過的次數
+     · 分數分布會多出一個不存在的學生成績
+     · 「重送」會把它當成那位學生又交了一次
+   ⇒ 預設一律排除；只有「不同模型給的分數」那一段要用到它，
+     那一段才呼叫 pickedWithProbes()。
+   （老師 2026-09-17 決定要自動配對時，這是最容易忘、而且忘了
+     完全不會報錯的一件事。） */
+function inScope(r) {
+  return inRange(r) && (!state.unit || r.unit === state.unit);
+}
 function picked() {
-  return (state.rows || []).filter(r => inRange(r) && (!state.unit || r.unit === state.unit));
+  return (state.rows || []).filter(r => inScope(r) && !r.probe);
+}
+function pickedWithProbes() {
+  return (state.rows || []).filter(inScope);
 }
 function median(a) {
   if (!a.length) return null;
@@ -307,7 +322,12 @@ function scoreSection(rows) {
 
 /* ② 模型比較 —— 這一段是整頁最重要的 */
 function modelSection(rows) {
+  /* ⚠️ 這一段裡面**兩份資料要分開用**（畫出來才發現的）：
+       · 上面那張「每個模型評過幾份、中位數多少」＝ 只能算**學生的批改**。
+         把系統補跑的算進去，同一個學生會被數兩次，筆數就是灌水的。
+       · 下面的配對比較 ＝ **一定要**含補跑，那正是它存在的理由。 */
   const ok = rows.filter(r => r.score != null && !r.cached);
+  const okAll = pickedWithProbes().filter(r => r.score != null && !r.cached);
   const byM = {};
   ok.forEach(r => { const m = r.model || ''; (byM[m] = byM[m] || []).push(Number(r.score)); });
   const names = Object.keys(byM).sort();
@@ -334,7 +354,7 @@ function modelSection(rows) {
      就這樣從畫面上消失了。⇒ 先按人和關卡分組，再用 nearlySameCode 篩。 */
   const key = r => [r.student_id, r.unit].join('|');
   const grp = {};
-  ok.forEach(r => { (grp[key(r)] = grp[key(r)] || []).push(r); });
+  okAll.forEach(r => { (grp[key(r)] = grp[key(r)] || []).push(r); });
   const pairs = Object.keys(grp).map(k => grp[k])
     .filter(g => new Set(g.map(r => r.model)).size >= 2)
     .filter(g => nearlySameCode(g.map(r => r.chars_student)))
@@ -352,6 +372,7 @@ function modelSection(rows) {
        而且要直接告訴老師去哪裡看得到。 */
   const allPairCount = (function () {
     const g2 = {}, all = (state.rows || []).filter(r => r.score != null && !r.cached);
+    // ⚠️ 這裡是刻意不套 inScope 的（要看「全部範圍」有幾筆）
     all.forEach(r => { (g2[key(r)] = g2[key(r)] || []).push(r); });
     return Object.keys(g2).filter(k => new Set(g2[k].map(r => r.model)).size >= 2
       && nearlySameCode(g2[k].map(r => r.chars_student))).length;
@@ -363,11 +384,18 @@ function modelSection(rows) {
 
   const pairHtml = pairs.length ? pairs.map(p => {
     const g = p.g;
+    /* ⚠️ 補跑的那一格要標出來 —— 不標的話老師會以為學生交了兩次。 */
     const cells = g.map(r => '<span class="font-mono text-xs mr-3">' + esc(shortModel(r.model)) +
-      ' <b class="text-sm">' + esc(r.score) + '</b></span>').join('');
+      ' <b class="text-sm">' + esc(r.score) + '</b>' +
+      (r.probe ? '<span class="text-slate-400 text-[10px] ml-0.5">系統補跑</span>' : '') +
+      '</span>').join('');
     return '<div class="py-1.5 border-t border-slate-100 text-xs">' +
+      /* ⚠️ 差距 0 的那幾筆也要給一個標記。留白的話看起來像「還沒算完」，
+         而「兩個模型給一樣的分數」其實是好消息，該說出來。 */
       (p.crosses ? '<span class="font-black" style="color:var(--bad)">🚨 跨過及格線　</span>'
-                 : (p.spread >= 10 ? '<span class="font-black" style="color:var(--warn)">⚠️ 差 ' + p.spread + ' 分　</span>' : '')) +
+                 : (p.spread >= 10
+                     ? '<span class="font-black" style="color:var(--warn)">⚠️ 差 ' + p.spread + ' 分　</span>'
+                     : '<span class="font-bold" style="color:var(--ok)">✅ 一致（差 ' + p.spread + ' 分）　</span>')) +
       '<span class="text-slate-500 font-mono">' + esc(g[0].student_id) + '　' + esc(g[0].unit) + '　' +
       (function () { const c = g.map(r => Number(r.chars_student) || 0);
         const hi = Math.max(...c), lo = Math.min(...c);
@@ -376,7 +404,9 @@ function modelSection(rows) {
 
   return card(h('② 不同模型給的分數',
     '⚠️ 上面那張表<b>不能直接比</b> —— 每個模型看到的是不同學生的作品。' +
-    '真正能比的是下面那一段：<b>同一個人、同一關、同樣長度</b>的程式被不同模型評過的那幾筆。') +
+    '真正能比的是下面那一段：<b>同一個人、同一關、同樣長度</b>的程式被不同模型評過的那幾筆。<br>' +
+    '★ 從 2026-09-17 起，只要發生降級，系統會在背景用主要模型自動補評一次 ——' +
+    '標著「系統補跑」的那一格就是，<b>不是</b>學生又交了一次，也沒有寫進成績。') +
     '<table class="w-full text-left text-sm"><thead class="text-slate-500 text-xs"><tr>' +
     '<th class="pb-1 pr-3 font-bold">模型</th><th class="pb-1 pr-3 font-bold">筆數</th>' +
     '<th class="pb-1 pr-3 font-bold">中位數</th><th class="pb-1 font-bold">最低–最高</th>' +

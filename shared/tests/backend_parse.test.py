@@ -1984,7 +1984,14 @@ ok('_iu_w.find_spec("paddleocr") is None' in _stw and 'return False' in _stw,
 # ══════════════════════════════════════════════════════════
 # ★ Flask threaded=True，30 個人同時按就是 30 條執行緒同時打 Gemini，
 #   中間沒有鎖。pending 是「同時在跑幾個」，不是「排在你前面幾個」。
-_sg = _srv7[_srv7.index('def student_grade'):][:4200]
+# ⚠️⚠️ 這裡原本是 [:4200] —— 一個寫死的字元數。
+#    2026-09-17 在 student_grade 裡加了「自動配對」之後，函式變長，
+#    `if path:` 被推出那 4200 字之外，於是這一條變紅 ——
+#    **而程式完全沒有壞**。假警報比沒有警報更糟：它會教人「把數字調大」，
+#    而下次真的壞掉時，同一個動作就會把真警報也一起消音。
+# ⇒ 改成切到下一個路由為止（語意邊界），不要再用字元數。
+_sg = _srv7[_srv7.index('def student_grade'):]
+_sg = _sg[:_sg.index('\n@app.route')]
 _gh = io.open(os.path.join(ROOT, 'shared', 'grader.html'), encoding='utf8').read()
 
 # ③ 防重複送出 —— 沒有這道守門，學生連按三次＝三倍 Gemini 額度

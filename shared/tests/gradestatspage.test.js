@@ -139,6 +139,38 @@ section('★★★ 分數變高不一定是進步');
      '★★ 說明文字也要講明這件事（圖表旁邊的字和圖表一樣重要）');
 }
 
+section('★★★ 系統補跑的那幾筆不是學生的批改');
+{
+  /* ⛔⛔ 2026-09-17 起，降級之後系統會在背景用主要模型自動補評一次，
+     那一筆會帶 probe:true 寫進 grade-stats。
+     ★ 它**不是**學生交的。算進「批改次數」「分數分布」「誰在重送」，
+       每一格都會被灌水，而且**不會有任何徵兆**：
+         · 批改次數多出學生沒做過的次數
+         · 分數分布多出一個不存在的成績
+         · 「重送」把它當成那位學生又交了一次（然後印出假的進步／退步）
+     ⇒ 預設一律排除；只有②跨模型比較要用到它 —— 那一段才是它存在的理由。 */
+  ok(/function picked\(\)[\s\S]{0,200}!r\.probe/.test(js),
+     '★★★ picked() 預設把 probe 排除掉（統計方塊、分數分布、重送、逐筆都吃這一支）');
+  ok(/pickedWithProbes/.test(js),
+     '★★ 另外開一支含 probe 的，不要在各段落各自過濾（各寫一份遲早會漏）');
+  ok(/function modelSection[\s\S]{0,600}pickedWithProbes\(\)/.test(js),
+     '★★★ 只有②「不同模型給的分數」用含 probe 的資料');
+  /* ⛔ 2026-09-17 把補跑的假資料畫出來才發現：②裡面**兩份資料要分開用**。
+     「每個模型評過幾份、中位數多少」那張表如果含補跑，同一個學生會被
+     數兩次，筆數就是灌水的（畫面上當場看到 flash 從 21 變成 23）。 */
+  ok(/const ok = rows\.filter/.test(js) && /const okAll = pickedWithProbes/.test(js),
+     '★★★ ②的中位數表只算**學生的批改**，只有配對比較才含補跑');
+  ok(/okAll\.forEach/.test(js),
+     '★★ 配對是用含補跑的那一份分組（不然補跑進來也配不成對）');
+  ok(!/function retrySection[\s\S]{0,300}pickedWithProbes/.test(js) &&
+     !/function tiles[\s\S]{0,300}pickedWithProbes/.test(js),
+     '★★★ 重送和統計方塊**不可以**用到 probe');
+  ok(/r\.probe \? '<span[\s\S]{0,120}系統補跑/.test(js),
+     '★★★ 配對清單裡補跑的那一格要標出來 —— 不標的話老師會以為學生交了兩次');
+  ok(/不是<\/b>?學生又交了一次|不是.{0,4}學生又交了一次/.test(html),
+     '★★ 說明文字也要講明那不是學生交的、也沒有寫進成績');
+}
+
 section('★ 語法');
 {
   let syntaxOk = true, err = '';

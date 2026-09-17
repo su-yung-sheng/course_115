@@ -2601,6 +2601,17 @@ const __bn = bonusOf(student, sub.key);
                  ⚠️ 會真的呼叫每一個模型（含付費那一階），後端有 20 秒節流。 -->
             <button onclick="gdCalibrate()" class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-lg text-xs transition">📐 跨模型校正</button>
           </div>
+          <!-- ★ 校正樣本庫（老師 2026-09-17）：系統會自動把 50～89 分的程式
+               留下來（滿分和 0 分量不到分歧）。改完評分標準之後用**同一份程式**
+               重跑，才看得出差距有沒有真的變小。
+               ⚠️ 選了樣本就以樣本的關卡為準，畫面上這一欄的規則不會套進去 ——
+                  拿 B 關的程式套 A 關的規則，量到的東西沒有意義。 -->
+          <div class="flex flex-wrap items-center gap-2 mt-2">
+            <select id="gdCalibSample" class="flex-1 min-w-[240px] p-2 border border-violet-300 rounded-lg text-xs bg-violet-50">
+              <option value="">校正用上面選的 .sb3（不使用樣本庫）</option>
+            </select>
+            <button onclick="gdLoadSamples()" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg text-xs transition">🗂 載入樣本庫</button>
+          </div>
           <div id="gdTestStatus" class="text-xs mt-2 font-bold text-slate-500"></div>
           <div id="gdTestResult" class="hidden mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-2"></div>
           <div id="gdCalibResult" class="hidden mt-3 bg-violet-50 border border-violet-200 rounded-xl p-3 text-xs space-y-2"></div>
@@ -3189,9 +3200,38 @@ const __bn = bonusOf(student, sub.key);
          跨過去就代表有學生會因為抽到哪個模型而過或不過。
        ⚠️ 降級過的那一格（回答的不是要求的那個模型）不算數，要標出來，
           而且不可以拿去算差距 —— 那量到的不是它自己的尺。 */
+    /* 🗂 載入樣本庫。空的很正常 —— 要有人交出 50～89 分的作品才會開始累積。 */
+    async function gdLoadSamples() {
+      const sel = document.getElementById('gdCalibSample');
+      try {
+        _gdSay('gdTestStatus', '🗂 讀取樣本庫…');
+        const r = await fetch(GD_SERVER + '/api/teacher/calib-samples?term=' +
+                              encodeURIComponent(window.CONFIG.TERM), { headers: GD_H });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || '讀取失敗');
+        const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        sel.innerHTML = '<option value="">校正用上面選的 .sb3（不使用樣本庫）</option>' +
+          (j.samples || []).map(x =>
+            '<option value="' + esc(x.id) + '">' + esc(x.unit) + '　' + esc(x.score) +
+            ' 分（' + esc(x.bucket) + '）　' + esc(x.student_id) + '　' +
+            esc(String(x.created_at || '').slice(0, 10)) + '</option>').join('');
+        _gdSay('gdTestStatus', (j.count
+          ? '✅ 樣本庫有 ' + j.count + ' 份'
+          : '樣本庫還是空的 —— 要有學生交出 50～89 分的作品才會開始累積'),
+          j.count ? 'text-emerald-600' : 'text-slate-500');
+      } catch (e) {
+        _gdSay('gdTestStatus', '❌ ' + e.message, 'text-red-600');
+      }
+    }
+    window.gdLoadSamples = gdLoadSamples;
+
     async function gdCalibrate() {
+      const _sampleSel = document.getElementById('gdCalibSample');
+      const _sample = _sampleSel ? _sampleSel.value : '';
       const f = document.getElementById('gdTestFile').files[0];
-      if (!f) { _gdSay('gdTestStatus', '請先選擇要校正的 .sb3', 'text-red-600'); return; }
+      if (!_sample && !f) {
+        _gdSay('gdTestStatus', '請先選一份 .sb3，或從樣本庫挑一份', 'text-red-600'); return;
+      }
       const box = document.getElementById('gdCalibResult');
       box.classList.add('hidden');
       try {
@@ -3205,9 +3245,15 @@ const __bn = bonusOf(student, sub.key);
         if (u.template_code) overrides.template_code = u.template_code;
 
         const fd = new FormData();
-        fd.append('file', f);
-        fd.append('unit', _gdUnit());
-        fd.append('overrides', JSON.stringify(overrides));
+        /* ⚠️ 用樣本時**不要**把檔案和 overrides 一起送 ——
+           後端會以樣本的關卡為準，送了只會讓人以為畫面上的規則有生效。 */
+        if (_sample) {
+          fd.append('sample', _sample);
+        } else {
+          fd.append('file', f);
+          fd.append('unit', _gdUnit());
+          fd.append('overrides', JSON.stringify(overrides));
+        }
         fd.append('term', window.CONFIG.TERM);
         const r = await fetch(GD_SERVER + '/api/teacher/calibrate', { method: 'POST', headers: GD_H, body: fd });
         const j = await r.json();
@@ -3265,7 +3311,9 @@ const __bn = bonusOf(student, sub.key);
           '<th class="py-1 pr-3 font-bold">耗時</th><th class="py-1 font-bold"></th>' +
           '</tr></thead><tbody>' + rows + '</tbody></table>' + skip +
           '<div class="text-slate-400">同一份清理後的程式（' + esc(j.chars_student) +
-          ' 字）餵給每一個模型，沒有記錄成績。</div>';
+          ' 字）餵給每一個模型，沒有記錄成績。' +
+          (j.sample ? '　來源：樣本庫　' + esc(j.unit) + '　原評 ' + esc(j.sample.score) +
+                      ' 分（' + esc(j.sample.student_id) + '）' : '') + '</div>';
         box.classList.remove('hidden');
         _gdSay('gdTestStatus', '✅ 校正完成（未記錄成績）', 'text-emerald-600');
       } catch (e) {

@@ -773,6 +773,114 @@ ok("no_fallback=True" in _cal,
    "把三個模型的比較塌成一個，而且畫面看起來一切正常")
 
 
+section("④m 校正樣本庫（2026-09-17）")
+# ★ 老師提的，而且理由比我原本的設計好：「因為目前也在進行系統調整」——
+#   系統還在調，**正是**要趁現在開始存的理由：等評分標準改細之後，
+#   可以用**同一份程式**重跑，那是唯一能證明「差距真的變小」的方法。
+# ⛔⛔ 在這之前整個系統沒有任何地方留下學生的程式（四支寫入都沒存
+#    clean_code，而 .sb3 是暫存檔），所以事後想重評任何一份都辦不到。
+
+# ── 桶：邊界要對齊 75，而且滿分／0 分不收 ──────────────────
+ok(core.calib_bucket(100) is None and core.calib_bucket(0) is None,
+   "★★★ 滿分和 0 分**不收** —— 每個模型都會給一樣的分數，量不到分歧"
+   "（實測：2-1-1A 十一筆全部 100 分）")
+ok(core.calib_bucket(49) is None and core.calib_bucket(90) is None,
+   "★★ 收集範圍就是 50～89，外面的不收")
+ok(core.calib_bucket(74) != core.calib_bucket(75),
+   "★★★ 桶的邊界要切在 **75**（及格線）—— 分歧最有後果的就是這一條線附近")
+ok(core.calib_bucket(50) == core.calib_bucket(64)
+   and core.calib_bucket(85) == core.calib_bucket(89),
+   "★ 同一個桶內要一致")
+
+# ── 寫入：範圍外不寫、沒關卡不寫、同一份不重複 ──────────────
+_cal2 = []
+_old_http, _old_fb, _old_base = core._fs_http, core.FIREBASE, core._fs_docs_base
+core._fs_docs_base = lambda: "https://fake/documents"
+core.FIREBASE = {"enabled": True, "api_key": "k"}
+try:
+    core._fs_http = lambda m, u, b=None: (_cal2.append((m, u, b)) or {})
+    core.save_calib_sample("1410105", "2-1-1B", 100, "flash", "程式碼")
+    ok(not [c for c in _cal2 if c[0] == "PATCH"],
+       "★★★ 100 分的**不可以**收進樣本庫（收了只是佔掉額度，量不到東西）")
+    _cal2.clear()
+    core.save_calib_sample("1410105", "", 70, "flash", "程式碼")
+    ok(not [c for c in _cal2 if c[0] == "PATCH"],
+       "★★ 沒有關卡代號的不收 —— 樣本要配關卡的評分標準才有意義")
+    _cal2.clear()
+    core.save_calib_sample("1410105", "2-1-1B", 70, "flash", "程式碼")
+    _w = [c for c in _cal2 if c[0] == "PATCH"]
+    ok(len(_w) == 1 and "2-1-1B__65-74__0" in _w[0][1],
+       "★★ 70 分要收進 2-1-1B 的 65-74 桶　←　%r" % (_w[0][1][-40:] if _w else None))
+    ok("calib-samples" in (_w[0][1] if _w else ""),
+       "★ 存進 {學期}-calib-samples")
+    _sent = _w[0][2]["fields"] if _w else {}
+    ok("clean_code" in _sent,
+       "★★★ 一定要存**程式本身** —— 這整件事就是為了事後能重評，"
+       "只存字數的話和現在的觀測資料沒有兩樣")
+finally:
+    core._fs_http, core.FIREBASE = _old_http, _old_fb
+    core._fs_docs_base = _old_base
+
+# ── 清單不可以把程式內容一起吐出來 ─────────────────────────
+_lc = _src_key[_src_key.index("def list_calib_samples"):]
+_lc = _lc[:_lc.index("\ndef ")]
+ok('pop("clean_code"' in _lc,
+   "★★ 清單要把 clean_code 拿掉 —— 那是 2～4 KB × N，下拉選單用不到")
+
+# ── 接線 ─────────────────────────────────────────────────
+ok("save_calib_sample" in _sg2,
+   "★★ 批改成功後要真的去收樣本")
+ok('"cached"' in _sg2[_sg2.index("save_calib_sample") - 400:_sg2.index("save_calib_sample")],
+   "★★ 快取命中的不收 —— 那一次沒有真的評分，而且同一份先前就收過了")
+_cl = _src8[_src8.index("def teacher_calibrate"):]
+_cl = _cl[:_cl.index("\n@app.route")]
+ok('_unit = str(_sample.get("unit")' in _cl,
+   "★★★ 用樣本校正時，評分標準要用**樣本自己的關卡** —— "
+   "拿 B 關的程式套 A 關的規則，量到的東西沒有意義，而且畫面看不出來")
+ok("overrides and not _sample" in _cl,
+   "★★★ 用樣本時不可以吃畫面上的 overrides —— 那是另一關的規則")
+
+
+section("④l 自動配對：降級後背景補跑（2026-09-17）")
+# ★ 老師問「只要有學生走到 Claude，就會自動啟動校正嗎？」—— 原本不會。
+#   走到 Claude 只是「用 haiku 評了那一份」，沒有第二個分數就沒得比。
+#   ⇒ 改成主動製造：降級發生時，背景用主要模型再評一次同一份程式。
+# ⛔⛔ 這三條是紅線，錯了**都不會有徵兆**：
+_pp = _src8[_src8.index("def _pair_probe"):]
+_pp = _pp[:_pp.index("\n@app.route")]
+ok("record_submission" not in _pp and "record_grade_stat" in _pp,
+   "★★★ 補跑的那一次**絕對不可以寫進成績** —— 它不是學生交的，"
+   "只能進 grade-stats 觀測")
+ok("grade_project_file" not in _pp,
+   "★★★ 不可以走 grade_project_file —— 那會查／寫快取，"
+   "把觀測資料汙染成「學生的分數」")
+ok("_grade_sem" not in _pp and "_PAIR_SEM" in _pp,
+   "★★★ 不可以佔用學生的並發名額 —— 上課尖峰多 30 條背景批改去搶那 8 個"
+   "名額，症狀是「大家一起變慢」，最難查的那一種")
+ok("blocking=False" in _pp,
+   "★★★ 搶不到自己的名額就**直接放棄** —— 這是加分資料，不是非拿到不可")
+ok('claude_key=""' in _pp,
+   "★★★ 補跑**不可以帶 Claude 金鑰** —— 帶了就可能又走到付費那一階，"
+   "變成每次降級都多花一次錢")
+ok("no_fallback=True" in _pp,
+   "★★ 補跑也不准降級 —— 降級就不是在量這個模型的尺了")
+ok('"probe": True' in _pp,
+   "★★★ 要標 probe —— 觀測頁靠這一格把它排除在「學生的批改」之外")
+# ── 觸發條件 ──────────────────────────────────────────────
+ok("_pair_probe" in _sg2 and "_threading.Thread" in _sg2,
+   "★★ 路由要真的在背景起這一條")
+ok('_used != _primary' in _sg2,
+   "★★★ 只有**降級發生時**才補跑（用的模型 != 主要模型）")
+ok('_st_keep.get("cached")' in _sg2,
+   "★★ 快取命中的不補 —— 那一次根本沒有評分")
+ok("_is_claude(_primary)" in _sg2,
+   "★★★ 主要模型本身是 Claude 的話不補 —— 不然每次降級都多花一次錢")
+ok(_sg2.index("_clean_keep = ") < _sg2.index('result.pop("clean_code"'),
+   "★★ clean_code 要在 pop 之前留下來（和 _stat 同一個道理）")
+ok(_sg2.index("_threading.Thread") < _sg2.index('return jsonify({"ok": True'),
+   "★ 執行緒在回傳前起來，學生的回應不必等它")
+
+
 section("④k anthropic 的 temperature（2026-09-16）")
 # ⛔⛔ anthropic **1.x 把 temperature 整個拿掉了**（把 1.6.0 的 wheel 拆開
 #    看過：整個套件裡 temperature 出現 0 次，top_p／top_k 也沒了）。
