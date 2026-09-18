@@ -70,6 +70,15 @@
       這一頁讀的是 <b>{學期}-grade-stats</b> —— 每一次批改的<b>觀測紀錄</b>，
       不是成績。成功和失敗都在裡面（失敗那幾次往往最花時間，正是要看的東西）。<br>
       <span class="text-slate-400">資料在 Colab 後端，後端沒開的時候這一頁會是空的 —— 那是「讀不到」，不是「沒有資料」。</span>
+      <!-- ⛔⛔ 2026-09-18：我自己就是在這裡判斷錯的。
+           看了這一頁的 2-1-1A（9/10 之後 15 筆、14 筆是 100），
+           下了「這一關的評分沒有鑑別度」的結論，還建議老師改成範本比對。
+           老師反問：「但是 2-1-1A 曾經有一份打錯字變成 95 分」——
+           去翻**成績紀錄**才發現那一關實際有 37 筆，分布 0／33／40／55／70／
+           85／95／100 都有，鑑別度一直都在。
+           ★ 這一頁少的不是資料，是**一句話**：它從 9/10 才開始收。
+             少了那句話，看的人（包括我）會把「最近這批學生做得好」
+             讀成「評分看不出差別」——而那兩件事的處置完全相反。 -->
     </p>
   </header>
 
@@ -229,6 +238,7 @@ function render() {
 
   box.innerHTML =
     filters(units) +
+    sinceNote(rows) +
     (state.err ? card('<div class="text-sm font-bold" style="color:var(--bad)">⚠️ ' + esc(state.err) + '</div>') : '') +
     tiles(rows) +
     scoreSection(rows) +
@@ -260,6 +270,22 @@ function filters(units) {
 }
 
 /* 大數字：這種「一個數字」的東西本來就不需要畫成圖 */
+/* 這一份觀測資料是 2026-09-10 才開始收的（在那之前只有記憶體裡的 60 筆，
+   Colab 一重啟就沒了）。畫面上一定要講，而且要講在最上面 ——
+   見上面那段 09-18 的說明：少了這句話，看的人會把「最近這批做得好」
+   讀成「評分看不出差別」。 */
+const STATS_SINCE = '2026-09-10';
+function sinceNote(rows) {
+  const days = (state.rows || []).map(dayOf).filter(Boolean).sort();
+  const first = days.length ? days[0] : null;
+  return '<div class="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 mb-4 text-xs leading-relaxed">'
+    + '<b>⚠️ 這一頁只有 ' + esc(first || STATS_SINCE) + ' 之後的批改</b> —— '
+    + '這份觀測資料是 ' + STATS_SINCE + ' 才開始收的，更早的批改<b>不在這裡</b>。<br>'
+    + '所以某一關「看起來都滿分」時，要先想到可能只是<b>最近這批學生做得好</b>，'
+    + '不是評分看不出差別。完整的成績（含更早的）在教師端的<b>成績紀錄</b>裡。'
+    + '</div>';
+}
+
 function tiles(rows) {
   const okRows = rows.filter(r => r.ok !== false && r.score != null);
   const bad = rows.filter(r => r.ok === false).length;

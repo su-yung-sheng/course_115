@@ -784,8 +784,19 @@ section("④m 校正樣本庫（2026-09-17）")
 ok(core.calib_bucket(100) is None and core.calib_bucket(0) is None,
    "★★★ 滿分和 0 分**不收** —— 每個模型都會給一樣的分數，量不到分歧"
    "（實測：2-1-1A 十一筆全部 100 分）")
-ok(core.calib_bucket(49) is None and core.calib_bucket(90) is None,
-   "★★ 收集範圍就是 50～89，外面的不收")
+ok(core.calib_bucket(49) is None,
+   "★★ 50 分以下不收（那是「幾乎沒做」，量不到評分的細節）")
+# ⛔ 2026-09-18 老師：「2-1-1A 曾經有一份打錯字變成 95 分」——
+#    查出兩筆：'elephant' 拼成 'elephent'、'apple' 拼成 'appie'，各扣 5 分。
+#    ★ 那種「只差一個字」的作品**最能考驗評分的一致性**：同樣是名稱不符規定，
+#      實際扣過 5 分、7.5 分、也扣過 15 分。
+#    原本上限 89 剛好把 90～99 整段漏掉 —— 而那正是最該收的。
+ok(core.calib_bucket(95) == "90-99" and core.calib_bucket(90) == "90-99"
+   and core.calib_bucket(99) == "90-99",
+   "★★★ 90～99 要收 —— 「只差一個字」的作品最能考驗評分一致性"
+   "（老師 2026-09-18 指出的那兩筆 95 分就是）")
+ok(core.calib_bucket(89) != core.calib_bucket(90),
+   "★ 89 和 90 要分在不同桶（90 是三星的門檻）")
 ok(core.calib_bucket(74) != core.calib_bucket(75),
    "★★★ 桶的邊界要切在 **75**（及格線）—— 分歧最有後果的就是這一條線附近")
 ok(core.calib_bucket(50) == core.calib_bucket(64)
