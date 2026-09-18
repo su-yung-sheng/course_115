@@ -3234,6 +3234,9 @@ const __bn = bonusOf(student, sub.key);
       }
       const box = document.getElementById('gdCalibResult');
       box.classList.add('hidden');
+      /* 模型短名：畫面上講 flash／haiku，和老師平常的講法一致 */
+      const shortM = m => /flash/i.test(m) ? 'flash' : /haiku/i.test(m) ? 'haiku'
+                        : /gemma/i.test(m) ? 'gemma' : String(m || '');
       try {
         _gdSay('gdTestStatus', '📐 校正中…每個模型各跑一次，約 40–120 秒，請不要關掉這一頁');
         const u = (_gdCache && _gdCache.units[_gdUnit()]) || {};
@@ -3279,7 +3282,25 @@ const __bn = bonusOf(student, sub.key);
                   : '⚠️ 這次沒問到 —— ' +
                     (x.error ? esc(String(x.error).slice(0, 90)) : '沒有回報原因') +
                     '　等一下再按一次就好')
-              : '') + '</td></tr>';
+              : '') + '</td></tr>' +
+            /* ⛔⛔ 2026-09-18：這一欄是被三次卡關逼出來的。
+               校正只報分數，於是每次看到差距都只能從算術反推：
+                 · haiku 85 → 我從 100−15 猜「整條規則扣光」
+                 · haiku 87 → 13 分扣在哪？**猜不出來**（3+10？還是別的？）
+               而「差在哪一條規則」正是拿去改規則的那個東西 ——
+               沒有它，這個工具只能告訴你「有問題」，不能告訴你「改哪裡」。
+               ⚠️ 後端本來就有回 deducted_items，只是畫面沒畫出來。
+                  資料在手上卻看不到，比沒有資料更浪費。
+               ⚠️ 用 <details> 預設收起來：兩三個模型的扣分展開會很長，
+                  而多數時候你只看分數。 */
+            (x.deducted_items
+              ? '<tr><td colspan="4" class="pb-2">' +
+                '<details class="bg-white border border-violet-200 rounded-lg px-2 py-1">' +
+                '<summary class="cursor-pointer text-[11px] font-bold text-violet-700">' +
+                '扣分明細（' + esc(shortM(x.requested)) + '）</summary>' +
+                '<div class="whitespace-pre-wrap text-[11px] text-slate-600 mt-1 leading-relaxed">' +
+                esc(x.deducted_items) + '</div></details></td></tr>'
+              : '');
         }).join('');
 
         /* ★ 這兩句是整個功能的重點，所以放在表格**上面**而不是下面。
