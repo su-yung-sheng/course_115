@@ -759,9 +759,23 @@ ok(_cal.count("clean_json_for_ai") == 1 and
 ok('r.get("matched")' in _cal and "_got = [" in _cal,
    "★★★ 只有「真的由它自己回答」的那幾格可以拿去算差距 —— "
    "降級過的那一格量到的不是它自己的尺")
-ok("75" in _cal and "crosses_pass_line" in _cal,
-   "★★★ 要直接算出「有沒有跨過 75 分」—— 差幾分是數字，"
-   "跨不跨過及格線才是老師要做決定的那件事")
+# ⛔⛔ 2026-09-18 第一次真的跑出結果就打臉了：flash 95／haiku 85，
+#    畫面說「還沒跨過 75」，語氣像是「還好」——
+#    但 95 是**三星**、85 是**兩星**。同一份程式，抽到哪個模型
+#    決定他拿 2 顆還是 3 顆星。
+#    ★ 錯在原本判的是「有沒有跨過 75」這條**寫死的線**，
+#      而會改變星數的門檻不只一條（75 通關、90 三星）。
+# ⚠️⚠️ 「這段程式**不可以**出現 X」的檢查，一定要先把註解拿掉。
+#    這個 repo 已經栽在同一件事上**五次**了：註解為了解釋「原本哪裡錯」
+#    而引用那段錯的東西，於是檢查比對到註解，在程式正確時變紅。
+#    ★ 假警報比沒有警報更糟 —— 它教人放寬檢查，而下次真的壞掉時，
+#      同一個動作會把真警報一起消音。
+_cal_code = "\n".join(l for l in _cal.split("\n") if not l.strip().startswith("#"))
+ok("crosses_pass_line" not in _cal_code and "75" not in _cal_code,
+   "★★★ 後端**不可以**自己判「有沒有跨過 75」—— 會改變星數的門檻不只一條，"
+   "而且星等規則只有 GRADING.scratchStar 那一份")
+ok('"score_min"' in _cal and '"score_max"' in _cal,
+   "★★★ 只回最高最低分，星數的判斷留給前端（規則抄第二份遲早走鐘）")
 ok("_calib_last[0] = _now" in _cal and
    _cal.index("_calib_last[0] = _now") < _cal.index("_save_upload_to_temp"),
    "★★ 節流要**先蓋章再開跑**：放在後面的話，兩個人同時按就兩邊都過關"

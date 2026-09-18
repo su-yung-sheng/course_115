@@ -147,7 +147,11 @@ section('★★ 後端連不上時，不可以說成別的原因');
      ⇒ 每一個吃 health 的檢查都必須先擋 !health 才能談別的原因。
        這一條是結構性的：以後新增檢查項漏擋，這裡就會紅。 */
   const bodies = [...CODE.matchAll(/function (check\w+)\(el, health\)([\s\S]{0,700})/g)];
-  ok(bodies.length >= 4,
+  /* ⚠️ 這裡原本寫 `>= 4`，是把「目前有幾支」當成規格。
+     2026-09-18 把 checkQueue／checkOcrStats 的 health 依賴**拿掉**之後
+     （它們讀的是另一台，本來就不該綁），這一條就變紅了 ——
+     而程式是**變好**的。★ 數量不是規格，「有吃就要擋」才是。 */
+  ok(bodies.length >= 1,
      '找得到吃 health 的檢查項（' + bodies.length + ' 個）');
   const missing = bodies
     .filter(m => m[2].indexOf('if (!health)') < 0)
@@ -165,6 +169,33 @@ section('★★ 後端連不上時，不可以說成別的原因');
     ok(iGuard >= 0 && iOld > iGuard,
        '★★ 「請重新上傳 notebook」必須排在「後端連不上」之後');
   }
+}
+
+section('★★★ 兩台是分開的，檢查也要分開（2026-09-18）');
+{
+  /* ⛔⛔ 老師：「為什麼『排隊機制』不是分開？如果程式評測沒啟動，
+     OCR 啟動也沒辦法看到排隊狀態？」—— 是，而且比問題描述的更糟。
+     checkQueue 原本第一行是 `if (!health) { …; return; }`，
+     而 health 是 🎨 Scratch 那一台的 /api/health：
+       ① Scratch 沒開 → 連 🧠 OCR 那一半（另一台、完全無關）都不去問
+       ② 那個 return 回 **undefined**，而呼叫端是 checkQueue(c3).then(…)
+          ⇒ 同步丟 TypeError → 外層 .catch(console.error) 吃掉 →
+          **④⑤⑥⑦⑧ 五張卡整批不執行**，按鈕還是變回「重新檢查」。
+     ★ 後端沒開正是最需要這一頁的時候，而它剛好在那時候瞎掉。 */
+  ok(!/function checkQueue\(el, health\)/.test(CODE),
+     '★★★ checkQueue **不可以**吃 Scratch 那一台的 health（它要問的是兩台）');
+  ok(!/function checkOcrStats\(el, health\)/.test(CODE),
+     '★★★ checkOcrStats 讀的是 OCR_SERVER，也不可以綁 Scratch 的 health');
+  const q = (CODE.match(/function checkQueue\(el\)([\s\S]*?)\n  \}/) || [, ''])[1];
+  ok(/return Promise\.all/.test(q),
+     '★★★ checkQueue 一定要**回 Promise** —— 呼叫端會 .then()，'
+     + '回 undefined 就是一個會吃掉後面五張卡的 TypeError');
+  ok(/if \(!g && !o\)/.test(q) && /else if \(!g\)/.test(q) && /else if \(!o\)/.test(q),
+     '★★★ 兩台要分開判讀：都掛、只掛 Scratch、只掛 OCR 是三種不同的情況');
+  ok(/Scratch 那一台沒有回應/.test(q) && /OCR 那一台沒有回應/.test(q),
+     '★★ 而且要講明**是哪一台** —— 兩台要重跑的步驟不一樣');
+  ok(/步驟 1b/.test(q),
+     '★ OCR 那一台要提醒步驟 1b（裝 PaddleOCR），Scratch 那一台沒有這一步');
 }
 
 section('★ 失敗原因要講人話，不要丟瀏覽器的原生訊息');

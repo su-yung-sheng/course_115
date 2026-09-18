@@ -3284,13 +3284,28 @@ const __bn = bonusOf(student, sub.key);
 
         /* ★ 這兩句是整個功能的重點，所以放在表格**上面**而不是下面。
            表格是證據，這兩句才是結論 —— 老師沒空自己做減法。 */
+        /* ⛔⛔ 2026-09-18 第一次真的跑出結果就打臉了：flash 95／haiku 85，
+           畫面說「還沒跨過 75」，語氣像是「還好」—— 但 95 是**三星**、85 是
+           **兩星**。同一份程式，抽到哪個模型決定他拿 2 顆還是 3 顆星。
+           ★ 錯在原本判的是「有沒有跨過 75」這條**寫死的線**，
+             而會改變星數的門檻不只一條（75 通關、90 三星）。
+           ⇒ 改成直接問 GRADING.scratchStar：兩個分數換算出來的星數一不一樣。
+             這樣門檻怎麼改都不必動這裡，也不會漏掉任何一條線。 */
+        const _lo = j.score_min, _hi = j.score_max;
+        const _G = window.GRADING;
+        const _sLo = (_G && _lo != null) ? _G.scratchStar(_lo) : null;
+        const _sHi = (_G && _hi != null) ? _G.scratchStar(_hi) : null;
+        const _starDiff = (_sLo != null && _sHi != null && _sLo !== _sHi);
+
         let verdict = '';
-        if (j.crosses_pass_line) {
-          verdict = '<div class="font-black text-rose-700 text-sm">🚨 這份程式會因為「抽到哪個模型」而過或不過'
-                  + '（最高和最低差 ' + esc(j.spread) + ' 分，橫跨 75 分這條及格線）</div>';
+        if (_starDiff) {
+          verdict = '<div class="font-black text-rose-700 text-sm">🚨 這份程式會因為「抽到哪個模型」而拿到不同的星數'
+                  + '（' + esc(_lo) + ' 分＝' + esc(_sLo) + '⭐，' + esc(_hi) + ' 分＝' + esc(_sHi) + '⭐，'
+                  + '差 ' + esc(j.spread) + ' 分）</div>';
         } else if (j.spread != null && j.spread >= 10) {
           verdict = '<div class="font-black text-amber-700 text-sm">⚠️ 模型之間差了 ' + esc(j.spread)
-                  + ' 分（還沒跨過 75，但這條線附近的學生要注意）</div>';
+                  + ' 分，但<b>星數一樣</b>（都是 ' + esc(_sHi) + '⭐）——'
+                  + '分數不同還不影響結果，不過門檻附近的作品要留意。</div>';
         } else if (j.spread != null) {
           verdict = '<div class="font-black text-emerald-700 text-sm">✅ 模型之間只差 ' + esc(j.spread)
                   + ' 分 —— 這一關的評分標準夠明確</div>';

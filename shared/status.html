@@ -825,8 +825,20 @@ if (!window.CONFIG) {
   }
 
   // ── 檢查 5：排隊機制 ────────────────────────────────
-  function checkQueue(el, health) {
-    if (!health) { set(el, 'bad', '無法檢查', '<span class="text-slate-500">後端連不上，跳過。</span>'); return; }
+  function checkQueue(el) {
+    /* ⛔⛔ 2026-09-18 老師：「為什麼『排隊機制』不是分開？如果程式評測沒啟動，
+       OCR 啟動也沒辦法看到排隊狀態？」—— 是，而且比問題描述的更糟。
+       原本第一行是 `if (!health) { …; return; }`，而 health 是
+       **🎨 Scratch 那一台**的 /api/health。於是：
+         ① Scratch 沒開 → 連 🧠 OCR 那一半（在另一台、完全無關）都不去問。
+            兩台是**各自獨立**的機器，把它們綁在一起沒有任何理由。
+         ② 更嚴重：那個 `return` 回的是 **undefined**，而呼叫端寫的是
+            `checkQueue(c3, health).then(…)` ⇒ **同步丟 TypeError**。
+            外層的 .catch(console.error) 把它吃掉，所以畫面上什麼都不會說，
+            而 ④⑤⑥⑦⑧ 五張卡**整批不會執行** ——
+            按鈕照樣變回「重新檢查」，看起來就像檢查完了。
+            ★ 「後端沒開」正是最需要這一頁的時候，而它剛好在那時候瞎掉。
+       ⇒ 兩台分開問、各報各的；而且**一定要回 Promise**（見呼叫端）。 */
     /* ⚠️⚠️ 老師 2026-09-04 問：「之前為了即時回饋設計的程式還會執行嗎？」
        ★ 查出來這裡是**壞的**：截圖那一欄本來讀 /queue，那是 Colab
          **記憶體裡**的 OCR 佇列。改成雲端暫存區之後，工作者是
@@ -869,9 +881,21 @@ if (!window.CONFIG) {
           d += row('最近一次掃描', '<span class="text-red-600">失敗：' + esc(String(sc.error || '')) + '</span>');
         }
       }
-      if (!g || !o) {
-        set(el, 'warn', '有端點缺漏', d +
-            '<div class="mt-2 text-amber-700">後端版本可能過舊 —— 在 Colab 重跑步驟 2、3、4。</div>');
+      /* ⚠️ 一台掛掉不可以連累另一台的判讀。
+         要講清楚**是哪一台**沒回應，因為兩台要重跑的步驟不一樣。 */
+      if (!g && !o) {
+        set(el, 'bad', '兩台都沒有回應', d +
+            '<div class="mt-2 text-red-700">兩台 Colab 都連不上。'
+          + '先確認筆記本還開著、步驟 4 有跑完。</div>');
+      } else if (!g) {
+        set(el, 'warn', '🎨 Scratch 那一台沒有回應', d +
+            '<div class="mt-2 text-amber-700">截圖那一邊（🧠 OCR）是好的，'
+          + '下面的數字可以照看。要修的是 Scratch 批改那一台：'
+          + '在那台 Colab 重跑步驟 2、3、4。</div>');
+      } else if (!o) {
+        set(el, 'warn', '🧠 OCR 那一台沒有回應', d +
+            '<div class="mt-2 text-amber-700">程式批改那一邊是好的。'
+          + '要修的是 OCR 那一台：在那台 Colab 重跑步驟 1b、2、3、4。</div>');
       } else if (o.mem_paused) {
         set(el, 'bad', '因記憶體不足暫停處理', d +
             '<div class="mt-2 text-red-700">這不是當機 —— 是後端主動踩煞車，'
@@ -905,8 +929,10 @@ if (!window.CONFIG) {
        而那種不一致沒有人會發現。
      ⚠️ 資料也不直接讀 Firestore：照這一頁的原則問後端
        （後端有服務帳戶，不必為了看統計去改安全規則）。 */
-  function checkOcrStats(el, health) {
-    if (!health) { set(el, 'bad', '無法檢查', '<span class="text-slate-500">後端連不上，跳過。</span>'); return; }
+  function checkOcrStats(el) {
+    /* ⚠️ 2026-09-18：這一支讀的是 **OCR_SERVER**，和 Scratch 那一台無關，
+       原本卻也綁著它的 health（和 checkQueue 同一個毛病）。
+       ⇒ 拿掉。連不上的話下面的 .catch 自己會講。 */
     return getJSON(OCR_SERVER + '/api/ocr-stats', 10000).then(function (j) {
       if (!j || !j.ok) throw new Error('端點沒有回應');
       var live = j.live || {}, hist = j.history || [];
@@ -1051,7 +1077,7 @@ if (!window.CONFIG) {
            ⚠️ 兩個來源放同一張卡的理由：分成兩張的話「檢查不過時怎麼辦」
               也要跟著多一條說明（status.test.js 盯著卡片數 vs 說明數），
               而排隊和批改本來就是同一件事的兩面。 */
-        checkQueue(c3, health)
+        checkQueue(c3)
           .then(function () { return checkGradeLog(c3); })
           .then(function (h) {
             if (h) c3.querySelector('.detail').insertAdjacentHTML('beforeend',
@@ -1060,7 +1086,7 @@ if (!window.CONFIG) {
         checkCriteria(c4, health),
         checkRules(c5),
         checkGas(c6),
-        checkOcrStats(c7, health),
+        checkOcrStats(c7),
         checkDupeShots(c8).then(function () { return checkDupeWorks(c8); })
           .then(function (w) {
             if (!w) return;

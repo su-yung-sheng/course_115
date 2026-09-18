@@ -1686,8 +1686,20 @@ ok('grade-log' in _st_here and '展開看' in _st_here,
 # ⛔⛔ set() 是 .detail.innerHTML = …（整段覆蓋）。
 #    批改紀錄和 checkQueue 並行的話，先 append 的那一份會被蓋掉 ——
 #    症狀是「時有時無」，間歇性的 bug 最難查，而順序就能避免。
-ok('checkQueue(c3, health)\n          .then(function () { return checkGradeLog(c3); })'
-   in _st_here,
+# ⚠️ 這裡原本連 `checkQueue(c3, health)` 的**參數列**一起比對。
+#    2026-09-18 把那個 health 依賴拿掉（它綁的是另一台，本來就不該綁）之後
+#    這一條就紅了 —— 而程式是變好的。
+#    ★ 要守的是**順序**，不是參數怎麼寫。⇒ 只比對「接在後面」這件事。
+# ⚠️⚠️ 比對「程式長怎樣」之前一定要先把註解拿掉。
+#    這個 repo 已經栽在同一件事上**四次**了：註解為了解釋「原本哪裡寫錯」
+#    而引用了那段錯的程式，於是檢查比對到註解，在程式明明正確時變紅。
+#    （2026-09-18 這一條就是：註解裡寫著 `checkQueue(c3, health).then(…)`。）
+_st_code = re.sub(r'/\*[\s\S]*?\*/', ' ', _st_here)
+_st_code = re.sub(r'<!--[\s\S]*?-->', ' ', _st_code)
+_q_i = _st_code.find('checkQueue(c3')
+_g_i = _st_code.find('checkGradeLog(c3)')
+ok(0 <= _q_i < _g_i
+   and '.then(function () { return checkGradeLog(c3); })' in _st_code[_q_i:_q_i + 200],
    '★★★ 批改紀錄要接在 checkQueue 後面，不可以並行（會被 set() 蓋掉）')
 
 # ⚠️ 老師 2026-09-07：「不能都使用①？」
