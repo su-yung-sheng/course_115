@@ -2817,7 +2817,15 @@ const __bn = bonusOf(student, sub.key);
         } else if (j.has_api_key === false) {
           _gdLight('warn', '🟡 已連線，但 Secrets 未設定 GEMINI_API_KEY_1');
         } else {
-          _gdLight('on', '🟢 後端已連線' + (j.version ? '（' + j.version + '）' : ''));
+          /* ⛔⛔ 2026-09-19：這裡原本印的是 j.version，而 j.version 是後端裡
+               SERVER_VERSION = "2026-09-02-ocr-stats" 這個**手寫的常數** ——
+               沒人記得更新它，所以畫面上永遠寫著九月二號，
+               老師看了會以為 Colab 跑的是舊版的。
+             ★ fingerprint 是程式自己算的，和 check.py 推送前印的那一串
+               是同一個 —— 對不對得上一眼就看得出來。這才是要印的那一個。 */
+          _gdLight('on', '🟢 後端已連線'
+                   + (j.fingerprint ? '（指紋 ' + j.fingerprint + '）' : '')
+                   + (j.version ? '　' + j.version : ''));
         }
       } catch (e) {
         _gdLight('off', '🔴 未連線（請先在 Colab 執行 shared/backend.ipynb）');

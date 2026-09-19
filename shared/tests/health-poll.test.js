@@ -603,5 +603,26 @@ section('★ 等待估計的預設值要貼近實測');
      '★★ 沒有樣本時的預設值不可以太樂觀（目前 ' + avg + ' 秒；實測約 34 秒）');
 }
 
+section('★★ 教師端綠燈要印「指紋」不是「版本」（2026-09-19）');
+{
+  const th = fs.readFileSync(path.join(ROOT, '11501', 'teacher.html'), 'utf8');
+  const band = (th.match(/_gdLight\('on',[\s\S]{0,400}?\);/) || [''])[0];
+  /* ⛔⛔ 老師 2026-09-19 問「這個顯示版本是不是搭不上？」——
+     畫面寫「🟢 後端已連線（2026-09-02-ocr-stats）」，看起來像 Colab 跑著
+     三週前的程式。實際上 fingerprint 是 4db3dc52，和 check.py 推送前印的
+     完全一致，後端是最新的。
+     ★ 錯在 j.version 來自後端的 SERVER_VERSION —— 一個**手寫的常數**，
+       沒人記得更新。它不會因為程式改了就變，所以它回報的不是版本，
+       而是「上次有人想到要改這個字串是什麼時候」。
+     ⇒ 要印的是 fingerprint：程式自己算的，改一個字就會變，
+       而且和 check.py 印出來的是同一串，對不對得上一眼就看得出來。
+     ⚠️ 一個「永遠不會變的版本號」比沒有版本號更糟 ——
+        它會讓人把真的過期誤判成假警報，下次真的忘記重跑就抓不到了。 */
+  ok(/j\.fingerprint/.test(band),
+     '★★★ 綠燈要印 j.fingerprint —— 那是程式自己算的，才對得上 check.py');
+  ok(/指紋/.test(band),
+     '★★ 要標明那一串是「指紋」，不然老師不知道該拿它和什麼比');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
