@@ -2600,6 +2600,12 @@ const __bn = bonusOf(student, sub.key);
                  ⇒ 這顆按鈕把同一份程式丟給每個模型各評一次，讓那件事量得到。
                  ⚠️ 會真的呼叫每一個模型（含付費那一階），後端有 20 秒節流。 -->
             <button onclick="gdCalibrate()" class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-lg text-xs transition">📐 跨模型校正</button>
+            <!-- ★ 2026-09-19：樣本庫是空的（只收 50～99 分，而有記關卡的作品
+                 幾乎都是 100 分），十關剛改完規則卻一份可測的程式都沒有。
+                 參考解答每一關都有 ⇒ 拿它來問「光靠規則，模型判不判得出
+                 這是對的」。模型從參考解答上扣分＝規則沒寫清楚。
+                 ⚠️ 測不到「部分完成怎麼評」—— 正確答案沒有扣分項目可以吵。 -->
+            <button onclick="gdCalibrate('example')" class="px-4 py-2 bg-violet-500 hover:bg-violet-600 text-white font-bold rounded-lg text-xs transition">📘 用參考解答校正</button>
           </div>
           <!-- ★ 校正樣本庫（老師 2026-09-17）：系統會自動把 50～89 分的程式
                留下來（滿分和 0 分量不到分歧）。改完評分標準之後用**同一份程式**
@@ -3225,11 +3231,14 @@ const __bn = bonusOf(student, sub.key);
     }
     window.gdLoadSamples = gdLoadSamples;
 
-    async function gdCalibrate() {
+    async function gdCalibrate(mode) {
+      const _useExample = (mode === 'example');
       const _sampleSel = document.getElementById('gdCalibSample');
-      const _sample = _sampleSel ? _sampleSel.value : '';
+      /* ⚠️ 用參考解答時要**無視**樣本下拉選單。留著它的話，
+         選單裡還停著上一次挑的樣本，就會安靜地量到別的東西。 */
+      const _sample = (!_useExample && _sampleSel) ? _sampleSel.value : '';
       const f = document.getElementById('gdTestFile').files[0];
-      if (!_sample && !f) {
+      if (!_useExample && !_sample && !f) {
         _gdSay('gdTestStatus', '請先選一份 .sb3，或從樣本庫挑一份', 'text-red-600'); return;
       }
       const box = document.getElementById('gdCalibResult');
@@ -3250,7 +3259,13 @@ const __bn = bonusOf(student, sub.key);
         const fd = new FormData();
         /* ⚠️ 用樣本時**不要**把檔案和 overrides 一起送 ——
            後端會以樣本的關卡為準，送了只會讓人以為畫面上的規則有生效。 */
-        if (_sample) {
+        if (_useExample) {
+          /* 參考解答存在 units_json 裡，後端自己取；overrides 照送，
+             這樣還沒存檔的規則修改也能立刻測。 */
+          fd.append('source', 'example');
+          fd.append('unit', _gdUnit());
+          fd.append('overrides', JSON.stringify(overrides));
+        } else if (_sample) {
           fd.append('sample', _sample);
         } else {
           fd.append('file', f);
@@ -3348,6 +3363,15 @@ const __bn = bonusOf(student, sub.key);
                   + '等一下再按一次。</div>';
         }
 
+        /* ⛔ 參考解答被扣分，是**規則**的問題，不是學生的問題 ——
+           這句話要講出來，不然老師看到 88 分會以為是解答寫得不好。 */
+        if (j.source === 'example' && _hi != null && _hi < 100) {
+          verdict += '<div class="font-bold text-amber-700 text-sm mt-1">'
+                   + '⚠️ 這是你自己的參考解答，卻被扣了分（最高 ' + esc(_hi) + ' 分）'
+                   + ' —— 展開下面的扣分明細，模型扣的那一條就是規則沒講清楚的地方。'
+                   + '</div>';
+        }
+
         const skip = (j.skipped || []).map(x =>
           '<div class="text-slate-400">略過 ' + esc(x.model) + '：' + esc(x.why) + '</div>').join('');
 
@@ -3359,7 +3383,10 @@ const __bn = bonusOf(student, sub.key);
           '<div class="text-slate-400">同一份清理後的程式（' + esc(j.chars_student) +
           ' 字）餵給每一個模型，沒有記錄成績。' +
           (j.sample ? '　來源：樣本庫　' + esc(j.unit) + '　原評 ' + esc(j.sample.score) +
-                      ' 分（' + esc(j.sample.student_id) + '）' : '') + '</div>';
+                      ' 分（' + esc(j.sample.student_id) + '）' : '') +
+          (j.source === 'example'
+            ? '　來源：' + esc(j.unit) + ' 的參考解答（評分時**沒有**把它當對照答案，'
+              + '模型只能依規則判斷）' : '') + '</div>';
         box.classList.remove('hidden');
         _gdSay('gdTestStatus', '✅ 校正完成（未記錄成績）', 'text-emerald-600');
       } catch (e) {

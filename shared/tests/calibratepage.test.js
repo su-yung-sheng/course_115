@@ -15,7 +15,9 @@ const fs = require('fs');
 const path = require('path');
 const root = path.join(__dirname, '..', '..');
 const html = fs.readFileSync(path.join(root, '11501', 'teacher.html'), 'utf8');
-const fn = (html.match(/async function gdCalibrate\(\)[\s\S]*?\n    \}/) || [''])[0];
+// ⚠️ 不要把參數列表寫死成 ()：2026-09-19 加了 mode 參數，
+//    這一行抓不到函式，下面所有斷言全部變紅 —— 而程式其實是好的。
+const fn = (html.match(/async function gdCalibrate\([^)]*\)[\s\S]*?\n    \}/) || [''])[0];
 
 let pass = 0, fail = 0;
 const ok = (c, l) => { c ? pass++ : fail++; console.log((c ? '  ✅ ' : '  ❌ ') + l); };
@@ -26,6 +28,23 @@ section('★ 這顆按鈕接得上');
   ok(fn.length > 0, '找得到 gdCalibrate');
   ok(/\/api\/teacher\/calibrate/.test(fn), '打的是校正端點');
   ok(/gdCalibrate\(\)/.test(html) && /跨模型校正/.test(html), '畫面上有按鈕');
+  /* ★ 2026-09-19：第三種來源 —— 這一關自己的參考解答。
+     樣本庫是空的（只收 50～99 分，而有記關卡的作品幾乎都是 100），
+     十關剛改完規則卻一份可測的程式都沒有。 */
+  ok(/gdCalibrate\('example'\)/.test(html) && /用參考解答校正/.test(html),
+     '★★ 畫面上要有「用參考解答校正」按鈕');
+  ok(/_useExample[\s\S]{0,200}mode === 'example'/.test(fn),
+     '★★ gdCalibrate 要收 mode 參數來分辨這一種來源');
+  /* ⛔⛔ 用參考解答時要無視樣本下拉選單。留著的話，選單裡還停著
+     上一次挑的樣本，就會安靜地量到別的東西，而畫面上看不出來。 */
+  ok(/!_useExample && _sampleSel/.test(fn),
+     '★★★ 用參考解答時要無視樣本選單 —— 不然會患默地量到別關的程式');
+  ok(/fd\.append\('source', 'example'\)/.test(fn),
+     '★★ 要送 source=example，後端靠它分辨');
+  /* ★ 參考解答被扣分，是**規則**的問題，不是解答寫得不好。 */
+  ok(/j\.source === 'example'[\s\S]{0,300}規則沒講清楚/.test(fn),
+     '★★★ 參考解答被扣分時要明講「那是規則的問題」—— '
+     + '不講的話老師會以為是自己的解答寫錯了');
   ok(/window\.gdCalibrate = gdCalibrate/.test(html),
      '★★ 有掛到 window —— onclick 找不到函式時是靜悄悄地沒反應');
   ok(/會真的呼叫每一個模型|付費/.test(html),

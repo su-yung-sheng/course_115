@@ -795,6 +795,32 @@ ok('"score_source"' in _cal and '"score_model"' in _cal,
    "★★★ 校正每一格要回報分數是誰算的 —— 不回的話，"
    "模型自己加錯的格子會被當成規則問題，白改一輪規則")
 
+# ★ 2026-09-19 第三種來源：這一關自己的參考解答。
+# ⭐ 動機：樣本庫是空的（只收 50～99 分，而有記關卡的作品幾乎都是
+#    100 分，56 筆繳交裡只有 6 筆有 unit），十關剛改完規則卻一份可測的
+#    程式都沒有。參考解答每一關都有。
+_cal2 = _src8[_src8.index("def teacher_calibrate"):]
+_cal2 = _cal2[:_cal2.index("\n@app.route")]
+ok('source") or "").strip() == "example"' in _cal2 or '_use_example' in _cal2,
+   "★★ 校正端點要認得 source=example")
+ok('_use_example and not _sample_id and "file" not in request.files' in _cal2,
+   "★★ 用參考解答時不該再要求上傳檔案或挑樣本")
+# ⛔⛔ 這一條是整個功能的命門：
+#    prompt 第 4 條寫著「若與【老師參考解答】完全一致，必須給予滿分，
+#    不可扣分」。把參考解答同時當「受測程式」和「對照答案」送進去，
+#    等於叫模型拿一份東西和它自己比 —— 兩邊一定都回 100，
+#    畫面會顯示「✅ 只差 0 分」，而那個 0 什麼也沒有證明。
+ok('"" if _use_example else cfg.get("example_code"' in _cal2,
+   "★★★ 用參考解答當受測程式時，**不可以**再把它當對照答案送進去 —— "
+   "送了兩邊都會回 100，變成一個永遠通過、什麼也測不到的測試")
+ok('False if _use_example else cfg.get("is_standard_answer"' in _cal2,
+   "★★ is_standard_answer 要跨成 False：那一版的指示是「不可以因為相似就"
+   "給滿分，必須嚴格逐條檢查評分法律」，正是這一模式要測的行為")
+ok('"source": ("example" if _use_example' in _cal2,
+   "★★ 回傳要標明來源 —— 三種來源的結果不能混著看")
+ok('example_code") or "")' in _cal2 and "還沒有填參考解答" in _cal2,
+   "★ 這一關沒填參考解答時要講清楚，不是丟一個空結果")
+
 
 section("④m 校正樣本庫（2026-09-17）")
 # ★ 老師提的，而且理由比我原本的設計好：「因為目前也在進行系統調整」——
