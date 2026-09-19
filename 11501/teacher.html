@@ -3267,8 +3267,18 @@ const __bn = bonusOf(student, sub.key);
           const bad = !x.matched;
           return '<tr class="' + (bad ? 'text-slate-400' : '') + '">' +
             '<td class="py-1 pr-3 font-mono">' + esc(x.requested) + '</td>' +
+            /* ★ 2026-09-19：分數已經改成由後端把 deductions 加總算出來。
+                 ‧ score_source ＝'backend' ：正常，這一格的分數是程式算的。
+                 ‧ 其他值：模型沒把 deductions 回成可用的形狀，只好用它自己填的分 ——
+                   這時候看到的差距有可能只是它加錯，不是規則模糊。
+                   不標出來的話，老師會拿這種格子去改規則，而規則改不掉它。 */
             '<td class="py-1 pr-3 font-black ' + (bad ? '' : 'text-slate-800') + '">' +
-              (x.score != null ? esc(x.score) + ' 分' : '—') + '</td>' +
+              (x.score != null ? esc(x.score) + ' 分' : '—') +
+              (x.score_source && x.score_source !== 'backend'
+                ? '<div class="text-[10px] font-normal text-amber-700 mt-0.5">⚠️ 這一格是模型自己填的分數</div>'
+                : (x.score_model != null && x.score_model !== x.score
+                    ? '<div class="text-[10px] font-normal text-slate-400 mt-0.5">模型本來寫 ' + esc(x.score_model) + ' 分</div>'
+                    : '')) + '</td>' +
             '<td class="py-1 pr-3">' + (x.seconds != null ? esc(x.seconds) + ' 秒' : '') + '</td>' +
             /* ⚠️ 失敗的那一格要講**原因**和**下一步**，不是只說「失敗了」。
                2026-09-16 第一次跑就遇到 flash 回 503，而畫面只寫

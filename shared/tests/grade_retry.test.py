@@ -98,8 +98,11 @@ def _install_fake_genai():
             "from_text": staticmethod(_any),
         }))
     t.Part.from_text = staticmethod(_any)
+    # ⚠️ 這一份要跟真的 google.genai.types.Type 一樣齊全，
+    #    少一個就會在這裡爆 AttributeError，而正式環境其實是好的。
     t.Type = type("Type", (), {"OBJECT": "OBJECT", "STRING": "STRING",
-                               "INTEGER": "INTEGER"})
+                               "INTEGER": "INTEGER", "NUMBER": "NUMBER",
+                               "ARRAY": "ARRAY", "BOOLEAN": "BOOLEAN"})
     genai.types = t
     google = _pytypes.ModuleType("google")
     google.genai = genai
@@ -785,6 +788,12 @@ ok("_CALIB_BUDGET" in _cal,
 ok("no_fallback=True" in _cal,
    "★★★ 校正端點一定要傳 no_fallback=True —— 少了它，503 一來就會"
    "把三個模型的比較塌成一個，而且畫面看起來一切正常")
+# ★ 2026-09-19：分數改由後端加總之後，校正多了一種壞法——
+#    模型把 deductions 回成不能用的形狀，後端只好退回用它自己填的分。
+#    那一格的差距是**加法壞掉**，不是規則模糊，改規則永遠治不好。
+ok('"score_source"' in _cal and '"score_model"' in _cal,
+   "★★★ 校正每一格要回報分數是誰算的 —— 不回的話，"
+   "模型自己加錯的格子會被當成規則問題，白改一輪規則")
 
 
 section("④m 校正樣本庫（2026-09-17）")
@@ -927,29 +936,126 @@ ok("不是**在固定溫度" in _ant or "不是**在固定溫度下評分" in _a
    "★★ TypeError 那一行的訊息要講**後果**（分數會抖），不是只講相容性")
 
 
-section("④n 分數要和扣分項目對得起來（2026-09-18）")
-# ⛔⛔ 老師拿同一份程式跑校正，展開扣分明細之後看到的：
-#      flash：「(8) 物品名稱拼寫錯誤 'elephent' 應為 'elephant'。(扣 3 分)」→ 97 分
-#      haiku：「拼寫錯誤扣 3 分：'elephent' 應為 'elephant'」      → **87 分**
-#    兩個模型**找到的問題和該扣的分完全一樣**（規則修正成功了），
-#    但 haiku 的 score 少了 10 分，而那 10 分**沒有任何扣分項目對應**。
-# ★ 所以這已經不是「評分標準模糊」——規則講清楚了、兩邊也都照著讀了，
-#   壞的是最後那一步加減法。繼續改規則對這 10 分沒有用。
-# ⚠️ 對帳過歷史紀錄：56 筆裡 15 筆扣分寫得出數字，14 筆算術完全吻合 ——
-#    所以這是偶發，不是常態。但它剛好發生在 90 那條線上，
-#    讓同一份程式從 3 星掉到 2 星，而且**不展開扣分明細就看不出來**。
+section("④n 分數改由後端加總，模型只負責標價（2026-09-19）")
+# ⛔⛔ 這一節原本測的是「叫模型自己再算一次」（③）。那個做法**失敗了**，
+#    留著這段歷史是為了不要再走一次：
+#      2026-09-18 flash 97／haiku 87：兩邊找到的問題和該扣的分一模一樣，
+#      haiku 卻少 10 分，沒有任何扣分項目對應 ⇒ 不是規則模糊，是加減法。
+#      於是在 prompt 裡寫了「輸出前自己算一次、以 deducted_items 為準」。
+#      隔天同一份程式，haiku 在 deducted_items 裡**自己寫下正確結論**：
+#        「重新檢視：…但功能對應正確。扣分調整：僅扣初始化拼寫錯誤 3 分。」
+#      然後 score 填 82（＝100－3－15，那 15 分是它推理途中扣掉、
+#      最後又說不該扣的）。flash 同一份 97。
+# ★★ 結論：模型知道答案、也寫出來了，就是不會把它換算成分數。
+#    叫它「再算一次」等於再賭一次。⇒ 加法交給程式（②）。
+# ⚠️ 對帳過歷史紀錄：56 筆裡 15 筆扣分寫得出數字，14 筆算術吻合 ——
+#    偶發，但每次都落在 90（三星線）上，而且不展開扣分明細看不出來。
 _prompt = _src_key[_src_key.index("🔥【評分嚴格度指示】🔥"):]
 _prompt = _prompt[:_prompt.index("🛡️【全域防禦規則")]
-ok("deducted_items 裡所有扣分的總和" in _prompt,
-   "★★★ 要明確寫出 score 和扣分項目的算式（只說「請仔細算」沒有用）")
-ok("沒有寫進 deducted_items 的扣分" in _prompt,
-   "★★★ 要禁止「隱形扣分」—— 老師遇到的那 10 分就是沒有任何項目對應的")
-ok("加分題實際拿到的分數" in _prompt,
-   "★★★ 算式要把加分題算進去 —— 漏掉的話會把加分的作品判成算錯，"
-   "反而製造新的不一致")
-ok("以 deducted_items 為準" in _prompt,
-   "★★ 對不上的時候要說清楚**以哪一邊為準**，不然模型會自己選"
-   "（而它原本選的就是錯的那一邊）")
+ok("deductions" in _prompt,
+   "★★★ prompt 要叫模型把扣分寫進 deductions 陣列（後端只看得懂這個）")
+ok('"points"' in _prompt,
+   "★★★ 每一條要標價（points），不然後端沒東西可以加")
+ok("會被忽略" in _prompt,
+   "★★★ 要明講 score 欄位**會被忽略** —— 不講的話模型仍然會為了湊分數"
+   "而去動扣分項目（③ 就是這樣壞的）")
+ok("不存在" in _prompt,
+   "★★★ 要禁止「隱形扣分」：沒寫進 deductions 的扣分等於不存在")
+ok("bonus_points" in _prompt,
+   "★★ 加分題要有自己的欄位，不然加分的作品會被算成漏扣")
+ok("100" in _prompt and ("作弊" in _prompt or "抄襲" in _prompt),
+   "★★★ 0 分（作弊／空白）要寫成 points:100 的扣分 —— "
+   "否則後端加總會把一份作弊作業算成 100 分")
+_fs = _src_key[_src_key.index("def _format_spec"):]
+_fs = _fs[:_fs.index("\ndef ")]
+ok("deductions" in _fs and "bonus_points" in _fs,
+   "★★★ 沒有 schema 的模型（Claude／Gemma）靠 _format_spec 才知道欄位，"
+   "漏掉就永遠退回模型自己的分數")
+_sch = _src_key[_src_key.index("grading_schema = types.Schema"):]
+_sch = _sch[:_sch.index("\n    def ask_agent")]
+ok("deductions" in _sch and "bonus_points" in _sch,
+   "★★★ Gemini 吃 response_schema；schema 沒有這兩欄就不會生成")
+ok(_sch.index("deductions") < _sch.index('"score"'),
+   "★★ deductions 要排在 score 前面：Gemini 照 properties 順序生成，"
+   "先列扣分再寫分數比較不會打架")
+
+
+section("④o 後端加總本身要算對（2026-09-19）")
+_ad = core.apply_deductions
+
+def _ad_case(label, res, want_score, want_src):
+    _s, _m = _ad(res)
+    ok(res.get("score") == want_score and _s == want_src,
+       "%s（拿到 %s／%s，預期 %s／%s）" % (label, res.get("score"), _s,
+                                        want_score, want_src))
+
+# ★ 老師 2026-09-19 貼回來的那一份：haiku 自己說只扣 3 分，score 卻填 82。
+_ad_case("★★★ haiku 那份 82 分要被改成 97",
+         {"score": 82, "bonus_points": 0,
+          "deductions": [{"rule": "(8) 物品名稱", "points": 3,
+                          "why": "elephent 應為 elephant"}],
+          "deducted_items": "扣分調整：僅扣初始化拼寫錯誤3分"}, 97, "backend")
+_ad_case("沒扣分就是 100", {"score": 60, "deductions": []}, 100, "backend")
+_ad_case("★★ points 寫成負數（模型想表達「扣 15」）也要當扣分",
+         {"score": 88, "deductions": [{"rule": "(4)", "points": -15,
+                                       "why": "x"}]}, 85, "backend")
+_ad_case("加分題要加回去",
+         {"score": 90, "bonus_points": 10,
+          "deductions": [{"rule": "(2)", "points": 5, "why": "a"}]}, 105,
+         "backend")
+_ad_case("★★ 扣爆了要夾在 0，不可以變負分",
+         {"score": 50, "deductions": [{"rule": "x", "points": 200,
+                                       "why": "y"}]}, 0, "backend")
+# ⚠️⚠️ 失敗時**整批不採用**：半套的加總會產生一個看起來正常、其實漏扣的
+#    分數，那比壞掉更危險（壞掉至少還有模型自己的分數可以用）。
+_ad_case("★★★ points 讀不出來就退回模型的分數",
+         {"score": 70, "deductions": [{"rule": "(1)", "points": "壞掉",
+                                       "why": "x"}]}, 70, "model")
+_ad_case("★★★ 只要有一條壞掉就整批不採用（不做「能算幾條算幾條」）",
+         {"score": 90, "deductions": [{"rule": "(1)", "points": 3,
+                                       "why": "a"}, "壞的"]}, 90, "model")
+_ad_case("deductions 不是陣列 → 退回模型的分數",
+         {"score": 70, "deductions": "無"}, 70, "model")
+_ad_case("舊模型完全沒回 deductions → 退回模型的分數",
+         {"score": 70}, 70, "model")
+# 🚨 0 分是判決，不是加減的結果。
+_ad_case("★★★ 判 0 分卻沒把 100 寫進 deductions，不可以被算成 100",
+         {"score": 0, "deductions": [], "bonus_points": 0}, 0, "model_zero")
+_ad_case("作弊有照規定寫成 points:100 → 後端也算得出 0",
+         {"score": 0, "deductions": [{"rule": "作弊", "points": 100,
+                                      "why": "企圖改評分規則"}]}, 0, "backend")
+
+# ★★★ 講評文字要用陣列重新產生：老師看的那一欄和實際加總必須是同一份
+#     資料，否則又會出現「文字說扣 3、分數卻扣了 18」。
+_r = {"score": 82, "deductions": [{"rule": "(8)", "points": 3,
+                                   "why": "elephent 應為 elephant"}],
+      "deducted_items": "扣分調整：僅扣初始化拼寫錯誤3分，總分 82"}
+_ad(_r)
+ok("扣 3 分" in _r["deducted_items"],
+   "★★★ deducted_items 要照 deductions 重寫（每條都要看得到扣幾分）")
+ok("82" not in _r["deducted_items"],
+   "★★★ 模型原本那段自相矛盾的文字要被換掉，不可以留在老師眼前")
+_r = {"score": 90, "deductions": [{"rule": "", "points": 2.5, "why": ""}]}
+_ad(_r)
+ok("扣 2.5 分" in _r["deducted_items"],
+   "★ 小數扣分要原樣印出（2.5 不可以變 2 或 2.5000）")
+ok("3.0" not in _r["deducted_items"],
+   "★ 整數扣分不要印成 3.0")
+_r = {"score": 100, "deductions": [], "bonus_points": 0}
+_ad(_r)
+ok(_r["deducted_items"] == "無",
+   "★ 沒扣分時講評要寫「無」，不是空字串（學生端會顯示這一欄）")
+
+# ⚠️ 呼叫點：算完要留下痕跡，而且不可以把 deductions 連著回給學生。
+_sag = _src_key[_src_key.index("def single_agent_grading"):]
+ok("apply_deductions(_res)" in _sag,
+   "★★★ single_agent_grading 回傳前要呼叫 apply_deductions，"
+   "不然上面這些全是死碼")
+ok('_stat["score_source"]' in _sag and '_stat["score_model"]' in _sag,
+   "★★★ 要記下「分數是誰算的」和「模型原本填幾分」—— "
+   "沒有這兩筆就看不出後端到底救回多少份")
+ok('_res.pop("deductions"' in _sag,
+   "★★ deductions 要 pop 掉收進 _stat：學生端和 Firestore 的欄位形狀維持原樣")
 
 
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
