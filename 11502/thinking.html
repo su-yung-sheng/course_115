@@ -1517,8 +1517,21 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                 return () => { cancelled = true; };
             }, []);
 
+            /* ★ 2026-09-21 老師：「十張證書拿到，證書上傳按鍵反灰；挑戰清單的連結
+                 只顯示通關人數，不會再跳出遊戲畫面」（和 11501 同一次改的）。
+               ⚠️ 「有沒有通關」只判斷一次：清單打勾、開不開遊戲、右邊顯示什麼、
+                  上傳鈕灰不灰，四處都用 isDone。編號轉 Number 再比 ——
+                  Firestore 歷史資料的編號可能是字串。
+               ⚠️ 十關全拿用 every，不用 length >= 10：重複的紀錄會讓長度虛胖，
+                  還沒拿滿就先鎖住上傳。 */
+            const doneSet = new Set((completedChallenges || []).map(Number));
+            const isDone = (id) => doneSet.has(Number(id));
+            const allDone = challenges.length > 0 && challenges.every(c => isDone(c.id));
+
             const handleOpenChallenge = (challenge) => {
                 setSelectedChallenge(challenge);
+                /* 已經拿到這一關的證書 ⇒ 只選取（右邊顯示本班通關人數），不開遊戲。 */
+                if (isDone(challenge.id)) return;
                 const width = 1024;
                 const height = 768;
                 const left = (window.screen.width - width) / 2;
@@ -1603,7 +1616,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                             <div>
                                                 <div className={`font-bold text-lg sm:text-xl ${selectedChallenge?.id === challenge.id ? 'text-white' : 'text-slate-800'}`}>
                                                     {challenge.id}. {challenge.title}
-                                                    {completedChallenges.includes(challenge.id) && (
+                                                    {isDone(challenge.id) && (
                                                         <i className={`fa-solid fa-circle-check ml-2 ${selectedChallenge?.id === challenge.id ? 'text-white' : 'text-emerald-500'}`} title="已通關"></i>
                                                     )}
                                                 </div>
@@ -1612,7 +1625,10 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                                     <span className={`font-bold text-lg ${selectedChallenge?.id === challenge.id ? 'text-yellow-300' : getDifficultyColor(challenge.difficulty)}`}>{challenge.difficulty}</span>
                                                 </div>
                                             </div>
-                                            <Icons.Play className={`w-6 h-6 ${selectedChallenge?.id === challenge.id ? 'text-white' : 'text-slate-300 group-hover:text-green-400'}`} />
+                                            {/* ★ 已通關點了不會開遊戲 ⇒ 圖示不要再是「播放」。 */}
+                                            {isDone(challenge.id)
+                                                ? <i className={`fa-solid fa-users text-lg ${selectedChallenge?.id === challenge.id ? 'text-white' : 'text-slate-300 group-hover:text-emerald-500'}`} title="查看本班通關人數"></i>
+                                                : <Icons.Play className={`w-6 h-6 ${selectedChallenge?.id === challenge.id ? 'text-white' : 'text-slate-300 group-hover:text-green-400'}`} />}
                                         </button>
                                     ))}
                                 </div>
@@ -1645,18 +1661,37 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                             學生打完一關直接來傳圖就好。
                                             ★ 順手修掉一個舊坑：學生常在別的分頁打完關卡回來，
                                               左邊其實沒選任何東西，於是被 alert 擋住。 */}
+                                        {/* ★ 十張證書都拿到 ⇒ 反灰、不能按，並換字說明原因。 */}
                                         <button 
-                                            onClick={() => setShowCertModal(true)} 
-                                            className="w-full sm:w-auto px-5 py-3 rounded-xl font-bold flex items-center justify-center shadow-md transition-all bg-gradient-to-r from-green-500 to-purple-600 hover:from-green-600 hover:to-purple-700 text-white transform hover:scale-105"
+                                            onClick={() => { if (!allDone) setShowCertModal(true); }} 
+                                            disabled={allDone}
+                                            title={allDone ? '十關都已經拿到證書了' : ''}
+                                            className={allDone
+                                                ? "w-full sm:w-auto px-5 py-3 rounded-xl font-bold flex items-center justify-center bg-slate-300 text-slate-500 cursor-not-allowed"
+                                                : "w-full sm:w-auto px-5 py-3 rounded-xl font-bold flex items-center justify-center shadow-md transition-all bg-gradient-to-r from-green-500 to-purple-600 hover:from-green-600 hover:to-purple-700 text-white transform hover:scale-105"}
                                         >
-                                            <i className="fa-solid fa-award text-xl mr-2"></i> 證書製作
+                                            {allDone
+                                                ? <><i className="fa-solid fa-circle-check text-xl mr-2"></i> 十關全部通關</>
+                                                : <><i className="fa-solid fa-award text-xl mr-2"></i> 證書製作</>}
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 relative overflow-hidden flex items-center justify-center min-h-[200px]">
-                                {selectedChallenge ? (
+                                {selectedChallenge && isDone(selectedChallenge.id) ? (
+                                    <div className="text-center text-slate-500 p-8">
+                                        <div className="bg-emerald-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6"><i className="fa-solid fa-trophy text-4xl text-emerald-500"></i></div>
+                                        <p className="text-lg mb-4">你已經通關 <span className="font-bold text-emerald-600">「{selectedChallenge.title}」</span> 了！</p>
+                                        {classPassCount !== null && (
+                                            <div className="inline-flex items-center justify-center space-x-2 bg-emerald-50 text-emerald-700 px-5 py-2 rounded-full text-sm font-medium border border-emerald-200 mb-4 animate-[fadeIn_0.3s_ease-out] shadow-sm">
+                                                <i className="fa-solid fa-fire text-emerald-500"></i>
+                                                <span>本班已通關：<span className="font-bold text-xl mx-1">{classPassCount}</span> 人</span>
+                                            </div>
+                                        )}
+                                        <p className="text-xs text-slate-400">已拿到證書的關卡不會再開啟遊戲視窗</p>
+                                    </div>
+                                ) : selectedChallenge ? (
                                     <div className="text-center text-slate-500 p-8">
                                         <div className="bg-green-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6"><Icons.Monitor className="w-12 h-12 text-green-400" /></div>
                                         <p className="text-lg mb-4">挑戰 <span className="font-bold text-green-600">「{selectedChallenge.title}」</span> 正在執行...</p>

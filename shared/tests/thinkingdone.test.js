@@ -14,7 +14,11 @@ let pass = 0, fail = 0;
 const ok = (c, l) => { c ? pass++ : fail++; console.log((c ? '  ✅ ' : '  ❌ ') + l); };
 const section = t => console.log('\n── ' + t + ' ──');
 
-const SRC = fs.readFileSync(path.join(ROOT, '11501', 'thinking.html'), 'utf8');
+/* ★ 2026-09-21 老師：「11502 一併調整」—— 兩個學期同一套行為，同一份測試各跑一次。
+   ⚠️ 只測一個學期的話，另一個學期被改壞了也不會有人發現。 */
+for (const TERM of ['11501', '11502']) {
+console.log('\n════════ ' + TERM + '/thinking.html ════════');
+const SRC = fs.readFileSync(path.join(ROOT, TERM, 'thinking.html'), 'utf8');
 /* ⚠️⚠️ 「程式裡不可以出現 X」的檢查一定要先拿掉註解。
    這個 repo 已經栽在同一件事上五次：註解為了解釋「原本哪裡錯」而引用了
    那段錯的寫法，檢查比對到註解，在程式正確時變紅。
@@ -126,8 +130,10 @@ section('★ 語法（JSX 要編譯得過）');
     const m = SRC.match(/<script type="text\/babel"[^>]*>([\s\S]*?)<\/script>/);
     let err = '';
     try { babel.transform(m[1], { presets: ['react'] }); } catch (e) { err = e.message.split('\n')[0]; }
-    ok(!err, '★★★ thinking.html 的 JSX 編譯得過' + (err ? '　←　' + err : ''));
+    ok(!err, '★★★ ' + TERM + '/thinking.html 的 JSX 編譯得過' + (err ? '　←　' + err : ''));
   }
+}
+
 }
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
