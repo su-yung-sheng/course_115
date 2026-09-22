@@ -63,7 +63,7 @@ window.CONFIG = {
 
   // ── 後端服務 ────────────────────────────────────────────
   //   Colab（shared/backend.ipynb）啟動後的固定網域。
-  SERVER_URL: 'https://flanking-snort-cyclic.ngrok-free.dev',
+  SERVER_URL: 'https://debug-autograph-activate.ngrok-free.dev',
 
   /*   運算思維 OCR 專用的後端。留空 = 和上面共用一台。
    *

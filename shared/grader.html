@@ -322,17 +322,33 @@ async function loadTask(){
           '⚠️ 這台後端沒有 Gemini 金鑰，還不能批改（和作業主題有沒有設定無關）。'
           +'請告訴老師：到 Colab Secrets 確認 GEMINI_API_KEY_1，並打開這本 notebook 的存取權。';
         setLight('on','🟢 已連線，但這台沒有金鑰、不能批改');
+        return false;          // 老師補好金鑰重開 Colab 之後，這邊要能自己發現
       }else{
         setLight('on','🟢 已連線，可以開始自評');
+        return true;
       }
-    } else { $('themeText').textContent='無法載入任務資訊'; setLight('off','🔴 伺服器回應異常'); }
+    } else { $('themeText').textContent='無法載入任務資訊'; setLight('off','🔴 伺服器回應異常'); return false; }
   }catch(e){
     $('themeText').textContent='⚠️ 連不上伺服器，請稍候再試或問老師。';
     setLight('off','🔴 未連線（老師的伺服器可能還沒開）');
+    return false;
   }
 }
-loadTask();
-setInterval(loadTask, 20000);  // 每 20 秒自動重新偵測
+/* ⛔⛔⛔ 2026-09-22 ERR_NGROK_725「Network bandwidth exceeded」——
+   免費 ngrok 一個月 1 GB／2 萬次請求，Scratch 那台用光了。
+   ★ 原本這裡是 setInterval(loadTask, 20000)：**連上之後也照樣每 20 秒問一次**，
+     而這個頁面嵌在程式設計的每一關裡，學生開著它就一直打。
+     一班 30 人 × 每分鐘 3 次 × 40 分鐘 ≈ 3,600 次／節課 ——
+     光是次數，五、六節課就用完一個月的 2 萬次。
+     再加上後端每次都回整份設定（見 /api/student/config 那段），流量也爆了。
+   ⇒ **連上就不再問**。只有「還沒連上」的時候才每 20 秒重試。
+   ⚠️ 連上之後 Colab 若中途重開，綠燈不會自己變紅 —— 但學生按「送出批改」
+      時會直接問到後端，失敗會照實顯示，不會卡住。用少量的「過時綠燈」
+      換掉每節課幾千次的輪詢，划得來。 */
+(async function taskLoop(){
+  const ok = await loadTask();
+  if (!ok) setTimeout(taskLoop, 20000);
+})();
 
 async function grade(){
   if(!chosen) return;

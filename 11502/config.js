@@ -110,7 +110,7 @@ window.CONFIG = {
   //   共用後端 shared/backend.ipynb 啟動後的固定網域。
   //   上下學期共用同一本 notebook、同一個網域，靠請求裡的 term 參數分學期。
   //   ⚠️ 換網域時，這裡與 11501/config.js 都要改。
-  SERVER_URL: 'https://flanking-snort-cyclic.ngrok-free.dev',
+  SERVER_URL: 'https://debug-autograph-activate.ngrok-free.dev',
 
   /*   運算思維 OCR 專用的後端。留空 = 和上面共用一台。
    *
