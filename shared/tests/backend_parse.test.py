@@ -1724,6 +1724,27 @@ ok('① 後端版本（🧠' in _st_nocomment and '① 後端版本（🎨' in _
 #      不鎖版本 = 每天早上都在賭別人昨晚有沒有改壞東西。
 _inst = _code_of(_nb_cells[4])
 ok('_PIN_LADDER' in _inst, '★★★ OCR 套件一定要鎖版本')
+
+# ⛔⛔ 2026-09-22 老師：「在 colab 按下執行後，程式一直轉圈圈，但又沒有執行成功」。
+#    ★ 步驟 1b 的 pip 原本沒有逾時、輸出又被 capture ——
+#      幾百 MB 的下載卡住一次，畫面就只剩一個永遠轉下去的圈，不結束也不報錯。
+import re as _re_1b
+_raw_1b = ''.join(_nb_cells[4].get('source', []))   # 含註解的原文（_inst_raw 在更下面才定義）
+ok(_re_1b.search(r"'pip', 'install'[\s\S]{0,300}timeout=_PIP_TIMEOUT", _inst) is not None,
+   '★★★ 步驟 1b 的 pip 要有逾時 —— 下載卡住時才不會轉一整個下午')
+ok('except subprocess.TimeoutExpired' in _inst and '下載卡住了' in _raw_1b,
+   '★★★ 逾時要**講人話**（下載卡住、要做什麼），不是丟一段 traceback')
+ok('if _r is not None else' in _inst,
+   '★★ 逾時後 _r 是 None，後面讀 pip 輸出的地方不可以因此崩潰')
+ok(_re_1b.search(r'paddle\.__version__\)\'\],\s*capture_output=True, text=True, timeout=', _inst) is not None,
+   '★★ import 驗證的子行程也要有逾時')
+ok(not any(l.lstrip().startswith('%') and not l.startswith('%%')
+           for l in _raw_1b.split('\n')),
+   '★ 步驟 1b 不可以有以 % 開頭的行（IPython 可能當成 magic 指令）')
+_c10_code = _code_of(_nb_cells[10])
+ok('"anthropic<1"' in _c10_code,
+   '★★★ 步驟 4 的安全網也要把 anthropic 釘在 1.0 以下 —— 沒跑步驟 1 直接跑這格時，'
+   '原本會裝到拿掉 temperature 的 1.x')
 # ⚠️⚠️ 第一版梯子寫 3.0.0／3.1.0，**兩組都裝不起來**（paddleocr 3.0.0
 #    → paddlex 3.0.0 → GPUtil，而 GPUtil 只有原始碼沒有 wheel，
 #    --only-binary=:all: 對相依也生效），一路掉到不鎖版本，
