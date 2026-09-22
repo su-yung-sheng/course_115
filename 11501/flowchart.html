@@ -420,7 +420,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     }
 
     let state = { status:'loading', studentId:'', studentName:'', slowNote:'', mmdUnit:null, done:{}, progDone:{},
-                  progStars:{}, unlocked:{}, imgUnits:{}, vidUnits:{}, unit:null, candidates:[], selected:{}, selMsg:'', placed:[], pool:[], mistakes:0,
+                  progStars:{}, unlocked:{}, imgUnits:{}, vidUnits:{}, imgReview:{}, vidReview:{}, unit:null, candidates:[], selected:{}, selMsg:'', placed:[], pool:[], mistakes:0,
                   qIdx:0, qPicked:null, qScore:0, refOpen:false, leadOpen:false, graderOpen:false,
                   readLeft:0, hintUsed:false, hintLeft:0, selTries:0,
                   quizSet:[], quizPassed:false,
@@ -701,6 +701,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
              讓「逐關加總」和闖關基地那張卡對得起來。 */
         state.imgUnits = (mods.flowchart && mods.flowchart.imgUnits) || {};
         state.vidUnits = (mods.scratch && mods.scratch.vidUnits) || {};
+        /* ★ 2026-09-22 老師：「附檔不符合加分條件，要讓學生知道並重新補件，
+             否則會認為教師都沒批改」。退件是老師在「繳交審核」寫的，
+             這一頁讀出來講給學生聽。 */
+        state.imgReview = (mods.flowchart && mods.flowchart.imgReview) || {};
+        state.vidReview = (mods.scratch && mods.scratch.vidReview) || {};
         // 前導教材：hub 也讀同一個 modules.list
         state.leadDone = !!(mods.list && mods.list.status === 'pass');
       }catch(e){ console.error('讀進度失敗',e); }
@@ -947,6 +952,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
           const bar = (n, cap) => '★'.repeat(Math.max(0,n)) + '☆'.repeat(Math.max(0,cap-n));
           const imgOn = !!(state.imgUnits||{})[u.id];
           const vidOn = !!(state.vidUnits||{})[u.id];
+          /* 退件（已經給分的就不算退件 —— 老師給分時會一併清掉，這裡再保險一次） */
+          const imgRej = !imgOn && (state.imgReview||{})[u.id];
+          const vidRej = !vidOn && (state.vidReview||{})[u.id];
           const flowSt = done ? STARS_PER_UNIT + (imgOn?B_IMG:0) : 0;
           const progSt = st>0 ? st + (vidOn?B_VID:0) : 0;
           const flowTxt = bar(flowSt, STARS_PER_UNIT + B_IMG);
@@ -991,6 +999,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
               <p class="mt-2 text-sm leading-relaxed ${open?'text-slate-600':'text-slate-400'}">${
                 open ? (u.desc || u.subtitle || '') : '完成前一關才會開啟'}</p>
               <p class="mt-3 text-xs font-bold ${both?'text-emerald-600':tOpen?'text-sky-600':open?'text-purple-600':'text-slate-400'}">${nextLine}</p>
+              ${[imgRej ? ['🖼️ 流程圖圖片', imgRej] : null, vidRej ? ['🎬 程式錄影', vidRej] : null].filter(Boolean).map(([lab, r]) =>
+                `<div class="mt-2 text-xs leading-relaxed bg-rose-50 border border-rose-300 text-rose-800 rounded-lg px-2.5 py-1.5">
+                   ↩️ <b>老師看過你的${lab}，還差一點：</b>${esc(r.reason||'')}
+                   <span class="block text-rose-600">改好之後到 Google Classroom${r.work?'「'+esc(r.work)+'」':'的這份作業'}重新繳交，老師會再看一次。</span>
+                 </div>`).join('')}
               ${(open && done)?`<span data-prog="${u.no}" class="go-prog inline-block mt-2 text-[11px] font-black ${st>=3?'bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-300':'bg-orange-500 hover:bg-orange-600 text-white'} px-2.5 py-1 rounded-full transition">${
                 st===0 ? '🐱 直接去程式設計 →'
                 : st<3 ? '🐱 再傳一次，挑戰 '+(st+1)+' 星 →'
@@ -1025,6 +1038,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
               的 <code style="background:#ffedd5;padding:1px 5px;border-radius:5px">OPEN_ALL_UNITS</code>
               改回 <code style="background:#ffedd5;padding:1px 5px;border-radius:5px">false</code>。
             </div>` : ''}
+            ${(()=>{ /* 有退件就在最上面講，不要讓他一關一關翻才發現 */
+              const n = UNITS.filter(u => (!(state.imgUnits||{})[u.id] && (state.imgReview||{})[u.id])
+                                       || (!(state.vidUnits||{})[u.id] && (state.vidReview||{})[u.id])).length;
+              return n ? `<div class="bg-rose-50 border-2 border-rose-300 rounded-2xl px-4 py-3 mb-4 flex items-start gap-3">
+                <span class="text-2xl flex-shrink-0">↩️</span>
+                <div class="flex-1 text-sm text-rose-800 leading-relaxed"><b>老師已經看過你交的作業，有 ${n} 關需要補件。</b>
+                  下面標了「還差一點」的關卡寫著原因，改好之後到 Google Classroom 重新繳交就可以拿到加分⭐。</div>
+              </div>` : ''; })()}
             ${state.gateMsg?`<div class="bg-amber-50 border-2 border-amber-300 rounded-2xl px-4 py-3 mb-4 flex items-start gap-3 pop">
               <span class="text-2xl flex-shrink-0">🔒</span>
               <div class="flex-1"><div class="text-sm font-black text-amber-800 mb-0.5">這一關還沒開啟</div><div class="text-sm text-amber-700 leading-relaxed">${state.gateMsg}</div></div>

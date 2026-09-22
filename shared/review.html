@@ -97,7 +97,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
          setPersistence, browserSessionPersistence }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, collection, getDocs, doc, setDoc, arrayUnion }
+import { getFirestore, collection, getDocs, doc, setDoc, arrayUnion, deleteField }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const C = window.CONFIG || {};
@@ -116,9 +116,21 @@ const FLOW = (window.FLOW_UNITS || []).map(u => ({ id: u.id, no: u.no, title: u.
 const PROG = (C.UNITS || []).map((u, i) => ({ id: u[0], no: i + 1, title: u[1] }));
 
 const KINDS = {
-  img: { key: 'img', label: '流程圖圖片', icon: '🖼️', units: FLOW, mod: 'flowchart', field: 'imgUnits' },
-  vid: { key: 'vid', label: '程式錄影',   icon: '🎬', units: PROG, mod: 'scratch',   field: 'vidUnits' }
+  img: { key: 'img', label: '流程圖圖片', icon: '🖼️', units: FLOW, mod: 'flowchart', field: 'imgUnits', rfield: 'imgReview',
+         reasons: ['圖片看不清楚', '不是這一關的流程圖', '流程圖沒有排完', '檔案打不開'] },
+  vid: { key: 'vid', label: '程式錄影',   icon: '🎬', units: PROG, mod: 'scratch',   field: 'vidUnits', rfield: 'vidReview',
+         reasons: ['影片沒有展示程式執行的過程', '不是這一關的作品', '影片沒有畫面或太短', '檔案打不開'] }
 };
+/* ★ 2026-09-22 老師：「附檔不符合加分條件，要如何讓學生知道並重新補件？
+     否則會認為教師都沒批改。」
+   ⇒ 退件存在 modules.{flowchart|scratch}.{imgReview|vidReview}[單元] =
+        { reason, at, by, work }
+     學生的闖關頁面讀得到，會顯示退件原因和「到 Classroom 重交」。
+   ⚠️ **不可以**存進 imgUnits／vidUnits：GRADING.bonusStars 會把那裡
+      每一筆都算成一顆星 —— 退件存進去等於送他一顆星。
+   ⚠️ 為什麼不直接在 Classroom 退回：Classroom API 只能退回
+      「由同一個 API 專案建立的作業」，老師在 Classroom 網頁上建的作業
+      從程式這邊退不回去（會回 PERMISSION_DENIED）。 */
 
 /* 班級與座號。
    ★ 名冊的欄位是 cls／no（不是 class／seat）—— 我一開始寫錯，
@@ -347,8 +359,13 @@ async function award(sid, kindKey, on) {
   }
   const cur = ((state.progress[sid] || {}).modules || {})[k.mod] || {};
   const map = Object.assign({}, cur[k.field] || {});
-  if (on) map[unitId] = { at: Date.now(), by: state.who.email };
+  const entry = { at: Date.now(), by: state.who.email };
+  if (on) map[unitId] = entry;
   else delete map[unitId];
+  /* 給分就代表這一份過了 ⇒ 之前的退件一併清掉，學生那邊的「請補件」才會消失。 */
+  const rmap = Object.assign({}, cur[k.rfield] || {});
+  const hadReject = !!rmap[unitId];
+  if (on) delete rmap[unitId];
 
   state.busy = '寫入…'; render();
   try {
@@ -363,9 +380,16 @@ async function award(sid, kindKey, on) {
        ★ history 的 stars 一律是「這一次**增減**幾顆」，不是總數。
          這一點和 report.js／grader.html 一致（見 report.js 的說明）。 */
     const per = ((window.GRADING || {}).BONUS || {})[k.key] || 1;
+    /* ⛔⛔ 2026-09-22 修：取消加分原本寫的是「整份 map 少掉那一關」再 merge ——
+       但 setDoc({merge:true}) 對巢狀的 map 是**逐欄合併**，少掉的鍵不會被刪，
+       Firestore 裡那一關的加分其實還在：畫面上看起來取消了，重新整理又回來，
+       學生那邊也照樣算那顆星（history 卻多了一筆 −1，兩邊對不起來）。
+       ⇒ 只寫這一關，要刪就用 deleteField()。 */
+    const patch = { [k.field]: { [unitId]: on ? entry : deleteField() } };
+    if (on && hadReject) patch[k.rfield] = { [unitId]: deleteField() };
     await setDoc(doc(db, PROGRESS, sid), {
       studentId: sid,
-      modules: { [k.mod]: { [k.field]: map } },
+      modules: { [k.mod]: patch },
       history: arrayUnion({ module: k.mod, unit: unitId, at: Date.now(),
                             stars: on ? per : -per, kind: 'bonus', by: state.who.email }),
       updatedAt: Date.now()
@@ -373,7 +397,40 @@ async function award(sid, kindKey, on) {
     // 本機也更新，畫面立刻反映（不必整批重讀）
     state.progress[sid] = state.progress[sid] || {};
     state.progress[sid].modules = state.progress[sid].modules || {};
-    state.progress[sid].modules[k.mod] = Object.assign({}, cur, { [k.field]: map });
+    state.progress[sid].modules[k.mod] = Object.assign({}, cur, { [k.field]: map, [k.rfield]: rmap });
+    state.msg = '';
+  } catch (e) {
+    state.msg = '寫入失敗：' + e.message;
+  }
+  state.busy = ''; render();
+}
+
+/* ── 退件（不符合加分條件，請學生補件）──────────────────
+   reason 空字串 ＝ 撤回退件。 */
+async function reject(sid, kindKey, reason) {
+  const k = KINDS[kindKey];
+  const unitId = unitIdOf(kindKey);
+  if (!unitId) { state.msg = '這個學期沒有對應的關卡。'; render(); return; }
+  const cur = ((state.progress[sid] || {}).modules || {})[k.mod] || {};
+  /* 已經給過分的不可以直接退件 —— 要先取消加分，星星才不會留著。 */
+  if (reason && GRADING.hasBonus(cur[k.field], unitId)) {
+    state.msg = '這一份已經給過加分了，要退件請先取消加分。'; render(); return;
+  }
+  const w = (state.cr.works || []).find(x => x.id === state.cr.workId);
+  const entry = { reason: String(reason || '').slice(0, 200), at: Date.now(),
+                  by: state.who.email, work: w ? w.title : '' };
+  const rmap = Object.assign({}, cur[k.rfield] || {});
+  if (reason) rmap[unitId] = entry; else delete rmap[unitId];
+  state.busy = '寫入…'; render();
+  try {
+    await setDoc(doc(db, PROGRESS, sid), {
+      studentId: sid,
+      modules: { [k.mod]: { [k.rfield]: { [unitId]: reason ? entry : deleteField() } } },
+      updatedAt: Date.now()
+    }, { merge: true });
+    state.progress[sid] = state.progress[sid] || {};
+    state.progress[sid].modules = state.progress[sid].modules || {};
+    state.progress[sid].modules[k.mod] = Object.assign({}, cur, { [k.rfield]: rmap });
     state.msg = '';
   } catch (e) {
     state.msg = '寫入失敗：' + e.message;
@@ -418,8 +475,11 @@ function students() {
           given: uid ? GRADING.hasBonus(((p.modules || {})[k.mod] || {})[k.field], uid) : false,
           atts: attOf(sub, kk === 'img' ? 'image' : 'video'),
           base: base,
-          warn: uid ? GRADING.bonusWarning(base, subAt) : ''
+          warn: uid ? GRADING.bonusWarning(base, subAt) : '',
+          /* 退件了沒、退件之後有沒有重交（Classroom 的 updateTime 比退件晚＝重交了） */
+          rej: uid ? ((((p.modules || {})[k.mod] || {})[k.rfield] || {})[uid] || null) : null
         };
+        per[kk].resub = !!(per[kk].rej && subAt && subAt > (Number(per[kk].rej.at) || 0));
       });
       /* 學生在「動手之前」用自己的話寫的那一句（11502 程式設計關卡）。
          ★ 為什麼放在這一頁：這裡本來就選好了班級和關卡、也已經讀出全班名冊，
@@ -565,8 +625,10 @@ function block(s, kk) {
   const has = p.atts.length > 0;
   /* 有繳交但「哪裡不對」時用琥珀色框 —— 和「沒交」「已加分」分得開。
      三種顏色各有意思：灰虛線＝沒交、藍＝可以審、琥珀＝有疑慮、綠＝已給分。 */
+  /* 退件：玫瑰色＝等他重交；重交了＝藍框加一行「請再看一次」 */
   const box = p.given
     ? 'bg-emerald-50 border-emerald-400'
+    : (p.rej && !p.resub) ? 'bg-rose-50 border-rose-400'
     : (has ? (p.warn ? 'bg-amber-50 border-amber-400' : 'bg-white border-blue-400')
            : 'bg-slate-50 border-dashed border-slate-300');
   return `
@@ -578,6 +640,11 @@ function block(s, kk) {
               : `<span class="text-[11px] text-slate-400">${state.cr.on ? '未繳交' : '未連接'}</span>`}
       </div>
       ${p.warn && has ? `<div class="text-[10px] text-amber-700 leading-snug mb-1">⚠️ ${esc(p.warn)}</div>` : ''}
+      ${p.rej && !p.given
+        ? (p.resub
+            ? `<div class="text-[10px] text-blue-700 font-bold leading-snug mb-1">🔄 退件後已重新繳交，請再看一次</div>`
+            : `<div class="text-[10px] text-rose-700 font-bold leading-snug mb-1">↩️ 已退件：${esc(p.rej.reason)}<br><span class="font-normal">等學生重交</span></div>`)
+        : ''}
       <!-- ★ 這裡刻意「不是按鈕」。
            加分鈕原本就在附件連結旁邊，手滑一下分數就給出去了 ——
            而「看過再給」正是這個功能存在的理由。
@@ -646,11 +713,36 @@ function openPreview(link0, title, sid, kk) {
                   : 'bg-indigo-600 text-white hover:bg-indigo-700'}">
           ${given ? '✅ 已加分（點一下取消）' : `給 ${KINDS[kk].icon} ${esc(KINDS[kk].label)} +${GRADING.BONUS[kk]}⭐`}
         </button>
+        ${given ? '' : `<button id="modal-reject" class="px-4 py-2.5 rounded-lg text-sm font-bold transition
+          border-2 border-rose-300 text-rose-700 bg-white hover:bg-rose-50">↩️ 不符合，請補件</button>`}
+        ${(s && s.per[kk] && s.per[kk].rej && !given)
+          ? `<button id="modal-unreject" class="text-xs text-slate-500 underline hover:text-slate-700">撤回退件</button>` : ''}
         ${w ? `<span class="text-xs text-amber-700 font-bold">⚠️ ${esc(w)}</span>`
             : '<span class="text-xs text-slate-400">看過沒問題就按這裡，不必關掉視窗。</span>'}`;
       })()
     : '';
   el('modal').classList.remove('hidden');
+}
+
+/* 退件理由：常見的幾個一鍵選，也可以自己打（學生會照字看到）。 */
+function openRejectPanel() {
+  if (!previewing) return;
+  const k = KINDS[previewing.kind];
+  el('modal-foot').innerHTML = `
+    <div class="w-full">
+      <div class="text-xs font-bold text-rose-700 mb-1.5">退件原因（學生會在闖關頁面看到這句話）：</div>
+      <div class="flex flex-wrap gap-1.5 mb-2">
+        ${k.reasons.map(r => `<button data-reason="${esc(r)}" class="px-2.5 py-1 rounded-full text-xs font-bold
+            border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100">${esc(r)}</button>`).join('')}
+      </div>
+      <div class="flex gap-2">
+        <input id="reject-text" maxlength="200" placeholder="或自己寫，例如：影片要錄到按下綠旗之後的畫面"
+          class="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-lg text-sm">
+        <button id="reject-send" class="px-4 py-2 rounded-lg text-sm font-bold bg-rose-600 text-white hover:bg-rose-700">送出退件</button>
+        <button id="reject-cancel" class="px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-100">取消</button>
+      </div>
+    </div>`;
+  const t = el('reject-text'); if (t) t.focus();
 }
 
 function closePreview() {
@@ -780,6 +872,25 @@ document.addEventListener('click', async (e) => {
   if (ma && previewing) {
     const { sid, kind } = previewing;
     award(sid, kind, ma.dataset.on === '1').then(closePreview);
+    return;
+  }
+  if (e.target.closest('#modal-reject')) { openRejectPanel(); return; }
+  const rb = e.target.closest('[data-reason]');
+  if (rb) { const t = el('reject-text'); if (t) { t.value = rb.dataset.reason; t.focus(); } return; }
+  if (e.target.closest('#reject-send') && previewing) {
+    const t = el('reject-text'); const reason = t ? t.value.trim() : '';
+    /* ⚠️ 空白理由不送：學生只看到「被退件」卻不知道為什麼，比沒退件更糟。 */
+    if (!reason) { if (t) { t.classList.add('border-rose-500'); t.placeholder = '請先選一個原因或自己寫一句'; } return; }
+    const { sid, kind } = previewing;
+    reject(sid, kind, reason).then(closePreview);
+    return;
+  }
+  if (e.target.closest('#reject-cancel') && previewing) {
+    const pv2 = previewing; openPreview(el('modal-open').href, el('modal-title').textContent, pv2.sid, pv2.kind); return;
+  }
+  if (e.target.closest('#modal-unreject') && previewing) {
+    const { sid, kind } = previewing;
+    reject(sid, kind, '').then(closePreview);
     return;
   }
   const ub = e.target.closest('[data-undo]');
