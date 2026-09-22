@@ -1085,6 +1085,20 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             const [showQueryModal, setShowQueryModal] = useState(false); 
             const [showMyCertsModal, setShowMyCertsModal] = useState(false); 
             const [completedChallenges, setCompletedChallenges] = useState([]); 
+            /* ⛔⛔ 2026-09-22 1410808：上週通過的幾關，登入後一直沒出現。
+               ★ 其中一個原因在 handleChallengeComplete：它用
+                 [...completedChallenges, id] 算新清單，而 completedChallenges 是
+                 **那一次畫面的舊值**。補記迴圈連續補 3 關時，每一次都拿同一份
+                 舊值去加 ⇒ 畫面上最後只剩「舊的＋最後一關」，前兩關不見。
+                 （Firestore 用 arrayUnion 所以有存到，但學生當下看不到，
+                  星星也只算到 +1。）
+               ⇒ 用 ref 記「目前最新的清單」，每補一關就同步更新。 */
+            const completedRef = useRef([]);
+            completedRef.current = completedChallenges;
+            /* 補記的狀態要讓學生看得到：
+               'down' ＝兩台後端都問不到（系統會每分鐘再試）
+               {kind:'fixed', ids} ＝剛剛自動補回了哪幾關 */
+            const [syncNote, setSyncNote] = useState(null);
             const [completedDates, setCompletedDates] = useState({}); 
             const [certificateUrls, setCertificateUrls] = useState({}); // 📌 新增：存圖片網址
             
@@ -1159,7 +1173,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
             // 📌 修改：接收第三個參數 Base64 截圖，並觸發上傳
             const handleChallengeComplete = async (challengeId, passDate, base64Image, ocrText, backendUrl) => {
-                if (!completedChallenges.includes(challengeId)) {
+                const _cur = completedRef.current || [];
+                /* 編號一律轉數字比：Firestore 的舊資料有字串編號 */
+                if (!_cur.map(Number).includes(Number(challengeId))) {
                     
                     /* ⚠️⚠️ 2026-09-02：截圖改由**後端**上傳（它本來就握著那張圖）。
                        原本只有前端會傳，學生一旦中途離開，那張圖就跟著瀏覽器沒了 ——
@@ -1198,7 +1214,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         }
                     }
 
-                    const newCompleted = [...completedChallenges, challengeId];
+                    const newCompleted = [..._cur, challengeId];
+                    completedRef.current = newCompleted;   // ★ 同步更新：下一次呼叫馬上看得到
                     setCompletedChallenges(newCompleted);
                     setCompletedDates(prev => ({...prev, [challengeId]: passDate}));
                     if (driveUrl) {
@@ -1233,7 +1250,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     // 🌟 回報到統一進度（11501-progress，供 hub 儀表板與每週成績使用）
                     if (fbStore.db && user && user.sid) {
                         try {
-                            const count = newCompleted.length;
+                            const count = new Set(newCompleted.map(Number)).size;   // 重複的編號不重複算星
                             const stars = window.GRADING.thinkingStars(count);   // 規則定義在 shared/grading.js（單一來源）
                             const status = count >= 10 ? 'pass' : 'in-progress';
                             const now = Date.now();
@@ -1286,7 +1303,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
                 // 依目前完成數同步統一進度的星數（每小關 3 星），讓舊資料也套用新規則
                 if (loadedProgress.length > 0) {
-                    const cnt = loadedProgress.length;
+                    const cnt = new Set(loadedProgress.map(Number)).size;   // 重複的編號不重複算星
                     fbStore.setDoc(fbStore.doc(fbStore.db, '11501-progress', sid), {
                         studentId: sid,
                         modules: { thinking: { status: cnt >= 10 ? 'pass' : 'in-progress', level: cnt, stars: window.GRADING.thinkingStars(cnt), source: 'auto', updatedAt: Date.now() } },
@@ -1321,7 +1338,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             useEffect(() => {
                 if (!user || !user.sid || !fbStore.db) return;
                 let alive = true;
-                (async () => {
+                /* ⛔⛔ 2026-09-22：原本這一段只在登入時跑**一次**。兩台後端剛好都停著的話
+                   （那天下午：批改那台 ngrok 流量用光、OCR 那台停了），就安靜地什麼都不補，
+                   學生怎麼重新整理都一樣 —— 而畫面上沒有任何提示。
+                ⇒ 問不到就每分鐘再試一次（最多 10 次），並告訴學生現在是什麼狀況。
+                ⚠️ 重試**不再打 GAS**（雲端硬碟那一段）：Apps Script 每天額度有限，
+                   第一次已經查過了。 */
+                let retryTimer = null;
+                const run = async (attempt) => {
                     try {
                         /* ⚠️⚠️ 2026-09-08：這裡原本寫死打 SERVER_URL（🎨 Scratch 那台）。
                            ★ 但 /api/my-passed 只是讀 Firestore，**完全不需要 paddleocr** ——
@@ -1341,11 +1365,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         });
                         if (!bases.length) return;
                         const term = (window.CONFIG && window.CONFIG.TERM) || '11501';
-                        const ctl = new AbortController();
-                        const t = setTimeout(() => ctl.abort(), 8000);
                         let list = [], urls = {}, dates = {}, answered = false;
-                        try {
+                        {
                             for (const base of bases) {
+                                /* ⛔ 2026-09-22：兩台原本**共用同一個 8 秒倒數** ——
+                                   第一台慢慢回、把 8 秒用完，第二台就會拿到已經取消的訊號，
+                                   根本沒被問到。⇒ 每一台各自計時。 */
+                                const ctl = new AbortController();
+                                const t = setTimeout(() => ctl.abort(), 6000);
                                 try {
                                     const r = await fetch(base + '/api/my-passed?student_id='
                                         + encodeURIComponent(user.sid) + '&term=' + encodeURIComponent(term),
@@ -1362,8 +1389,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                     answered = true;
                                     break;
                                 } catch (e) { /* 這一台不通，換下一台 */ }
+                                finally { clearTimeout(t); }
                             }
-                        } finally { clearTimeout(t); }
+                        }
                         /* ⚠️ 兩台都問不到 ≠ 沒有通關紀錄。什麼都不做，等下次登入再補
                            （上面的離線提示已經在告訴學生後端沒開）。 */
                         /* ⛔⛔⛔ 2026-09-08 老師：「班級通關記錄中有，但是證書沒看到。」
@@ -1385,6 +1413,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                            ⇒ 不要 return。沒有後端資料就當作「沒有要補記的關卡」，
                              繼續往下走到 GAS 那一段。 */
                         if (!alive) return;
+                        if (!answered) {
+                            setSyncNote({ kind: 'down' });
+                            if (attempt < 10) {
+                                retryTimer = setTimeout(() => { if (alive) run(attempt + 1); }, 60000);
+                            }
+                        } else if (attempt > 0) {
+                            setSyncNote(null);          // 後端回來了，拿掉「無法同步」
+                        }
                         if (!answered) {
                             console.warn('[補記] 兩台後端都問不到 —— '
                                 + '只做「去雲端硬碟找回證書網址」那一段');
@@ -1439,6 +1475,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                              這個閉包裡的 certificateUrls 不會即時更新）。 */
                         const have = Object.assign({}, certificateUrls || {});
 
+                        if (missing.length) {
+                            setSyncNote({ kind: 'fixed', ids: missing.map(Number).sort((a, b) => a - b) });
+                        }
                         for (const id of missing) {
                             if (!alive) return;
                             /* ⚠️ 關卡編號要還原成和本地同型別，不然
@@ -1497,7 +1536,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                            ⚠️ 而且只在「真的還缺」的時候才查 —— 不缺就一次都不打。 */
                         const stillMissing = completedChallenges.filter(
                             cid => !have[String(cid)]);
-                        if (stillMissing.length && window.CONFIG.GAS_UPLOAD_URL
+                        if (attempt === 0 && stillMissing.length && window.CONFIG.GAS_UPLOAD_URL
                             && user.classRoom && user.seatNo) {
                             try {
                                 const fr = await fetch(window.CONFIG.GAS_UPLOAD_URL, {
@@ -1539,8 +1578,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         /* 後端沒開、連不上、回傳格式怪 —— 都安靜跳過。
                            ⚠️ 這是附加保障，絕對不可以擋住學生上課。 */
                     }
-                })();
-                return () => { alive = false; };
+                };
+                run(0);
+                return () => { alive = false; clearTimeout(retryTimer); };
             }, [user && user.sid]);
 
             // 本頁的登入表單已停用：一律導回闖關基地，登入後自動跳回來。
@@ -1728,8 +1768,18 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                             <div className="text-slate-500 flex items-center mt-1">
                                                 <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-sm font-medium mr-2">{user.classRoom} 班</span>
                                                 <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-sm font-medium mr-2">{user.seatNo} 號</span>
-                                                <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-sm font-medium">進度: {completedChallenges.length}/{challenges.length}</span>
+                                                <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-sm font-medium">進度: {challenges.filter(c => isDone(c.id)).length}/{challenges.length}</span>
                                             </div>
+                                            {syncNote && syncNote.kind === 'down' && (
+                                                <div className="mt-2 text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+                                                    ⚠️ 通關紀錄暫時無法同步（後端沒開），最近通過的關卡可能還沒出現。系統每分鐘會自動再試，<b>不用重新上傳</b>。
+                                                </div>
+                                            )}
+                                            {syncNote && syncNote.kind === 'fixed' && (
+                                                <div className="mt-2 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+                                                    ✅ 找到第 {syncNote.ids.join('、')} 關的通關紀錄，已經自動補上
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
