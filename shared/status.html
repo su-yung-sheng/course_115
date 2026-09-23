@@ -499,7 +499,8 @@ if (!window.CONFIG) {
          不然 ① 綠燈、學生卻連不上 OCR，會找錯方向。 */
       var d = (TWO_HOSTS ? row('這一台', 'Scratch 用；OCR 在 <span class="font-mono text-xs">'
                                + esc(OCR_SERVER) + '</span>') : '') +
-              row('版本', '<span class="font-mono">' + esc(j.version || '不明') + '</span>') +
+              /* ⛔ 2026-09-23：版本列拿掉 —— 後端的 version 已經改成指紋，
+                   留著會變成同一串印兩次；真正要比對的是下面這一列。 */
               row('程式指紋', j.fingerprint
                     ? '<span class="font-mono">' + esc(j.fingerprint) + '</span>' +
                       '<span class="text-slate-400 text-xs">　← 和 <span class="font-mono">python shared/check.py</span> 印的那組比對</span>'
@@ -1010,7 +1011,6 @@ if (!window.CONFIG) {
   function checkOcrBackend(el) {
     return getJSON(OCR_SERVER + '/health', 10000).then(function (j) {
       var d = row('網址', '<span class="font-mono text-xs">' + esc(OCR_SERVER) + '</span>') +
-              row('版本', '<span class="font-mono">' + esc(j.version || '不明') + '</span>') +
               row('程式指紋', j.fingerprint
                     ? '<span class="font-mono">' + esc(j.fingerprint) + '</span>'
                     : '<span class="text-amber-700">這一版後端不會回報</span>');

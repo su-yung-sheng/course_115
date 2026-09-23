@@ -624,5 +624,34 @@ section('★★ 教師端綠燈要印「指紋」不是「版本」（2026-09-19
      '★★ 要標明那一串是「指紋」，不然老師不知道該拿它和什麼比');
 }
 
+section('★★ ④ver 版本字串不可以再手寫（2026-09-23，老師第二次問）');
+{
+  /* ⛔⛔ 09-19 補了指紋，卻把 j.version 留在後面，畫面變成
+       「🟢 後端已連線（指紋 2c662b1a）　2026-09-02-ocr-stats」——
+       老師還是只看到九月二號，又問了一次「怎麼還是顯示 9/2？」。
+     ★ 兩件事一起修：① 綠燈不要再接 j.version；
+       ② 後端的 SERVER_VERSION 不要再手寫，直接由指紋產生 ——
+       這樣就算哪一頁漏改，它印出來的也是真話。
+     ⚠️ 負面斷言前要先去掉註解行：上面這段註解就引用了舊字串。 */
+  const nocmt = s => s.split('\n').filter(l => !/^\s*(\/\/|\*|\/\*|#)/.test(l)).join('\n');
+
+  for (const term of ['11501', '11502']) {
+    const th = fs.readFileSync(path.join(ROOT, term, 'teacher.html'), 'utf8');
+    const band = (th.match(/_gdLight\('on',[\s\S]{0,400}?\);/) || [''])[0];
+    ok(/j\.fingerprint/.test(band) && /指紋/.test(band),
+       '★★★ ' + term + ' 綠燈要印指紋 —— 11502 在 09-19 那次整個漏掉了');
+    ok(!/j\.version/.test(nocmt(band)),
+       '★★★ ' + term + ' 綠燈不可以再接 j.version：指紋已經是版本了，'
+       + '接在後面只會讓老師以為 Colab 跑著三週前的程式');
+  }
+
+  const nb8 = nocmt(JSON.parse(fs.readFileSync(path.join(ROOT, 'shared', 'backend.ipynb'), 'utf8'))
+                      .cells[8].source.join(''));
+  ok(/SERVER_VERSION\s*=\s*"指紋 "\s*\+\s*SERVER_FINGERPRINT/.test(nb8),
+     '★★★ 版本字串要由指紋產生 —— 手寫的日期一定會漂，而且漂掉時沒有徵兆');
+  ok(!/SERVER_VERSION\s*=\s*"20\d\d-/.test(nb8),
+     '★★ 不可以再有手寫死的版本日期');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

@@ -2772,7 +2772,11 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         } else if (j.has_api_key === false) {
           _gdLight('warn', '🟡 已連線，但 Secrets 未設定 GEMINI_API_KEY_1');
         } else {
-          _gdLight('on', '🟢 後端已連線' + (j.version ? '（' + j.version + '）' : ''));
+          /* ⛔ 2026-09-23：這一頁漏掉了 09-19 給 11501 做的修正 ——
+               j.version 是後端手寫的常數，畫面永遠停在「2026-09-02-ocr-stats」。
+               要印的是 fingerprint：程式自己算的，和 check.py 印的是同一串。 */
+          _gdLight('on', '🟢 後端已連線'
+                   + (j.fingerprint ? '（指紋 ' + j.fingerprint + '）' : ''));
         }
       } catch (e) {
         _gdLight('off', '🔴 未連線（請先在 Colab 執行 shared/backend.ipynb）');

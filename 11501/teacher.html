@@ -2823,9 +2823,11 @@ const __bn = bonusOf(student, sub.key);
                老師看了會以為 Colab 跑的是舊版的。
              ★ fingerprint 是程式自己算的，和 check.py 推送前印的那一串
                是同一個 —— 對不對得上一眼就看得出來。這才是要印的那一個。 */
+          /* ⛔ 2026-09-23：09-19 補了指紋，卻把 j.version 留在後面 ——
+               畫面變成「🟢 後端已連線（指紋 2c662b1a）　2026-09-02-ocr-stats」，
+               老師還是只看到九月二號，又問了一次。指紋已經是版本了，拿掉它。 */
           _gdLight('on', '🟢 後端已連線'
-                   + (j.fingerprint ? '（指紋 ' + j.fingerprint + '）' : '')
-                   + (j.version ? '　' + j.version : ''));
+                   + (j.fingerprint ? '（指紋 ' + j.fingerprint + '）' : ''));
         }
       } catch (e) {
         _gdLight('off', '🔴 未連線（請先在 Colab 執行 shared/backend.ipynb）');
