@@ -1342,6 +1342,56 @@ ok("效能崩潰" in _ok["deducted_items"] and "重複累加" in _ok["deducted_i
    "★★ 兩條都要留在明細裡")
 
 
+section("④v 審查層改認句型：字串比對被換三個字就穿過去了（2026-09-23）")
+# ⛔⛔ 審查層上線後第一次重跑，第 6 關 haiku 寫的是：
+#      「…重新檢視：…此項**實際上已**完成。（扣 3 分）」
+#    清單裡放的是「實際完成」—— 中間多了「上已」兩個字，就穿過去了。
+#    ★ 這是同一個教訓的第二次：逐字列舉是為了**具體**，不是為了字面比對。
+#      條款那邊已經學過一次（「雖然最終效果達成」→「雖然最終效果上確實」），
+#      審查層這邊又踩一次。⇒ 改用正規表示式認同一句話的各種寫法。
+_VETO_YES = [
+    "此項實際上已完成。",                    # 第 6 關，這一輪
+    "此項實際完成。",                        # 第 6 關，上一輪
+    "此項已完成",
+    "邏輯上應可行",
+    "Scratch 會自動轉換",
+    "總分會保留存檔時的值 2434",
+    "雖然最終效果達成，但實現方式不對",
+]
+for _w in _VETO_YES:
+    _r = {"score": 1, "bonus_points": 0,
+          "deductions": [{"rule": "x", "points": 5, "why": _w}]}
+    core.apply_deductions(_r)
+    ok(_r["score"] == 100 and _r["deducted_items"] == "無",
+       "★★★ 要擋下自打嘴巴的寫法：%s　←　%s 分" % (_w, _r["score"]))
+
+# ⚠️⚠️⚠️ 反面：這些都是**正當的扣分**，一條都不可以被擋掉。
+#    誤擋比誤扣更難發現 —— 分數會莫名其妙變高，而且沒有任何徵兆。
+_VETO_NO = [
+    "清單建立已完成，但沒有用迴圈，依規則扣 10 分",   # 第 5 關明文的部分完成扣分
+    "使用隱藏代替刪除分身，將導致效能崩潰",           # 鐵律 C 要求的寫法
+    "沒有把成績單清空，可能導致重複累加",
+    "實際完成度不足，只做了一半",                     # 「完成」後面接「度」
+    "此項未完成",
+    "此項尚未完成",
+    "初始化沒有做，會用到上次的殘留值",               # 「殘留值」不可以進清單
+]
+for _w in _VETO_NO:
+    _r = {"score": 1, "bonus_points": 0,
+          "deductions": [{"rule": "x", "points": 5, "why": _w}]}
+    core.apply_deductions(_r)
+    ok(_r["score"] == 95 and not _r.get("deduction_vetoes"),
+       "★★★ 正當的扣分不可以被擋掉：%s　←　%s 分" % (_w, _r["score"]))
+
+# ★ 命中的要回**原文**，不是回樣式 —— 老師看得懂「實際上已完成」，
+#   看不懂 r"實際上?已?經?[完達]成(?!度)"。
+_r = {"score": 1, "bonus_points": 0,
+      "deductions": [{"rule": "x", "points": 3, "why": "此項實際上已完成。"}]}
+core.apply_deductions(_r)
+ok((_r.get("deduction_vetoes") or [{}])[0].get("phrase") == "實際上已完成",
+   "★★ 紀錄裡要寫命中的那一段原文　←　%r" % (_r.get("deduction_vetoes"),))
+
+
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
 _FakeClient.script = lambda m: (_ for _ in ()).throw(AssertionError("不該呼叫 API"))
 core.time = _Clock()
