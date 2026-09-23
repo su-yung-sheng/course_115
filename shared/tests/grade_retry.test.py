@@ -1292,6 +1292,56 @@ ok("沒有驗證" in _p8,
 
 
 
+section("④u 扣分審查層：自己承認做到了就不可以扣（2026-09-23）")
+# ⛔⛔ 為什麼從「加條款」改成「後端攔截」：
+#    老師確認後端跑的是 ae693124（鐵律 I 的觸發語、鐵律 J 全都在線上），
+#    haiku 還是寫出：
+#      第 4 關「總分會**保留存檔時的值 2434**」← 那句話就是禁令原文
+#      第 6 關「…邏輯上應可行。**此項實際完成**。（扣 5 分）」
+#    ⇒ 條款追不上換句話說。和 09-19「文字說扣 3、分數填 82」同一種病：
+#      模型「說的」和「做的」會斷線 —— 那次把加總收回後端，這次把審查收回後端。
+
+_v = {"score": 1, "bonus_points": 0, "deductions": [
+        {"rule": "4.發牌與顯示", "points": 5,
+         "why": "Scratch 會自動轉換，邏輯上應可行。此項實際完成。"}]}
+_vsrc, _ = core.apply_deductions(_v)
+ok(_vsrc == "backend" and _v["score"] == 100,
+   "★★★ 理由裡自己承認做到了 ⇒ 那一條歸零，分數不受影響　←　%r" % _v["score"])
+ok(_v["deducted_items"] == "無",
+   "★★★ 被擋下來的條目不可以留在扣分明細裡　←　%r" % _v["deducted_items"])
+ok(isinstance(_v.get("deduction_vetoes"), list) and len(_v["deduction_vetoes"]) == 1,
+   "★★★ 擋掉什麼要留下來 —— 看不到的話，誤擋會變成沒有徵兆的寬鬆")
+# ⚠️ 用 .get() 取，不要直接索引：拿舊版程式跑這一段時 deduction_vetoes
+#    不存在，直接索引會讓整支測試中斷（後面的斷言連跑都沒跑到），
+#    而「突變驗證」正是要靠後面那幾條紅字。
+_v1 = (_v.get("deduction_vetoes") or [{}])[0]
+ok((_v1.get("phrase") or "") in ("實際完成", "應可行", "會自動轉換"),
+   "★★ 要記下命中的是哪一句，老師才判斷得出擋對了沒　←　%r" % _v1)
+
+# ⛔ 鐵律 I 的觸發語原文也要擋得住（第 4 關那一條）
+_v2 = {"score": 1, "bonus_points": 0, "deductions": [
+        {"rule": "2.變數初始化", "points": 10,
+         "why": "若使用者直接點擊角色而不點綠旗，總分會保留存檔時的值 2434。"}]}
+core.apply_deductions(_v2)
+ok(_v2["score"] == 100 and _v2["deducted_items"] == "無",
+   "★★★ 「保留存檔時的值 N」要擋掉 —— 條款已經寫了它照樣寫，所以這裡才是最後一道")
+
+# ⚠️⚠️ 最重要的一條：**不可以擋掉正當的扣分**。
+#    鐵律 C 明文要求分身那條寫成「將導致效能崩潰」，
+#    字串清單裡只要混進「導致」兩個字，這種扣分就會被無聲吃掉。
+_ok = {"score": 1, "bonus_points": 0, "deductions": [
+        {"rule": "3.分身", "points": 10,
+         "why": "使用隱藏代替刪除分身，將導致效能崩潰"},
+        {"rule": "1.初始化", "points": 5,
+         "why": "沒有把成績單清空，可能導致重複累加"}]}
+core.apply_deductions(_ok)
+ok(_ok["score"] == 85 and not _ok.get("deduction_vetoes"),
+   "★★★ 正當的扣分一條都不可以被擋掉（「將導致」「可能導致」是規則 C 要求的寫法）"
+   "　←　%r" % _ok["score"])
+ok("效能崩潰" in _ok["deducted_items"] and "重複累加" in _ok["deducted_items"],
+   "★★ 兩條都要留在明細裡")
+
+
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
 _FakeClient.script = lambda m: (_ for _ in ()).throw(AssertionError("不該呼叫 API"))
 core.time = _Clock()
