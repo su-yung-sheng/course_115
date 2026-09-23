@@ -1003,6 +1003,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 `<div class="mt-2 text-xs leading-relaxed bg-rose-50 border border-rose-300 text-rose-800 rounded-lg px-2.5 py-1.5">
                    ↩️ <b>老師看過你的${lab}，還差一點：</b>${esc(r.reason||'')}
                    <span class="block text-rose-600">改好之後到 Google Classroom${r.work?'「'+esc(r.work)+'」':'的這份作業'}重新繳交，老師會再看一次。</span>
+                   <span class="block text-rose-500 text-[11px] mt-0.5">（已經重新繳交了嗎？這段話要等老師再看過、給分之後才會消失，不用重複上傳。）</span>
                  </div>`).join('')}
               ${(open && done)?`<span data-prog="${u.no}" class="go-prog inline-block mt-2 text-[11px] font-black ${st>=3?'bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-300':'bg-orange-500 hover:bg-orange-600 text-white'} px-2.5 py-1 rounded-full transition">${
                 st===0 ? '🐱 直接去程式設計 →'
