@@ -1462,6 +1462,32 @@ ok((_r.get("deduction_vetoes") or [{}])[0].get("phrase") == "實際上已完成"
    "★★ 紀錄裡要寫命中的那一段原文　←　%r" % (_r.get("deduction_vetoes"),))
 
 
+section("④z 第 9、10 關：說 Scratch 做不到，以及回覆被截斷（2026-09-24）")
+# ⛔ 第 9 關 haiku 扣 25 分，理由是一句**錯的 Scratch 常識**：
+#    「編號是區域變數…分身產生時無法存取父角色的區域變數，
+#      導致所有分身說出的編號都是初始值 10」
+#    ★ Scratch 的分身**會繼承**角色的區域變數，建立的那一刻各複製一份。
+#      「先把編號加 1、再建立分身」正是國中課堂教的標準寫法。
+#    ★ 而且它拿存檔時的「編號 = 10」當證據 —— 那又是 H。
+ok("分身會**繼承角色的區域變數**" in _p8,
+   "★★★ 要正面寫出 Scratch 的真實行為，不是只說「不可以扣」")
+ok("分身無法存取父角色的區域變數" in _p8,
+   "★★★ 要逐字堵這句錯的常識")
+ok("編號 = 10" in _p8,
+   "★★ 要講明存檔時看到的值不是證據（接回 H）")
+
+# ⛔ 第 10 關 claude 連續兩次「無效的 JSON: Expecting ',' delimiter: line 73」。
+#    重試沒用 —— 每次都寫到 max_tokens 就被切斷，斷在同一個地方。
+#  ★ 2026-09-14 的註解早就警告「給太小會被截斷」，但數字沒跟著規則一起長。
+_nc3 = "\n".join(l for l in _src_key.split("\n") if not l.strip().startswith("#"))
+ok("max_tokens=4000" in _nc3,
+   "★★★ Claude 的 max_tokens 要夠大 —— 鐵律 A～K 加上去之後，"
+   "扣分明細要寫的字也變多了")
+ok('stop_reason' in _nc3 and "被切斷" in _src_key,
+   "★★★ 被截斷要明講，不可以報成「無效的 JSON」—— "
+   "報錯報錯地方，人就會去查模型，而問題在這個數字")
+
+
 section("⑤ 和空白範本完全一樣仍然直接 0 分，不打 API")
 _FakeClient.script = lambda m: (_ for _ in ()).throw(AssertionError("不該呼叫 API"))
 core.time = _Clock()
