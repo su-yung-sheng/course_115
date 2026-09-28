@@ -2451,7 +2451,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       async function recomputeAllStars(){
         showCustomDialog({
           title: '重算全班闖關星星',
-          message: '系統將掃描全班「運算思維」與「資訊倫理」的雲端紀錄，依最新星等規則重算並寫入儀表板。確定執行嗎？',
+          message: '系統將掃描全班「運算思維」的通關紀錄，依最新星等規則重算並寫入儀表板。（資訊倫理的星星由章節測驗頁自己維護，不會動到。）確定執行嗎？',
           showCancel: true, confirmText: '開始重算',
           onConfirm: async () => {
             const spinner = document.getElementById('loading-spinner');
@@ -2470,13 +2470,14 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
                 const ctSnap = await rdb.collection('artifacts/comp-think-app/public/data/progress_sem2').get();
                 ctSnap.forEach(d => { const sid = keyToId[d.id]; if (!sid) return; (perStudent[sid] = perStudent[sid] || {}).thinking = (d.data().completed || []).length; });
               } catch(e){ console.warn('讀運算思維紀錄失敗', e); }
-              // 資訊倫理：每章節最佳正確率 → 1–3 星累加
-              try {
-                const qSnap = await rdb.collection('artifacts/school-quiz-app/public/data/quiz_records_115_2').get();
-                const best = {};
-                qSnap.forEach(d => { const r = d.data(); const k = `${r.cls}_${r.no}_${r.name}`; (best[k] = best[k] || {})[r.chapterId] = Math.max(best[k][r.chapterId] || 0, r.rate || 0); });
-                Object.keys(best).forEach(k => { const sid = keyToId[k]; if (!sid) return; let stars = 0, done = 0; Object.values(best[k]).forEach(rt => { stars += window.GRADING.ethicsStar(rt); done++; }); (perStudent[sid] = perStudent[sid] || {}).ethics = { stars, done }; });
-              } catch(e){ console.warn('讀資訊倫理紀錄失敗', e); }
+              /* ⛔⛔ 2026-09-28 拿掉「資訊倫理」那一段。
+                 它原本讀舊集合 artifacts/school-quiz-app/…/quiz_records_115_2 重算倫理星星 ——
+                 可是章節測驗從 2026-07-29 起就改記在 {學期}-progress 的 history／units，
+                 舊集合只剩 8 月以前的紀錄。重算一次，8 月之後又考過章節的學生，
+                 倫理星星會被**舊資料蓋回去變少**。而 revokePass() 的說明正好叫老師
+                 「取消完要再跑 recomputeAllStars()」—— 照做就中。
+                 ⇒ 倫理星星的唯一來源是 quiz-engine（見 shared/report.js），這裡不碰。
+                 ⚠️ 不要再把它加回來：舊集合的規則也已經收成學生寫不進去、老師只能讀。 */
 
               const ids = Object.keys(perStudent); const now = Date.now(); let ok = 0;
               for (let i = 0; i < ids.length; i += 400) {
@@ -2484,7 +2485,6 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
                 ids.slice(i, i + 400).forEach(sid => {
                   const p = perStudent[sid]; const modules = {};
                   if (p.thinking != null) { const c = p.thinking; modules.thinking = { status: c >= 10 ? 'pass' : 'in-progress', level: c, stars: window.GRADING.thinkingStars(c), source: 'auto', updatedAt: now }; }
-                  if (p.ethics) { const e = p.ethics; modules.ethics = { status: e.done >= 10 ? 'pass' : 'in-progress', level: e.done, stars: e.stars, source: 'auto', updatedAt: now }; }
                   batch.set(rdb.collection('11502-progress').doc(sid), { studentId: sid, modules, updatedAt: now }, { merge: true });
                 });
                 await batch.commit(); ok += Math.min(400, ids.length - i);

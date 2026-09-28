@@ -1226,7 +1226,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         try {
                             const progressRef = fbStore.doc(fbStore.db, 'artifacts', 'comp-think-app', 'public', 'data', 'progress', user.docId);
                             // 儲存狀態並包含新的雲端網址
+                            /* ★ sid：規則拿它去名冊組出「你應該用的文件 id」，對得上才准寫
+                               （2026-09-28 收緊，見 firestore.rules 的 D3）。少了它就寫不進去。 */
                             await fbStore.setDoc(progressRef, {
+                                sid: user.sid,
                                 completed: fbStore.arrayUnion(challengeId),
                                 completionDates: {
                                     [challengeId]: passDate
@@ -1508,7 +1511,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                 await fbStore.setDoc(
                                     fbStore.doc(fbStore.db, 'artifacts', 'comp-think-app',
                                                 'public', 'data', 'progress', user.docId),
-                                    { certificateUrls: patch,
+                                    { certificateUrls: patch, sid: user.sid,     // sid：見上面寫進度那一段
                                       lastUpdated: new Date().toISOString() },
                                     { merge: true });
                                 setCertificateUrls(prev => ({ ...prev, ...patch }));
@@ -1558,7 +1561,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                     await fbStore.setDoc(
                                         fbStore.doc(fbStore.db, 'artifacts', 'comp-think-app',
                                                     'public', 'data', 'progress', user.docId),
-                                        { certificateUrls: patch2,
+                                        { certificateUrls: patch2, sid: user.sid,
                                           lastUpdated: new Date().toISOString() },
                                         { merge: true });
                                     setCertificateUrls(prev => ({ ...prev, ...patch2 }));

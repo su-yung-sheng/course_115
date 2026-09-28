@@ -119,8 +119,9 @@ function boot() {
        completedRef.current（同步更新，避免用到過期的 state），寫法變成
        `_cur.map(Number).includes(Number(challengeId))`。
        這一條斷言還釘著舊的變數名，於是**那次提交之後就一直是紅的**。
-       語意沒變（只有第一次通關才寫 history），所以斷言認新的寫法。 */
-    ok(/const _cur = completedRef\.current[\s\S]{0,200}if \(!_cur\.map\(Number\)\.includes\(Number\(challengeId\)\)\)[\s\S]{0,4000}history: fbStore\.arrayUnion/.test(t),
+       語意沒變（只有第一次通關才寫 history），所以斷言認新的寫法。
+       2026-09-28：寫舊集合時多帶 sid（規則收緊），中間那段變長，距離放寬到 5000。 */
+    ok(/const _cur = completedRef\.current[\s\S]{0,200}if \(!_cur\.map\(Number\)\.includes\(Number\(challengeId\)\)\)[\s\S]{0,5000}history: fbStore\.arrayUnion/.test(t),
        '運算思維：只有第一次通關才寫 history');
 
     const r = code('shared/report.js');

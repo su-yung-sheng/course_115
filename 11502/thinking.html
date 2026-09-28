@@ -1076,7 +1076,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
             const cachedMe = (window.SSO && SSO.me) ? SSO.me() : null;
             const [user, setUser] = useState(
                 cachedMe ? { classRoom: cachedMe.cls, seatNo: cachedMe.no,
-                             name: cachedMe.name,
+                             name: cachedMe.name, sid: cachedMe.sid,
                              docId: `${cachedMe.cls}_${cachedMe.no}_${cachedMe.name}` }
                          : null
             ); 
@@ -1192,7 +1192,10 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                         try {
                             const progressRef = fbStore.doc(fbStore.db, 'artifacts', 'comp-think-app', 'public', 'data', 'progress_sem2', user.docId);
                             
+                            /* ★ sid：規則拿它去名冊組出「你應該用的文件 id」，對得上才准寫
+                               （2026-09-28 收緊，見 firestore.rules 的 D3）。少了它就寫不進去。 */
                             const updateData = {
+                                sid: user.sid || (window.SSO && SSO.sid()) || '',
                                 completed: fbStore.arrayUnion(challengeId),
                                 completionDates: { [challengeId]: passDate },
                                 lastUpdated: new Date().toISOString(),
@@ -1226,7 +1229,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
             };
 
             // 依身分載入進度並進入系統（身分來源：闖關基地 SSO）
-            const doLogin = async (classRoom, seatNo, name) => {
+            const doLogin = async (classRoom, seatNo, name, sid) => {
                 if (classRoom && seatNo && name) {
                     setLoading(true);
                     const docId = `${classRoom}_${seatNo}_${name}`;
@@ -1263,7 +1266,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                     }
 
                     setTimeout(() => {
-                        setUser({ classRoom, seatNo, name, docId });
+                        setUser({ classRoom, seatNo, name, docId, sid });
                         setCompletedChallenges(loadedProgress);
                         setCompletedDates(loadedDates);
                         setCompletedImages(loadedImages);
@@ -1457,6 +1460,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                     fbStore.doc(fbStore.db, 'artifacts', 'comp-think-app',
                                                 'public', 'data', 'progress_sem2', user.docId),
                                     { completionImages: patch,
+                                      sid: user.sid || (window.SSO && SSO.sid()) || '',   // 見上面寫進度那一段
                                       lastUpdated: new Date().toISOString() },
                                     { merge: true });
                                 setCompletedImages(prev => ({ ...prev, ...patch }));
@@ -1507,6 +1511,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                         fbStore.doc(fbStore.db, 'artifacts', 'comp-think-app',
                                                     'public', 'data', 'progress_sem2', user.docId),
                                         { completionImages: patch2,
+                                          sid: user.sid || (window.SSO && SSO.sid()) || '',
                                           lastUpdated: new Date().toISOString() },
                                         { merge: true });
                                     setCompletedImages(prev => ({ ...prev, ...patch2 }));
@@ -1539,7 +1544,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                     if (cachedMe) {
                         const ok = await initFB();
                         if (!ok || cancelled) return;
-                        await doLogin(cachedMe.cls, cachedMe.no, cachedMe.name);
+                        await doLogin(cachedMe.cls, cachedMe.no, cachedMe.name, cachedMe.sid);
                         return;
                     }
                     // 沒快取（例如清過瀏覽器資料）：才走完整的名冊查詢
@@ -1552,7 +1557,7 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                     });
                     if (cancelled) return;
                     if (!me) { setLoading(false); return; }   // resolve 失敗時已自行導回 hub
-                    await doLogin(me.cls, me.no, me.name);
+                    await doLogin(me.cls, me.no, me.name, me.sid);
                 })();
                 return () => { cancelled = true; };
             }, []);

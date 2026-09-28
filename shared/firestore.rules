@@ -5,7 +5,7 @@ rules_version = '2';
 //  涵蓋：115 學年【上學期 11501】＋【下學期 11502】
 //  貼上位置：Firebase Console → Firestore Database → 規則 → 發佈
 //  規則本體最後更新：2026-09-28
-//  規則本體指紋：765e7ff6　（177 行，不含註解）
+//  規則本體指紋：f804835b　（173 行，不含註解）
 //
 //  ★ 怎麼確認「線上跑的是不是這一份」
 //    Firebase Console 的規則第一段也看得到上面兩行。比對**指紋**就好。
@@ -83,6 +83,13 @@ rules_version = '2';
 //    學生 = 學校 Google 帳號 qfm{學號}@mail.qfm.kh.edu.tw
 //           （舊的匿名登入＋驗證碼只在 config/auth 開關打開時有效）
 //
+//    ⑪ 2026-09-28：運算思維的兩個舊集合（artifacts/…/progress、progress_sem2）
+//       原本任何登入者都能改任何人的文件。改成只能寫「名冊上自己的
+//       班級_座號_姓名」那一份（ctOwnDoc，學生頁面寫入時要帶 sid）。
+//       ⚠️ 發布前先推送新版 thinking.html —— 舊版不帶 sid，發布後會寫不進去。
+//       同一次：刪掉沒人在用的 11502 任務確認表（studentProgress_115_2）。
+//       同一次：資訊倫理舊答題紀錄（quiz_records、quiz_records_115_2）收成只有老師讀／刪。
+//
 //    ⑩ 2026-08-11：補上 bonusEmpty() / bonusUnchanged() 的**函式本體**。
 //       08-06 的改版只加了呼叫，沒寫定義 —— 規則有未定義的函式時，
 //       「發布」那一步會整份編譯失敗，所以那之後這份規則一次都沒上線過。
@@ -100,6 +107,7 @@ rules_version = '2';
 //    1. 整批撈走全班姓名 → list 只給老師
 //    2. 整批撈走或刪除全班成績 → list/delete 只給老師
 //    3. 寫別人的進度 → isOwner(sid) 直接擋掉（email 由學號組出來）
+//       運算思維舊集合的文件 id 不是學號 → 用名冊組出本人的 id 比對（ctOwnDoc）
 //    4. 跨學期寫入 → 學期鎖用伺服器時間判斷，改前端沒用
 // =====================================================================
 
@@ -490,38 +498,59 @@ service cloud.firestore {
     }
 
     // ---------- D2. 舊闖關紀錄：新版引擎已改寫進 progress.history ----------
-    //   舊版 cyberethics.html / social.html 與教師端還在讀，先留著。
+    /* ⛔ 2026-09-28 收成「只有老師能讀、能刪」，任何人都不能再寫。
+         學生端從 2026-07-29 起就不寫這裡了（章節測驗記在 {學期}-progress），
+         規則卻還開著 create／delete: isSignedIn() ——
+         ‧ 任何登入者都能刪別人的舊紀錄
+         ‧ 任何登入者都能塞一筆假的滿分紀錄；而教師端的「重算全班星星」
+           當時還會拿這裡算倫理星星 ⇒ 老師一按，假的星星就寫進去了
+       ⇒ 重算那一段也同時拿掉了（見兩份 teacher.html 的 recomputeAllStars）。
+       ★ 還留著讀：教師端「清除學生進度」要找出並刪掉那位學生的舊紀錄。 */
     match /artifacts/{appId}/public/data/quiz_records/{recId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isTeacher();        // ❌ 既有紀錄不可被改寫（防止改分數）
-      allow delete: if isSignedIn();       // 學生會刪掉同章節較差的舊紀錄
+      allow read, delete: if isTeacher();
     }
     match /artifacts/{appId}/public/data/quiz_records_115_2/{recId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isTeacher();
-      allow delete: if isSignedIn();
+      allow read, delete: if isTeacher();
     }
 
     // ---------- D3. 運算思維與任務表的自有集合 ----------
-    //   這幾支也還沒收進 {學期}-progress，之後比照 quiz_records 辦理。
+    /* ⛔⛔ 2026-09-28 收緊：這兩個集合原本是 create, update: if isSignedIn() ——
+          任何一個登入的人，在主控台一行 setDoc 就能改**任何人**的運算思維紀錄
+          （清掉別人的 completed、換掉別人證書上的截圖網址）。
+       ★ 為什麼不直接搬進 {學期}-progress（老師 2026-09-28 選的是「原地收緊」）：
+         「班級過關紀錄查詢」要讀全班的文件，而 {學期}-progress 的 list 只給老師。
+         搬過去就得拿掉那個功能或改走後端 —— 系統已上線，不值得。
+       ★ 這裡的文件 id 不是學號，是「班級_座號_姓名」（thinking.html 的 docId）。
+         ⇒ 學生頁面每次寫入都帶 sid 欄位，規則拿它去名冊組出這個人**應該**用的
+           文件 id，對得上才准寫。
+           ‧ sid 填別人的 → isOwner 不過（email 對不上）
+           ‧ sid 填自己、文件 id 用別人的 → 名冊組出來的 id 對不上
+       ⚠️ 名冊的 cls／no 有的是數字、有的是字串，一律 string() —— 和 JS 的
+          `${cls}_${no}_${name}` 同一個結果。名冊查不到 get() 會出錯 ＝ 拒絕。
+       ⚠️ 擋得住「改別人的」，擋不住「替自己塞 completed」——
+          那一塊要靠後端的通關清單（{學期}-ocr-passed），老師這次沒有選。 */
+    function ctKeyOf(sid) {
+      let r = get(/databases/$(database)/documents/roster/$(sid)).data;
+      return string(r.cls) + '_' + string(r.no) + '_' + string(r.name);
+    }
+    function ctOwnDoc(docId) {
+      let sid = request.resource.data.get('sid', '');
+      return sid is string && isOwner(sid) && ctKeyOf(sid) == docId;
+    }
     match /artifacts/{appId}/public/data/progress/{docId} {            // 11501 運算思維
-      allow read: if isSignedIn();
-      allow create, update: if isSignedIn();
+      allow read: if isSignedIn();               // 「班級過關紀錄查詢」要讀全班
+      allow create, update: if isTeacher() || ctOwnDoc(docId);
       allow delete: if isTeacher();
     }
     match /artifacts/{appId}/public/data/progress_sem2/{docId} {       // 11502 運算思維
       allow read: if isSignedIn();
-      allow create, update: if isSignedIn();
+      allow create, update: if isTeacher() || ctOwnDoc(docId);
       allow delete: if isTeacher();
     }
-    match /artifacts/{appId}/public/data/studentProgress_115_2/{docId} {  // 11502 任務確認表
-      allow get: if isSignedIn();
-      allow list: if isTeacher();
-      allow create, update: if isSignedIn();
-      allow delete: if isTeacher();
-    }
+    /* 11502 任務確認表（studentProgress_115_2）：2026-09-28 刪除。
+       舊版 11502/index.html 用的，那一頁改成單一 repo 時就淘汰了，全站沒有
+       任何一行程式讀寫它 —— 規則卻還開著「任何登入者都能寫任何人的」。
+       ⇒ 整段拿掉，落到最後的「其他一律拒絕」。 */
 
 
     // ###################################################################
