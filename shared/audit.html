@@ -193,10 +193,26 @@ function verBox() {
      拿開學以來的**批改紀錄**照時間重播一次，補齊整學期。
    ⚠️ 這一頁本身還是不寫 Firestore —— 寫的是後端（它有服務帳戶），
       而且重建的結果只根據後端自己的批改紀錄，按幾次都一樣。 */
-async function rebuild(dry) {
+/* ★ mirror（切換第 ③步）：連學生頁面上的星星一起改成和批改紀錄一致。
+     ⚠️ 這會把「學生頁面比較多」的那幾關**降下來** —— 包括老師曾經到
+        Firebase Console 手動補給學生的星星。所以只在試算之後才給按，
+        而且確認視窗會把要降幾關講清楚。 */
+function mirrorWarn(j) {
+  const down = ((j && j.diffs) || []).filter(f => f.front > f.back);
+  const up = ((j && j.diffs) || []).filter(f => f.back > f.front);
+  return `學生頁面上的 Scratch 星星會改成和批改紀錄完全一致：\n`
+    + `　補上 ${up.length} 關（批改過、當時沒寫進去）\n`
+    + `　降下 ${down.length} 關（學生頁面有、卻找不到夠分的批改紀錄）`
+    + (down.length ? `\n\n⚠️ 如果其中有你手動補給學生的星星，也會一起被降下來。` : '')
+    + `\n\n確定要套用嗎？`;
+}
+async function rebuild(dry, mirror) {
   const url = (C.SERVER_URL || '').replace(/\/+$/, '');
   if (!url) { state.rb.err = 'config.js 沒有 SERVER_URL'; render(); return; }
-  if (!dry && !confirm('要把後端星星改成「從批改紀錄重建」的版本嗎？\n（學生頁面上的星星這一步不會變。）')) return;
+  mirror = !dry && !!mirror;
+  const last = state.rb.res;
+  if (!dry && !confirm(mirror ? mirrorWarn(last)
+      : '要把後端星星改成「從批改紀錄重建」的版本嗎？\n（學生頁面上的星星這一步不會變。）')) return;
   state.rb.busy = dry ? '試算中…（要把整學期的批改紀錄讀一遍，約十幾秒）' : '寫入中…';
   state.rb.err = ''; state.rb.limited = false; render();
   /* ⛔ 2026-09-28 老師實際按到的：「試算」→「寫入」→「太頻繁了，3 秒後再試」。
@@ -208,7 +224,7 @@ async function rebuild(dry) {
     for (let tries = 0; tries < 4; tries++) {
       r = await fetch(url + '/api/teacher/rebuild-scratch-verified', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' },
-        body: JSON.stringify({ term: TERM, dry: dry ? 1 : 0 }) });
+        body: JSON.stringify({ term: TERM, dry: dry ? 1 : 0, mirror: mirror ? 1 : 0 }) });
       j = await r.json();
       if (r.status !== 429) break;
       const sec = Number(((j && j.error) || '').match(/(\d+)\s*秒/)?.[1]) || 5;
@@ -221,6 +237,8 @@ async function rebuild(dry) {
       e.limited = r && r.status === 429;
       throw e;
     }
+    /* ⚠️ 失敗的話上面就 throw 了、走不到這裡 —— state.rb.res 還是上一次的試算，
+       「再寫入一次」和確認視窗裡的關數都靠它。 */
     state.rb.res = j;
     if (!dry) await loadAll();       // 寫完重讀，③ 那一區才會是新的
   } catch (e) {
@@ -230,6 +248,13 @@ async function rebuild(dry) {
   state.rb.busy = ''; render();
 }
 window.auditRebuild = rebuild;
+
+function writeButtons(cls) {
+  return `<div class="${cls} flex flex-wrap gap-2">
+      <button onclick="auditRebuild(false, false)" class="px-4 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 text-sm">寫入後端星星</button>
+      <button onclick="auditRebuild(false, true)" class="px-4 py-2 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-500 text-sm">寫入並套用到學生頁面</button>
+    </div>`;
+}
 
 function rebuildBox() {
   const rb = state.rb, j = rb.res;
@@ -243,26 +268,28 @@ function rebuildBox() {
       '<br><span class="text-slate-400">後端要開著（Colab 步驟 4），而且要是有這個功能的新版。</span>'}</p>
       <div class="mt-3 flex gap-2">
         <button onclick="auditRebuild(true)" class="px-4 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 text-sm">重新試算</button>
-        ${j && j.dry_run ? `<button onclick="auditRebuild(false)" class="px-4 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 text-sm">再寫入一次</button>` : ''}
+        ${j && j.dry_run ? writeButtons('') : ''}
       </div>`;
   else if (j) {
     const diffs = (j.diffs || []).slice().sort(bySeat);
     const head = j.dry_run
       ? `試算結果：${j.students} 位學生、${j.gradings} 次批改、共 ${j.stars}⭐（還沒寫入）`
-      : `已寫入 ${j.written} 位學生${(j.conflicts || []).length ? `；${j.conflicts.length} 位剛好在批改中沒寫到，稍後再按一次` : ''}`;
+      : `已寫入 ${j.written} 位學生${j.mirror ? '（學生頁面上的星星也一起套用了）' : ''}${(j.conflicts || []).length ? `；${j.conflicts.length} 位剛好在批改中沒寫到，稍後再按一次` : ''}`;
     body = `<p class="text-sm font-bold mb-2">${esc(head)}</p>` + (diffs.length
       ? `<p class="text-xs text-slate-500 mb-2">下面這幾關，學生頁面上的星星和「只根據後端批改紀錄」算出來的不一樣：</p>
          <div class="overflow-x-auto"><table class="w-full text-sm"><tbody>${diffs.map(f => row(f.sid,
            `<td class="px-3 py-2 whitespace-nowrap">${esc(f.unit)}</td><td class="px-3 py-2 whitespace-nowrap">學生頁面 ${f.front}⭐／批改紀錄 ${f.back}⭐</td>`,
            f.front > f.back ? '學生頁面比較多：找不到夠分的批改紀錄' : '批改紀錄比較多：學生頁面那一次沒寫進去')).join('')}</tbody></table></div>`
       : `<p class="text-emerald-700 text-sm">✅ 每一位學生、每一關，兩邊的星星都一樣。</p>`)
-      + (j.dry_run ? `<button onclick="auditRebuild(false)" class="mt-3 px-4 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 text-sm">寫入後端星星</button>` : '');
+      + (j.dry_run ? writeButtons('mt-3') : '');
   }
   return `<section class="bg-white rounded-2xl p-5 shadow-sm mt-5">
       <h2 class="font-black text-lg mb-1">④ 重建後端星星 <span class="text-slate-400 text-sm font-bold">切換第 ②步</span></h2>
       <p class="text-xs text-slate-400 mb-3 leading-relaxed">
         後端星星是從這次更新才開始記的。這裡請後端拿<b>開學以來的批改紀錄</b>照時間重算一次，補齊整學期。<br>
-        先按「試算」看看兩邊哪裡不一樣；確認沒問題再寫入。<b>學生頁面上的星星這一步不會變。</b></p>
+        先按「試算」看看兩邊哪裡不一樣；確認沒問題再寫入。<br>
+        「寫入後端星星」<b>不會動到學生頁面上的星星</b>；
+        「寫入並套用到學生頁面」會把學生看到的星星改成和批改紀錄一致（切換第 ③步用）。</p>
       ${body}
       ${(!rb.busy && !rb.err && !(j && j.dry_run)) ? `<button onclick="auditRebuild(true)" class="px-4 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 text-sm">試算（不寫入）</button>` : ''}
     </section>`;

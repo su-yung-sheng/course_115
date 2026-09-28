@@ -426,6 +426,8 @@ async function grade(){
   }, 4000);
   const fd=new FormData(); fd.append('file',chosen); fd.append('student_id',sid); fd.append('unit',UNIT||'');
   fd.append('term', window.CONFIG.TERM);        // 共用後端：批改結果寫回本學期的集合
+  // ★ Scratch 星星切換第 ③步：開關打開時請後端順便寫星星（見 shared/grading.js）
+  fd.append('trust', (window.GRADING && GRADING.trustBackendScratch()) ? '1' : '0');
   /* ⚠️⚠️ 這個請求原本**沒有任何逾時**：後端當掉或被回收時，fetch 會一直掛著，
      學生看到永遠轉不完的圈圈，而且 gradeBtn 停在 disabled —— 連重試都按不了。
      ★ 運算思維那邊 2026-08-26 就修過同一個坑（/analyze 的 180 秒），
@@ -441,7 +443,13 @@ async function grade(){
     render(j.result); setStatus('');
     // ⭐ 自動把星星記錄到統一進度（星等規則來自 shared/grading.js）
     try{
-      const rep = await window.reportScratch(sid, UNIT, j.result.score);
+      /* ★ Scratch 星星切換第 ③步：開關打開、而且後端真的寫好了（mirrored），
+         就用後端的回報，**學生頁面不再自己寫星星**。
+         後端沒寫成功（沒有 verified）時照舊自己記 —— 規則鎖上之後那一筆會被擋，
+         畫面會顯示「星星記錄失敗」，學生重交一次就好。 */
+      const _v = j.result && j.result.verified;
+      const rep = (window.GRADING && GRADING.trustBackendScratch() && _v && _v.mirrored)
+        ? _v : await window.reportScratch(sid, UNIT, j.result.score);
       if(rep){
         if(rep.star === 0 && rep.prev === 0){
           setStatus('⚠️ 未達 75 分，這一關還沒通關（至少要 2 星）。看看下面的建議修改後，再上傳一次！','err');

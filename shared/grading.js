@@ -267,6 +267,52 @@ window.GRADING = {
     return { stars: total, done: done };
   },
 
+  /* ── Scratch 星星由誰寫（2026-09-28，Scratch 星星切換第 ③步）────────────
+     ★ config.js 的 SCRATCH_TRUST_BACKEND 是**唯一的開關**：
+         false（預設）：跟以前一樣，學生頁面自己把星星寫進 modules.scratch
+         true         ：後端批改完順便寫（學生改不到的那一份為準），學生頁面不再寫
+     ⚠️ 讀的時候在呼叫當下才看 CONFIG（不是載入時）—— grading.js 有時比 config.js 先載。 */
+  trustBackendScratch: function () {
+    var c = (typeof window !== 'undefined' && window.CONFIG) || {};
+    return c.SCRATCH_TRUST_BACKEND === true;
+  },
+
+  /**
+   * 拿來「算星數成長」的歷程（每週評分、成長曲線、即時看板、hub 本週星數都用這一份）。
+   *
+   * ⛔ 為什麼不能直接用 history：它是學生瀏覽器寫得進去的清單。
+   *    在主控台 arrayUnion 一筆 {module:'scratch', stars:3}，每週分數就多 12 分。
+   * ★ 開關打開後：Scratch 的得星改用後端記的 scratchVerified.gains
+   *   （學生改不到），history 裡學生頁面寫的 Scratch 那幾筆一律不算。
+   *   其他模組照舊用 history。
+   * ⚠️ 開關沒開時原封不動回傳 history —— 還沒切換之前，行為一點都不能變。
+   */
+  statHistory: function (doc) {
+    doc = doc || {};
+    var hist = Array.isArray(doc.history) ? doc.history : [];
+    if (!this.trustBackendScratch()) return hist;
+    var sv = doc.scratchVerified || {};
+    var gains = Array.isArray(sv.gains) ? sv.gains : [];
+    /* ⚠️ 後端還沒重建過（沒有 rebuiltAt）⇒ 它只看過上線之後的批改，
+       開學那幾週的 Scratch 得星只在 history 裡。整批丟掉會讓前幾週的
+       每週分數**憑空變少**。⇒ 學生頁面寫的留著，後端只補「更晚」的那幾筆。
+       ★ 重建過 ⇒ 後端從開學算起都有，學生頁面寫的一筆都不用。 */
+    var others, cut = 0;
+    if (sv.rebuiltAt) {
+      others = hist.filter(function (h) { return !h || h.module !== 'scratch'; });
+    } else {
+      others = hist.slice();
+      hist.forEach(function (h) {
+        if (h && h.module === 'scratch' && Number(h.at) > cut) cut = Number(h.at);
+      });
+      gains = gains.filter(function (g) { return (Number(g && g.at) || 0) > cut; });
+    }
+    return others.concat(gains.map(function (g) {
+      return { module: 'scratch', unit: g.unit, score: g.score, at: Number(g.at) || 0,
+               stars: Number(g.stars) || 0, got: g.star, by: 'backend' };
+    }));
+  },
+
   scratchTotal: function (unitStars) {
     var total = 0, done = 0;
     for (var k in (unitStars || {})) {

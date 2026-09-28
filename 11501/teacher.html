@@ -774,7 +774,7 @@
       ]);
       const progMap = {}, histMap = {};
       const attMap = {};
-      progressSnap.forEach(d => { const pd = d.data(); progMap[d.id] = pd.modules || {}; histMap[d.id] = pd.history || []; attMap[d.id] = pd.attendance || {}; });
+      progressSnap.forEach(d => { const pd = d.data(); progMap[d.id] = pd.modules || {}; histMap[d.id] = (window.GRADING && GRADING.statHistory) ? GRADING.statHistory(pd) : (pd.history || []); attMap[d.id] = pd.attendance || {}; });
 
       /* ══════════════════════════════════════════════════════
          運算思維：後端已經評完、但學生還沒回來同步的那些
@@ -3486,7 +3486,7 @@ const __bn = bonusOf(student, sub.key);
         const mods=(d&&d.modules)||{};
         const total=['ethics','thinking','flowchart','scratch']
           .reduce((a,k)=>a+(Number((mods[k]||{}).stars)||0),0);
-        const hist=(d&&d.history)||[];
+        const hist=(window.GRADING&&GRADING.statHistory)?GRADING.statHistory(d||{}):((d&&d.history)||[]);
         const recent=hist.filter(h=>Number(h.at)>=since);
         const gained=recent.reduce((a,h)=>a+(Number(h.stars)||0),0);
         const last=recent.length?recent.reduce((a,b)=>(Number(a.at)>Number(b.at)?a:b)):null;
@@ -3803,7 +3803,7 @@ const __bn = bonusOf(student, sub.key);
           try {
             const p = await _gdDb().collection('11501-progress').doc(s.studentId).get();
             const data = p.exists ? p.data() : {};
-            const hist = data.history || [];
+            const hist = (window.GRADING && GRADING.statHistory) ? GRADING.statHistory(data) : (data.history || []);
             hist.forEach(ev => {
               const at = Number(ev.at); if (!at) return;
               const idx = Math.floor((at - start.getTime()) / (7 * 86400000));

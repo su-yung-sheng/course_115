@@ -188,7 +188,7 @@ ok(core.record_scratch_verified("1410101", "2-1-1A", 95) is None and not fs.call
 core.FIREBASE["enabled"] = True
 
 section("⑦ 伺服器：批改完呼叫，而且在「隱藏分數」之前")
-i_call = _SRC8.find("core.record_scratch_verified(student_id, unit, result.get(\"score\"), term=term)")
+i_call = _SRC8.find("core.record_scratch_verified(student_id, unit, result.get(\"score\"), term=term,")
 i_hide = _SRC8.find('result["score"] = None')
 i_rec = _SRC8.find("core.record_submission(student_id, result,")
 ok(i_call > 0, "★★★ /api/student/grade 要呼叫 record_scratch_verified")
@@ -301,6 +301,146 @@ ok(i > 0, "★★ 有 /api/teacher/rebuild-scratch-verified")
 ok("_REBUILD_MIN_GAP" in seg and "429" in seg, "★★ 要限流 —— 它會把兩個集合整批讀一遍，網址又是公開的")
 ok('request.args.get("dry", "1")' in seg,
    "★★★ 沒講清楚要不要寫的時候，一律當試算（dry 預設 1）")
+
+section("⑪ 第 ③步：欄位路徑、遮罩、前提條件")
+ok(core._fp_seg("stars") == "stars", "一般名字不用包")
+ok(core._fp_seg("2-1-1A") == "`2-1-1A`",
+   "★★★ 關卡代號有連字號、數字開頭 ⇒ 一定要用反引號包（不然 updateMask 直接 400）")
+ok(core._fp_seg("a`b") == "`a\\`b`", "名字裡的反引號要跳脫")
+m = core._mask(["scratchVerified", "modules.scratch.unitStars.`2-1-1A`"])
+ok(m == "&updateMask.fieldPaths=scratchVerified"
+        "&updateMask.fieldPaths=modules.scratch.unitStars.%602-1-1A%60",
+   "★★ 每一段都要 URL 編碼（反引號是 %60）")
+ok(core._precond({"updateTime": "2026-09-28T01:02:03.4Z"})
+   == "&currentDocument.updateTime=2026-09-28T01%3A02%3A03.4Z", "★ updateTime 裡的冒號要編碼")
+ok(core._precond({}) == "&currentDocument.exists=false" and core._precond(None) == "&currentDocument.exists=false",
+   "★ 沒有文件 ⇒ 前提改成「必須不存在」")
+ok(core.scratch_totals({"a": 3, "b": 0, "c": 2}) == (5, 2), "總星數與通關關數（0 星不算）")
+
+section("⑫ 逐關鏡像：重建過以後端為準、沒重建過取大的")
+fs_, fc_ = core.mirror_scratch_unit({"unitStars": {"2-1-3": 3, "2-1-1A": 2}, "unitScores": {"2-1-3": 99}},
+                                    {"unitStars": {"2-1-3": 0}, "unitScores": {"2-1-3": 40}}, "2-1-3")
+ok(fs_["2-1-3"] == 3 and fc_["2-1-3"] == 99,
+   "★★★ 後端**還沒重建過** ⇒ 取兩邊比較大的（開學那幾週的合法星星後端不知道，不可以洗掉）")
+ok(fs_["2-1-1A"] == 2, "★★ 別的關卡原樣保留")
+fs_, fc_ = core.mirror_scratch_unit({"unitStars": {"2-1-3": 3}, "unitScores": {"2-1-3": 99}},
+                                    {"unitStars": {"2-1-3": 0}, "unitScores": {"2-1-3": 40},
+                                     "rebuiltAt": 7}, "2-1-3")
+ok(fs_["2-1-3"] == 0 and fc_["2-1-3"] == 40,
+   "★★★ 重建過 ⇒ 以後端為準（主控台偽造的 3⭐ 會被校正掉）")
+fs_, fc_ = core.mirror_scratch_unit({}, {"unitStars": {"x": 2}, "unitScores": {"x": 80}}, "x")
+ok(fs_ == {"x": 2} and fc_ == {"x": 80}, "前端什麼都沒有 ⇒ 用後端的")
+
+section("⑬ 批改時順便寫學生頁面（mirror=True）")
+front_doc = {"studentId": {"stringValue": "1410101"},
+             "modules": core._fs_encode({"scratch": {"unitStars": {"2-1-1A": 2, "2-1-3": 3},
+                                                     "unitScores": {"2-1-1A": 80, "2-1-3": 95},
+                                                     "unitFiles": {"2-1-3": "u"}},
+                                         "ethics": {"stars": 9}})}
+fs = use(FakeFS(doc=dict(front_doc)))
+rep = {}
+r = core.record_scratch_verified("1410101", "2-1-1A", 95, term="11501", now_ms=1000, mirror=True, out=rep)
+p = [c for c in fs.calls if c[0] == "PATCH"]
+url, body = p[0][1], p[0][2]["fields"]
+paths = [x.split("=", 1)[1] for x in url.split("&") if x.startswith("updateMask.fieldPaths=")]
+import urllib.parse as _up
+paths = [_up.unquote(x) for x in paths]
+ok(r is not None and len(p) == 1, "只寫一次（後端星星和學生頁面同一次寫入）")
+ok(set(paths) == {"scratchVerified", "modules.scratch.unitStars.`2-1-1A`",
+                  "modules.scratch.unitScores.`2-1-1A`", "modules.scratch.stars",
+                  "modules.scratch.level", "modules.scratch.status",
+                  "modules.scratch.updatedAt", "modules.scratch.source"},
+   "★★★ 遮罩**只列這一關**＋總數 —— 別的關卡、unitFiles、別的模組一格都不碰")
+sc = core._fs_decode(body["modules"])["scratch"]
+ok(sc["unitStars"] == {"2-1-1A": 3} and sc["unitScores"] == {"2-1-1A": 95},
+   "★★ 內文也只有這一關")
+ok(sc["stars"] == 6 and sc["level"] == 2 and sc["status"] == "in-progress",
+   "★★★ 總數用「這一關新的＋其他關原本的」算：3＋3＝6 星、2 關")
+ok(sc["source"] == "backend", "★ 標明是後端寫的")
+ok(rep.get("mirrored") is True and rep["star"] == 3 and rep["prev"] == 2 and rep["improved"] is True
+   and rep["total"] == 6 and rep["done"] == 2,
+   "★★★ 回報給學生頁面：這次 3⭐、之前 2⭐、有進步、共 6 星 2 關（和 reportScratch 同形）")
+ok(rep["scoreImproved"] is True, "★★ 95 > 80 ⇒ 分數進步（要備份作品）")
+
+fs = use(FakeFS(doc=dict(front_doc)))
+rep = {}
+core.record_scratch_verified("1410101", "2-1-1A", 70, term="11501", now_ms=1000, mirror=True, out=rep)
+sc = core._fs_decode([c for c in fs.calls if c[0] == "PATCH"][0][2]["fields"]["modules"])["scratch"]
+ok(sc["unitStars"]["2-1-1A"] == 2 and sc["unitScores"]["2-1-1A"] == 80,
+   "★★★ 重測考差（70 分）：學生頁面上的 2⭐、80 分不可以被洗低")
+ok(rep["improved"] is False and rep["scoreImproved"] is False and rep["star"] == 0,
+   "★★ 回報：沒進步、分數沒進步（不備份）")
+
+fs = use(FakeFS(doc=dict(front_doc)))
+rep = {}
+core.record_scratch_verified("1410101", "2-1-1A", 95, term="11501", now_ms=1000, mirror=False, out=rep)
+p = [c for c in fs.calls if c[0] == "PATCH"]
+ok(list(p[0][2]["fields"]) == ["scratchVerified"] and "modules." not in p[0][1],
+   "★★★ 開關沒開（mirror=False）⇒ 跟第 ①步一模一樣，只寫 scratchVerified")
+ok(rep.get("mirrored") is False, "★ 回報註明沒有鏡像 —— 學生頁面要自己記")
+
+fs = use(FakeFS(doc=None))
+rep = {}
+core.record_scratch_verified("1410101", "2-1-1A", 50, term="11501", now_ms=1000, mirror=True, out=rep)
+ok(rep.get("star") == 0 and rep.get("prev") == 0 and rep.get("done") == 0,
+   "0 分的第一次：回報 0⭐（學生頁面會顯示「還沒通關」）")
+
+fs = use(FakeFS(doc={}, get_error=urllib.error.HTTPError("u", 500, "boom", None, None)))
+rep = {}
+core.record_scratch_verified("1410101", "2-1-1A", 95, term="11501", mirror=True, out=rep)
+ok(rep == {}, "★★★ 寫失敗 ⇒ 回報是空的（伺服器就不會帶 verified，學生頁面照舊自己記）")
+
+rb_doc = {"scratchVerified": core._fs_encode({"unitStars": {"2-1-3": 0}, "unitScores": {"2-1-3": 40},
+                                              "gains": [], "rebuiltAt": 7}),
+          "modules": core._fs_encode({"scratch": {"unitStars": {"2-1-3": 3}}})}
+fs = use(FakeFS(doc=dict(rb_doc)))
+r = core.record_scratch_verified("1410101", "2-1-3", 60, term="11501", now_ms=9, mirror=True)
+ok(r.get("rebuiltAt") == 7, "★★★ 「重建過」這個標記要留著 —— 掉了之後就會退回「取大的」")
+sc = core._fs_decode([c for c in fs.calls if c[0] == "PATCH"][0][2]["fields"]["modules"])["scratch"]
+ok(sc["unitStars"]["2-1-3"] == 0,
+   "★★★ 重建過：學生頁面上找不到批改紀錄的 3⭐，下次批改這一關就校正回來")
+
+section("⑭ 重建時套用到學生頁面（mirror=True）")
+front2 = {"1410101": {"modules": core._fs_encode({"scratch": {"unitStars": {"2-1-1A": 3, "2-1-3": 3}}})},
+          "1410199": {"modules": core._fs_encode({"scratch": {"unitStars": {"2-1-2": 3}}})}}
+core.list_submissions = lambda term=None: {"ok": True, "submissions": subs}
+fs = FakeFS2(front2)
+core._fs_http = fs
+r = core.rebuild_scratch_verified(term="11501", dry_run=False, now_ms=1, mirror=True)
+p = {c[1].split("-progress/")[1].split("?")[0]: c for c in fs.calls if c[0] == "PATCH"}
+ok(r["mirror"] is True and r["written"] == 2, "★ 回報有 mirror")
+b1 = p["1410101"][2]["fields"]
+sc = core._fs_decode(b1["modules"])["scratch"]
+ok(sc["unitStars"] == {"2-1-1A": 3, "2-1-1B": 2} and sc["stars"] == 5 and sc["level"] == 2,
+   "★★★ 學生頁面改成和批改紀錄**完全一致**：補上 2-1-1B、拿掉找不到紀錄的 2-1-3")
+ok("updateMask.fieldPaths=modules.scratch.unitStars&" in p["1410101"][1]
+   and "modules.scratch.unitFiles" not in p["1410101"][1]
+   and "updateMask.fieldPaths=modules&" not in p["1410101"][1] + "&",
+   "★★★ 遮罩是 modules.scratch 的星星欄位 —— 不可以是整個 modules（別的模組、作品連結會被清掉）")
+ok("1410199" in p, "★★★ 學生頁面有星星、**一筆批改紀錄都沒有**的學生也要寫（最可疑的就是這種）")
+v99 = core._fs_decode(p["1410199"][2]["fields"]["scratchVerified"])
+sc99 = core._fs_decode(p["1410199"][2]["fields"]["modules"])["scratch"]
+ok(v99.get("rebuiltAt") == 1 and v99.get("unitStars") == {} and sc99["unitStars"] == {} and sc99["stars"] == 0,
+   "★★★ 他的後端星星是空的、標上重建過；學生頁面的星星歸零")
+
+fs = FakeFS2(front2)
+core._fs_http = fs
+r = core.rebuild_scratch_verified(term="11501", dry_run=False, now_ms=1)
+p = {c[1].split("-progress/")[1].split("?")[0]: c for c in fs.calls if c[0] == "PATCH"}
+ok(all(list(c[2]["fields"]) == ["scratchVerified"] for c in p.values()) and r["mirror"] is False,
+   "★★★ 沒勾 mirror ⇒ 每一位都只寫 scratchVerified")
+ok("1410199" in p, "★★ 沒勾 mirror 也要給他一份（標上重建過），之後批改才會以後端為準")
+
+section("⑮ 伺服器：trust 參數與回報")
+seg = _SRC8[i_rec:i_hide + 400]
+ok('request.form.get("trust")' in seg and 'mirror=_trust' in seg and "out=_vrep" in seg,
+   "★★★ 學生頁面送 trust=1 ⇒ 後端鏡像，並把回報收回來")
+ok('result["verified"] = dict(_vrep)' in seg, "★★ 寫成功才帶 verified")
+ok('result["verified"] = dict(result["verified"], score=None)' in seg,
+   "★★★ 老師關掉顯示分數時，verified 裡的分數也要拿掉（不然從回報就看得到）")
+i10 = _SRC8.find('@app.route("/api/teacher/rebuild-scratch-verified", methods=["POST"])')
+ok('body.get("mirror", request.args.get("mirror", "0"))' in _SRC8[i10:i10 + 1500],
+   "★★★ 重建沒講要不要套用 ⇒ 一律**不套用**到學生頁面（mirror 預設 0）")
 
 print("\n通過 %d／失敗 %d" % (_pass[0], _fail[0]))
 sys.exit(1 if _fail[0] else 0)

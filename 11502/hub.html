@@ -436,7 +436,7 @@
        grading.js 補載入之後，這一份刪掉，門檻只留一個地方。 */
     function weekInfo(data){
       const start = new Date(TERM_START+'T00:00:00').getTime();
-      const hist = (data && data.history) || [];
+      const hist = (window.GRADING && GRADING.statHistory) ? GRADING.statHistory(data || {}) : ((data && data.history) || []);
       const now = Date.now();
       const curIdx = Math.floor((now - start)/(7*86400000));
       const weeks = {};          // 週次 → 星數

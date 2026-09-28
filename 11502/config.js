@@ -89,6 +89,13 @@ window.CONFIG = {
     KEY: 'scratch'
   },
 
+  // ★ Scratch 星星由誰寫（2026-09-28）—— 這是唯一的開關，改這一行就切換、改回來就還原。
+  //   false：學生頁面自己寫星星（以前的做法）
+  //   true ：後端批改完順便寫（學生改不到的那一份為準），學生頁面不再寫；
+  //          每週評分、成長曲線的 Scratch 得星改用後端的紀錄。
+  //   ⚠️ 打開之前：先在「🔍 可疑紀錄」④ 用「套用到學生頁面」重建一次。
+  SCRATCH_TRUST_BACKEND: false,
+
   COLLECTIONS: {
     PROGRESS: '11502-progress',
     // ★ 2026-07-29 名冊已合併為跨學期共用的 roster（見 shared/docs/03）

@@ -802,7 +802,7 @@
       const progMap = {}, histMap = {}, attMap = {};
       /* attendance = { 'YYYY-MM-DD': 首次登入時間 }，由 hub 每日寫一次。
          ⚠️ 2026-08-19 補：本來沒有帶出來，所以「出席紀錄」那一頁做不出來。 */
-      progressSnap.forEach(d => { const pd = d.data(); progMap[d.id] = pd.modules || {}; histMap[d.id] = pd.history || []; attMap[d.id] = pd.attendance || {}; });
+      progressSnap.forEach(d => { const pd = d.data(); progMap[d.id] = pd.modules || {}; histMap[d.id] = (window.GRADING && GRADING.statHistory) ? GRADING.statHistory(pd) : (pd.history || []); attMap[d.id] = pd.attendance || {}; });
 
       const sheets = {};
       rosterSnap.forEach(d => {
@@ -3131,7 +3131,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         const mods=(d&&d.modules)||{};
         const total=['ethics','thinking','flowchart','scratch']
           .reduce((a,k)=>a+(Number((mods[k]||{}).stars)||0),0);
-        const hist=(d&&d.history)||[];
+        const hist=(window.GRADING&&GRADING.statHistory)?GRADING.statHistory(d||{}):((d&&d.history)||[]);
         const recent=hist.filter(h=>Number(h.at)>=since);
         const gained=recent.reduce((a,h)=>a+(Number(h.stars)||0),0);
         const last=recent.length?recent.reduce((a,b)=>(Number(a.at)>Number(b.at)?a:b)):null;
@@ -3434,7 +3434,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
           try {
             const p = await _gdDb().collection('11502-progress').doc(s.studentId).get();
             const data = (p.exists && p.data()) || {};
-            const hist = data.history || [];
+            const hist = (window.GRADING && GRADING.statHistory) ? GRADING.statHistory(data) : (data.history || []);
             hist.forEach(ev => {
               const at = Number(ev.at); if (!at) return;
               const idx = Math.floor((at - start.getTime()) / (7 * 86400000));

@@ -93,9 +93,18 @@
       updatedAt: now
     });
 
+    /* ⛔⛔ 2026-09-28：這裡原本寫回**整份 modules**（包含別的模組）。
+       Scratch 星星改由後端寫之後，這會出事：學生做測驗時先讀了一份進度，
+       這中間後端剛好寫了新的 Scratch 星星，測驗寫回去時就把舊的那份
+       modules.scratch 蓋回去 —— 後端剛寫的星星就不見了。
+       ⇒ 只寫這一個模組。setDoc 有 merge:true，巢狀的 map 會深層合併，
+         別的模組一格都不會被動到。
+       （totalStars 還是用手上這份算，它只是給人看的摘要，不是任何判定的依據。） */
+    var own = {};
+    own[moduleId] = modules[moduleId];
     var payload = {
       studentId: SSO.sid(),
-      modules: modules,
+      modules: own,
       totalStars: sumStars(modules),
       updatedAt: now
     };
