@@ -18,6 +18,8 @@
   <!-- 老師 email 的判斷（與 shared/firestore.rules 的 isTeacher 同一份定義）-->
   <script src="../shared/auth.js"></script>
   <script src="../shared/grading.js"></script>
+  <!-- 可疑紀錄的判斷（學生面板的 ⏱⚠ 和 shared/audit.html 用同一份） -->
+  <script src="../shared/audit.js"></script>
   <!-- 課表與「這週有沒有上課日」的判定（學生端 hub 同一支）-->
   <script src="../shared/schedule.js"></script>
   <!-- 關卡清單（教師端的「各科關卡進度」矩陣要用）。
@@ -199,6 +201,12 @@
               <!-- 📥 繳交審核與加分（程式錄影 ＋1⭐；下學期沒有逐關流程圖） -->
               <!-- 同一個分頁開啟：教師端用 SESSION 持久性，登入狀態在 sessionStorage，
                    那是每個分頁各自獨立的 —— 開新分頁會變成要再登入一次。 -->
+              <!-- 🔍 可疑紀錄：星星對不上批改紀錄、測驗沒有作答過程（只讀，不改任何資料） -->
+              <a href="../shared/audit.html?term=11502" data-bust
+                 class="px-4 py-2 bg-stone-100 text-stone-700 rounded-full text-sm font-bold hover:bg-stone-200 border border-stone-300 shadow-sm flex items-center gap-1.5 transition-colors">
+                🔍 可疑紀錄
+              </a>
+
               <a href="../shared/review.html?term=11502" data-bust
                  class="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full text-sm font-bold hover:bg-indigo-200 border border-indigo-300 shadow-sm flex items-center gap-1.5 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -1572,7 +1580,10 @@
               判不出來就不標 —— 寧可漏掉，也不可以冤枉人。 */
         const p = h.pace || null;
         /* 題數太少沒有統計意義（連對 3 題就結束的不算）。 */
-        const robot = !!(p && p.max != null && p.max <= 1 && (p.n || 0) >= 5);
+        /* ★ 2026-09-27 判斷搬到 shared/audit.js（AUDIT.isRobotPace）——
+           「🔍 可疑紀錄」那一頁用的也是它。兩邊各寫一份的話，
+           改了門檻只改到一邊，學生面板和可疑清單就會各說各話。 */
+        const robot = !!(window.AUDIT && AUDIT.isRobotPace(p));
         const bits = [];
         if (p && p.med != null) {
           bits.push(p.max != null

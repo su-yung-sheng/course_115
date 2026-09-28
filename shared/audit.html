@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>可疑紀錄 · 資訊科技課程</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- 本頁住在 shared/，設定檔在各學期資料夾裡。用 ?term= 決定載哪一份
+     （和 review.html、status.html 同一套做法）。 -->
+<script src="semester.js"></script>
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('term');
+  if (!t || !/^115\d{2}$/.test(t)) {
+    t = (window.SEMESTER && SEMESTER.current) ? SEMESTER.current() : '11501';
+  }
+  window.__TERM = t;
+  var v = '?v=' + Date.now();   // 老師的工具頁：永遠拿最新的（見 review.html 的說明）
+  document.write('<scr' + 'ipt src="../' + t + '/config.js' + v + '"></scr' + 'ipt>');
+  ['auth.js', 'grading.js', 'audit.js'].forEach(function (f) {
+    document.write('<scr' + 'ipt src="' + f + v + '"></scr' + 'ipt>');
+  });
+})();
+</script>
+
+<style>
+  html,body,button{font-family:'Noto Sans TC',system-ui,sans-serif}
+  body{background:#e7e5e4}
+</style>
+</head>
+<body class="min-h-screen text-slate-800">
+
+<main class="max-w-5xl mx-auto px-4 py-8">
+  <header class="mb-6">
+    <a href="#" id="back-teacher" class="text-sm font-bold text-slate-400 hover:text-slate-700">← 回教師端</a>
+    <h1 class="text-2xl sm:text-3xl font-black mt-2">🔍 可疑紀錄</h1>
+    <p class="text-slate-500 text-sm mt-2 leading-relaxed">
+      把「學生的瀏覽器寫進來的成績」和「只有系統寫得進去的紀錄」對一遍，對不上的列在這裡。<br>
+      <b class="text-slate-700">這是提醒你去看，不是判定。</b>
+      系統不會因為這一頁擋任何人、也不會改任何資料。<br>
+      <span class="text-slate-300 text-[11px]">版本 <span id="ver" class="font-mono"></span></span>
+    </p>
+  </header>
+  <div id="app"></div>
+</main>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
+         setPersistence, browserSessionPersistence }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, collection, getDocs }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+/* ⚠️ 這一頁**只讀不寫** —— import 裡刻意沒有 setDoc／updateDoc／deleteDoc。
+   偵測頁的價值在於「開了也不會弄壞任何東西」，系統上線中也能放心按。 */
+
+const C = window.CONFIG || {};
+const TERM = window.__TERM;
+const app = initializeApp(C.FIREBASE);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const COL = C.COLLECTIONS || {};
+const PROGRESS = COL.PROGRESS || (TERM + '-progress');
+const SUBMISSIONS = COL.SUBMISSIONS || (TERM + '-scratch-submissions');
+const ROSTER = COL.ROSTER || 'roster';
+const UNIT_TITLE = {};
+(C.UNITS || []).forEach(u => { UNIT_TITLE[u[0]] = u[1]; });
+
+const el = id => document.getElementById(id);
+const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+{ const b = el('back-teacher'); if (b) b.href = '../' + TERM + '/teacher.html'; }
+{ const v = el('ver'); if (v) v.textContent = (window.AUDIT && AUDIT.VERSION) || '（audit.js 沒載到）'; }
+
+const state = { who: null, busy: '', msg: '', subErr: '',
+                roster: {}, progress: {}, subs: [], scratch: [], quiz: [], ver: null };
+
+/* 登入：只有老師（理由見 review.html 的同一段） */
+function isTeacher(u) {
+  return !!(u && u.email && window.AUTH && AUTH.isTeacherEmail(u.email));
+}
+setPersistence(auth, browserSessionPersistence)
+  .catch(e => console.warn('設定持久性失敗', e))
+  .finally(() => {
+    onAuthStateChanged(auth, async (u) => {
+      if (!isTeacher(u)) { state.who = null; render(); return; }
+      state.who = u;
+      await loadAll();
+      render();
+    });
+  });
+
+async function login() {
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch (e) { state.msg = '登入失敗：' + e.message; render(); }
+}
+window.auditLogin = login;
+window.auditReload = async () => { await loadAll(); render(); };
+
+async function loadAll() {
+  state.busy = '讀取名冊、進度與批改紀錄…'; state.msg = ''; state.subErr = ''; render();
+  try {
+    const [rs, ps] = await Promise.all([getDocs(collection(db, ROSTER)), getDocs(collection(db, PROGRESS))]);
+    const r = {}; rs.forEach(d => { r[d.id] = d.data() || {}; });
+    const p = {}; ps.forEach(d => { p[d.id] = d.data() || {}; });
+    state.roster = r; state.progress = p;
+  } catch (e) {
+    state.msg = '讀不到名冊或進度：' + e.message;
+    state.busy = ''; return;
+  }
+  /* 批改紀錄讀不到（規則沒發布、或不是老師帳號）時，**測驗那一半照樣要能看** ——
+     不要因為其中一份讀不到就整頁空白。 */
+  try {
+    const ss = await getDocs(collection(db, SUBMISSIONS));
+    const subs = []; ss.forEach(d => subs.push(d.data() || {}));
+    state.subs = subs;
+  } catch (e) {
+    state.subs = [];
+    state.subErr = e.message;
+  }
+  state.scratch = state.subErr ? [] : AUDIT.scratch(state.progress, state.subs, window.GRADING);
+  state.quiz = AUDIT.quiz(state.progress);
+  state.ver = AUDIT.verified(state.progress);
+  state.busy = '';
+}
+
+function who(sid) {
+  const r = state.roster[sid] || {};
+  return { cls: String(r.cls || ''), no: String(r.no || ''), name: String(r.name || '') };
+}
+function bySeat(a, b) {
+  const A = who(a.sid), B = who(b.sid);
+  return (A.cls.localeCompare(B.cls)) || ((Number(A.no) || 0) - (Number(B.no) || 0))
+      || String(a.unit).localeCompare(String(b.unit));
+}
+const when = t => {
+  if (!t) return '—';
+  const d = new Date(t);
+  return (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
+         String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+};
+
+function scratchWhy(f) {
+  if (f.kind === 'no-record') return '後端沒有這一關的任何批改紀錄';
+  if (f.kind === 'star-exceeds') return `批改最高只有 ${f.graded} 分，不夠 ${f.star}⭐`;
+  return `紀錄上是 ${f.score} 分，但批改最高只有 ${f.graded} 分`;
+}
+function quizWhy(f) {
+  if (f.kind === 'robot') {
+    const p = f.pace || {};
+    return `每一題都在 1 秒內作答（中位 ${p.med}s、最慢 ${p.max}s、共 ${p.n} 題）`;
+  }
+  return '這筆通關沒有作答過程（耗時、每題秒數）—— 不是從測驗畫面寫進去的';
+}
+
+function row(sid, cells, why) {
+  const w = who(sid);
+  return `<tr class="border-t border-slate-100">
+    <td class="px-3 py-2 whitespace-nowrap">${esc(w.cls)}</td>
+    <td class="px-3 py-2 whitespace-nowrap">${esc(w.no)}</td>
+    <td class="px-3 py-2 whitespace-nowrap font-bold">${esc(w.name || sid)}</td>
+    ${cells}
+    <td class="px-3 py-2 text-rose-700">${esc(why)}</td></tr>`;
+}
+
+function verBox() {
+  /* 四步切換的第 ②步：後端星星上線後，核對它和前端寫的有沒有對得上。
+     後端比前端少是正常的（後端只從上線那一刻開始記）；後端比前端**多**才要看。 */
+  const v = state.ver;
+  if (!v) return '';
+  const rows = v.behind.slice().sort(bySeat);
+  const body = !v.students
+    ? `<p class="text-slate-500 text-sm">還沒有任何後端星星 —— Colab 重跑步驟 2、3 之後，學生每批改一次就會開始記。</p>`
+    : (rows.length
+      ? `<p class="text-amber-700 text-sm mb-2">下面這幾關，後端記到的星星比學生頁面寫的多 —— 代表那一次<b>前端沒寫進去</b>（網路斷線或被擋）。學生的星星以後會以後端為準，這裡先列出來讓你知道。</p>
+         <div class="overflow-x-auto"><table class="w-full text-sm"><tbody>${rows.map(f => row(f.sid,
+           `<td class="px-3 py-2 whitespace-nowrap">${esc(f.unit)}</td><td class="px-3 py-2 whitespace-nowrap">前端 ${f.front}⭐／後端 ${f.back}⭐</td>`,
+           '前端少記')).join('')}</tbody></table></div>`
+      : `<p class="text-emerald-700 text-sm">✅ ${v.students} 位學生、${v.gradings} 次批改：後端記到的星星，前端都有。</p>`);
+  return `<section class="bg-white rounded-2xl p-5 shadow-sm mt-5">
+      <h2 class="font-black text-lg mb-1">③ 後端星星核對 <span class="text-slate-400 text-sm font-bold">切換第 ②步用</span></h2>
+      <p class="text-xs text-slate-400 mb-3 leading-relaxed">
+        後端從這次更新起，每批改一次也會自己記一份星星（學生改不到）。
+        它只從上線那一刻開始記，所以比前端少是正常的；比前端<b>多</b>才要看。</p>
+      ${body}</section>`;
+}
+
+function render() {
+  const app = el('app');
+  if (!state.who) {
+    app.innerHTML = `<div class="bg-white rounded-2xl p-6 shadow-sm">
+      <p class="text-sm text-slate-600 mb-4">這一頁要讀全班的進度和批改紀錄，只有老師帳號可以開。</p>
+      <button onclick="auditLogin()" class="px-5 py-2.5 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700">用學校 Google 帳號登入</button>
+      ${state.msg ? `<p class="text-rose-600 text-sm mt-3">${esc(state.msg)}</p>` : ''}</div>`;
+    return;
+  }
+  if (state.busy) { app.innerHTML = `<div class="bg-white rounded-2xl p-6 shadow-sm text-slate-500">${esc(state.busy)}</div>`; return; }
+  if (state.msg) { app.innerHTML = `<div class="bg-white rounded-2xl p-6 shadow-sm text-rose-600">${esc(state.msg)}</div>`; return; }
+
+  const sc = state.scratch.slice().sort(bySeat);
+  const qz = state.quiz.slice().sort(bySeat);
+  const nStu = Object.keys(state.progress).length;
+
+  const scratchBody = state.subErr
+    ? `<p class="text-amber-700 text-sm">讀不到批改紀錄（${esc(SUBMISSIONS)}）：${esc(state.subErr)}<br>
+         這一半先不比對；下面的測驗照樣可以看。</p>`
+    : (sc.length
+      ? `<div class="overflow-x-auto"><table class="w-full text-sm">
+          <thead class="text-left text-slate-400 text-xs"><tr>
+            <th class="px-3 py-2">班級</th><th class="px-3 py-2">座號</th><th class="px-3 py-2">姓名</th>
+            <th class="px-3 py-2">關卡</th><th class="px-3 py-2">紀錄上</th><th class="px-3 py-2">說明</th></tr></thead>
+          <tbody>${sc.map(f => row(f.sid,
+            `<td class="px-3 py-2 whitespace-nowrap">${esc(f.unit)} <span class="text-slate-400 text-xs">${esc(UNIT_TITLE[f.unit] || '')}</span></td>
+             <td class="px-3 py-2 whitespace-nowrap">${'⭐'.repeat(f.star)} ${f.score != null ? esc(f.score) + ' 分' : ''}</td>`,
+            scratchWhy(f))).join('')}</tbody></table></div>`
+      : `<p class="text-emerald-700 text-sm">✅ 每一顆 Scratch 星星都找得到對應的批改紀錄。</p>`);
+
+  const quizBody = qz.length
+    ? `<div class="overflow-x-auto"><table class="w-full text-sm">
+        <thead class="text-left text-slate-400 text-xs"><tr>
+          <th class="px-3 py-2">班級</th><th class="px-3 py-2">座號</th><th class="px-3 py-2">姓名</th>
+          <th class="px-3 py-2">章節</th><th class="px-3 py-2">時間</th><th class="px-3 py-2">說明</th></tr></thead>
+        <tbody>${qz.map(f => row(f.sid,
+          `<td class="px-3 py-2 whitespace-nowrap">${esc(f.unit)}${f.score != null ? `　<span class="text-slate-400 text-xs">正確率 ${esc(f.score)}%</span>` : ''}</td>
+           <td class="px-3 py-2 whitespace-nowrap text-slate-500">${esc(when(f.at))}</td>`,
+          quizWhy(f))).join('')}</tbody></table></div>`
+    : `<p class="text-emerald-700 text-sm">✅ 沒有發現可疑的測驗紀錄。</p>`;
+
+  app.innerHTML = `
+    <div class="flex items-center justify-between gap-3 mb-4 text-sm text-slate-500">
+      <span>已比對 ${nStu} 位學生的進度、${state.subErr ? '—' : state.subs.length} 筆批改紀錄</span>
+      <button onclick="auditReload()" class="px-3 py-1.5 bg-white border border-slate-300 rounded-lg font-bold text-slate-600 hover:bg-slate-50">重新整理</button>
+    </div>
+
+    <section class="bg-white rounded-2xl p-5 shadow-sm mb-5">
+      <h2 class="font-black text-lg mb-1">① Scratch 星星找不到批改紀錄 <span class="text-slate-400 text-sm font-bold">${state.subErr ? '' : sc.length + ' 筆'}</span></h2>
+      <p class="text-xs text-slate-400 mb-3 leading-relaxed">
+        星星是學生的瀏覽器寫的；批改紀錄是後端寫的，學生寫不進去。每一顆星都應該有一筆分數夠的批改紀錄。<br>
+        ⚠️ 也可能是：後端當時寫紀錄失敗、或你在教師端手動改過星星。先打開學生的作品看一下再決定。</p>
+      ${scratchBody}
+    </section>
+
+    <section class="bg-white rounded-2xl p-5 shadow-sm">
+      <h2 class="font-black text-lg mb-1">② 章節測驗 <span class="text-slate-400 text-sm font-bold">${qz.length} 筆</span></h2>
+      <p class="text-xs text-slate-400 mb-3 leading-relaxed">
+        測驗畫面通關時一定會一起記下耗時和每題秒數；沒有這些的，是繞過測驗畫面直接寫進去的。<br>
+        「每一題都在 1 秒內」看的是<b>最慢那一題</b> —— 人一定有卡住的題目，腳本每題一樣快，所以不會誤傷手速快的學生。</p>
+      ${quizBody}
+    </section>
+
+    ${verBox()}`;
+}
+
+render();
+</script>
+</body>
+</html>

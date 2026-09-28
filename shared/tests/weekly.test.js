@@ -115,7 +115,12 @@ function boot() {
        '流程圖：只有第一次排對才寫 history');
 
     const t = code('11501/thinking.html');
-    ok(/if \(!completedChallenges\.includes\(challengeId\)\)[\s\S]{0,4000}history: fbStore\.arrayUnion/.test(t),
+    /* ⚠️ 2026-09-27 更新：2026-09-2x 修「重整後證書不見」時，判斷改讀
+       completedRef.current（同步更新，避免用到過期的 state），寫法變成
+       `_cur.map(Number).includes(Number(challengeId))`。
+       這一條斷言還釘著舊的變數名，於是**那次提交之後就一直是紅的**。
+       語意沒變（只有第一次通關才寫 history），所以斷言認新的寫法。 */
+    ok(/const _cur = completedRef\.current[\s\S]{0,200}if \(!_cur\.map\(Number\)\.includes\(Number\(challengeId\)\)\)[\s\S]{0,4000}history: fbStore\.arrayUnion/.test(t),
        '運算思維：只有第一次通關才寫 history');
 
     const r = code('shared/report.js');

@@ -243,11 +243,16 @@ section('★★ 教師端的異常標記');
 {
   ['11501', '11502'].forEach(term => {
     const h = read(term + '/teacher.html');
-    ok(/p\.max\s*!=\s*null\s*&&\s*p\.max\s*<=\s*1/.test(h),
+    /* ★ 2026-09-27：判斷本體搬到 shared/audit.js（AUDIT.isRobotPace），
+       「🔍 可疑紀錄」頁和學生面板共用一份。斷言跟著改成「教師端用它」＋
+       「它本身的條件」—— 要檢查的事情沒變，只是換了住址。 */
+    const A = read('shared/audit.js');
+    ok(/AUDIT\.isRobotPace\(p\)/.test(h) &&
+       /p\.max\s*!=\s*null\s*&&\s*Number\(p\.max\)\s*<=\s*1/.test(A),
        term + ' ★★ 標紅條件看的是「最慢那一題也在 1 秒內」，不是平均很快');
-    ok(/p\.max\s*!=\s*null/.test(h),
+    ok(/p\.max\s*!=\s*null/.test(A),
        term + ' ★★★ 舊紀錄沒有 max 時不可以標紅 —— 寧可漏掉，不可以冤枉人');
-    ok(/\(p\.n\s*\|\|\s*0\)\s*>=\s*5/.test(h),
+    ok(/\(Number\(p\.n\)\s*\|\|\s*0\)\s*>=\s*5/.test(A),
        term + ' ★ 題數太少不標（連對三題就結束的沒有統計意義）');
     ok(/最慢\s*\$\{p\.max\}s/.test(h),
        term + ' ★★ 畫面上要印出最慢秒數 —— 只標紅不給數字，老師無從判斷');

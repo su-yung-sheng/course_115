@@ -562,7 +562,7 @@ function reset(){
 }
 </script>
 
-<!-- ⭐ 成績回報：把 AI 批改分數換算成星星，寫入統一進度 11501-progress -->
+<!-- ⭐ 成績回報：把 AI 批改分數換算成星星，寫入統一進度 {學期}-progress（集合名來自 config.js） -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
   import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -594,7 +594,12 @@ function reset(){
   window.reportScratch = async function (sid, unit, score) {
     if (!sid || !unit || !window.GRADING) return null;
     const star = window.GRADING.scratchStar(score);
-    const ref = doc(db, '11501-progress', sid);
+    /* ⛔⛔ 2026-09-27：這裡原本寫死 '11501-progress'。
+       而 11502 的 level.html 嵌的也是這一支（?term=11502）——
+       下學期學生的星星會寫進上學期的集合，規則又在春季學期擋掉 11501 的寫入
+       （beforeSpring），結果是**下學期一顆 Scratch 星星都記不進去**，
+       而且只有主控台一行紅字。⇒ 集合名一律從 config.js 來。 */
+    const ref = doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid);
     let unitStars = {}, unitScores = {};
     try {
       const snap = await getDoc(ref);
@@ -669,7 +674,8 @@ function reset(){
   window.saveWorkLink = async function (sid, unit, url) {
     if (!sid || !unit || !url) return;
     try {
-      await setDoc(doc(db, '11501-progress', sid), {
+      // 集合名從 config.js 來（理由見上面 reportScratch 那一段：原本寫死 11501）
+      await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid), {
         modules: { scratch: { unitFiles: { [unit]: url }, updatedAt: Date.now() } },
         updatedAt: Date.now()
       }, { merge: true });
