@@ -317,9 +317,19 @@ section('★★ 卡片 ②：付費備援有沒有設要看得見');
      '★★ 確定沒設時整張卡要降成 warn，不可以只是多一行灰字');
   /* ⚠️ 順序：沒有備援是「未來會出事」，模型退回預設值是「現在就在出事」。
      現在就在出事的要排前面，不可以被這一條蓋掉。 */
-  ok(CODE.indexOf("ANTHROPIC_API_KEY === false") < CODE.indexOf("model && health.model_is_default"),
-     '★★★ 「沒有備援」要排在「模型退回預設值」前面 —— '
+  ok(CODE.indexOf("ANTHROPIC_API_KEY === false") < CODE.indexOf("model && src === 'unread'"),
+     '★★★ 「沒有備援」要排在「模型設定沒生效」前面 —— '
      + '兩者都成立時先講哪一個？現在就在出事的那個');
+  /* ⛔ 2026-09-28 老師問「『模型退回預設值了』什麼時候有這個訊息？」——
+     原本拿「目前的模型 == 寫死的預設值」判斷，老師刻意用預設的 flash 當主力之後，
+     一切正常時也每次都亮黃燈。 */
+  const code2 = CODE.replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/model_is_default/.test(code2),
+     '★★★ 不可以再拿「是不是預設值」判斷 —— 老師刻意選預設值時會一直誤報');
+  ok(/src === 'unread'/.test(code2) && /health\.model_source/.test(code2),
+     '★★★ 只在「真的沒讀到教師端設定」（model_source === unread）時才亮黃燈');
+  ok(/'default':\s*'<span class="text-slate-400">/.test(code2),
+     '★★ 用預設值、教師端沒另外指定 ⇒ 只是灰字說明，不是警示');
 }
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);

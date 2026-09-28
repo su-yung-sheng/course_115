@@ -593,11 +593,21 @@ if (!window.CONFIG) {
           ? '<span class="text-emerald-600">已設定 —— 免費額度用完時會自動接手</span>'
           : '<span class="text-amber-600">未設定 —— 免費層撞牆時這節課就停了</span>'));
 
+    /* ⛔ 2026-09-28 老師問「『模型退回預設值了』什麼時候有這個訊息？」——
+       原本拿「目前的模型 == 寫死的預設值」判斷。那是 8 月寫的（當時主力是 gemma），
+       9 月起老師刻意用預設的 flash 當主力，於是一切正常時也每次都亮黃燈。
+       ⇒ 改看後端回報的 model_source：老師存的那一個**有沒有生效**。
+         teacher（教師端設定）／default（沒另外指定）／unread（沒讀到設定）／local */
     var model = health.model_name || '';
+    var src = health.model_source;
+    var SRC_LABEL = {
+      teacher: '<span class="text-slate-400">（教師端設定）</span>',
+      'default': '<span class="text-slate-400">（預設值，教師端沒有另外指定）</span>',
+      local: '<span class="text-slate-400">（本機設定）</span>',
+      unread: '<span class="text-red-600">（讀不到教師端的設定，暫時用這個）</span>'
+    };
     d += row('批改模型', model
-      ? (health.model_is_default
-          ? '<span class="text-red-600"><b>' + esc(model) + '</b>（這是預設值）</span>'
-          : '<span class="font-mono">' + esc(model) + '</span>')
+      ? '<span class="font-mono">' + esc(model) + '</span>' + (SRC_LABEL[src] || '')
       : '<span class="text-slate-400">後端沒回報（版本較舊）</span>');
 
     if (n === 0) {
@@ -615,12 +625,13 @@ if (!window.CONFIG) {
         + '每日額度用完）就沒有東西接手，整節課的批改會停擺。'
         + '在 Colab Secrets 新增 <span class="font-mono">ANTHROPIC_API_KEY</span> '
         + '就會自動當備援 —— 平常不會用到，也就不會計費。</div>');
-    } else if (model && health.model_is_default) {
-      /* ⚠️ 這是最容易被忽略的一種壞法：什麼都沒報錯，只是模型變回預設的。 */
-      set(el, 'warn', '模型退回預設值了', d +
-          '<div class="mt-2 text-amber-700">執行設定存在 Colab 本機，執行階段被回收就會清空。'
-        + '如果你平常用的不是 <span class="font-mono">' + esc(model) + '</span>，'
-        + '請到教師端主介面重設一次模型（新版後端會同步存進 Firestore，之後就記得住）。</div>');
+    } else if (model && src === 'unread') {
+      /* ⚠️ 這是最容易被忽略的一種壞法：什麼都沒報錯，只是你存的模型沒有生效。
+         ★ 只在「真的沒讀到你的設定」時才亮 —— 你刻意選預設的 flash 不是問題。 */
+      set(el, 'warn', '教師端的模型設定沒有生效', d +
+          '<div class="mt-2 text-amber-700">後端這次沒讀到你在教師端存的設定，'
+        + '所以暫時用 <span class="font-mono">' + esc(model) + '</span> 批改。'
+        + '通常是服務帳戶沒生效 —— 看下面「批改標準」那張卡的說明。</div>');
     } else if (n === 1) {
       set(el, 'warn', '只有 1 組', d + '<div class="mt-2 text-amber-700">全班同時上傳可能撞到每分鐘上限，建議再加第二組（<b>要不同 Google 專案</b>才有獨立額度）。</div>');
     } else {

@@ -2092,8 +2092,15 @@ ok('model_name' in _lc,
    '漏掉的話兩邊都顯示成功，而批改用的是別的模型（2026-09-05 的實際災情）')
 ok('"model_name": _model_now()' in _srv7,
    '★★ /api/health 要回報實際使用的模型')
-ok('model_is_default' in _srv7 and 'model_is_default' in _st,
-   '★★★ 退回預設模型要看得出來 —— 這種壞法什麼都不會報錯')
+# ⛔ 2026-09-28：原本是 model_is_default（「== 寫死的預設值」）。老師刻意用預設的
+#    flash 當主力之後，它在一切正常時也每次都亮黃燈 —— 改成回報「從哪裡來」。
+ok('"model_source": core.model_source()' in _srv7 and "model_source" in _st,
+   '★★★ 教師端存的模型有沒有生效要看得出來 —— 這種壞法什麼都不會報錯')
+_srv7_code = "\n".join(l for l in _srv7.split("\n") if not l.strip().startswith("#"))
+ok('"model_is_default"' not in _srv7_code,
+   '★★★ 不可以再拿「目前的模型 == 寫死的預設值」判斷 —— 老師刻意選預設值時會一直誤報')
+ok(_srv7.index('"model_name": _model_now()') < _srv7.index('"model_source": core.model_source()'),
+   '★★ model_source 要排在 model_name 後面：dict 由左到右求值，load_config 先跑來源才會更新')
 ok('core.load_config' in _srv7[_srv7.index('def _model_now'):][:600],
    '★★ _model_now 要走 load_config，直接讀 DEFAULT_CONFIG 會永遠回預設值')
 

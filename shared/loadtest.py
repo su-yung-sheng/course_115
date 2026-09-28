@@ -331,8 +331,8 @@ def main():
     #   Flash 快得多）。不印出來的話，兩次測試的數字沒辦法互相比較。
     print("   批改模型 %s%s｜%s"
           % (h.get("model_name"),
-             "（⚠️ 是預設值，代表 Colab 重開後沒吃到教師端設定）"
-             if h.get("model_is_default") else "",
+             "（⚠️ 讀不到教師端的模型設定，暫時用這個）"
+             if h.get("model_source") == "unread" else "",
              "有金鑰" if h.get("has_api_key") else "⛔ 沒有 Gemini 金鑰"))
     if h.get("keys_identical"):
         print("   ⚠️ 兩把金鑰字串一模一樣 —— 等於只有一把，輪替不會生效。")
