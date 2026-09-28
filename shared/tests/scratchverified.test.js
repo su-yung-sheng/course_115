@@ -40,5 +40,28 @@ ok(/window\.reportScratch = async function/.test(G) && /unitStars\[unit\] = Math
    '★★ 前端照舊寫 modules.scratch —— 第 ①步不可以動到正在運作的那一條路');
 ok(/rep\.star >= 2 && rep\.scoreImproved/.test(G), '★★ 作品備份的條件照舊');
 
+section('④ 規則：學生不可以改 scratchVerified（第 ④步）');
+const R = fs.readFileSync(path.join(ROOT, 'shared', 'firestore.rules'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+ok(/function verifiedEmpty\(\)\s*\{\s*return !\('scratchVerified' in request\.resource\.data\);/.test(R),
+   '★★★ 建立文件時不可以夾帶 scratchVerified');
+ok(/function verifiedUnchanged\(\)[\s\S]{0,200}request\.resource\.data\.get\('scratchVerified', null\)\s*==\s*resource\.data\.get\('scratchVerified', null\)/.test(R),
+   '★★★ 更新文件時 scratchVerified 前後必須一模一樣');
+for (const term of ['11501', '11502']) {
+  const blk = (R.match(new RegExp('match /' + term + '-progress/\\{sid\\} \\{[\\s\\S]*?\\n    \\}')) || [''])[0];
+  ok(/allow create:[\s\S]*?isOwner\(sid\)[^;]*verifiedEmpty\(\)/.test(blk), `★★★ ${term} 學生建立進度時要檢查 verifiedEmpty`);
+  ok(/allow update:[\s\S]*?isOwner\(sid\)[^;]*verifiedUnchanged\(\)/.test(blk), `★★★ ${term} 學生更新進度時要檢查 verifiedUnchanged`);
+}
+
+section('⑤ 可疑紀錄頁：重建按鈕先試算、頁面本身不寫 Firestore');
+const A = fs.readFileSync(path.join(ROOT, 'shared', 'audit.html'), 'utf8');
+const ac = A.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
+ok(/\/api\/teacher\/rebuild-scratch-verified/.test(ac), '★★ 有重建按鈕，打後端的重建端點');
+ok(/auditRebuild\(true\)/.test(ac) && /試算（不寫入）/.test(ac), '★★★ 第一顆按鈕是試算');
+ok(/j\.dry_run \? `<button onclick="auditRebuild\(false\)"/.test(ac),
+   '★★★ 「寫入」只在試算之後才出現 —— 沒看過差異就不能寫');
+ok(/confirm\(/.test(ac), '★★ 寫入前要再確認一次');
+ok(!/\b(setDoc|updateDoc|deleteDoc|addDoc|writeBatch)\b/.test(ac), '★★★ 頁面本身還是不寫 Firestore（寫的是後端）');
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

@@ -4,8 +4,8 @@ rules_version = '2';
 //  Firestore 安全規則 — 專案 suyungsheng-5f948
 //  涵蓋：115 學年【上學期 11501】＋【下學期 11502】
 //  貼上位置：Firebase Console → Firestore Database → 規則 → 發佈
-//  規則本體最後更新：2026-09-22
-//  規則本體指紋：1e863d30　（170 行，不含註解）
+//  規則本體最後更新：2026-09-28
+//  規則本體指紋：765e7ff6　（177 行，不含註解）
 //
 //  ★ 怎麼確認「線上跑的是不是這一份」
 //    Firebase Console 的規則第一段也看得到上面兩行。比對**指紋**就好。
@@ -261,6 +261,23 @@ service cloud.firestore {
           && vidReviewOf(request.resource.data) == vidReviewOf(resource.data);
     }
 
+    /* ── 後端確認過的 Scratch 星星（scratchVerified）──────────────
+       ★ 2026-09-28（Scratch 星星切換第 ④步）：這一格只有後端寫
+         （Colab 用服務帳戶，不受規則限制）。學生的瀏覽器從來不寫它，
+         所以這條規則發布了也不會擋到任何正常的操作。
+       ⚠️ 為什麼放在頂層、不放在 modules.scratch 裡：
+         report.js 每次會把整份 modules 寫回去，鎖在裡面的話，
+         學生做測驗剛好碰上後端更新星星，整筆測驗成績都會被擋掉。 */
+    /** 建立文件時：學生不可以自己帶 scratchVerified 進來 */
+    function verifiedEmpty() {
+      return !('scratchVerified' in request.resource.data);
+    }
+    /** 更新文件時：scratchVerified 前後必須一模一樣 */
+    function verifiedUnchanged() {
+      return request.resource.data.get('scratchVerified', null)
+          == resource.data.get('scratchVerified', null);
+    }
+
     // ###################################################################
     // ##  A. 跨學期共用
     // ###################################################################
@@ -374,10 +391,10 @@ service cloud.firestore {
          兩條都要通過學期鎖；老師與測試帳號不受限。
          全面切換到 Google 之後，把 ② 整段刪掉，防呆條件也可以一起拿掉。 */
       allow create: if isTeacher()
-                    || (isOwner(sid) && inRoster(sid) && bonusEmpty()
+                    || (isOwner(sid) && inRoster(sid) && bonusEmpty() && verifiedEmpty()
                         && (beforeSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
-                    || (isOwner(sid) && inRoster(sid) && bonusUnchanged()
+                    || (isOwner(sid) && inRoster(sid) && bonusUnchanged() && verifiedUnchanged()
                         && (beforeSpring() || isTestAccount(sid)));
 
       allow delete: if isTeacher();        // ❌ 避免有人清掉別人的成績
@@ -427,10 +444,10 @@ service cloud.firestore {
            ② 舊的匿名登入（動作幅度防呆）
          全面切換到 Google 之後，把 ② 整段刪掉。 */
       allow create: if isTeacher()
-                    || (isOwner(sid) && inRoster(sid) && bonusEmpty()
+                    || (isOwner(sid) && inRoster(sid) && bonusEmpty() && verifiedEmpty()
                         && (afterSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
-                    || (isOwner(sid) && inRoster(sid) && bonusUnchanged()
+                    || (isOwner(sid) && inRoster(sid) && bonusUnchanged() && verifiedUnchanged()
                         && (afterSpring() || isTestAccount(sid)));
 
       allow delete: if isTeacher();

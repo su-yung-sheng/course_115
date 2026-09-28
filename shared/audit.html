@@ -39,7 +39,7 @@
     <p class="text-slate-500 text-sm mt-2 leading-relaxed">
       把「學生的瀏覽器寫進來的成績」和「只有系統寫得進去的紀錄」對一遍，對不上的列在這裡。<br>
       <b class="text-slate-700">這是提醒你去看，不是判定。</b>
-      系統不會因為這一頁擋任何人、也不會改任何資料。<br>
+      系統不會因為這一頁擋任何人；除了最下面「重建後端星星」那顆按鈕，這一頁不會改任何資料。<br>
       <span class="text-slate-300 text-[11px]">版本 <span id="ver" class="font-mono"></span></span>
     </p>
   </header>
@@ -75,7 +75,8 @@ const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({'&':'&amp;
 { const v = el('ver'); if (v) v.textContent = (window.AUDIT && AUDIT.VERSION) || '（audit.js 沒載到）'; }
 
 const state = { who: null, busy: '', msg: '', subErr: '',
-                roster: {}, progress: {}, subs: [], scratch: [], quiz: [], ver: null };
+                roster: {}, progress: {}, subs: [], scratch: [], quiz: [], ver: null,
+                rb: { busy: '', res: null, err: '' } };
 
 /* 登入：只有老師（理由見 review.html 的同一段） */
 function isTeacher(u) {
@@ -187,6 +188,60 @@ function verBox() {
       ${body}</section>`;
 }
 
+/* ── 重建後端星星（Scratch 星星切換的第 ②步）─────────────────
+   ★ 後端星星（scratchVerified）是從上線那一刻才開始記的。這顆按鈕請後端
+     拿開學以來的**批改紀錄**照時間重播一次，補齊整學期。
+   ⚠️ 這一頁本身還是不寫 Firestore —— 寫的是後端（它有服務帳戶），
+      而且重建的結果只根據後端自己的批改紀錄，按幾次都一樣。 */
+async function rebuild(dry) {
+  const url = (C.SERVER_URL || '').replace(/\/+$/, '');
+  if (!url) { state.rb.err = 'config.js 沒有 SERVER_URL'; render(); return; }
+  if (!dry && !confirm('要把後端星星改成「從批改紀錄重建」的版本嗎？\n（學生頁面上的星星這一步不會變。）')) return;
+  state.rb.busy = dry ? '試算中…（要把整學期的批改紀錄讀一遍，約十幾秒）' : '寫入中…';
+  state.rb.err = ''; render();
+  try {
+    const r = await fetch(url + '/api/teacher/rebuild-scratch-verified', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' },
+      body: JSON.stringify({ term: TERM, dry: dry ? 1 : 0 }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    state.rb.res = j;
+    if (!dry) await loadAll();       // 寫完重讀，③ 那一區才會是新的
+  } catch (e) {
+    state.rb.err = (e && e.message) || String(e);
+  }
+  state.rb.busy = ''; render();
+}
+window.auditRebuild = rebuild;
+
+function rebuildBox() {
+  const rb = state.rb, j = rb.res;
+  let body = '';
+  if (rb.busy) body = `<p class="text-slate-500 text-sm">${esc(rb.busy)}</p>`;
+  else if (rb.err) body = `<p class="text-rose-600 text-sm">沒有成功：${esc(rb.err)}<br><span class="text-slate-400">後端要開著（Colab 步驟 4），而且要是有這個功能的新版。</span></p>`;
+  else if (j) {
+    const diffs = (j.diffs || []).slice().sort(bySeat);
+    const head = j.dry_run
+      ? `試算結果：${j.students} 位學生、${j.gradings} 次批改、共 ${j.stars}⭐（還沒寫入）`
+      : `已寫入 ${j.written} 位學生${(j.conflicts || []).length ? `；${j.conflicts.length} 位剛好在批改中沒寫到，稍後再按一次` : ''}`;
+    body = `<p class="text-sm font-bold mb-2">${esc(head)}</p>` + (diffs.length
+      ? `<p class="text-xs text-slate-500 mb-2">下面這幾關，學生頁面上的星星和「只根據後端批改紀錄」算出來的不一樣：</p>
+         <div class="overflow-x-auto"><table class="w-full text-sm"><tbody>${diffs.map(f => row(f.sid,
+           `<td class="px-3 py-2 whitespace-nowrap">${esc(f.unit)}</td><td class="px-3 py-2 whitespace-nowrap">學生頁面 ${f.front}⭐／批改紀錄 ${f.back}⭐</td>`,
+           f.front > f.back ? '學生頁面比較多：找不到夠分的批改紀錄' : '批改紀錄比較多：學生頁面那一次沒寫進去')).join('')}</tbody></table></div>`
+      : `<p class="text-emerald-700 text-sm">✅ 每一位學生、每一關，兩邊的星星都一樣。</p>`)
+      + (j.dry_run ? `<button onclick="auditRebuild(false)" class="mt-3 px-4 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 text-sm">寫入後端星星</button>` : '');
+  }
+  return `<section class="bg-white rounded-2xl p-5 shadow-sm mt-5">
+      <h2 class="font-black text-lg mb-1">④ 重建後端星星 <span class="text-slate-400 text-sm font-bold">切換第 ②步</span></h2>
+      <p class="text-xs text-slate-400 mb-3 leading-relaxed">
+        後端星星是從這次更新才開始記的。這裡請後端拿<b>開學以來的批改紀錄</b>照時間重算一次，補齊整學期。<br>
+        先按「試算」看看兩邊哪裡不一樣；確認沒問題再寫入。<b>學生頁面上的星星這一步不會變。</b></p>
+      ${body}
+      ${(!rb.busy && !(j && j.dry_run)) ? `<button onclick="auditRebuild(true)" class="px-4 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 text-sm">試算（不寫入）</button>` : ''}
+    </section>`;
+}
+
 function render() {
   const app = el('app');
   if (!state.who) {
@@ -250,7 +305,8 @@ function render() {
       ${quizBody}
     </section>
 
-    ${verBox()}`;
+    ${verBox()}
+    ${rebuildBox()}`;
 }
 
 render();
