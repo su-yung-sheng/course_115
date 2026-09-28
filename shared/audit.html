@@ -198,17 +198,34 @@ async function rebuild(dry) {
   if (!url) { state.rb.err = 'config.js 沒有 SERVER_URL'; render(); return; }
   if (!dry && !confirm('要把後端星星改成「從批改紀錄重建」的版本嗎？\n（學生頁面上的星星這一步不會變。）')) return;
   state.rb.busy = dry ? '試算中…（要把整學期的批改紀錄讀一遍，約十幾秒）' : '寫入中…';
-  state.rb.err = ''; render();
+  state.rb.err = ''; state.rb.limited = false; render();
+  /* ⛔ 2026-09-28 老師實際按到的：「試算」→「寫入」→「太頻繁了，3 秒後再試」。
+     後端的限流是從**上一次請求開始**算 15 秒，而試算本身就要跑十幾秒 ——
+     看完結果馬上按寫入，剛好卡在限流裡。這是正常流程，不是老師按太快。
+     ⇒ 被限流（429）就照後端說的秒數**自己等、自己重試**，不要丟給老師。 */
   try {
-    const r = await fetch(url + '/api/teacher/rebuild-scratch-verified', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' },
-      body: JSON.stringify({ term: TERM, dry: dry ? 1 : 0 }) });
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    let j = null, r = null;
+    for (let tries = 0; tries < 4; tries++) {
+      r = await fetch(url + '/api/teacher/rebuild-scratch-verified', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' },
+        body: JSON.stringify({ term: TERM, dry: dry ? 1 : 0 }) });
+      j = await r.json();
+      if (r.status !== 429) break;
+      const sec = Number(((j && j.error) || '').match(/(\d+)\s*秒/)?.[1]) || 5;
+      state.rb.busy = `後端要求兩次之間隔一下，${sec} 秒後自動再試…`; render();
+      await new Promise(ok => setTimeout(ok, (sec + 1) * 1000));
+      state.rb.busy = dry ? '試算中…' : '寫入中…'; render();
+    }
+    if (!j || !j.ok) {
+      const e = new Error((j && j.error) || ('HTTP ' + (r && r.status)));
+      e.limited = r && r.status === 429;
+      throw e;
+    }
     state.rb.res = j;
     if (!dry) await loadAll();       // 寫完重讀，③ 那一區才會是新的
   } catch (e) {
     state.rb.err = (e && e.message) || String(e);
+    state.rb.limited = !!(e && e.limited);
   }
   state.rb.busy = ''; render();
 }
@@ -218,7 +235,16 @@ function rebuildBox() {
   const rb = state.rb, j = rb.res;
   let body = '';
   if (rb.busy) body = `<p class="text-slate-500 text-sm">${esc(rb.busy)}</p>`;
-  else if (rb.err) body = `<p class="text-rose-600 text-sm">沒有成功：${esc(rb.err)}<br><span class="text-slate-400">後端要開著（Colab 步驟 4），而且要是有這個功能的新版。</span></p>`;
+  /* ⚠️ 失敗時**不可以把按鈕收掉**：第一版出錯之後畫面上一顆按鈕都沒有，
+     老師只能重新整理整頁才能再試一次。
+     ⚠️ 「後端要開著、要新版」那句只在真的連不上時才講 ——
+        被限流的時候講這句會讓人以為後端壞了。 */
+  else if (rb.err) body = `<p class="text-rose-600 text-sm">沒有成功：${esc(rb.err)}${rb.limited ? '' :
+      '<br><span class="text-slate-400">後端要開著（Colab 步驟 4），而且要是有這個功能的新版。</span>'}</p>
+      <div class="mt-3 flex gap-2">
+        <button onclick="auditRebuild(true)" class="px-4 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 text-sm">重新試算</button>
+        ${j && j.dry_run ? `<button onclick="auditRebuild(false)" class="px-4 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-700 text-sm">再寫入一次</button>` : ''}
+      </div>`;
   else if (j) {
     const diffs = (j.diffs || []).slice().sort(bySeat);
     const head = j.dry_run
@@ -238,7 +264,7 @@ function rebuildBox() {
         後端星星是從這次更新才開始記的。這裡請後端拿<b>開學以來的批改紀錄</b>照時間重算一次，補齊整學期。<br>
         先按「試算」看看兩邊哪裡不一樣；確認沒問題再寫入。<b>學生頁面上的星星這一步不會變。</b></p>
       ${body}
-      ${(!rb.busy && !(j && j.dry_run)) ? `<button onclick="auditRebuild(true)" class="px-4 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 text-sm">試算（不寫入）</button>` : ''}
+      ${(!rb.busy && !rb.err && !(j && j.dry_run)) ? `<button onclick="auditRebuild(true)" class="px-4 py-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 hover:bg-slate-50 text-sm">試算（不寫入）</button>` : ''}
     </section>`;
 }
 

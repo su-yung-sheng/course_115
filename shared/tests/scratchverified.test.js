@@ -63,5 +63,15 @@ ok(/j\.dry_run \? `<button onclick="auditRebuild\(false\)"/.test(ac),
 ok(/confirm\(/.test(ac), '★★ 寫入前要再確認一次');
 ok(!/\b(setDoc|updateDoc|deleteDoc|addDoc|writeBatch)\b/.test(ac), '★★★ 頁面本身還是不寫 Firestore（寫的是後端）');
 
+section('⑥ 被限流時自己等、出錯時按鈕還在（2026-09-28 老師實際卡住的）');
+ok(/r\.status !== 429/.test(ac) && /setTimeout\(ok, \(sec \+ 1\) \* 1000\)/.test(ac),
+   '★★★ 429 要照後端說的秒數自己等再試 ——「試算→寫入」是正常流程，不可以丟給老師重按');
+ok(/tries < 4/.test(ac), '★★ 自動重試要有上限');
+const errBranch = (ac.match(/else if \(rb\.err\) body = [\s\S]*?<\/div>`;/) || [''])[0];
+ok(/auditRebuild\(true\)/.test(errBranch) && /auditRebuild\(false\)/.test(errBranch),
+   '★★★ 出錯之後畫面上還要有「重新試算」「再寫入一次」—— 第一版出錯後一顆按鈕都沒有，只能重新整理');
+ok(/rb\.limited \? ''/.test(errBranch),
+   '★★ 被限流時不要說「後端要開著、要新版」—— 那會讓人以為後端壞了');
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
