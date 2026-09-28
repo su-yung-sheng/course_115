@@ -94,7 +94,7 @@ window.CONFIG = {
   //   true ：後端批改完順便寫（學生改不到的那一份為準），學生頁面不再寫；
   //          每週評分、成長曲線的 Scratch 得星改用後端的紀錄。
   //   ⚠️ 打開之前：先在「🔍 可疑紀錄」④ 用「套用到學生頁面」重建一次。
-  SCRATCH_TRUST_BACKEND: false,
+  SCRATCH_TRUST_BACKEND: true,
 
   COLLECTIONS: {
     PROGRESS: '11502-progress',
