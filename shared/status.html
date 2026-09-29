@@ -70,9 +70,14 @@ if (!window.CONFIG) {
 </head>
 <body class="min-h-screen text-slate-800">
 
-<a id="back-to-hub" href="#" data-hub title="返回闖關基地"
+<!-- ⚠️ 2026-09-29 老師：「教師端的操作頁面『← 返回基地』會回到學生登入端，
+     所有管理功能頁面都是回到管理主頁才對」。
+     這一頁只從教師端「🩺 狀態檢查」（和總入口頁尾）進來，是管理工具，
+     返回鍵要回 {學期}/teacher.html，不是學生的闖關基地。
+     （其他管理頁 audit／review／qstat／gradestats 本來就是「← 回教師端」。） -->
+<a id="back-teacher" href="#" data-teacher title="回教師端"
    class="fixed top-4 left-4 z-50 inline-flex items-center gap-1.5 bg-slate-800 text-white
-          font-bold text-sm px-3.5 py-2 rounded-full shadow-lg hover:bg-slate-700 transition">← 返回基地</a>
+          font-bold text-sm px-3.5 py-2 rounded-full shadow-lg hover:bg-slate-700 transition">← 回教師端</a>
 
 <main class="max-w-4xl mx-auto px-4 pt-20 pb-16">
 
@@ -1139,19 +1144,18 @@ if (!window.CONFIG) {
 
   // 嵌入 iframe 時隱藏返回鍵
   if (window.self !== window.top) {
-    var b = document.getElementById('back-to-hub');
+    var b = document.getElementById('back-teacher');
     if (b) b.style.display = 'none';
   }
 })();
 </script>
 <script>
-/* 頁面檔名還帶學期前綴，返回鈕的目標一律從 config 取，不寫死 */
+/* 返回鈕回「這一學期的教師端」。學期從 config 取，不寫死；
+   取不到設定時退回總入口（那裡有上下學期教師端的連結）。 */
 (function(){
-  // 本頁在 shared/ 底下，HUB_PAGE 是學期資料夾內的相對檔名，要補上學期資料夾；
-  // 取不到設定時退回總入口，不要指向不存在的 hub.html
   var t = (window.CONFIG && CONFIG.TERM) || '';
-  var h = (t && window.CONFIG.HUB_PAGE) ? ('../' + t + '/' + CONFIG.HUB_PAGE) : '../index.html';
-  document.querySelectorAll('[data-hub]').forEach(function(a){ a.setAttribute('href', h); });
+  var h = t ? ('../' + t + '/teacher.html') : '../index.html';
+  document.querySelectorAll('[data-teacher]').forEach(function(a){ a.setAttribute('href', h); });
 })();
 </script>
 </body>
