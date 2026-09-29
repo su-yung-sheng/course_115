@@ -448,8 +448,18 @@ async function grade(){
          後端沒寫成功（沒有 verified）時照舊自己記 —— 規則鎖上之後那一筆會被擋，
          畫面會顯示「星星記錄失敗」，學生重交一次就好。 */
       const _v = j.result && j.result.verified;
-      const rep = (window.GRADING && GRADING.trustBackendScratch() && _v && _v.mirrored)
-        ? _v : await window.reportScratch(sid, UNIT, j.result.score);
+      const _trust = !!(window.GRADING && GRADING.trustBackendScratch());
+      /* ⛔ 2026-09-29（切換第 ④步）：規則鎖上之後，學生頁面**寫不動**星星欄位了。
+         開關打開、後端這次卻沒寫成功時，再自己寫一次只會換來一行 permission-denied
+         和一句含糊的「星星記錄失敗」。⇒ 直接講清楚：分數有效，重交一次就會補記。
+         （後端重交時會讀到上一次的紀錄一起算，不會吃虧。） */
+      if (_trust && !(_v && _v.mirrored)) {
+        setStatus('⚠️ 分數出來了，但這一次星星沒記到（批改伺服器寫入失敗，不是你的作品有問題）。'
+          + '請再上傳一次同一個檔案，就會補記。', 'err');
+        $('gradeBtn').disabled = false;
+      }
+      const rep = _trust ? ((_v && _v.mirrored) ? _v : null)
+        : await window.reportScratch(sid, UNIT, j.result.score);
       if(rep){
         if(rep.star === 0 && rep.prev === 0){
           setStatus('⚠️ 未達 75 分，這一關還沒通關（至少要 2 星）。看看下面的建議修改後，再上傳一次！','err');

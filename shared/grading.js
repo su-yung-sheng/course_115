@@ -297,13 +297,20 @@ window.GRADING = {
        開學那幾週的 Scratch 得星只在 history 裡。整批丟掉會讓前幾週的
        每週分數**憑空變少**。⇒ 學生頁面寫的留著，後端只補「更晚」的那幾筆。
        ★ 重建過 ⇒ 後端從開學算起都有，學生頁面寫的一筆都不用。 */
+    /* ⛔⛔ 2026-09-29 修：只換掉「作品星」那幾筆（grader.html 寫的，沒有 kind）。
+       history 裡 module 是 scratch 的還有兩種，**都不是後端管的**，一筆都不能丟：
+         kind:'bonus' —— 老師在 review.html 審核通過的繳交加分
+         kind:'quiz'  —— 11502 level.html 的概念星
+       第一版把 module==='scratch' 整批丟掉，開關打開那天起這兩種就從每週分數消失了
+       （這一份是現算的、沒有存，修好就全部回來）。 */
+    var isWork = function (h) { return !!h && h.module === 'scratch' && !h.kind; };
     var others, cut = 0;
     if (sv.rebuiltAt) {
-      others = hist.filter(function (h) { return !h || h.module !== 'scratch'; });
+      others = hist.filter(function (h) { return !isWork(h); });
     } else {
       others = hist.slice();
       hist.forEach(function (h) {
-        if (h && h.module === 'scratch' && Number(h.at) > cut) cut = Number(h.at);
+        if (isWork(h) && Number(h.at) > cut) cut = Number(h.at);
       });
       gains = gains.filter(function (g) { return (Number(g && g.at) || 0) > cut; });
     }

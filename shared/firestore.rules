@@ -4,8 +4,8 @@ rules_version = '2';
 //  Firestore 安全規則 — 專案 suyungsheng-5f948
 //  涵蓋：115 學年【上學期 11501】＋【下學期 11502】
 //  貼上位置：Firebase Console → Firestore Database → 規則 → 發佈
-//  規則本體最後更新：2026-09-28
-//  規則本體指紋：f804835b　（173 行，不含註解）
+//  規則本體最後更新：2026-09-29
+//  規則本體指紋：00b75eaf　（184 行，不含註解）
 //
 //  ★ 怎麼確認「線上跑的是不是這一份」
 //    Firebase Console 的規則第一段也看得到上面兩行。比對**指紋**就好。
@@ -82,6 +82,10 @@ rules_version = '2';
 //    老師 = 學校 Google 帳號 suyungsheng@mail.qfm.kh.edu.tw（白名單）
 //    學生 = 學校 Google 帳號 qfm{學號}@mail.qfm.kh.edu.tw
 //           （舊的匿名登入＋驗證碼只在 config/auth 開關打開時有效）
+//
+//    ⑫ 2026-09-29：Scratch 星星切換第 ④步 —— 學生不能再改 modules.scratch 的
+//       unitStars／unitScores／stars／level／status（scratchStarsEmpty／Unchanged），
+//       只剩後端與老師寫得動。⚠️ 前提：兩份 config.js 的 SCRATCH_TRUST_BACKEND 已是 true。
 //
 //    ⑪ 2026-09-28：運算思維的兩個舊集合（artifacts/…/progress、progress_sem2）
 //       原本任何登入者都能改任何人的文件。改成只能寫「名冊上自己的
@@ -285,6 +289,33 @@ service cloud.firestore {
       return request.resource.data.get('scratchVerified', null)
           == resource.data.get('scratchVerified', null);
     }
+    /* ── Scratch 作品星（2026-09-29，Scratch 星星切換第 ④步）──────────
+       ★ config.js 的 SCRATCH_TRUST_BACKEND 打開後，modules.scratch 的星星由後端寫
+         （批改完順便寫，服務帳戶不受規則限制）。學生頁面不再寫這五格 ——
+         鎖起來之後，主控台 setDoc 一行灌星星就沒有用了。
+       ★ 只鎖「算星星」的五格，其他照舊能寫：
+         unitFiles（作品連結）、pre／step／play／lab／quiz／final／notes／asks、warmup…
+         那些是學生頁面自己的紀錄，和星數無關。
+       ⚠️ 為什麼現在可以鎖在 modules.scratch 裡面（上面那段說不行）：
+         2026-09-28 起 report.js 只寫自己那一個模組，不再把整份 modules 寫回去，
+         做資訊倫理測驗不會再碰到 modules.scratch。
+         setDoc(merge) 的 request.resource.data 是「合併之後」的文件 ——
+         沒寫到這五格的寫入，這五格自然和原本一樣，規則照過。
+       ⚠️ 開關沒打開就發布這一段，學生頁面自己寫星星會全部被擋 ——
+         順序永遠是：開關打開、推送、上過一節課，才發布。 */
+    function scratchStarsOf(d) {
+      let s = d.get('modules', {}).get('scratch', {});
+      return [s.get('unitStars', null), s.get('unitScores', null),
+              s.get('stars', null), s.get('level', null), s.get('status', null)];
+    }
+    /** 建立文件時：不可以自己帶作品星進來 */
+    function scratchStarsEmpty() {
+      return scratchStarsOf(request.resource.data) == [null, null, null, null, null];
+    }
+    /** 更新文件時：作品星那五格前後必須一模一樣 */
+    function scratchStarsUnchanged() {
+      return scratchStarsOf(request.resource.data) == scratchStarsOf(resource.data);
+    }
 
     // ###################################################################
     // ##  A. 跨學期共用
@@ -399,10 +430,10 @@ service cloud.firestore {
          兩條都要通過學期鎖；老師與測試帳號不受限。
          全面切換到 Google 之後，把 ② 整段刪掉，防呆條件也可以一起拿掉。 */
       allow create: if isTeacher()
-                    || (isOwner(sid) && inRoster(sid) && bonusEmpty() && verifiedEmpty()
+                    || (isOwner(sid) && inRoster(sid) && bonusEmpty() && verifiedEmpty() && scratchStarsEmpty()
                         && (beforeSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
-                    || (isOwner(sid) && inRoster(sid) && bonusUnchanged() && verifiedUnchanged()
+                    || (isOwner(sid) && inRoster(sid) && bonusUnchanged() && verifiedUnchanged() && scratchStarsUnchanged()
                         && (beforeSpring() || isTestAccount(sid)));
 
       allow delete: if isTeacher();        // ❌ 避免有人清掉別人的成績
@@ -452,10 +483,10 @@ service cloud.firestore {
            ② 舊的匿名登入（動作幅度防呆）
          全面切換到 Google 之後，把 ② 整段刪掉。 */
       allow create: if isTeacher()
-                    || (isOwner(sid) && inRoster(sid) && bonusEmpty() && verifiedEmpty()
+                    || (isOwner(sid) && inRoster(sid) && bonusEmpty() && verifiedEmpty() && scratchStarsEmpty()
                         && (afterSpring() || isTestAccount(sid)));
       allow update: if isTeacher()
-                    || (isOwner(sid) && inRoster(sid) && bonusUnchanged() && verifiedUnchanged()
+                    || (isOwner(sid) && inRoster(sid) && bonusUnchanged() && verifiedUnchanged() && scratchStarsUnchanged()
                         && (afterSpring() || isTestAccount(sid)));
 
       allow delete: if isTeacher();

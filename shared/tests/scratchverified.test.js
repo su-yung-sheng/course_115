@@ -53,6 +53,42 @@ for (const term of ['11501', '11502']) {
   ok(/allow update:[\s\S]*?isOwner\(sid\)[^;]*verifiedUnchanged\(\)/.test(blk), `★★★ ${term} 學生更新進度時要檢查 verifiedUnchanged`);
 }
 
+section('④-2 規則：學生不可以改作品星（第 ④步，2026-09-29）');
+{
+  const fnOf = (name) => (R.match(new RegExp('function ' + name + '\\(d?\\) \\{[\\s\\S]*?\\n    \\}')) || [''])[0];
+  const of = fnOf('scratchStarsOf');
+  const five = ['unitStars', 'unitScores', 'stars', 'level', 'status'];
+  ok(/d\.get\('modules', \{\}\)\.get\('scratch', \{\}\)/.test(of) && five.every(k => of.includes(`s.get('${k}', null)`)),
+     '★★★ 鎖的是 modules.scratch 的五格：' + five.join('、'));
+  ok(!/unitFiles|quiz|pre|step|lab|final|notes|asks|warmup|vidUnits/.test(of),
+     '★★★ 只鎖算星星的五格 —— 作品連結（unitFiles）、概念檢測、步驟進度這些學生頁面還要寫');
+  ok(/scratchStarsOf\(request\.resource\.data\) == \[null, null, null, null, null\]/.test(fnOf('scratchStarsEmpty')),
+     '★★ 建立文件時不可以帶作品星');
+  ok(/scratchStarsOf\(request\.resource\.data\) == scratchStarsOf\(resource\.data\)/.test(fnOf('scratchStarsUnchanged')),
+     '★★★ 更新時五格前後一模一樣');
+  for (const term of ['11501', '11502']) {
+    const blk = (R.match(new RegExp('match /' + term + '-progress/\\{sid\\} \\{[\\s\\S]*?\\n    \\}')) || [''])[0];
+    ok(/allow create:[\s\S]*?isOwner\(sid\)[^;]*scratchStarsEmpty\(\)/.test(blk), `★★★ ${term} 學生建立進度要檢查 scratchStarsEmpty`);
+    ok(/allow update:[\s\S]*?isOwner\(sid\)[^;]*scratchStarsUnchanged\(\)/.test(blk), `★★★ ${term} 學生更新進度要檢查 scratchStarsUnchanged`);
+  }
+  /* ⚠️ 前提：兩份 config.js 的開關一定要是開的 —— 不然學生頁面還在自己寫星星，會全部被擋 */
+  for (const f of ['11501/config.js', '11502/config.js']) {
+    ok(/^\s*SCRATCH_TRUST_BACKEND: true,/m.test(fs.readFileSync(path.join(ROOT, f), 'utf8')),
+       `★★★ ${f} 的 SCRATCH_TRUST_BACKEND 是 true（規則鎖上了，開關關著學生就一顆星都記不進去）`);
+  }
+  /* 學生頁面還有沒有人寫這五格？（grader.html 的 reportScratch 只在開關關著時才用） */
+  const writers = ['11501', '11502'].flatMap(t => ['level.html', 'scratch.html', 'warmup.html', 'hub.html', 'flowchart.html']
+    .map(p => t + '/' + p)).concat(['shared/report.js'])
+    .filter(f => fs.existsSync(path.join(ROOT, f)))
+    .filter(f => {
+      /* 只看**寫入**（setDoc 到它的 merge 為止）—— hub 的範例資料 DEMO_DATA 也長得像，但那只是畫面 */
+      const src = fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+      return src.split(/setDoc\(/).slice(1).map(x => x.split(/merge/)[0])
+        .some(x => /scratch:\s*\{[^}]{0,200}\b(unitStars|unitScores|stars|level|status)\s*:/.test(x));
+    });
+  ok(writers.length === 0, '★★ 其他學生頁面沒有寫作品星五格' + (writers.length ? '：' + writers.join('、') : ''));
+}
+
 section('⑤ 可疑紀錄頁：重建按鈕先試算、頁面本身不寫 Firestore');
 const A = fs.readFileSync(path.join(ROOT, 'shared', 'audit.html'), 'utf8');
 const ac = A.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
@@ -124,13 +160,27 @@ window.CONFIG = { SCRATCH_TRUST_BACKEND: true };
 }
 ok(GRADING.statHistory({ history: H }).filter(h => h.module === 'scratch').length === 2,
    '開關打開、後端還沒有任何紀錄 ⇒ 照舊用 history');
+{
+  const H2 = H.concat([{ module: 'scratch', unit: '2-1-1A', stars: 1, at: 40, kind: 'bonus', by: 't' },
+                       { module: 'scratch', unit: '4-2-1', stars: 1, at: 50, kind: 'quiz' }]);
+  for (const rb of [1, 0]) {
+    const out = GRADING.statHistory({ history: H2, scratchVerified: Object.assign(rb ? { rebuiltAt: 1 } : {}, SV) });
+    ok(out.some(h => h.kind === 'bonus') && out.some(h => h.kind === 'quiz'),
+       `★★★ ${rb ? '重建過' : '沒重建過'}：老師審核的加分（kind:bonus）、11502 概念星（kind:quiz）都要留著 —— 那不是後端管的`);
+  }
+  const cutOut = GRADING.statHistory({ history: H2, scratchVerified: SV });
+  ok(cutOut.filter(h => h.by === 'backend').length === 1,
+     '★★ 沒重建過時，「後端只補更晚的」那條線只看作品星（加分、概念星比較晚也不影響）');
+}
 window.CONFIG = {};
 
 section('⑨ grader.html：開關打開時用後端的回報，不再自己寫');
 ok(/fd\.append\('trust', \(window\.GRADING && GRADING\.trustBackendScratch\(\)\) \? '1' : '0'\)/.test(code),
    '★★ 開關打開才送 trust=1');
-ok(/GRADING\.trustBackendScratch\(\) && _v && _v\.mirrored\)\s*\?\s*_v\s*:\s*await window\.reportScratch\(/.test(code),
-   '★★★ 後端**真的鏡像了**才用它的回報；否則照舊 reportScratch（後端沒寫成功時不可以一顆都沒記）');
+ok(/const rep = _trust \? \(\(_v && _v\.mirrored\) \? _v : null\)\s*:\s*await window\.reportScratch\(/.test(code),
+   '★★★ 開關打開 ⇒ 只用後端的回報、學生頁面不再自己寫（規則鎖上後本來就寫不動）；開關關著 ⇒ 照舊 reportScratch');
+ok(/if \(_trust && !\(_v && _v\.mirrored\)\) \{[\s\S]{0,300}請再上傳一次同一個檔案[\s\S]{0,120}\$\('gradeBtn'\)\.disabled = false;/.test(code),
+   '★★★ 後端這次沒寫成功 ⇒ 講清楚「分數有效、重交就補記」，而且按鈕要能再按');
 
 section('⑩ report.js：只寫自己的模組');
 {
