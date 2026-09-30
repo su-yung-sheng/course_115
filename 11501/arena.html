@@ -30,6 +30,22 @@
   .pop { animation: pop .35s ease-out; }
   @keyframes pop { 0% { transform: scale(.85); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
   .opt.sel { border-color: #4f46e5; background: #eef2ff; }
+  /* ── 等待動畫（老師 2026-09-30：「出題中…要不要加個小動畫？讓使用者知道還有在進行」）──
+     五顆星輪流跳（呼應 ★1～★5 階梯）＋會動的「…」。
+     ⚠️ 第一次出題要讀全班的答題紀錄來分級，可能要好幾秒 —— 沒有動靜的話，
+        學生會以為當掉而一直按、或重新整理（重新整理＝那一次機會白白用掉）。 */
+  .ld { display: inline-flex; align-items: center; gap: .6rem; font-weight: 800; color: #475569; }
+  .ld-stars i { display: inline-block; font-style: normal; color: #f59e0b; font-size: 1.25rem;
+                animation: ld-hop 1.1s ease-in-out infinite; }
+  .ld-stars i:nth-child(2) { animation-delay: .12s } .ld-stars i:nth-child(3) { animation-delay: .24s }
+  .ld-stars i:nth-child(4) { animation-delay: .36s } .ld-stars i:nth-child(5) { animation-delay: .48s }
+  @keyframes ld-hop { 0%, 60%, 100% { transform: translateY(0); opacity: .35 } 30% { transform: translateY(-7px); opacity: 1 } }
+  .ld-dots::after { content: ''; display: inline-block; width: 1.2em; text-align: left; animation: ld-dots 1.2s steps(4) infinite; }
+  @keyframes ld-dots { 0% { content: '' } 25% { content: '.' } 50% { content: '..' } 75% { content: '...' } }
+  .spin { display: inline-block; width: 1em; height: 1em; border: 3px solid rgba(255,255,255,.4);
+          border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; }
+  @keyframes spin { to { transform: rotate(360deg) } }
+  @media (prefers-reduced-motion: reduce) { .ld-stars i, .spin, .ld-dots::after { animation: none } .ld-stars i { opacity: 1 } }
   .veil { position: fixed; inset: 0; z-index: 60; background: rgba(15,23,42,.92); color: #fff;
           display: flex; flex-direction: column; align-items: center; justify-content: center;
           gap: .75rem; text-align: center; padding: 1.5rem; cursor: pointer; }
@@ -81,7 +97,7 @@
         開始挑戰 ▶
       </button>
     </div>
-    <p id="start-msg" class="text-center text-sm text-slate-500 min-h-[1.5rem]">連線中…</p>
+    <p id="start-msg" class="text-center text-sm text-slate-500 min-h-[2rem]"><span class="ld"><span class="ld-text">連線中</span><span class="ld-dots"></span></span></p>
     <p class="text-center mt-2"><button id="btn-board0" class="text-indigo-600 font-bold underline">看排行榜</button></p>
   </section>
 
@@ -157,6 +173,29 @@
     });
   }
 
+  /** 等待動畫的 HTML（text 後面會自己跑「…」） */
+  function loader(text) {
+    return '<span class="ld" role="status"><span class="ld-stars" aria-hidden="true"><i>★</i><i>★</i><i>★</i><i>★</i><i>★</i></span>'
+      + '<span class="ld-text">' + esc(text) + '</span><span class="ld-dots"></span></span>';
+  }
+  /* 出題等比較久時，輪流換提示，讓人知道不是當掉 */
+  var HINTS = ['出題中', '依今天全班的答對率分級中', '洗牌題目中', '準備 ★1 暖身題'];
+  var hintTimer = null;
+  function startHints(host) {
+    var i = 0, t0 = Date.now();
+    host.innerHTML = loader(HINTS[0]);
+    stopHints();
+    hintTimer = setInterval(function () {
+      var el = host.querySelector('.ld-text');
+      if (!el) return stopHints();
+      i = (i + 1) % HINTS.length;
+      el.textContent = (Date.now() - t0 > 8000)
+        ? '第一次出題要分析全班的答題紀錄，比較久，請不要重新整理'
+        : HINTS[i];
+    }, 2000);
+  }
+  function stopHints() { if (hintTimer) { clearInterval(hintTimer); hintTimer = null; } }
+
   function ladder(host, cur) {
     host.innerHTML = [1, 2, 3, 4, 5].map(function (t) {
       return '<div class="rung rounded-xl py-2 text-center ' + TIER_CLS[t] + (t === cur ? ' on' : '') + '">'
@@ -194,13 +233,14 @@
   $('btn-start').addEventListener('click', function () {
     if (!confirm('按下開始就會用掉今天的一次機會，確定要開始嗎？')) return;
     $('btn-start').disabled = true;
-    $('start-msg').textContent = '出題中…';
+    startHints($('start-msg'));
     api('/api/arena/start', { student_id: SID, term: TERM }).then(function (j) {
+      stopHints();
       if (!j.ok) { $('start-msg').textContent = j.error || '開始失敗'; loadToday(); return; }
       state.run = j.run_id; state.pulled = false;
       show('s-quiz');
       paint(j.question);
-    }).catch(function () { $('start-msg').textContent = '連不上批改伺服器，請稍後再試。'; loadToday(); });
+    }).catch(function () { stopHints(); $('start-msg').textContent = '連不上批改伺服器，請稍後再試。'; loadToday(); });
   });
 
   /* ── ② 作答 ─────────────────────────────────── */
@@ -217,6 +257,7 @@
           + esc(o) + '</div>';
       }).join('');
     $('btn-send').disabled = true;
+    $('btn-send').textContent = '送出答案';
     $('q-msg').textContent = '';
   }
 
@@ -231,12 +272,17 @@
   $('btn-send').addEventListener('click', function () {
     if (state.picked < 0 || state.busy) return;
     state.busy = true; $('btn-send').disabled = true;
+    $('btn-send').innerHTML = '<span class="spin"></span> 判定中…';
+    var sendFail = function (msg) {
+      state.busy = false; $('btn-send').disabled = false; $('btn-send').textContent = '送出答案';
+      $('q-msg').textContent = msg;
+    };
     api('/api/arena/answer', { run_id: state.run, student_id: SID, choice: state.picked }).then(function (j) {
-      if (!j.ok) { state.busy = false; $('btn-send').disabled = false; $('q-msg').textContent = j.error || '送出失敗，再按一次'; return; }
+      if (!j.ok) { sendFail(j.error || '送出失敗，再按一次'); return; }
       feedback(j, function () {
         if (j.done) finish(j); else paint(j.next);
       });
-    }).catch(function () { state.busy = false; $('btn-send').disabled = false; $('q-msg').textContent = '連線失敗，再按一次送出'; });
+    }).catch(function () { sendFail('連線失敗，再按一次送出'); });
   });
 
   function feedback(j, then) {
@@ -273,6 +319,7 @@
     var v = $('veil'); if (v) v.remove();
     if (!state.pulled) return;
     state.pulled = false; state.busy = true;
+    $('q-box').innerHTML = '<p class="py-10 text-center">' + loader('換題中') + '</p>';
     api('/api/arena/swap', { run_id: state.run, student_id: SID }).then(function (j) {
       if (!j.ok) { state.busy = false; $('q-msg').textContent = j.error || '換題失敗'; return; }
       paint(j.question);
@@ -309,7 +356,7 @@
       + '<td class="py-2 pr-2 text-right">' + r.score + '</td><td class="py-2 text-right">' + fmtSec(r.seconds) + '</td></tr>';
   }
   function loadBoard() {
-    $('board').innerHTML = '<tr><td colspan="4" class="py-4 text-center text-slate-400">讀取中…</td></tr>';
+    $('board').innerHTML = '<tr><td colspan="4" class="py-6 text-center">' + loader('讀取排行榜') + '</td></tr>';
     api('/api/arena/board?term=' + TERM + '&student_id=' + SID).then(function (j) {
       if (!j.ok) throw new Error(j.error);
       $('players').textContent = '共 ' + j.players + ' 人上榜';
