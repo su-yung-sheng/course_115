@@ -1,6 +1,8 @@
-/* 把資訊倫理題庫匯出成「闖關排行賽」後端用的 JSON
+/* 把章節測驗的題庫匯出成「闖關排行賽」後端用的 JSON（兩學期）
    跑法：node shared/tools/export-arena-bank.js            （檢查是否同步，不改檔）
-         node shared/tools/export-arena-bank.js --write    （寫出 11501/content/ethics.arena.json）
+         node shared/tools/export-arena-bank.js --write    （寫出兩份）
+           11501：content/ethics.js → content/ethics.arena.json（資訊倫理）
+           11502：content/social.js → content/social.arena.json（媒體與社會議題，2026-09-30 加）
 
    ★ 為什麼要另外一份 JSON（老師 2026-09-30：排行賽「後端算」）
      分數由後端判，後端就得自己有題庫 —— 不能讓學生的瀏覽器告訴它
@@ -16,10 +18,15 @@
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '..', '..');
-const SRC = path.join(ROOT, '11501', 'content', 'ethics.js');
-const OUT = path.join(ROOT, '11501', 'content', 'ethics.arena.json');
+const TERMS = {
+  '11501': { src: '11501/content/ethics.js', out: '11501/content/ethics.arena.json' },
+  '11502': { src: '11502/content/social.js', out: '11502/content/social.arena.json' }
+};
+const OUT = path.join(ROOT, TERMS['11501'].out);     // 舊的呼叫方式（只看 11501）
 
-function build() {
+function build(term) {
+  term = term || '11501';
+  const SRC = path.join(ROOT, TERMS[term].src);
   const w = {};
   new Function('window', fs.readFileSync(path.join(ROOT, 'shared', 'qstat.js'), 'utf8'))(w);
   new Function('window', fs.readFileSync(SRC, 'utf8'))(w);
@@ -45,18 +52,23 @@ function build() {
     (ch.sections || []).forEach(s => units.push(s.id));
     if (ch.challenge) units.push(ch.challenge.id);
   });
-  return JSON.stringify({ module: 'ethics', term: '11501', count: items.length, units, items }, null, 1) + '\n';
+  return JSON.stringify({ module: C.moduleId || 'ethics', term, count: items.length, units, items }, null, 1) + '\n';
 }
 
 if (require.main === module) {
-  const out = build();
-  const cur = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
-  if (process.argv.indexOf('--write') >= 0) {
-    fs.writeFileSync(OUT, out, 'utf8');
-    console.log('已寫出 ' + path.relative(ROOT, OUT) + '（' + JSON.parse(out).count + ' 題）');
-  } else {
-    console.log(cur === out ? '✅ 已同步' : '⚠️ 沒同步：請跑 node shared/tools/export-arena-bank.js --write');
-    process.exit(cur === out ? 0 : 1);
-  }
+  let bad = 0;
+  Object.keys(TERMS).forEach(term => {
+    const p = path.join(ROOT, TERMS[term].out);
+    const out = build(term);
+    const cur = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
+    if (process.argv.indexOf('--write') >= 0) {
+      fs.writeFileSync(p, out, 'utf8');
+      console.log('已寫出 ' + TERMS[term].out + '（' + JSON.parse(out).count + ' 題）');
+    } else {
+      if (cur !== out) bad++;
+      console.log(TERMS[term].out + '：' + (cur === out ? '✅ 已同步' : '⚠️ 沒同步'));
+    }
+  });
+  if (bad) { console.log('請跑 node shared/tools/export-arena-bank.js --write'); process.exit(1); }
 }
-module.exports = { build, OUT };
+module.exports = { build, OUT, TERMS };

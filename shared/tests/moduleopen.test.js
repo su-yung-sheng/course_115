@@ -71,9 +71,10 @@ section('★★ 學生端：未開放要真的點不進去');
      + '學生看到「鎖住」只會來問老師');
 }
 
-section('★★ 11501：5016B 還沒開放時，位置先借給排行賽（老師 2026-09-30）');
-{
-  const hub = read('11501/hub.html');
+section('★★ 專題卡還沒開放時，位置先借給排行賽（老師 2026-09-30；11502 同一個做法）');
+for (const TERM of ['11501', '11502']) {
+  console.log('  （' + TERM + '）');
+  const hub = read(TERM + '/hub.html');
   const code = hub.replace(/\/\*[\s\S]*?\*\//g, '');
   const def = (code.match(/const STAND_IN = \{[\s\S]*?\n    \};/) || [''])[0];
   ok(/arduino:\s*\{[^}]*href:'arena\.html'/.test(def), '★★ 借位置的是 arduino（5016B 專題卡），連到 arena.html');
@@ -98,8 +99,11 @@ section('★★ 11501：5016B 還沒開放時，位置先借給排行賽（老�
   const locked = seg.slice(lockAt, linkAt);
   ok(!/<a\s/.test(locked) && /aria-disabled="true"/.test(locked) && /目前 \$\{passed\} \/ \$\{need\}/.test(locked),
      '★★★ 沒資格時是點不進去的區塊，寫明「目前 n / 10」');
-  ok(!/STAND_IN/.test(read('11502/hub.html')), '11502 不動');
-  ok(fs.existsSync(path.join(root, '11501', 'arena.html')), 'arena.html 存在');
+  ok(/open_json:\s*d\.open_json/.test(code), '★★ loadSchedule 要把 open_json 帶進來（漏了就永遠是開放、永遠不借位置）');
+  const lockSeg = code.slice(iLock, code.indexOf('\n        return `', iLock));
+  ok(lockSeg.length > 100 && !/<a\s+href/.test(lockSeg) && /openMsg/.test(lockSeg),
+     '★★ 其他還沒開放的模組：灰色、點不進去、寫明開放日');
+  ok(fs.existsSync(path.join(root, TERM, 'arena.html')), 'arena.html 存在');
   const w2 = { window: null }; w2.window = w2;
   new Function('window', read('shared/schedule.js'))(w2);
   /* 老師 2026-09-30：5016B 開放日是 11/25（設在教師端課表的「模組開放日」） */
@@ -109,13 +113,14 @@ section('★★ 11501：5016B 還沒開放時，位置先借給排行賽（老�
      '★ 開放日 11/25 ⇒ 11/24 還是排行賽、11/25 當天換回專題');
 }
 
-section('★★ 教師端：不可以把設定洗掉');
-{
-  const t = read('11501/teacher.html');
+section('★★ 教師端：不可以把設定洗掉（兩學期）');
+for (const TERM of ['11501', '11502']) {
+  console.log('  （' + TERM + '）');
+  const t = read(TERM + '/teacher.html');
   ok(/scOpen-arduino/.test(t), '★ 有輸入框');
   const open = t.slice(t.indexOf('async function openSchedModal'),
                        t.indexOf('async function openSchedModal') + 1200);
-  ok(/scOpen-arduino/.test(open),
+  ok(/scOpen-arduino/.test(open) && /\.value\s*=\s*_op\.arduino/.test(open),
      '★★★ 打開課表時要把已存的日期**填回輸入框** —— 不填的話，老師只是想'
      + '改課表、按了儲存，開放日就被空字串洗掉，而且完全沒有徵兆');
   const save = t.slice(t.indexOf('async function saveSchedule'),

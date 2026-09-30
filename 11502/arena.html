@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>資訊倫理 闖關排行賽</title>
+  <title>媒體與社會議題 闖關排行賽</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- 載入順序固定：config → semester → guard（沒從闖關基地登入就導回去） -->
   <script src="config.js"></script>
@@ -14,12 +14,12 @@
 <body>
   <!-- ① 這一頁是哪個單元 —— 只有這一段兩學期不同。
        ★ 畫面、規則、計分流程全部在 shared/arena.js（兩學期共用一份）。
-       ★ 題目由後端出：題庫是 content/ethics.arena.json（node shared/tools/export-arena-bank.js --write 產生）。 -->
+       ★ 題目由後端出：題庫是 content/social.arena.json（node shared/tools/export-arena-bank.js --write 產生）。 -->
   <script>
     window.ARENA_CONTENT = {
-      name: '資訊倫理',
-      subtitle: '資訊倫理與相關法律',
-      chapterPage: 'cyberethics.html'        // 沒資格時「去闖關 →」連到這裡
+      name: '媒體與社會議題',
+      subtitle: '媒體與社會議題・基本演算法',
+      chapterPage: 'social.html'        // 沒資格時「去闖關 →」連到這裡
     };
   </script>
   <!-- ② 共用引擎（一定要在 body 裡、最後載入：它會把畫面畫進 body） -->

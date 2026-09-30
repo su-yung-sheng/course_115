@@ -72,7 +72,7 @@ js = r"""
 const fs=require('fs'),path=require('path');const R=process.env.COURSE_ROOT;
 const w={};new Function('window',fs.readFileSync(path.join(R,'shared/qstat.js'),'utf8'))(w);
 const A=require(path.join(R,'shared/anskey.js'));
-const bank=JSON.parse(fs.readFileSync(path.join(R,'11501/content/ethics.arena.json'),'utf8'));
+const bank=JSON.parse(fs.readFileSync(path.join(R,process.env.ARENA_BANK),'utf8'));
 const extra=['a　b c﻿ d','<b>粗體</b>？','𠮷野家（測試）','',' \t\n'];
 const out=bank.items.map(i=>[i.q,w.QSTAT.id(i.q),i.options.map(o=>A.of(i.q,o))]).concat(extra.map(s=>[s,w.QSTAT.id(s),[A.of(s,s)]]));
 process.stdout.write(JSON.stringify(out));
@@ -101,27 +101,39 @@ if not NODE:
     print("  ⚠️ 找不到 node，略過這一段（沒測到，不是通過）")
 else:
     # ⚠️ 腳本從 stdin 餵、根目錄走環境變數：不把中文與換行塞進命令列參數
-    _r = subprocess.run([NODE, "-"], input=js, capture_output=True, text=True,
-                        encoding="utf-8", errors="replace",
-                        env=dict(os.environ, COURSE_ROOT=ROOT))
-    try:
-        res = json.loads(_r.stdout)
-    except ValueError:
-        res = []
-    ok(len(res) == RAW["count"] + 5, "node 算得出前端那一份（%d 筆）%s"
-       % (len(res), "" if res else "　←　" + (_r.stderr or "")[:200]))
-    bad_id = [r[0][:20] for r in res if core.arena_qid(r[0]) != r[1]]
-    ok(res and not bad_id, "★★★ 題目 id 全部對得上（%d 題＋5 個怪字串；對不上的：%s）" % (len(res), bad_id[:3]))
-    bad_a = 0
-    for i, r in enumerate(res):
-        opts = RAW["items"][i]["options"] if i < len(RAW["items"]) else [r[0]]
-        for o, h in zip(opts, r[2]):
-            if core.arena_ans_of(r[0], o) != h:
-                bad_a += 1
-    ok(res and bad_a == 0, "★★★ 答案雜湊全部對得上（對不上 %d 個）—— 對不上的話後端會把對的判成錯" % bad_a)
+    # ★ 兩學期的題庫都驗（11502 媒體與社會議題，2026-09-30 加）
+    for _bank in ("11501/content/ethics.arena.json", "11502/content/social.arena.json"):
+        _raw = json.load(io.open(os.path.join(ROOT, *_bank.split("/")), encoding="utf-8"))
+        _r = subprocess.run([NODE, "-"], input=js, capture_output=True, text=True,
+                            encoding="utf-8", errors="replace",
+                            env=dict(os.environ, COURSE_ROOT=ROOT, ARENA_BANK=_bank))
+        try:
+            res = json.loads(_r.stdout)
+        except ValueError:
+            res = []
+        ok(len(res) == _raw["count"] + 5, "%s：node 算得出前端那一份（%d 筆）%s"
+           % (_bank, len(res), "" if res else "　←　" + (_r.stderr or "")[:200]))
+        bad_id = [r[0][:20] for r in res if core.arena_qid(r[0]) != r[1]]
+        ok(res and not bad_id, "★★★ %s：題目 id 全部對得上（%d 題＋5 個怪字串；對不上的：%s）"
+           % (_bank, len(res), bad_id[:3]))
+        bad_a = 0
+        for i, r in enumerate(res):
+            opts = _raw["items"][i]["options"] if i < len(_raw["items"]) else [r[0]]
+            for o, h in zip(opts, r[2]):
+                if core.arena_ans_of(r[0], o) != h:
+                    bad_a += 1
+        ok(res and bad_a == 0, "★★★ %s：答案雜湊全部對得上（對不上 %d 個）—— 對不上的話後端會把對的判成錯"
+           % (_bank, bad_a))
 
 BANK = core.arena_prepare_bank(RAW)
 ok(len(BANK) == RAW["count"] == 141, "★★ 141 題都反查得到正確選項（%d）" % len(BANK))
+RAW2 = json.load(io.open(os.path.join(ROOT, "11502", "content", "social.arena.json"), encoding="utf-8"))
+ok(len(core.arena_prepare_bank(RAW2)) == RAW2["count"] == 185 and RAW2["term"] == "11502",
+   "★★ 11502 媒體與社會議題：185 題都反查得到正確選項")
+ok(core.ARENA_BANK_URLS.get("11502", "").endswith("/11502/content/social.arena.json"),
+   "★★ 後端知道 11502 的題庫在哪裡")
+ok(RAW2["units"] == ["5-1", "5-2", "5-3", "5-4", "5-5", "5-all", "6-1", "6-2", "6-3", "6-all"],
+   "★★ 11502 的參賽資格也是 10 個章節")
 
 section("② 每天的難易度分級")
 qids = sorted(BANK)

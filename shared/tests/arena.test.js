@@ -18,9 +18,14 @@ const section = t => console.log('\n── ' + t + ' ──');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-const HTML = read('11501/arena.html');
-const INLINE = (HTML.match(/<script>\s*\(function \(\) \{[\s\S]*?<\/script>/) || [''])[0]
-  .replace(/^<script>/, '').replace(/<\/script>$/, '');
+/* 2026-09-30 起畫面與流程在 shared/arena.js（兩學期共用），各學期的 arena.html 只放 ARENA_CONTENT */
+const ENGINE = read('shared/arena.js');
+const INLINE = ENGINE;
+const HTML = read('11501/arena.html') + ENGINE;
+const CONTENT = {
+  '11501': { name: '資訊倫理', subtitle: '資訊倫理與相關法律', chapterPage: 'cyberethics.html' },
+  '11502': { name: '媒體與社會議題', subtitle: '媒體與社會議題・基本演算法', chapterPage: 'social.html' }
+};
 
 function Q(i, tier, text) {
   return { index: i, total: 20, tier, points: { 1: 15, 2: 25, 3: 35, 4: 45, 5: 55 }[tier], score: 0,
@@ -28,11 +33,12 @@ function Q(i, tier, text) {
 }
 
 async function boot(opts) {
-  const body = HTML.replace(/<script[\s\S]*?<\/script>/g, '').match(/<body[^>]*>([\s\S]*)<\/body>/)[1];
-  const dom = new JSDOM('<!DOCTYPE html><body>' + body + '</body>',
-    { url: 'https://x/course_115/11501/arena.html', runScripts: 'outside-only' });
+  const term = opts.term || '11501';
+  const dom = new JSDOM('<!DOCTYPE html><head></head><body></body>',
+    { url: 'https://x/course_115/' + term + '/arena.html', runScripts: 'outside-only' });
   const w = dom.window;
-  w.CONFIG = { TERM: '11501', SERVER_URL: 'https://api.example' };
+  w.CONFIG = { TERM: term, SERVER_URL: 'https://api.example' };
+  w.ARENA_CONTENT = CONTENT[term];
   w.SSO = { sid: () => '1410101' };
   w.confirm = () => true;
   const calls = [];
@@ -54,7 +60,9 @@ async function boot(opts) {
   ok(!/ANSKEY|anskey|QSTAT/.test(HTML) && !/\.a\s*[=!]==?|\['a'\]|\.right\b(?!\s*\?)/.test(code.replace(/j\.right/g, '')),
      '★★★ 頁面不載 anskey、不碰答案雜湊 —— 對錯只看後端回的 j.right');
   ok(/choice: state\.picked/.test(code), '★★ 送出的只有「選了第幾個」');
-  ok(!/quiz-engine|content\/ethics/.test(HTML), '★★ 不載題庫（題目一題一題由後端給）');
+  ok(['11501', '11502'].every(tm => !/<script[^>]+src="[^"]*(quiz-engine|content\/)/.test(read(tm + '/arena.html')))
+     && !/content\/|arena\.json/.test(ENGINE.replace(/\/\*[\s\S]*?\*\//g, '')),
+     '★★ 不載題庫（題目一題一題由後端給）');
 
   section('② 開始 → 作答 → 回饋 → 下一題');
   let n = 0;
@@ -129,13 +137,32 @@ async function boot(opts) {
      '★★ 講清楚要什麼、目前幾 / 10');
   ok(!!t4.$('start-msg').querySelector('a[href="cyberethics.html"]'), '給一條去闖關的路');
 
+  section('⑤-3 兩學期共用一份引擎（11502 媒體與社會議題）');
+  for (const term of ['11501', '11502']) {
+    const page = read(term + '/arena.html');
+    ok(/<script src="\.\.\/shared\/arena\.js"><\/script>/.test(page) && /window\.ARENA_CONTENT = \{/.test(page)
+       && !/api\/arena/.test(page), `★★ ${term}/arena.html 只放「這是哪個單元」，畫面與流程在 shared/arena.js`);
+    ok(/config\.js/.test(page) && /guard\.js/.test(page) && /sso\.js/.test(page), `${term}：載 config／guard／sso（沒登入導回基地）`);
+  }
+  ok(!/資訊倫理|媒體與社會議題|cyberethics|social\.html/.test(ENGINE.replace(/\/\*[\s\S]*?\*\//g, '')),
+     '★★ 引擎裡沒有寫死任何一學期的單元名稱或章節頁');
+  const t5 = await boot({ term: '11502', route: (p) => p.startsWith('/api/arena/today')
+    ? { ok: true, left: 2, best: null, eligible: false, passed: 3, need: 10 } : { ok: false } });
+  ok(/媒體與社會議題・基本演算法/.test(t5.w.document.body.textContent) && t5.w.document.title === '媒體與社會議題 闖關排行賽',
+     '★★ 11502 顯示自己的單元名稱');
+  ok(!!t5.$('start-msg').querySelector('a[href="social.html"]') && /媒體與社會議題/.test(t5.$('start-msg').textContent),
+     '★ 11502 沒資格時「去闖關」連到 social.html');
+  ok(t5.calls.some(c => /term=11502/.test(c.p)), '★★★ 11502 問的是 11502 的紀錄（排行、次數各學期分開）');
+
   section('⑥ 題庫同步與入口');
   const exp = require(path.join(ROOT, 'shared', 'tools', 'export-arena-bank.js'));
-  ok(read('11501/content/ethics.arena.json') === exp.build(),
-     '★★★ ethics.arena.json 和 ethics.js 同步（改了題目要跑 node shared/tools/export-arena-bank.js --write）');
+  for (const term of Object.keys(exp.TERMS)) {
+    ok(read(exp.TERMS[term].out) === exp.build(term),
+       `★★★ ${exp.TERMS[term].out} 和題庫同步（改了題目要跑 node shared/tools/export-arena-bank.js --write）`);
+  }
   ok(!/arenaPage/.test(read('11501/content/ethics.js')) && !/排行賽/.test(read('shared/quiz-engine.js')),
      '★★ 章節選單不放入口（老師 2026-09-30：入口只在闖關基地）');
-  ok(/href="hub\.html"[^>]*>|返回基地/.test(HTML) && !/href="cyberethics\.html" title=/.test(HTML),
+  ok(/href="hub\.html"[^>]*>|返回基地/.test(ENGINE) && !/href="cyberethics\.html" title=/.test(ENGINE),
      '★ 左上角是「返回基地」（從基地進來的）');
   {
     /* 章節清單要和章節選單的 ORDER 同一個算法 */
@@ -145,11 +172,18 @@ async function boot(opts) {
     const J = JSON.parse(read('11501/content/ethics.arena.json'));
     ok(JSON.stringify(J.units) === JSON.stringify(order) && order.length === 10,
        '★★★ 題庫帶的章節清單＝章節選單的「全部」（' + order.length + ' 個）');
-    const hub = read('11501/hub.html');
-    const m = hub.match(/needUnits:\[([^\]]*)\]/);
-    const hubUnits = m ? m[1].split(',').map(s => s.trim().replace(/'/g, '')) : [];
-    ok(JSON.stringify(hubUnits) === JSON.stringify(J.units),
-       '★★★ 闖關基地小卡判斷用的章節清單和後端那一份一樣（改章節要兩邊一起改）');
+    for (const [term, bank, src] of [['11501', '11501/content/ethics.arena.json', '11501/content/ethics.js'],
+                                     ['11502', '11502/content/social.arena.json', '11502/content/social.js']]) {
+      const JJ = JSON.parse(read(bank));
+      const ww = {}; new Function('window', read(src))(ww);
+      const ord = [];
+      ww.QUIZ_CONTENT.chapters.forEach(ch => { (ch.sections || []).forEach(s => ord.push(s.id)); if (ch.challenge) ord.push(ch.challenge.id); });
+      ok(JSON.stringify(JJ.units) === JSON.stringify(ord) && ord.length === 10, `★★★ ${term} 題庫帶的章節清單＝章節選單的「全部」`);
+      const m = read(term + '/hub.html').match(/needUnits:\[([^\]]*)\]/);
+      const hubUnits = m ? m[1].split(',').map(s => s.trim().replace(/'/g, '')) : [];
+      ok(JSON.stringify(hubUnits) === JSON.stringify(JJ.units),
+         `★★★ ${term} 闖關基地小卡判斷用的章節清單和後端那一份一樣（改章節要兩邊一起改）`);
+    }
   }
 
   console.log('\n通過 ' + pass + '／失敗 ' + fail);
