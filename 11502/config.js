@@ -95,6 +95,9 @@ window.CONFIG = {
   //          每週評分、成長曲線的 Scratch 得星改用後端的紀錄。
   //   ⚠️ 打開之前：先在「🔍 可疑紀錄」④ 用「套用到學生頁面」重建一次。
   SCRATCH_TRUST_BACKEND: true,
+  // 作答中離開（切分頁、網址列 AI 模式、Gemini 側邊欄、擷取工具）⇒ 題目文字先拿掉，
+  // 回來換一題（shared/quiz-engine.js）。不扣分、不歸零連對。只有 11502 開。
+  QUIZ_SWAP_ON_LEAVE: true,
 
   COLLECTIONS: {
     PROGRESS: '11502-progress',

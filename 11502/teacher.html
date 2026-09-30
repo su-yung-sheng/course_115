@@ -1592,6 +1592,7 @@
         }
         if (h.copy) bits.push(`⧉ ${h.copy}`);
         if (h.away) bits.push(`↗ ${h.away}`);
+        if (h.swap) bits.push(`🔄 換題 ${h.swap}`);   // 離開就換題（QUIZ_SWAP_ON_LEAVE）
         const beh = bits.length
           ? `<span class="${robot ? 'text-red-600 font-bold' : 'text-gray-400'} ml-2" title="作答過程參考：想的秒數／複製次數／切出視窗次數（不是作弊判定）${robot ? ' ⚠ 連最慢的一題都在 1 秒內 —— 值得看一下，但這不是判定' : ''}">${bits.join('　')}${robot ? '　⚠' : ''}</span>`
           : '';

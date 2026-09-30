@@ -151,13 +151,6 @@ section('★★ 失焦遮罩與浮水印');
   w.dispatchEvent(new w.Event('focus'));
   ok(!$('qz-veil'), '★★ 點回來 → 遮罩收起');
 
-  /* ★ 遮罩不可以影響作答：蓋住再打開，題目與選的答案都還在 */
-  const before = $('question-container').innerHTML;
-  w.dispatchEvent(new w.Event('blur'));
-  w.dispatchEvent(new w.Event('focus'));
-  ok($('question-container').innerHTML === before,
-     '★★ 遮罩收起之後題目沒有被重畫（答案不會被清掉）');
-
   /* 遮罩自己也可以點掉 —— 有些情況 focus 事件不會來 */
   w.dispatchEvent(new w.Event('blur'));
   const veil = $('qz-veil');
@@ -169,6 +162,73 @@ section('★★ 失焦遮罩與浮水印');
   const r = boot('11501', 'ethics.js');
   r.w.dispatchEvent(new r.w.Event('blur'));
   ok(!r.$('qz-veil'), '★★ 還沒開始測驗就失焦 → 不會蓋出一個莫名其妙的遮罩');
+}
+
+{
+  /* ⚠️ 這一段要自己一個區塊、放在上一段**之後**：boot() 會改掉 global.window／document，
+     而引擎是用 w.eval 跑的（沒開 runScripts，實際上吃的是 Node 的 global）——
+     在別的測驗中途 boot 一次，前一個測驗的事件就會找錯 document。
+     ★ 遮罩不可以影響作答：蓋住再打開，題目與選的答案都還在
+     ⚠️ 2026-09-30 起 11502 會「離開就換題」（下一段），所以這一條改用 11501 驗 ——
+        11501 沒開換題，行為要和以前一模一樣。 */
+  {
+    const q = boot('11501', 'ethics.js');
+    click(q.w, [...q.w.document.querySelectorAll('.qz-open')][0]);
+    click(q.w, q.$('start-quiz-btn'));
+    const before = q.$('question-container').innerHTML;
+    q.w.dispatchEvent(new q.w.Event('blur'));
+    q.w.dispatchEvent(new q.w.Event('focus'));
+    ok(q.$('question-container').innerHTML === before,
+       '★★ 11501：遮罩收起之後題目沒有被重畫（答案不會被清掉；11501 不換題）');
+  }
+}
+
+/* ── ★★ 11502：離開就換題（老師 2026-09-30）──────────────────
+   ★ 焦點一離開 ⇒ 題目文字從網頁拿掉（Chrome 的 Gemini「詢問這個網頁」讀的是
+     網頁內容，遮罩蓋不住文字）；回來 ⇒ 換一題。不扣分、不歸零連對。 */
+section('★★ 11502 離開就換題（QUIZ_SWAP_ON_LEAVE）');
+{
+  const { w, $, units, errs } = boot('11502', 'social.js');
+  ok(w.CONFIG && w.CONFIG.QUIZ_SWAP_ON_LEAVE === true, '11502/config.js 開了 QUIZ_SWAP_ON_LEAVE');
+  click(w, [...w.document.querySelectorAll('.qz-open')][0]);
+  click(w, $('start-quiz-btn'));
+  const qText = () => (($('question-container').querySelector('h3') || {}).textContent || '');
+  const first = qText();
+  ok(first.length > 3, '題目畫得出來');
+  const streakBefore = $('score-counter').textContent;
+
+  w.dispatchEvent(new w.Event('blur'));
+  ok(!w.document.body.textContent.includes(first),
+     '★★★ 離開時題目文字要從整個網頁拿掉（不只是蓋住）—— Gemini 讀網頁內容就讀不到');
+  ok(/回到這個畫面，會換一題/.test($('question-container').textContent), '★ 講清楚回來會換一題');
+  w.dispatchEvent(new w.Event('focus'));
+  const second = qText();
+  ok(second.length > 3 && second !== first, '★★★ 回來之後換成另一題（「' + first.slice(0, 12) + '…」→「' + second.slice(0, 12) + '…」）');
+  ok($('score-counter').textContent === streakBefore, '★★ 不歸零連對、不算答錯');
+  ok(w.document.querySelectorAll('.qz-opt').length === 4, '新題目四個選項照常');
+
+  /* 一次離開同時觸發 blur 和 visibilitychange，只能換一次 */
+  w.dispatchEvent(new w.Event('blur'));
+  Object.defineProperty(w.document, 'hidden', { configurable: true, get: () => true });
+  w.document.dispatchEvent(new w.Event('visibilitychange'));
+  Object.defineProperty(w.document, 'hidden', { configurable: true, get: () => false });
+  w.document.dispatchEvent(new w.Event('visibilitychange'));
+  w.dispatchEvent(new w.Event('focus'));
+  const third = qText();
+  ok(third !== second && third.length > 3, '再離開一次 → 又換一題');
+
+  /* 點遮罩回來也要換（focus 事件不一定會來） */
+  w.dispatchEvent(new w.Event('blur'));
+  click(w, $('qz-veil'));
+  ok(qText() !== third && qText().length > 3, '★ 點遮罩回來也會換題');
+  ok(errs.length === 0, '★ 整個過程沒有例外' + (errs.length ? '　←　' + errs[0].split('\n')[0] : ''));
+}
+{
+  /* 11501 沒開：回報的 extra 不可以有 swap 這一格（更不可以是 undefined —— Firestore 會整筆拒收） */
+  const src = read('shared/quiz-engine.js').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/swap:\s*[^,}]*undefined/.test(src) && /if \(swapOn\(\)\) extra\.swap = behav\.swap;/.test(src),
+     '★★★ 只有開了換題才寫 swap；不可以寫 swap: undefined（11501 的成績會記不進去）');
+  ok(!/QUIZ_SWAP_ON_LEAVE/.test(read('11501/config.js')), '★★ 11501/config.js 沒有開換題（老師：11501 不用更改）');
 }
 
 /* ── ★★ 作答節奏：要記得下「最慢的那一題」──────────────────

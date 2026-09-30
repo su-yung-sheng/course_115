@@ -420,15 +420,53 @@
           任何「自動抓作弊」的做法都會冤枉到人，而被冤枉一次
           比讓一個人抄到還糟。
      ★ 真正有訊號的是**對照**：整份都 3 秒、只有難題 40 秒，那才值得問一句。 */
-  var behav = { t: [], copy: 0, away: 0 };
+  var behav = { t: [], copy: 0, away: 0, swap: 0 };
   var qStart = 0;
+
+  /* ── 離開就換題（2026-09-30，老師：「11502 將可疑情況時，更換題目可行嗎？」）──
+     ★ 只在 config.js 設了 QUIZ_SWAP_ON_LEAVE: true 的學期生效（目前只有 11502）。
+       11501 不設 ＝ 行為和以前一模一樣。
+     ★ 做法：作答中焦點一離開（切分頁、切 App、點網址列的 AI 模式、開 Gemini 側邊欄、
+       擷取工具跳出來）⇒ **題目文字立刻從網頁裡拿掉**；回來 ⇒ **換一題**。
+       ‧ 拿掉而不只是蓋住：Chrome 的 Gemini「詢問這個網頁」讀的是網頁內容，
+         遮罩蓋得住畫面、蓋不住文字。
+       ‧ 回來換題：離開時查到的答案（或截下來的圖）對新的這一題沒有用。
+     ⚠️ 不扣分、不歸零連對、不算答錯 —— 誤判（跳通知、切輸入法）的代價只是換一題。
+        「自動抓作弊」會冤枉人（見上面 behav 那一段），這裡只讓偷查變得沒有用。
+     ⚠️ 換掉的那一題放回題庫最後面，不算作答、不進逐題統計。 */
+  /* ⚠️ 用的當下才讀 CONFIG（不是載入時）—— 頁面的 script 順序不一定是 config.js 在前。 */
+  function swapOn() { return !!(window.CONFIG && window.CONFIG.QUIZ_SWAP_ON_LEAVE === true); }
+  var swapPending = false;
+  function pullQuestion() {
+    if (!swapOn() || !isQuizOn() || !current || swapPending) return;
+    swapPending = true;
+    behav.swap++;
+    var box = document.getElementById('question-container');
+    if (box) box.innerHTML = '<p class="text-lg font-bold text-slate-400 py-10 text-center">'
+      + '題目先收起來了。回到這個畫面，會換一題新的給你。</p>';
+  }
+  function swapIfPulled() {
+    if (!swapPending) return;
+    swapPending = false;
+    if (!isQuizOn() || !current) return;
+    var old = current;
+    pool.push(old);                                  // 放回最後面
+    if (pool.length === 1) {                         // 題庫只剩它 ⇒ 先出別題
+      pool = shuffle(NODES[currentId].questions.filter(function (q) { return q !== old; }))
+        .concat([old]);
+    }
+    loadQuestion();
+  }
+  /** 回到頁面：收遮罩＋（有需要時）換題 */
+  function comeBack() { veil(false); swapIfPulled(); }
 
   function startQuiz() {
     var n = NODES[currentId];
     if (!n || !n.questions.length) { showModal('題庫建置中', '本小節題庫尚未建置完成，敬請期待！'); return; }
     pool = shuffle(n.questions.slice());
     streak = 0; score = 0; wrong = 0; seconds = 0; runStat = {};
-    behav = { t: [], copy: 0, away: 0 };
+    behav = { t: [], copy: 0, away: 0, swap: 0 };
+    swapPending = false;
     paintMark();                 // 浮水印：班級座號＋時間
     hide('study-screen'); show('quiz-screen');
     $('current-chapter-title').textContent = n.title;
@@ -485,8 +523,8 @@
   });
   /* 切出視窗（換分頁、切到別的 App）。同樣只記次數，不做任何處置。 */
   document.addEventListener('visibilitychange', function () {
-    if (document.hidden && isQuizOn()) { behav.away++; veil(true); }
-    else if (!document.hidden) veil(false);
+    if (document.hidden && isQuizOn()) { behav.away++; veil(true); pullQuestion(); }
+    else if (!document.hidden) comeBack();
   });
 
   /* ── 失焦遮罩 ─────────────────────────────────────────
@@ -510,14 +548,14 @@
         '<span>你切到別的視窗去了。<br>' +
         '點一下這裡就繼續 —— <b>答案和計時都留著</b>。</span>';
       /* 點遮罩本身也能收起來（有些情況 focus 事件不會來，例如點到別的分頁再回來） */
-      el.addEventListener('click', function () { veil(false); });
+      el.addEventListener('click', comeBack);
       host.appendChild(el);
     } else if (el) {
       el.remove();
     }
   }
-  window.addEventListener('blur', function () { if (isQuizOn()) { behav.away++; veil(true); } });
-  window.addEventListener('focus', function () { veil(false); });
+  window.addEventListener('blur', function () { if (isQuizOn()) { behav.away++; veil(true); pullQuestion(); } });
+  window.addEventListener('focus', comeBack);
 
   /* ── 浮水印 ───────────────────────────────────────────
      截圖會連它一起拍進去。它不阻止任何事 —— 作用是「這張圖上有我的座號」。
@@ -679,11 +717,15 @@
     // extra 的欄位只寫進 history，供事後檢視證書用（原本是另一個 quiz_records 集合）。
     if (window.REPORT && window.GRADING) {
       var star = window.GRADING.ethicsStar(rate);
+      /* ★ pace／copy／away 是給老師看的參考，不影響星等，也不影響過關。 */
+      var extra = { duration: dur, correct: score, total: total,
+                    pace: pace(), copy: behav.copy, away: behav.away };
+      /* ⚠️ 不可以寫成 swap: undefined —— Firestore 遇到 undefined 會整筆拒收，
+            11501 的成績就記不進去了。只有開了換題的學期才加這一格。 */
+      if (swapOn()) extra.swap = behav.swap;
       window.REPORT.unit(C.moduleId, currentId, {
         star: star, score: rate,
-        /* ★ pace／copy／away 是給老師看的參考，不影響星等，也不影響過關。 */
-        extra: { duration: dur, correct: score, total: total,
-                 pace: pace(), copy: behav.copy, away: behav.away }
+        extra: extra
       }).then(paintBadges)
         .catch(function (e) { console.error('回報進度失敗', e); });
     }
