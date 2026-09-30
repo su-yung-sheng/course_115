@@ -71,6 +71,32 @@ section('★★ 學生端：未開放要真的點不進去');
      + '學生看到「鎖住」只會來問老師');
 }
 
+section('★★ 11501：5016B 還沒開放時，位置先借給排行賽（老師 2026-09-30）');
+{
+  const hub = read('11501/hub.html');
+  const code = hub.replace(/\/\*[\s\S]*?\*\//g, '');
+  const def = (code.match(/const STAND_IN = \{[\s\S]*?\n    \};/) || [''])[0];
+  ok(/arduino:\s*\{[^}]*href:'arena\.html'/.test(def), '★★ 借位置的是 arduino（5016B 專題卡），連到 arena.html');
+  const iStand = code.indexOf('if (!openOK && STAND_IN[m.id])');
+  const iLock = code.indexOf('if (!openOK) {');
+  ok(iStand > 0 && iStand < iLock, '★★★ 先判斷「有沒有借位置的卡」，才輪到灰色上鎖卡');
+  const seg = code.slice(iStand, iLock);
+  ok(/<a href="\$\{s\.href\}"/.test(seg), '★★ 借位置的卡是點得進去的連結');
+  ok(/\$\{openMsg \|\| '之後開放'\}/.test(seg) && /換回專題/.test(seg),
+     '★★ 卡片上寫明「專題預計哪天開放、開放後會換回來」');
+  ok(/openOK = [\s\S]{0,120}SCHEDULE\.moduleOpen\(state\.sched, m\.id\)/.test(code),
+     '★★★ 換回來的時間點就是原本的開放日（同一個 moduleOpen 判斷）—— 到期自動換回，不必再改');
+  ok(!/STAND_IN/.test(read('11502/hub.html')), '11502 不動');
+  ok(fs.existsSync(path.join(root, '11501', 'arena.html')), 'arena.html 存在');
+  const w2 = { window: null }; w2.window = w2;
+  new Function('window', read('shared/schedule.js'))(w2);
+  /* 老師 2026-09-30：5016B 開放日是 11/25（設在教師端課表的「模組開放日」） */
+  const sch = { open_json: JSON.stringify({ arduino: '2026-11-25' }) };
+  ok(!w2.SCHEDULE.moduleOpen(sch, 'arduino', new Date('2026-11-24T15:00:00'))
+     && w2.SCHEDULE.moduleOpen(sch, 'arduino', new Date('2026-11-25T08:00:00')),
+     '★ 開放日 11/25 ⇒ 11/24 還是排行賽、11/25 當天換回專題');
+}
+
 section('★★ 教師端：不可以把設定洗掉');
 {
   const t = read('11501/teacher.html');

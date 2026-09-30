@@ -108,6 +108,19 @@
       { id:'arduino',   title:'智慧家居機電專題', tag:'延伸挑戰', icon:'💡', href:'5016b.html',       theme:'bg-indigo-100 border-indigo-300 text-indigo-900', tape:'bg-indigo-500/25', rot:'rotate-2',  desc:'五節課：感應、換算、調速、混色，最後做一個自己的專題。', maxStars:0, subLevels:0 }   // 延伸體驗，不計星數
     ];
 
+    /* ===== 還沒開放時，暫時借位置的卡片（老師 2026-09-30）=====
+       ★ 「11501 能夠先取代 5016B 專題卡位置，直到原來設定的時間到再切換回來？」
+         ⇒ 5016B（arduino）還沒到開放日時，那個位置改放「資訊倫理 闖關排行賽」；
+           開放日一到（教師端課表設定的 open_json，和原本上鎖的判斷同一個），
+           自動換回專題卡 —— 不必再改任何東西。
+       ⚠️ 只是借位置：不算一個模組、不進星數、不影響「下一關」提示。
+       ⚠️ 5016B 沒有設開放日（open_json 留空）＝ 本來就開放 ⇒ 不會借位置。 */
+    const STAND_IN = {
+      arduino: { title:'資訊倫理 闖關排行賽', tag:'排行挑戰', icon:'🏆', href:'arena.html',
+                 theme:'bg-amber-100 border-amber-300 text-amber-900', tape:'bg-amber-500/25',
+                 desc:'全部題目大亂鬥：答對升級、答錯降級，全對 1000 分。挑戰全年級排行榜！' }
+    };
+
     // ===== 狀態呈現對照 =====
     const STATUS = {
       'todo':        { label:'尚未開始', badge:'bg-white/60 text-slate-500 border-slate-300', dim:false },   // 見 11502/hub.html 的說明：學期初每張都是 todo，整頁會霧掉
@@ -478,6 +491,24 @@
                        || SCHEDULE.moduleOpen(state.sched, m.id);
         const openMsg = (window.SCHEDULE && SCHEDULE.openLabel)
                        ? SCHEDULE.openLabel(state.sched, m.id) : '';
+        if (!openOK && STAND_IN[m.id]) {
+          const s = STAND_IN[m.id];
+          return `
+          <a href="${s.href}" class="group relative block ${SZ.pad} rounded-2xl border shadow-md hover:shadow-xl transition-all duration-300 ${m.rot} hover:rotate-0 hover:-translate-y-1 ${s.theme}">
+            <span class="tape ${s.tape}"></span>
+            <div class="flex items-center justify-between mb-2">
+              <div class="${SZ.icon}">${s.icon}</div>
+              <span class="${SZ.badge} font-bold px-2.5 py-1 rounded-full border bg-white/70 text-amber-700 border-amber-300">限時挑戰</span>
+            </div>
+            <h3 class="${SZ.title} font-black leading-tight mb-1">${s.title}</h3>
+            <p class="${SZ.desc} opacity-75 leading-relaxed mb-3">${s.desc}</p>
+            <div class="flex items-center justify-between">
+              <span class="${SZ.tag} font-bold bg-white/50 px-2.5 py-1 rounded-full border border-black/5">${s.tag}</span>
+            </div>
+            <span class="mt-3 inline-flex items-center gap-1 ${SZ.go} font-bold">開始挑戰 →</span>
+            <p class="mt-2 text-[11px] opacity-60">💡 ${m.title}${openMsg || '之後開放'}，開放後這裡會換回專題。</p>
+          </a>`;
+        }
         if (!openOK) {
           return `
           <div class="relative block ${SZ.pad} rounded-2xl border shadow-md ${m.rot} bg-slate-100 border-slate-300 text-slate-500 grayscale opacity-60 cursor-not-allowed select-none"

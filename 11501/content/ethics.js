@@ -14,6 +14,8 @@ window.QUIZ_CONTENT = {
   schoolLine: "前峰國中八年級",
   headline: "一一五學年度上學期<br><span class=\"text-blue-600\">資訊科技學習系統</span>",
   hubPage: "hub.html",
+  /* 🏆 闖關排行賽的入口（章節選單最下方）。11502 不設就沒有。 */
+  arenaPage: "arena.html",
   target: 10,
   maxWrong: 20,
   keepRecords: 3,
