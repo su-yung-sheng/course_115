@@ -277,6 +277,31 @@ core.arena_record("11501", "r5", dict(res, sid="1410102", score=900))
 b = core.arena_board("11501", "1410101")
 ok([r["sid"] for r in b["top"]] == ["1410102", "1410101"] and b["me"]["rank"] == 2, "排行讀得出來")
 
+section("⑨-2 參賽資格：資訊倫理 10 / 10 章節通關")
+ok(RAW.get("units") == ["1-1", "1-2", "1-3", "1-4", "ch1-all", "3-1", "3-2", "3-3", "ch3-all", "review-all"],
+   "★★ 題庫帶著 10 個章節 id（和章節選單「已通關 n / 10」同一份）")
+need = RAW["units"]
+full = {k: {"star": 3} for k in need}
+ok(core.arena_passed(full, need) == 10, "10 章都有星 ⇒ 10")
+ok(core.arena_passed(dict(full, **{"review-all": {"star": 0}}), need) == 9,
+   "★★ 0 星不算通關（和章節選單同一個判斷）")
+ok(core.arena_passed(dict(full, **{"old-id": {"star": 3}}, **{"1-1": None}), need) == 9,
+   "★ 清單外的舊 id 不算、壞掉的資料不丟例外")
+core._ARENA_BANK["11501"] = {"bank": BANK, "units": need, "at": 1e18}
+fs = FakeFS()
+core._fs_http = fs
+e = core.arena_eligibility("11501", "1410101")
+ok(e == {"passed": 0, "need": 10, "ok": False}, "★★ 沒有進度文件 ⇒ 0 / 10、沒資格")
+fs.docs["11501-progress/1410101"] = {"fields": {"modules": core._fs_encode(
+    {"ethics": {"units": dict({k: {"star": 2} for k in need[:9]})}})}, "v": 1}
+ok(core.arena_eligibility("11501", "1410101")["passed"] == 9 and not core.arena_eligibility("11501", "1410101")["ok"],
+   "★★★ 9 / 10 ⇒ 還不能挑戰")
+fs.docs["11501-progress/1410101"]["fields"]["modules"] = core._fs_encode({"ethics": {"units": full}})
+ok(core.arena_eligibility("11501", "1410101")["ok"], "★★★ 10 / 10 ⇒ 可以挑戰")
+core._ARENA_BANK["11501"]["units"] = []
+ok(core.arena_eligibility("11501", "1410102")["ok"], "★ 題庫沒帶章節清單（舊版 JSON）⇒ 不擋（寧可放行，不要整班卡住）")
+core._ARENA_BANK["11501"]["units"] = need
+
 section("⑩ 伺服器")
 for route in ("/api/arena/today", "/api/arena/start", "/api/arena/answer",
               "/api/arena/swap", "/api/arena/board"):
@@ -286,6 +311,10 @@ seg = _SRC8[i:i + 1800]
 ok(seg.find("arena_take_try") > 0 and seg.find("arena_take_try") < seg.find("arena_new_run"),
    "★★★ 先用掉一次機會，才出題（開始就算一次）")
 ok("/roster/" in seg, "★★ 查名冊（亂打的學號上不了排行）")
+ok(0 < seg.find("arena_eligibility") < seg.find("arena_take_try"),
+   "★★★ 先查參賽資格、才用掉一次機會 —— 沒資格的人按開始不可以被扣次數")
+i2 = _SRC8.find("def arena_today")
+ok('"eligible": elig["ok"]' in _SRC8[i2:i2 + 1400], "★★ 開始畫面拿得到「有沒有資格、目前幾 / 10」")
 i = _SRC8.find("def arena_board")
 seg = _SRC8[i:i + 900]
 ok('"sid": r["sid"], "score": r["score"]' in seg and "name" not in seg.split("slim")[1][:200],

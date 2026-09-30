@@ -204,13 +204,6 @@
     +       '<p class="mt-1 text-xs text-slate-400 leading-relaxed">💡 小提示：<span class="hl">章節大標題也是測驗</span>，點下去可一次挑戰整章；下方小方塊則是單一小節的測驗。</p>'
     +     '</div>'
     +     '<div class="space-y-6">' + C.chapters.map(chapterCard).join('') + '</div>'
-    /* 🏆 闖關排行賽的入口（2026-09-30）—— 只有內容檔設了 arenaPage 的單元才有（目前只有 11501 資訊倫理） */
-    +     (C.arenaPage
-            ? '<a href="' + C.arenaPage + '" class="mt-8 block rounded-2xl p-5 text-center text-white font-black shadow-lg '
-              + 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 transition">'
-              + '<span class="text-2xl">🏆 闖關排行賽</span>'
-              + '<span class="block text-sm font-bold opacity-90 mt-1">全部題目大亂鬥・答對升級、答錯降級・全對 1000 分</span></a>'
-            : '')
     +   '</div>'
 
     // 3. 章節重點閱讀

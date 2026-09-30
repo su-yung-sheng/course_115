@@ -36,7 +36,16 @@ function build() {
     Object.keys(o).forEach(k => walk(o[k]));
   })(C.chapters);
   const items = [...byId.values()].sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
-  return JSON.stringify({ module: 'ethics', term: '11501', count: items.length, items }, null, 1) + '\n';
+  /* ★ 參賽資格（老師 2026-09-30）：資訊倫理「已通關 10 / 10 個章節」才能挑戰。
+     這 10 個就是章節選單上「已通關 n / 全部」的那個「全部」——
+     和 quiz-engine.js 的 ORDER 同一個算法：每一章的小節，接著那一章的整章挑戰。
+     後端拿這份清單去對學生進度裡的 modules.ethics.units。 */
+  const units = [];
+  (C.chapters || []).forEach(ch => {
+    (ch.sections || []).forEach(s => units.push(s.id));
+    if (ch.challenge) units.push(ch.challenge.id);
+  });
+  return JSON.stringify({ module: 'ethics', term: '11501', count: items.length, units, items }, null, 1) + '\n';
 }
 
 if (require.main === module) {

@@ -121,13 +121,36 @@ async function boot(opts) {
   const t3 = await boot({ route: (p) => p.startsWith('/api/arena/today') ? { ok: true, left: 0, best: null } : { ok: false } });
   ok(t3.$('btn-start').disabled && /用完/.test(t3.$('start-msg').textContent), '★★ 今天用完 ⇒ 按鈕反灰、講清楚');
 
+  section('⑤-2 參賽資格：沒有 10 / 10 不能按開始');
+  const t4 = await boot({ route: (p) => p.startsWith('/api/arena/today')
+    ? { ok: true, left: 2, best: null, eligible: false, passed: 7, need: 10 } : { ok: false } });
+  ok(t4.$('btn-start').disabled, '★★★ 沒資格 ⇒ 開始按鈕反灰（今天明明還有 2 次）');
+  ok(/10 個章節全部通關/.test(t4.$('start-msg').textContent) && /7 \/ 10/.test(t4.$('start-msg').textContent),
+     '★★ 講清楚要什麼、目前幾 / 10');
+  ok(!!t4.$('start-msg').querySelector('a[href="cyberethics.html"]'), '給一條去闖關的路');
+
   section('⑥ 題庫同步與入口');
   const exp = require(path.join(ROOT, 'shared', 'tools', 'export-arena-bank.js'));
   ok(read('11501/content/ethics.arena.json') === exp.build(),
      '★★★ ethics.arena.json 和 ethics.js 同步（改了題目要跑 node shared/tools/export-arena-bank.js --write）');
-  ok(/arenaPage: "arena\.html"/.test(read('11501/content/ethics.js')), '★★ 11501 資訊倫理有入口');
-  ok(!/arenaPage/.test(read('11502/content/social.js')), '11502 沒有（老師只要資訊倫理）');
-  ok(/C\.arenaPage\s*\?/.test(read('shared/quiz-engine.js')), '引擎只在有設 arenaPage 時畫入口');
+  ok(!/arenaPage/.test(read('11501/content/ethics.js')) && !/排行賽/.test(read('shared/quiz-engine.js')),
+     '★★ 章節選單不放入口（老師 2026-09-30：入口只在闖關基地）');
+  ok(/href="hub\.html"[^>]*>|返回基地/.test(HTML) && !/href="cyberethics\.html" title=/.test(HTML),
+     '★ 左上角是「返回基地」（從基地進來的）');
+  {
+    /* 章節清單要和章節選單的 ORDER 同一個算法 */
+    const w = {}; new Function('window', read('11501/content/ethics.js'))(w);
+    const order = [];
+    w.QUIZ_CONTENT.chapters.forEach(ch => { (ch.sections || []).forEach(s => order.push(s.id)); if (ch.challenge) order.push(ch.challenge.id); });
+    const J = JSON.parse(read('11501/content/ethics.arena.json'));
+    ok(JSON.stringify(J.units) === JSON.stringify(order) && order.length === 10,
+       '★★★ 題庫帶的章節清單＝章節選單的「全部」（' + order.length + ' 個）');
+    const hub = read('11501/hub.html');
+    const m = hub.match(/needUnits:\[([^\]]*)\]/);
+    const hubUnits = m ? m[1].split(',').map(s => s.trim().replace(/'/g, '')) : [];
+    ok(JSON.stringify(hubUnits) === JSON.stringify(J.units),
+       '★★★ 闖關基地小卡判斷用的章節清單和後端那一份一樣（改章節要兩邊一起改）');
+  }
 
   console.log('\n通過 ' + pass + '／失敗 ' + fail);
   process.exit(fail ? 1 : 0);

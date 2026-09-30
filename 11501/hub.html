@@ -119,8 +119,18 @@
       arduino: { title:'資訊倫理 闖關排行賽', tag:'排行挑戰', icon:'🏆', href:'arena.html',
                  /* 顏色：和「資訊倫理學習系統」同一色系（pink），但淡一階 —— 看得出是同一單元的延伸，又不會搶走本卡（老師 2026-09-30） */
                  theme:'bg-pink-50 border-pink-200 text-pink-900', tape:'bg-pink-400/20',
-                 desc:'全部題目大亂鬥：答對升級、答錯降級，全對 1000 分。挑戰全年級排行榜！' }
+                 desc:'全部題目大亂鬥：答對升級、答錯降級，全對 1000 分。挑戰全年級排行榜！',
+                 /* ★ 參賽資格（老師 2026-09-30）：資訊倫理「已通關 10 / 10 個章節」。
+                    ⚠️ 這份清單要和 11501/content/ethics.arena.json 的 units 一模一樣
+                       （後端用那一份擋；moduleopen.test.js 會比對兩邊）。 */
+                 needModule:'ethics',
+                 needUnits:['1-2','1-3','1-4','ch1-all','3-1','3-2','3-3','ch3-all','review-all'] }
     };
+    /** 已通關幾個指定章節：和章節選單同一個判斷（units[id].star > 0） */
+    function standInPassed(s, mods){
+      const units = ((mods||{})[s.needModule]||{}).units || {};
+      return s.needUnits.filter(id => (Number((units[id]||{}).star)||0) > 0).length;
+    }
 
     // ===== 狀態呈現對照 =====
     const STATUS = {
@@ -494,6 +504,24 @@
                        ? SCHEDULE.openLabel(state.sched, m.id) : '';
         if (!openOK && STAND_IN[m.id]) {
           const s = STAND_IN[m.id];
+          const passed = standInPassed(s, mods), need = s.needUnits.length;
+          if (passed < need) {
+            return `
+          <div class="relative block ${SZ.pad} rounded-2xl border shadow-md ${m.rot} ${s.theme} opacity-80 cursor-not-allowed select-none"
+               aria-disabled="true" title="資訊倫理 ${need} 個章節全部通關才能挑戰">
+            <span class="tape ${s.tape}"></span>
+            <div class="flex items-center justify-between mb-2">
+              <div class="${SZ.icon}">${s.icon}</div>
+              <span class="${SZ.badge} font-bold px-2.5 py-1 rounded-full border bg-white/80 text-pink-600 border-pink-200">限時挑戰</span>
+            </div>
+            <h3 class="${SZ.title} font-black leading-tight mb-1">${s.title}</h3>
+            <p class="${SZ.desc} opacity-75 leading-relaxed mb-3">${s.desc}</p>
+            <div class="h-2 bg-white/70 rounded-full overflow-hidden border border-pink-200 mb-2">
+              <div class="h-full bg-pink-300" style="width:${Math.round(passed / need * 100)}%"></div>
+            </div>
+            <span class="inline-flex items-center gap-1 ${SZ.go} font-bold">🔒 資訊倫理 ${need} 個章節全部通關才能挑戰（目前 ${passed} / ${need}）</span>
+          </div>`;
+          }
           return `
           <a href="${s.href}" class="group relative block ${SZ.pad} rounded-2xl border shadow-md hover:shadow-xl transition-all duration-300 ${m.rot} hover:rotate-0 hover:-translate-y-1 ${s.theme}">
             <span class="tape ${s.tape}"></span>

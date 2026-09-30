@@ -37,9 +37,10 @@
 </head>
 <body class="min-h-screen text-slate-800">
 
-<a id="back" href="cyberethics.html" title="回資訊倫理"
+<!-- 入口只在闖關基地（借 5016B 專題卡的位置，老師 2026-09-30）；章節選單不放入口 -->
+<a id="back-to-hub" href="hub.html" title="返回闖關基地"
    class="fixed top-4 left-4 z-50 inline-flex items-center gap-1.5 bg-slate-800 text-white
-          font-bold text-sm px-3.5 py-2 rounded-full shadow-lg hover:bg-slate-700 transition">← 回資訊倫理</a>
+          font-bold text-sm px-3.5 py-2 rounded-full shadow-lg hover:bg-slate-700 transition">← 返回基地</a>
 
 <main class="max-w-3xl mx-auto px-4 pt-20 pb-16">
 
@@ -59,6 +60,7 @@
         <li>・難度是依<b>全班的答對率</b>分的，每天會重新分一次。</li>
         <li>・<b>一路全對剛好 1000 分</b>。</li>
         <li>・排行取你<b>最高的一次</b>；同分的話，<b>用時短的</b>排前面。</li>
+        <li>・<b>參賽資格</b>：資訊倫理 <b>10 個章節全部通關</b>（章節選單上「已通關 10 / 10」）。</li>
         <li>・每天可以挑戰 <b>2 次</b>，<b>按下開始就算一次</b>。</li>
         <li>・作答時切到別的視窗，題目會收起來，回來<b>換一題</b>（不扣分）。</li>
       </ul>
@@ -174,6 +176,14 @@
       if (!j.ok) throw new Error(j.error || '讀不到');
       $('left').textContent = j.left;
       $('best').textContent = j.best ? (j.best.score + ' 分（' + fmtSec(j.best.seconds) + '）') : '還沒有';
+      /* ★ 參賽資格：資訊倫理 10 / 10 章節通關（後端開始時也會再擋一次） */
+      if (j.eligible === false) {
+        $('btn-start').disabled = true;
+        $('start-msg').innerHTML = '🔒 要先把資訊倫理 <b>' + j.need + ' 個章節全部通關</b>才能挑戰'
+          + '（目前 <b>' + j.passed + ' / ' + j.need + '</b>）。'
+          + '<a href="cyberethics.html" class="text-indigo-600 font-bold underline ml-1">去闖關 →</a>';
+        return;
+      }
       $('btn-start').disabled = !(j.left > 0);
       $('start-msg').textContent = j.left > 0 ? '準備好就按開始！' : '今天的 2 次都用完了，明天再來挑戰！';
     }).catch(function () {

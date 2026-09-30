@@ -86,6 +86,18 @@ section('★★ 11501：5016B 還沒開放時，位置先借給排行賽（老�
      '★★ 卡片上寫明「專題預計哪天開放、開放後會換回來」');
   ok(/openOK = [\s\S]{0,120}SCHEDULE\.moduleOpen\(state\.sched, m\.id\)/.test(code),
      '★★★ 換回來的時間點就是原本的開放日（同一個 moduleOpen 判斷）—— 到期自動換回，不必再改');
+  /* ★ 參賽資格（老師 2026-09-30）：資訊倫理 10 / 10 章節通關才點得進去 */
+  const fnSrc = (code.match(/function standInPassed\(s, mods\)\{[\s\S]*?\n    \}/) || [''])[0];
+  const standInPassed = fnSrc ? new Function(fnSrc + '; return standInPassed;')() : null;
+  const S = { needModule: 'ethics', needUnits: ['a', 'b', 'c'] };
+  ok(standInPassed && standInPassed(S, { ethics: { units: { a: { star: 2 }, b: { star: 0 }, x: { star: 3 } } } }) === 1,
+     '★★ 算通關章節：0 星不算、清單外的不算');
+  ok(standInPassed && standInPassed(S, {}) === 0, '沒有進度 ⇒ 0');
+  const lockAt = seg.indexOf('if (passed < need)'), linkAt = seg.indexOf('<a href="${s.href}"');
+  ok(lockAt > 0 && lockAt < linkAt, '★★★ 先判斷資格：還沒 10 / 10 就不畫連結');
+  const locked = seg.slice(lockAt, linkAt);
+  ok(!/<a\s/.test(locked) && /aria-disabled="true"/.test(locked) && /目前 \$\{passed\} \/ \$\{need\}/.test(locked),
+     '★★★ 沒資格時是點不進去的區塊，寫明「目前 n / 10」');
   ok(!/STAND_IN/.test(read('11502/hub.html')), '11502 不動');
   ok(fs.existsSync(path.join(root, '11501', 'arena.html')), 'arena.html 存在');
   const w2 = { window: null }; w2.window = w2;
