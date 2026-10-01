@@ -331,6 +331,34 @@ async function pickWork(id) {
     state.cr.err = e.message;
   }
   state.busy = ''; render();
+  await autoRejectShort();
+}
+
+/* ── 錄影：沒有 3⭐ 就自動退件（老師 2026-10-01）─────────────
+   「如果沒有三星，自動幫忙回覆訊息，提醒學生三星後再錄影繳交，
+     教師後端直接不提供加分選項，也自動設定為退件狀態」
+   ★ 讀完這一關的繳交就做：有交錄影、這一關程式不到 3⭐、還沒給過分 ⇒ 退件，
+     原因用 GRADING.vidShortReason（學生的闖關頁會照字顯示 ＝ 那則「回覆訊息」）。
+   ⚠️ 已經退過件、而且之後沒有重交的，不再寫一次（不然每開一次頁面就寫一輪）。
+      退件之後重交了、但還是不到 3⭐ ⇒ 再退一次（時間更新，「請再看一次」才不會一直亮著）。
+   ⚠️ 已經給過分的不動：這條規則只管新的審核，收回加分要老師自己決定。 */
+async function autoRejectShort() {
+  if (!state.who || !unitIdOf('vid')) return;
+  const todo = students().filter(s => {
+    const p = s.per.vid;
+    return p && p.short && !p.given && p.atts.length && s.sub && CLASSROOM.handedIn(s.sub)
+           && (!p.rej || p.resub);
+  });
+  if (!todo.length) return;
+  state.busy = '程式未達 ' + GRADING.VID_NEED_STARS + '⭐ 的錄影自動退件中…'; render();
+  let n = 0;
+  for (const s of todo) {
+    if (await reject(s.sid, 'vid', GRADING.vidShortReason(s.per.vid.vstars), { auto: true, quiet: true })) n++;
+  }
+  state.busy = '';
+  state.msg = n ? ('🎬 已自動退件 ' + n + ' 份錄影：這一關程式還沒拿到 ' + GRADING.VID_NEED_STARS
+                   + '⭐（學生的闖關頁會看到「先拿到 3⭐ 再錄影」的提醒）。') : state.msg;
+  render();
 }
 
 /* ── 給分／取消 ───────────────────────────────────
@@ -354,6 +382,10 @@ async function award(sid, kindKey, on) {
        硬擋等於把後端的故障轉嫁到學生身上。把疑點講清楚、讓老師決定。 */
   if (on) {
     const st = students().find(x => x.sid === sid);
+    /* ⛔ 錄影加分要 3⭐（GRADING.VID_NEED_STARS）—— 畫面上已經沒有按鈕，這裡再擋一次 */
+    if (st && st.per[kindKey] && st.per[kindKey].short) {
+      state.msg = '這一關程式還沒拿到 ' + GRADING.VID_NEED_STARS + '⭐，錄影不能加分。'; render(); return;
+    }
     const w = st && st.per[kindKey] && st.per[kindKey].warn;
     if (w && !confirm(`${st.name}（${sid}）\n\n⚠️ ${w}\n\n還是要給這一分嗎？`)) return;
   }
@@ -407,21 +439,24 @@ async function award(sid, kindKey, on) {
 
 /* ── 退件（不符合加分條件，請學生補件）──────────────────
    reason 空字串 ＝ 撤回退件。 */
-async function reject(sid, kindKey, reason) {
+async function reject(sid, kindKey, reason, opts) {
+  opts = opts || {};
   const k = KINDS[kindKey];
   const unitId = unitIdOf(kindKey);
-  if (!unitId) { state.msg = '這個學期沒有對應的關卡。'; render(); return; }
+  if (!unitId) { state.msg = '這個學期沒有對應的關卡。'; render(); return false; }
   const cur = ((state.progress[sid] || {}).modules || {})[k.mod] || {};
   /* 已經給過分的不可以直接退件 —— 要先取消加分，星星才不會留著。 */
   if (reason && GRADING.hasBonus(cur[k.field], unitId)) {
-    state.msg = '這一份已經給過加分了，要退件請先取消加分。'; render(); return;
+    state.msg = '這一份已經給過加分了，要退件請先取消加分。'; render(); return false;
   }
   const w = (state.cr.works || []).find(x => x.id === state.cr.workId);
   const entry = { reason: String(reason || '').slice(0, 200), at: Date.now(),
                   by: state.who.email, work: w ? w.title : '' };
+  if (opts.auto) entry.auto = 'vid-stars';      // 系統依 3⭐ 規則自動退的（老師看得出不是自己按的）
   const rmap = Object.assign({}, cur[k.rfield] || {});
   if (reason) rmap[unitId] = entry; else delete rmap[unitId];
-  state.busy = '寫入…'; render();
+  if (!opts.quiet) { state.busy = '寫入…'; render(); }
+  let okW = false;
   try {
     await setDoc(doc(db, PROGRESS, sid), {
       studentId: sid,
@@ -431,11 +466,13 @@ async function reject(sid, kindKey, reason) {
     state.progress[sid] = state.progress[sid] || {};
     state.progress[sid].modules = state.progress[sid].modules || {};
     state.progress[sid].modules[k.mod] = Object.assign({}, cur, { [k.rfield]: rmap });
-    state.msg = '';
+    if (!opts.quiet) state.msg = '';
+    okW = true;
   } catch (e) {
     state.msg = '寫入失敗：' + e.message;
   }
-  state.busy = ''; render();
+  if (!opts.quiet) { state.busy = ''; render(); }
+  return okW;
 }
 
 /** 這一關在該模組裡的單元代號（流程圖與程式各有自己的十關，用第幾關對應） */
@@ -480,6 +517,12 @@ function students() {
           rej: uid ? ((((p.modules || {})[k.mod] || {})[k.rfield] || {})[uid] || null) : null
         };
         per[kk].resub = !!(per[kk].rej && subAt && subAt > (Number(per[kk].rej.at) || 0));
+        /* 錄影加分要 3⭐（老師 2026-10-01）：short ＝ 這一關程式還不到 3⭐ */
+        if (kk === 'vid' && uid) {
+          const ve = GRADING.vidEligible(p, uid);
+          per[kk].short = !ve.ok;
+          per[kk].vstars = ve.stars;
+        }
       });
       /* 學生在「動手之前」用自己的話寫的那一句（11502 程式設計關卡）。
          ★ 為什麼放在這一頁：這裡本來就選好了班級和關卡、也已經讀出全班名冊，
@@ -527,6 +570,7 @@ function render() {
   const classes = allClasses();
   const list = students();
   const cnt = k => list.filter(s => s.per[k].given).length;
+  const todo = k => list.filter(s => needsReview(s.per[k])).length;
   const inCnt = list.filter(s => s.sub && CLASSROOM.handedIn(s.sub)).length;
   const maxNo = Math.max(FLOW.length, PROG.length, 1);
 
@@ -564,6 +608,7 @@ function render() {
         ${FLOW.length ? `　🖼️ ${esc((FLOW.find(u => u.no === state.no) || {}).title || '')}` : ''}
         ${PROG.length ? `　🎬 ${esc((PROG.find(u => u.no === state.no) || {}).title || '')}` : ''}
         <br>已給分：流程圖 <b class="text-emerald-600">${cnt('img')}</b>、程式 <b class="text-emerald-600">${cnt('vid')}</b>
+        ${state.cr.on ? `｜未評分：流程圖 <b class="text-blue-600">${todo('img')}</b>、程式 <b class="text-blue-600">${todo('vid')}</b>` : ''}
         ${state.cr.on ? `｜Classroom 顯示已繳交 <b class="text-indigo-600">${inCnt}</b>` : ''}
       </div>
     </div>
@@ -619,6 +664,14 @@ function card(s) {
     </div>`;
 }
 
+/** 還等老師看的那一格（老師 10-01：「加一個統計未評分，以便快速了解數量」）
+   ＝ 卡片上藍框／琥珀框、寫著「點圖示看過再給分」的：有附件、還沒給分、
+   不是「退件了在等重交」、也不是「程式不到 3⭐」（那種會自動退件，老師不必看）。
+   ⚠️ 和 block() 的判斷要一致 —— 數字是幾，畫面上就要數得出幾格。 */
+function needsReview(p) {
+  return !!(p && p.atts.length && !p.given && !(p.rej && !p.resub) && !p.short);
+}
+
 /** 卡片上的一塊：流程圖 或 程式 */
 function block(s, kk) {
   const k = KINDS[kk], p = s.per[kk];
@@ -650,6 +703,9 @@ function block(s, kk) {
            而「看過再給」正是這個功能存在的理由。
            改成要先點開預覽、看完在視窗裡給，流程就和意圖對齊了。
            （已加分但附件不見了的少數情況，留一個要確認的小字連結可以取消。） -->
+      ${p.given && p.short
+        ? `<div class="text-[10px] text-amber-700 font-bold leading-snug mb-1">⚠️ 程式目前 ${p.vstars}⭐，這筆是 10/1 前給的加分（要收回就點下面取消）</div>`
+        : ''}
       ${p.given
         ? (has
             ? `<button data-prev="${esc(p.atts[0].link)}" data-title="${esc(p.atts[0].title)}"
@@ -664,8 +720,10 @@ function block(s, kk) {
                  class="text-xs font-bold text-emerald-700 hover:text-rose-600">
                  ✅ 已加分 +${GRADING.BONUS[kk]}⭐<span class="text-[10px] font-normal underline ml-1">取消</span>
                </button>`)
-        : (has ? '<div class="text-xs text-slate-400">點圖示看過再給分</div>'
-               : '<div class="text-xs text-slate-300">—</div>')}
+        : (p.short && has
+            ? `<div class="text-[11px] font-bold text-rose-600">⛔ 程式 ${p.vstars}⭐，未達 ${GRADING.VID_NEED_STARS}⭐ 不能加分</div>`
+            : (has ? '<div class="text-xs text-slate-400">點圖示看過再給分</div>'
+                   : '<div class="text-xs text-slate-300">—</div>'))}
     </div>`;
 }
 
@@ -707,6 +765,12 @@ function openPreview(link0, title, sid, kk) {
     ? (() => {
         const given = s && s.per[kk] && s.per[kk].given;
         const w = s && s.per[kk] && s.per[kk].warn;
+        /* ⛔ 錄影、而且這一關程式不到 3⭐ ⇒ 沒有加分按鈕（老師 2026-10-01） */
+        if (!given && s && s.per[kk] && s.per[kk].short) {
+          return `<span class="text-sm font-bold text-rose-700">⛔ 這一關程式 ${s.per[kk].vstars}⭐，`
+            + `未達 ${GRADING.VID_NEED_STARS}⭐，錄影不能加分`
+            + (s.per[kk].rej ? '（已自動退件，學生會看到提醒）' : '') + `</span>`;
+        }
         return `<button id="modal-award" data-on="${given ? '0' : '1'}"
           class="px-5 py-2.5 rounded-lg text-sm font-bold transition
           ${given ? 'bg-emerald-600 text-white hover:bg-emerald-700'

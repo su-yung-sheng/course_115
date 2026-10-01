@@ -993,7 +993,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 </div>
                 <div class="text-right flex-shrink-0 relative">
                   ${track('🧩','流程圖：排對 +'+STARS_PER_UNIT+'⭐'+(imgOn?'，交圖加分 +'+B_IMG+'⭐':'，最後一顆是交圖加分'),done,flowTxt,'text-emerald-500')}
-                  ${track('🐱','程式設計：AI 批改最多 3⭐'+(vidOn?'，錄影加分 +'+B_VID+'⭐':'，最後一顆是錄影加分'),st>0,progTxt,'text-amber-500')}
+                  ${track('🐱','程式設計：AI 批改最多 3⭐'+(vidOn?'，錄影加分 +'+B_VID+'⭐':'，最後一顆是錄影加分（這一關拿到 '+(((window.GRADING||{}).VID_NEED_STARS)||3)+'⭐ 才能錄影繳交）'),st>0,progTxt,'text-amber-500')}
                 </div>
               </div>
               <p class="mt-2 text-sm leading-relaxed ${open?'text-slate-600':'text-slate-400'}">${

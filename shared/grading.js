@@ -64,6 +64,27 @@ window.GRADING = {
     vid: 1         // 程式執行錄影（單關上限 3＋1 ＝ 4★）
   },
 
+  /* ── 錄影加分的門檻（老師 2026-10-01）──────────────────
+     「程式設計如果因為輸出被扣分，那是不是達不到三星，這樣就不達加分原則了」
+     ⇒ 程式錄影要**這一關拿到 3⭐（90 分以上）之後**才算數。
+       沒有 3⭐ 就交了錄影：審核頁不提供加分，而且自動退件，
+       退件原因會出現在學生的闖關頁（＝提醒他「先拿到 3⭐ 再錄影」）。
+     ★ 為什麼要整段重錄、不是補交：錄影是要證明「這一份 3⭐ 的程式真的跑得起來」，
+       3⭐ 之前錄的是還有錯的那一版。
+     ⚠️ 只管**新的審核**：已經給出去的加分不會因為這條規則自動收回（要收回請老師手動取消）。 */
+  VID_NEED_STARS: 3,
+  /** 這一關的程式星數夠不夠交錄影加分 → { ok, stars, need } */
+  vidEligible: function (progress, unitId) {
+    var m = ((progress || {}).modules || {}).scratch || {};
+    var stars = Number((m.unitStars || {})[unitId]) || 0;
+    return { ok: stars >= this.VID_NEED_STARS, stars: stars, need: this.VID_NEED_STARS };
+  },
+  /** 自動退件給學生看的那一句（學生端會照字顯示） */
+  vidShortReason: function (stars) {
+    return '這一關程式目前 ' + (Number(stars) || 0) + '⭐，錄影加分要先拿到 ' + this.VID_NEED_STARS
+      + '⭐。先把程式改到 90 分以上（3⭐），再重新錄影上傳到 Classroom。';
+  },
+
   /** 這個模組拿到幾顆加分星（單元數 × 該項的加分） */
   bonusStars: function (unitsMap, kind) {
     var per = this.BONUS[kind || 'img'];

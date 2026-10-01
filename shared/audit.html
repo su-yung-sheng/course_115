@@ -124,6 +124,7 @@ async function loadAll() {
   state.scratch = state.subErr ? [] : AUDIT.scratch(state.progress, state.subs, window.GRADING);
   state.quiz = AUDIT.quiz(state.progress);
   state.ver = AUDIT.verified(state.progress);
+  state.vid = AUDIT.vidShort(state.progress, window.GRADING);
   state.busy = '';
 }
 
@@ -309,6 +310,7 @@ function render() {
 
   const sc = state.scratch.slice().sort(bySeat);
   const qz = state.quiz.slice().sort(bySeat);
+  const vs = (state.vid || []).slice().sort(bySeat);
   const nStu = Object.keys(state.progress).length;
 
   const scratchBody = state.subErr
@@ -356,6 +358,23 @@ function render() {
         測驗畫面通關時一定會一起記下耗時和每題秒數；沒有這些的，是繞過測驗畫面直接寫進去的。<br>
         「每一題都在 1 秒內」看的是<b>最慢那一題</b> —— 人一定有卡住的題目，腳本每題一樣快，所以不會誤傷手速快的學生。</p>
       ${quizBody}
+    </section>
+
+    <section class="bg-white rounded-2xl p-5 shadow-sm mt-5">
+      <h2 class="font-black text-lg mb-1">⑤ 程式錄影已加分、但程式不到 ${(window.GRADING || {}).VID_NEED_STARS || 3}⭐ <span class="text-slate-400 text-sm font-bold">${vs.length} 筆</span></h2>
+      <p class="text-xs text-slate-400 mb-3 leading-relaxed">
+        10/1 起錄影加分要先有 3⭐，審核頁不到 3⭐ 就不給加分。這裡列的是<b>之前</b>給出去、而那一關程式<b>到現在</b>還不到 3⭐ 的。<br>
+        當時 2⭐、之後重交拿到 3⭐ 的已經符合規則，不會列出來。要不要收回由你決定：到「繳交審核」選那一關，點「已加分」就能取消。</p>
+      ${vs.length
+        ? `<div class="overflow-x-auto"><table class="w-full text-sm">
+            <thead class="text-left text-slate-400 text-xs"><tr>
+              <th class="px-3 py-2">班級</th><th class="px-3 py-2">座號</th><th class="px-3 py-2">姓名</th>
+              <th class="px-3 py-2">關卡</th><th class="px-3 py-2">加分時間</th><th class="px-3 py-2">說明</th></tr></thead>
+            <tbody>${vs.map(f => row(f.sid,
+              `<td class="px-3 py-2 whitespace-nowrap">${esc(f.unit)} <span class="text-slate-400 text-xs">${esc(UNIT_TITLE[f.unit] || '')}</span></td>
+               <td class="px-3 py-2 whitespace-nowrap text-slate-500">${esc(when(f.at))}</td>`,
+              `程式目前 ${f.stars}⭐，錄影已加分`)).join('')}</tbody></table></div>`
+        : `<p class="text-emerald-700 text-sm">✅ 沒有。每一筆錄影加分，那一關程式都有 3⭐。</p>`}
     </section>
 
     ${verBox()}

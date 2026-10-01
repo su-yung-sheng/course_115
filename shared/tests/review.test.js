@@ -127,12 +127,13 @@ function mkEnv(opts) {
     }
   };
   const api = new Function(
-    'state', 'CLASSROOM', 'KINDS', 'unitIdOf', 'render', 'allClasses',
+    /* autoRejectShort：讀完繳交後的「未達 3⭐ 自動退件」（2026-10-01），這一段只驗時序，給個空的 */
+    'state', 'CLASSROOM', 'KINDS', 'unitIdOf', 'render', 'allClasses', 'autoRejectShort',
     grab(/async function pickCourse[\s\S]*?\n\}/) + '\n' +
     grab(/async function loadThisUnit[\s\S]*?\n\}/) + '\n' +
     grab(/async function pickWork[\s\S]*?\n\}/) + '\n' +
     'return { pickCourse, loadThisUnit, pickWork };'
-  )(state, CLASSROOM, { img: {}, vid: {} }, () => '2-1-1B', () => {}, () => []);
+  )(state, CLASSROOM, { img: {}, vid: {} }, () => '2-1-1B', () => {}, () => [], async () => {});
   return { state, calls, api };
 }
 

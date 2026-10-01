@@ -167,8 +167,33 @@
     return out;
   }
 
+  /**
+   * ④ 程式錄影已加分、但這一關程式**現在**還不到 3⭐（老師 2026-10-01：
+   *    「有沒有之前不小心程式二星加到分的」）。
+   *
+   * ★ 10-01 起審核頁不到 3⭐ 就不給加分；這一支找的是**之前**給出去的。
+   * ★ 看的是「現在」的星數：當時 2⭐、之後重交拿到 3⭐ 的，已經符合規則，不列。
+   * ⚠️ 只列出來給老師看；要不要收回加分由老師決定（審核頁點「已加分」可以取消）。
+   * 回傳 [{ sid, unit, stars, at, by }]
+   */
+  function vidShort(progressById, G) {
+    var need = (G && G.VID_NEED_STARS) || 3, out = [];
+    Object.keys(progressById || {}).forEach(function (sid) {
+      var scr = (((progressById[sid] || {}).modules) || {}).scratch || {};
+      var vid = scr.vidUnits || {}, stars = scr.unitStars || {};
+      Object.keys(vid).forEach(function (unit) {
+        if (!vid[unit]) return;
+        var s = Number(stars[unit]) || 0;
+        if (s < need) out.push({ sid: sid, unit: unit, stars: s,
+                                 at: Number(vid[unit].at) || 0, by: String(vid[unit].by || '') });
+      });
+    });
+    return out;
+  }
+
   global.AUDIT = {
     VERSION: VERSION,
+    vidShort: vidShort,
     TRACE_SINCE: TRACE_SINCE,
     unitOfSubmission: unitOfSubmission,
     bestGraded: bestGraded,

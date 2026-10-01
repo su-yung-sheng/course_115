@@ -144,6 +144,26 @@ ok(/不是判定/.test(P), '★★ 畫面上要講明「是提醒不是判定」
 ok(!/作弊/.test(code.replace(/<[^>]+>/g, '')) ,
    '★★ 畫面文字不可以寫「作弊」—— 找不到紀錄也可能是後端當時沒寫進去');
 
+section('④ 程式錄影已加分、但程式現在不到 3⭐（老師 2026-10-01）');
+{
+  const P = {
+    A: { modules: { scratch: { unitStars: { '2-1-2': 2, '2-1-3': 3 },
+                               vidUnits: { '2-1-2': { at: 5, by: 't@x' }, '2-1-3': { at: 6, by: 't@x' } } } } },
+    B: { modules: { scratch: { unitStars: {}, vidUnits: { '2-1-1A': { at: 7 } } } } },   // 沒有程式星星
+    C: { modules: { scratch: { unitStars: { '2-1-1A': 2 }, vidUnits: { '2-1-1A': null } } } }, // 取消過（2⭐ 也不列）
+    D: { modules: {} }
+  };
+  const v = AUDIT.vidShort(P, GRADING);
+  const key = v.map(x => x.sid + ':' + x.unit + ':' + x.stars).sort().join(',');
+  ok(key === 'A:2-1-2:2,B:2-1-1A:0', '★★★ 只列「錄影已加分、那一關程式現在不到 3⭐」的（實得 ' + key + '）');
+  ok(v.find(x => x.sid === 'A').at === 5 && v.find(x => x.sid === 'A').by === 't@x', '帶加分時間與誰給的');
+  ok(AUDIT.vidShort({}, GRADING).length === 0 && AUDIT.vidShort(null, GRADING).length === 0, '沒資料不出錯');
+  const H = fs.readFileSync(path.join(ROOT, 'shared', 'audit.html'), 'utf8');
+  ok(/state\.vid = AUDIT\.vidShort\(state\.progress, window\.GRADING\);/.test(H) &&
+     /⑤ 程式錄影已加分、但程式不到/.test(H) && /\$\{vs\.length\} 筆/.test(H),
+     '★★ 可疑紀錄頁有這一區，顯示筆數');
+}
+
 for (const term of ['11501', '11502']) {
   const T = fs.readFileSync(path.join(ROOT, term, 'teacher.html'), 'utf8');
   ok(T.includes(`../shared/audit.html?term=${term}`), `★★ ${term} 教師端要有「可疑紀錄」的入口`);
