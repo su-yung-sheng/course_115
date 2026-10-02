@@ -1615,5 +1615,43 @@ res = core.single_agent_grading(KEYS, "規則", "主題", "一模一樣", "一�
                                 "參考解答", "gemini-2.5-flash", True)
 ok(res.get("score") == 0, "★★ 交空白範本＝0 分（這條規則不可以被重試邏輯改掉）")
 
+section("④y 同一個事件有好幾段帽子積木：同時執行，不是點兩次（2026-10-02）")
+# ⛔ 09-30 第 3 關 1410104：兩段「當角色被點擊」、第一段空的，
+#    haiku 說「要再點擊一次才會觸發第二個事件」扣 10 分（flash 100）。
+#    ⇒ 不加禁令，把事實印在那個角色的虛擬碼裡。
+def _hat(op, nxt=None, fields=None):
+    return {"opcode": op, "topLevel": True, "parent": None, "next": nxt,
+            "fields": fields or {}, "inputs": {}}
+_proj = {"targets": [
+    {"name": "演奏者", "isStage": False, "variables": {}, "lists": {}, "blocks": {
+        "h1": _hat("event_whenthisspriteclicked"),
+        "h2": _hat("event_whenthisspriteclicked", "s1"),
+        "s1": {"opcode": "looks_say", "topLevel": False, "parent": "h2", "next": None,
+               "fields": {}, "inputs": {}},
+        "g1": _hat("event_whenflagclicked"),
+        "d1": _hat("procedures_definition"), "d2": _hat("procedures_definition")}},
+    {"name": "Do", "isStage": False, "variables": {}, "lists": {}, "blocks": {
+        "r1": _hat("event_whenbroadcastreceived", "x1", {"BROADCAST_OPTION": ["60", "id60"]}),
+        "x1": {"opcode": "looks_nextcostume", "topLevel": False, "parent": "r1", "next": None,
+               "fields": {}, "inputs": {}},
+        "r2": _hat("event_whenbroadcastreceived", "x2", {"BROADCAST_OPTION": ["60", "id60"]}),
+        "x2": {"opcode": "looks_nextcostume", "topLevel": False, "parent": "r2", "next": None,
+               "fields": {}, "inputs": {}},
+        "r3": _hat("event_whenbroadcastreceived", None, {"BROADCAST_OPTION": ["62", "id62"]})}}]}
+_pc = core.clean_json_for_ai(_proj)
+_player = _pc[_pc.index("[角色/背景：演奏者]"):_pc.index("[角色/背景：Do]")]
+_do = _pc[_pc.index("[角色/背景：Do]"):]
+ok("有 2 段相同的事件 event_whenthisspriteclicked：" in _player and "同時" in _player
+   and "不用觸發兩次" in _player,
+   "★★★ 兩段「當角色被點擊」⇒ 虛擬碼寫明「同時開始執行，不用點兩次」")
+ok("其中 1 段底下沒有積木" in _player and "不會擋住其他段" in _player,
+   "★★★ 其中一段是空的 ⇒ 寫明它什麼都不做、也不擋別段")
+ok(_player.index("同時") < _player.index("▶ 執行序列"), "★ 事實印在這個角色的執行序列前面")
+ok("event_whenflagclicked：" not in _pc and "procedures_definition：" not in _pc,
+   "★★ 只有一段的事件、自訂積木定義都不印（不是每個角色都塞一段話）")
+ok("有 2 段相同的事件 event_whenbroadcastreceived（60）：" in _do and "底下沒有積木" not in _do,
+   "★★ 同一個廣播（60）收兩次也印；兩段都有積木就不提空的")
+ok("（62）" not in _do.split("▶ 執行序列")[0], "★★ 名稱不同的廣播（62）不算重複")
+
 print("\n通過 %d／失敗 %d" % (_pass[0], _fail[0]))
 sys.exit(1 if _fail[0] else 0)
