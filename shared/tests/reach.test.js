@@ -66,6 +66,10 @@ const KNOWN = {
      它把選擇題的明碼答案（correct: 2）換成雜湊，
      因為這個 repo 是公開的，F12 一開就看得到答案（見 shared/anskey.js）。 */
   'shared/tools/hash-answers.js': '命令列工具（把題庫的明碼答案換成雜湊），不是網頁',
+  /* 命令列工具：改了資訊倫理／媒體議題的題目之後要重跑，產生排行賽的後端題庫
+       node shared/tools/export-arena-bank.js --write
+     （arena.test.js 會擋「題庫沒同步」） */
+  'shared/tools/export-arena-bank.js': '命令列工具（匯出排行賽題庫給後端），不是網頁',
   'shared/blocks-demo.html': '積木模擬器的開發用試玩頁，只有改 blocks.js 時自己開',
   'shared/ai-lab.html': 'AI 引導的調校台，改提示詞時自己開；學生端不該連得到',
   '11502/content/flowchart.js': '刻意留的空檔：下學期沒有逐關流程圖，' +

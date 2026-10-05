@@ -521,3 +521,31 @@ window.GRADING = {
     }
   }
 };
+
+(function () {
+  /* 🔒 鎖住（老師 2026-10-05：「先強化前端」）
+     ⛔ 起因：判分、計星、設定都是掛在 window 上的物件，網頁是**用的當下**才去讀。
+        於是在 Console 打一行「把判對錯的那個函式換成永遠回答『對』」，
+        之後每一題都算答對 —— 作答時間、每題秒數照樣是真的，可疑紀錄頁也看不出來。
+        （老師 10-05 收到的那段攔截程式用的是同一種手法，只是攔錯了地方。）
+     ★ 作法：載入完就**凍結**（裡面的函式、數字一個都改不了），
+       而且 window 上這個名字**不能再指向別的東西**。
+     ⚠️ 這擋的是「網頁載入之後」才動手的（Console、書籤小工具、大部分 AI 寫的腳本）。
+        搶在網頁載入**之前**就動手的（Tampermonkey 設 document-start）照樣擋不住 ——
+        前端能做的只到這裡，見 shared/anskey.js 開頭與 05_安全性.md。
+     ⚠️ 同一頁載入兩次時保留第一份，不報錯。 */
+  function __lockGlobal(g, name, obj) {
+    (function freeze(o) {
+      if (!o || (typeof o !== 'object' && typeof o !== 'function') || Object.isFrozen(o)) return;
+      Object.freeze(o);
+      Object.getOwnPropertyNames(o).forEach(function (k) {
+        var d = Object.getOwnPropertyDescriptor(o, k);
+        if (d && 'value' in d) freeze(d.value);
+      });
+    })(obj);
+    try {
+      Object.defineProperty(g, name, { value: obj, writable: false, configurable: false, enumerable: true });
+    } catch (e) { /* 已經鎖過：保留第一份 */ }
+  }
+  __lockGlobal(window, 'GRADING', window.GRADING);
+})();
