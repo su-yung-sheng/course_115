@@ -43,8 +43,12 @@
   /* 通關後的重複練習（老師 2026-10-05：「通關後加入一個重複練習，每次十題，
      一樣採用失焦機制，幫助複習」；名稱老師選「🧠 記憶補給站」）。
      ★ 內容檔寫了 practice 才有（目前只有 11501），沒寫 ＝ 和以前一模一樣。 */
+  /* ★ 10-05 第二版（老師）：入口改放在章節選單最下面（總整理下方）、明顯提示；
+       從**已通關的章節**出題：答錯過的最多 5 題，其餘從答對過的任選；沒有錯題就全部任選。 */
   var PRACTICE  = C.practice ? { label: C.practice.label || '🧠 記憶補給站',
-                                 size: C.practice.size || 10 } : null;
+                                 size: C.practice.size || 10,
+                                 weak: C.practice.weak || 5 } : null;
+  var passedIds = [];   // 已通關（有星）的章節 id —— paintBadges 讀完進度後填
 
   /* ===================================================================
      色票：不用字串拼接組 class，避免 Tailwind CDN 掃不到而失效
@@ -209,6 +213,21 @@
     +       '<p class="mt-1 text-xs text-slate-400 leading-relaxed">💡 小提示：<span class="hl">章節大標題也是測驗</span>，點下去可一次挑戰整章；下方小方塊則是單一小節的測驗。</p>'
     +     '</div>'
     +     '<div class="space-y-6">' + C.chapters.map(chapterCard).join('') + '</div>'
+    /* 🧠 記憶補給站：放在最後一章（總整理）下方，要一眼看得到 */
+    +     (PRACTICE
+          ? '<div id="qz-practice" class="mt-6 p-5 rounded-2xl border-4 border-amber-300 bg-gradient-to-br from-amber-50 to-yellow-100 shadow-md">'
+            +   '<div class="flex items-center gap-3 mb-2">'
+            +     '<span class="text-4xl" aria-hidden="true">🧠</span>'
+            +     '<div><div class="text-xl font-black text-amber-800">' + PRACTICE.label.replace(/^🧠\s*/, '')
+            +       ' <span class="ml-1 align-middle text-[11px] font-black bg-rose-500 text-white px-2 py-0.5 rounded-full">複習用</span></div>'
+            +     '<div class="text-xs font-bold text-amber-700 leading-relaxed">從你<b>已通關的章節</b>出 ' + PRACTICE.size
+            +       ' 題：答錯過的先出（最多 ' + PRACTICE.weak + ' 題），其餘隨機・每題公布正解・不計分</div></div>'
+            +   '</div>'
+            +   '<button id="qz-practice-go" disabled class="w-full mt-2 py-3 rounded-xl font-black text-lg transition '
+            +     'bg-amber-400 text-amber-950 hover:bg-amber-500 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed">'
+            +     '🔒 通關任一章節後開放</button>'
+            + '</div>'
+          : '')
     +   '</div>'
 
     // 3. 章節重點閱讀
@@ -320,11 +339,6 @@
     +     '<h3 class="text-2xl font-black mb-2 text-emerald-600">過關紀錄查詢</h3>'
     +     '<p class="text-slate-600 font-bold mb-6 text-sm">你已經通過這個章節了，這是你的輝煌紀錄！</p>'
     +     '<div id="history-list" class="space-y-3 mb-8 max-h-[40vh] overflow-y-auto pr-2"></div>'
-    +     (PRACTICE
-          ? '<button id="hist-practice" class="w-full mb-3 py-3 bg-amber-400 text-amber-950 rounded-xl font-black hover:bg-amber-500 transition shadow-sm">'
-            + PRACTICE.label + '<span class="block text-xs font-bold opacity-80">每次 ' + PRACTICE.size
-            + ' 題・答錯過的題目先出・每題公布正解・不計分</span></button>'
-          : '')
     +     '<div class="flex space-x-3">'
     +       '<button id="hist-close" class="flex-1 py-3 bg-slate-200 text-slate-700 rounded-xl font-black hover:bg-slate-300 transition shadow-sm">返回目錄</button>'
     +       '<button id="hist-again" class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-black hover:bg-emerald-700 transition shadow-sm">再次闖關</button>'
@@ -648,7 +662,9 @@
       $('score-counter').textContent = '連對: ' + streak + ' / ' + TARGET;
       $('wrong-counter').textContent = '容錯: ' + (MAX_WRONG - wrong);
     }
-    if (!pool.length) pool = shuffle(NODES[currentId].questions.slice());
+    if (!pool.length) pool = (mode === 'practice')
+      ? (prac.spare.length ? [prac.spare.shift()] : [current])
+      : shuffle(NODES[currentId].questions.slice());
     current = pool.shift();
 
     var opts = current.options.map(function (t, i) { return { text:t, orig:i }; });
@@ -738,20 +754,45 @@
         重複練習會把答對率灌高，教師端「題目分析」（還有 arena 每天的難度分級）都讀那一份。
      ★ 一律「離開就換題」（見 pullQuestion），換成這一輪沒有的題目。
      =================================================================== */
-  /** 挑題：錯題優先（答對率低的先），不夠再補。回傳 { pick, spare, weak } */
-  function pickPractice(qs, mine, size) {
+  /** 挑題（老師 10-05 第二版）：答錯過的**隨機**挑最多 maxWeak 題，其餘從答對過／沒做過的任選；
+      沒有錯題就全部任選。回傳 { pick, spare, weak }。
+      ⚠️ 錯題是「隨機挑」不是「答對率最低的固定那幾題」：補給站不記錄，
+         錯題清單不會因為練習而改變 —— 固定挑的話每一輪都是同樣那 5 題。
+      ★ spare（備用題）給「離開就換題」用：先拿非錯題，再拿剩下的錯題。 */
+  function pickPractice(qs, mine, size, maxWeak) {
     var weak = [], rest = [], seen = {};
     shuffle(qs.slice()).forEach(function (q) {
-      if (!q || seen[q.q]) return;                  // 整章挑戰合併了小節，題目可能重複
+      if (!q || !q.q || seen[q.q]) return;          // 整章挑戰合併了小節，題目會重複
       seen[q.q] = 1;
       var e = (mine || {})[window.QSTAT ? window.QSTAT.id(q.q) : ''];
       var n = e ? Number(e.n) || 0 : 0, ok = e ? Number(e.ok) || 0 : 0;
-      if (n > ok) weak.push({ q: q, r: ok / n }); else rest.push(q);
+      (n > ok ? weak : rest).push(q);
     });
-    weak.sort(function (a, b) { return a.r - b.r; });
-    var order = weak.map(function (w) { return w.q; }).concat(rest);
-    return { pick: shuffle(order.slice(0, size)), spare: order.slice(size),
-             weak: Math.min(weak.length, size) };
+    var w = weak.slice(0, maxWeak);
+    var pick = w.concat(rest.slice(0, size - w.length));
+    if (pick.length < size) pick = pick.concat(weak.slice(w.length, w.length + size - pick.length));
+    var used = {}; pick.forEach(function (q) { used[q.q] = 1; });
+    var spare = rest.concat(weak).filter(function (q) { return !used[q.q]; });
+    return { pick: shuffle(pick), spare: spare, weak: w.length };
+  }
+
+  /** 已通關章節的題目（去重） */
+  function passedQuestions() {
+    var out = [];
+    passedIds.forEach(function (id) { if (NODES[id]) out = out.concat(NODES[id].questions); });
+    return out;
+  }
+
+  /** 章節選單底下那張卡：有通關的章節才開 */
+  function paintPractice() {
+    var b = $('qz-practice-go'); if (!b) return;
+    if (passedIds.length) {
+      b.disabled = false;
+      b.textContent = '開始補給（從已通關的 ' + passedIds.length + ' 個章節出題）';
+    } else {
+      b.disabled = true;
+      b.textContent = '🔒 通關任一章節後開放';
+    }
   }
 
   /** 公布正解的時候按鈕外觀不一樣；正式挑戰要換回來 */
@@ -763,11 +804,10 @@
   }
 
   function startPractice() {
-    var n = NODES[currentId];
-    if (!PRACTICE || !n || !n.questions.length) return;
-    closeActionModal();
+    var qs = passedQuestions();
+    if (!PRACTICE || !qs.length) return;
     var go = function (mine) {
-      var p = pickPractice(n.questions, mine, PRACTICE.size);
+      var p = pickPractice(qs, mine, PRACTICE.size, PRACTICE.weak);
       mode = 'practice';
       prac = { total: p.pick.length, done: 0, right: 0, wrongs: [], spare: p.spare,
                weak: p.weak, answered: false };
@@ -778,7 +818,7 @@
       ['chapter-screen', 'study-screen', 'result-screen', 'warning-screen', 'practice-screen']
         .forEach(function (id) { if ($(id)) hide(id); });
       show('quiz-screen');
-      $('current-chapter-title').textContent = PRACTICE.label + '｜' + n.title;
+      $('current-chapter-title').textContent = PRACTICE.label + '｜已通關的 ' + passedIds.length + ' 個章節';
       paintMark();
       loadQuestion();
     };
@@ -824,9 +864,8 @@
   function practiceEnd() {
     hide('quiz-screen');
     practiceChrome(false);
-    var n = NODES[currentId];
-    $('prac-chapter').textContent = n.title
-      + (prac.weak ? '（其中 ' + prac.weak + ' 題是你之前答錯過的）' : '');
+    $('prac-chapter').textContent = '從已通關的 ' + passedIds.length + ' 個章節出題'
+      + (prac.weak ? '（其中 ' + prac.weak + ' 題是你之前答錯過的）' : '（你在這些章節沒有答錯過的題目，全部隨機）');
     $('prac-score').textContent = prac.right + ' / ' + prac.total;
     $('prac-msg').textContent = prac.right === prac.total ? '全部答對！記憶補給完成 💪'
       : (prac.right * 2 >= prac.total ? '不錯！下面這幾題再看一次就更穩了。'
@@ -909,6 +948,8 @@
         .catch(function (e) { console.error('補回章節明細失敗', e); return mod; });
     }).then(function (mod) {
       var units = (mod && mod.units) || {}, done = 0;
+      passedIds = ORDER.filter(function (id) { return units[id] && (units[id].star || 0) > 0; });
+      paintPractice();
       document.querySelectorAll('.qz-open').forEach(function (btn) {
         var id = btn.getAttribute('data-ch');
         btn.querySelectorAll('.pass-badge').forEach(function (el) { el.remove(); });
@@ -960,7 +1001,7 @@
     $('hist-close').addEventListener('click', closeActionModal);
     $('hist-again').addEventListener('click', function () { proceedToStudy(); closeActionModal(); });
     if (PRACTICE) {
-      $('hist-practice').addEventListener('click', startPractice);
+      $('qz-practice-go').addEventListener('click', startPractice);
       $('prac-again').addEventListener('click', startPractice);
       $('prac-back').addEventListener('click', function () { hide('practice-screen'); show('chapter-screen'); });
     }
