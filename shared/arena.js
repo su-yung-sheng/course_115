@@ -6,7 +6,10 @@
        各學期的 arena.html 只放一行「這一份是哪個單元」（window.ARENA_CONTENT）。
    · 規則（兩學期一樣）：20 題、★1 起跳、答對升答錯降、全對 1000 分；
      全期取最高、同分用時短的在前；一天兩次（開始就算一次）；
-     參賽資格：這個單元 10 / 10 章節通關；離開畫面 ⇒ 題目收起來、回來換題。
+     參賽資格：這個單元 10 / 10 章節通關。
+   · 2026-10-06 老師：每題限時 20 秒、時間到算答錯；作答中離開畫面 ⇒ 這一題算答錯、降一級
+     （以前是「回來換一題、不扣分」，會被拿來把不會的題目換掉）。
+     ★ 時間由後端量，這裡的倒數只是顯示 —— 拖過時限才送的答案後端照樣算錯。
    ★★ 分數全部由後端算（題目由後端出、答案由後端判、時間由後端量）。
       這一支只顯示題目、送出「選了第幾個」—— 沒有答案、也沒有分數可以改。
    ⚠️ 需要 Colab 後端（config.js 的 SERVER_URL，程式那一台）。
@@ -76,7 +79,8 @@
         <li>・排行取你<b>最高的一次</b>；同分的話，<b>用時短的</b>排前面。</li>
         <li>・<b>參賽資格</b>：{{NAME}} <b>10 個章節全部通關</b>（章節選單上「已通關 10 / 10」）。</li>
         <li>・每天可以挑戰 <b>2 次</b>，<b>按下開始就算一次</b>。</li>
-        <li>・作答時切到別的視窗，題目會收起來，回來<b>換一題</b>（不扣分）。</li>
+        <li>・每題限時 <b class="text-rose-600">20 秒</b>，<b>時間到算答錯</b>。</li>
+        <li>・作答時切到別的視窗、分頁或 App，<b class="text-rose-600">這一題算答錯、降一級</b>（不能用來換題）。</li>
       </ul>
       <div class="grid grid-cols-5 gap-2 mt-4" id="ladder-demo"></div>
     </div>
@@ -111,6 +115,13 @@
     <div class="grid grid-cols-5 gap-2 mb-4" id="ladder"></div>
 
     <div class="bg-white rounded-2xl shadow-sm p-5 relative">
+      <div class="flex items-center gap-2 mb-3" aria-label="剩餘時間">
+        <span aria-hidden="true">⏱</span>
+        <div class="flex-1 h-2.5 bg-slate-200 rounded-full overflow-hidden">
+          <div id="q-timebar" class="h-full bg-emerald-500" style="width:100%"></div>
+        </div>
+        <span id="q-time" class="font-black text-lg tabular-nums w-12 text-right">20 秒</span>
+      </div>
       <p class="text-sm font-bold text-amber-600 mb-2" id="q-worth"></p>
       <div id="q-box"></div>
       <button id="btn-send" disabled
@@ -203,7 +214,38 @@
   }
 
   /* ── ① 開始畫面 ─────────────────────────────── */
-  var state = { run: null, q: null, picked: -1, busy: false, pulled: false };
+  var state = { run: null, q: null, picked: -1, busy: false, pulled: false, leaveP: null };
+
+  /* ── 倒數（老師 2026-10-06：每題限時 20 秒，時間到算答錯）──────────
+     ★ 只是顯示：真正的時限在後端（從出題那一刻起算）。倒數到 0 ⇒ 送「時間到」。 */
+  var cd = { h: null, end: 0, limit: 20 };
+  function stopCountdown() { if (cd.h) { clearInterval(cd.h); cd.h = null; } }
+  function paintCountdown() {
+    var left = Math.max(0, (cd.end - Date.now()) / 1000);
+    var bar = $('q-timebar'), lab = $('q-time');
+    if (bar) {
+      bar.style.width = (left / cd.limit * 100) + '%';
+      bar.className = 'h-full ' + (left <= 5 ? 'bg-rose-500' : left <= 10 ? 'bg-amber-400' : 'bg-emerald-500');
+    }
+    if (lab) {
+      lab.textContent = Math.ceil(left) + ' 秒';
+      lab.classList.toggle('text-rose-600', left <= 5);
+    }
+    return left;
+  }
+  function startCountdown(sec) {
+    stopCountdown();
+    cd.limit = Number(sec) || 20;
+    cd.end = Date.now() + cd.limit * 1000;
+    paintCountdown();
+    cd.h = setInterval(function () { if (paintCountdown() <= 0) { stopCountdown(); timeUp(); } }, 200);
+  }
+  function timeUp() {
+    if (state.busy || state.pulled || !state.q) return;
+    state.busy = true; $('btn-send').disabled = true;
+    $('btn-send').innerHTML = '<span class="spin"></span> 時間到，判定中…';
+    sendAnswer({ run_id: state.run, student_id: SID, timeout: true });
+  }
 
   function loadToday() {
     ladder($('ladder-demo'), 0);
@@ -257,6 +299,7 @@
     $('btn-send').disabled = true;
     $('btn-send').textContent = '送出答案';
     $('q-msg').textContent = '';
+    startCountdown(q.limit);
   }
 
   $('q-box').addEventListener('click', function (e) {
@@ -270,18 +313,31 @@
   $('btn-send').addEventListener('click', function () {
     if (state.picked < 0 || state.busy) return;
     state.busy = true; $('btn-send').disabled = true;
+    stopCountdown();
     $('btn-send').innerHTML = '<span class="spin"></span> 判定中…';
+    sendAnswer({ run_id: state.run, student_id: SID, choice: state.picked });
+  });
+
+  function sendAnswer(body) {
     var sendFail = function (msg) {
-      state.busy = false; $('btn-send').disabled = false; $('btn-send').textContent = '送出答案';
+      state.busy = false; $('btn-send').disabled = state.picked < 0; $('btn-send').textContent = '送出答案';
       $('q-msg').textContent = msg;
     };
-    api('/api/arena/answer', { run_id: state.run, student_id: SID, choice: state.picked }).then(function (j) {
+    api('/api/arena/answer', body).then(function (j) {
       if (!j.ok) { sendFail(j.error || '送出失敗，再按一次'); return; }
       feedback(j, function () {
         if (j.done) finish(j); else paint(j.next);
       });
-    }).catch(function () { sendFail('連線失敗，再按一次送出'); });
-  });
+    }).catch(function () {
+      /* 時間到那一次送不出去：自動重送「時間到」（不讓他改送選項） */
+      if (body.timeout) {
+        $('q-msg').textContent = '連線失敗，自動重送中…';
+        setTimeout(function () { sendAnswer(body); }, 1500);
+        return;
+      }
+      sendFail('連線失敗，再按一次送出');
+    });
+  }
 
   function feedback(j, then) {
     var fb = $('fb');
@@ -291,24 +347,39 @@
     fb.innerHTML = j.right
       ? '<p class="text-5xl">✅</p><p class="text-2xl font-black text-emerald-700 mt-2">答對！+' + j.points + ' 分</p>'
         + '<p class="font-bold text-emerald-600 mt-1">' + (up ? '⬆ 升到 ' + '★'.repeat(j.tier_to) : '維持 ★★★★★ 大師級！') + '</p>'
-      : '<p class="text-5xl">❌</p><p class="text-2xl font-black text-rose-700 mt-2">答錯了</p>'
+      : '<p class="text-5xl">' + ({ timeout: '⏰', late: '⏰', leave: '👀' }[j.why] || '❌') + '</p>'
+        + '<p class="text-2xl font-black text-rose-700 mt-2">'
+        + ({ timeout: '時間到！算答錯', late: '超過 20 秒，算答錯', leave: '離開畫面，這一題算答錯' }[j.why] || '答錯了')
+        + '</p>'
         + '<p class="font-bold text-rose-600 mt-1">' + (down ? '⬇ 降到 ' + '★'.repeat(j.tier_to) : '維持 ★ 暖身級') + '</p>';
     $('q-score').textContent = j.score;
     setTimeout(function () { fb.className = 'hidden'; then(); }, 1100);
   }
 
-  /* ── 離開畫面：題目收起來，回來換一題（不扣分）────────────
-     ⚠️ 拿掉題目文字，不只是蓋住 —— Chrome 的 Gemini「詢問這個網頁」讀的是網頁內容。 */
+  /* ── 離開畫面：這一題算答錯、降一級（老師 2026-10-06）──────────
+     ⛔ 以前是「題目收起來，回來換一題、不扣分」—— 老師發現會被拿來
+        把不會的題目換掉（換到會的為止），改成算答錯。
+     ★ 一離開就告訴後端（不是等回來才說）：回來之後才送的話，
+        可能搶在那之前先把答案送出去。
+     ⚠️ 仍然把題目文字拿掉，不只是蓋住 —— Chrome 的 Gemini「詢問這個網頁」讀的是網頁內容。
+     ⚠️ 已經送出答案、正在判定或播對錯動畫時（state.busy）離開，不算。 */
   function inQuiz() { return !$('s-quiz').classList.contains('hidden') && state.q && !state.busy; }
+  function leaveCall() {
+    state.leaveP = api('/api/arena/leave', { run_id: state.run, student_id: SID })
+      .catch(function () { return { ok: false, error: '連線失敗' }; });
+    return state.leaveP;
+  }
   function pull() {
     if (!inQuiz() || state.pulled) return;
-    state.pulled = true;
-    $('q-box').innerHTML = '<p class="text-lg font-bold text-slate-400 py-10 text-center">題目先收起來了。回到這個畫面，會換一題新的給你。</p>';
+    state.pulled = true; state.busy = true;
+    stopCountdown();
+    $('q-box').innerHTML = '<p class="text-lg font-bold text-rose-500 py-10 text-center">👀 你離開了作答畫面，這一題算答錯。</p>';
     $('btn-send').disabled = true;
+    leaveCall();
     if (!$('veil')) {
       var v = document.createElement('div');
       v.id = 'veil'; v.className = 'veil';
-      v.innerHTML = '<p class="text-2xl font-black">👀 題目先收起來了</p><p>你切到別的視窗去了。點一下這裡，換一題繼續 —— <b>分數不會扣</b>。</p>';
+      v.innerHTML = '<p class="text-2xl font-black">👀 你離開了作答畫面</p><p>這一題<b>算答錯、降一級</b>。點一下這裡，繼續下一題。</p>';
       v.addEventListener('click', back);
       document.body.appendChild(v);
     }
@@ -316,12 +387,23 @@
   function back() {
     var v = $('veil'); if (v) v.remove();
     if (!state.pulled) return;
-    state.pulled = false; state.busy = true;
-    $('q-box').innerHTML = '<p class="py-10 text-center">' + loader('換題中') + '</p>';
-    api('/api/arena/swap', { run_id: state.run, student_id: SID }).then(function (j) {
-      if (!j.ok) { state.busy = false; $('q-msg').textContent = j.error || '換題失敗'; return; }
-      paint(j.question);
-    }).catch(function () { state.busy = false; state.pulled = true; $('q-msg').textContent = '連線失敗，點一下畫面再試一次'; });
+    state.pulled = false;
+    $('q-box').innerHTML = '<p class="py-10 text-center">' + loader('下一題') + '</p>';
+    (state.leaveP || leaveCall()).then(function (j) {
+      state.leaveP = null;
+      if (!j.ok) {
+        /* 送不出去：留著遮罩，點一下重送（這一題照樣算錯，只是要讓後端知道） */
+        state.pulled = true;
+        var v2 = document.createElement('div');
+        v2.id = 'veil'; v2.className = 'veil';
+        v2.innerHTML = '<p class="text-xl font-black">連線失敗</p><p>' + esc(j.error || '') + '<br>點一下這裡再試一次</p>';
+        v2.addEventListener('click', back);
+        document.body.appendChild(v2);
+        return;
+      }
+      $('q-msg').textContent = '';
+      feedback(j, function () { if (j.done) finish(j); else paint(j.next); });
+    });
   }
   window.addEventListener('blur', pull);
   window.addEventListener('focus', back);
@@ -341,6 +423,7 @@
       + '</b>　用時 <b>' + fmtSec(r.seconds) + '</b></p>'
       + (j.best_updated ? '<p class="mt-3 font-black text-amber-600 text-lg">🎉 刷新你的最佳成績！</p>'
          : (j.best ? '<p class="mt-3 text-slate-500">你的最佳成績：' + j.best.score + ' 分（' + fmtSec(j.best.seconds) + '）</p>' : ''))
+      + (r.swaps ? '<p class="mt-2 text-sm text-rose-500">👀 這一場離開畫面 ' + r.swaps + ' 次（每次那一題算答錯）</p>' : '')
       + (r.robot ? '<p class="mt-3 text-rose-600 font-bold">⚠️ 這一場每題都在 1 秒內作答，不列入排行（老師看得到紀錄）。</p>' : '')
       + (j.save_error ? '<p class="mt-3 text-rose-600 font-bold">⚠️ ' + esc(j.save_error) + '</p>' : '');
     show('s-result');

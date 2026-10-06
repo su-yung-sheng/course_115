@@ -158,7 +158,7 @@ ok(sum(core.ARENA_POINTS[t] for t in [1, 2, 3, 4] + [5] * 16) == 1000,
 rnd = random.Random(7)
 run, q = core.arena_new_run("1410101", BANK, tiers, rnd, 0.0)
 ok(q["tier"] == 1 and q["index"] == 1 and q["points"] == 15, "★★ 第一題是 ★1、15 分")
-ok(set(q) == {"index", "total", "tier", "points", "score", "q", "options"},
+ok(set(q) == {"index", "total", "tier", "points", "score", "q", "options", "limit"} and q["limit"] == 20,
    "★★★ 給瀏覽器的只有題目與選項 —— 沒有答案、沒有雜湊")
 seen, t = set(), 0.0
 path = []
@@ -197,14 +197,47 @@ for bad in (-1, 4, "x", None):
     except ValueError:
         ok(True, "★ 亂送選項 %r ⇒ 擋下（不會當成答錯扣掉一題）" % (bad,))
 
-section("⑤ 離開畫面換題：不扣分、不算作答、同一級")
+section("⑤ 限時 20 秒；離開畫面算答錯（老師 2026-10-06）")
+def _right(run):
+    cur = run["cur"]
+    return cur["options"].index(BANK[cur["qid"]]["right"])
+# 時間到（頁面送 timeout）⇒ 算錯、降一級
 run, q = core.arena_new_run("1410101", BANK, tiers, random.Random(3), 0.0)
+core.arena_answer(run, BANK, _right(run), random.Random(3), 5.0)          # ★1 → ★2
+out = core.arena_answer(run, BANK, None, random.Random(3), 26.0, why="timeout")
+ok(not out["right"] and out["points"] == 0 and out["tier_from"] == 2 and out["tier_to"] == 1
+   and out["why"] == "timeout" and run["i"] == 2,
+   "★★★ 時間到 ⇒ 算答錯、降一級、算一題")
+ok(run["steps"][-1]["why"] == "timeout" and run["steps"][-1]["sec"] == 20.0,
+   "★ 紀錄寫明是時間到；用時最多記 20 秒（離開很久不會把總用時灌爆）")
+# 頁面不送「時間到」、拖過時限才交對的答案 ⇒ 後端照樣算錯
+t0 = run["cur"]["at"]
+out = core.arena_answer(run, BANK, _right(run), random.Random(3), t0 + 20 + core.ARENA_GRACE + 0.5)
+ok(not out["right"] and out["why"] == "late",
+   "★★★ 超過時限＋寬限才送來的「正確」答案 ⇒ 後端照樣算錯（倒數被改掉也沒用）")
+t0 = run["cur"]["at"]
+out = core.arena_answer(run, BANK, _right(run), random.Random(3), t0 + 22.0)
+ok(out["right"] and out["why"] is None, "★ 網路慢一點（22 秒才到）還在寬限內 ⇒ 照常判")
+ok(core.ARENA_LIMIT == 20 and 0 < core.ARENA_GRACE <= 5, "限時 20 秒、寬限不超過 5 秒")
+# 離開畫面 ⇒ 算錯、降一級、算一題（不是換題）
+run, q = core.arena_new_run("1410101", BANK, tiers, random.Random(3), 0.0)
+core.arena_answer(run, BANK, _right(run), random.Random(3), 3.0)          # ★1 → ★2
+core.arena_answer(run, BANK, _right(run), random.Random(3), 6.0)          # ★2 → ★3
 old = run["cur"]["qid"]
-nq = core.arena_swap(run, BANK, random.Random(4), 1.0)
-ok(run["cur"]["qid"] != old and nq["index"] == 1 and run["score"] == 0 and run["swaps"] == 1,
-   "★★★ 換成另一題，還是第 1 題、0 分、記一次換題")
-ok(nq["tier"] == 1, "同一級（★1）")
-ok(old in run["used"], "★ 換掉的那一題這一場不會再出現")
+out = core.arena_leave(run, BANK, random.Random(4), 7.0)
+ok(not out["right"] and out["points"] == 0 and out["tier_from"] == 3 and out["tier_to"] == 2
+   and out["why"] == "leave",
+   "★★★ 離開畫面 ⇒ 這一題算答錯、降一級（★3 → ★2）")
+ok(run["i"] == 3 and out["next"]["index"] == 4 and out["next"]["tier"] == 2,
+   "★★★ 算掉一題（下一題是第 4 題、★2）—— 不能拿來換題")
+ok(run["swaps"] == 1 and old in run["used"], "★ 記一次離開；那一題這一場不會再出現")
+ok(not hasattr(core, "arena_swap"), "★★ 舊的「換題不扣分」已經拿掉")
+for bad in (None, "x"):
+    try:
+        core.arena_answer(run, BANK, bad, random.Random(1), 8.0)
+        ok(False, "沒帶 timeout 的空選項 %r 應該被擋" % (bad,))
+    except ValueError:
+        ok(True, "★ 沒說是時間到的空選項 %r ⇒ 擋下（不會偷偷算成一題）" % (bad,))
 
 section("⑥ 腳本節奏不進排行")
 ok(core.arena_is_robot([1, 0.5, 1, 1, 0.8]) and not core.arena_is_robot([1, 1, 1, 1, 12]),
@@ -316,7 +349,7 @@ core._ARENA_BANK["11501"]["units"] = need
 
 section("⑩ 伺服器")
 for route in ("/api/arena/today", "/api/arena/start", "/api/arena/answer",
-              "/api/arena/swap", "/api/arena/board"):
+              "/api/arena/leave", "/api/arena/swap", "/api/arena/board"):
     ok(('@app.route("%s"' % route) in _SRC8, "有 " + route)
 i = _SRC8.find("def arena_start")
 seg = _SRC8[i:i + 1800]
@@ -332,7 +365,11 @@ seg = _SRC8[i:i + 900]
 ok('"sid": r["sid"], "score": r["score"]' in seg and "name" not in seg.split("slim")[1][:200],
    "★★ 排行只給學號、分數、用時、名次")
 ok("secrets" in _SRC8 and "token_urlsafe" in _SRC8, "★ 每一場的代號猜不到")
+i = _SRC8.find("def arena_leave")
+ok("core.arena_leave(" in _SRC8[i:i + 900] and "arena_swap" not in _SRC8.replace("/api/arena/swap", ""),
+   "★★★ /api/arena/leave 與舊網址 /api/arena/swap 都改成「算答錯」（舊頁面也換不了題）")
 i = _SRC8.find("def arena_answer")
+ok('d.get("timeout")' in _SRC8[i:i + 900], "★★ 頁面倒數到 0 送 timeout ⇒ 算答錯")
 ok('run["bank"]' in _SRC8[i:i + 900] and "core.arena_bank(" not in _SRC8[i:i + 900],
    "★★ 作答用這一場開始時的題庫 —— 中途重抓題庫，進行中的題目可能找不到")
 

@@ -3,7 +3,7 @@
 
    ★ 後端的計分在 shared/tests/arena.test.py；這一支驗的是頁面：
      · 頁面裡沒有答案、只送「選了第幾個」
-     · 離開畫面 ⇒ 題目文字拿掉；回來 ⇒ 叫後端換題
+     · 每題限時 20 秒，倒數到 0 送「時間到」；離開畫面 ⇒ 題目文字拿掉、這一題算答錯（2026-10-06）
      · 排行：前 30 名，30 名外把自己放在第 31 列、顯示真正的名次
      · 題庫 JSON 和 ethics.js 同步；入口只有 11501 資訊倫理有 */
 'use strict';
@@ -27,9 +27,9 @@ const CONTENT = {
   '11502': { name: '媒體與社會議題', subtitle: '媒體與社會議題・基本演算法', chapterPage: 'social.html' }
 };
 
-function Q(i, tier, text) {
+function Q(i, tier, text, limit) {
   return { index: i, total: 20, tier, points: { 1: 15, 2: 25, 3: 35, 4: 45, 5: 55 }[tier], score: 0,
-           q: text, options: ['甲', '乙', '丙', '丁'] };
+           q: text, options: ['甲', '乙', '丙', '丁'], limit: limit || 20 };
 }
 
 async function boot(opts) {
@@ -70,7 +70,8 @@ async function boot(opts) {
     if (p.startsWith('/api/arena/today')) return { ok: true, left: 2, best: null };
     if (p === '/api/arena/start') return { ok: true, run_id: 'R1', question: Q(1, 1, '第一題？'), left: 1 };
     if (p === '/api/arena/answer') { n++; return { ok: true, right: true, points: 15, tier_from: 1, tier_to: 2, score: 15, done: false, next: Q(2, 2, '第二題？') }; }
-    if (p === '/api/arena/swap') return { ok: true, question: Q(2, 2, '換過的題目？') };
+    if (p === '/api/arena/leave') return { ok: true, right: false, points: 0, tier_from: 2, tier_to: 1, score: 15,
+                                           why: 'leave', done: false, next: Q(3, 1, '第三題？') };
     return { ok: false };
   } });
   ok(t.$('left').textContent === '2' && !t.$('btn-start').disabled, '開始畫面：今天還有 2 次，可以按開始');
@@ -88,20 +89,68 @@ async function boot(opts) {
   await sleep(1200);
   ok(/第二題/.test(t.$('q-box').textContent) && t.$('q-no').textContent === '2', '自動進下一題');
 
-  section('③ 離開畫面：題目拿掉，回來換題');
+  ok(/20 秒/.test(t.$('q-time').textContent) && t.$('q-timebar').style.width.startsWith('100'),
+     '★★ 每題有 20 秒倒數（數字＋進度條）');
+  ok(/每題限時 <b[^>]*>20 秒<\/b>，<b>時間到算答錯/.test(ENGINE) && /這一題算答錯、降一級/.test(ENGINE)
+     && !/換一題<\/b>（不扣分）/.test(ENGINE),
+     '★★ 規則寫明：限時 20 秒、離開畫面算答錯降一級（舊的「換一題不扣分」拿掉）');
+
+  section('③ 離開畫面：題目拿掉、這一題算答錯（老師 2026-10-06）');
   t.w.dispatchEvent(new t.w.Event('blur'));
   ok(!t.w.document.body.textContent.includes('第二題'), '★★★ 離開時題目文字從整個網頁拿掉（Gemini 讀網頁也讀不到）');
-  ok(!!t.$('veil'), '蓋上遮罩');
+  ok(!!t.$('veil') && /算答錯、降一級/.test(t.$('veil').textContent), '★★ 遮罩寫明「這一題算答錯、降一級」');
+  await sleep(10);
+  ok(t.calls.some(c => c.p === '/api/arena/leave' && c.b.run_id === 'R1'),
+     '★★★ 一離開就告訴後端（不是等回來才說 —— 回來前不能先把答案送出去）');
+  ok(!t.calls.some(c => c.p === '/api/arena/swap'), '★★ 不再叫「換題」');
   t.w.dispatchEvent(new t.w.Event('focus'));
   await sleep(20);
-  ok(t.calls.some(c => c.p === '/api/arena/swap' && c.b.run_id === 'R1'), '★★★ 回來叫後端換題');
-  ok(/換過的題目/.test(t.$('q-box').textContent) && !t.$('veil'), '換成新題目、遮罩收起');
+  ok(/離開畫面，這一題算答錯/.test(t.$('fb').textContent) && /降到 ★/.test(t.$('fb').textContent),
+     '★★ 回來先看到「離開畫面，這一題算答錯」＋降級');
+  await sleep(1200);
+  ok(/第三題/.test(t.$('q-box').textContent) && t.$('q-no').textContent === '3' && !t.$('veil'),
+     '★★★ 接著是下一題（第 3 題）—— 離開那一題算掉了，不是換題');
   t.w.dispatchEvent(new t.w.Event('blur'));
   t.w.dispatchEvent(new t.w.Event('blur'));
+  await sleep(10);
+  ok(t.calls.filter(c => c.p === '/api/arena/leave').length === 2, '★ 一次離開只算一題（blur／visibilitychange 重複觸發不會多扣）');
   t.w.dispatchEvent(new t.w.Event('focus'));
-  t.w.dispatchEvent(new t.w.Event('focus'));
-  await sleep(20);
-  ok(t.calls.filter(c => c.p === '/api/arena/swap').length === 2, '★ 一次離開只換一題（blur／focus 重複觸發不會多換）');
+  await sleep(1300);
+
+  section('③-2 倒數到 0 ⇒ 送「時間到」');
+  {
+    const tt = await boot({ route: (p) => {
+      if (p.startsWith('/api/arena/today')) return { ok: true, left: 2, best: null };
+      if (p === '/api/arena/start') return { ok: true, run_id: 'R9', question: Q(1, 1, '快一點？', 0.4), left: 1 };
+      if (p === '/api/arena/answer') return { ok: true, right: false, points: 0, tier_from: 1, tier_to: 1, score: 0,
+                                              why: 'timeout', done: false, next: Q(2, 1, '下一題？') };
+      return { ok: false };
+    } });
+    tt.$('btn-start').click(); await sleep(20);
+    tt.w.document.querySelectorAll('.opt')[1].click();              // 選了但沒送
+    await sleep(800);
+    const a = tt.calls.find(c => c.p === '/api/arena/answer');
+    ok(a && a.b.timeout === true && a.b.choice === undefined,
+       '★★★ 倒數到 0 自動送「時間到」—— 只送 timeout，不送選了的那個（選了沒送不算）');
+    ok(/時間到！算答錯/.test(tt.$('fb').textContent), '★★ 畫面寫「時間到！算答錯」');
+    ok(tt.calls.filter(c => c.p === '/api/arena/answer').length === 1, '★ 只送一次');
+    await sleep(1200);
+  }
+  {
+    const tt = await boot({ route: (p) => {
+      if (p.startsWith('/api/arena/today')) return { ok: true, left: 2, best: null };
+      if (p === '/api/arena/start') return { ok: true, run_id: 'R8', question: Q(1, 1, '題目？', 0.5), left: 1 };
+      if (p === '/api/arena/answer') return { ok: true, right: true, points: 15, tier_from: 1, tier_to: 2, score: 15,
+                                              done: false, next: Q(2, 2, '下一題？') };
+      return { ok: false };
+    } });
+    tt.$('btn-start').click(); await sleep(20);
+    tt.w.document.querySelectorAll('.opt')[0].click(); tt.$('btn-send').click();
+    await sleep(700);
+    ok(tt.calls.filter(c => c.p === '/api/arena/answer').length === 1 && !tt.calls.some(c => c.b && c.b.timeout),
+       '★★ 時間內送出 ⇒ 倒數停掉，不會又多送一次「時間到」');
+    await sleep(800);
+  }
 
   section('④ 結果與排行：前 30 名＋自己在第 31 列');
   const top = Array.from({ length: 30 }, (_, i) => ({ sid: '14000' + String(i).padStart(2, '0'), score: 1000 - i * 10, seconds: 100, rank: i + 1 }));
