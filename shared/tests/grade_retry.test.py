@@ -417,6 +417,79 @@ ok(res.get("ok") is False and not _CLAUDE_CALLS,
    "★★★ 沒設 ANTHROPIC_API_KEY 就完全不要碰 Claude —— "
    "留在梯子上只會在最後一階白白失敗一次（而那次可能又掛住幾十秒）")
 
+section("④c2 額度用完（429）也要換到付費備援（2026-10-06 上課實況）")
+# ⛔ 11:03～15:00 學生端失敗 72 次，全是
+#    429 RESOURCE_EXHAUSTED「You exceeded your current quota」——
+#    haiku 一次都沒被試，因為只有 503／連續 500 會換模型。
+_Q429 = ("429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your "
+         "current quota, please check your plan and billing details.'}}")
+_flash_calls = []
+def _s429(m):
+    _flash_calls.append(m)
+    raise Exception(_Q429)
+
+
+def _grade_paid():
+    _CLAUDE_CALLS[:] = []
+    core.GRADE_LOG.clear()
+    _FakeClient.keys_used = []
+    _FakeClient.script = _s429
+    return core.single_agent_grading(
+        KEYS, "規則", "主題", "學生碼", "空白不一樣", "解答",
+        "gemini-2.5-flash", True, claude_key="sk-ant-TESTKEY000000000000")
+
+
+core._QUOTA_COOL.clear()
+clock = _Clock(); core.time = clock
+_flash_calls[:] = []
+res = _grade_paid()
+_kw = [c for c in _CLAUDE_CALLS if "model" in c]
+ok(res.get("score") == 88 and _kw and _kw[0]["model"].startswith("claude"),
+   "★★★ 主要模型額度用完 ⇒ 換付費 Claude 把這一份評完　←　%r" % res.get("score"))
+ok(len(_flash_calls) == 2 and len(set(_FakeClient.keys_used)) == 2,
+   "★★ 第一次 429 先換另一把金鑰（可能是不同專案），連續兩次才換模型　←　flash 打了 %d 次"
+   % len(_flash_calls))
+ok(len(clock.slept) <= 1, "★ 換了模型就不必再等（實際等了 %d 次）" % len(clock.slept))
+ok(core.quota_cooling("gemini-2.5-flash") > 500, "★★ 換掉之後 flash 進入冷卻（約 10 分鐘）")
+ok("額度用完" in "\n".join(core.GRADE_LOG), "★ 紀錄寫明是「額度用完」才換的")
+ok((res.get("_stat") or {}).get("fallback") is True, "觀測紀錄標成備援")
+
+# 冷卻中：下一位同學直接從備援開始，不必先白撞兩次 429
+_flash_calls[:] = []
+clock.now += 60
+res = _grade_paid()
+ok(res.get("score") == 88 and not _flash_calls,
+   "★★★ 冷卻中的下一份直接用 Claude —— flash 一次都不打　←　打了 %d 次" % len(_flash_calls))
+st = res.get("_stat") or {}
+ok(st.get("quota_skip") is True and st.get("fallback") is True,
+   "★★ 觀測紀錄標出「因為冷卻直接用備援」，而且仍然算備援（不能因為排第一就當主要模型）")
+ok("冷卻" in "\n".join(core.GRADE_LOG), "★ 紀錄寫明正在冷卻")
+
+# 冷卻結束：回到 flash 先試
+clock.now += core.GRADE_QUOTA_COOLDOWN + 1
+_flash_calls[:] = []
+res = _grade_paid()
+ok(_flash_calls and _flash_calls[0] == "gemini-2.5-flash",
+   "★★ 冷卻時間過了 ⇒ 回到免費的 flash 先試（不會永遠花錢）")
+
+# 503 不是額度問題：照舊換模型，但不冷卻
+core._QUOTA_COOL.clear()
+def _s503(m):
+    raise Exception("503 UNAVAILABLE. 'This model is currently experiencing high demand.'")
+_FakeClient.script = _s503
+_CLAUDE_CALLS[:] = []
+res = core.single_agent_grading(KEYS, "規則", "主題", "學生碼", "空白不一樣", "解答",
+                                "gemini-2.5-flash", True, claude_key="sk-ant-TESTKEY000000000000")
+ok(res.get("score") == 88 and core.quota_cooling("gemini-2.5-flash") == 0,
+   "★ 503（一時忙線）照舊換模型，但**不**冷卻 —— 下一份還是先試免費的")
+ok(core._is_quota_error(_Q429) and not core._is_quota_error("503 UNAVAILABLE")
+   and not core._is_quota_error("500 INTERNAL"), "★ 額度錯誤和忙線、伺服器錯分得開")
+_src8q = "".join(json.load(io.open(NB, encoding="utf-8"))["cells"][8]["source"])
+_i = _src8q.find("_threading.Thread(\n                target=_pair_probe")
+ok(_i > 0 and "not core.quota_cooling(_primary)" in _src8q[max(0, _i - 900):_i],
+   "★★ 冷卻中不做背景自動配對（那一次一定撞 429，只是白白消耗）")
+core._QUOTA_COOL.clear()
+
 section("④d 每一次批改都要留一筆摘要（跨 Colab 重啟）")
 # ⛔ 2026-09-10 老師問「今天批改使用的不是新版?」—— 我答不出來，因為
 #    批改紀錄只在記憶體、重啟就清空，最後靠「logic_analysis 空不空」反推。
