@@ -403,27 +403,42 @@ async function grade(){
     sayWait((Number(q.pending)||0) + 1);
   }catch(e){ sayWait(1); }
 
-  // 等待期間持續更新（同樣不要講成「前面還有幾位」）
-  const qTimer = setInterval(async ()=>{
-    const el = Math.round((Date.now()-t0)/1000);
-    try{
-      const q = await (await fetch(base()+'/api/student/queue',{headers:H,cache:'no-store'})).json();
-      readQ(q);
-      const n = Math.max(1, Number(q.pending)||1);
-      /* ⚠️ 超過預估時間之後**不可以**再報預估值 —— 那會變成
-         「約 1 分半」卻已經等了 3 分鐘，看起來就是壞掉。
-         ⇒ 改成明講「比平常久」，但同時說清楚它還在跑。 */
-      const late = el > avgSec * 1.3;
-      setStatus(
-        (late ? `🧠 還在批改…已經 ${fmtElapsed(el)}，比平常久一點（沒有當掉，AI 還在讀你的積木）`
-              : `🧠 批改中…已經 ${fmtElapsed(el)} ／ 預計 ${fmtWait(avgSec)}`)
-        + (n>1 ? `　目前同時有 ${n} 位` : '')
-        + '　請不要重複按，重按會多花一次 AI 額度', 'busy');
-    }catch(e){
-      // 問不到後端也要讓畫面繼續動，否則看起來就是當掉。
-      setStatus(`🧠 批改中…已經 ${fmtElapsed(el)}（暫時問不到進度，請再等一下）`, 'busy');
+  /* 等待期間持續更新（同樣不要講成「前面還有幾位」）
+     ⛔⛔ 2026-10-06：原本每 4 秒問一次後端 —— 一份作品批 15～90 秒就是 4～22 次請求，
+        一天約一千次，佔掉免費 ngrok 每月 2 萬次的一大塊（10 月 6 天用掉 1.29 萬）。
+     ★ 老師選的做法：**畫面每秒自己更新**（已經過幾秒用瀏覽器的時鐘算），
+       **後端每 10 秒才問一次**（只為了「同時有幾位」和「預計多久」）。
+       學生看到的秒數照樣每秒在走 —— 只把間隔拉長、秒數一次跳 10 秒的話，
+       看起來就像當掉，正是重按的時機。
+     ⚠️ 只有一個 setInterval（qTimer）：下面成功／失敗兩處 clearInterval(qTimer) 不必改。 */
+  let qN = 1, qMiss = false, qBusy = false, qTicks = 0;
+  const Q_EVERY = 10;                   // 每幾秒問一次後端
+  const qTimer = setInterval(()=>{
+    qTicks++;
+    if (qTicks % Q_EVERY === 0 && !qBusy) {
+      qBusy = true;
+      fetch(base()+'/api/student/queue',{headers:H,cache:'no-store'})
+        .then(r=>r.json())
+        .then(q=>{ readQ(q); qN = Math.max(1, Number(q.pending)||1); qMiss = false; })
+        .catch(()=>{ qMiss = true; })   // 問不到後端也要讓畫面繼續動，否則看起來就是當掉
+        .finally(()=>{ qBusy = false; });
     }
-  }, 4000);
+    if (qTicks < 4) return;             // 前幾秒留著「已送出！…預計多久」那一句
+    const el = Math.round((Date.now()-t0)/1000);
+    if (qMiss) {
+      setStatus(`🧠 批改中…已經 ${fmtElapsed(el)}（暫時問不到進度，請再等一下）`, 'busy');
+      return;
+    }
+    /* ⚠️ 超過預估時間之後**不可以**再報預估值 —— 那會變成
+       「約 1 分半」卻已經等了 3 分鐘，看起來就是壞掉。
+       ⇒ 改成明講「比平常久」，但同時說清楚它還在跑。 */
+    const late = el > avgSec * 1.3;
+    setStatus(
+      (late ? `🧠 還在批改…已經 ${fmtElapsed(el)}，比平常久一點（沒有當掉，AI 還在讀你的積木）`
+            : `🧠 批改中…已經 ${fmtElapsed(el)} ／ 預計 ${fmtWait(avgSec)}`)
+      + (qN>1 ? `　目前同時有 ${qN} 位` : '')
+      + '　請不要重複按，重按會多花一次 AI 額度', 'busy');
+  }, 1000);
   const fd=new FormData(); fd.append('file',chosen); fd.append('student_id',sid); fd.append('unit',UNIT||'');
   fd.append('term', window.CONFIG.TERM);        // 共用後端：批改結果寫回本學期的集合
   // ★ Scratch 星星切換第 ③步：開關打開時請後端順便寫星星（見 shared/grading.js）
