@@ -439,7 +439,7 @@ def _grade_paid():
         "gemini-2.5-flash", True, claude_key="sk-ant-TESTKEY000000000000")
 
 
-core._QUOTA_COOL.clear()
+core._QUOTA_COOL.clear(); core._KEY_COOL.clear()   # ⚠️ 前面的測試也撞過 429，假時鐘又從同一個時間開始
 clock = _Clock(); core.time = clock
 _flash_calls[:] = []
 res = _grade_paid()
@@ -489,6 +489,59 @@ _i = _src8q.find("_threading.Thread(\n                target=_pair_probe")
 ok(_i > 0 and "not core.quota_cooling(_primary)" in _src8q[max(0, _i - 900):_i],
    "★★ 冷卻中不做背景自動配對（那一次一定撞 429，只是白白消耗）")
 core._QUOTA_COOL.clear()
+
+section("④c3 記住哪一把金鑰用完了，下一份直接從還有額度的那一把開始（2026-10-06）")
+core._QUOTA_COOL.clear(); core._KEY_COOL.clear()
+clock = _Clock(); core.time = clock
+def _s_k1dead(m):
+    if _FakeClient.keys_used[-1] == KEYS[0]:
+        raise Exception(_Q429)
+    return _FakeResp(GOOD)
+def _grade_k(script):
+    core.GRADE_LOG.clear(); _FakeClient.keys_used = []; _FakeClient.script = script
+    return core.single_agent_grading(KEYS, "規則", "主題", "學生碼", "空白不一樣", "解答",
+                                     "gemini-2.5-flash", True, claude_key="sk-ant-TESTKEY000000000000")
+res = _grade_k(_s_k1dead)
+ok(res.get("score") == 88 and _FakeClient.keys_used == KEYS and not clock.slept,
+   "★★ 第 1 把額度用完 ⇒ 立刻換第 2 把（不同金鑰不必等）　←　%r／等了 %r" % (_FakeClient.keys_used, clock.slept))
+ok(core.key_cooling(KEYS[0]) > 0 and core.key_cooling(KEYS[1]) == 0, "★★ 記住第 1 把在冷卻、第 2 把可以用")
+ok(core.quota_cooling("gemini-2.5-flash") == 0, "★ 還有一把能用 ⇒ 模型本身不冷卻、不花錢換 Claude")
+ok("第 1 把金鑰額度用完" in "\n".join(core.GRADE_LOG), "紀錄寫明是第幾把用完")
+res = _grade_k(_s_k1dead)
+ok(res.get("score") == 88 and _FakeClient.keys_used == [KEYS[1]],
+   "★★★ 下一位同學直接從第 2 把開始 —— 不再先撞第 1 把　←　%r" % (_FakeClient.keys_used,))
+clock.now += core.GRADE_QUOTA_COOLDOWN + 1
+res = _grade_k(lambda m: _FakeResp(GOOD))
+ok(_FakeClient.keys_used == [KEYS[0]], "★ 冷卻過了 ⇒ 回到第 1 把")
+# 每日額度（PerDay）⇒ 冷卻到美西午夜
+core._KEY_COOL.clear()
+_daily = _Q429 + " quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier"
+def _s_daily(m):
+    if _FakeClient.keys_used[-1] == KEYS[0]:
+        raise Exception(_daily)
+    return _FakeResp(GOOD)
+clock.now = 1791257400.0          # 2026-10-06 11:30 台灣時間
+res = _grade_k(_s_daily)
+_left = core.key_cooling(KEYS[0])
+ok(abs(_left - (1791270000.0 - clock.now)) < 2,          # 1791270000 ＝ 10-06 15:00 台灣＝美西午夜
+   "★★★ 每日額度用完 ⇒ 冷卻到美西午夜（台灣 15:00）再試，不是每 10 分鐘白撞一次　←　還要 %.0f 秒" % _left)
+# 兩把都用完 ⇒ 換 Claude；模型冷卻到最快恢復的那一把
+core._KEY_COOL.clear(); core._QUOTA_COOL.clear()
+_flash_calls[:] = []
+res = _grade_paid()
+ok(len(_flash_calls) == 2 and res.get("score") == 88, "★★ 兩把都用完 ⇒ 各試一次就換 Claude")
+ok(abs(core.quota_cooling("gemini-2.5-flash") - core.GRADE_QUOTA_COOLDOWN) < 2,
+   "　模型冷卻到最快恢復的那一把")
+# 冬令時間（11 月第 1 個星期日之後）：美西午夜＝台灣 16:00；而且不靠時區資料庫（Windows 沒有）
+ok(core._next_quota_reset(1794636000.0) == 1794643200.0,
+   "★★ 11/14 14:00 台灣 ⇒ 下一次重置是 16:00（冬令 UTC−8）")
+ok(core._next_quota_reset(1791270000.0 + 1) == 1791270000.0 + 86400,
+   "★ 剛過重置時間 ⇒ 下一次是隔天")
+ok("import zoneinfo" not in "".join(json.load(io.open(NB, encoding="utf-8"))["cells"][6]["source"]).split("def _next_quota_reset")[1].split("def _cool_key")[0].replace("from zoneinfo", "import zoneinfo"),
+   "★★ 不用 zoneinfo（Windows 的 Python 沒有時區資料庫，提交前檢查會失敗）")
+_src8k = "".join(json.load(io.open(NB, encoding="utf-8"))["cells"][8]["source"])
+ok('"keys_cooling"' in _src8k and "core.key_cooling(k1)" in _src8k, "★ 健康檢查看得到哪一把在冷卻（只回秒數）")
+core._QUOTA_COOL.clear(); core._KEY_COOL.clear()
 
 section("④d 每一次批改都要留一筆摘要（跨 Colab 重啟）")
 # ⛔ 2026-09-10 老師問「今天批改使用的不是新版?」—— 我答不出來，因為
