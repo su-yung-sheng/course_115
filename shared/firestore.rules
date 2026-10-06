@@ -4,8 +4,8 @@ rules_version = '2';
 //  Firestore 安全規則 — 專案 suyungsheng-5f948
 //  涵蓋：115 學年【上學期 11501】＋【下學期 11502】
 //  貼上位置：Firebase Console → Firestore Database → 規則 → 發佈
-//  規則本體最後更新：2026-09-29
-//  規則本體指紋：00b75eaf　（184 行，不含註解）
+//  規則本體最後更新：2026-10-06
+//  規則本體指紋：71835cb5　（196 行，不含註解）
 //
 //  ★ 怎麼確認「線上跑的是不是這一份」
 //    Firebase Console 的規則第一段也看得到上面兩行。比對**指紋**就好。
@@ -456,6 +456,16 @@ service cloud.firestore {
       allow create, read, update, delete: if isTeacher();
     }
 
+    // 闖關排行賽：後端（服務帳戶）寫；老師可讀 —— 教師端「🏆 排行賽」頁直接讀，
+    //   不必經過 Colab（Colab 沒開也看得到）。學生一律不能直接讀寫，
+    //   排行、剩幾次都走後端的 arena 端點（2026-10-06）。
+    match /11501-arena-board/{sid} {
+      allow read: if isTeacher();
+    }
+    match /11501-arena-runs/{runId} {
+      allow read: if isTeacher();
+    }
+
 
     // ###################################################################
     // ##  C. 115-2 下學期（11502）— 與上學期規則相同，僅集合名不同
@@ -507,6 +517,16 @@ service cloud.firestore {
     //     （寫入的是後端，它不受規則限制；學生端從來沒碰過這個集合）。
     match /11502-scratch-submissions/{recId} {
       allow create, read, update, delete: if isTeacher();
+    }
+
+    // 闖關排行賽：後端（服務帳戶）寫；老師可讀 —— 教師端「🏆 排行賽」頁直接讀，
+    //   不必經過 Colab（Colab 沒開也看得到）。學生一律不能直接讀寫，
+    //   排行、剩幾次都走後端的 arena 端點（2026-10-06）。
+    match /11502-arena-board/{sid} {
+      allow read: if isTeacher();
+    }
+    match /11502-arena-runs/{runId} {
+      allow read: if isTeacher();
     }
 
 
