@@ -288,6 +288,64 @@ ok("不是你的程式有問題" in res.get("comments", ""),
 ok(core.GRADE_BUDGET_SECONDS < 240,
    "★★ 預算要小於前端的 240 秒　←　現在是 %s" % core.GRADE_BUDGET_SECONDS)
 
+section("②b flash 掛很久才回 503，還是要讓 haiku 試一次（2026-10-07 上午）")
+# ⛔ 08:43、09:08 兩筆：flash 掛了 115／107 秒才回 503，學生看到
+#    「試了 1 次、等了 107 秒還是排不進去」—— haiku 一次都沒被試。
+#    出發前檢查拿 flash 的 107 秒去估 haiku：107＋107＞200 ⇒ 收手。
+#  ★ 最慢的一次要**按模型分開記**；沒打過的模型用 GRADE_FRESH_MODEL_EST。
+_503 = ("503 UNAVAILABLE. {'error': {'code': 503, 'message': "
+        "'This model is currently experiencing high demand.'}}")
+
+
+_hang_calls = []
+
+
+def _hang_then_503(sec):
+    def _f(m):
+        _hang_calls.append(m)
+        _clock_b.now += sec
+        raise Exception(_503)
+    return _f
+
+
+def _grade_hang(sec):
+    global _clock_b
+    _clock_b = _Clock(); core.time = _clock_b
+    core._QUOTA_COOL.clear(); core._KEY_COOL.clear()
+    _CLAUDE_CALLS[:] = []
+    _hang_calls[:] = []
+    core.GRADE_LOG.clear()
+    _FakeClient.keys_used = []
+    _FakeClient.script = _hang_then_503(sec)
+    return core.single_agent_grading(
+        KEYS, "規則", "主題", "學生碼", "空白不一樣", "解答",
+        "gemini-2.5-flash", True, claude_key="sk-ant-TESTKEY000000000000")
+
+
+for _sec in (107, 115):
+    _r = _grade_hang(_sec)
+    _kw = [c for c in _CLAUDE_CALLS if "model" in c]
+    ok(_r.get("score") == 88 and _kw and _kw[0]["model"].startswith("claude"),
+       "★★★ flash 掛 %d 秒才回 503 ⇒ 還是要換 haiku 評完　←　%r／%r"
+       % (_sec, _r.get("score"), str(_r.get("comments"))[:40]))
+    ok(_hang_calls == ["gemini-2.5-flash"],
+       "★★ flash 真的掛了 %d 秒、只打一次（503 不換金鑰重試）　←　%r" % (_sec, _hang_calls))
+    ok(_clock_b.now - 1000.0 >= _sec,
+       "（測試本身）假時鐘真的走了 %d 秒以上　←　%.0f" % (_sec, _clock_b.now - 1000.0))
+    ok(_clock_b.now - 1000.0 < 240,
+       "★★ 而且整次仍在前端放棄（240 秒）之前　←　%.0f 秒" % (_clock_b.now - 1000.0))
+
+# ⚠️ 反面：掛到 150 秒才回 ⇒ 150＋60＞200，這時收手才是對的（haiku 也掛住就會超過 240）。
+_r = _grade_hang(150)
+ok(_r.get("ok") is False and not [c for c in _CLAUDE_CALLS if "model" in c],
+   "★★ flash 掛到 150 秒 ⇒ 不再出發（留給 haiku 的時間不夠）")
+ok("排不進去" in str(_r.get("comments") or _r.get("error") or ""),
+   "★ 收手時照樣講「排不進去、過幾分鐘再送」")
+ok(30 <= core.GRADE_FRESH_MODEL_EST <= core.GRADE_BUDGET_SECONDS - 120,
+   "★ 沒打過的模型的估計值要合理（不可以是 0，也不可以大到 107 秒的情況又被擋掉）"
+   "　←　%s" % core.GRADE_FRESH_MODEL_EST)
+
+
 section("③ 500 INTERNAL 要重試，但不必換模型")
 def _s3(m, n):
     if n <= 2:

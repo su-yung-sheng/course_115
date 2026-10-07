@@ -1481,8 +1481,10 @@ ok('GRADE_BUDGET_SECONDS' in _core_src and 'GRADE_FALLBACK_MODELS' in _core_src,
 ok(int(re.search(r'GRADE_BUDGET_SECONDS = (\d+)', _core_src).group(1)) < 240,
    '★★★ 預算要小於學生端 fetch 放棄的 240 秒 —— 否則學生看到的是斷線，'
    '連我們寫的「服務忙線」都來不及顯示')
-ok('_worst[0] = max(_worst[0]' in _aa2,
-   '★★★ 要記下「最慢的一次」：預算檢查得在出發前算進「這次可能又花多久」')
+# ⚠️ 2026-10-07 起按模型分開記（flash 掛 107 秒，不代表 haiku 也要 107 秒）。
+ok('_worst[_mdl[0]] = max(_worst.get(_mdl[0]' in _aa2
+   and '_worst.get(_mdl[0], GRADE_FRESH_MODEL_EST)' in _aa2,
+   '★★★ 要記下「最慢的一次」（按模型分開）：預算檢查得在出發前算進「這次可能又花多久」')
 ok('_next_model' in _aa2 and 'high demand' in _aa2,
    '★★★ 撞到 503／high demand 要換模型，不是換金鑰')
 ok('_n500[0] >= 2' in _aa2,
