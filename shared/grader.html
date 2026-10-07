@@ -196,7 +196,10 @@ const SERVER_URL = window.CONFIG.SERVER_URL;                 // 設定集中在 
 // 作品備份（Google Apps Script）：2⭐ 以上自動把 .sb3 存到雲端硬碟
 const GAS_UPLOAD_URL = window.CONFIG.GAS_UPLOAD_URL;
 const TERM = window.CONFIG.TERM;   // 學期資料夾
-const MAX_UPLOAD_MB = 8;           // 超過就不備份（避免 GAS 失敗）
+/* ⚠️ 2026-10-07 8 → 14：Apps Script 那邊（filebackup.gs 的 MAX_MB）收 15 MB，
+     這裡卻在 8 MB 就自己放棄 —— 8～14 MB 的作品（有音效、背景圖的那幾關）一律
+     「備份失敗」，而且畫面說不出原因。base64 會再大 1/3，14 MB → 約 19 MB，仍在 GAS 收得下的範圍。 */
+const MAX_UPLOAD_MB = 14;          // 超過就不備份（和 filebackup.gs 的 15 MB 留一點餘裕）
 const $ = id => document.getElementById(id);
 const base = () => SERVER_URL;
 const H = {'ngrok-skip-browser-warning':'true'};
@@ -264,30 +267,52 @@ function fileToBase64(f){
   });
 }
 // 2⭐ 以上才備份作品到雲端硬碟：學期/班級/座號/關卡_分數.sb3
+/* ⛔⛔ 2026-10-07 老師：「今天的評分過程中有出現程式未備份成功的訊息」。
+   原本這一支失敗時只回 null，畫面一律寫「作品備份失敗」——
+   檔案太大、名冊查不到、Apps Script 回報錯誤、網路斷，**四種原因長得一模一樣**，
+   而原因只印在學生電腦的主控台裡，老師完全查不到。
+   ⇒ 回 { url } 或 { err: 給人看的原因 }；畫面把原因講出來（學生截圖給老師就知道是哪一種）。
+   ★ 暫時性的（網路、Apps Script 忙）自動再試一次；通行碼、學期、檔案太大這種再試也沒用的就不試。 */
 async function backupWork(file, sid, unit, score){
-  if(!file || !GAS_UPLOAD_URL) return null;
+  if(!file || !GAS_UPLOAD_URL) return { err:'沒有設定備份網址' };
   if(file.size > MAX_UPLOAD_MB*1024*1024){
-    console.warn('檔案過大，略過備份'); return null;
+    console.warn('檔案過大，略過備份');
+    return { err:'檔案 ' + (file.size/1024/1024).toFixed(1) + ' MB，超過 ' + MAX_UPLOAD_MB + ' MB 的備份上限' };
   }
   const info = window.lookupStudent ? await window.lookupStudent(sid) : null;
-  if(!info || !info.cls || !info.no){ console.warn('名冊查無班級座號，略過備份'); return null; }
+  if(!info || !info.cls || !info.no){ console.warn('名冊查無班級座號，略過備份'); return { err:'名冊查不到你的班級座號' }; }
+  const idx = UNITS.findIndex(x => x[0] === unit);         // 關卡編號 01～10
+  let body;
   try{
-    const idx = UNITS.findIndex(x => x[0] === unit);       // 關卡編號 01～10
-    const payload = {
+    body = JSON.stringify({
       kind:'sb3', term:TERM, key: window.CONFIG.GAS_UPLOAD_KEY,
       classRoom:info.cls, seatNo:info.no, name:info.name,
       unit, unitNo: idx >= 0 ? String(idx + 1) : '', score,
       base64: await fileToBase64(file)
-    };
-    const r = await fetch(GAS_UPLOAD_URL,{ method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload) });
-    const j = await r.json();
-    if(j.success && j.url){
-      if(window.saveWorkLink) await window.saveWorkLink(sid, unit, j.url);
-      return j.url;
+    });
+  }catch(e){ console.error('作品備份失敗', e); return { err:'讀不到檔案內容' }; }
+  let last = '';
+  for(let attempt = 0; attempt < 2; attempt++){
+    if(attempt) await new Promise(r=>setTimeout(r, 3000));
+    try{
+      const r = await fetch(GAS_UPLOAD_URL,{ method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'}, body });
+      let j = null;
+      try{ j = await r.json(); }catch(e){ j = null; }
+      if(j && j.success && j.url){
+        if(window.saveWorkLink) await window.saveWorkLink(sid, unit, j.url);
+        return { url: j.url };
+      }
+      last = j ? ('Google 雲端回報：' + String(j.message || '沒有說明').slice(0, 80))
+               : ('Google 雲端沒有正常回應（HTTP ' + r.status + '）');
+      // 再試也沒用的：通行碼、學期、檔案太大、不認得的種類
+      if(j && /通行碼|學期參數|檔案太大|不認得/.test(String(j.message || ''))) break;
+    }catch(e){
+      console.error('作品備份失敗', e);
+      last = '連不上 Google 雲端';
     }
-  }catch(e){ console.error('作品備份失敗', e); }
-  return null;
+  }
+  return { err: last || '原因不明' };
 }
 
 // 載入任務資訊 + 自動偵測連線（紅/綠燈）
@@ -488,8 +513,9 @@ async function grade(){
         if(rep.star >= 2 && rep.scoreImproved){
           const prevMsg = $('status').textContent;
           setStatus(prevMsg + '　📤 作品備份中…');
-          const url = await backupWork(chosen, sid, UNIT, j.result.score);
-          setStatus(prevMsg + (url ? '　📦 作品已備份到雲端硬碟' : '　⚠️ 作品備份失敗（成績已記錄，請告訴老師）'), url?'':'err');
+          const bk = await backupWork(chosen, sid, UNIT, j.result.score);
+          setStatus(prevMsg + (bk.url ? '　📦 作品已備份到雲端硬碟'
+                                      : '　⚠️ 作品備份失敗：' + bk.err + '（成績已記錄，請截圖告訴老師）'), bk.url?'':'err');
         }
       }
     }catch(err){ setStatus('⚠️ 星星記錄失敗（分數仍有效，請告訴老師）','err'); }
