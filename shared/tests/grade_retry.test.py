@@ -1779,5 +1779,32 @@ ok("有 2 段相同的事件 event_whenbroadcastreceived（60）：" in _do and 
    "★★ 同一個廣播（60）收兩次也印；兩段都有積木就不提空的")
 ok("（62）" not in _do.split("▶ 執行序列")[0], "★★ 名稱不同的廣播（62）不算重複")
 
+section("④y2 每個角色有幾段程式（第 7 關：只寫一隻就 100 分，2026-10-07）")
+# ⛔ 規則寫「每一個可點擊、且有『當角色被點擊』程式的角色都算」——
+#    沒寫程式的角色不算「可點擊角色」⇒ 只寫一隻也符合。虛擬碼要把事實攤開。
+_p7 = {"targets": [
+    {"name": "Stage", "isStage": True, "variables": {"v": ["被點幾下", 0]}, "lists": {}, "blocks": {}},
+    {"name": "貓", "isStage": False, "variables": {}, "lists": {}, "blocks": {
+        "c1": _hat("event_whenthisspriteclicked", "c2"),
+        "c2": {"opcode": "looks_say", "topLevel": False, "parent": "c1", "next": None, "fields": {}, "inputs": {}},
+        "c3": _hat("event_whenflagclicked")}},
+    {"name": "蝠", "isStage": False, "variables": {}, "lists": {}, "blocks": {}},
+    {"name": "狗", "isStage": False, "variables": {}, "lists": {}, "blocks": {
+        "d1": _hat("procedures_definition")}}]}
+_pc7 = core.clean_json_for_ai(_p7)
+_ov7 = _pc7[_pc7.index("【各角色的程式總覽"):_pc7.index("[角色/背景：Stage]")] if "【各角色的程式總覽" in _pc7 else ""
+ok("· 貓：2 段程式（當角色被點擊、當綠旗被點擊）" in _ov7,
+   "★★ 總覽：貓 2 段程式，寫出是哪幾種開頭")
+ok("· 蝠：⚠️ 沒有任何會被觸發的程式" in _ov7 and "· 狗：⚠️ 沒有任何會被觸發的程式" in _ov7,
+   "★★★ 沒寫程式的角色明寫「沒有任何會被觸發的程式」（只有自訂積木定義也算沒有）")
+ok("Stage" not in _ov7.split("】")[1].split("★")[0], "舞台不列（舞台本來就常常沒有程式）")
+ok(_pc7.index("【各角色的程式總覽") < _pc7.index("[角色/背景："), "★ 總覽放在最前面（所有角色之前）")
+ok("沒有程式的角色就是沒有做到" in _ov7 and "不扣分" in _ov7,
+   "★★ 寫明對照方式：規則要求每一個角色 ⇒ 沒程式就沒做到；規則沒要求的不扣分")
+_bat = _pc7[_pc7.index("[角色/背景：蝠]"):_pc7.index("[角色/背景：狗]")]
+ok("這個角色**沒有任何會被觸發的程式**" in _bat, "★ 那個角色自己的段落裡也寫一次")
+_cat = _pc7[_pc7.index("[角色/背景：貓]"):_pc7.index("[角色/背景：蝠]")]
+ok("沒有任何會被觸發的程式" not in _cat, "有程式的角色不寫")
+
 print("\n通過 %d／失敗 %d" % (_pass[0], _fail[0]))
 sys.exit(1 if _fail[0] else 0)
