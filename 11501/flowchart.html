@@ -423,7 +423,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                   progStars:{}, unlocked:{}, imgUnits:{}, vidUnits:{}, imgReview:{}, vidReview:{}, unit:null, candidates:[], selected:{}, selMsg:'', placed:[], pool:[], mistakes:0,
                   qIdx:0, qPicked:null, qScore:0, refOpen:false, leadOpen:false, graderOpen:false,
                   readLeft:0, hintUsed:false, hintLeft:0, selTries:0,
-                  quizSet:[], quizPassed:false,
+                  quizSet:[], quizPassed:false, qPulled:false,
                   leadDone:false,      // 前導教材「Scratch 清單學習機」是否已通過結業測驗
                   gateMsg:'' };        // 點到鎖住的關卡時，顯示在列表上方的說明
 
@@ -758,25 +758,134 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
     function startProgram(){
       if(!state.unit || !unitOpen(state.unit.no)){ refuse(state.unit ? state.unit.no : 1); return; }
       state.quizSet = newQuizSet(state.unit);
-      state.qIdx=0; state.qPicked=null; state.qScore=0; state.quizPassed=false;
+      state.qIdx=0; state.qPicked=null; state.qScore=0; state.quizPassed=false; state.qPulled=false;
       state.status='program'; render();
+    }
+    /* ⛔ 2026-10-07：作答原本每一下都 render() —— 整頁 innerHTML 重畫，
+       **教學影片從頭開始、右邊的評分站 iframe 重新載入**。學生一邊等評分
+       一邊答題，評分結果就會消失（評分站裡的請求跟著 iframe 一起被丟掉）。
+       ⇒ 作答只重畫測驗那一塊；全對時再加畫截圖區。兩個 iframe 都不動。
+       ⚠️ 找不到那一塊（理論上不會）才退回整頁重繪，不可以靜靜地什麼都不做。 */
+    function quizRedraw(){
+      const box = document.getElementById('quiz-box');
+      if(!box){ render(); return; }
+      box.innerHTML = quizAreaHTML();
+      const im = document.getElementById('prog-imgs');
+      if(im && state.unit && PROG[state.unit.id]) im.innerHTML = progImgsHTML(PROG[state.unit.id]);
     }
     function retryQuiz(){                      // 沒全對 → 重新抽 3 題再來
       state.quizSet = newQuizSet(state.unit);
-      state.qIdx=0; state.qPicked=null; state.qScore=0; render();
+      state.qIdx=0; state.qPicked=null; state.qScore=0; state.qPulled=false; quizRedraw();
     }
     function pickAns(i){
       if(state.qPicked!=null) return;
       state.qPicked=i;
       const q=state.quizSet[state.qIdx];
       if(i===q.a) state.qScore++;
-      render();
+      quizRedraw();
     }
     function nextQ(){
       state.qIdx++; state.qPicked=null;
       if(state.qIdx>=state.quizSet.length && state.qScore===state.quizSet.length) state.quizPassed=true;
-      render();
+      quizRedraw();
     }
+    /* 程式截圖區（鎖住／已解鎖）。從 render 搬出來：測驗全對時只重畫這一塊。 */
+    function progImgsHTML(p){
+      return p.imgs&&p.imgs.length?(state.quizPassed
+                    ? `<div><div class="text-xs font-black text-orange-500 mb-2">🖼️ 程式截圖／範例　<span class="text-emerald-600">（已解鎖）</span><span class="text-slate-400 font-bold ml-1">・點圖可放大</span></div><div class="grid gap-2 ${p.imgs.length>1?'sm:grid-cols-2':''}" data-zoomgroup>${p.imgs.map(src=>`<img src="${src}" class="rounded-lg border border-slate-200 w-full zoomable" data-zoom loading="lazy" alt="程式截圖">`).join('')}</div></div>`
+                    : `<div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-5 text-center">
+                         <div class="text-3xl mb-1">🔒</div>
+                         <div class="text-sm font-black text-slate-600">程式截圖／範例尚未解鎖</div>
+                         <div class="text-xs text-slate-500 mt-1">先看完影片，完成下方的<b>自我檢核測驗（${QUIZ_PICK} 題全對）</b>就會顯示。</div>
+                       </div>`):'';
+    }
+    /* 自我檢核測驗的那一塊（從 render 搬出來，離開／回來時只重畫這一塊）。 */
+    function quizAreaHTML(){
+      const total=(state.quizSet||[]).length; const q=(state.quizSet||[])[state.qIdx];
+      if(state.qPulled && quizLive()){
+        return `<div id="quiz-pulled" class="cursor-pointer text-center py-8">
+                  <div class="text-3xl mb-2">👀</div>
+                  <p class="font-black text-slate-500">題目先收起來了</p>
+                  <p class="text-sm text-slate-400 mt-1">你切到別的視窗去了。回到這個畫面（或點一下這裡），會換一題新的給你。</p>
+                </div>`;
+      }
+      return state.qIdx>=total
+        ? (state.qScore===total
+          ? `<div class="text-center py-4">
+               <div class="text-4xl mb-2">🎉</div>
+               <p class="font-black text-emerald-700 text-lg">全對！${total} / ${total} 通過檢核</p>
+               <p class="text-sm text-slate-500 mt-1">已解鎖上方的<b>程式截圖／範例</b>，可以對照著實作了。</p>
+               <p class="text-sm font-bold text-emerald-700 mt-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">👉 寫好程式後，到<b>右邊的「程式評分」</b>上傳 .sb3 就能拿星星</p>
+             </div>`
+          : `<div class="text-center py-4">
+               <div class="text-4xl mb-2">🤔</div>
+               <p class="font-black text-amber-700 text-lg">答對 ${state.qScore} / ${total}，還要再加油！</p>
+               <p class="text-sm text-slate-500 mt-1">要<b>全部答對</b>才能解鎖程式截圖。回去看看影片，再挑戰一次吧！</p>
+               <button id="retry-quiz" class="mt-4 bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl transition">🔄 換 ${total} 題再挑戰</button>
+             </div>`)
+        : `<div class="text-xs text-slate-400 mb-2">第 ${state.qIdx+1} / ${total} 題</div>
+           <p class="font-bold text-slate-800 mb-3">${q.q}</p>
+           <div class="space-y-2">
+             ${q.o.map((opt,i)=>{
+               let cls='bg-white border-slate-200 hover:border-orange-300';
+               if(state.qPicked!=null){ if(i===q.a) cls='bg-emerald-50 border-emerald-400 text-emerald-700'; else if(i===state.qPicked) cls='bg-red-50 border-red-400 text-red-700'; else cls='bg-white border-slate-200 opacity-60'; }
+               return `<button data-ans="${i}" class="ans-btn w-full text-left border-2 rounded-lg px-3 py-2.5 text-sm font-medium transition ${cls}">${opt}</button>`;
+             }).join('')}
+           </div>
+           ${state.qPicked!=null?`<div class="mt-3 text-right"><button id="next-q" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2 rounded-lg transition">${state.qIdx<total-1?'下一題 →':'看結果 →'}</button></div>`:''}`;
+    }
+    /* ── 作答中離開畫面 ⇒ 收題、回來換一題（老師 2026-10-07）──
+       和章節測驗（quiz-engine.js 的 QUIZ_SWAP_ON_LEAVE）、記憶補給站同一個做法：
+       ‧ 離開（切分頁、切視窗、並列視窗焦點跑掉）⇒ **題目文字立刻從網頁裡拿掉**
+         （拿掉而不只是蓋住：瀏覽器的 AI「詢問這個網頁」讀的是網頁文字）。
+       ‧ 回來 ⇒ 換成這一輪沒有的題目，離開時查到的答案對新題目沒用。
+       ⚠️ 不扣分、不算答錯 —— 誤判（跳通知、切輸入法）的代價只是換一題。
+       ⚠️⚠️ 這一頁有兩個 iframe（教學影片、右邊的評分站）。點進去時視窗也會 blur，
+          但那不是離開 —— 影片本來就是要看的。⇒ blur 之後等一拍再看
+          document.activeElement：焦點跑進自己頁面的 iframe 時，它就是那個 iframe。
+          ⛔ 不用 hasFocus()：有些環境（內嵌瀏覽器、看板模式）它永遠回 false，
+             這一頁的閱讀倒數就是為了這個改走 readhold.js 的（見上面）。
+       ⚠️⚠️ 只重畫測驗那一塊（paintQuizBox），**不可以 render()**：
+          整頁重繪會把評分站 iframe 一起換掉 —— 學生切去 Scratch 存檔、
+          回來時如果評分正在跑，結果就沒了。
+       ★ 只在「題目顯示中、還沒作答」時收：已經公布對錯的那一題、結果畫面都不收。 */
+    function quizLive(){
+      return state.status==='program' && state.qPicked==null
+          && state.qIdx < (state.quizSet||[]).length;
+    }
+    /** 換題：先從題庫裡「這一輪沒有的」挑；都用過了才退而求其次挑「不是這一題」的。 */
+    function swapPick(bank, set, cur){
+      let c = (bank||[]).filter(x => (set||[]).indexOf(x) < 0);
+      if(!c.length) c = (bank||[]).filter(x => x !== cur);
+      return c.length ? c[Math.floor(Math.random()*c.length)] : cur;
+    }
+    function paintQuizBox(){
+      const box = document.getElementById('quiz-box');
+      if(box) box.innerHTML = quizAreaHTML();
+    }
+    function pullQuiz(){
+      if(state.qPulled || !quizLive()) return;
+      state.qPulled = true;
+      paintQuizBox();
+    }
+    function backQuiz(){
+      if(!state.qPulled) return;
+      state.qPulled = false;
+      if(quizLive() && state.unit && PROG[state.unit.id]){
+        const cur = state.quizSet[state.qIdx];
+        state.quizSet[state.qIdx] = swapPick(PROG[state.unit.id].quiz, state.quizSet, cur);
+      }
+      paintQuizBox();
+    }
+    document.addEventListener('visibilitychange', ()=>{ if(document.hidden) pullQuiz(); else backQuiz(); });
+    window.addEventListener('blur', ()=>{
+      setTimeout(()=>{
+        const a = document.activeElement;
+        if(a && a.tagName === 'IFRAME') return;       // 點進影片／評分站，不是離開
+        pullQuiz();
+      }, 0);
+    });
+    window.addEventListener('focus', backQuiz);
     // finishProgram 已移除：完成由 AI 批改星數自動認定
     /* 登出要把「上一個人的進度」清乾淨。
        教室是共用電腦，殘留 progStars／leadDone 會讓下一位同學看到別人的解鎖狀態。 */
@@ -1273,30 +1382,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       if(state.status==='program'){
         const u=state.unit; const p=PROG[u.id]; const c=COLORS[u.color]||COLORS.purple;
         const total=(state.quizSet||[]).length; const q=(state.quizSet||[])[state.qIdx];
-        const quizArea = state.qIdx>=total
-          ? (state.qScore===total
-            ? `<div class="text-center py-4">
-                 <div class="text-4xl mb-2">🎉</div>
-                 <p class="font-black text-emerald-700 text-lg">全對！${total} / ${total} 通過檢核</p>
-                 <p class="text-sm text-slate-500 mt-1">已解鎖上方的<b>程式截圖／範例</b>，可以對照著實作了。</p>
-                 <p class="text-sm font-bold text-emerald-700 mt-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">👉 寫好程式後，到<b>右邊的「程式評分」</b>上傳 .sb3 就能拿星星</p>
-               </div>`
-            : `<div class="text-center py-4">
-                 <div class="text-4xl mb-2">🤔</div>
-                 <p class="font-black text-amber-700 text-lg">答對 ${state.qScore} / ${total}，還要再加油！</p>
-                 <p class="text-sm text-slate-500 mt-1">要<b>全部答對</b>才能解鎖程式截圖。回去看看影片，再挑戰一次吧！</p>
-                 <button id="retry-quiz" class="mt-4 bg-orange-500 hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl transition">🔄 換 ${total} 題再挑戰</button>
-               </div>`)
-          : `<div class="text-xs text-slate-400 mb-2">第 ${state.qIdx+1} / ${total} 題</div>
-             <p class="font-bold text-slate-800 mb-3">${q.q}</p>
-             <div class="space-y-2">
-               ${q.o.map((opt,i)=>{
-                 let cls='bg-white border-slate-200 hover:border-orange-300';
-                 if(state.qPicked!=null){ if(i===q.a) cls='bg-emerald-50 border-emerald-400 text-emerald-700'; else if(i===state.qPicked) cls='bg-red-50 border-red-400 text-red-700'; else cls='bg-white border-slate-200 opacity-60'; }
-                 return `<button data-ans="${i}" class="ans-btn w-full text-left border-2 rounded-lg px-3 py-2.5 text-sm font-medium transition ${cls}">${opt}</button>`;
-               }).join('')}
-             </div>
-             ${state.qPicked!=null?`<div class="mt-3 text-right"><button id="next-q" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2 rounded-lg transition">${state.qIdx<total-1?'下一題 →':'看結果 →'}</button></div>`:''}`;
+        const quizArea = quizAreaHTML();
         el.innerHTML = `
           <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
             <div class="flex items-center justify-between mb-4">
@@ -1319,20 +1405,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     <iframe class="absolute inset-0 w-full h-full" src="https://www.youtube.com/embed/${p.video}" title="教學影片" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                   </div>
                 </div>
-                ${p.imgs&&p.imgs.length?(state.quizPassed
-                  ? `<div><div class="text-xs font-black text-orange-500 mb-2">🖼️ 程式截圖／範例　<span class="text-emerald-600">（已解鎖）</span><span class="text-slate-400 font-bold ml-1">・點圖可放大</span></div><div class="grid gap-2 ${p.imgs.length>1?'sm:grid-cols-2':''}" data-zoomgroup>${p.imgs.map(src=>`<img src="${src}" class="rounded-lg border border-slate-200 w-full zoomable" data-zoom loading="lazy" alt="程式截圖">`).join('')}</div></div>`
-                  : `<div class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-5 text-center">
-                       <div class="text-3xl mb-1">🔒</div>
-                       <div class="text-sm font-black text-slate-600">程式截圖／範例尚未解鎖</div>
-                       <div class="text-xs text-slate-500 mt-1">先看完影片，完成下方的<b>自我檢核測驗（${QUIZ_PICK} 題全對）</b>就會顯示。</div>
-                     </div>`):''}
+                <div id="prog-imgs">${progImgsHTML(p)}</div>
                 ${refPanel(u)}
                 <a href="https://scratch.mit.edu/projects/${p.project}" target="_blank" rel="noopener" class="block text-center bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition">🐱 打開 Scratch 專案，動手實作 →</a>
               </div>
             </div>
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 pop">
               <div class="text-xs font-black text-orange-500 mb-3">✅ 自我檢核測驗（從題庫抽 ${QUIZ_PICK} 題，<b class="text-emerald-600">全對</b>才解鎖程式截圖）</div>
-              ${quizArea}
+              <div class="text-[11px] text-slate-400 -mt-2 mb-3">作答中切到別的視窗，題目會先收起來，回來換一題（不扣分）。</div>
+              <div id="quiz-box">${quizArea}</div>
             </div>
             </div>
 
@@ -1443,6 +1524,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       if(e.target.closest('#to-program')){ startProgram(); return; }
       const ans=e.target.closest('.ans-btn'); if(ans){ pickAns(+ans.dataset.ans); return; }
       if(e.target.closest('#next-q')){ nextQ(); return; }
+      if(e.target.closest('#quiz-pulled')){ backQuiz(); return; }
       if(e.target.closest('#retry-quiz')){ retryQuiz(); return; }
       if(e.target.closest('#back-refresh')){          // 從評分區回列表：先重讀進度，星數才會即時更新
         clearTimers();
