@@ -73,8 +73,17 @@ function playRound(r, firstWrong) {
 (async () => {
   section('① 入口：章節選單最下面（總整理下方），只有 11501');
   {
+    /* 老師 2026-10-08：11502 也開記憶補給站。 */
     const r = boot('11502', 'social.js', [], null); await sleep(400);
-    ok(!r.$('qz-practice'), '11502 沒有設定 ⇒ 沒有補給站（和以前一樣）');
+    const lastCh = [...r.w.document.querySelectorAll('.qz-open')].pop();
+    ok(r.$('qz-practice') && lastCh && (lastCh.compareDocumentPosition(r.$('qz-practice')) & r.w.Node.DOCUMENT_POSITION_FOLLOWING),
+       '★★ 11502 也有補給站，放在章節選單最下面');
+    ok(r.$('qz-practice-go').disabled, '　一章都還沒通關 ⇒ 鎖住');
+    const r2 = boot('11502', 'social.js', ['5-1'], null); await sleep(400);
+    click(r2.w, r2.$('qz-practice-go')); await sleep(10);
+    const seen = playRound(r2, false);
+    const pass51 = new Set(r2.byId['5-1'].map(q => q.q));
+    ok(seen.length === 10 && seen.every(q => pass51.has(q)), '★★ 11502 補給站：通關 5-1 ⇒ 10 題都出自 5-1');
   }
   {
     const r = boot('11501', 'ethics.js', [], null); await sleep(400);

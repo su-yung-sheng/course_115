@@ -36,6 +36,16 @@
   try { delete window.QUIZ_CONTENT; }
   catch (e) { window.QUIZ_CONTENT = undefined; }
 
+  /* 答錯時的「想一想」提示（老師 2026-10-08）：content/*.hints.js 提供
+     window.QUIZ_HINTS = { 題幹原文: 提示 }。沒有這個檔 ＝ 和以前一模一樣。
+     ⚠️ 讀完一樣從 window 拿掉（理由同上：不要讓 Console 一行就整批帶走）。 */
+  var HINTS = window.QUIZ_HINTS || {};
+  try { delete window.QUIZ_HINTS; } catch (e) { window.QUIZ_HINTS = undefined; }
+  function hintFor(item) {
+    var h = item && Object.prototype.hasOwnProperty.call(HINTS, item.q) ? HINTS[item.q] : '';
+    return typeof h === 'string' ? h.trim() : '';
+  }
+
   // ── 預設值：內容資料沒寫的就用這些 ────────────────────────
   var TARGET    = C.target   || 10;   // 目標連對題數
   var MAX_WRONG = C.maxWrong || 20;   // 容錯上限，超過就跳學習警示單
@@ -479,6 +489,9 @@
   function swapOn() { return !!(window.CONFIG && window.CONFIG.QUIZ_SWAP_ON_LEAVE === true); }
   var swapPending = false;
   function pullQuestion() {
+    /* 解釋畫面不收、不換題：那不是題目，而且換題會把解釋直接跳掉。
+       離開時由 readhold 暫停倒數、遮罩蓋住畫面（見 showExplain）。 */
+    if (explain) return;
     /* 記憶補給站不看 CONFIG，一律「離開就換題」（老師 10-05：一樣採用失焦機制）。
        已經公布正解的那一題不必收（答案都看到了，收起來也沒意義）。 */
     var on = swapOn() || mode === 'practice';
@@ -520,6 +533,7 @@
     streak = 0; score = 0; wrong = 0; seconds = 0; runStat = {};
     behav = { t: [], copy: 0, away: 0, swap: 0 };
     swapPending = false;
+    endExplain();                // 上一輪停在解釋畫面就離開的話，計時器要收掉
     paintMark();                 // 浮水印：班級座號＋時間
     hide('study-screen'); show('quiz-screen');
     $('current-chapter-title').textContent = n.title;
@@ -706,7 +720,93 @@
     return item.shuffled[picked].orig === item.correct;
   }
 
+  /* ── 答錯時的解釋（老師 2026-10-08）──────────────────────
+     「答錯時會顯示答案解釋，但不是直接說答案內容，給 10 秒閱讀，
+       不可失焦，5 秒後可略過」
+     ★ 只說「該想到哪個觀念」，不標出正確選項：答錯就重新洗牌，
+       這一題之後還會再遇到 —— 要讓他那時候是「想得出來」，不是「記得哪個」。
+     ★ 倒數用 shared/readhold.js（和流程圖閱讀倒數同一套）：
+       離開畫面就暫停、離開太久從頭算、有保險絲（報不出焦點的環境不會卡死）。
+     ★ 「5 秒後可略過」算的是**看著畫面**的秒數：離開期間不算。
+     ★ 記憶補給站也一樣（老師 10-08 第二次）：正解照常公布，提示附在下面，同樣 10 秒、5 秒後可按下一題。
+     ⚠️ 沒寫提示的題目照舊直接下一題（兩學期目前每一題都有）。
+     ⚠️ 沒載到 readhold.js 就不等 —— 少讀 10 秒，好過卡在一個不會動的按鈕。 */
+  var EXPLAIN_SEC = 10, EXPLAIN_SKIP = 5;
+  var explain = null;      // { hold, practice }
+  function paintExplain(v) {
+    var b = $('next-btn'), t = $('qz-ex-time');
+    if (!explain) return;
+    var left = v ? v.left : 0;
+    var read = EXPLAIN_SEC - left;
+    var canSkip = read >= EXPLAIN_SKIP;
+    var pr = explain.practice;
+    var last = pr && prac && prac.done + 1 >= prac.total;
+    if (t) t.textContent =
+      !v || left <= 0 ? (pr ? '✅ 讀完了，可以按下一題' : '✅ 讀完了，可以繼續作答') :
+      v.state === 'reset' ? '⏸ 離開太久，從頭算（還要 ' + left + ' 秒）' :
+      v.state === 'pause' ? '⏸ 已暫停：回到這個畫面才會繼續（還要 ' + left + ' 秒）' :
+                            '請先讀一讀這段提示（' + left + ' 秒）';
+    if (b) {
+      b.disabled = !canSkip;
+      b.classList.toggle('opacity-40', !canSkip);
+      b.classList.toggle('cursor-not-allowed', !canSkip);
+      /* 補給站沿用原本的「下一題／看結果」字樣（正解已經公布，這裡沒有「略過」的意思）。 */
+      var go = pr ? (last ? '看結果' : '下一題 →') : (left <= 0 ? '繼續作答 →' : '略過 →');
+      var wait = pr ? (last ? '看結果' : '下一題') : '略過';
+      b.textContent = canSkip ? go : wait + '（' + (left - (EXPLAIN_SEC - EXPLAIN_SKIP)) + '）';
+    }
+  }
+  function showExplain(item, mineText, hint) {
+    endExplain();
+    explain = { hold: null };
+    /* 計分要當下就更新（平常是 loadQuestion 才更新，而解釋畫面還沒載下一題）—— 
+       不然學生會看到「連對 7」停在那裡，以為答錯不算。 */
+    $('score-counter').textContent = '連對: ' + streak + ' / ' + TARGET;
+    $('wrong-counter').textContent = '容錯: ' + (MAX_WRONG - wrong);
+    $('question-container').innerHTML =
+        '<div id="qz-explain" class="animate-pop">'
+      +   '<p class="text-lg font-black text-rose-600 mb-3">❌ 這題答錯了，先別急著下一題</p>'
+      +   '<h3 class="text-lg md:text-xl font-black mb-3 text-slate-800 leading-relaxed">' + item.q + '</h3>'
+      +   '<p class="text-sm text-slate-500 mb-4">你選的是：<span class="font-bold text-rose-600 line-through">' + mineText + '</span></p>'
+      +   '<div class="rounded-2xl border-2 border-amber-300 bg-amber-50 p-5">'
+      +     '<div class="text-amber-700 font-black mb-2">💡 想一想</div>'
+      +     '<p id="qz-ex-hint" class="text-lg font-bold text-slate-700 leading-relaxed">' + hint + '</p>'
+      +   '</div>'
+      +   '<p id="qz-ex-time" class="mt-4 text-sm font-bold text-slate-500"></p>'
+      + '</div>';
+    startExplainHold();
+  }
+  /** 10 秒倒數（章節測驗和記憶補給站共用）。 */
+  function startExplainHold() {
+    if (!window.READHOLD) { paintExplain(null); return; }
+    explain.hold = window.READHOLD.start({
+      sec: EXPLAIN_SEC,
+      onTick: function (v) { paintExplain(v); },
+      onDone: function () { paintExplain(null); }
+    });
+  }
+  function endExplain() {
+    if (explain && explain.hold) explain.hold.stop();
+    explain = null;
+    var b = $('next-btn');
+    if (b) {
+      b.disabled = false;
+      b.classList.remove('opacity-40', 'cursor-not-allowed');
+      b.textContent = '送出答案';
+    }
+  }
+  /** 解釋畫面上按「略過／繼續」。還沒讀滿 5 秒就不理（按鈕本來也是灰的）。 */
+  function explainNext() {
+    var left = explain && explain.hold ? explain.hold.left() : 0;
+    if (EXPLAIN_SEC - left < EXPLAIN_SKIP && left > 0) return;
+    var pr = explain && explain.practice;
+    endExplain();
+    if (pr) { practiceStep(); return; }    // 補給站：正解已公布 ⇒ 下一題／看結果
+    loadQuestion();
+  }
+
   function checkAnswer() {
+    if (explain) { explainNext(); return; }
     if (mode === 'practice') { practiceStep(); return; }
     if (picked === -1) { showModal('尚未作答', '請先選擇一個選項再送出！'); return; }
     /* 這一題想了幾秒（上限 600 —— 中間去上廁所不必記成兩小時） */
@@ -740,6 +840,8 @@
         saveStat();
         clearInterval(timer); hide('quiz-screen'); show('warning-screen'); return;
       }
+      var hint = hintFor(current);
+      if (hint) { showExplain(current, current.shuffled[picked].text, hint); return; }
     }
     loadQuestion();
   }
@@ -804,6 +906,7 @@
   }
 
   function startPractice() {
+    endExplain();
     var qs = passedQuestions();
     if (!PRACTICE || !qs.length) return;
     var go = function (mine) {
@@ -859,6 +962,24 @@
     $('question-container').appendChild(fb);
     $('wrong-counter').textContent = '答對: ' + prac.right;
     $('next-btn').textContent = (prac.done + 1 >= prac.total) ? '看結果' : '下一題';
+    /* 補給站：答錯時把「想一想」也附上。
+       ⛔ 老師 2026-10-08：「練習測驗時應該也要有相同提示」——和章節測驗一樣
+          10 秒閱讀、離開就暫停、5 秒後才能按下一題（原本 10-08 第一版是不限時）。 */
+    var ph = right ? '' : hintFor(current);
+    if (ph) {
+      var hp = document.createElement('p');
+      hp.id = 'prac-hint';
+      hp.className = 'mt-3 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-base font-bold text-slate-700 leading-relaxed';
+      hp.innerHTML = '💡 ' + ph;
+      $('question-container').appendChild(hp);
+      var tm = document.createElement('p');
+      tm.id = 'qz-ex-time';
+      tm.className = 'mt-3 text-sm font-bold text-slate-500';
+      $('question-container').appendChild(tm);
+      endExplain();
+      explain = { hold: null, practice: true };
+      startExplainHold();
+    }
   }
 
   function practiceEnd() {
