@@ -104,6 +104,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
   <script src="../shared/grading.js"></script>
   <script src="../shared/readhold.js"></script>
 <script src="content/flowchart.js"></script>
+  <!-- 晨星勇者的開放條件（十關都通關）—— 和遊戲頁同一支判斷 -->
+  <script src="../shared/gamesave.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -982,6 +984,43 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       }
     }
 
+    /* ── 🌟 晨星勇者（老師 2026-10-09：完成十關之後開放）──────────
+       ★ 開放條件和依序開放同一套（GRADING.GATE.cleared：流程圖排對＋作品 ≥ 2⭐），
+         判斷寫在 shared/gamesave.js 的 GAMESAVE.unlocked —— 遊戲頁自己也用同一支再查一次，
+         直接貼網址進去一樣擋得住。
+       ⚠️ 老師手動開放的關卡不算（那是通行證、不是成就）；備課模式開著就一併開放。
+       ★ 不算星：遊戲紀錄存在 games.morningstar，不在 modules 底下。 */
+    function morningstarCard(){
+      const G = window.GAMESAVE;
+      if(!G) return '';
+      const g = G.unlocked(UNITS, state.done, state.progStars, GATE, OPEN_ALL);
+      if(g.ok){
+        return `<a id="go-morningstar" href="morningstar.html" class="block mt-6 rounded-2xl p-5 pop no-underline"
+             style="background:linear-gradient(135deg,#1e1b4b,#312e81);border:2px solid #facc15;color:#fef3c7">
+          <div class="flex items-center gap-4">
+            <div class="text-4xl flex-shrink-0">🌟</div>
+            <div class="flex-1">
+              <div class="text-xs font-black tracking-widest text-amber-300">十關全部完成 · 獎勵關卡</div>
+              <div class="text-xl font-black">晨星勇者</div>
+              <div class="text-sm opacity-90 leading-relaxed">一趟約二十分鐘的冒險。背包是一份清單、怪物會分身 ——
+                你學過的程式觀念全都藏在裡面。不計星，進度存在你自己的帳號。</div>
+            </div>
+            <div class="font-black text-amber-300 flex-shrink-0">出發 →</div>
+          </div>
+        </a>`;
+      }
+      return `<div id="morningstar-locked" class="mt-6 rounded-2xl p-5 border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500">
+          <div class="flex items-center gap-4">
+            <div class="text-4xl flex-shrink-0">🔒</div>
+            <div class="flex-1">
+              <div class="text-xs font-black tracking-widest">獎勵關卡</div>
+              <div class="text-lg font-black text-slate-600">🌟 晨星勇者</div>
+              <div class="text-sm leading-relaxed">十關都通關（流程圖排對、程式拿到 2⭐ 以上）就會開放。目前 <b>${g.done} / ${g.total}</b> 關。</div>
+            </div>
+          </div>
+        </div>`;
+    }
+
     // ===== 畫面 =====
     /* ⛔⛔ 2026-09-17 老師：「按鈕切換功能頁面不是很流暢」。
        查下來的原因：render() 用 innerHTML 換掉整個畫面，卻**沒有動捲軸**。
@@ -1171,6 +1210,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
               ${state.leadOpen?`<iframe src="${LEAD.href}${state.leadDone?'?done=1':''}" class="w-full block bg-white" style="height:72vh;border:0" title="${LEAD.title}" loading="lazy"></iframe><div class="text-[11px] text-slate-400 px-3 py-1.5 text-center bg-teal-50">前導教材已嵌在此，${state.leadDone?'看完往下繼續闖關':'考過結業測驗就會自動解鎖下方關卡'}</div>`:''}
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${cards}</div>
+            ${morningstarCard()}
           </div>`;
         return;
       }
