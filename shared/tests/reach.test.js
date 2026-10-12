@@ -28,7 +28,10 @@ let pass = 0, fail = 0;
 const ok = (c, l) => { c ? pass++ : fail++; console.log((c ? '  ✅ ' : '  ❌ ') + l); };
 const section = t => console.log('\n── ' + t + ' ──');
 
-const SKIP_DIR = ['node_modules', '.git', '_archive', 'course_11501', 'course_11502', 'docs', 'tests'];
+/* ★ 'Claude outputs'（2026-10-12 加）：Claude 桌面版把傳給老師看的檔案（審稿表等）
+     自動存到這個資料夾。那是給老師看的工作檔，不是網站的一部分，本來就沒有人連 ——
+     不跳過的話，每次審稿都會讓這支測試紅燈、擋住推送（10-12 就是這樣擋住的）。 */
+const SKIP_DIR = ['node_modules', '.git', '_archive', 'course_11501', 'course_11502', 'docs', 'tests', 'Claude outputs'];
 
 /** 真正的入口：使用者打得到網址的地方 */
 const ENTRY = [

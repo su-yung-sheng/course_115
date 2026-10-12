@@ -1,4 +1,4 @@
-/* 答錯時的「想一想」：解釋但不說答案、10 秒閱讀、不可失焦、5 秒後可略過
+/* 答錯時的「想一想」：解釋但不說答案、10 秒閱讀、不可失焦、2 秒後可略過（10-12 由 5 秒改）
    跑法：node shared/tests/quizhints.test.js   （需要 jsdom）
 
    ★ 老師 2026-10-08：「資訊倫理學習系統（包含 11502），答錯時會顯示答案解釋，
@@ -7,7 +7,7 @@
      （readhold.js，和流程圖閱讀倒數同一套）；記憶補給站也附提示、不限時。
    ⚠️ 這份測試守三件事：
      ① 內容：每一題都有提示、提示**不含正確選項的文字**（repo 是公開的）
-     ② 流程：答錯 ⇒ 解釋畫面；讀滿 5 秒才能略過；離開時不換題、不跳掉解釋
+     ② 流程：答錯 ⇒ 解釋畫面；讀滿 2 秒才能略過；離開時不換題、不跳掉解釋
      ③ 沒寫提示的題目，行為和以前一模一樣 */
 'use strict';
 const fs = require('fs'), path = require('path');
@@ -178,22 +178,22 @@ const answer = (r, right) => { click(r.w, r.w.document.querySelectorAll('.qz-opt
   ok(/連對: 0/.test(r.$('score-counter').textContent) && /容錯: 19/.test(r.$('wrong-counter').textContent),
      '計分照舊：連對歸零、容錯少一');
 
-  section('④ 10 秒閱讀、5 秒後才能略過');
+  section('④ 10 秒閱讀、2 秒後才能略過（老師 10-12：原本 5 秒太久）');
   const btn = r.$('next-btn');
   ok(r.hold.started.length === 1 && r.hold.cur.o.sec === 10, '★★ 倒數 10 秒（用 readhold）');
-  ok(btn.disabled && /略過（5）/.test(btn.textContent), '★★★ 一開始不能略過，按鈕寫「略過（5）」');
+  ok(btn.disabled && /略過（2）/.test(btn.textContent), '★★★ 一開始不能略過，按鈕寫「略過（2）」');
   send(r);
   ok(!!r.$('qz-explain'), '★★★ 硬按也沒用，還停在解釋');
-  r.hold.tick(7);
-  ok(btn.disabled && /略過（2）/.test(btn.textContent) && /7 秒/.test(r.$('qz-ex-time').textContent),
-     '讀了 3 秒：還不能略過（還要 2 秒）');
-  r.hold.tick(6, 'pause');
+  r.hold.tick(9);
+  ok(btn.disabled && /略過（1）/.test(btn.textContent) && /9 秒/.test(r.$('qz-ex-time').textContent),
+     '讀了 1 秒：還不能略過（還要 1 秒）');
+  r.hold.tick(9, 'pause');
   ok(/已暫停/.test(r.$('qz-ex-time').textContent) && btn.disabled, '★★ 離開畫面 ⇒ 顯示「已暫停」，不能略過');
   r.hold.tick(10, 'reset');
-  ok(/從頭算/.test(r.$('qz-ex-time').textContent) && btn.disabled && /略過（5）/.test(btn.textContent),
+  ok(/從頭算/.test(r.$('qz-ex-time').textContent) && btn.disabled && /略過（2）/.test(btn.textContent),
      '★ 離開太久 ⇒ 從頭算，略過也要重新等');
-  r.hold.tick(5);
-  ok(!btn.disabled && /略過 →/.test(btn.textContent), '★★★ 讀滿 5 秒 ⇒ 可以略過');
+  r.hold.tick(8);
+  ok(!btn.disabled && /略過 →/.test(btn.textContent), '★★★ 讀滿 2 秒 ⇒ 可以略過');
   send(r);
   ok(!r.$('qz-explain') && r.w.document.querySelectorAll('.qz-opt').length === 4, '★★ 略過 ⇒ 下一題');
   ok(r.hold.cur.stopped, '★ 倒數計時器有收掉（不會在背景一直跑）');
@@ -260,7 +260,7 @@ const answer = (r, right) => { click(r.w, r.w.document.querySelectorAll('.qz-opt
        '★ 容錯用完 ⇒ 直接到學習警示（不先卡 10 秒）');
   }
 
-  section('⑦ 記憶補給站：答錯時附提示，一樣 10 秒、5 秒後才能按下一題');
+  section('⑦ 記憶補給站：答錯時附提示，一樣 10 秒、2 秒後才能按下一題');
   /* ⛔ 老師 2026-10-08 第二次：「練習測驗時應該也要有相同提示」（第一版補給站是不限時）。 */
   for (const [term, bank, ch] of [['11501', 'ethics.js', '1-1'], ['11502', 'social.js', '5-1']]) {
     const r6 = boot(term, bank, { passed: [ch] });
@@ -271,16 +271,16 @@ const answer = (r, right) => { click(r.w, r.w.document.querySelectorAll('.qz-opt
     ok(r6.$('prac-fb') && /正確答案是/.test(r6.$('prac-fb').textContent), term + '　正解照舊公布');
     ok(r6.$('prac-hint') && r6.$('prac-hint').textContent.includes(r6.HINTS[q]), '★★ ' + term + ' 下面附上「想一想」');
     const b = r6.$('next-btn');
-    ok(r6.hold.started.length === 1 && b.disabled && /下一題（5）/.test(b.textContent),
-       '★★★ ' + term + ' 補給站也要讀 5 秒才能按下一題（按鈕寫「下一題（5）」）');
+    ok(r6.hold.started.length === 1 && b.disabled && /下一題（2）/.test(b.textContent),
+       '★★★ ' + term + ' 補給站也要讀 2 秒才能按下一題（按鈕寫「下一題（2）」）');
     send(r6);
-    ok(qText(r6) === q && !!r6.$('prac-hint'), '　還沒滿 5 秒硬按 ⇒ 還停在這一題');
-    r6.hold.tick(6, 'pause');
+    ok(qText(r6) === q && !!r6.$('prac-hint'), '　還沒滿 2 秒硬按 ⇒ 還停在這一題');
+    r6.hold.tick(9, 'pause');
     ok(/已暫停/.test(r6.$('qz-ex-time').textContent) && b.disabled, '★ 離開畫面 ⇒ 暫停');
     r6.w.dispatchEvent(new r6.w.Event('blur')); r6.w.dispatchEvent(new r6.w.Event('focus'));
     ok(qText(r6) === q && !!r6.$('prac-hint'), '★★ 讀提示時離開再回來，不會被換題');
-    r6.hold.tick(5);
-    ok(!b.disabled && /下一題 →/.test(b.textContent), '★★ 讀滿 5 秒 ⇒ 「下一題 →」');
+    r6.hold.tick(8);
+    ok(!b.disabled && /下一題 →/.test(b.textContent), '★★ 讀滿 2 秒 ⇒ 「下一題 →」');
     send(r6);
     ok(!r6.$('prac-hint') && qText(r6) && qText(r6) !== q && r6.hold.cur.stopped, '　下一題 ⇒ 提示收掉、倒數停掉');
     ok(/第 2 \/ 10 題/.test(r6.$('score-counter').textContent), '　計數器前進到第 2 題');
