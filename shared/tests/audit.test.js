@@ -47,6 +47,12 @@ f = AUDIT.scratch(prog('1410101')({ '2-1-1B': 3 })({ '2-1-1B': 100 }),
                    { student_id: '1410101', unit: '2-1-1B', score: 50 }], GRADING);
 ok(f.length === 0, '★★ 重交考差不影響：比的是批改過的**最高**分');
 
+// ⛔ 老師取消過的批改紀錄（2026-10-15）不可以替星星背書
+f = AUDIT.scratch(prog('1410110')({ '2-1-3': 3 })({ '2-1-3': 100 }),
+                  [{ student_id: '1410110', unit: '2-1-3', score: 100, revoked: true }], GRADING);
+ok(f.length === 1 && f[0].kind === 'no-record',
+   '★★★ 取消過的紀錄不算：取消後學生頁面若還留著那顆星，要被標出來');
+
 // 0 星的關卡不必對
 f = AUDIT.scratch(prog('1410101')({ '2-1-1B': 0 })({ '2-1-1B': 50 }), [], GRADING);
 ok(f.length === 0, '★ 沒有星星的關卡不列（沒有東西要對）');

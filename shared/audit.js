@@ -58,6 +58,9 @@
     var best = {};
     (submissions || []).forEach(function (s) {
       if (!s) return;
+      /* ⛔ 老師取消過的不算（2026-10-15，後端 revoke_scratch_unit）——
+            和後端「重建星星」同一個規則：取消的分數不可以替星星背書。 */
+      if (s.revoked) return;
       var sid = String(s.student_id || '').trim();
       var unit = unitOfSubmission(s);
       var sc = Number(s.score);
