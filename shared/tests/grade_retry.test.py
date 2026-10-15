@@ -1900,5 +1900,48 @@ ok("這個角色**沒有任何會被觸發的程式**" in _bat, "★ 那個角�
 _cat = _pc7[_pc7.index("[角色/背景：貓]"):_pc7.index("[角色/背景：蝠]")]
 ok("沒有任何會被觸發的程式" not in _cat, "有程式的角色不寫")
 
+section("④z5 批改觀測要讀「最近的」，不是隨機的 300 筆（2026-10-15）")
+# ⛔ 以前只讀一頁 pageSize=300：Firestore 照文件 ID（亂碼）排，
+#    超過 300 筆之後拿到的是隨機抽樣 —— 10-06 的 103 筆只剩 72 筆，而畫面完全看不出來。
+def _gs_doc(t):
+    return {"fields": {"created_at": {"stringValue": t}, "student_id": {"stringValue": "s" + t[-2:]}}}
+_gs_pages = {
+    None: {"documents": [_gs_doc("2026-09-11 10:00:%02d" % i) for i in range(3)], "nextPageToken": "P2"},
+    "P2": {"documents": [_gs_doc("2026-10-15 15:00:%02d" % i) for i in range(3)], "nextPageToken": "P3"},
+    "P3": {"documents": [_gs_doc("2026-10-06 09:00:00")]},
+}
+_gs_urls = []
+def _gs_http(m, u, b=None):
+    _gs_urls.append(u)
+    tok = u.split("pageToken=")[1] if "pageToken=" in u else None
+    return _gs_pages[tok]
+_old_http, _old_fb, _old_base = core._fs_http, core.FIREBASE, core._fs_docs_base
+core._fs_docs_base = lambda: "https://fake/documents"
+core.FIREBASE = {"enabled": True, "api_key": "k"}
+try:
+    core._fs_http = _gs_http
+    _gs = core.list_grade_stats("11501", page_size=4)
+    ok(len(_gs_urls) == 3, "★★★ 每一頁都讀（跟著 nextPageToken 讀完 3 頁）")
+    ok([r["created_at"] for r in _gs] == ["2026-10-15 15:00:02", "2026-10-15 15:00:01",
+                                           "2026-10-15 15:00:00", "2026-10-06 09:00:00"],
+       "★★★ 回的是最新的 4 筆、新到舊 —— 最新的在第 2 頁也拿得到")
+    ok(len(core.list_grade_stats("11501", page_size=300)) == 7, "筆數不到上限就全部回")
+    _gs_urls.clear()
+    def _gs_half(m, u, b=None):
+        _gs_urls.append(u)
+        if "pageToken=" in u:
+            raise RuntimeError("第 2 頁斷線")
+        return _gs_pages[None]
+    core._fs_http = _gs_half
+    ok(core.list_grade_stats("11501") == [] and len(_gs_urls) == 2,
+       "★★ 讀到一半失敗 ⇒ 整個當失敗（回空清單），不回「只有一部分」的資料")
+    _gs_urls.clear()
+    core._fs_http = lambda m, u, b=None: (_gs_urls.append(u) or {"documents": [_gs_doc("2026-10-15 15:00:00")], "nextPageToken": "again"})
+    core.list_grade_stats("11501")
+    ok(len(_gs_urls) == core.GRADE_STATS_MAX_PAGES, "★ 一直有下一頁也會停（頁數上限，防無窮迴圈）")
+finally:
+    core._fs_http, core.FIREBASE = _old_http, _old_fb
+    core._fs_docs_base = _old_base
+
 print("\n通過 %d／失敗 %d" % (_pass[0], _fail[0]))
 sys.exit(1 if _fail[0] else 0)
