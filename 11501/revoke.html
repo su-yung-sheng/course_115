@@ -30,7 +30,7 @@
      ⚠️⚠️ 不可以改成在這一頁直接寫 {學期}-progress 或批改紀錄：
         只改其中一份的話，另一份會在下一次批改或重建時把星星**無聲地**加回來。
 
-   ★★ 這是「暫時」的頁面，和 unlock.html 一樣可以直接刪掉：
+   ★★ 這是「暫時」的頁面，和「臨時開放關卡」那一頁一樣可以直接刪掉：
        · 沒有任何頁面連到它
        · 刪掉之後後端的取消功能還在，只是少了這個操作畫面
        ⚠️ 刪掉時記得把 shared/tests/reach.test.js 的 KNOWN 裡那一行也刪掉。
@@ -158,7 +158,7 @@ var SERVER      = window.CONFIG.SERVER_URL;
   }).join('');
 })();
 
-/* ── 登入（和 unlock.html 同一套） ───────────────────────── */
+/* ── 登入（和「臨時開放關卡」那一頁同一套） ───────────────────────── */
 AUTH.configure({
   auth: auth,
   GoogleAuthProvider: firebase.auth.GoogleAuthProvider,
