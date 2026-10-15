@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>臨時工具：取消程式成績｜115學年上學期</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+  <script src="config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <!-- ★ 關卡清單從這裡來，不手打 —— 手打的對照表遲早會和實際關卡對不上 -->
+  <script src="content/flowchart.js"></script>
+</head>
+<!--
+  =====================================================================
+   臨時工具：取消程式成績（老師 2026-10-15：「不要使用 F12，設計成『臨時開放關卡』單網頁的形態」）
+  ---------------------------------------------------------------------
+   ★ 起因：1410108、1410110 的第 4 關（2-1-3）交了**同一個檔案**，
+     老師確認後要取消 1410110 那一關的成績。
+
+   ★ 真正改成績的是後端 /api/teacher/revoke-scratch（backend.ipynb 的 revoke_scratch_unit），
+     一次處理三件事，這一頁只負責「填表、確認、把結果講清楚」：
+       ① 這一關的批改紀錄標成「已取消」（不刪，稽核查得到）—— 之後「重建星星」也不會算回來
+       ② 同一個檔案原封不動再交會被擋下；自己重做的新作品照常評分
+       ③ 這一關的星星用剩下的紀錄重算（其他關卡一格都不動）
+     ⚠️⚠️ 不可以改成在這一頁直接寫 {學期}-progress 或批改紀錄：
+        只改其中一份的話，另一份會在下一次批改或重建時把星星**無聲地**加回來。
+
+   ★★ 這是「暫時」的頁面，和 unlock.html 一樣可以直接刪掉：
+       · 沒有任何頁面連到它
+       · 刪掉之後後端的取消功能還在，只是少了這個操作畫面
+       ⚠️ 刪掉時記得把 shared/tests/reach.test.js 的 KNOWN 裡那一行也刪掉。
+  =====================================================================
+-->
+<body class="bg-slate-100 min-h-screen">
+
+  <!-- ── 登入畫面 ───────────────────────────────────────── -->
+  <div id="login-view" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-lg w-full max-w-sm p-8 text-center">
+      <div class="text-4xl mb-3">⛔</div>
+      <h1 class="text-xl font-black text-slate-800">臨時工具：取消程式成績</h1>
+      <p class="text-sm text-slate-500 mt-2 mb-6">請用教師帳號登入。</p>
+      <button id="login-btn" onclick="doLogin()"
+        class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition">
+        用學校帳號登入
+      </button>
+      <p id="login-error" class="hidden mt-4 text-sm text-red-600 leading-relaxed"></p>
+    </div>
+  </div>
+
+  <!-- ── 主畫面 ─────────────────────────────────────────── -->
+  <div id="main-view" class="hidden max-w-xl mx-auto p-4 md:p-8">
+
+    <!-- ⚠️ 這個橫幅不要拿掉：它是在提醒「這一頁是暫時的」 -->
+    <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 mb-5 text-sm text-amber-900 leading-relaxed">
+      <b>⚠️ 這是臨時工具頁</b><br>
+      沒有任何地方連到這一頁，要用就存書籤。不需要的時候直接刪掉
+      <code class="bg-amber-100 px-1 rounded">11501/revoke.html</code>
+      這個檔案即可，系統其他部分不受影響。
+    </div>
+
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-2xl font-black text-slate-800">⛔ 取消程式成績</h1>
+      <button onclick="doLogout()" class="text-xs text-slate-400 hover:text-slate-600 underline">登出</button>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow p-5 md:p-6 space-y-4">
+
+      <div>
+        <label class="block text-sm font-bold text-slate-700 mb-1">學號</label>
+        <input id="sid" type="text" inputmode="numeric" maxlength="7" placeholder="1410110"
+          class="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl font-mono text-lg
+                 focus:border-indigo-500 focus:outline-none">
+        <p class="text-xs text-slate-400 mt-1">14 開頭的 7 位數字</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-bold text-slate-700 mb-1">關卡</label>
+        <select id="unit"
+          class="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl text-base bg-white
+                 focus:border-indigo-500 focus:outline-none"></select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-bold text-slate-700 mb-1">
+          原因 <span class="font-normal text-red-600">（必填，存進稽核紀錄；學生看不到）</span>
+        </label>
+        <input id="reason" type="text" placeholder="與 1410108 的檔案完全相同"
+          class="w-full px-3 py-2.5 border-2 border-slate-200 rounded-xl text-base
+                 focus:border-indigo-500 focus:outline-none">
+      </div>
+
+      <!-- ★ 先查再取消：取消前一定要先看到「要取消的是哪幾筆、現在幾顆星」 -->
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button onclick="doCheck()"
+          class="py-3 bg-white border-2 border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl transition text-sm">
+          🔍 先查這一關的紀錄
+        </button>
+        <button id="revoke-btn" onclick="doRevoke()"
+          class="py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition text-sm
+                 disabled:bg-slate-300 disabled:cursor-not-allowed">
+          ⛔ 取消這一關的成績
+        </button>
+      </div>
+
+      <button onclick="doAll()"
+        class="w-full py-2.5 bg-white border-2 border-slate-200 hover:bg-slate-50
+               text-slate-600 font-bold rounded-xl transition text-sm">
+        📋 列出所有已取消的成績
+      </button>
+
+      <div id="result" class="hidden rounded-xl p-4 text-sm leading-relaxed"></div>
+    </div>
+
+    <!-- ★ 操作後果印在畫面上，不是留在文件裡 -->
+    <div class="mt-5 bg-white rounded-2xl shadow p-5 text-sm text-slate-600 leading-relaxed space-y-2">
+      <p><b class="text-slate-800">只取消這一位、這一關。</b>
+         其他關卡的星星不動；交了同一個檔案的另一位同學也不受影響。</p>
+      <p><b class="text-slate-800">同一個檔案再交會被擋下</b>，學生看到的是
+         「這個檔案的成績已經被老師取消」——<b>看不到您寫的原因</b>。
+         他自己重做、重新存檔的作品照常評分。</p>
+      <p><b class="text-slate-800">後面的關卡會跟著鎖住。</b>
+         這一關變 0⭐ 之後，下一關要等他重做這一關、拿到 2⭐ 才會打開
+         （已經被您用「開放關卡」開放的不受影響）。</p>
+      <p><b class="text-slate-800">批改紀錄不會被刪除</b>，只是標成「已取消」。
+         原本的分數和原因都查得到（下面的「列出所有已取消的成績」）。</p>
+    </div>
+  </div>
+
+<script>
+'use strict';
+
+/* ── Firebase：和教師端同一個專案、同一組設定 ───────────── */
+if (!firebase.apps.length) firebase.initializeApp(window.CONFIG.FIREBASE);
+var auth = firebase.auth();
+var db   = firebase.firestore();
+
+var COL = window.CONFIG.COLLECTIONS || {};
+var SUBMISSIONS = COL.SUBMISSIONS || (window.CONFIG.TERM + '-scratch-submissions');
+var PROGRESS    = COL.PROGRESS || (window.CONFIG.TERM + '-progress');
+var SERVER      = window.CONFIG.SERVER_URL;
+
+/* ── 關卡下拉：從 FLOW_UNITS 生，不手打 ─────────────────── */
+(function fillUnits() {
+  var sel = document.getElementById('unit');
+  var units = window.FLOW_UNITS || [];
+  if (!units.length) {
+    sel.innerHTML = '<option value="">讀不到關卡清單（content/flowchart.js 沒載到）</option>';
+    return;
+  }
+  sel.innerHTML = units.map(function (u, i) {
+    return '<option value="' + u.id + '">第 ' + (i + 1) + ' 關　' +
+           (u.icon || '') + ' ' + (u.title || '') + '　(' + u.id + ')</option>';
+  }).join('');
+})();
+
+/* ── 登入（和 unlock.html 同一套） ───────────────────────── */
+AUTH.configure({
+  auth: auth,
+  GoogleAuthProvider: firebase.auth.GoogleAuthProvider,
+  signInWithPopup: function (a, p) { return a.signInWithPopup(p); },
+  signOut: function (a) { return a.signOut(); }
+});
+
+function isTeacherUser(u) {
+  if (!u) return false;
+  if ((u.providerData || []).some(function (p) { return p && p.providerId === 'password'; })) return true;
+  return !!(u.email && AUTH.isTeacherEmail(u.email));
+}
+
+var shown = false;
+auth.onAuthStateChanged(function (u) {
+  if (!u) return;
+  if (!isTeacherUser(u)) {
+    console.warn('非教師身分，已登出：', u.email || '(匿名)');
+    auth.signOut();
+    return;
+  }
+  if (shown) return;
+  shown = true;
+  document.getElementById('login-view').classList.add('hidden');
+  document.getElementById('main-view').classList.remove('hidden');
+});
+
+window.doLogin = async function () {
+  var btn = document.getElementById('login-btn');
+  var err = document.getElementById('login-error');
+  var orig = btn.textContent;
+  err.classList.add('hidden');
+  btn.disabled = true; btn.textContent = '登入中…';
+  try {
+    var me = await AUTH.signIn();
+    if (!me.isTeacher) {
+      await AUTH.signOut();
+      throw Object.assign(new Error(''), { friendly: me.email + ' 是學生帳號，不能用這一頁。' });
+    }
+  } catch (e) {
+    err.textContent = e.friendly || AUTH.hintFor((e && e.code) || 'unknown');
+    err.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = orig;
+  }
+};
+
+window.doLogout = function () {
+  auth.signOut().then(function () { location.reload(); });
+};
+
+/* ── 畫結果 ─────────────────────────────────────────────
+   ⚠️ 錯誤要看得出來是錯誤。上課現場沒有人會去開 F12 看 console。 */
+function say(html, kind) {
+  var el = document.getElementById('result');
+  var cls = kind === 'bad'  ? 'bg-red-50 border-2 border-red-300 text-red-800'
+          : kind === 'good' ? 'bg-emerald-50 border-2 border-emerald-300 text-emerald-900'
+          :                   'bg-slate-50 border-2 border-slate-200 text-slate-700';
+  el.className = 'rounded-xl p-4 text-sm leading-relaxed ' + cls;
+  el.innerHTML = html;
+  el.classList.remove('hidden');
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function readSid() {
+  var sid = String(document.getElementById('sid').value || '').trim();
+  if (!/^14\d{5}$/.test(sid)) throw new Error('學號要是 14 開頭的 7 位數字（目前填的是「' + sid + '」）');
+  return sid;
+}
+
+function readUnit() {
+  var u = document.getElementById('unit').value;
+  if (!u) throw new Error('沒有選到關卡');
+  return u;
+}
+
+function unitLabel(id) {
+  var u = (window.FLOW_UNITS || []).filter(function (x) { return x.id === id; })[0];
+  return u ? ((u.icon || '') + ' ' + (u.title || '') + '（' + id + '）') : id;
+}
+
+/** 批改紀錄是哪一關（2026-09-16 以前沒有 unit 欄位，代號在 theme 開頭）——
+    和 shared/audit.js 的 unitOfSubmission 同一個規則。 */
+function unitOf(s) {
+  var u = String(s.unit || '').trim();
+  if (u) return u;
+  var m = String(s.theme || '').match(/^\s*\[([^\]]+)\]/);
+  return m ? m[1].trim() : '';
+}
+
+/* 這位學生這一關的批改紀錄 ＋ 學生頁面上現在的星星。只讀，不寫。 */
+async function lookup(sid, unit) {
+  var snap = await db.collection(SUBMISSIONS).where('student_id', '==', sid).get();
+  var rows = [];
+  snap.forEach(function (d) {
+    var s = d.data() || {};
+    if (unitOf(s) === unit) rows.push(s);
+  });
+  rows.sort(function (a, b) { return String(a.created_at).localeCompare(String(b.created_at)); });
+  var p = await db.collection(PROGRESS).doc(sid).get();
+  var sc = ((((p.exists && p.data()) || {}).modules || {}).scratch) || {};
+  return {
+    rows: rows,
+    star: Number((sc.unitStars || {})[unit] || 0),
+    score: (sc.unitScores || {})[unit]
+  };
+}
+
+function fmtRows(rows) {
+  if (!rows.length) return '<div class="text-slate-500">這一關沒有任何批改紀錄。</div>';
+  return '<ul class="space-y-1">' + rows.map(function (s) {
+    var tag = s.revoked
+      ? '<span class="text-red-700 font-bold">已取消</span>' +
+        '<span class="text-slate-500">（' + esc(s.revoked_reason || '') + '）</span>'
+      : '<span class="text-emerald-700 font-bold">有效</span>';
+    return '<li class="font-mono text-xs sm:text-sm">' + esc(String(s.created_at || '').slice(0, 16)) +
+           '　<b>' + esc(s.score) + ' 分</b>' + (s.cached ? '<span class="text-slate-400">（同檔重交）</span>' : '') +
+           '　' + tag + '</li>';
+  }).join('') + '</ul>';
+}
+
+window.doCheck = async function () {
+  try {
+    var sid = readSid(), unit = readUnit();
+    say('查詢中…');
+    var r = await lookup(sid, unit);
+    var live = r.rows.filter(function (s) { return !s.revoked; }).length;
+    say('<b>' + sid + '</b> 的 <b>' + unitLabel(unit) + '</b><br>' +
+        '學生頁面上現在是 <b>' + r.star + '⭐</b>' + (r.score != null ? '（' + esc(r.score) + ' 分）' : '') +
+        '，有效的批改紀錄 <b>' + live + '</b> 筆：' +
+        '<div class="mt-2">' + fmtRows(r.rows) + '</div>' +
+        (live ? '<div class="mt-3 text-slate-600">確認無誤再按「⛔ 取消這一關的成績」。</div>'
+              : '<div class="mt-3 text-slate-600">沒有有效的紀錄可以取消。</div>'));
+  } catch (e) { say('❌ ' + esc(e.message || e), 'bad'); }
+};
+
+window.doRevoke = async function () {
+  var btn = document.getElementById('revoke-btn');
+  try {
+    var sid = readSid(), unit = readUnit();
+    var reason = String(document.getElementById('reason').value || '').trim();
+    /* ⚠️ 原因不是形式：事後查「為什麼取消」比「取消了什麼」更重要，
+          而當下不寫，之後就永遠補不回來了。後端也會再擋一次。 */
+    if (reason.length < 2) throw new Error('請寫下取消的原因（會存進稽核紀錄，學生看不到）');
+    if (!SERVER) throw new Error('config.js 沒有設 SERVER_URL');
+
+    var r = await lookup(sid, unit);
+    var live = r.rows.filter(function (s) { return !s.revoked; });
+    if (!live.length) throw new Error(sid + ' 的 ' + unitLabel(unit) + ' 沒有有效的批改紀錄可以取消。');
+    if (!confirm('要取消 ' + sid + ' 的「' + unitLabel(unit) + '」嗎？\n\n' +
+                 '・' + live.length + ' 筆批改紀錄會標成「已取消」（最高 ' +
+                 Math.max.apply(null, live.map(function (s) { return Number(s.score) || 0; })) + ' 分）\n' +
+                 '・學生頁面上這一關 ' + r.star + '⭐ → 0⭐，後面的關卡會跟著鎖住\n' +
+                 '・同一個檔案再交會被擋下\n\n' +
+                 '原因：' + reason)) return;
+
+    btn.disabled = true;
+    say('取消中…（後端要掃過批改紀錄和檔案紀錄，約幾秒鐘）');
+    var res = await fetch(SERVER + '/api/teacher/revoke-scratch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+      body: JSON.stringify({ student_id: sid, unit: unit, reason: reason, term: window.CONFIG.TERM })
+    });
+    var j = await res.json().catch(function () { return { ok: false, error: '後端回傳的不是 JSON（HTTP ' + res.status + '）' }; });
+    /* ★ 三步分開列：只成功一部分是最危險的狀態，一定要看得出是哪一步 */
+    var steps =
+      '<ul class="mt-2 space-y-1">' +
+      '<li>① 批改紀錄：' + esc(j.submissions || j.error || '—') + '</li>' +
+      '<li>② 同一個檔案再交：' + esc(j.files || '—') + '</li>' +
+      '<li>③ 星星：' + esc(j.progress || '—') + '</li>' +
+      '<li class="text-slate-500">稽核：' + esc(j.audit || '—') + '</li></ul>';
+    if (j.ok) {
+      say('✅ 已取消 <b>' + sid + '</b> 的 <b>' + unitLabel(unit) + '</b>。' + steps +
+          '<div class="mt-3 pt-3 border-t border-emerald-200">學生<b>重新整理</b>闖關頁就會看到新的星數。</div>', 'good');
+    } else {
+      say('❌ <b>沒有完全成功</b> —— 看下面是哪一步沒做到（可以再按一次，已完成的部分不會重複）。' + steps +
+          (res.status === 404 ? '<div class="mt-2">後端還沒有這個功能：Colab 要重跑步驟 2、3。</div>' : ''), 'bad');
+    }
+  } catch (e) {
+    say('❌ ' + esc(e.message || e) +
+        (/fetch/i.test(String(e && e.message)) ? '<br>連不到後端：請確認 Colab 已啟動。' : ''), 'bad');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+/* 列出所有被取消的批改紀錄（取消紀錄就是批改紀錄上的 revoked 標記，不另外記一份）。 */
+window.doAll = async function () {
+  try {
+    say('讀取中…');
+    var snap = await db.collection(SUBMISSIONS).where('revoked', '==', true).get();
+    var by = {};
+    snap.forEach(function (d) {
+      var s = d.data() || {};
+      var k = s.student_id + '|' + unitOf(s);
+      (by[k] = by[k] || []).push(s);
+    });
+    var keys = Object.keys(by).sort();
+    if (!keys.length) { say('目前沒有任何被取消的程式成績。'); return; }
+    say('<b>已取消的成績：' + keys.length + ' 組</b>' + keys.map(function (k) {
+      var rows = by[k], p = k.split('|');
+      rows.sort(function (a, b) { return String(a.created_at).localeCompare(String(b.created_at)); });
+      return '<div class="py-2 border-t border-slate-200 mt-2">' +
+             '<b>' + esc(p[0]) + '</b>　' + esc(unitLabel(p[1])) +
+             '<div class="text-slate-500">原因：' + esc(rows[0].revoked_reason || '') +
+             '　取消於 ' + esc(String(rows[0].revoked_at || '').slice(0, 16)) + '</div>' +
+             '<div class="mt-1">' + fmtRows(rows) + '</div></div>';
+    }).join(''));
+  } catch (e) { say('❌ ' + esc(e.message || e), 'bad'); }
+};
+</script>
+</body>
+</html>

@@ -2985,38 +2985,6 @@ const __bn = bonusOf(student, sub.key);
     }
     window.revokePass = revokePass;
 
-    // ===== 取消某一關的**程式**成績（老師用；2026-10-15；**刻意不做成按鈕**）=====
-    /* 和 revokePass 一樣只從主控台呼叫（按下去就改成績的東西不放在畫面上）：
-           await revokeScratch('1410110', '2-1-3', '與 1410108 的檔案完全相同')
-       後端會一次處理三件事（見 backend.ipynb 的 revoke_scratch_unit）：
-         ① 這一關的批改紀錄標成「已取消」（不刪，稽核查得到）—— 之後按「重建」也不會算回來
-         ② 那個檔案原封不動再交會被擋下；自己重做的新作品照常評分
-         ③ 這一關的星星用剩下的紀錄重算（其他關卡一格都不動）
-       ⚠️ 原因只存在稽核紀錄裡，不會讓學生看到 —— 可以放心寫另一位同學的學號。 */
-    async function revokeScratch(sid, unit, reason) {
-      sid = String(sid || '').trim();
-      unit = String(unit || '').trim();
-      reason = String(reason || '').trim();
-      if (!/^\d{7}$/.test(sid)) throw new Error('學號要是 7 位數字');
-      if (!/^\d-\d-\d[AB]?$/.test(unit)) throw new Error('關卡代號要像 2-1-3、2-1-1A 這樣');
-      if (reason.length < 2) throw new Error('請寫下取消的原因（會存進稽核紀錄）');
-      const r = await fetch(GD_SERVER + '/api/teacher/revoke-scratch', {
-        method: 'POST',
-        headers: Object.assign({ 'Content-Type': 'application/json' }, GD_H),
-        body: JSON.stringify({ student_id: sid, unit: unit, reason: reason, term: window.CONFIG.TERM })
-      });
-      const j = await r.json();
-      // ★ 三步分開印：哪一步沒做到一定要看得出來
-      console.log('① 批改紀錄：', j.submissions || j.error);
-      console.log('② 同一個檔案再交：', j.files);
-      console.log('③ 星星：', j.progress);
-      console.log('   稽核：', j.audit);
-      if (!j.ok) throw new Error('沒有完全成功 —— 看上面三行是哪一步沒做到：' + (j.error || ''));
-      console.log('✅ 已取消。學生重新整理頁面就會看到新的星數。');
-      return j;
-    }
-    window.revokeScratch = revokeScratch;
-
     /* 「挑戰成功」徽章形狀檢查的開關（上課誤擋時的緊急出口）。
        ⚠️ 這道檢查目前只驗證過 3 關 2 種配色 —— 誤擋真的通關的學生
           比漏抓一個偽造嚴重得多，所以一定要能立刻關掉。
