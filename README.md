@@ -906,6 +906,55 @@ OCR 讀到文字之後還會檢查那個標章的**形狀**（連通區塊的長
 這一關的星星用剩下的紀錄重算（其他關卡不動）。
 ⚠️ 這一關變 0⭐ 後，**後面的關卡會跟著鎖住**，要他自己重做這一關。
 
+### Q13. 要換 ngrok 網址（學校連不到、或免費額度用完）
+
+**目前三個網域**（2026-10-20）：
+
+| 網域 | 給誰用 | 改哪裡 |
+|---|---|---|
+| `debug-autograph-activate.ngrok-free.dev` | 🎨 程式設計批改 | `config.js` 的 `SERVER_URL` |
+| `shuffle-unclaimed-jovial.ngrok-free.dev` | 🧠 運算思維 OCR | `config.js` 的 `OCR_SERVER_URL` |
+| `flanking-snort-cyclic.ngrok-free.dev` | （10-20 起空著，可以當備用） | — |
+
+⚠️ 免費帳號**一個帳號只有一個網域**，兩台 Colab 不可以用同一個網域。
+要換就換成「沒有人在用」的那個帳號，或另外註冊一個新的免費帳號。
+
+**① 在 ngrok 找到兩樣東西**（用那個網域所屬的帳號登入 https://dashboard.ngrok.com ）：
+
+| 要找的 | 在哪 | 長什麼樣 |
+|---|---|---|
+| 網域 | 左邊選單 **Domains**（https://dashboard.ngrok.com/domains ） | `xxxx-xxxx-xxxx.ngrok-free.dev` |
+| Authtoken | 左邊選單 **Your Authtoken**（https://dashboard.ngrok.com/get-started/your-authtoken ） | 一長串英數字 |
+| 用量 | **Usage**（https://dashboard.ngrok.com/usage ） | 每月 2 萬次請求、1 GB |
+
+⚠️ Authtoken 和 **API Key** 是兩個不同的東西（API Key 是 `NGROK_API_KEY` 用的），不要貼錯。
+⚠️ 網域和 token **一定要來自同一個帳號**，不然 ngrok 會拒絕連線。
+
+**② 改 Colab Secrets**（左邊的 🔑，記得打開「筆記本存取權」）：
+
+| | 🎨 批改那台 | 🧠 運算思維 OCR 那台 |
+|---|---|---|
+| `NGROK_TOKEN` | 換成新帳號的 Authtoken | 換成新帳號的 Authtoken |
+| `NGROK_DOMAIN` | **不要設**（用程式裡的預設值） | 填新網域，**只填網域**，不要加 `https://` |
+
+批改那台要換成「預設值以外」的網域時，`shared/backend.ipynb` 步驟 3 的
+`NGROK_STATIC_DOMAIN` 預設值也要一起改（或請 Claude 改）。
+
+**③ 改網站設定**：`11501/config.js` 和 `11502/config.js` **兩份都要改**
+
+```js
+SERVER_URL:     'https://（批改的網域）',
+OCR_SERVER_URL: 'https://（運算思維的網域）',
+```
+
+批改網域換了的話，`11501/scratch_ScratchGrader_teacher.html` 裡也寫了一次，要一起改。
+
+**④ 推送 → Colab「執行階段 → 重新啟動工作階段」→ 從步驟 1 跑到底**
+
+啟動訊息的「✅ API 已上線：」後面要是新網址。
+最後用教師端 🩺 狀態檢查確認兩台都在線上；學生要**重新整理**頁面才會用新網址
+（瀏覽器會把 `config.js` 暫存最多 10 分鐘）。
+
 ---
 
 ## 文件
