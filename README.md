@@ -912,9 +912,9 @@ OCR 讀到文字之後還會檢查那個標章的**形狀**（連通區塊的長
 
 | 網域 | 給誰用 | 改哪裡 |
 |---|---|---|
-| `debug-autograph-activate.ngrok-free.dev` | 🎨 程式設計批改 | `config.js` 的 `SERVER_URL` |
+| `flanking-snort-cyclic.ngrok-free.dev` | 🎨 程式設計批改 | `config.js` 的 `SERVER_URL` |
 | `shuffle-unclaimed-jovial.ngrok-free.dev` | 🧠 運算思維 OCR | `config.js` 的 `OCR_SERVER_URL` |
-| `flanking-snort-cyclic.ngrok-free.dev` | （10-20 起空著，可以當備用） | — |
+| `debug-autograph-activate.ngrok-free.dev` | （空著，可以當備用；這個帳號 10 月用量偏高，用前先看 Usage） | — |
 
 ⚠️ 免費帳號**一個帳號只有一個網域**，兩台 Colab 不可以用同一個網域。
 要換就換成「沒有人在用」的那個帳號，或另外註冊一個新的免費帳號。
