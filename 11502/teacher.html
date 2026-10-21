@@ -2693,6 +2693,22 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
           </div>
         </div>
 
+        <!-- 📋 班級上課日查詢（老師 2026-10-21：「可以查詢某個班級到目前為止的上課日嗎？」）
+             ★ 停課的也列出來（灰色）：放假後要確認的正是「那天有沒有標到停課」。
+             ★ 算法走 shared/schedule.js 的 classLessons —— 和出席紀錄、每週評分同一份規則。 -->
+        <div class="mt-5 pt-4 border-t border-slate-200">
+          <h4 class="text-sm font-black text-slate-700 mb-1">📋 班級上課日查詢</h4>
+          <p class="text-xs text-slate-500 mb-3 leading-relaxed">
+            列出這個班從學期第 1 週到今天的每一堂課，停課的也會列出來（灰色），方便放假後確認有沒有標漏。<br>
+            以上面<b>目前畫面上的設定</b>計算 —— 剛點的停課還沒按儲存也會算進去。
+          </p>
+          <div class="flex items-center gap-2 flex-wrap">
+            <select id="scDaysCls" class="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"></select>
+            <button onclick="scListDays()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg text-sm transition">查詢</button>
+          </div>
+          <div id="scDaysOut" class="mt-3"></div>
+        </div>
+
         <div class="flex items-center gap-3 mt-4">
           <button onclick="saveSchedule()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition">💾 儲存</button>
           <span id="scStatus" class="text-sm font-bold"></span>
@@ -3275,6 +3291,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         }catch(e){ _scClasses=[]; }
       }
       _scMonday=scMondayOf(new Date());
+      scFillDaysCls();
       await loadSchedule();
       /* 把已經設好的開放日填回輸入框。
          ⚠️ 不填的話，老師打開只是想改課表、按了儲存，
@@ -3286,6 +3303,57 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       }catch(e){}
       scRender();
     }
+    /* 📋 班級上課日查詢（老師 2026-10-21）—— 規則在 shared/schedule.js 的 classLessons。 */
+    function scFillDaysCls(){
+      const sel=document.getElementById('scDaysCls');
+      if(!sel) return;
+      const cur=sel.value;
+      sel.innerHTML='<option value="">選班級</option>'+_scClasses.map(c=>`<option value="${c}">${c}</option>`).join('');
+      if(cur) sel.value=cur;
+    }
+    function scListDays(){
+      const out=document.getElementById('scDaysOut');
+      const cls=document.getElementById('scDaysCls').value;
+      if(!cls){ out.innerHTML='<div class="text-sm text-slate-400">請先選班級。</div>'; return; }
+      if(!(window.SCHEDULE && SCHEDULE.classLessons)){
+        out.innerHTML='<div class="text-sm text-red-600">讀不到 shared/schedule.js，請重新整理頁面。</div>'; return;
+      }
+      /* 起點和「出席紀錄」「每週評分」一致：老師在每週評分改過學期開始日就用那個，沒有就用 config.js */
+      let startStr=window.CONFIG.TERM_START;
+      try{ startStr=localStorage.getItem('wky_start')||startStr; }catch(e){}
+      const start=new Date(startStr+'T00:00:00');
+      const rows=SCHEDULE.classLessons(_sched, cls, start, new Date());
+      if(!rows.length){
+        out.innerHTML=`<div class="text-sm text-slate-400">${startStr} 到今天，課表裡沒有排到 ${cls} 的課。（先勾「編輯課表」確認有沒有把這個班放進時段）</div>`;
+        return;
+      }
+      const startMon=SCHEDULE.mondayOf(start).getTime();
+      const live=rows.filter(r=>!r.off);
+      const days=[...new Set(live.map(r=>r.date))];
+      const offN=rows.length-live.length, mvN=rows.filter(r=>r.movedIn).length;
+      const body=rows.map(r=>{
+        const d=new Date(r.date+'T00:00:00');
+        const wk=Math.floor((SCHEDULE.mondayOf(d).getTime()-startMon)/SCHEDULE.WEEK_MS)+1;
+        const st=r.off?'<span class="text-slate-400">停課</span>'
+               :r.movedIn?'<span class="text-violet-700 font-bold">調課</span>'
+               :'<span class="text-emerald-700 font-bold">上課</span>';
+        return `<tr class="${r.off?'bg-slate-50 text-slate-400':''}">
+          <td class="border border-slate-200 px-2 py-1 text-center">第${wk}週</td>
+          <td class="border border-slate-200 px-2 py-1 text-center font-mono">${r.date.slice(5)}（${SC_DAYS[r.wd-1]}）</td>
+          <td class="border border-slate-200 px-2 py-1 text-center">第${r.period}節</td>
+          <td class="border border-slate-200 px-2 py-1 text-center">${st}</td></tr>`;
+      }).join('');
+      out.innerHTML=`<div class="text-sm font-bold text-slate-700 mb-2">${cls}：上課 <span class="text-emerald-700">${days.length}</span> 天（${live.length} 節）
+          ・停課 <span class="${offN?'text-red-600':''}">${offN}</span> 節・調課 ${mvN} 節
+          <span class="text-xs font-normal text-slate-400">（${startStr} ～ 今天）</span></div>
+        <div class="max-h-80 overflow-y-auto"><table class="w-full text-sm border-collapse">
+          <thead class="sticky top-0 bg-slate-100"><tr>
+            <th class="border border-slate-200 px-2 py-1">週次</th><th class="border border-slate-200 px-2 py-1">日期</th>
+            <th class="border border-slate-200 px-2 py-1">節次</th><th class="border border-slate-200 px-2 py-1">狀態</th></tr></thead>
+          <tbody>${body}</tbody></table></div>`;
+    }
+    window.scListDays = scListDays;
+
     function closeSchedModal(){
       const m=document.getElementById('schedModal');
       m.classList.add('hidden'); m.classList.remove('flex');

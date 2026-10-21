@@ -131,6 +131,37 @@
     return wasHere ? b : 0;
   }
 
+  /**
+   * 某班從 from 到 to（含兩端）每一節課的明細 —— 給教師端「班級上課日」查詢用（老師 2026-10-21）。
+   * 回傳 [{ date:'YYYY-MM-DD', wd:1～5, period, slot, off, movedIn }]，照日期、節次排好。
+   *   off     ：這一節停課（**照樣列出來**，畫面上標灰 —— 老師要看的就是「哪天停過課」）
+   *   movedIn ：這一節是從同一週別的時段調過來的
+   * ⚠️ 判斷每一格「是誰的課」一律走 cellInfo（和每週評分、出席紀錄同一份規則），
+   *    不另外寫一份 —— 兩份規則的差異就是「出席說有上課、評分說停課」那種 bug 的來源。
+   * ⚠️ 被調走的那一格（movedAway）cellInfo 已經回 cls=null，不會重複列。
+   */
+  function classLessons(sched, cls, from, to) {
+    cls = String(cls || '');
+    var out = [];
+    if (!cls) return out;
+    var end = new Date(to); end.setHours(0, 0, 0, 0);
+    var start = new Date(from); start.setHours(0, 0, 0, 0);
+    if (isNaN(start) || isNaN(end) || start > end) return out;
+    for (var mon = mondayOf(start); mon <= end; mon = new Date(mon.getTime() + WEEK_MS)) {
+      for (var wd = 1; wd <= 5; wd++) {
+        var day = dateOf(mon, wd);
+        if (day < start || day > end) continue;
+        for (var p = 1; p <= PERIODS; p++) {
+          var info = cellInfo(sched, mon, wd, p);
+          if (info.cls !== cls) continue;
+          out.push({ date: info.dateKey, wd: wd, period: p, slot: info.slot,
+                     off: info.off, movedIn: info.movedIn });
+        }
+      }
+    }
+    return out;
+  }
+
   /* ══════════════════════════════════════════════════════════
      模組的開放日（老師 2026-09-15）
      ══════════════════════════════════════════════════════════
@@ -184,7 +215,7 @@
   global.SCHEDULE = {
     PERIODS: PERIODS, WEEK_MS: WEEK_MS,
     mondayOf: mondayOf, key: key, dateOf: dateOf,
-    cellInfo: cellInfo, classDatesOfWeek: classDatesOfWeek,
+    cellInfo: cellInfo, classDatesOfWeek: classDatesOfWeek, classLessons: classLessons,
     attended: attended, weekScore: weekScore,
     openMap: openMap, openDateOf: openDateOf,
     moduleOpen: moduleOpen, openLabel: openLabel
