@@ -33,6 +33,20 @@ const section = t => console.log('\n── ' + t + ' ──');
      不跳過的話，每次審稿都會讓這支測試紅燈、擋住推送（10-12 就是這樣擋住的）。 */
 const SKIP_DIR = ['node_modules', '.git', '_archive', 'course_11501', 'course_11502', 'docs', 'tests', 'Claude outputs'];
 
+/* ★ git 忽略的資料夾、檔案一律不算（2026-11-03）。
+     老師把別的專案（cs-11608，lite 移植版）暫放在這個資料夾裡、用 .git/info/exclude 排除 ——
+     它根本不會被推上去，卻讓這支測試把它整包當成孤兒、擋住提交。
+     ⇒ 問 git「哪些東西被忽略」，跟著它走；不再一個一個寫死資料夾名。
+     ⚠️ -z：中文檔名才不會被 git 加上引號和跳脫，導致比對不到。
+     ⚠️ 問不到 git（極少見）就照舊全部掃 —— 寧可多報，不可漏報。 */
+const IGNORED = new Set();
+try {
+  require('child_process')
+    .execSync('git ls-files -z --others --ignored --exclude-standard --directory',
+              { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+    .split('\0').filter(Boolean).forEach(l => IGNORED.add(l.replace(/\/$/, '')));
+} catch (e) { /* 沒有 git：照舊全部掃 */ }
+
 /** 真正的入口：使用者打得到網址的地方 */
 const ENTRY = [
   'index.html',
@@ -185,6 +199,7 @@ const all = [];
   fs.readdirSync(dir, { withFileTypes: true }).forEach(e => {
     if (SKIP_DIR.includes(e.name)) return;
     const p = path.join(dir, e.name);
+    if (IGNORED.has(norm(path.relative(root, p)))) return;     // git 忽略的（見上面 IGNORED）
     if (e.isDirectory()) { walk(p); return; }
     if (!/\.(html|js|ipynb)$/.test(e.name)) return;
     all.push(norm(path.relative(root, p)));

@@ -2206,6 +2206,10 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       let rosterUnsub = null;
       let rosterCache = [];
       let editingCodeId = null;   // 目前正在手動改碼的學號
+      let editingRowId = null;    // 目前正在「修改座號／姓名」的學號（老師 2026-11-02）
+      /* 運算思維的原始紀錄：文件 id 是「班級_座號_姓名」（thinking.html 的 docId），
+         改名或改座號時要跟著搬，見 saveRosterEdit。 */
+      const CT_COL = 'artifacts/comp-think-app/public/data/progress_sem2';
       const revealedCodes = new Set();   // 驗證碼預設隱藏，只有按下「顯示」的學生才短暫顯示
 
       function openRosterModal(){
@@ -2253,12 +2257,16 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         if (!rosterCache.length) { box.innerHTML = `<div class="p-6 text-center text-gray-400 text-sm">此班尚無資料，請用上方新增或批次匯入。</div>`; return; }
         box.innerHTML = `
           <table class="w-full text-sm">
-            <thead class="bg-slate-50 text-slate-500 text-xs"><tr><th class="p-2 text-left w-14">座號</th><th class="p-2 text-left w-28">學號</th><th class="p-2 text-left">姓名</th><th class="p-2 text-left w-24">驗證碼</th><th class="p-2 w-44"></th></tr></thead>
+            <thead class="bg-slate-50 text-slate-500 text-xs"><tr><th class="p-2 text-left w-14">座號</th><th class="p-2 text-left w-28">學號</th><th class="p-2 text-left">姓名</th><th class="p-2 text-left w-24">驗證碼</th><th class="p-2 w-52"></th></tr></thead>
             <tbody>${rosterCache.map(s => `
               <tr class="border-t border-gray-100">
-                <td class="p-2">${esc(s.no)}</td>
+                <td class="p-2">${editingRowId === s.studentId
+                  ? `<input id="ed-no" type="number" min="1" value="${esc(s.no)}" class="w-14 px-1 py-1 border border-amber-400 rounded text-sm">`
+                  : esc(s.no)}</td>
                 <td class="p-2 font-mono">${esc(s.studentId)}</td>
-                <td class="p-2">${esc(s.name)}</td>
+                <td class="p-2">${editingRowId === s.studentId
+                  ? `<input id="ed-name" type="text" value="${esc(s.name)}" class="w-full px-2 py-1 border border-amber-400 rounded text-sm">`
+                  : esc(s.name)}</td>
                 <td class="p-2">
                   ${editingCodeId === s.studentId
                     ? `<input id="code-edit-${esc(s.studentId)}" value="${esc(s.code || '')}" maxlength="6" inputmode="numeric" placeholder="6 位數字" class="w-24 px-2 py-1 border border-blue-300 rounded text-sm font-mono tracking-widest">`
@@ -2270,11 +2278,15 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
                            </span>`)}
                 </td>
                 <td class="p-2 text-right whitespace-nowrap">
-                  ${editingCodeId === s.studentId
+                  ${editingRowId === s.studentId
+                    ? `<button onclick="saveRosterEdit('${esc(s.studentId)}')" class="text-emerald-600 hover:text-emerald-800 text-xs font-bold mr-2">儲存</button>
+                       <button onclick="cancelRosterEdit()" class="text-gray-400 hover:text-gray-600 text-xs font-bold">取消</button>`
+                    : editingCodeId === s.studentId
                     ? `<button onclick="saveRosterCode('${esc(s.studentId)}','${esc(s.name)}')" class="text-emerald-600 hover:text-emerald-800 text-xs font-bold mr-2">儲存</button>
                        <button onclick="clearRosterCode('${esc(s.studentId)}','${esc(s.name)}')" class="text-amber-600 hover:text-amber-800 text-xs font-bold mr-2">清除</button>
                        <button onclick="cancelEditCode()" class="text-gray-400 hover:text-gray-600 text-xs font-bold">取消</button>`
-                    : `<button onclick="editRosterCode('${esc(s.studentId)}')" class="text-blue-500 hover:text-blue-700 text-xs font-bold mr-2">改碼</button>
+                    : `<button onclick="editRosterRow('${esc(s.studentId)}')" class="text-amber-600 hover:text-amber-800 text-xs font-bold mr-2" title="修改座號或姓名">修改</button>
+                       <button onclick="editRosterCode('${esc(s.studentId)}')" class="text-blue-500 hover:text-blue-700 text-xs font-bold mr-2">改碼</button>
                        <button onclick="clearStudentProgress('${esc(s.studentId)}','${esc(s.name)}')" class="text-amber-600 hover:text-amber-800 text-xs font-bold mr-2" title="清除闖關進度與星星（不影響名冊）">清進度</button>
                        <button onclick="delRosterStudent('${esc(s.studentId)}','${esc(s.name)}')" class="text-red-500 hover:text-red-700 text-xs font-bold">刪除</button>`}
                 </td>
@@ -2287,6 +2299,16 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         const id = document.getElementById('add-id').value.trim();
         const name = document.getElementById('add-name').value.trim();
         if (!no || !id || !name) { showToast('請填座號、學號、姓名', true); return; }
+        /* ⛔ 已經在名冊裡的學號不可以用「新增」蓋過去（老師 2026-11-02 之前這是唯一的改名方法）：
+              那樣改名，運算思維的紀錄不會跟著搬 —— 要用該列的「修改」。 */
+        try {
+          const ex = await rdb.collection(COL).doc(id).get();
+          if (ex.exists) {
+            const d = ex.data() || {};
+            showToast(`學號 ${id} 已經在名冊裡（${d.cls || '?'} 班 ${d.no || '?'} 號 ${d.name || ''}）。要改座號或姓名，請按那一列的「修改」。`, true);
+            return;
+          }
+        } catch(e){ showToast('查名冊失敗：' + e.message, true); return; }
         try {
           /* ⚠️ 同上：名冊文件上有別人的欄位，整份覆蓋會把它們洗掉。
              「新增」通常是對還不存在的學號，merge 與否看不出差別；
@@ -2301,7 +2323,62 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
           try { await rdb.collection(COL).doc(id).delete(); showToast(`🗑️ 已刪除 ${name}`, false); } catch(e){ showToast('刪除失敗：' + e.message, true); }
         }});
       }
-      function editRosterCode(id){ editingCodeId = id; paintRosterList(); }
+      function editRosterCode(id){ editingCodeId = id; editingRowId = null; paintRosterList(); }
+      /* ✏️ 修改座號／姓名（老師 2026-11-02：「學生名冊只能新增、刪除，無法修改姓名？」）
+         ⛔⛔ 不能只改名冊那一筆：運算思維的原始紀錄用「班級_座號_姓名」當文件 id，
+            安全規則也是拿名冊組出這個 id 才准學生寫（firestore.rules 的 D3）。
+            只改名冊 ⇒ 學生下次進運算思維，找的是**新的** id —— 舊的通關紀錄、證書截圖
+            全部「不見」（其實還在，只是沒有人找得到），而且畫面上沒有任何錯誤。
+         ⇒ 三步、照這個順序：
+            ① 舊紀錄複製到新 id（新 id 已經有東西就停下來，不蓋掉）
+            ② 改名冊（merge，名冊上還有開放關卡等別人的欄位）
+            ③ 刪掉舊 id
+            中途失敗也不會丟資料：①②之間失敗 ⇒ 名冊沒變，學生照舊用舊紀錄；
+            ②③之間失敗 ⇒ 新舊各一份，內容相同。
+         ★ 闖關星星、程式成績、出席都是用**學號**存的，改名不受影響。 */
+      function editRosterRow(id){ editingRowId = id; editingCodeId = null; paintRosterList(); }
+      function cancelRosterEdit(){ editingRowId = null; paintRosterList(); }
+      async function saveRosterEdit(id){
+        const old = rosterCache.find(x => x.studentId === id);
+        if (!old) { showToast('找不到這位學生，請重新開啟名冊', true); return; }
+        const no = String(document.getElementById('ed-no').value || '').trim();
+        const name = String(document.getElementById('ed-name').value || '').trim();
+        if (!/^\d+$/.test(no) || Number(no) < 1) { showToast('座號要是正整數', true); return; }
+        if (!name) { showToast('姓名不可以空白', true); return; }
+        if (/[\/_]/.test(name)) { showToast('姓名裡不可以有「/」或「_」（會弄壞運算思維的紀錄編號）', true); return; }
+        const cls = String(old.cls);
+        if (no === String(old.no) && name === String(old.name)) { cancelRosterEdit(); return; }
+        const dup = rosterCache.find(x => x.studentId !== id && String(x.no) === no);
+        if (dup) { showToast(`${cls} 班 ${no} 號已經是 ${dup.name}（${dup.studentId}），請先改掉那一位`, true); return; }
+        const oldKey = old.key || `${cls}_${old.no}_${old.name}`;
+        const newKey = `${cls}_${no}_${name}`;
+        let moved = false;
+        try {
+          // ① 運算思維紀錄搬到新 id
+          if (newKey !== oldKey) {
+            const oldSnap = await rdb.collection(CT_COL).doc(oldKey).get();
+            if (oldSnap.exists) {
+              const newSnap = await rdb.collection(CT_COL).doc(newKey).get();
+              if (newSnap.exists) {
+                showToast(`運算思維已經有一份「${newKey}」的紀錄，為了不蓋掉它，這次沒有修改。請截圖給 Claude 處理。`, true);
+                return;
+              }
+              await rdb.collection(CT_COL).doc(newKey).set(Object.assign({}, oldSnap.data(),
+                { name: name, seatNo: no, classRoom: cls, renamedFrom: oldKey, lastUpdated: new Date().toISOString() }));
+              moved = true;
+            }
+          }
+          // ② 名冊
+          await rdb.collection(COL).doc(id).set({ no: no, name: name, key: newKey, updatedAt: Date.now() }, { merge: true });
+          // ③ 舊的運算思維紀錄
+          if (moved) {
+            try { await rdb.collection(CT_COL).doc(oldKey).delete(); }
+            catch (e) { console.warn('舊的運算思維紀錄沒刪掉（新的已經在了，不影響使用）', e); }
+          }
+          editingRowId = null;
+          showToast(`✅ 已改成 ${no} 號 ${name}` + (moved ? '（運算思維的通關紀錄已一起搬過去）' : ''), false);
+        } catch (e) { showToast('修改失敗：' + e.message, true); }
+      }
       function cancelEditCode(){ editingCodeId = null; paintRosterList(); }
       // 單一學生的驗證碼顯示／隱藏（預設隱藏，避免投影或旁人看到全班驗證碼）
       function toggleRosterCode(id){
@@ -2509,6 +2586,9 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       window.renderRoster = renderRoster;
       window.addRosterStudent = addRosterStudent;
       window.delRosterStudent = delRosterStudent;
+      window.editRosterRow = editRosterRow;
+      window.cancelRosterEdit = cancelRosterEdit;
+      window.saveRosterEdit = saveRosterEdit;
       window.editRosterCode = editRosterCode;
       window.toggleRosterCode = toggleRosterCode;
       window.cancelEditCode = cancelEditCode;
