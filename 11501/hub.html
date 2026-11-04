@@ -402,7 +402,12 @@
         const d=cardData(m,mods);
         if(d.status==='pass')pass++;
         stars+=(d.stars||0);
-        maxTotal+=(m.maxStars||3);
+        /* ⛔ 2026-11-04 老師：「上學期的星星總數是不是有誤？」——
+              這裡原本是 (m.maxStars||3)：智慧家居機電專題寫的是 maxStars:0（延伸體驗、不計星），
+              0 被 || 當成「沒寫」，換成 3 ⇒ 分母變 123，學生全拿滿也只顯示 120/123。
+              11502 在 2026-08-11 就踩過同一個坑（90/102）並改掉了，這一份漏改。
+           ⇒ 沒寫或寫 0 就是 0。要給星的卡片一定要寫明上限。 */
+        maxTotal+=(Number(m.maxStars)||0);
         const cap=m.subLevels||0;
         if(cap){ subTotal+=cap; subDone+=Math.min(cap, Number(d.levelSum||d.level)||0); }
       });
