@@ -340,13 +340,13 @@
         const d = (s.exists() && s.data()) || {};
         /* ★ open_json：哪些模組還沒到開放日（見 shared/schedule.js；2026-09-30 從 11501 移植）。
            和課表放在同一份文件，所以不多一次讀取、也不必改安全規則。 */
-        state.sched = { base: d.base||{}, off: d.off||{}, move: d.move||{},
+        state.sched = { base: d.base||{}, off: d.off||{}, move: d.move||{}, extra: d.extra||{},
                         open_json: d.open_json || '' };
       }catch(e){
         console.warn('讀不到課表，本週成績卡會把出席當成「沒有」', e);
         /* ⚠️ open_json 留空 ＝ 全部當成已開放。設定讀失敗就把教材鎖住，
            是拿學生的課去賭一個設定檔。 */
-        state.sched = { base:{}, off:{}, move:{}, open_json:'' };
+        state.sched = { base:{}, off:{}, move:{}, extra:{}, open_json:'' };
       }
       render();
     }

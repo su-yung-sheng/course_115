@@ -3344,7 +3344,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
     //  move : { "YYYY-MM-DD": { "3-2": "5-4" } } 該週把某節課調到別的時段
     const SC_COL='11502-config', SC_DOC='schedule';
     const SC_DAYS=['一','二','三','四','五'], SC_PERIODS=7;
-    let _sched={ base:{}, off:{}, move:{}, open_json:'' };
+    let _sched={ base:{}, off:{}, move:{}, extra:{}, open_json:'' };
     let _scMonday=null, _scClasses=[];
 
     function scMondayOf(d){ const x=new Date(d); const wd=(x.getDay()+6)%7; x.setHours(0,0,0,0); return new Date(x.getTime()-wd*86400000); }
@@ -3355,9 +3355,9 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       try{
         const s=await _gdDb().collection(SC_COL).doc(SC_DOC).get();
         const d=(s.exists && s.data())||{};
-        _sched={ base:d.base||{}, off:d.off||{}, move:d.move||{},
+        _sched={ base:d.base||{}, off:d.off||{}, move:d.move||{}, extra:d.extra||{},
                  open_json:d.open_json||'' };
-      }catch(e){ _sched={ base:{}, off:{}, move:{}, open_json:'' }; }
+      }catch(e){ _sched={ base:{}, off:{}, move:{}, extra:{}, open_json:'' }; }
       return _sched;
     }
     async function openSchedModal(){
@@ -3410,11 +3410,12 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       const startMon=SCHEDULE.mondayOf(start).getTime();
       const live=rows.filter(r=>!r.off);
       const days=[...new Set(live.map(r=>r.date))];
-      const offN=rows.length-live.length, mvN=rows.filter(r=>r.movedIn).length;
+      const offN=rows.length-live.length, mvN=rows.filter(r=>r.movedIn).length, exN=live.filter(r=>r.extra).length;
       const body=rows.map(r=>{
         const d=new Date(r.date+'T00:00:00');
         const wk=Math.floor((SCHEDULE.mondayOf(d).getTime()-startMon)/SCHEDULE.WEEK_MS)+1;
         const st=r.off?'<span class="text-slate-400">停課</span>'
+               :r.extra?'<span class="text-emerald-700 font-bold">補課</span>'
                :r.movedIn?'<span class="text-violet-700 font-bold">調課</span>'
                :'<span class="text-emerald-700 font-bold">上課</span>';
         return `<tr class="${r.off?'bg-slate-50 text-slate-400':''}">
@@ -3424,7 +3425,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
           <td class="border border-slate-200 px-2 py-1 text-center">${st}</td></tr>`;
       }).join('');
       out.innerHTML=`<div class="text-sm font-bold text-slate-700 mb-2">${cls}：上課 <span class="text-emerald-700">${days.length}</span> 天（${live.length} 節）
-          ・停課 <span class="${offN?'text-red-600':''}">${offN}</span> 節・調課 ${mvN} 節
+          ・停課 <span class="${offN?'text-red-600':''}">${offN}</span> 節・調課 ${mvN} 節・補課 ${exN} 節
           <span class="text-xs font-normal text-slate-400">（${startStr} ～ 今天）</span></div>
         <div class="max-h-80 overflow-y-auto"><table class="w-full text-sm border-collapse">
           <thead class="sticky top-0 bg-slate-100"><tr>
@@ -3443,22 +3444,12 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       else _scMonday=new Date(_scMonday.getTime()+n*7*86400000);
       scRender();
     }
-    // 這一週、這個時段實際要上的班級（考慮調課）；停課回傳 null
+    // 這一週、這個時段實際要上的班級（考慮調課、補課）
+    /* ⚠️ 2026-11-05 改成直接呼叫 shared/schedule.js 的 cellInfo：
+          這裡原本自己抄了一份規則。加「補課」時要是只改了一邊，
+          畫面上看得到補課、評分卻不算（或反過來）—— 規則只留一份。 */
     function scCellInfo(wd,period){
-      const slot=`${wd}-${period}`, dateKey=scKey(scDateOf(wd));
-      // 被調走
-      const movedAway=Object.entries(_sched.move[dateKey]||{}).some(([from])=>from===slot);
-      // 從別處調來
-      let movedIn=null;
-      Object.entries(_sched.move).forEach(([dk,mp])=>{
-        Object.entries(mp||{}).forEach(([from,to])=>{
-          if(to===slot){ const wdFrom=Number(from.split('-')[0]);
-            if(scKey(scDateOf(wdFrom))===dk) movedIn=_sched.base[from]||null; }
-        });
-      });
-      const cls = movedIn || (movedAway?null:(_sched.base[slot]||null));
-      const off = (_sched.off[dateKey]||[]).includes(slot);
-      return { cls, off, slot, dateKey, movedIn:!!movedIn, movedAway };
+      return SCHEDULE.cellInfo(_sched, _scMonday, wd, period);
     }
     function scRender(){
       const edit=document.getElementById('scEdit').checked;
@@ -3467,7 +3458,11 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         `${_scMonday.getMonth()+1}/${_scMonday.getDate()} ～ ${sun.getMonth()+1}/${sun.getDate()}`;
       document.getElementById('scHint').innerHTML = edit
         ? '<b>編輯課表模式</b>：用下拉選單把班級放進時段，這是<b>每週固定</b>的課表（不綁日期）。編輯完記得按儲存。'
-        : '<b>本週檢視</b>：日期會依實際週次自動變動。<b>點一下格子＝該日停課</b>（變灰、不計分），再點一下取消；<b>拖曳格子</b>可把那一節課調到別的時段（只影響這一週）。';
+        : '<b>本週檢視</b>：日期會依實際週次自動變動。<b>點一下格子＝該日停課</b>（變灰、不計分），再點一下取消；<b>拖曳格子</b>可把那一節課調到別的時段（只影響這一週）。'
+          + '<div class="mt-2 flex items-center gap-2 flex-wrap"><b class="text-emerald-700">➕ 補課</b>（例如上週停的課改到這週上）：先選班級'
+          + `<select id="scExtraCls" onchange="scPickExtra(this.value)" class="px-2 py-1 border border-emerald-300 rounded text-xs bg-white">`
+          + `<option value="">—</option>${_scClasses.map(c=>`<option value="${c}" ${c===_scExtraCls?'selected':''}>${c}</option>`).join('')}</select>`
+          + '，再點一下<b>空白格子</b>。點綠色的補課格子可以取消。</div>';
 
       let html='<table class="w-full text-sm border-collapse select-none"><thead><tr class="bg-slate-50">'
              + '<th class="border border-slate-200 px-2 py-1 w-16">節次</th>';
@@ -3489,6 +3484,13 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
                 <option value="">—</option>
                 ${_scClasses.map(c=>`<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join('')}
               </select></td>`;
+          }else if(info.cls && info.extra){
+            /* 補課格：綠色、不能拖曳（它只屬於這一天），點一下取消這堂補課 */
+            html+=`<td class="border border-slate-200 p-1">
+              <div onclick="scRemoveExtra('${info.slot}')" title="${info.dateKey} 補課，點一下取消"
+                   class="cursor-pointer rounded-lg px-2 py-2 text-center font-bold border bg-emerald-50 text-emerald-800 border-emerald-300 hover:shadow transition">
+                ${info.cls}<div class="text-[10px] font-normal">補課</div>
+              </div></td>`;
           }else if(info.cls){
             const cls2 = info.off ? 'bg-slate-200 text-slate-400 line-through'
                        : info.movedIn ? 'bg-violet-100 text-violet-800 border-violet-300'
@@ -3502,7 +3504,8 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
               </div></td>`;
           }else{
             html+=`<td class="border border-slate-200 p-1" ondragover="event.preventDefault()" ondrop="scDrop(event,'${wd}-${p}')">
-                     <div class="h-9 rounded-lg bg-slate-50"></div></td>`;
+                     <div onclick="scAddExtra('${wd}-${p}')" title="點一下＝這一天這一節加一堂補課（先在上面選班級）"
+                          class="h-9 rounded-lg bg-slate-50 hover:bg-emerald-50 cursor-pointer"></div></td>`;
           }
         }
         html+='</tr>';
@@ -3511,6 +3514,30 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       document.getElementById('scGrid').innerHTML=html;
     }
     function scSetBase(slot,cls){ if(cls) _sched.base[slot]=cls; else delete _sched.base[slot]; }
+    /* ➕ 補課（老師 2026-11-05）：某一天的空白格子另外加一堂課，存在 extra[日期][節次] = 班級。 */
+    let _scExtraCls='';
+    function scPickExtra(cls){ _scExtraCls=cls||''; }
+    function scAddExtra(slot){
+      if(!_scExtraCls){ showToast('先在上面「➕ 補課」選要補課的班級', true); return; }
+      const dk=scKey(scDateOf(Number(slot.split('-')[0])));
+      if(scCellInfo(Number(slot.split('-')[0]), Number(slot.split('-')[1])).cls){ showToast('這一格已經有課了', true); return; }
+      _sched.extra=_sched.extra||{};
+      _sched.extra[dk]=Object.assign({}, _sched.extra[dk], { [slot]: _scExtraCls });
+      scRender();
+    }
+    function scRemoveExtra(slot){
+      const dk=scKey(scDateOf(Number(slot.split('-')[0])));
+      const mp=Object.assign({}, (_sched.extra||{})[dk]);
+      delete mp[slot];
+      if(Object.keys(mp).length) _sched.extra[dk]=mp; else delete _sched.extra[dk];
+      /* 補課取消了，那一格的停課標記也一併拿掉（不然下次在同一格補課會直接是停課） */
+      if((_sched.off[dk]||[]).includes(slot)){
+        _sched.off[dk]=_sched.off[dk].filter(x=>x!==slot);
+        if(!_sched.off[dk].length) delete _sched.off[dk];
+      }
+      scRender();
+    }
+    window.scPickExtra=scPickExtra; window.scAddExtra=scAddExtra; window.scRemoveExtra=scRemoveExtra;
     function scToggleOff(slot){
       const wd=Number(slot.split('-')[0]);
       const dk=scKey(scDateOf(wd));
@@ -3541,7 +3568,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         const _open = {};
         if (_openEl && _openEl.value) _open.arduino = _openEl.value;
         await _gdDb().collection(SC_COL).doc(SC_DOC).set(
-          { base:_sched.base, off:_sched.off, move:_sched.move,
+          { base:_sched.base, off:_sched.off, move:_sched.move, extra:_sched.extra||{},
             open_json: JSON.stringify(_open),
             updated_at:new Date().toISOString() }, { merge:true });
         _sched.open_json = JSON.stringify(_open);

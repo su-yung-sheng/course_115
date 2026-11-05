@@ -6,6 +6,7 @@
      base : { "星期-節次": "班級" }        例 { "3-2": "801" } = 週三第 2 節上 801
      off  : { "YYYY-MM-DD": ["3-2", …] }   該日期哪幾節停課
      move : { "YYYY-MM-DD": { "3-2": "5-4" } } 該週把某節課調到別的時段
+     extra: { "YYYY-MM-DD": { "4-3": "801" } } 某一天**另外加**一堂課（補課，老師 2026-11-05）
 
    ★ 為什麼獨立成一支（2026-08-19）
      老師決定「這週有登入但沒拿星 → 60 分，缺席 → 0 分」，
@@ -74,9 +75,19 @@
     });
 
     var cls = movedIn || (movedAway ? null : (base[slot] || null));
+    /* ── 補課（老師 2026-11-05：「這一次改到別週上，所以某一週會上兩次課」）──
+       move 只能在**同一週**裡換時段；跨週補課就是「那一天那一節另外加一堂」。
+       ★ 只填**空的**格子：那一格本來有課（或有課調進來）就以原本的為準 ——
+         同一節不可能同時上兩個班，教師端也不讓老師把補課放在有課的格子。
+       ★ 補課也可以被點成停課（off），和一般的課同一套。 */
+    var extra = false;
+    if (!cls) {
+      var ex = ((sched.extra || {})[dateKey] || {})[slot];
+      if (ex) { cls = String(ex); extra = true; }
+    }
     return { cls: cls, off: (off[dateKey] || []).indexOf(slot) >= 0,
              slot: slot, dateKey: dateKey,
-             movedIn: !!movedIn, movedAway: movedAway };
+             movedIn: !!movedIn, movedAway: movedAway, extra: extra };
   }
 
   /**
@@ -133,7 +144,8 @@
 
   /**
    * 某班從 from 到 to（含兩端）每一節課的明細 —— 給教師端「班級上課日」查詢用（老師 2026-10-21）。
-   * 回傳 [{ date:'YYYY-MM-DD', wd:1～5, period, slot, off, movedIn }]，照日期、節次排好。
+   * 回傳 [{ date:'YYYY-MM-DD', wd:1～5, period, slot, off, movedIn, extra }]，照日期、節次排好。
+   *   extra   ：這一節是另外加的補課（sched.extra）
    *   off     ：這一節停課（**照樣列出來**，畫面上標灰 —— 老師要看的就是「哪天停過課」）
    *   movedIn ：這一節是從同一週別的時段調過來的
    * ⚠️ 判斷每一格「是誰的課」一律走 cellInfo（和每週評分、出席紀錄同一份規則），
@@ -155,7 +167,7 @@
           var info = cellInfo(sched, mon, wd, p);
           if (info.cls !== cls) continue;
           out.push({ date: info.dateKey, wd: wd, period: p, slot: info.slot,
-                     off: info.off, movedIn: info.movedIn });
+                     off: info.off, movedIn: info.movedIn, extra: info.extra });
         }
       }
     }
