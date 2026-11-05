@@ -3567,10 +3567,17 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         const _openEl = document.getElementById('scOpen-arduino');
         const _open = {};
         if (_openEl && _openEl.value) _open.arduino = _openEl.value;
+        /* ⛔⛔ 2026-11-05 老師：「『編輯課表』怎麼無法儲存新課表？」
+              這裡原本是 { merge:true }。merge 是**深層合併**：map 裡面新的鍵會寫進去，
+              但**拿掉的鍵不會被刪掉** —— 把某一節改成「—」、把班級搬到別的時段、
+              取消停課、取消補課，存完重新打開，舊的又全部回來了。
+              （改成別的班會成功，因為那是覆蓋同一個鍵；所以看起來「有時候可以」。）
+           ⇒ 用 mergeFields：這幾個欄位**整份換掉**，文件上其他欄位照舊不動。 */
         await _gdDb().collection(SC_COL).doc(SC_DOC).set(
           { base:_sched.base, off:_sched.off, move:_sched.move, extra:_sched.extra||{},
             open_json: JSON.stringify(_open),
-            updated_at:new Date().toISOString() }, { merge:true });
+            updated_at:new Date().toISOString() },
+          { mergeFields:['base','off','move','extra','open_json','updated_at'] });
         _sched.open_json = JSON.stringify(_open);
         st.textContent='✅ 已儲存'; st.className='text-sm font-bold text-emerald-600';
       }catch(e){

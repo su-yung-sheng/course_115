@@ -96,5 +96,38 @@ for (const term of ['11501', '11502']) {
      '★ ' + term + ' 起點和出席紀錄、每週評分一致（每週評分改過的學期開始日優先）');
 }
 
+section('⑥ 儲存課表：拿掉的格子要真的消失（老師 2026-11-05）');
+(async () => {
+  const vm = require('vm');
+  /* 假的 Firestore set：照真的語意 —— merge:true 是深層合併（拿掉的鍵留著），
+     mergeFields 是指定欄位整份換掉、其他欄位不動。 */
+  const deep = (a, b) => { const o = Object.assign({}, a);
+    for (const k in b) o[k] = (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k]) && o[k] && typeof o[k] === 'object')
+      ? deep(o[k], b[k]) : b[k]; return o; };
+  for (const term of ['11501', '11502']) {
+    const H = fs.readFileSync(path.join(ROOT, term, 'teacher.html'), 'utf8');
+    const st = H.indexOf('    const SC_COL='), en = H.indexOf('window.openSchedModal=openSchedModal');
+    let docData = { base: { '3-2': '801', '1-1': '802' }, off: { '2026-11-11': ['3-2'] }, move: {}, extra: { '2026-11-12': { '4-3': '801' } }, gradebook_note: '別的欄位' };
+    const db = { collection: () => ({ doc: () => ({ set: async (d, o) => {
+      if (o && o.mergeFields) { const n = Object.assign({}, docData); o.mergeFields.forEach(f => { n[f] = d[f]; }); docData = n; }
+      else if (o && o.merge) docData = deep(docData, d); else docData = d; } }) }) };
+    const els = {}; const el = id => els[id] || (els[id] = { value: '', textContent: '', className: '' });
+    const ctx = { window: { CONFIG: {}, SCHEDULE: S }, SCHEDULE: S, document: { getElementById: el }, firebase: { firestore: () => db },
+                  showToast() {}, localStorage: { getItem: () => null, setItem() {} }, console, Date, Object, JSON, Set, Math, String, Number, Promise };
+    vm.createContext(ctx);
+    vm.runInContext(H.slice(st, en) + `
+      _gdDb = () => firebase.firestore();
+      _sched = { base: { '3-2': '801' }, off: {}, move: {}, extra: {} };   // 拿掉 1-1、取消停課、取消補課
+      this.p = saveSchedule();`, ctx);
+    await ctx.p;
+    ok(!('1-1' in docData.base) && docData.base['3-2'] === '801',
+       '★★★ ' + term + ' 編輯課表拿掉的那一節，存完真的不見了　←　' + JSON.stringify(docData.base));
+    ok(Object.keys(docData.off).length === 0 && Object.keys(docData.extra).length === 0,
+       '★★ ' + term + ' 取消的停課、取消的補課也真的拿掉了');
+    ok(docData.gradebook_note === '別的欄位', '★ ' + term + ' 同一份文件上的其他欄位不動');
+    ok(/✅ 已儲存/.test(el('scStatus').textContent), '　' + term + ' 畫面顯示已儲存');
+  }
+})().then(() => {
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
+});
