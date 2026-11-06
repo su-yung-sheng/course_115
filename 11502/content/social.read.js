@@ -1731,26 +1731,26 @@ window.QUIZ_READ = {
        "x": "3WY+lwfQCMgyGZ5rpXuOSoPue1U7VqWQn106sOfWA6k4l9PC5lDG9m4aGJNluPqFYUke6iQZ7a77vHGpgqEklvc/G4stDsBuQMdsz7hYKUKdNHS+34suFAzxdcwUqmWkkohTck2Cg54wBerdKEtcwyqoh6YbUgmnHFIasG66IHnb4IYky7fBg785oKQHfin8unGUxpTQ28Fue5uJn57ii3/RUBkYRHlCHMK3C/FYmzgJC3ZFyzkzBFfXsuJyQu9HBBRWX7LgAVCW"
       },
       {
-       "q": "麗娜的方法 1「從翻開的牌中找出最小的牌，再依序排列」，最接近哪一種排序法？",
+       "q": "麗娜的方法 1，每次從翻開的牌堆中找出什麼？",
        "options": [
-        "循序搜尋法",
-        "二元搜尋法",
-        "選擇排序法",
-        "插入排序法"
+        "最小的牌",
+        "第一張牌",
+        "最大的牌",
+        "花色相同的牌"
        ],
-       "a": "1rkufg3",
-       "x": "fCcGBNlPZy9pS5pyHvxkrwsxUjUqIXad/4hugxsz291hrwWFyGZJnUlG3Q/Hcoqk4veWnLK49g798t2FXEMFGVvknpijf43p6SWNv4lkI2ZwsY+devfFM3sJR2TI9vfhGCdej+p3Mb0w4oSdtCXgTCzBuNqkdf5yxIY+QHcta56Vl1ScD2nA49hY"
+       "a": "181w4js",
+       "x": "mnCX35g6P5nNWVEXuYRjyV+jOsatienAg6d7/rjCtmODjoq9Ujji0K9BeQBXcPPqmbUnp/OK795JVGCaeUsbVYaJM+NwnLZAl3EXYKkRu0hmqJs6djx8xwY9F6EMijtkCu5JOOoOjXuQopvWXYHnaayDNbTE8Xo="
       },
       {
-       "q": "麗娜的方法 2「逐次抽一張牌，插入手上牌中適當的位置」，最接近哪一種排序法？",
+       "q": "麗娜的方法 2，抽出的牌要怎麼放進手上的牌裡？",
        "options": [
-        "選擇排序法",
-        "循序搜尋法",
-        "二元搜尋法",
-        "插入排序法"
+        "一律放在最後面",
+        "一律放在最前面",
+        "按照數字順序插入",
+        "隨便放就可以"
        ],
-       "a": "1qb87t0",
-       "x": "+sUNn3MNmKiCXyZX8eHxkYBHdapEwcoUExOoFNgQCpvsXC3O18tKLmJu9pNR1FtC5/P9nXTdSLIowWf9B0bfLis0iFrlOe9vp5Sak48+g8UNcteVtqF3K5ck5jMNn+IAp+q+rryJWAvwKCfzqD5P9J/ZdIhkfYj/Ca57Wt8rLA/CUsBKfKvfn6cc"
+       "a": "tjpgys",
+       "x": "O/XY3FzrcJ5l4tkvcLWP/6xZkbkgiztlyZodDf+O4lmV6P49Mzz4IdsN3mOca6T/9Y4ZGaR0Lqmc73tqR0kJNUThjJz5Lmjx/V9i8vmq8NE9wQLFQIzm4MnjUIa7hDFYa8LOGMBYW8pYj/ZFLC3IaWPTOE7fhbb9VhCqxQg8Zz1Lkq6zNlcgSOjj5mP32piUhiV7WOaA6woO/bhV2nk="
       },
       {
        "q": "8、5、10、1、7 由小到大排序後，結果是什麼？",
@@ -1838,6 +1838,17 @@ window.QUIZ_READ = {
        ],
        "a": "1qfz1na",
        "x": "7pFi/Po0jlEbAo7DNktkXQ7ejbfhJZ0Y+oRAjjrx2FHGwn2gRZM6o3ZtIV6glAmSzuqGDXi/nQat7Bnfc2LfKHf2lAJPcwxUwBSqIpUQbShTO6CY3p6HZSWWDzHEkSw1CIyImdp40KBfj/qCCS2a3JCi4KY8KSZ0q+wcZt1BdjNj"
+      },
+      {
+       "q": "麗娜的方法 1「從翻開的牌中找出最小的牌，再依序排列」，最接近哪一種排序法？",
+       "options": [
+        "循序搜尋法",
+        "二元搜尋法",
+        "選擇排序法",
+        "插入排序法"
+       ],
+       "a": "1rkufg3",
+       "x": "fCcGBNlPZy9pS5pyHvxkrwsxUjUqIXad/4hugxsz291hrwWFyGZJnUlG3Q/Hcoqk4veWnLK49g798t2FXEMFGVvknpijf43p6SWNv4lkI2ZwsY+devfFM3sJR2TI9vfhGCdej+p3Mb0w4oSdtCXgTCzBuNqkdf5yxIY+QHcta56Vl1ScD2nA49hY"
       }
      ]
     },
@@ -1903,6 +1914,17 @@ window.QUIZ_READ = {
        ],
        "a": "e4jzdo",
        "x": "/1nHINVal8WegMfbyz19nnKVfxinmV75HbTOWGWXtzZgIAifTUuds+TwpGhlPtI/BxBtstqfyJB+LQ1GpvVx7aXMn/kkC+TP+dRKTz1rs6xk7CMK4tDHuYY0w8F9ozci7Z5piveG6MyAC3QRn+UVtGmgeb/xLzx6pNBZ87XxQM63cdl0NXMGhKYgWUVkL51cLvvcl2wPl0zLmxvj"
+      },
+      {
+       "q": "麗娜的方法 2「逐次抽一張牌，插入手上牌中適當的位置」，最接近哪一種排序法？",
+       "options": [
+        "選擇排序法",
+        "循序搜尋法",
+        "二元搜尋法",
+        "插入排序法"
+       ],
+       "a": "1qb87t0",
+       "x": "+sUNn3MNmKiCXyZX8eHxkYBHdapEwcoUExOoFNgQCpvsXC3O18tKLmJu9pNR1FtC5/P9nXTdSLIowWf9B0bfLis0iFrlOe9vp5Sak48+g8UNcteVtqF3K5ck5jMNn+IAp+q+rryJWAvwKCfzqD5P9J/ZdIhkfYj/Ca57Wt8rLA/CUsBKfKvfn6cc"
       }
      ]
     },
@@ -2063,26 +2085,26 @@ window.QUIZ_READ = {
        "x": "XBhxNWVp7BgW3z4DoGfauHuqaW+2o44Rgm0Hk0/WCT8U6J0teO4RmFg4XiJ8v0T3+3w9+BpUXo7uaO9BRW4vt7lwo6rMSJo61PavVV54JP4lsDls6YhKr8P5zJ3Hoz/pIpXwWO8iIf/i0SsW7nVMdn/DKRxc4JRWXNONcDMV6AM89gY5hy+mfFEZxMh0GHfVF/UymZkboh1haS2H1olVSwaCbAXPqOgO"
       },
       {
-       "q": "班長的方法「從座號 1 號開始，依序比對紙牌數字」，最接近哪一種搜尋法？",
+       "q": "班長的方法 1，紙牌從座號幾號開始比對？",
        "options": [
-        "插入排序法",
-        "循序搜尋法",
-        "二元搜尋法",
-        "選擇排序法"
+        "從 1 號依序比對",
+        "從 32 號倒著比對",
+        "從 16 號開始比對",
+        "隨機抽座號比對"
        ],
-       "a": "1snve8",
-       "x": "5HWVifz2YCMLxvmFdNNlJanFnsUczejeK4yLUKDlZh7j8YwRUgvZLk7lyFDhRpI+MYPa0364tTAxekdqQ7iX1MjVCcQOW2n+25EdUpvAur5po1+zZY4TaZ6Av8T+8nzFJgnEggUFHoruLEG+z/iJy9NVj4WoHVHAAWKuqC34LqkujFgs"
+       "a": "50nuv7",
+       "x": "sCueJsrGwEs5Lj0XJnXJe7KQGec/KHqEeIO9qz0D/iBv9EwgwrySPHk7wV/9PN7cIh9LiGFzHSmOmcvIQyiZUusjgqLCcpJ/OD/myO8kQb0q+kXaLTiQ4F3cRF1+4p7zgytyd8RQEJ1Q0ZUyFXq2TylvO/45YaI73X9v7Zf84xG9680aFvj8ISS7FsV8n/i3atyyj1HBFw=="
       },
       {
-       "q": "學藝股長的方法「每次說出範圍中間位置的數字」，最接近哪一種搜尋法？",
+       "q": "學藝股長的方法 2，同學每回合要說出哪一個數字？",
        "options": [
-        "循序搜尋法",
-        "選擇排序法",
-        "二元搜尋法",
-        "插入排序法"
+        "範圍最後面的數字",
+        "自己座號的數字",
+        "範圍最前面的數字",
+        "範圍中間位置的數字"
        ],
-       "a": "1srgl81",
-       "x": "1L5k92DDt+5uOEWokoB7qLKgNw7pilR3CpMH+zQFEI72jhQwKKZn6w2BnP2vTcHpUKsPrJtR7uKwL51W4B0l9wl96w4QPKl48uEa31ZBiV1I355svQvyRPNHMrVrXYGvo0Clp0EdwjNADfztc6SccgSvgJXJOf7ulYgz6vDDUWBtTh4ouOSU0sSvAJtXdBZ5+XdG"
+       "a": "1ae5q56",
+       "x": "egu6hgSgbVRn0SpvSUqHaK1HaOjTWGzDJHcub4svwuD2c2mpxGOBp32XQiQDU3zKL5YapfjXQ4LhgL0GUdUEl4IlZZYhlGU8BOmPtTT/J6voaPXiHNtqEwsVe3HApmLh+PqIpGp17NfMf44n2HE1HEhq4iiw6QecPu2MBWlGY+kdlQXWAJ4A3+xobYe+1xwFF0VzdtTkZClLf69jQDksDojx04mVpt6ex1U="
       },
       {
        "q": "學藝股長的方法中，每一回合的數字範圍會怎麼改變？",
@@ -2171,6 +2193,17 @@ window.QUIZ_READ = {
        ],
        "a": "1hgbo3k",
        "x": "xd/YorW6Nya90iLCXc0HnzU0XZgNoj+c/8LcZtVslJYAN2g+LUMAC6uqrrxuNtCqTqLEM/plthD+BNETrVPDbgCuSjRfO8CFbjkaoGzTjKpiLAOd6o5bVZ+rt7PuwKWQwHuafsnkdaYReTfwWna3JRC46oEt/HY="
+      },
+      {
+       "q": "班長的方法「從座號 1 號開始，依序比對紙牌數字」，最接近哪一種搜尋法？",
+       "options": [
+        "插入排序法",
+        "循序搜尋法",
+        "二元搜尋法",
+        "選擇排序法"
+       ],
+       "a": "1snve8",
+       "x": "5HWVifz2YCMLxvmFdNNlJanFnsUczejeK4yLUKDlZh7j8YwRUgvZLk7lyFDhRpI+MYPa0364tTAxekdqQ7iX1MjVCcQOW2n+25EdUpvAur5po1+zZY4TaZ6Av8T+8nzFJgnEggUFHoruLEG+z/iJy9NVj4WoHVHAAWKuqC34LqkujFgs"
       }
      ]
     },
@@ -2236,6 +2269,17 @@ window.QUIZ_READ = {
        ],
        "a": "1t4dyyz",
        "x": "ZTmeKZDEsuFnLqlSjFbU3lqQoxsERPjISZHRmWn6wzBaEc2BGM9ddx4jLnRtdReILRPZwKyyh113v6MTpvROpQBfXCmOwwPrmNRUGvLL28gMrRP9vQV8D0fqFq0DJG1T8tSZMr5g7GdYeOnsQhH8KAAyfBYi0GE9ylnt3Jo5zAHXcZWYBbY="
+      },
+      {
+       "q": "學藝股長的方法「每次說出範圍中間位置的數字」，最接近哪一種搜尋法？",
+       "options": [
+        "循序搜尋法",
+        "選擇排序法",
+        "二元搜尋法",
+        "插入排序法"
+       ],
+       "a": "1srgl81",
+       "x": "1L5k92DDt+5uOEWokoB7qLKgNw7pilR3CpMH+zQFEI72jhQwKKZn6w2BnP2vTcHpUKsPrJtR7uKwL51W4B0l9wl96w4QPKl48uEa31ZBiV1I355svQvyRPNHMrVrXYGvo0Clp0EdwjNADfztc6SccgSvgJXJOf7ulYgz6vDDUWBtTh4ouOSU0sSvAJtXdBZ5+XdG"
       }
      ]
     },
@@ -2308,7 +2352,7 @@ window.QUIZ_READ = {
      "text": [
       "6-3-3 搜尋法程式設計的應用：以循序搜尋法作為範例。點擊綠旗後，小貓執行下列動作：1. 建立從數字 1～100 中隨機取出 50 個數字的純文字檔，並將此檔案匯入原始資料裡。2. 請使用者任意輸入一個數字作為目標資料。3. 從原始資料中依序選出一個數字與目標資料進行比對。4. 如果目標資料與原始資料的數字相同，則說出：「找到了，位於第幾個數字」。5. 如果從原始資料裡都找不到與目標資料的數字相同，則說出：「沒有符合的數字」。",
       "結束比對的情況：找到目標資料——比對結果相符，故停止搜尋；找不到目標資料——原始資料第 50 項不相符，若比對到第 51 項，代表找不到目標資料，故停止搜尋。",
-      "在 Scratch 中：用清單「原始資料」表示數列（共有 50 個數字，從電腦匯入文字檔較為方便），並新增變數「位置」；透過「詢問」積木，請使用者輸入一個數字作為搜尋的目標資料；使用迴圈，逐一取出原始資料清單中的數字，等到全部取出後，就要停止搜尋。「重複直到」要處理兩個情況——找到與目標資料相同的數字，或原始資料所有數字均比較完——任一情況發生時都要跳出條件式迴圈（所以用邏輯運算「或」）。最後使用選擇結構，以位置的變數來判斷，讓小貓說出結果。"
+      "在 Scratch 中：用清單「原始資料」表示數列（共有 50 個數字，從電腦匯入文字檔較為方便），並新增變數「位置」；透過「詢問」積木，請使用者輸入一個數字作為搜尋的目標資料；使用迴圈，逐一取出原始資料清單中的數字，等到全部取出後，就要停止搜尋。「重複直到」要處理兩個情況——找到與目標資料相同的數字，或原始資料所有數字均比較完——任一情況發生時都要跳出條件式迴圈。最後使用選擇結構，以位置的變數來判斷，讓小貓說出結果。"
      ],
      "qs": [
       {
@@ -2345,15 +2389,15 @@ window.QUIZ_READ = {
        "x": "FEJ5obuzY+9mAEBH3dzsIV798iL9GrxKgh8qXQ/RG/H3hsM/7ETUe1NGB7CKuWqxDJE5oGCheYl7VIO11pO0DyRXWL4S8zerCNaJwdtU3lEeCQvZYHXRqSWc4yKMOm6HlJYz4JaK88QzDeugPdZ2sRfNY7tEO6u/3t62UUJU8wNrsk5E/v/Bi04wfD1aLKdHo5aMQ7PT7Rhbd7r+"
       },
       {
-       "q": "「重複直到」要在兩種情況之一發生時停止，條件要用哪一種邏輯運算？",
+       "q": "「重複直到」迴圈，要在哪兩種情況之一發生時跳出？",
        "options": [
-        "等於",
-        "或",
-        "非",
-        "且"
+        "比對滿十次或使用者按空白鍵",
+        "找到最小的數字或最大的數字",
+        "小貓說完話或程式被點擊",
+        "找到相同數字或全部比完"
        ],
-       "a": "etkkew",
-       "x": "7uwoE5CcIDwRtw8dc2GxHSwUfhaMnD9OJs2i+dCNRHgpFq9LBlYbCdxA+UPXUmkL2MU3p2WQQ7yIOi71N/brlFiDPUdOVhOGIUPcthBw3we4YIEV+GDM+tVx8kDNFflEM0RYIk822MUrzhZ6KUHvsCJegQ8nyYA7GpTuDWuA1+nDQNzBz5ZJXFuL/JgEXpLmm0oS3Myi"
+       "a": "1gjzfvu",
+       "x": "f80/zTMI/QvZAFY9miftUjYZG3dNlOsvMX2i2c9ZFZ8uJnnMgy5GFJkxKkEK590oto5RXDFCbjV73W97W+HqkYkGY6FU93U8aJ5lheHnMvKKRVCavQedjHYsfUhnuZn9Ezj5ubDWkSppMDE2z5PYxI5pqUCUtuldiRlSjMelEnOY2Wwoykw3dxGnZMEijMApkZaxcUrpG90XFSEBj85/bOGcHS9EBZmcYQBJMASBprr6m3PabSCUxcVHqQm9+KM4kZxymgLiNj0xEeTlC2IgUfLvQtmuYQfcOrrbB8EXkUTyPKy/tTyCx3rK3exAaOJbio5r"
       },
       {
        "q": "原始資料裡都找不到目標資料時，小貓會說什麼？",

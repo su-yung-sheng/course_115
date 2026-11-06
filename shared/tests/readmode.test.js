@@ -43,7 +43,13 @@ catch (e) { console.log('\n（流程測試需要 jsdom：先執行  npm install 
 
 /* opts.from：把 READ_MODE_FROM 換成這個日期（CONFIG 會被凍住，只能在載入前換）
    opts.preview：網址加 ?preview=read */
+/* ⚠️ 2026-11-06 加了每題 60 秒倒數之後：引擎用 Node 的 setInterval 與全域 document，
+      前一個 boot 的倒數計時器沒停的話，跑超過 60 秒時會去動後面的畫面。
+      ⇒ 每次 boot 先把前面留下的計時器全部停掉（真正的頁面一次只有一個引擎，不會有這個問題）。 */
+const _ids = [], _si = global.setInterval;
+global.setInterval = function (f, t) { const id = _si(f, t); _ids.push(id); return id; };
 function boot(opts) {
+  _ids.splice(0).forEach(id => clearInterval(id));
   opts = opts || {};
   const term = opts.term || '11501';
   const B = term === '11502' ? 'social' : 'ethics';
