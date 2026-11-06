@@ -117,11 +117,13 @@ async function open(r, id) {
        '★★ 教材頁顯示第 1 段的課本原文');
     ok(/課本/.test(r.$('study-content').textContent), '標出課本出處');
     ok(/這段要答對 2 題/.test(r.$('start-quiz-btn').textContent), '按鈕講清楚：這段要答對 2 題');
-    const other = r.w.document.querySelector('.qz-open[data-ch="1-2"]');
-    if (other && !r.READ.sections['1-2']) {
+    /* 整章挑戰（ch1-all）沒有段落題庫 ⇒ 照舊連對 10 題（老師還沒決定整章挑戰的新形式） */
+    const other = r.w.document.querySelector('.qz-open[data-ch="ch1-all"]');
+    ok(!!other && !r.READ.sections['ch1-all'], '找得到整章挑戰的入口，而且它沒有段落題庫');
+    if (other) {
       click(r.w, r.$('back-chapters-btn')); await sleep(10);
       click(r.w, other); await sleep(10);
-      ok(r.$('start-quiz-btn').textContent === '開始測驗挑戰', '★★ 還沒有段落題庫的小節（1-2）照舊');
+      ok(r.$('start-quiz-btn').textContent === '開始測驗挑戰', '★★ 沒有段落題庫的整章挑戰照舊（「開始測驗挑戰」）');
     }
   }
 
@@ -156,6 +158,29 @@ async function open(r, id) {
     ok(u && u.o.extra.correct === 8 && u.o.extra.total === 8 && u.o.extra.swap === 0, '答對 8／共 8、swap 0（不是 undefined）');
     ok(u && u.o.score === 100, '零失誤 100 分');
     ok(r.errs.length === 0, '★ 整個流程沒有例外' + (r.errs.length ? '　←　' + r.errs[0] : ''));
+  }
+
+  section('②b 每一節都走得完（段落數 × 2 題 → 通關）');
+  {
+    const ids = Object.keys(boot({ from: '2000-01-01' }).READ.sections);
+    for (const id of ids) {
+      const r = boot({ from: '2000-01-01' });
+      const N = r.READ.sections[id].paras.length;
+      await open(r, id);
+      let okFlow = new RegExp('第 1 段／共 ' + N + ' 段').test(r.$('study-title').textContent);
+      for (let p = 0; p < N && okFlow; p++) {
+        click(r.w, r.$('start-quiz-btn'));
+        for (let k = 0; k < 2; k++) {
+          const it = r.byQ[qText(r)];
+          if (!it || it.id !== id || it.pi !== p || optIdx(r, true) < 0) { okFlow = false; break; }
+          answer(r, true);
+        }
+      }
+      await sleep(5);
+      const u = r.units[0];
+      ok(okFlow && u && u.id === id && u.o.extra.paras === N && r.errs.length === 0,
+         id + '：' + N + ' 段走完、出的都是該段的題、每題都找得到正解、回報成績' + (r.errs.length ? '　←　' + r.errs[0] : ''));
+    }
   }
 
   section('③ 答錯：公布正解＋理由 → 換同一段另一題');

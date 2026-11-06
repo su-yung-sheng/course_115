@@ -40,7 +40,9 @@ function seededShuffle(arr, seed) {
   return a;
 }
 
-let bad = 0;
+let bad = 0, longest = 0;
+/** 選項字數：和 qbank.test.js、levelpage.test.js 同一套（去掉空白與標點） */
+const optLen = t => String(t).replace(/[\s，。、？！（）()]/g, '').length;
 JOBS.forEach(job => {
   const sp = path.join(ROOT, job.src);
   if (!fs.existsSync(sp)) { console.log('（還沒有原稿）' + job.src); return; }
@@ -61,6 +63,11 @@ JOBS.forEach(job => {
         if (new Set(q.o.map(ANSKEY._norm)).size !== 4) { bad++; console.log('  ⚠️ 選項重複：' + q.q); }
         if (seen[q.q]) { bad++; console.log('  ⚠️ 同一段題目重複：' + q.q); }
         seen[q.q] = 1;
+        /* ★ 選項長度不可以出賣答案（和 qbank.test.js 同一條規矩、同一套字數算法）：
+             正解比最長的錯誤選項多 2 個字以上 ⇒ 擋下。學生用「選最長的」就能過關。 */
+        const L = q.o.map(optLen), lead = L[0] - Math.max(L[1], L[2], L[3]);
+        if (lead >= 2) { bad++; console.log('  ⚠️ 正解比別的選項長 ' + lead + ' 字：' + q.q); }
+        if (lead > 0) longest++;
         const right = q.o[0];
         return { q: q.q, options: seededShuffle(q.o, q.q), a: ANSKEY.of(q.q, right), x: ANSKEY.seal(q.q, right, q.ex) };
       }).filter(Boolean);
@@ -93,7 +100,8 @@ JOBS.forEach(job => {
   const leak = first.length && first.every(q => ANSKEY.check(q.q, q.options[0], q.a));
   if (leak) { bad++; console.log('  ⚠️ 每一題的第一個選項都是正解 —— 洗牌沒有作用'); }
   console.log(job.label + '：' + Object.keys(sections).length + ' 節、' + nq + ' 題；驗證 ' + ok + '／' + n
-              + (ok === n ? ' ✅' : ' ❌'));
+              + (ok === n ? ' ✅' : ' ❌') + '（正解是最長選項的 ' + longest + ' 題）');
+  longest = 0;
   if (write) { fs.writeFileSync(path.join(ROOT, job.out), body, 'utf8'); console.log('  已寫出 ' + job.out); }
 });
 if (!write) console.log('（這是檢查模式，沒有改檔。要寫出資料檔請加 --write）');

@@ -78,13 +78,21 @@ BANKS.forEach(([name, rel]) => {
      ⚠️ 這一條 2026-08-09 修好過一次，但修在沒人讀的檔案上 ——
         所以現在由測試盯著，而且盯的是**真的會被讀到的那一份**。 */
   {
+    /* ⚠️⚠️ 2026-11-06 才發現：這一條從 08-17 起就**沒有在檢查**。
+       當時答案從明碼索引（correct）改成雜湊（a），這裡還在用 x.q.correct ——
+       L[undefined] − 數字 ＝ NaN，NaN >= 2 永遠是 false，於是永遠綠燈。
+       （題庫本身沒問題：用雜湊反查重算，11501／11502 都是 0 題。）
+       ⇒ 正解位置改用雜湊反查；反查不到就算這一題有問題，不可以默默跳過。 */
     const bad = [];
     all.forEach(x => {
       const L = (x.q.options || []).map(len);
       if (L.length !== 4) return;
-      const lead = L[x.q.correct] - Math.max(...L.filter((_, i) => i !== x.q.correct));
-      if (lead >= 2) bad.push(x.at + '「' + x.q.q.slice(0, 16) + '」正解長 ' + lead + ' 字');
+      const c = x.q.correct != null ? x.q.correct : (x.q.options || []).findIndex(o => A.check(x.q.q, o, x.q.a));
+      if (c < 0) { bad.push(x.at + '「' + x.q.q.slice(0, 16) + '」找不到正解'); return; }
+      const lead = L[c] - Math.max(...L.filter((_, i) => i !== c));
+      if (!(lead < 2)) bad.push(x.at + '「' + x.q.q.slice(0, 16) + '」正解長 ' + lead + ' 字');
     });
+    ok(all.length > 0 && bad.length < all.length, '（這一條真的有在算：不是每一題都被判成同一個結果）');
     ok(bad.length === 0,
        '★ 正解不可以明顯比別的選項長（學生用「選最長的」就能過關）' +
        (bad.length ? '　←　' + bad.length + ' 題，例如 ' + bad[0] : ''));
@@ -103,6 +111,36 @@ BANKS.forEach(([name, rel]) => {
        '   ' + (ch.title || ch.id) + ' 的整章挑戰涵蓋所有小節題目' +
        (miss.length ? '　←　少了 ' + miss.length + ' 題' : ''));
   });
+});
+
+/* ── ★ 段落閱讀模式的題庫（2026-11-06）也守同一條：正解不可以明顯比較長 ──
+   老師 11-06：「選項會是最長的那個嗎？之前對選項文字描述也有規定，避免不看也能選出答案」
+   ⚠️ 第一版 1-1 就踩到了：20 題裡 11 題正解長 2～11 字（錯誤選項寫得太短、太好排除）。
+      shared/tools/build-read.js 產生時也會擋，這裡再守一次「真的會被讀到的那一份」。 */
+[['11501', '11501/content/ethics.read.js'], ['11502', '11502/content/social.read.js']].forEach(([term, rel]) => {
+  if (!fs.existsSync(path.join(root, rel))) return;
+  section(term + ' 段落閱讀題庫');
+  const A = require(path.join(root, 'shared', 'anskey.js'));
+  const w = {};
+  new Function('window', fs.readFileSync(path.join(root, rel), 'utf8'))(w);
+  const qs = [];
+  Object.keys(w.QUIZ_READ.sections).forEach(id =>
+    w.QUIZ_READ.sections[id].paras.forEach((p, pi) => p.qs.forEach(q => qs.push({ q, at: id + ' 第 ' + (pi + 1) + ' 段' }))));
+  ok(qs.length > 0, '題目載得進來（' + qs.length + ' 題）');
+  const bad = [];
+  let longest = 0;
+  qs.forEach(x => {
+    const L = x.q.options.map(len);
+    const c = A.find(x.q.q, x.q.options, x.q.a);
+    if (c < 0 || x.q.options.length !== 4) { bad.push(x.at + '「' + x.q.q.slice(0, 16) + '」找不到正解'); return; }
+    const lead = L[c] - Math.max(...L.filter((_, i) => i !== c));
+    if (lead > 0) longest++;
+    if (!(lead < 2)) bad.push(x.at + '「' + x.q.q.slice(0, 16) + '」正解長 ' + lead + ' 字');
+  });
+  ok(bad.length === 0, '★ 正解不可以明顯比別的選項長' + (bad.length ? '　←　' + bad.length + ' 題，例如 ' + bad[0] : ''));
+  /* 「正解剛好最長」本身不算錯（有時就是比較長），但不可以變成大多數 ——
+     那樣「選最長的」雖然不是每題都中，猜中率也遠高於 1/4。舊題庫約 35%。 */
+  ok(longest <= Math.ceil(qs.length * 0.4), '★ 正解是最長選項的題數不超過 4 成（' + longest + '／' + qs.length + '）');
 });
 
 /* ── ★ 沒有頁面可以自己內嵌題庫 ───────────────────
