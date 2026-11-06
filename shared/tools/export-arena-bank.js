@@ -19,12 +19,29 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '..', '..');
 const TERMS = {
-  '11501': { src: '11501/content/ethics.js', out: '11501/content/ethics.arena.json' },
-  '11502': { src: '11502/content/social.js', out: '11502/content/social.arena.json' }
+  '11501': { src: '11501/content/ethics.js', read: '11501/content/ethics.read.js', cfg: '11501/config.js', out: '11501/content/ethics.arena.json' },
+  '11502': { src: '11502/content/social.js', read: '11502/content/social.read.js', cfg: '11502/config.js', out: '11502/content/social.arena.json' }
 };
+/* ★ 2026-11-06 老師：「11/25 後只留一套」——段落閱讀題庫上線那天起，排行賽也改用新題庫。
+     ⇒ 題目來源依 config.js 的 READ_MODE_FROM 自動切換：日期到了就從 *.read.js 抽題，之前照舊用 *.js。
+     ⚠️ 排行賽後端每 10 分鐘從 GitHub Pages 重抓一次 JSON，所以「換題庫」＝11/25 當天
+        跑一次 --write 再推送（arena.test.js 那天起會擋「沒同步」，提醒你做這件事）。
+     ⚠️ 指令加 --read／--old 可以強制選一邊（試做用），測試也用它。 */
+function useRead(term, force) {
+  if (force === 'read') return true;
+  if (force === 'old') return false;
+  if (process.argv.indexOf('--read') >= 0) return true;
+  if (process.argv.indexOf('--old') >= 0) return false;
+  const cfg = fs.readFileSync(path.join(ROOT, TERMS[term].cfg), 'utf8');
+  const m = cfg.match(/READ_MODE_FROM:\s*'([^']*)'/);
+  if (!m || !m[1] || !fs.existsSync(path.join(ROOT, TERMS[term].read))) return false;
+  const d = new Date();
+  const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  return today >= m[1];
+}
 const OUT = path.join(ROOT, TERMS['11501'].out);     // 舊的呼叫方式（只看 11501）
 
-function build(term) {
+function build(term, force) {
   term = term || '11501';
   const SRC = path.join(ROOT, TERMS[term].src);
   const w = {};
@@ -41,7 +58,7 @@ function build(term) {
       return;
     }
     Object.keys(o).forEach(k => walk(o[k]));
-  })(C.chapters);
+  })(useRead(term, force) ? readSections(term) : C.chapters);
   const items = [...byId.values()].sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
   /* ★ 參賽資格（老師 2026-09-30）：資訊倫理「已通關 10 / 10 個章節」才能挑戰。
      這 10 個就是章節選單上「已通關 n / 全部」的那個「全部」——
@@ -53,6 +70,13 @@ function build(term) {
     if (ch.challenge) units.push(ch.challenge.id);
   });
   return JSON.stringify({ module: C.moduleId || 'ethics', term, count: items.length, units, items }, null, 1) + '\n';
+}
+
+/** 段落閱讀題庫（*.read.js）的全部題目 */
+function readSections(term) {
+  const w = {};
+  new Function('window', fs.readFileSync(path.join(ROOT, TERMS[term].read), 'utf8'))(w);
+  return Object.values((w.QUIZ_READ && w.QUIZ_READ.sections) || {}).map(s => s.paras.map(p => p.qs));
 }
 
 if (require.main === module) {
@@ -71,4 +95,4 @@ if (require.main === module) {
   });
   if (bad) { console.log('請跑 node shared/tools/export-arena-bank.js --write'); process.exit(1); }
 }
-module.exports = { build, OUT, TERMS };
+module.exports = { build, useRead, OUT, TERMS };

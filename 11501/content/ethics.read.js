@@ -28,7 +28,8 @@ window.QUIZ_READ = {
         "日常生活中的行為規範"
        ],
        "a": "1c2qdsg",
-       "x": "I2FiCy25Yv799EuOuq1O4jZMRF/MZVJllf5zwW7PNVJ6UUrcdxyRa9sC7dosgESQ1c7XIiRoCWw0M0gi2IxTN4yl7BNdJKxbiL+NRuVlH0oe35ArWMKZcQ3s3MOZDhlYqWEn+jB+v8x9PLkhrdV1NjET9LeU0vDpXGJNsxnDb9vDSloPVaLCX5qlVeAT4yYpdAN8rpM9sM2q8HJ8eR2jpQtrkVqEhgTTwJ5fPdaxgdoVR6xgkBclBc751aAZnxlEVZFDDkqCZPqyTrzQkXrU3HL/4UDTqBuUkwLBqIFLBMzjMvoyCRuZlExeMSJDemY/xD+b6mC4XwBrOobtIWm+"
+       "x": "I2FiCy25Yv799EuOuq1O4jZMRF/MZVJllf5zwW7PNVJ6UUrcdxyRa9sC7dosgESQ1c7XIiRoCWw0M0gi2IxTN4yl7BNdJKxbiL+NRuVlH0oe35ArWMKZcQ3s3MOZDhlYqWEn+jB+v8x9PLkhrdV1NjET9LeU0vDpXGJNsxnDb9vDSloPVaLCX5qlVeAT4yYpdAN8rpM9sM2q8HJ8eR2jpQtrkVqEhgTTwJ5fPdaxgdoVR6xgkBclBc751aAZnxlEVZFDDkqCZPqyTrzQkXrU3HL/4UDTqBuUkwLBqIFLBMzjMvoyCRuZlExeMSJDemY/xD+b6mC4XwBrOobtIWm+",
+       "h": "想想從小被要求的那些對錯準則——是誰規定的？是寫在法條裡的嗎？"
       },
       {
        "q": "一個人的倫理觀念，主要是怎麼形成的？",
@@ -39,7 +40,8 @@ window.QUIZ_READ = {
         "出生時就具備不必學習"
        ],
        "a": "xsqyzh",
-       "x": "ih4JTd/W3+oq3ItcKvbMxwQykjswWab4DAXIlSOlPoX8bJGXlgZVB5srp4qOw3ipVmJHNV4pqSnNE/q6MjyWF88s+vhirkA0/C6YgjfTT6geVEgEDkgsaAs0A7+KenFZo/d5dJmY9U1NNCQmDA92qQKc7RWoMw0wlr3LpfLjyP3W/++t7GwtZJvdKWrXEKktCn8uu0eIc20IxhCXbeLvkGkqpu+jFeoSOYadr9w/Msq+SqVwNpIkw4yOE0J/noc+R21hK162TtcaE5/7G0rzdJ2ipzVsis4vXA7SEfqkChnA5HnMonXSqtmwhbTvoZOVb/YWpCX4pbijQ47i"
+       "x": "ih4JTd/W3+oq3ItcKvbMxwQykjswWab4DAXIlSOlPoX8bJGXlgZVB5srp4qOw3ipVmJHNV4pqSnNE/q6MjyWF88s+vhirkA0/C6YgjfTT6geVEgEDkgsaAs0A7+KenFZo/d5dJmY9U1NNCQmDA92qQKc7RWoMw0wlr3LpfLjyP3W/++t7GwtZJvdKWrXEKktCn8uu0eIc20IxhCXbeLvkGkqpu+jFeoSOYadr9w/Msq+SqVwNpIkw4yOE0J/noc+R21hK162TtcaE5/7G0rzdJ2ipzVsis4vXA7SEfqkChnA5HnMonXSqtmwhbTvoZOVb/YWpCX4pbijQ47i",
+       "h": "回想你小時候「不能插隊、要說謝謝」是怎麼學會的？是背出來的，還是慢慢變成習慣？"
       },
       {
        "q": "每個人都有了倫理觀念，社會會變得怎樣？",
@@ -50,7 +52,8 @@ window.QUIZ_READ = {
         "人與人之間不再有衝突"
        ],
        "a": "1n2rbo2",
-       "x": "Ze2U+/hq3+a47YoFs5BqGllXTfGrE1fKECqxKR5pyN/SCxUqfa4+bSHJ/z17T4CFZgal5qtakE0mQFG/9S/Jq2PmJ9bLDhpOv5mJ91crz1OKfSU6wwCYhDJUWB5filh/f3DtF8Ve1dFgBmBqJuV5L5GcH4JJCF8iawQFZZrsu/QgZaJmbkQZ8i908lIV/slWnWNrom0lrq3dlfCj/j8QZ/k3a1NPP2BHNVA150jl+ek5CypNdQAaagzj5c83PcLNR0hN/IDDhKLxkIhn0P86oqHd88Y4KkyOZSBag6V0jrWztlyU4VlhBxcOaVcTnNWks8DIzwLcdIUmEy9opuyb"
+       "x": "Ze2U+/hq3+a47YoFs5BqGllXTfGrE1fKECqxKR5pyN/SCxUqfa4+bSHJ/z17T4CFZgal5qtakE0mQFG/9S/Jq2PmJ9bLDhpOv5mJ91crz1OKfSU6wwCYhDJUWB5filh/f3DtF8Ve1dFgBmBqJuV5L5GcH4JJCF8iawQFZZrsu/QgZaJmbkQZ8i908lIV/slWnWNrom0lrq3dlfCj/j8QZ/k3a1NPP2BHNVA150jl+ek5CypNdQAaagzj5c83PcLNR0hN/IDDhKLxkIhn0P86oqHd88Y4KkyOZSBag6V0jrWztlyU4VlhBxcOaVcTnNWks8DIzwLcdIUmEy9opuyb",
+       "h": "如果每個人心中都有是非標準，大家相處起來會更亂，還是更有條理？"
       },
       {
        "q": "如果有人做了不符合倫理基準的事，常會被認為是什麼？",
@@ -61,7 +64,8 @@ window.QUIZ_READ = {
         "做了不道德的行為"
        ],
        "a": "1gn0wqf",
-       "x": "u54HtzwnnPV+ybCkdBpOvc9C21XvcH8sQLQzIHOSJ9jhcjm6dh2XAranYY6etVrt+ej8AL7O3kF16Y8kLSbdduDgSeU7VBvVcD0CWnA2w8X09zMc9o23PkAAZ5LeWEvw0TQwbLgT8IE7EulwmGJ3ksMkAfFbm/zDq54asOygjkNzblwU3kDdqukRYpp3C1mDVTR4Krge8iI/qFI6MJC3j0bTqrkcqKFAl0ycp4pN5vbkHuOEa0LjFOL3p80EIb5vdEq4K/zaL/SJ6z6KDUX2ETy4pwqHyFT2ZbgusSPced22sgzONKlm"
+       "x": "u54HtzwnnPV+ybCkdBpOvc9C21XvcH8sQLQzIHOSJ9jhcjm6dh2XAranYY6etVrt+ej8AL7O3kF16Y8kLSbdduDgSeU7VBvVcD0CWnA2w8X09zMc9o23PkAAZ5LeWEvw0TQwbLgT8IE7EulwmGJ3ksMkAfFbm/zDq54asOygjkNzblwU3kDdqukRYpp3C1mDVTR4Krge8iI/qFI6MJC3j0bTqrkcqKFAl0ycp4pN5vbkHuOEa0LjFOL3p80EIb5vdEq4K/zaL/SJ6z6KDUX2ETy4pwqHyFT2ZbgusSPced22sgzONKlm",
+       "h": "倫理常常和另一個詞「相提並論」，那個詞也在講好壞對錯。"
       },
       {
        "q": "為什麼資訊社會需要一套「新的」倫理規範？",
@@ -72,7 +76,8 @@ window.QUIZ_READ = {
         "網路使用者的年齡越來越小"
        ],
        "a": "1uschi0",
-       "x": "DuMypUhaMgTIsbcGFCZs0qN9leaiW3n72YTlwbEKg/B3UUnoh4obxKRhE/YXfBxCZbYMFYf2cOW2VZOt80aldWcZvoLdqML6zpr4nuLaYJ5k7V47Iu/y1QIR11Co5CnsHHAFPa4Au6g50Y+iP5XRyHKDTKd0z5b+ps63oBTQ9TUUivzRPP7Hw/uxAtSCOce1ETJOqVerncexI9TgMHN7wuDxQngAgZrlrt2w+XuUQHT+imT85QWUjee8oaP/vBuV5QPApBFgGnYJS3QXefb8GqxT24l+/RlHuGBv+jYKz9xTyq7QFUVHJcO32p/lOzD/rlh2"
+       "x": "DuMypUhaMgTIsbcGFCZs0qN9leaiW3n72YTlwbEKg/B3UUnoh4obxKRhE/YXfBxCZbYMFYf2cOW2VZOt80aldWcZvoLdqML6zpr4nuLaYJ5k7V47Iu/y1QIR11Co5CnsHHAFPa4Au6g50Y+iP5XRyHKDTKd0z5b+ps63oBTQ9TUUivzRPP7Hw/uxAtSCOce1ETJOqVerncexI9TgMHN7wuDxQngAgZrlrt2w+XuUQHT+imT85QWUjee8oaP/vBuV5QPApBFgGnYJS3QXefb8GqxT24l+/RlHuGBv+jYKz9xTyq7QFUVHJcO32p/lOzD/rlh2",
+       "h": "網路上的人際互動，和住在同一個村子裡的人際互動，一樣嗎？"
       }
      ]
     },
@@ -91,7 +96,8 @@ window.QUIZ_READ = {
         "國界、文化、世代"
        ],
        "a": "19xp3uw",
-       "x": "QijdbSQ1Blbg+ZfXiZGHoFpge6u0sSy8PAqI1bBg8ti+WzoeQJ9oRdFK1T85HI6xX0sJ4o8UJQ+dtkySZPUg50DZPeTIk1wwcMgrrafOrbLbwrQmEYV5QvnTHyolfWBrkw3iNPIYIDoc4lLL4AE8/KzTsgnRIHeai8gwRzPs642Kq5V7DGvzSZ154NEqbR4u48ZILhPktFb83XxxIykKzK9UU5Vkm4MK1kAFV1dVBpS4iSPUvqXPwNterMboP8UoCLam"
+       "x": "QijdbSQ1Blbg+ZfXiZGHoFpge6u0sSy8PAqI1bBg8ti+WzoeQJ9oRdFK1T85HI6xX0sJ4o8UJQ+dtkySZPUg50DZPeTIk1wwcMgrrafOrbLbwrQmEYV5QvnTHyolfWBrkw3iNPIYIDoc4lLL4AE8/KzTsgnRIHeai8gwRzPs642Kq5V7DGvzSZ154NEqbR4u48ZILhPktFb83XxxIykKzK9UU5Vkm4MK1kAFV1dVBpS4iSPUvqXPwNterMboP8UoCLam",
+       "h": "網路上遇到的人，可能和你在「住的地方、生活習慣、年紀」上都不一樣。"
       },
       {
        "q": "下列哪一句最符合「資訊倫理」的意義？",
@@ -102,7 +108,8 @@ window.QUIZ_READ = {
         "設計資訊系統時的技術標準"
        ],
        "a": "1r7kwjt",
-       "x": "1xghTLAZml6fAr7X3z3u6FmvJs/QWAT/EdscW3bOmzQMvM39Pcf6APP5OpeBlSfF8pOzY9o5tu4+yFO4UgdkdqmOo8VUuVE8/XUvMBOP62AIs5sZFXVhjoIOPMBkgTLExqX3CKapGUj0D7D3htxDgSxPZFTcksvP9iTGa9KO8n6k1VmZK11P3vBZGA0u1iGViqRSus8OyK1xfum0FVEGvENXCC7ZOh+O4ovg4ws2P66rdjapNoPqdu41JrP1X0irkC3AsoamlxWpQQ3NokIaBD9fQlx2u3KX5Sh6PZuC/j5kDlE+z+FqL5Rf0fKMqjpoTjon1Fl+j2SvcoPiEEVyuSQ26nW9lrk0lUhkUf6y+H5TxVf1cMVpl72mDh1n5yM5DOC0KgL8"
+       "x": "1xghTLAZml6fAr7X3z3u6FmvJs/QWAT/EdscW3bOmzQMvM39Pcf6APP5OpeBlSfF8pOzY9o5tu4+yFO4UgdkdqmOo8VUuVE8/XUvMBOP62AIs5sZFXVhjoIOPMBkgTLExqX3CKapGUj0D7D3htxDgSxPZFTcksvP9iTGa9KO8n6k1VmZK11P3vBZGA0u1iGViqRSus8OyK1xfum0FVEGvENXCC7ZOh+O4ovg4ws2P66rdjapNoPqdu41JrP1X0irkC3AsoamlxWpQQ3NokIaBD9fQlx2u3KX5Sh6PZuC/j5kDlE+z+FqL5Rf0fKMqjpoTjon1Fl+j2SvcoPiEEVyuSQ26nW9lrk0lUhkUf6y+H5TxVf1cMVpl72mDh1n5yM5DOC0KgL8",
+       "h": "資訊倫理講的是「人」面對資訊時該怎麼做；從資訊被做出來到被用掉，整個過程都算。"
       },
       {
        "q": "資訊倫理規範的是處理資訊的行為，下列哪一項「不屬於」這類行為？",
@@ -113,7 +120,8 @@ window.QUIZ_READ = {
         "維修電腦設備"
        ],
        "a": "5ye6bj",
-       "x": "jeG3giMeq6LriBWUK3SHfE7vBaUWI+/4uJ1z9O/8ih+HtxTgczk5iX84NWN+M2GGFbv5RVmHdTmQvXo5bXoS/HAz1h6RprrekVsFVGaByj10krQxFW0AdPkAGV9L8ixzlqZuapIiw3r4G9AB2WvVSt7o6oIV6CqOLOyr6ORS3p8LmJRUZnMl87mO2J+CF92suUiFQ15CVJ1KKE+iTdPJeKmxR+QgWdMCGjBq4BmL7dKs/P76YLEKSjhZ2p2FHyri074zyrmVEvpaBm3rHyqX"
+       "x": "jeG3giMeq6LriBWUK3SHfE7vBaUWI+/4uJ1z9O/8ih+HtxTgczk5iX84NWN+M2GGFbv5RVmHdTmQvXo5bXoS/HAz1h6RprrekVsFVGaByj10krQxFW0AdPkAGV9L8ixzlqZuapIiw3r4G9AB2WvVSt7o6oIV6CqOLOyr6ORS3p8LmJRUZnMl87mO2J+CF92suUiFQ15CVJ1KKE+iTdPJeKmxR+QgWdMCGjBq4BmL7dKs/P76YLEKSjhZ2p2FHyri074zyrmVEvpaBm3rHyqX",
+       "h": "課文列的六個動作，對象都是「資訊」本身；哪一個處理的對象不是資訊？"
       },
       {
        "q": "要維繫資訊社會的秩序，必須要有哪兩樣？",
@@ -124,7 +132,8 @@ window.QUIZ_READ = {
         "家長的監督和學校的考試"
        ],
        "a": "1jip0ae",
-       "x": "s7gkBCIWZf6d464muTF0I9dWM+3nqp0oiZvDAVYyw5UHgfLA4tDeK/iqNCWdmgIJoA+X3b9uqRUumKf96UBkzyiUodTmlb5BnlGlBrLHoYkIUVswFYptHWf0R/haE/ojxIYYMm4/veaBW6Q8yGs8MlOADWlxeRN6sWd4tbYgycxoeYpylDS0uJK+6OjeP2PGqQhz1T2u7ojyKQ1Gp2lChycH64JgduvLlU2IeB9qUGVfOqKBO8aG0rRV+zpfDni/1+zR2CkrMQP3itsT/PnT6VHZUa0gVTDI1SkVQcxcfsyNpGv7CLy0OCEjCYzduy9z2z20CAaUvZfowByMCYKCNZMzHyIrm3RfTc3JcD0m"
+       "x": "s7gkBCIWZf6d464muTF0I9dWM+3nqp0oiZvDAVYyw5UHgfLA4tDeK/iqNCWdmgIJoA+X3b9uqRUumKf96UBkzyiUodTmlb5BnlGlBrLHoYkIUVswFYptHWf0R/haE/ojxIYYMm4/veaBW6Q8yGs8MlOADWlxeRN6sWd4tbYgycxoeYpylDS0uJK+6OjeP2PGqQhz1T2u7ojyKQ1Gp2lChycH64JgduvLlU2IeB9qUGVfOqKBO8aG0rRV+zpfDni/1+zR2CkrMQP3itsT/PnT6VHZUa0gVTDI1SkVQcxcfsyNpGv7CLy0OCEjCYzduy9z2z20CAaUvZfowByMCYKCNZMzHyIrm3RfTc3JcD0m",
+       "h": "一個靠自己心裡，一個靠外面訂的；兩樣缺一不可。"
       },
       {
        "q": "資訊倫理希望讓資訊社會中的每一個人，擁有什麼樣的環境？",
@@ -135,7 +144,8 @@ window.QUIZ_READ = {
         "快速與免費的上網環境"
        ],
        "a": "mgij55",
-       "x": "/T5V4ToUP91nWGOB0We7wemhbqypmu4SEgZVH/4Ar7kqKWzcGFPTPv1zUf/+PjTJT4S58IhXQaXZ8wjw9FqepIC62WwPuZ7Pt24bt37zCcvHLsJ+/DCi2iBIfE9+EpFebllTsaVt1LZ21v0fwWRwpE3NHnpaZHsXs0vrElpb9SagQ0UeDqkyWNJtUr65yGDFvJEO6yyNP30U2VyHkQlqqnrxs0rJz1ioXi6APmVT8VA+SWjLVwzYrCniIFZ9RH6ct3T5qNGJiyWwCeMAvFeStlv+H2ZxIPooB1LdBurMqiBfGPDoMq36DXhpkDL3hFsz"
+       "x": "/T5V4ToUP91nWGOB0We7wemhbqypmu4SEgZVH/4Ar7kqKWzcGFPTPv1zUf/+PjTJT4S58IhXQaXZ8wjw9FqepIC62WwPuZ7Pt24bt37zCcvHLsJ+/DCi2iBIfE9+EpFebllTsaVt1LZ21v0fwWRwpE3NHnpaZHsXs0vrElpb9SagQ0UeDqkyWNJtUr65yGDFvJEO6yyNP30U2VyHkQlqqnrxs0rJz1ioXi6APmVT8VA+SWjLVwzYrCniIFZ9RH6ct3T5qNGJiyWwCeMAvFeStlv+H2ZxIPooB1LdBurMqiBfGPDoMq36DXhpkDL3hFsz",
+       "h": "有了規範，最大的好處是讓大家用網路時心裡覺得怎麼樣？"
       }
      ]
     },
@@ -154,7 +164,8 @@ window.QUIZ_READ = {
         "每個人的價值觀完全相同"
        ],
        "a": "erjcc8",
-       "x": "CptcrHot88fEwGgLsWx2GFEhf+E1i9IpffRMIDZlN4r5HooUpkKC63hpKFKfHC35ATb7zkbfkl4kJEUo3N6cUaCgrpQjro2rYSKSmCx+0KLFRQpRgNjhyLkoEDX6N/fZiPlKmi4Vm7S5f625LOSNONgYw1kjR3aflDOYHsaCeL+JI4a9RWHb6uC9k/VyYJVi2y7bdO6de76EZBTNsk1u0QD5C3gpJdW1aaDJrybo3SdxbbL2/+6XM6i1l+9ukIe4At8nqP7PLpPCCbBN0DqJe9pRtkBEuRQd7QoFLdrWluQsyWIG"
+       "x": "CptcrHot88fEwGgLsWx2GFEhf+E1i9IpffRMIDZlN4r5HooUpkKC63hpKFKfHC35ATb7zkbfkl4kJEUo3N6cUaCgrpQjro2rYSKSmCx+0KLFRQpRgNjhyLkoEDX6N/fZiPlKmi4Vm7S5f625LOSNONgYw1kjR3aflDOYHsaCeL+JI4a9RWHb6uC9k/VyYJVi2y7bdO6de76EZBTNsk1u0QD5C3gpJdW1aaDJrybo3SdxbbL2/+6XM6i1l+9ukIe4At8nqP7PLpPCCbBN0DqJe9pRtkBEuRQd7QoFLdrWluQsyWIG",
+       "h": "光靠每個人心裡「知道對錯」，就一定做得到嗎？"
       },
       {
        "q": "「資訊倫理規範」是規範資訊科技使用者行為的哪一種力量？",
@@ -165,7 +176,8 @@ window.QUIZ_READ = {
         "自律力量"
        ],
        "a": "xvf7wz",
-       "x": "5hTQHlSAcQgTA/LXC0LH7YvzFpoe1rxeTKusWBkVRlCewA4oPVmuClDY+FH7zEzig/gE1wuVLhar06IRWD+19y2mkQGb7ArWZRRFZeGreCzS800+87jo/e2WEHlZFTKwDdVAdTHmwH/M3Y2qnrHCMNEnkC0gNEPpzNSnbbmkt0XSuIRRiGzGsm6DQwpfoQ92jN05B+dw1wEM+YIHOaTS5m9OcNe3scLdMcc/CceJip7zFhpjlMunBt3fHWg8NhzdybW4TPz5Pnw5RMrvVubAWe9pWikHc7u8fW6Z0X04"
+       "x": "5hTQHlSAcQgTA/LXC0LH7YvzFpoe1rxeTKusWBkVRlCewA4oPVmuClDY+FH7zEzig/gE1wuVLhar06IRWD+19y2mkQGb7ArWZRRFZeGreCzS800+87jo/e2WEHlZFTKwDdVAdTHmwH/M3Y2qnrHCMNEnkC0gNEPpzNSnbbmkt0XSuIRRiGzGsm6DQwpfoQ92jN05B+dw1wEM+YIHOaTS5m9OcNe3scLdMcc/CceJip7zFhpjlMunBt3fHWg8NhzdybW4TPz5Pnw5RMrvVubAWe9pWikHc7u8fW6Z0X04",
+       "h": "規範是別人訂好、從哪個方向來約束你的？和「良知」相反。"
       },
       {
        "q": "一般來說，網路的使用規則通常是誰制訂的？",
@@ -176,7 +188,8 @@ window.QUIZ_READ = {
         "使用者所在國家的法院"
        ],
        "a": "1vawufg",
-       "x": "ryQ9r5ejrJEs/rEJ9PtuLT5i8bGeyBNB+PX/HhNQQ551vh53hbQd2/TpFfjD8j2+SoDATccxDTVHDnu5fnlcPj9xwnUjaOkbBJglEEYPs9UzQWC84xIGgYaRLJFqVJkx6ETl2ZmoDznFmUL2aV/6GZ6irO7B4VGI2BHiUd77wqjJLh+JiIYVTgy9cRdQbL9irfqQ781vL2gLtTXhXPTIgFCl2RfmXlJpdXoonPHeas/qcQbnwxk7WwFpishnr+tQR/0XUT8gZ2I5XXIzXtpzRuiJM0e18d9KOUuj0xBZ0vU4CHXuTlOj+4dwoS51XwYYex+mB7mYP3mDqC7nDxxqvg=="
+       "x": "ryQ9r5ejrJEs/rEJ9PtuLT5i8bGeyBNB+PX/HhNQQ551vh53hbQd2/TpFfjD8j2+SoDATccxDTVHDnu5fnlcPj9xwnUjaOkbBJglEEYPs9UzQWC84xIGgYaRLJFqVJkx6ETl2ZmoDznFmUL2aV/6GZ6irO7B4VGI2BHiUd77wqjJLh+JiIYVTgy9cRdQbL9irfqQ781vL2gLtTXhXPTIgFCl2RfmXlJpdXoonPHeas/qcQbnwxk7WwFpishnr+tQR/0XUT8gZ2I5XXIzXtpzRuiJM0e18d9KOUuj0xBZ0vU4CHXuTlOj+4dwoS51XwYYex+mB7mYP3mDqC7nDxxqvg==",
+       "h": "誰「提供」網路、誰負責管理網路，誰就有立場訂規則。"
       },
       {
        "q": "教育部主管的臺灣學術網路（TANet），制訂了哪一份規範？",
@@ -187,7 +200,8 @@ window.QUIZ_READ = {
         "《臺灣學術網路管理規範》"
        ],
        "a": "sfkoeu",
-       "x": "1tN9NY6xoKWHXOGDYhjf8BMDzts96GORhqhZjuydAy1yZ1TIyVYnhFp7Qp2BCkPUOkeySWsq/Kbep6yQcscjDJOLGN/jkAnykiboByvhXgjC9mGIgeDmpWIFTrY2ouJzF9yclyMOzreigLy3Ohjli6c6KtyQYdVeHdCMKJ8JDw+LpUX+/Q0Ux8TwCpVtYs8y/9pHFZ8aVtu+fkkZWlfdIVaYt6szR3VYzZ5Qw81wxB50ux0nP6tMRZEx0oDYBQFL68xs1uyjJWCsRGZc/o4a+YjhawPPcPmvjmh2Oc0SrvfLAusfCysYFgl34QZy/m3A12Smg5UQsPXGFv6e5MqnTQLTmqlx4Ng5SpTH4g=="
+       "x": "1tN9NY6xoKWHXOGDYhjf8BMDzts96GORhqhZjuydAy1yZ1TIyVYnhFp7Qp2BCkPUOkeySWsq/Kbep6yQcscjDJOLGN/jkAnykiboByvhXgjC9mGIgeDmpWIFTrY2ouJzF9yclyMOzreigLy3Ohjli6c6KtyQYdVeHdCMKJ8JDw+LpUX+/Q0Ux8TwCpVtYs8y/9pHFZ8aVtu+fkkZWlfdIVaYt6szR3VYzZ5Qw81wxB50ux0nP6tMRZEx0oDYBQFL68xs1uyjJWCsRGZc/o4a+YjhawPPcPmvjmh2Oc0SrvfLAusfCysYFgl34QZy/m3A12Smg5UQsPXGFv6e5MqnTQLTmqlx4Ng5SpTH4g==",
+       "h": "TANet 是「學術網路」，它的規範名稱就會跟自己的名字有關。"
       },
       {
        "q": "違反入口網站的使用規範，可能會怎樣？",
@@ -198,7 +212,8 @@ window.QUIZ_READ = {
         "受到警告或使用限制"
        ],
        "a": "1bd2bu7",
-       "x": "Op88WbKNIcirFXxMlb6wNQXVCwATNTpNREEde30depj8qo6KpNUMyxXGOHXxEYt0ykzaDRyeRuuNDjvMqUddMwxL601DmW+l0ZGUMd1y6xBxC2NJWuLd6B3S1Qsd+ZBpMJE+aV7qc3J3OLDQqGKPvwdwiB8TD4aQB2FfD07fvxk0VQiLzUV2WtZmS1b33qdliR9ejx+rG+462gVoJmaZI1Z2Vv2/hOugy8C1vXhYK9SAQFNKvxk3Q5xpcFUCZETsznP4izOf8G11J8rE4GIlBSTiKwsKFKe1DRqK/D9Ey3Z7zFoyFDpxclHbVvNOw6P4IwH0U9J+HGRZCoLe2urRo0er9Qnu8+GQ"
+       "x": "Op88WbKNIcirFXxMlb6wNQXVCwATNTpNREEde30depj8qo6KpNUMyxXGOHXxEYt0ykzaDRyeRuuNDjvMqUddMwxL601DmW+l0ZGUMd1y6xBxC2NJWuLd6B3S1Qsd+ZBpMJE+aV7qc3J3OLDQqGKPvwdwiB8TD4aQB2FfD07fvxk0VQiLzUV2WtZmS1b33qdliR9ejx+rG+462gVoJmaZI1Z2Vv2/hOugy8C1vXhYK9SAQFNKvxk3Q5xpcFUCZETsznP4izOf8G11J8rE4GIlBSTiKwsKFKe1DRqK/D9Ey3Z7zFoyFDpxclHbVvNOw6P4IwH0U9J+HGRZCoLe2urRo0er9Qnu8+GQ",
+       "h": "使用規範不是法律，處罰會比坐牢輕，但也不是什麼事都沒有。"
       }
      ]
     },
@@ -217,7 +232,8 @@ window.QUIZ_READ = {
         "職業倫理規範"
        ],
        "a": "1tzawpg",
-       "x": "HThSy2DBQfDJ++7/vZFWWAZy+j4gyensmiVvBU1HbzFNEBDoPG3Ce32JmTcAoeo3lhWiTCMUQ9FFb4Z413t0sfxjpu38WC+smV3Wx4pbdbFvdQYaE1tU1pBFEucog6fC5R62p4QdFWSd45l4nxeDmmmxamwaKygbStNMdXbeM9QPsR3LCpsbTBtcuc/ps3P2Ap1oLwe1839lrxdlvaOG6Xkw9z453oI/PPLdaQDV5XC7Zpc8YCegMQa4E3weKKSehqwRe1ua4+95cUvRb8HY"
+       "x": "HThSy2DBQfDJ++7/vZFWWAZy+j4gyensmiVvBU1HbzFNEBDoPG3Ce32JmTcAoeo3lhWiTCMUQ9FFb4Z413t0sfxjpu38WC+smV3Wx4pbdbFvdQYaE1tU1pBFEucog6fC5R62p4QdFWSd45l4nxeDmmmxamwaKygbStNMdXbeM9QPsR3LCpsbTBtcuc/ps3P2Ap1oLwe1839lrxdlvaOG6Xkw9z453oI/PPLdaQDV5XC7Zpc8YCegMQa4E3weKKSehqwRe1ua4+95cUvRb8HY",
+       "h": "從事某一種「職業」的人，還要多守一層屬於這一行的規範。"
       },
       {
        "q": "為什麼資訊從業人員要負比較重的責任？",
@@ -228,7 +244,8 @@ window.QUIZ_READ = {
         "比一般人更懂法律條文"
        ],
        "a": "v21v8r",
-       "x": "YHtOrnmKkM+27BUE+Ln1EKIpMsylIe6rqrxhLDwZ/Fk1JqJH7/qf4hjkXQ2/Lo7ZNQQUNp8fehqfZ/wJxOcVNU0z65y7GoTV8Kc8zjSEitZKXGXab9z/NtTg9Fipvm2G1EnfHVlU/8w8j8p9ejGItMN289euY+IkG8M8MuegLYaotxPZTTyMN0secM9ewspF2ZV8avvYjeeWZwv86CFq8NxGYE44h7E2ku43897A5Ari0BPKICsdyvjDXJx8g0SO47eaGzZHxW0xJX/lnTI3UEC5WkAZqKGRCW0zbH9/ieDTBpFLFWKC427H"
+       "x": "YHtOrnmKkM+27BUE+Ln1EKIpMsylIe6rqrxhLDwZ/Fk1JqJH7/qf4hjkXQ2/Lo7ZNQQUNp8fehqfZ/wJxOcVNU0z65y7GoTV8Kc8zjSEitZKXGXab9z/NtTg9Fipvm2G1EnfHVlU/8w8j8p9ejGItMN289euY+IkG8M8MuegLYaotxPZTTyMN0secM9ewspF2ZV8avvYjeeWZwv86CFq8NxGYE44h7E2ku43897A5Ari0BPKICsdyvjDXJx8g0SO47eaGzZHxW0xJX/lnTI3UEC5WkAZqKGRCW0zbH9/ieDTBpFLFWKC427H",
+       "h": "管系統、訂規則的人，手上握有的東西比一般使用者多。"
       },
       {
        "q": "學校的系統管理人員能查閱全校師生的個資，所以他們負有什麼責任？",
@@ -239,7 +256,8 @@ window.QUIZ_READ = {
         "保密並保護全校的個資"
        ],
        "a": "gpeq0d",
-       "x": "0hGHCrBO7xdRTf0WHWVNg0kCM9bwO8i8/djfumY6080wbgmoBUHiR3zfAG2ZT5zOQ2z8LBVMCZ0FpflFy/D3VkaaUHty8IJboO+AHvF9M8rBtqP3zxY824PSUb6HbHYQSw7+SaKJlhS/MgGjV5+Ksxj6vbJQgVcyj5o+a+i33VtwlcrLSM9NWf7Wtf5H0NLT8e18Yfe165RuOzMk1hYFArd5MVgG4oY5/rICHpvTVXJRaAzFEMohCqFdUiZP3SHBbp14wvFMgnPDNszxdMXe37WsW23PrnR/7OfMLULNbGyxwYBv"
+       "x": "0hGHCrBO7xdRTf0WHWVNg0kCM9bwO8i8/djfumY6080wbgmoBUHiR3zfAG2ZT5zOQ2z8LBVMCZ0FpflFy/D3VkaaUHty8IJboO+AHvF9M8rBtqP3zxY824PSUb6HbHYQSw7+SaKJlhS/MgGjV5+Ksxj6vbJQgVcyj5o+a+i33VtwlcrLSM9NWf7Wtf5H0NLT8e18Yfe165RuOzMk1hYFArd5MVgG4oY5/rICHpvTVXJRaAzFEMohCqFdUiZP3SHBbp14wvFMgnPDNszxdMXe37WsW23PrnR/7OfMLULNbGyxwYBv",
+       "h": "看得到全校的資料，不代表可以拿給別人看。"
       },
       {
        "q": "有些資訊相關職務，甚至要簽署什麼來規範保密責任？",
@@ -250,7 +268,8 @@ window.QUIZ_READ = {
         "個資授權書"
        ],
        "a": "1bve5f4",
-       "x": "WIdKcEBt3CZqFOOTx55rILXsHQGBsEDFsUBFx2aDrKyRFLDue8E2ZbcWM2BU8VQU0FxabfgyM0UFk8QSxD8OuqLIudXg9ENp7ev78OGmKRH9cwIQPDyGOafzn10DnJEC8f8tP4bbssEMANeZpDQJsUFPePkJbpxszCBkAfpjzYjmyDR5CAyKl4HK7U1oQeBXjRN3wtDkCxs2eLliswec8mRYI0chwtQM+enZUrWvpoXE5YgFmLCv/YTgTBHZTUtNiSRjCJxqmnBc"
+       "x": "WIdKcEBt3CZqFOOTx55rILXsHQGBsEDFsUBFx2aDrKyRFLDue8E2ZbcWM2BU8VQU0FxabfgyM0UFk8QSxD8OuqLIudXg9ENp7ev78OGmKRH9cwIQPDyGOafzn10DnJEC8f8tP4bbssEMANeZpDQJsUFPePkJbpxszCBkAfpjzYjmyDR5CAyKl4HK7U1oQeBXjRN3wtDkCxs2eLliswec8mRYI0chwtQM+enZUrWvpoXE5YgFmLCv/YTgTBHZTUtNiSRjCJxqmnBc",
+       "h": "想想公司怎麼確保員工不把秘密說出去——要「簽」一份文件。"
       },
       {
        "q": "同學跑去問校務人員：「我想知道十班王小美的期末成績。」校務人員最適當的回應是？",
@@ -261,7 +280,8 @@ window.QUIZ_READ = {
         "婉拒，請他直接問本人"
        ],
        "a": "1aebh9a",
-       "x": "LtoLUX4ktYLv5S3655+1MRdiwPZOn18B8BcsemvFIlPzSuYycKWKuEK4JRxhlZ8i+oyuAs7ybGZokbjk0JFXIbB3htdSyXPbA6w4LqbKT6MVI/x7jOflLlvKnap6eIEWPtRiqtOc3GvR+3/lWjdGyWxbQd4OmrJOXT+qRgDP4QlnGF242He6QbU5DvqPHfzzprFJhCCi5Uq16S0pB0tuLJIDecbM4vFUFtXWxWJOBqLJwJIkv/bR5Qx0FTHDF24P/V9HkfJGKNzueXIPGXhfW4U2K6rAABAyXOseof6ot/FoiunkCnk7JRyAmvkeMHd2LWgNWCBIW8QJB021rHNAOgW7GXy3grPhYMp0qLNWRc1s1bk="
+       "x": "LtoLUX4ktYLv5S3655+1MRdiwPZOn18B8BcsemvFIlPzSuYycKWKuEK4JRxhlZ8i+oyuAs7ybGZokbjk0JFXIbB3htdSyXPbA6w4LqbKT6MVI/x7jOflLlvKnap6eIEWPtRiqtOc3GvR+3/lWjdGyWxbQd4OmrJOXT+qRgDP4QlnGF242He6QbU5DvqPHfzzprFJhCCi5Uq16S0pB0tuLJIDecbM4vFUFtXWxWJOBqLJwJIkv/bR5Qx0FTHDF24P/V9HkfJGKNzueXIPGXhfW4U2K6rAABAyXOseof6ot/FoiunkCnk7JRyAmvkeMHd2LWgNWCBIW8QJB021rHNAOgW7GXy3grPhYMp0qLNWRc1s1bk=",
+       "h": "成績是誰的個人資料？要不要說，應該由誰決定？"
       }
      ]
     }
@@ -289,7 +309,8 @@ window.QUIZ_READ = {
         "網路＋禮儀"
        ],
        "a": "11k0578",
-       "x": "dfY5mIUzGjPz0oAq8ed47UjliTxLK0VSUA6Yur6E51Gz6+xvnxLmjaXtHt2cEyYEzuQLVy8JNZfV6UEdjFthlWOD8tqhV+nAFuZ7iBu3MGBVEoM0/C091IgpI9x/gz53K1aA551+F/SI8DxO85iwGbhowRc6IppCNp1JLqKFBPTXeSmcNC6jv9/7S21sa7FbHdU7B9k72H9CCgr2WTz5Zg=="
+       "x": "dfY5mIUzGjPz0oAq8ed47UjliTxLK0VSUA6Yur6E51Gz6+xvnxLmjaXtHt2cEyYEzuQLVy8JNZfV6UEdjFthlWOD8tqhV+nAFuZ7iBu3MGBVEoM0/C091IgpI9x/gz53K1aA551+F/SI8DxO85iwGbhowRc6IppCNp1JLqKFBPTXeSmcNC6jv9/7S21sa7FbHdU7B9k72H9CCgr2WTz5Zg==",
+       "h": "把 netiquette 拆成兩半：前面的 net 你一定認識，後面像不像 etiquette？"
       },
       {
        "q": "對任何一位網路公民而言，什麼是最重要的倫理規範？",
@@ -300,7 +321,8 @@ window.QUIZ_READ = {
         "著作權法"
        ],
        "a": "jk9u2k",
-       "x": "GUyQIVWpYn9D+pv7jLClI8mw0N9zq5s3QuhY5z6+UVHOjB2Oada0jM+Z9DsO6iwhsiSEWWnA6UiFeEe6426wIWldj9COX5iu4NLziYSofYfJ7kyg2JWA1SsgP4GhKwHgPJ/WmBIIHQWDQYt3Ksdzf7kwaA3RZTZJRyRsFSC52ScWgZSG42kMlZn4lnUhriLByVu+C0sdO9S/QnwRV31kgGft+U3LmTGzsx/wYSbWgFPhT/Pq6NiywhRNBfmqWtQebX+kOtrEjyvBM4lJ"
+       "x": "GUyQIVWpYn9D+pv7jLClI8mw0N9zq5s3QuhY5z6+UVHOjB2Oada0jM+Z9DsO6iwhsiSEWWnA6UiFeEe6426wIWldj9COX5iu4NLziYSofYfJ7kyg2JWA1SsgP4GhKwHgPJ/WmBIIHQWDQYt3Ksdzf7kwaA3RZTZJRyRsFSC52ScWgZSG42kMlZn4lnUhriLByVu+C0sdO9S/QnwRV31kgGft+U3LmTGzsx/wYSbWgFPhT/Pq6NiywhRNBfmqWtQebX+kOtrEjyvBM4lJ",
+       "h": "這一節的標題就是提示：網路使用者在網路上「對其他人應有的」什麼？"
       },
       {
        "q": "在群組裡有人說話不禮貌，怎麼做最好？",
@@ -311,7 +333,8 @@ window.QUIZ_READ = {
         "立刻把他移出群組不再理"
        ],
        "a": "1bfvrw4",
-       "x": "qCuvqBFJInqrebJzXG5Qk5XV5cbjcmZO+LwAB0F2SRbihLVhXfn2NFJeZ6Q0j4hHTDXet7UKzMl4AIlldPdZurZqoeoyrI1KNZ597SLzx8hXjXH/yzBQB5V1xoZac6Ud8zFjKXtquKuPxN/HgXY270vhF9SLRyQCuhYoJqJMqLkURkt+eIcTVGJNuZdJqmNQWn2QLtG5DkUe3/H2d7cUUy7iMWRycR07vfrNNZIkUmnodjdkcD8PGqe2ytn2c4zHBWiuISZyA9UA"
+       "x": "qCuvqBFJInqrebJzXG5Qk5XV5cbjcmZO+LwAB0F2SRbihLVhXfn2NFJeZ6Q0j4hHTDXet7UKzMl4AIlldPdZurZqoeoyrI1KNZ597SLzx8hXjXH/yzBQB5V1xoZac6Ud8zFjKXtquKuPxN/HgXY270vhF9SLRyQCuhYoJqJMqLkURkt+eIcTVGJNuZdJqmNQWn2QLtG5DkUe3/H2d7cUUy7iMWRycR07vfrNNZIkUmnodjdkcD8PGqe2ytn2c4zHBWiuISZyA9UA",
+       "h": "公開指責會讓對方沒面子；有沒有不讓大家圍觀的提醒方式？"
       },
       {
        "q": "在網路禮儀中，「群組」如同什麼樣的地方？",
@@ -322,7 +345,8 @@ window.QUIZ_READ = {
         "個人房間"
        ],
        "a": "18pkr79",
-       "x": "Sa0QGnWVV0GHgYcm2O3vLq9s5ZVXhCNHZcu2jBnEyjYvx4mdojgyvKfbPoTn+yMcbtDYND63WFATaA3N54MAiISxF+vaVkU7FgCp+IuC+MGRC8twzH9jHUbdFX5hv8DFX9RFsRSp/1F0poHO0rPpY1GTfvbpE0BY8FaNmsFEYhX8u9ystWDmPCFxU5plNDGOqz9humK6ZWOdjRBxEFfj9CIuJVcG"
+       "x": "Sa0QGnWVV0GHgYcm2O3vLq9s5ZVXhCNHZcu2jBnEyjYvx4mdojgyvKfbPoTn+yMcbtDYND63WFATaA3N54MAiISxF+vaVkU7FgCp+IuC+MGRC8twzH9jHUbdFX5hv8DFX9RFsRSp/1F0poHO0rPpY1GTfvbpE0BY8FaNmsFEYhX8u9ystWDmPCFxU5plNDGOqz9humK6ZWOdjRBxEFfj9CIuJVcG",
+       "h": "群組裡不只你和對方，還有很多人在看——像在什麼地方說話？"
       },
       {
        "q": "麗茹在報告群組裡說大智在打電動，事後她怎麼做才符合網路禮儀？",
@@ -333,7 +357,8 @@ window.QUIZ_READ = {
         "要求大智先向她道歉"
        ],
        "a": "vbce5m",
-       "x": "1vKP+XTNvTiNA0tEfWmaejkSnlIenyey2QUr3nmQ5J1GGdpk3fwNAV/hNXyvzmLHSigTA4Y6piV80uv8iSVvxVYUM6adDb+MZUOeArhA4kM3TjskT/n+VODv9S811FelUdy2c+x04uw5WHLShbpK5ZsEEvIgogi9OS1siAGyW6aCz+cMfTPdFUy8VoJZP5XRpWvfg+fcdPbLqX3zAj6lpXVTS//RT5hPtFFBPDf6BvGzA5NG4CAeXNaJuAFtL4KDy/MD"
+       "x": "1vKP+XTNvTiNA0tEfWmaejkSnlIenyey2QUr3nmQ5J1GGdpk3fwNAV/hNXyvzmLHSigTA4Y6piV80uv8iSVvxVYUM6adDb+MZUOeArhA4kM3TjskT/n+VODv9S811FelUdy2c+x04uw5WHLShbpK5ZsEEvIgogi9OS1siAGyW6aCz+cMfTPdFUy8VoJZP5XRpWvfg+fcdPbLqX3zAj6lpXVTS//RT5hPtFFBPDf6BvGzA5NG4CAeXNaJuAFtL4KDy/MD",
+       "h": "在很多人面前說錯話之後，最有禮貌的補救是什麼？"
       }
      ]
     },
@@ -355,7 +380,8 @@ window.QUIZ_READ = {
         "網路速度越來越快"
        ],
        "a": "yf03wx",
-       "x": "F95FebSe9cp5Vj1tDj3AZDycq3mYcltDH/AV0bNHaqockpNOeNGL2x8dwnOGPMa2DW7CcVf0H5I4QSy4xXe2tGa7YpWgLryg4IlZR2MHoMQ6S3LpNjCikzyDcbQYhCW6U1jP4BR9Wax0WlYBWk+Q+1fMMPnnRU3BFRggW5MAiTEtrDeCkZxayriyFcDEoPgFECBzbpSlZOUpvwPfJKMQQfGxLMsJ29VwtJ9IW7v3UWakKZ48GooWgSGHpaME0oMbKqPZ22X5KPyXAUmE7EgZ0lMgneB1ou6iOrOnourg/LTkUC6i8WJHR7+KBad+SqMbnMstQQskcrIu"
+       "x": "F95FebSe9cp5Vj1tDj3AZDycq3mYcltDH/AV0bNHaqockpNOeNGL2x8dwnOGPMa2DW7CcVf0H5I4QSy4xXe2tGa7YpWgLryg4IlZR2MHoMQ6S3LpNjCikzyDcbQYhCW6U1jP4BR9Wax0WlYBWk+Q+1fMMPnnRU3BFRggW5MAiTEtrDeCkZxayriyFcDEoPgFECBzbpSlZOUpvwPfJKMQQfGxLMsJ29VwtJ9IW7v3UWakKZ48GooWgSGHpaME0oMbKqPZ22X5KPyXAUmE7EgZ0lMgneB1ou6iOrOnourg/LTkUC6i8WJHR7+KBad+SqMbnMstQQskcrIu",
+       "h": "網路上發的東西，是只有朋友看得到，還是任何人都可能看到？"
       },
       {
        "q": "不該在網路上暴露的個人資訊，「不包括」下列哪一項？",
@@ -366,7 +392,8 @@ window.QUIZ_READ = {
         "機票或護照照片"
        ],
        "a": "nrjkk3",
-       "x": "3+uSqvEwygdBGPD7g+NAgCvXA0E6ROTtH24m1jssRSaF+TkAIkpqTZRH7VO+KQxL8Ex6rV14E1leHTwchvUJeYu2PzDfVVyyUt91RMvfoKwfpKUpIET0wRSi9QQMtDy/9hV9+NVMd3oiwBneisCWYhMLpLXXG02rzt/iJgyRF5fONOZFW4qFiBO1JiSyPVSh2DWo8M0JnShvV2/x/KH7v09xIh4AtCwJ7wRRJ6Ge2mALu3jg8kxD9FUS2rcJ10H/x+Y1sCPGOlYuzfSpMN3FxqlP"
+       "x": "3+uSqvEwygdBGPD7g+NAgCvXA0E6ROTtH24m1jssRSaF+TkAIkpqTZRH7VO+KQxL8Ex6rV14E1leHTwchvUJeYu2PzDfVVyyUt91RMvfoKwfpKUpIET0wRSi9QQMtDy/9hV9+NVMd3oiwBneisCWYhMLpLXXG02rzt/iJgyRF5fONOZFW4qFiBO1JiSyPVSh2DWo8M0JnShvV2/x/KH7v09xIh4AtCwJ7wRRJ6Ge2mALu3jg8kxD9FUS2rcJ10H/x+Y1sCPGOlYuzfSpMN3FxqlP",
+       "h": "想想哪些資料被壞人拿到，可以「認出你、冒用你」；哪一個沒有這個風險？"
       },
       {
        "q": "朋友私下傳給你的訊息，應該怎麼處理？",
@@ -377,7 +404,8 @@ window.QUIZ_READ = {
         "覺得好笑就轉給其他朋友"
        ],
        "a": "2miyai",
-       "x": "0QXz1YLMrYIUyi9cZI3rtNy0oEOUHHxEN4ihwF2RxUyZduZC/FHQg5ViN2/UNzHHbYyLzw6bRWuzLinIJ/yvg1dlIR8N3JvSgbSM9C3Pt2M9xb0j/N8mR/Z0PGLitnOicAFuyy8z0QdNPRv3v3SU9M6u16DXMB/Z+ZYbrdK90gV/N9ldH3jPKyepuRteePga3f22Jzx1NSh5vbIt6cbSxBYVFAtrWmvLgtQfQwwypp31cpPnRPxp"
+       "x": "0QXz1YLMrYIUyi9cZI3rtNy0oEOUHHxEN4ihwF2RxUyZduZC/FHQg5ViN2/UNzHHbYyLzw6bRWuzLinIJ/yvg1dlIR8N3JvSgbSM9C3Pt2M9xb0j/N8mR/Z0PGLitnOicAFuyy8z0QdNPRv3v3SU9M6u16DXMB/Z+ZYbrdK90gV/N9ldH3jPKyepuRteePga3f22Jzx1NSh5vbIt6cbSxBYVFAtrWmvLgtQfQwwypp31cpPnRPxp",
+       "h": "那是朋友「私下」給你的，公開之前要想到誰的隱私？"
       },
       {
        "q": "收到「點這個連結就送免費禮物」的不明訊息，最適當的做法是？",
@@ -388,7 +416,8 @@ window.QUIZ_READ = {
         "分享到群組問大家"
        ],
        "a": "17sc48u",
-       "x": "BTJuViok1TKtrJwzoBOORehYVhXhVHSJlRrUx5ANgDGrBfAkfBQxZOIBuQE4dsiAD8I7HKr5Fo4pzkuUln8Jlai9lcqv2oH7PuIErCXaSQNiF73iDkxA8JqudEw2pXNQKrHjaga+gqNMZYBKc77GsPD1pA9LGANcp8Fv1JMPnN06ngY1JdIqLCCft3YGifKRpAsbg4H6egbGCaSCelADaO4o2pVwy9GQPh0+SN1mLN7t"
+       "x": "BTJuViok1TKtrJwzoBOORehYVhXhVHSJlRrUx5ANgDGrBfAkfBQxZOIBuQE4dsiAD8I7HKr5Fo4pzkuUln8Jlai9lcqv2oH7PuIErCXaSQNiF73iDkxA8JqudEw2pXNQKrHjaga+gqNMZYBKc77GsPD1pA9LGANcp8Fv1JMPnN06ngY1JdIqLCCft3YGifKRpAsbg4H6egbGCaSCelADaO4o2pVwy9GQPh0+SN1mLN7t",
+       "h": "不明的連結，你轉出去就等於幫它找更多人點。"
       },
       {
        "q": "哪一類內容不應該隨便轉發、公開散布？",
@@ -399,7 +428,8 @@ window.QUIZ_READ = {
         "政府發布的防災資訊"
        ],
        "a": "1wh14q",
-       "x": "+PEGwP1b7hG3SF/UNlzRzpw3IOC8QJw1fCcDmX5ItdXN0ak2OTCMI7FZLwBrgfomoPzbSvyobHWmaNwmUzoXugRG0zTO9SAj4ARp/8FqtI8VjMyOVxx+iwvow7C/5MJKNA/YmlMZgttKtq1rkxmvMdWRbpsgKdTvw8pWloQ8++FcGucHl+W7IA7XXFjFT12o6lMhWsVggDp2hgKmE7MJuZLB895ej9KuhPAKWYyZWc3O/ilYQIvIRZx2RnOAXI/n/umzJYonegmdAUkHsMdQ"
+       "x": "+PEGwP1b7hG3SF/UNlzRzpw3IOC8QJw1fCcDmX5ItdXN0ak2OTCMI7FZLwBrgfomoPzbSvyobHWmaNwmUzoXugRG0zTO9SAj4ARp/8FqtI8VjMyOVxx+iwvow7C/5MJKNA/YmlMZgttKtq1rkxmvMdWRbpsgKdTvw8pWloQ8++FcGucHl+W7IA7XXFjFT12o6lMhWsVggDp2hgKmE7MJuZLB895ej9KuhPAKWYyZWc3O/ilYQIvIRZx2RnOAXI/n/umzJYonegmdAUkHsMdQ",
+       "h": "重點在「有沒有查證過」，不是所有東西都不能分享。"
       }
      ]
     },
@@ -422,7 +452,8 @@ window.QUIZ_READ = {
         "多用貼圖表達心情"
        ],
        "a": "xmqmut",
-       "x": "Yjp/W7eI/XSUYcy2zr9U3IqqVqZ7ogs2KWz7WpozzZh2RsdwY9tDN9CVu7d43E7jSzQ+bhs7YjdRsPiUHsVpspr5VXJMqrjSXBBJ2Lof69rSJJMSA32FtlG3s+wphSRZS8bcxNdDKrhK+oTiy5S6hjYv9BrVpuKtcJaoV6AG1YmXjqbmtykPZLxIbIOUw0fe8iNNwHUVlFACGJ/56gN5OlZGpgfIjOTDM5O4HR/9uxAmJRoX0ZNNwj0HkMWY"
+       "x": "Yjp/W7eI/XSUYcy2zr9U3IqqVqZ7ogs2KWz7WpozzZh2RsdwY9tDN9CVu7d43E7jSzQ+bhs7YjdRsPiUHsVpspr5VXJMqrjSXBBJ2Lof69rSJJMSA32FtlG3s+wphSRZS8bcxNdDKrhK+oTiy5S6hjYv9BrVpuKtcJaoV6AG1YmXjqbmtykPZLxIbIOUw0fe8iNNwHUVlFACGJ/56gN5OlZGpgfIjOTDM5O4HR/9uxAmJRoX0ZNNwj0HkMWY",
+       "h": "寫給老師的信是正式的還是閒聊？貼圖適合哪一種？"
       },
       {
        "q": "寄電子郵件時，為什麼「務必署名」？",
@@ -433,7 +464,8 @@ window.QUIZ_READ = {
         "署名才能附加檔案"
        ],
        "a": "1iy433c",
-       "x": "bJ+IIT1Spum49glGsIixsO6MdYNCcTqISvnVa6VmP2jYZ8HOm0ao4UwxkCIqf51+bvA0GkN1htAbP+5FIpVP9Z4b36T+nVos3icEULbZKjjaR7Ke0FkDsdtDlMDDDKSev5DzqaalhLhLWRLckXb6dbo9ruI1iNfWOvKH19F5UeaMTG7gUvAk/VdGysV74tNL592JdKIyHFOQHewluux/my0g5h/5tUGLCE/LZeWWs4s/pEQF+hST7FcJKtnJUMeEhCwMMh4TJgmoK1buQBef"
+       "x": "bJ+IIT1Spum49glGsIixsO6MdYNCcTqISvnVa6VmP2jYZ8HOm0ao4UwxkCIqf51+bvA0GkN1htAbP+5FIpVP9Z4b36T+nVos3icEULbZKjjaR7Ke0FkDsdtDlMDDDKSev5DzqaalhLhLWRLckXb6dbo9ruI1iNfWOvKH19F5UeaMTG7gUvAk/VdGysV74tNL592JdKIyHFOQHewluux/my0g5h/5tUGLCE/LZeWWs4s/pEQF+hST7FcJKtnJUMeEhCwMMh4TJgmoK1buQBef",
+       "h": "在信尾留下自己的名字，是對收信的人表示什麼態度？"
       },
       {
        "q": "通訊或貼文的用字遣詞，應該力求什麼？",
@@ -444,7 +476,8 @@ window.QUIZ_READ = {
         "越長越完整"
        ],
        "a": "1oo3kpd",
-       "x": "HJUX/dXEihHi3gxfDh8aFjuLB6tS1cZPPkFXe1DNCbpUz1cU1DGXrMWTFTGZqhGzwoaypTqzjVv/WAIa7UALDxC2o34zRjE1+Fr8yJnANhWF9zMYw0Ie2Lbk8Qs5idperrkxEjCyz2TZIv7ghrRnLRzqB1TrjIdkxK6OknICu21dI8qpgFuqR4vEYNEZSx7ezdgYeRDVfM8aqpZ0eMEnFVBoNDW0wcXIqHMgdAb3"
+       "x": "HJUX/dXEihHi3gxfDh8aFjuLB6tS1cZPPkFXe1DNCbpUz1cU1DGXrMWTFTGZqhGzwoaypTqzjVv/WAIa7UALDxC2o34zRjE1+Fr8yJnANhWF9zMYw0Ie2Lbk8Qs5idperrkxEjCyz2TZIv7ghrRnLRzqB1TrjIdkxK6OknICu21dI8qpgFuqR4vEYNEZSx7ezdgYeRDVfM8aqpZ0eMEnFVBoNDW0wcXIqHMgdAb3",
+       "h": "網路上多半靠文字溝通，怎樣的文字對方最不會誤會？"
       },
       {
        "q": "為什麼按下「傳送」鍵之前一定要檢查？",
@@ -455,7 +488,8 @@ window.QUIZ_READ = {
         "檢查才能傳得比較快"
        ],
        "a": "1a5va9u",
-       "x": "FxjsKc21psfPXF0FS1l3a2ZxCwCGJ6AtSOXlrCWE6IaZHPC3fllsP6bVQX3/1s5Gi3QsZQZK+1KxQrvqqUf3VwPCwmIA77Ze++18Gzkf3ZSjpgniM7uCK31/U9whOlkYFn8qk/QMCKNB9iGcB9zDcHzA9GG6coo816FQFvYWElQ7pMMHqaJWiE7bbSzcaR38x+mqbXU3yFt8oRrTy1Jy5In8ilXcRuzPVy4IP7loVEJs0wJ+ZdcuUrAj5+g7cg=="
+       "x": "FxjsKc21psfPXF0FS1l3a2ZxCwCGJ6AtSOXlrCWE6IaZHPC3fllsP6bVQX3/1s5Gi3QsZQZK+1KxQrvqqUf3VwPCwmIA77Ze++18Gzkf3ZSjpgniM7uCK31/U9whOlkYFn8qk/QMCKNB9iGcB9zDcHzA9GG6coo816FQFvYWElQ7pMMHqaJWiE7bbSzcaR38x+mqbXU3yFt8oRrTy1Jy5In8ilXcRuzPVy4IP7loVEJs0wJ+ZdcuUrAj5+g7cg==",
+       "h": "訊息按下去之後，還收得回來嗎？"
       },
       {
        "q": "網路社交互動中，有哪些便利的表達方式？",
@@ -466,7 +500,8 @@ window.QUIZ_READ = {
         "貼圖、動畫或符號"
        ],
        "a": "w3kj6u",
-       "x": "/ToiL2QUMcC7KT7GuMQxasUvoJPJSMoSEnKbbnOXOcquu5buwU9NKcNqxIxWXW2IYpxYGNW/v19vTu2rLF1fmweeHgT2/wXkLDQsXDKXHeR6OhuK9Kg9DFNMSg46BzxSi/hrtp0rSy2DWUL0fayMpiUq4+Fx3nxuauoHCoccaHGraqYQtqp3lbViN581Tuok3rEyk6GL1rqTja5NdLhJLpTEp9INu95BmecdPiksogxejZIZGWaFG6bVkkmqwrhB9XK4/P7Ohyf5TiQB"
+       "x": "/ToiL2QUMcC7KT7GuMQxasUvoJPJSMoSEnKbbnOXOcquu5buwU9NKcNqxIxWXW2IYpxYGNW/v19vTu2rLF1fmweeHgT2/wXkLDQsXDKXHeR6OhuK9Kg9DFNMSg46BzxSi/hrtp0rSy2DWUL0fayMpiUq4+Fx3nxuauoHCoccaHGraqYQtqp3lbViN581Tuok3rEyk6GL1rqTja5NdLhJLpTEp9INu95BmecdPiksogxejZIZGWaFG6bVkkmqwrhB9XK4/P7Ohyf5TiQB",
+       "h": "想想你平常用 LINE 聊天時，除了打字還會傳什麼？"
       }
      ]
     }
@@ -492,7 +527,8 @@ window.QUIZ_READ = {
         "卡茲"
        ],
        "a": "288l76",
-       "x": "hLgRee4YPmfOUZz5gk+gADfPW7Ub5fq9IfmIOeW3/lQcDA8Y3ZSywLVC4ktdq9RtbXyqUcb0ssGTUUU2jxkD8SgABENd6Uz/sZW1qdcJNMSwgPj2jl3KUFZif5mAqjSkYlL3M1HaIdFI3HSnJOZvcRzi3Q3yB0DpgmAjUuHCiMO9aADE6CEAltoKPKUVORqsmMeexg=="
+       "x": "hLgRee4YPmfOUZz5gk+gADfPW7Ub5fq9IfmIOeW3/lQcDA8Y3ZSywLVC4ktdq9RtbXyqUcb0ssGTUUU2jxkD8SgABENd6Uz/sZW1qdcJNMSwgPj2jl3KUFZif5mAqjSkYlL3M1HaIdFI3HSnJOZvcRzi3Q3yB0DpgmAjUuHCiMO9aADE6CEAltoKPKUVORqsmMeexg==",
+       "h": "PAPA 理論在 1986 年提出，提出的人和「數位落差」的提出者不是同一個。"
       },
       {
        "q": "PAPA 四個字母分別代表哪四項？",
@@ -503,7 +539,8 @@ window.QUIZ_READ = {
         "隱私、正確、公開、存取"
        ],
        "a": "17zhhot",
-       "x": "35igNaQEKdS1CMpmSwmY8c/kg4FzvhyH+9sPb8ECx6MM0Vw78FIoq/7u5GA4fV6nzMhQ9F8/DOD8B1ymKFvo0kwalXpBdjVCNHu+FlbkuZbIlkqGbTZi3Wcn/TguRjowKRWDA8LFOfwdpbRrOI3okaPt7im/jKNKFKe+2GGcztAvHZmGMkMfWI7JGey9W7ayxl7tb4BZ59Qp7xFk0HQjazxyJOLd2jWpC+okG8Stzw=="
+       "x": "35igNaQEKdS1CMpmSwmY8c/kg4FzvhyH+9sPb8ECx6MM0Vw78FIoq/7u5GA4fV6nzMhQ9F8/DOD8B1ymKFvo0kwalXpBdjVCNHu+FlbkuZbIlkqGbTZi3Wcn/TguRjowKRWDA8LFOfwdpbRrOI3okaPt7im/jKNKFKe+2GGcztAvHZmGMkMfWI7JGey9W7ayxl7tb4BZ59Qp7xFk0HQjazxyJOLd2jWpC+okG8Stzw==",
+       "h": "每個字母是一個英文字的開頭：privacy、accuracy、property、accessibility。"
       },
       {
        "q": "要維持資訊社會的和諧，哪一個比較重要？",
@@ -514,7 +551,8 @@ window.QUIZ_READ = {
         "速度重於安全"
        ],
        "a": "q7z436",
-       "x": "cEBfVUDgW5QcawDp2XfwUhqX3Xwv0WTlXQ2+FRftjSWLFfQrLguUJW4W5+0VDF9ap/IR8oPKl5HLR3j8EBroromjJJDsktFSh5og0M1M6DzNpYHozPJM6gsYSGsD3iNlSvDMy1X4epQWtzC6ElFnYUllcHhQ585oxk85+QU1XDnHpdsucuEcd+oCkpXqTCxn005nwDWtVptjDqkeMyYk8xQnOxCgMJFJXpKTAp2D"
+       "x": "cEBfVUDgW5QcawDp2XfwUhqX3Xwv0WTlXQ2+FRftjSWLFfQrLguUJW4W5+0VDF9ap/IR8oPKl5HLR3j8EBroromjJJDsktFSh5og0M1M6DzNpYHozPJM6gsYSGsD3iNlSvDMy1X4epQWtzC6ElFnYUllcHhQ585oxk85+QU1XDnHpdsucuEcd+oCkpXqTCxn005nwDWtVptjDqkeMyYk8xQnOxCgMJFJXpKTAp2D",
+       "h": "一個是自己願意做到，一個是怕被處罰才做到；哪一個讓社會更和諧？"
       },
       {
        "q": "「近用」這個詞是什麼的縮寫？",
@@ -525,7 +563,8 @@ window.QUIZ_READ = {
         "接近使用"
        ],
        "a": "1go63oq",
-       "x": "j4h+3IYxlVdyakpz6uKe7XJpm4uCFnodMtn7rExgNFNiZf33C2I26bvTGlGKwoEnPBPyAhx7QBLyM1R3T8jduXbjtEtBwOgoakfOJdxmT30tiR6L8zhKBvvHRDexha5eupnJnvdtRwHKkXoUVMIRkf0qFF+SN9f3UYSg6g/LZeiVHdMsTgr4"
+       "x": "j4h+3IYxlVdyakpz6uKe7XJpm4uCFnodMtn7rExgNFNiZf33C2I26bvTGlGKwoEnPBPyAhx7QBLyM1R3T8jduXbjtEtBwOgoakfOJdxmT30tiR6L8zhKBvvHRDexha5eupnJnvdtRwHKkXoUVMIRkf0qFF+SN9f3UYSg6g/LZeiVHdMsTgr4",
+       "h": "想想數位機會中心讓民眾怎麼使用電腦：走過去就能用。"
       },
       {
        "q": "政府在偏鄉設置「數位機會中心（DOC）」，目的是什麼？",
@@ -536,7 +575,8 @@ window.QUIZ_READ = {
         "訓練專業的電腦工程師"
        ],
        "a": "eeqqxr",
-       "x": "yi3H4T0hTV8+5H0QmD4+UmJtIYNbn+k6DfGJEkPry06LKo5Xxa2Y+q7B2RvPPirq79R9r5qqder968+N+Zy8CSjEWQ9mK7b4zFPwOoJjQGw3bCs9OGlgO/w81Ap3Bk2Aw9yfypPnp2vfsDcTfZgGy8SMC9MSS1lCWMNtroBwtR/z2jNBpWGSXBQN2B/mBWsTAdhx8VdjPpQXd/pKMxskvs8tFCOtL5EHZdhNzYUtdJSIc2sVD2LC+A=="
+       "x": "yi3H4T0hTV8+5H0QmD4+UmJtIYNbn+k6DfGJEkPry06LKo5Xxa2Y+q7B2RvPPirq79R9r5qqder968+N+Zy8CSjEWQ9mK7b4zFPwOoJjQGw3bCs9OGlgO/w81Ap3Bk2Aw9yfypPnp2vfsDcTfZgGy8SMC9MSS1lCWMNtroBwtR/z2jNBpWGSXBQN2B/mBWsTAdhx8VdjPpQXd/pKMxskvs8tFCOtL5EHZdhNzYUtdJSIc2sVD2LC+A==",
+       "h": "以前不是家家都有電腦，這個中心讓偏鄉民眾「在附近」做什麼？"
       }
      ]
     },
@@ -560,7 +600,8 @@ window.QUIZ_READ = {
         "個人有權決定資料保密或公開"
        ],
        "a": "gfwo81",
-       "x": "wdrwrLKojQPss/btdFltc5Ckq5q8jYLig78BJf7rOVrh+s0yU5bWiAaKDghpnXyoqfEK7SWASq/vhoMHDiOnADP4mkG6vjI3+Y0J5/x3ag5BqrJiGG1S8qJHLJGP3nbhXpNv9sajshK+QVArhr37U1QU7sQhHj72ciRYv7iiBBumd2bOH568WaQGtz1mULhwrmHCE1Ew6W/8L6q4N6adOfqFY/fYOoMh3+Xs3TIbV26KJpHb5L2TMU9S745DjgMtBd9Wir5oRFx/TSvrnNbfK38oZDWrv3Rl/qOD2jNvFFwu"
+       "x": "wdrwrLKojQPss/btdFltc5Ckq5q8jYLig78BJf7rOVrh+s0yU5bWiAaKDghpnXyoqfEK7SWASq/vhoMHDiOnADP4mkG6vjI3+Y0J5/x3ag5BqrJiGG1S8qJHLJGP3nbhXpNv9sajshK+QVArhr37U1QU7sQhHj72ciRYv7iiBBumd2bOH568WaQGtz1mULhwrmHCE1Ew6W/8L6q4N6adOfqFY/fYOoMh3+Xs3TIbV26KJpHb5L2TMU9S745DjgMtBd9Wir5oRFx/TSvrnNbfK38oZDWrv3Rl/qOD2jNvFFwu",
+       "h": "隱私權的重點是：資料要不要公開，「誰」說了算？"
       },
       {
        "q": "倫理是「自律」，發自於良知；那法律是什麼？",
@@ -571,7 +612,8 @@ window.QUIZ_READ = {
         "良知"
        ],
        "a": "q887no",
-       "x": "A0wHNT0OkAAg3MxaODRTNvyRVX6BZFyr4ehsj9hPaeTIVJl/zayMW0ZBe/YKVoa8gZj/wP8zeUAyRKFxoGqUsrhLqlwDudRmgSV+h1rhzaYKaPzI1Qd2YOC+F1IeW3S6O71xMBs8HAgGHOWYXd78MR59YGNdQnSWWpJD+Y7nDU0XjvN+0f4uo9zTLIRkJMGaELsj7cwrG6TX0X/RVk11nf8OCxUu3cbK3ghI32P8a3hMtcf2UuIzpVKFv4qnoVgz"
+       "x": "A0wHNT0OkAAg3MxaODRTNvyRVX6BZFyr4ehsj9hPaeTIVJl/zayMW0ZBe/YKVoa8gZj/wP8zeUAyRKFxoGqUsrhLqlwDudRmgSV+h1rhzaYKaPzI1Qd2YOC+F1IeW3S6O71xMBs8HAgGHOWYXd78MR59YGNdQnSWWpJD+Y7nDU0XjvN+0f4uo9zTLIRkJMGaELsj7cwrG6TX0X/RVk11nf8OCxUu3cbK3ghI32P8a3hMtcf2UuIzpVKFv4qnoVgz",
+       "h": "自律是自己管自己；法律則是由「別人」來約束——兩個字。"
       },
       {
        "q": "下列哪一個做法，違反了數位公民應嚴守的隱私事項？",
@@ -582,7 +624,8 @@ window.QUIZ_READ = {
         "不把同學電話給陌生人"
        ],
        "a": "198p1ho",
-       "x": "yphNewRoddj7JmKGngqmk6uO2JTeoVqT7p2RWkD+d5Sf3uNOqdi7wSKAtNviCs24PQvHxPOFVWmA+HYeMsFQy36MFOJoQgZ+cfAF5IElvptp3O/CB8vfXvBJvC1JP6VfAPgmgWPjLYeP11D/ia4NsCXh/mOigfxSw0OYBTf9O7C7Zaw5BaLFyCTKU0VTeTnYwhHm4+OsSx/TPYhR3AZLzeBEekmMcdf9wJ0IADiK3Q8Q"
+       "x": "yphNewRoddj7JmKGngqmk6uO2JTeoVqT7p2RWkD+d5Sf3uNOqdi7wSKAtNviCs24PQvHxPOFVWmA+HYeMsFQy36MFOJoQgZ+cfAF5IElvptp3O/CB8vfXvBJvC1JP6VfAPgmgWPjLYeP11D/ia4NsCXh/mOigfxSw0OYBTf9O7C7Zaw5BaLFyCTKU0VTeTnYwhHm4+OsSx/TPYhR3AZLzeBEekmMcdf9wJ0IADiK3Q8Q",
+       "h": "在大家都看得到的地方，點名聊別人的事，會怎麼樣？"
       },
       {
        "q": "疫情期間公布確診者，為什麼只說「案 54、30 多歲、北部」，而不公布姓名？",
@@ -593,7 +636,8 @@ window.QUIZ_READ = {
         "病人的名字太長不好記"
        ],
        "a": "linz9e",
-       "x": "ET/cXrkFj7WjPjRb1NTIi3VHWadV0QuPWmi0KtyESqdPp3lYXpLbA8sr15LjVd3oD0UpjDv+rJ0f2bgI5dooMmztnPL8uQEluQogei8wHzIjmsiqo6tk6Ec4QtSTgNzhJB9s9Q3Kk1uIuti5yziYp9qMHjJS8Dgn7ZNaONR6HPi/9lHPzFfvGxSCuJEbkZhiyqe3HC2tgiFXuIITYxx1xHjNJ8I3EoDeclf0A0rm41rWUCyGtFK+"
+       "x": "ET/cXrkFj7WjPjRb1NTIi3VHWadV0QuPWmi0KtyESqdPp3lYXpLbA8sr15LjVd3oD0UpjDv+rJ0f2bgI5dooMmztnPL8uQEluQogei8wHzIjmsiqo6tk6Ec4QtSTgNzhJB9s9Q3Kk1uIuti5yziYp9qMHjJS8Dgn7ZNaONR6HPi/9lHPzFfvGxSCuJEbkZhiyqe3HC2tgiFXuIITYxx1xHjNJ8I3EoDeclf0A0rm41rWUCyGtFK+",
+       "h": "姓名是受哪一部法律保護的個人資料？"
       },
       {
        "q": "有人請你把班上同學的電話給補習班，你應該怎麼做？",
@@ -604,7 +648,8 @@ window.QUIZ_READ = {
         "未經同學同意不能給"
        ],
        "a": "1bjspff",
-       "x": "OY+/t5ZlsclyphC133qxQ5zv93I3wWjKbzk+sEp/PW3sL+dS4C5Glv6F/DYzf767fGkJtqYTyMemYXy+mLKk5Z0W1LxsUmcHeeU1rVNw8+uEqxI6IdfehnTb70NtDf7Y7q8U2tOIFXnqe/MF2wL4WG7lCxf86tfglJyAKOaD9tlsebKwYcBI/0T/UsuNAbiBRx6tQfs7BP7fRkjG8B9HOjKNnFk3jIHOjwsnI6eohI4y510wnuqoZ6GyIrUF"
+       "x": "OY+/t5ZlsclyphC133qxQ5zv93I3wWjKbzk+sEp/PW3sL+dS4C5Glv6F/DYzf767fGkJtqYTyMemYXy+mLKk5Z0W1LxsUmcHeeU1rVNw8+uEqxI6IdfehnTb70NtDf7Y7q8U2tOIFXnqe/MF2wL4WG7lCxf86tfglJyAKOaD9tlsebKwYcBI/0T/UsuNAbiBRx6tQfs7BP7fRkjG8B9HOjKNnFk3jIHOjwsnI6eohI4y510wnuqoZ6GyIrUF",
+       "h": "電話號碼是誰的個資？要給第三者之前，要先得到什麼？"
       }
      ]
     },
@@ -628,7 +673,8 @@ window.QUIZ_READ = {
         "網路資訊比書本更具權威性"
        ],
        "a": "16drygs",
-       "x": "hvpjlH87ha2UKXlHJYSD4TdCFxnLLPeDGTWw+l0HgpN3Wq7QXQPyRf1Bf7zIzovVAL1yI8074WZ3e4o9qjM6oGtlhEWVdDvZqCjM5Fw1VB3kCbIkOKrENWCSWDpacKjurYLGC7II9214pW5oj+/7/sccbAs0OZ7GjNe/zUZMxc8Gx48J2MT7FKNZt9aXAHLXSgWIKnvSLXloFn/LDFsexNJdyy+dzlbc7j5sOprKNCPqXJ06mm5z23K8lA2rAcsaP9h54E8oPNM1St0ddq0mRxVI5Oqu7gylZvAeMUTX"
+       "x": "hvpjlH87ha2UKXlHJYSD4TdCFxnLLPeDGTWw+l0HgpN3Wq7QXQPyRf1Bf7zIzovVAL1yI8074WZ3e4o9qjM6oGtlhEWVdDvZqCjM5Fw1VB3kCbIkOKrENWCSWDpacKjurYLGC7II9214pW5oj+/7/sccbAs0OZ7GjNe/zUZMxc8Gx48J2MT7FKNZt9aXAHLXSgWIKnvSLXloFn/LDFsexNJdyy+dzlbc7j5sOprKNCPqXJ06mm5z23K8lA2rAcsaP9h54E8oPNM1St0ddq0mRxVI5Oqu7gylZvAeMUTX",
+       "h": "網路上的消息一下子就傳遍全國；傳得快的錯誤消息會造成什麼？"
       },
       {
        "q": "梅森在三十多年前就預見，資訊時代會出現什麼問題？",
@@ -639,7 +685,8 @@ window.QUIZ_READ = {
         "電腦全面取代人力"
        ],
        "a": "10e7swx",
-       "x": "BOaofmlXQ5JiINje+TrMWC5Jr+/XFvw5K03kyqDG6oasPnPy4/fOFND/EoDTXTsi1xpH6JpZ7ttDwXIprNBStR/afsBgcRLytpGsnqAfe2fFIDn5mh+bWfkpKxT8c8YiWx+n2tl5V1gYj/aT+kKye7szQ8rLOoDUxUZV7q8zJLGnJT4vhTRCEVg0YDCvxtEr1L2T"
+       "x": "BOaofmlXQ5JiINje+TrMWC5Jr+/XFvw5K03kyqDG6oasPnPy4/fOFND/EoDTXTsi1xpH6JpZ7ttDwXIprNBStR/afsBgcRLytpGsnqAfe2fFIDn5mh+bWfkpKxT8c8YiWx+n2tl5V1gYj/aT+kKye7szQ8rLOoDUxUZV7q8zJLGnJT4vhTRCEVg0YDCvxtEr1L2T",
+       "h": "梅森提醒的是資訊時代最容易氾濫的一種東西。"
       },
       {
        "q": "收到一則「某地自來水有毒」、但查不到來源的訊息，應該怎麼做？",
@@ -650,7 +697,8 @@ window.QUIZ_READ = {
         "不轉寄未經查證的訊息"
        ],
        "a": "1ffwet0",
-       "x": "nUzVrKNMpOGEfm7KXkLH6YjI1ZE32mjcxRDLVqKe7K2m0Ma5zJjmyWu9MOf0HnD/yfNilax+Wafc3+1qBOqz2VnTSVHt7TL/xmxngrkwdLOzG7m1NnilrLwzhcaa7P6/HGbCQ68ysiwjEtKHQ2Fyn9y4bXTTd6ZQVbUGSCy6Ac/KXuV7z4SqWq6zGBFGx3p9Lkmvwk3z3LBhJMZzVjH4jr7RphIRN42spE9v82jCJCFFoB38XyBTHMuMYaHcUDYj5Fpk/bCIl84VUmwKxhdt"
+       "x": "nUzVrKNMpOGEfm7KXkLH6YjI1ZE32mjcxRDLVqKe7K2m0Ma5zJjmyWu9MOf0HnD/yfNilax+Wafc3+1qBOqz2VnTSVHt7TL/xmxngrkwdLOzG7m1NnilrLwzhcaa7P6/HGbCQ68ysiwjEtKHQ2Fyn9y4bXTTd6ZQVbUGSCy6Ac/KXuV7z4SqWq6zGBFGx3p9Lkmvwk3z3LBhJMZzVjH4jr7RphIRN42spE9v82jCJCFFoB38XyBTHMuMYaHcUDYj5Fpk/bCIl84VUmwKxhdt",
+       "h": "查不到來源＝沒查證過；這種訊息該不該轉出去？"
       },
       {
        "q": "從個資法的立法目的來看，除了保護個人隱私，還要維護什麼？",
@@ -661,7 +709,8 @@ window.QUIZ_READ = {
         "個資的商業價值"
        ],
        "a": "19udl88",
-       "x": "jPpcJJA/WSLX3BUSgAdG1RAnKkg8agKp9WXyIGFSynUcgdn6Ljcw4Xvj2Pzci35L5sXSEwl05FmSnARBX4Ye8HZBM3UbOLVLak7rSazPRwrTT1SmqIAKr1hd84tMnrV4zBM59h3AUxa+bv5SIGppW7ZPqFHnsnuZsPqNYmKZAje4UjXi5rvxbkkKSC8hCQuQSkUtm6znlyWfEO7/"
+       "x": "jPpcJJA/WSLX3BUSgAdG1RAnKkg8agKp9WXyIGFSynUcgdn6Ljcw4Xvj2Pzci35L5sXSEwl05FmSnARBX4Ye8HZBM3UbOLVLak7rSazPRwrTT1SmqIAKr1hd84tMnrV4zBM59h3AUxa+bv5SIGppW7ZPqFHnsnuZsPqNYmKZAje4UjXi5rvxbkkKSC8hCQuQSkUtm6znlyWfEO7/",
+       "h": "個資法不只保護隱私，也希望你的資料是「對的」。"
       },
       {
        "q": "新冠肺炎期間，一天有七千多筆網路口罩購買失敗，原因是什麼？",
@@ -672,7 +721,8 @@ window.QUIZ_READ = {
         "輸入的資料不完整或錯誤"
        ],
        "a": "bv9m8j",
-       "x": "0M71h/LOXB7mQWnnKvw2G9A7MjuwCziySpwOt5ObNLfvaeI1lRqQW5iX9WCmojGSZ9eQ0eOk97ttAtFIyoouOGBPx+udM2VtQUG8AmB0YVoUIYuDb8mDFCAjmXpixwfHMNqN8nu+FPRveHWOezr2lhyzvnCbZnJ9KCRFGOgF3rQ6dsSUee+cuCjQfvZn8fHEecBwUgt/mKza/9XN4PxkFHJCVZE1h1qYMfF263ySZpf0MT6Po6C5NCSF3U+PbGcfXlPnfmhWZNw="
+       "x": "0M71h/LOXB7mQWnnKvw2G9A7MjuwCziySpwOt5ObNLfvaeI1lRqQW5iX9WCmojGSZ9eQ0eOk97ttAtFIyoouOGBPx+udM2VtQUG8AmB0YVoUIYuDb8mDFCAjmXpixwfHMNqN8nu+FPRveHWOezr2lhyzvnCbZnJ9KCRFGOgF3rQ6dsSUee+cuCjQfvZn8fHEecBwUgt/mKza/9XN4PxkFHJCVZE1h1qYMfF263ySZpf0MT6Po6C5NCSF3U+PbGcfXlPnfmhWZNw=",
+       "h": "那一天有七千多筆沒辦法完成手續，問題出在民眾自己填了什麼？"
       }
      ]
     },
@@ -695,7 +745,8 @@ window.QUIZ_READ = {
         "著作權、專利權與商業機密"
        ],
        "a": "cm1913",
-       "x": "/VwYDF1OePG1zF7L5CHIJXJjrj8cpYgr9aA+ZnQM4BdKo7+VTnGad8HbAwU7sIC3qG4NRluCImKsGKPTbTfX9RjrwMtZKLjiz4ZNZ/71RCajDo9efJ3E17zUmaIoLMMl9PTpwxl0iHjJOmjtjRtwWwvzaSoU5UO67j2lBRkwQLOK+96qQLLTGMw9+D2Mi5bLY3r/eo4BmzPbVurK2K/GUo+G/4IvgXOiL6jgioq26Mb7S/FtyNV2EnNybSFViF7aMeBZelEva1gMm87uoSu4g9M0eZPWhuK5JTAn"
+       "x": "/VwYDF1OePG1zF7L5CHIJXJjrj8cpYgr9aA+ZnQM4BdKo7+VTnGad8HbAwU7sIC3qG4NRluCImKsGKPTbTfX9RjrwMtZKLjiz4ZNZ/71RCajDo9efJ3E17zUmaIoLMMl9PTpwxl0iHjJOmjtjRtwWwvzaSoU5UO67j2lBRkwQLOK+96qQLLTGMw9+D2Mi5bLY3r/eo4BmzPbVurK2K/GUo+G/4IvgXOiL6jgioq26Mb7S/FtyNV2EnNybSFViF7aMeBZelEva1gMm87uoSu4g9M0eZPWhuK5JTAn",
+       "h": "所有權是「東西是誰的」——包括作品、發明，還有公司的秘密。"
       },
       {
        "q": "「物各有主」這個觀念，是要我們做到什麼？",
@@ -706,7 +757,8 @@ window.QUIZ_READ = {
         "付錢買了就能任意複製"
        ],
        "a": "vm39gl",
-       "x": "K3bD2hyNbevxHklhZWUC9tt8sAi44atp3mWf0l99SmOAA4SejmORGIFFXAUo19hqXedw8pvqbylL5NXEgcbDXLzU6PsEVd2bw10b46duZFs0soZftgB0JBkwBd6nA1hv/El6QyTJ3iy9Lu0/6hsBPCmcDJq008HMbnhdPodUOU3IKGKkI1BuWg6nb4kJiClA6pjfznQ79eou/BllShlEIVO4oceFBseyxElSaMoaxfp6uYj2fzO6gcmWCyafQRNl"
+       "x": "K3bD2hyNbevxHklhZWUC9tt8sAi44atp3mWf0l99SmOAA4SejmORGIFFXAUo19hqXedw8pvqbylL5NXEgcbDXLzU6PsEVd2bw10b46duZFs0soZftgB0JBkwBd6nA1hv/El6QyTJ3iy9Lu0/6hsBPCmcDJq008HMbnhdPodUOU3IKGKkI1BuWg6nb4kJiClA6pjfznQ79eou/BllShlEIVO4oceFBseyxElSaMoaxfp6uYj2fzO6gcmWCyafQRNl",
+       "h": "東西的主人有權決定怎麼用它，我們要怎麼對待主人的這份權利？"
       },
       {
        "q": "一個有秩序的和諧社會，什麼「尤甚於」法律？",
@@ -717,7 +769,8 @@ window.QUIZ_READ = {
         "自由"
        ],
        "a": "1qno7on",
-       "x": "juOSqMbtVj+3z6zzyTBUDhBAga8HbLokbxYVfGTXejfjKAZrTPJeFDQDdlKtKKvlndFDgvXUxP5BiuyZJ65llj+mK/lgwoOrpkbwyFY4VX9lDLMM/k4wDHSrzisvN4c3dgE1KFs4iG86BSsSPBNTbtLApdJGxuZQuWU1PMaHFqlvVQBRJVNlK8PVnrfH/w9CIvTdU3Ln"
+       "x": "juOSqMbtVj+3z6zzyTBUDhBAga8HbLokbxYVfGTXejfjKAZrTPJeFDQDdlKtKKvlndFDgvXUxP5BiuyZJ65llj+mK/lgwoOrpkbwyFY4VX9lDLMM/k4wDHSrzisvN4c3dgE1KFs4iG86BSsSPBNTbtLApdJGxuZQuWU1PMaHFqlvVQBRJVNlK8PVnrfH/w9CIvTdU3Ln",
+       "h": "一個和諧的社會，比法律更重要的是人和人之間的一種態度。"
       },
       {
        "q": "美術課下載了前輩畫家的畫作，下列哪個做法屬於「合理使用」？",
@@ -728,7 +781,8 @@ window.QUIZ_READ = {
         "上傳到自己的網站分享"
        ],
        "a": "1ckwv2r",
-       "x": "lGSp5EDMwvs34rQq5nn+ndStRLMuZuJKIEre8Xg0JqBfgUpxTnZ9VjuUP20aEFDQ/3if9uGGAwrXaW9VrjyVA5JwuW20KruocslZ3IpEmWyh8um8ZrQFF0FWQXzYTdVn/T2RBKRAMOJg4tU1ZWjuUvHitT1viRld5tMIJ/qExeuFRp8b/0MBhk+wwGC3fNVtyygOI4qxzzmpcofTP+NBvmjvAZpkXYhvA1Sx+SeEj2xw6WLqFAO04J95JWBDlUFio8tPPJjpLjBqcZqBZRZvHaBG"
+       "x": "lGSp5EDMwvs34rQq5nn+ndStRLMuZuJKIEre8Xg0JqBfgUpxTnZ9VjuUP20aEFDQ/3if9uGGAwrXaW9VrjyVA5JwuW20KruocslZ3IpEmWyh8um8ZrQFF0FWQXzYTdVn/T2RBKRAMOJg4tU1ZWjuUvHitT1viRld5tMIJ/qExeuFRp8b/0MBhk+wwGC3fNVtyygOI4qxzzmpcofTP+NBvmjvAZpkXYhvA1Sx+SeEj2xw6WLqFAO04J95JWBDlUFio8tPPJjpLjBqcZqBZRZvHaBG",
+       "h": "合理使用的範圍：存在哪裡、給誰看？轉傳和販賣就超出了。"
       },
       {
        "q": "沒有適切創用 CC 授權的畫作，轉傳給其他人屬於什麼？",
@@ -739,7 +793,8 @@ window.QUIZ_READ = {
         "個人隱私的問題"
        ],
        "a": "13e27yz",
-       "x": "AsThTqLdkACQRalLdub2mSdd9Jjg1HwUMUO0AaW/dREqQ1gz3WMEllZsm5/hYsD4UMYfibPtbNTLAkEE0o3nuaDK2Katj/z8VZYMogQuyOBNYfCvzjIDdTESj0qwwQJ5Yo+b9DbAo2ZWmf5azk+b8ORN8/h/ZHqErwpDan14qq8h1pGAFR9MoPHGn5EkJrncytlOTDeKtw=="
+       "x": "AsThTqLdkACQRalLdub2mSdd9Jjg1HwUMUO0AaW/dREqQ1gz3WMEllZsm5/hYsD4UMYfibPtbNTLAkEE0o3nuaDK2Katj/z8VZYMogQuyOBNYfCvzjIDdTESj0qwwQJ5Yo+b9DbAo2ZWmf5azk+b8ORN8/h/ZHqErwpDan14qq8h1pGAFR9MoPHGn5EkJrncytlOTDeKtw==",
+       "h": "沒有授權還轉傳，這種行為在法律上是合法還是不合法？"
       }
      ]
     },
@@ -759,7 +814,8 @@ window.QUIZ_READ = {
         "政府可以限制人民使用網路"
        ],
        "a": "1a1wfqm",
-       "x": "SwiG05phT71u0NzEu9ly4e7iJfhLRbyCBWnD/VfNctLHpw3W7wpv5+TK5slDVqjMrSalUeAgs0wmtojZaV1N+ff8ew5+iUKd5iFgzZVeOCH+mYNIS0avVsCwIdqeFDqrR3UjCLRLvj7czr9EvpWuiiLQY18GuHcmrnmh4ZtFQgjFBzQjDQwP9t3Q1Ml0+GnC516FBOqsowHKKmCD86JcCcfA5q7y4B++WlrvaqgKASkbPRqps7DYB02s"
+       "x": "SwiG05phT71u0NzEu9ly4e7iJfhLRbyCBWnD/VfNctLHpw3W7wpv5+TK5slDVqjMrSalUeAgs0wmtojZaV1N+ff8ew5+iUKd5iFgzZVeOCH+mYNIS0avVsCwIdqeFDqrR3UjCLRLvj7czr9EvpWuiiLQY18GuHcmrnmh4ZtFQgjFBzQjDQwP9t3Q1Ml0+GnC516FBOqsowHKKmCD86JcCcfA5q7y4B++WlrvaqgKASkbPRqps7DYB02s",
+       "h": "近用權主張的是「每一個人」都應該有什麼？"
       },
       {
        "q": "「數位落差」這個詞，是誰首先提出的？",
@@ -770,7 +826,8 @@ window.QUIZ_READ = {
         "卡茲"
        ],
        "a": "wivk30",
-       "x": "bfwuRL3LxxqYh51II0x/TUZpBsBqhN2pUVHnA6/ib6TgNmXl1iGjnO5dBVA/L8Y+8mQz3ozU2gSGNrq3oe512O6phyfo5EPW+ubKkub6S9Dlsm5ILzvQEuY66nzm/iJIlGZeQvwLBlf40EIlz6wM9eZj1K5hScnTYKStMrUyfiVGqTqgNoO4IlGfbw=="
+       "x": "bfwuRL3LxxqYh51II0x/TUZpBsBqhN2pUVHnA6/ib6TgNmXl1iGjnO5dBVA/L8Y+8mQz3ozU2gSGNrq3oe512O6phyfo5EPW+ubKkub6S9Dlsm5ILzvQEuY66nzm/iJIlGZeQvwLBlf40EIlz6wM9eZj1K5hScnTYKStMrUyfiVGqTqgNoO4IlGfbw==",
+       "h": "數位落差一詞和 PAPA 理論是不同人提出的，年分也不同。"
       },
       {
        "q": "「數位落差」一詞是哪一年首次提出的？",
@@ -781,7 +838,8 @@ window.QUIZ_READ = {
         "1995 年"
        ],
        "a": "13gpako",
-       "x": "hffI7KfCSGcGqXVda4nnXEr81oe0XjHPRZOO+KTqJncZleFRP7I+JHnfzcO9J8CaVXam//IKLSMm+MqC9DIZq3CSqJbEURfGt/RVaCN9WuP9LNElhIDgtpZ7ErfbiZ+Xu+EIhDDFMWZSU0CfDxOdYCtxPdQkjKz2+agRMVe1yQYvPt4HRsf8ig=="
+       "x": "hffI7KfCSGcGqXVda4nnXEr81oe0XjHPRZOO+KTqJncZleFRP7I+JHnfzcO9J8CaVXam//IKLSMm+MqC9DIZq3CSqJbEURfGt/RVaCN9WuP9LNElhIDgtpZ7ErfbiZ+Xu+EIhDDFMWZSU0CfDxOdYCtxPdQkjKz2+agRMVe1yQYvPt4HRsf8ig==",
+       "h": "PAPA 理論在 1986 年提出，數位落差一詞比它晚了快十年。"
       },
       {
        "q": "縮短數位落差，是要弭平什麼現象？",
@@ -792,7 +850,8 @@ window.QUIZ_READ = {
         "電腦價格越來越高"
        ],
        "a": "cpolqc",
-       "x": "nxJfGjg9KpyzgqtXctWEvTH4nX+IXvVi/6ldci2J+Xpo14uZmmqtP6/CSEeDMuPDZELz5SLXvXuWJu7yU2Kb5EjZMA7TNg9kQENrTMaNddcMCksibZUtCHZtstrMmS/5j01x1RRvLBXEFchIajZ1Z/6bK8vjGermd3ara/aVK7mVb2QBuQZ8myDb01bINcMk3rE7k2u6X8nwHnz7NCW7YvFRF+uk9CdD"
+       "x": "nxJfGjg9KpyzgqtXctWEvTH4nX+IXvVi/6ldci2J+Xpo14uZmmqtP6/CSEeDMuPDZELz5SLXvXuWJu7yU2Kb5EjZMA7TNg9kQENrTMaNddcMCksibZUtCHZtstrMmS/5j01x1RRvLBXEFchIajZ1Z/6bK8vjGermd3ara/aVK7mVb2QBuQZ8myDb01bINcMk3rE7k2u6X8nwHnz7NCW7YvFRF+uk9CdD",
+       "h": "落差就是不平等：有人用得到資訊科技、有人用不到。"
       },
       {
        "q": "縮短數位落差，本質上是 PAPA 中哪一項的實踐？",
@@ -803,7 +862,8 @@ window.QUIZ_READ = {
         "資料正確性"
        ],
        "a": "rptnlk",
-       "x": "exNePybmy2RKXtElCZx1euycJ3kVcdaNuyGREZTv/zPidPrIMWbXi9uwx6j6qfiIUjlSGOMUGwlnzqLKVgERu6zBpJAxfUl2WfuQ78z/AGgEOaxrMqajJ8UpMubVnQYuvV3sVrsA77jw122H9va53zj1aNPvHkd2fRyFWXISJ/XK14DGdRJJRtJZ"
+       "x": "exNePybmy2RKXtElCZx1euycJ3kVcdaNuyGREZTv/zPidPrIMWbXi9uwx6j6qfiIUjlSGOMUGwlnzqLKVgERu6zBpJAxfUl2WfuQ78z/AGgEOaxrMqajJ8UpMubVnQYuvV3sVrsA77jw122H9va53zj1aNPvHkd2fRyFWXISJ/XK14DGdRJJRtJZ",
+       "h": "數位落差講的是「能不能接觸、使用」資訊科技，對應 PAPA 的哪一個字母？"
       }
      ]
     }
@@ -828,7 +888,8 @@ window.QUIZ_READ = {
         "不同年齡喜歡的軟體不同"
        ],
        "a": "na2vt0",
-       "x": "KYULs79g617sCqDf47FjK5pELJP2q+mFa0OOv+XWSTOwc6jRVJ1tYjkf6oWOMH8jAMelioCxUiM2hW0ij72gJrkHs6t0afNliqDAnbNq/6Pge8SqHEJZ6N0q7KwJQOMQWWvhiXeycIIQsaxWeNaOOHhSiM6Rsbez3U91ZiI9UdaEaaLs9D2BEWeI0ne3hBvQfjfr4Qubb7/4YLCwsjWfyQdX9nbeyKO08i80wTVYoOhxT0/bqB8fSmWaWarjnQ+wJqRE"
+       "x": "KYULs79g617sCqDf47FjK5pELJP2q+mFa0OOv+XWSTOwc6jRVJ1tYjkf6oWOMH8jAMelioCxUiM2hW0ij72gJrkHs6t0afNliqDAnbNq/6Pge8SqHEJZ6N0q7KwJQOMQWWvhiXeycIIQsaxWeNaOOHhSiM6Rsbez3U91ZiI9UdaEaaLs9D2BEWeI0ne3hBvQfjfr4Qubb7/4YLCwsjWfyQdX9nbeyKO08i80wTVYoOhxT0/bqB8fSmWaWarjnQ+wJqRE",
+       "h": "「落差」是差距；什麼的差距？跟能不能接觸 3C、電腦、網路有關。"
       },
       {
        "q": "造成數位落差的差異，「不包括」下列哪一項？",
@@ -839,7 +900,8 @@ window.QUIZ_READ = {
         "性別"
        ],
        "a": "1m5u09q",
-       "x": "jlsz/ob6bBEduhta+Truryr1M4TQgaiRhZ7u0LgB4yepBZ8wCTdGOc/aljGfPsjO5iAACRD2MaFlijNx6OzKZST0ZoyDAibH8LHyinkYnwfiJsPKH/x5qdaKDagov/BcVHy7+t79ZbyvR+zST+M1Q30fIRyV6qrM"
+       "x": "jlsz/ob6bBEduhta+Truryr1M4TQgaiRhZ7u0LgB4yepBZ8wCTdGOc/aljGfPsjO5iAACRD2MaFlijNx6OzKZST0ZoyDAibH8LHyinkYnwfiJsPKH/x5qdaKDagov/BcVHy7+t79ZbyvR+zST+M1Q30fIRyV6qrM",
+       "h": "列出來的差異是性別、族群、社經地位、居住環境；哪一個跟這些都無關？"
       },
       {
        "q": "數位落差可能造成什麼影響？",
@@ -850,7 +912,8 @@ window.QUIZ_READ = {
         "人人都更會用電腦"
        ],
        "a": "1yiy6ws",
-       "x": "8lekbkuRh/nZ++PhfnO7pzQNnnxcfX1KchVQuGi++0PjwBCYgT4z26K1np3hsWFGu1YgrBXYohzfiw6qvEtQ0KINouSkH0pzVOaBKRizOvRwG3hsEoa4ILlgF4kqglPh25JTZ6yw8A43HjUes5a3XmdAJsZY25o5NpTij2Xc0j5k9GcZtYz3tcLRe6QsrF5ot5Dfhi6WIs1KLl31eKDWSsyeR0CTl+IyLZ8/T0OV0uMn8V9JnPBX0y7+"
+       "x": "8lekbkuRh/nZ++PhfnO7pzQNnnxcfX1KchVQuGi++0PjwBCYgT4z26K1np3hsWFGu1YgrBXYohzfiw6qvEtQ0KINouSkH0pzVOaBKRizOvRwG3hsEoa4ILlgF4kqglPh25JTZ6yw8A43HjUes5a3XmdAJsZY25o5NpTij2Xc0j5k9GcZtYz3tcLRe6QsrF5ot5Dfhi6WIs1KLl31eKDWSsyeR0CTl+IyLZ8/T0OV0uMn8V9JnPBX0y7+",
+       "h": "用不到資訊科技的人越來越落後，社會會變得更平均，還是更往兩邊分開？"
       },
       {
        "q": "過去政府縮短數位落差，重點放在哪裡？",
@@ -861,7 +924,8 @@ window.QUIZ_READ = {
         "協助偏鄉取得電腦與網路"
        ],
        "a": "r7kzlc",
-       "x": "pbcbpQ7VdKV7Tk4decEaV2ehffxWHvX2L1aGoq3sOR045MCgzEguqgxv3IOpa4pBW+werTN7zwEagBXN5O1RJHo5X/d2DhQUb0ikewjW2skz9vkfzDk4/8jaiUrt/f8XXpsQ6PqpqAAwztQrSLdedtp3CIEkuWS7TnmxnXHXDr75EKeM4P4qVudAo7nt8/vC0O1wOI+RxOb0jQbxQaaN+dPnVo6Vy49K/bHejfcS5QEHs7q6BWP5jpxLOyFhvN4AeC2y/GEH5JPfvFqfkP8nXpkgERNlzhkOp8Pc"
+       "x": "pbcbpQ7VdKV7Tk4decEaV2ehffxWHvX2L1aGoq3sOR045MCgzEguqgxv3IOpa4pBW+werTN7zwEagBXN5O1RJHo5X/d2DhQUb0ikewjW2skz9vkfzDk4/8jaiUrt/f8XXpsQ6PqpqAAwztQrSLdedtp3CIEkuWS7TnmxnXHXDr75EKeM4P4qVudAo7nt8/vC0O1wOI+RxOb0jQbxQaaN+dPnVo6Vy49K/bHejfcS5QEHs7q6BWP5jpxLOyFhvN4AeC2y/GEH5JPfvFqfkP8nXpkgERNlzhkOp8Pc",
+       "h": "過去電腦還不普遍、網路有城鄉差異，所以政府先補哪一種東西？"
       },
       {
        "q": "學生可能因數位落差受到什麼影響？",
@@ -872,7 +936,8 @@ window.QUIZ_READ = {
         "上學時間變長"
        ],
        "a": "knn7tx",
-       "x": "oGm3S5LPJwUd/a7nwbFwTrQltS8y5eR/m1G8ftM6NZCzAmmyNXy+bUlAfhn6Kfn/hRJsqCAnbEIyQ7q9tsCJjkdwmbltWXDhN5VeX5/k4zxR2xODqkOXd0KHrGpYMKXIeJFbme3f3il6Ht3jG/s17LoEJsQbG5712lNz671VoTsH2yCuT7x1x8a+JXciAr5fzEi6wCX3vrVWDt5wvug/ni49spM4lXKlcpJLi3UmW9D3"
+       "x": "oGm3S5LPJwUd/a7nwbFwTrQltS8y5eR/m1G8ftM6NZCzAmmyNXy+bUlAfhn6Kfn/hRJsqCAnbEIyQ7q9tsCJjkdwmbltWXDhN5VeX5/k4zxR2xODqkOXd0KHrGpYMKXIeJFbme3f3il6Ht3jG/s17LoEJsQbG5712lNz671VoTsH2yCuT7x1x8a+JXciAr5fzEi6wCX3vrVWDt5wvug/ni49spM4lXKlcpJLi3UmW9D3",
+       "h": "學生用不到電腦網路，最直接受影響的是哪一方面？"
       }
      ]
     },
@@ -892,7 +957,8 @@ window.QUIZ_READ = {
         "數位轉型"
        ],
        "a": "vvpc6x",
-       "x": "D5S+qE7ztiDHU/OfecX+5QmO4JBW7B2PSGLbxttC+Jo80QQa8/+zaB5L5cU0bChjXiLsnEj+wiEHQpex7wLm373y4D3PZ+VKwhOHralsaOnH49NwgXVN3Zzfk2MeHz3tZSTUYghLIi6Mo8nYM9x5J/hgdrH6seE6PAS3GkwpBlJsAdg="
+       "x": "D5S+qE7ztiDHU/OfecX+5QmO4JBW7B2PSGLbxttC+Jo80QQa8/+zaB5L5cU0bChjXiLsnEj+wiEHQpex7wLm373y4D3PZ+VKwhOHralsaOnH49NwgXVN3Zzfk2MeHz3tZSTUYghLIi6Mo8nYM9x5J/hgdrH6seE6PAS3GkwpBlJsAdg=",
+       "h": "新的名稱強調「把每個人都包進來」，不讓任何人被排除在外。"
       },
       {
        "q": "為什麼要重新定義數位落差？",
@@ -903,7 +969,8 @@ window.QUIZ_READ = {
         "偏鄉和都市已經沒有差距"
        ],
        "a": "dw2olp",
-       "x": "js46bFQkzpvpBe3ncReFLqbtNXX8Q8yFdpALq5tkUWxSjCz1qZ5ayMVMJzeLzZUUNjHpFSdeyqGPrjOA59AFGIu9ZoMq6mdcpOYTs7OxWQB+4W9IL+HUlKlwLigSIQi94F+e9RFT3IC3E6zqj10OC+hfCbZV4qYmkzEXR7RSzJrKvRc6N4SqiDVBDX3xOIUfosaxtSy3LqeIqGnTEf9vUjuJMI6hozKpmSmEPOlhIsGzX5YIEUVcuj5nunbVm6Lyx55tt+gk08FjTsn2/zIydIggew1d"
+       "x": "js46bFQkzpvpBe3ncReFLqbtNXX8Q8yFdpALq5tkUWxSjCz1qZ5ayMVMJzeLzZUUNjHpFSdeyqGPrjOA59AFGIu9ZoMq6mdcpOYTs7OxWQB+4W9IL+HUlKlwLigSIQi94F+e9RFT3IC3E6zqj10OC+hfCbZV4qYmkzEXR7RSzJrKvRc6N4SqiDVBDX3xOIUfosaxtSy3LqeIqGnTEf9vUjuJMI6hozKpmSmEPOlhIsGzX5YIEUVcuj5nunbVm6Lyx55tt+gk08FjTsn2/zIydIggew1d",
+       "h": "現在設備普及了，偏鄉弱勢就一定「會用」嗎？"
       },
       {
        "q": "相較於過去加強硬體設施，現在更重視什麼？",
@@ -914,7 +981,8 @@ window.QUIZ_READ = {
         "手機品牌的流行程度"
        ],
        "a": "x01ywk",
-       "x": "TjdXcDo77j+oM6hkjKCIqk8TOqj8LhKydblHg6R0Q9honfhMZFUy8suB/bzDLkFI0CsvYFE9L8LG16aaIn9ieziPPaK+efm1YhESTuPyfONGCRVl+jG5btXkM5O6yVmqR1ahMgK6SEFfWd40658wtFRJSuOTvUmXhLIUf6M/8ByAfjJBE/NNM347y0v6UcZeLko58ekBWnfd"
+       "x": "TjdXcDo77j+oM6hkjKCIqk8TOqj8LhKydblHg6R0Q9honfhMZFUy8suB/bzDLkFI0CsvYFE9L8LG16aaIn9ieziPPaK+efm1YhESTuPyfONGCRVl+jG5btXkM5O6yVmqR1ahMgK6SEFfWd40658wtFRJSuOTvUmXhLIUf6M/8ByAfjJBE/NNM347y0v6UcZeLko58ekBWnfd",
+       "h": "過去補的是硬體，現在更重視的是「會不會用」的能力。"
       },
       {
        "q": "「數位包容」希望達成什麼？",
@@ -925,7 +993,8 @@ window.QUIZ_READ = {
         "由政府統一管理全國的網路"
        ],
        "a": "1tb2iqa",
-       "x": "hU7E0BKOcsEknql3qTa3zadQvs48t84K7pRJkhDRGDkU3RYwaK+mAFOYTNHIxmNvWbnWEofu1awxoIoGr5yuT9hD/8GRcxGXf0LRSEeePVvBfCUP/rpjyas/wc1XCX8/ek0OU66WmxZL8ZfhOuavXhNvNyJ3/hrixZAq1QYemXWpklzZGvOwBP15XOF5LjfXO3Uae/+bCaxMGVpUPaOSHSCACvvrvmNXMZiOp5WHNmU5"
+       "x": "hU7E0BKOcsEknql3qTa3zadQvs48t84K7pRJkhDRGDkU3RYwaK+mAFOYTNHIxmNvWbnWEofu1awxoIoGr5yuT9hD/8GRcxGXf0LRSEeePVvBfCUP/rpjyas/wc1XCX8/ek0OU66WmxZL8ZfhOuavXhNvNyJ3/hrixZAq1QYemXWpklzZGvOwBP15XOF5LjfXO3Uae/+bCaxMGVpUPaOSHSCACvvrvmNXMZiOp5WHNmU5",
+       "h": "數位包容希望不因為身分地位，就讓人用不到數位服務。"
       },
       {
        "q": "下列哪一項屬於「網路應用服務」？",
@@ -936,7 +1005,8 @@ window.QUIZ_READ = {
         "網路報稅"
        ],
        "a": "nh7e3g",
-       "x": "ArGChax1WMQ7fqVPiLtq5SEEEjGMqmlFFmfPfgYCPqMdzz3A87go50LZkzBhXPc9Z25dx5Oi9EburZcrB8ULaScXkOVpyxL4BLxf2GAyV08upM0pq/Nym4CFyDHaTiuSMe/y6wF3sJtR3bQ0FsQMPykuvI5eliu/Y6Xm7fEF5tE6oJgyJNOBYmo6YQ8A3yGY6Z0NFr/BPzHI+jw9bLMh"
+       "x": "ArGChax1WMQ7fqVPiLtq5SEEEjGMqmlFFmfPfgYCPqMdzz3A87go50LZkzBhXPc9Z25dx5Oi9EburZcrB8ULaScXkOVpyxL4BLxf2GAyV08upM0pq/Nym4CFyDHaTiuSMe/y6wF3sJtR3bQ0FsQMPykuvI5eliu/Y6Xm7fEF5tE6oJgyJNOBYmo6YQ8A3yGY6Z0NFr/BPzHI+jw9bLMh",
+       "h": "網路應用服務是「在網路上辦事情」，不是發硬體或拉線路。"
       }
      ]
     },
@@ -959,7 +1029,8 @@ window.QUIZ_READ = {
         "聯合國教科文組織總部"
        ],
        "a": "18xu9dv",
-       "x": "wr8GsUiyjPJRHM16I24kymjjM4/rMBu/WMBvXKUWFjqM0o3l7i8IW60bwSLGUhTsasOQJPbk4HcLQggQTglap8o4hyJVu/bxauPrq3z7moHR2G+W30Jz37kV8vhZ8P+b0IpFHiC9UfqzsurjGz41Z6huUYayIu9q27Zl+9y52r+r505wp+LeHutbaM9m7yshHUTeYeuF0M++MVM8L1kSMxkt+5U="
+       "x": "wr8GsUiyjPJRHM16I24kymjjM4/rMBu/WMBvXKUWFjqM0o3l7i8IW60bwSLGUhTsasOQJPbk4HcLQggQTglap8o4hyJVu/bxauPrq3z7moHR2G+W30Jz37kV8vhZ8P+b0IpFHiC9UfqzsurjGz41Z6huUYayIu9q27Zl+9y52r+r505wp+LeHutbaM9m7yshHUTeYeuF0M++MVM8L1kSMxkt+5U=",
+       "h": "這是行政院層級、名稱裡有 SMART TAIWAN 2030 的單位。"
       },
       {
        "q": "數位包容政策分成哪三項？",
@@ -970,7 +1041,8 @@ window.QUIZ_READ = {
         "普及平權、降低價格、建設電塔"
        ],
        "a": "xd5cbl",
-       "x": "5xZyzMQPQ5HLeYThjQY+oPlLKihQNLkSNrDSQoNDdon3G/gI+pG+yRpQNajpJMzCKC4QYE9XTFijNNOu2UaRf5SIrNzMC8NtsdOOboq58KkvsFDU1d1+38ywbBpOv0fGa+o+lKeSs8Puaa5meo9EcdQTbZR/dbyRxtoDCpqbNf7I0BmpvKyreYSUgA2PcwD5v05Y3v+agAeqO7V1WqcRkUuX9wT7pwYI"
+       "x": "5xZyzMQPQ5HLeYThjQY+oPlLKihQNLkSNrDSQoNDdon3G/gI+pG+yRpQNajpJMzCKC4QYE9XTFijNNOu2UaRf5SIrNzMC8NtsdOOboq58KkvsFDU1d1+38ywbBpOv0fGa+o+lKeSs8Puaa5meo9EcdQTbZR/dbyRxtoDCpqbNf7I0BmpvKyreYSUgA2PcwD5v05Y3v+agAeqO7V1WqcRkUuX9wT7pwYI",
+       "h": "三項分別跟「平等」「人才」「學習環境」有關。"
       },
       {
        "q": "「防止網路詐騙宣導」屬於哪一項措施？",
@@ -981,7 +1053,8 @@ window.QUIZ_READ = {
         "提升資安意識與媒體素養"
        ],
        "a": "19vco1u",
-       "x": "aLvblcqXkgNURoviPp8Y4tdEJ4giyeQvRJFEQTBjAqHpCYBZHHfFGPknOLlp3SeDAfCIV2ZWyM0b92LbTRKOL3Q07YAYxlbqpUo0tSN7b5G9QgRCXThpwmtE3kEr7fAnfFohu0vwTzGMVGfyOQImgNfWw8w7FFMn4Y8KijUFg4ObgDDBpQOjw+VTH8/olJQYZO8YTdwvUn36rTPZx6PL0WJAmnygIpqaFnt47kWM8B4mdQnMXDEAKo9AC+ld/0/0EOwdf5z9Fb4CT0gXvUfIiPEItydmeLUG/JkmX8mezncpxIXpF3C9lxLf099vMtJ1"
+       "x": "aLvblcqXkgNURoviPp8Y4tdEJ4giyeQvRJFEQTBjAqHpCYBZHHfFGPknOLlp3SeDAfCIV2ZWyM0b92LbTRKOL3Q07YAYxlbqpUo0tSN7b5G9QgRCXThpwmtE3kEr7fAnfFohu0vwTzGMVGfyOQImgNfWw8w7FFMn4Y8KijUFg4ObgDDBpQOjw+VTH8/olJQYZO8YTdwvUn36rTPZx6PL0WJAmnygIpqaFnt47kWM8B4mdQnMXDEAKo9AC+ld/0/0EOwdf5z9Fb4CT0gXvUfIiPEItydmeLUG/JkmX8mezncpxIXpF3C9lxLf099vMtJ1",
+       "h": "防詐騙宣導是在提升民眾的哪兩種意識和素養？"
       },
       {
        "q": "推廣中高齡人口學習網路生活應用，目的是什麼？",
@@ -992,7 +1065,8 @@ window.QUIZ_READ = {
         "讓他們成為資訊工程師"
        ],
        "a": "ruyoz6",
-       "x": "/o0LveYGjd5TCthbZFYkZlUJffbnpurQrxd4/LAig6FPMhjwb0CQtJ58IOrKwVWo3PQNXS8F80YRvsxPlHcwPzXGHsx/2GZb5z0VBiHGa0GtzBdR9NfA0MkxinN+PmjHXTtvQyL2QaN3DG6NRSAjzu49PumH9GB9dABi/9Zi/gbHkxugu96/XoOYITdbilQ0umdGD9m4ATEy/XjwiDzeQBbogN6PTgOR5cw2hYqDZ40/TD0Umr+F8D0QYmdPyetOzqFMGCK4d7a9"
+       "x": "/o0LveYGjd5TCthbZFYkZlUJffbnpurQrxd4/LAig6FPMhjwb0CQtJ58IOrKwVWo3PQNXS8F80YRvsxPlHcwPzXGHsx/2GZb5z0VBiHGa0GtzBdR9NfA0MkxinN+PmjHXTtvQyL2QaN3DG6NRSAjzu49PumH9GB9dABi/9Zi/gbHkxugu96/XoOYITdbilQ0umdGD9m4ATEy/XjwiDzeQBbogN6PTgOR5cw2hYqDZ40/TD0Umr+F8D0QYmdPyetOzqFMGCK4d7a9",
+       "h": "社會越來越數位化，中高齡的人學網路應用，是為了跟上什麼？"
       },
       {
        "q": "運用 5G 網路通訊進行遠端看診，是為了強化什麼？",
@@ -1003,7 +1077,8 @@ window.QUIZ_READ = {
         "醫師的個人資料安全"
        ],
        "a": "c03747",
-       "x": "DMQAXTewhSN9DxSXhgMq62ZK2qf8nzK/dNucNPqlofOFx2xhTQmfs24b6gljnUCg7zd9gVwc1haiTeA9Xo+Xho8OcIVR4PD4IRYrEyrglfGu0o3lu7P5T6VxCNmPi68iW4YXVgCSkCUs9kosf26XHpYYSt+5eecA7twXfIWfIW0Pe+iWrxqIJ3XDk4dMw89n8r/r1/1BmHmbzALv+/7kLVKIYy7JcWl4ZxoCMEEgTXrvlnkK4EQXUBhz8LlsXg=="
+       "x": "DMQAXTewhSN9DxSXhgMq62ZK2qf8nzK/dNucNPqlofOFx2xhTQmfs24b6gljnUCg7zd9gVwc1haiTeA9Xo+Xho8OcIVR4PD4IRYrEyrglfGu0o3lu7P5T6VxCNmPi68iW4YXVgCSkCUs9kosf26XHpYYSt+5eecA7twXfIWfIW0Pe+iWrxqIJ3XDk4dMw89n8r/r1/1BmHmbzALv+/7kLVKIYy7JcWl4ZxoCMEEgTXrvlnkK4EQXUBhz8LlsXg==",
+       "h": "遠端看診服務的是住在哪裡的人？強化的是哪一方面的品質？"
       }
      ]
     },
@@ -1023,7 +1098,8 @@ window.QUIZ_READ = {
         "廣告行銷與影音剪輯人才"
        ],
        "a": "1uapv36",
-       "x": "8Ya2CTCtcEbtxpm8ZHesbRVR69xEWncBNQLVSiVBPmtE9t3qbnhOBlwDrutOMqQ9VDA8SVWPp4Aax+tRn3OfL+SnIY9zrN8w7rrZtSFCzS7+rEHS+RtX4rV7Qmc7yIdrEnwNsuRFvsUuY512o+81SaZpA+0WkRhgdptIMDojMg0PAFIS9eW4GT3Bsy/55PCi42p4DFIOwmoyBweoryYS76abtTbE"
+       "x": "8Ya2CTCtcEbtxpm8ZHesbRVR69xEWncBNQLVSiVBPmtE9t3qbnhOBlwDrutOMqQ9VDA8SVWPp4Aax+tRn3OfL+SnIY9zrN8w7rrZtSFCzS7+rEHS+RtX4rV7Qmc7yIdrEnwNsuRFvsUuY512o+81SaZpA+0WkRhgdptIMDojMg0PAFIS9eW4GT3Bsy/55PCi42p4DFIOwmoyBweoryYS76abtTbE",
+       "h": "一種教人用數位科技，一種保護資訊不被入侵。"
       },
       {
        "q": "培育產業的數位人才，是以什麼為導向？",
@@ -1034,7 +1110,8 @@ window.QUIZ_READ = {
         "個人興趣"
        ],
        "a": "1r153cs",
-       "x": "xUcXBW7Fbs3ympWECncIotBvQdvqt0lZppQhdo4xP4yYUZ/JFpgC4zrCS8VXRc6/ujZn7eL68ZDbjf3XLirq9VUZ52rD9t3MuFI+gWeEMbnyPpumBWwCUcoucj3QP4ddgwkGokCoMkTbWlXVHkxSQLcsSsgDFtfKHJH0IeoD"
+       "x": "xUcXBW7Fbs3ympWECncIotBvQdvqt0lZppQhdo4xP4yYUZ/JFpgC4zrCS8VXRc6/ujZn7eL68ZDbjf3XLirq9VUZ52rD9t3MuFI+gWeEMbnyPpumBWwCUcoucj3QP4ddgwkGokCoMkTbWlXVHkxSQLcsSsgDFtfKHJH0IeoD",
+       "h": "培育產業人才，要看產業「需要」什麼。"
       },
       {
        "q": "培育數位人才，希望讓不同領域的工作者具備什麼？",
@@ -1045,7 +1122,8 @@ window.QUIZ_READ = {
         "最新款的電腦設備"
        ],
        "a": "wcevyv",
-       "x": "Cd+ynAMqgwqLdxCXyabPb6ojQtlwPkCEMnD4KISFYNU7OJJIJF3o49HwLwDQM//DBh7erWKdF5HTnYizytlJMX8TJ8yArSN+gAuCwodXFOGVE6SdAYfyUJxd0Ny1ENpDiDzG5X3dxGhrdm1+N26BTdeJKSMqUAxDZfPNdaxBBZqAU1j5R8o9v3j7idd8PD6SQ8enoQWKZifwT9Ig/FkXA0j1i9kXGvgMXbzoxb2c/qps"
+       "x": "Cd+ynAMqgwqLdxCXyabPb6ojQtlwPkCEMnD4KISFYNU7OJJIJF3o49HwLwDQM//DBh7erWKdF5HTnYizytlJMX8TJ8yArSN+gAuCwodXFOGVE6SdAYfyUJxd0Ny1ENpDiDzG5X3dxGhrdm1+N26BTdeJKSMqUAxDZfPNdaxBBZqAU1j5R8o9v3j7idd8PD6SQ8enoQWKZifwT9Ig/FkXA0j1i9kXGvgMXbzoxb2c/qps",
+       "h": "不是每個人都要當工程師，而是每個領域都要會的「基本」能力。"
       },
       {
        "q": "「精進數位學習環境」希望養成學生什麼能力？",
@@ -1056,7 +1134,8 @@ window.QUIZ_READ = {
         "使用數位科技解決問題"
        ],
        "a": "qw02ql",
-       "x": "vQ0MG4OYBIwtjOcRU5zCKosMNng6sH8X+YSPlh15o6GKztl1i1oIkYExGAxlLit/dSScgfnQha/GAyYEJgJMXzFvDbcMfLvKGRmNU7vvbSvNBXFr/TUvktTufM5WjeEEj9MJRyCxRuP3NS0xz39xJgRm6DQYgDHdctgndXwsri0bxzSR4GqkJDtLqoMWh1l2GfsX/fTZIKLSgyqBzbk3yihCnJCXxWHuzXy+DYmT"
+       "x": "vQ0MG4OYBIwtjOcRU5zCKosMNng6sH8X+YSPlh15o6GKztl1i1oIkYExGAxlLit/dSScgfnQha/GAyYEJgJMXzFvDbcMfLvKGRmNU7vvbSvNBXFr/TUvktTufM5WjeEEj9MJRyCxRuP3NS0xz39xJgRm6DQYgDHdctgndXwsri0bxzSR4GqkJDtLqoMWh1l2GfsX/fTZIKLSgyqBzbk3yihCnJCXxWHuzXy+DYmT",
+       "h": "學數位科技的目的，不是背零件，而是拿來做什麼？"
       },
       {
        "q": "「運用 5G 網路通訊進行遠距教學」屬於哪一項措施？",
@@ -1067,7 +1146,8 @@ window.QUIZ_READ = {
         "精進數位學習環境"
        ],
        "a": "f6cl82",
-       "x": "zIHQFcYgREaU0e0i1b0G3zdrlAI3Z+IURePedho9X8y0TXe/rkOn5a+INpJjiimNabv7ZeSsB35Q7t6+14e/oaAwWrlF5ngRHLTZqpDtir5srjR85raOBPMDC2uaEVfsRF0oliS4FGfZ0I8Ea60yjuKpeXsyUUatpvAfeS7Fj79lZ75NerCLvgqdYidK9P8ajImsNc30wkS8yD7i+Nfq1Vn3vEnP8twmVCvUU1u2dhk+4ipmI8Cfwf95NXajS6eSNcgyFR/9zEn7mFWE+6KRiig1"
+       "x": "zIHQFcYgREaU0e0i1b0G3zdrlAI3Z+IURePedho9X8y0TXe/rkOn5a+INpJjiimNabv7ZeSsB35Q7t6+14e/oaAwWrlF5ngRHLTZqpDtir5srjR85raOBPMDC2uaEVfsRF0oliS4FGfZ0I8Ea60yjuKpeXsyUUatpvAfeS7Fj79lZ75NerCLvgqdYidK9P8ajImsNc30wkS8yD7i+Nfq1Vn3vEnP8twmVCvUU1u2dhk+4ipmI8Cfwf95NXajS6eSNcgyFR/9zEn7mFWE+6KRiig1",
+       "h": "遠距教學是在「上課」，不是看病；它屬於跟校園有關的那一項。"
       }
      ]
     },
@@ -1089,7 +1169,8 @@ window.QUIZ_READ = {
         "付費會員"
        ],
        "a": "1se176k",
-       "x": "1yamZBPglUL+6IG33IvEfGazCUcgX0zlDkgZf2DL4dsLKVuGTtg4YVXznS+xZVwrrimtF+7piLChVFPFf3WnFcbHDQekSKBuT7AgNVNooeJO8xkkN8cG1HxSl8gY9snLPyF01wEO+AauF6RogjFCaHCiELcqVX+NlLGmHaFV/JIznJF1Ahb7x6NE"
+       "x": "1yamZBPglUL+6IG33IvEfGazCUcgX0zlDkgZf2DL4dsLKVuGTtg4YVXznS+xZVwrrimtF+7piLChVFPFf3WnFcbHDQekSKBuT7AgNVNooeJO8xkkN8cG1HxSl8gY9snLPyF01wEO+AauF6RogjFCaHCiELcqVX+NlLGmHaFV/JIznJF1Ahb7x6NE",
+       "h": "各作業系統裡都有一個設定區，專門幫有特殊需求的人。"
       },
       {
        "q": "作業系統的「協助工具」，主要內建哪些程式？",
@@ -1100,7 +1181,8 @@ window.QUIZ_READ = {
         "翻譯及語音聊天程式"
        ],
        "a": "2lbt02",
-       "x": "Xer7vGEE6uFx8VDlR0KsB+6F3nD36kXY8ttJ3WpbI0ZmwAC4CPhnoWQ76cfWtTf1MutG+s521CA0pmfelBX5ce0AQ11EpC6qRrrNZ8l4fjK6eKoj9zuAWhKCP1uNQBmqsu0rbfmmAHgsazovFSEVGDSjTRzISC7BT6sWs09X9dUkxzVbc7CxuLpE8Rumg5L6T3Z50Heuc+dx"
+       "x": "Xer7vGEE6uFx8VDlR0KsB+6F3nD36kXY8ttJ3WpbI0ZmwAC4CPhnoWQ76cfWtTf1MutG+s521CA0pmfelBX5ce0AQ11EpC6qRrrNZ8l4fjK6eKoj9zuAWhKCP1uNQBmqsu0rbfmmAHgsazovFSEVGDSjTRzISC7BT6sWs09X9dUkxzVbc7CxuLpE8Rumg5L6T3Z50Heuc+dx",
+       "h": "看不清楚字的人，需要電腦「念出來」或「把字變大」。"
       },
       {
        "q": "無障礙網站為「視覺障礙者」提供什麼？",
@@ -1111,7 +1193,8 @@ window.QUIZ_READ = {
         "觸覺體驗音樂"
        ],
        "a": "14maqvm",
-       "x": "oUsDzbe7/DemRrxdHi9WyVjYCDmui2rlA+cOFo/9pEvjtx9NRoG9Tv0kEmBB2s/qplG2lkOVFcuHrVBW/aqMLSLJea114uvv6Ao730R2mGG670KRw7AtvNQJrX38JC8r6aDK3uWth6q7+5HDkTH7EK93sDIxoO9++xXvMC8KG36qUoYuk8Vv+LezEX9GbHIFDV76POMs8654NZqS4mF69KDRDUa2HOJ+6K9Tc92Kwh3Ent9xDk3zpHdFQaRlt+Yg"
+       "x": "oUsDzbe7/DemRrxdHi9WyVjYCDmui2rlA+cOFo/9pEvjtx9NRoG9Tv0kEmBB2s/qplG2lkOVFcuHrVBW/aqMLSLJea114uvv6Ao730R2mGG670KRw7AtvNQJrX38JC8r6aDK3uWth6q7+5HDkTH7EK93sDIxoO9++xXvMC8KG36qUoYuk8Vv+LezEX9GbHIFDV76POMs8654NZqS4mF69KDRDUa2HOJ+6K9Tc92Kwh3Ent9xDk3zpHdFQaRlt+Yg",
+       "h": "視障者看不到畫面，網站要提供什麼來幫他讀？"
       },
       {
        "q": "「眼動追蹤」是用什麼方式操作電腦？",
@@ -1122,7 +1205,8 @@ window.QUIZ_READ = {
         "辨識使用者說話的聲音指令"
        ],
        "a": "lq6f7l",
-       "x": "cTEvvFvJBq4Z75zoWchpQ+J1gNEvqEcse78ICam6hju9gqD06cT9tyBkX+TZZcqz5qnrGNrOP93d4uHjgqvfrfxpe8yehKfE5ASvmFMS1LAzbThsqWKdpow3AVvbuqEsYFprDFE/S9nxuCFU1WJn44lQtEI3kAVFAj7hzD4o8ye3M2TmqS8ZPkb+YUQaYf6/w7ISRAmaspnHO7KskVE8ZIPT"
+       "x": "cTEvvFvJBq4Z75zoWchpQ+J1gNEvqEcse78ICam6hju9gqD06cT9tyBkX+TZZcqz5qnrGNrOP93d4uHjgqvfrfxpe8yehKfE5ASvmFMS1LAzbThsqWKdpow3AVvbuqEsYFprDFE/S9nxuCFU1WJn44lQtEI3kAVFAj7hzD4o8ye3M2TmqS8ZPkb+YUQaYf6/w7ISRAmaspnHO7KskVE8ZIPT",
+       "h": "不用手、不用嘴，靠「眼睛看哪裡」來操作。"
       },
       {
        "q": "聽覺障礙者可以透過哪一種感覺來體驗音樂？",
@@ -1133,7 +1217,8 @@ window.QUIZ_READ = {
         "味覺"
        ],
        "a": "1ygjq0j",
-       "x": "i9fHVLm8+y/GyxtWu0a6zAuTZ5t0LcLbJRFsdWxLG8pU2tgRsQmMUDEbjZpxDHLSOapIN5sIFdPe3KDyEIcxXuW/JOYxqt2nsqAhZilN5N//bfC9Gp6yFWLmMqWDFh2IoL1YFk0qGWXdfKnK52cp"
+       "x": "i9fHVLm8+y/GyxtWu0a6zAuTZ5t0LcLbJRFsdWxLG8pU2tgRsQmMUDEbjZpxDHLSOapIN5sIFdPe3KDyEIcxXuW/JOYxqt2nsqAhZilN5N//bfC9Gp6yFWLmMqWDFh2IoL1YFk0qGWXdfKnK52cp",
+       "h": "聽不到聲音，可以用身體感受音樂的震動。"
       }
      ]
     }
@@ -1159,7 +1244,8 @@ window.QUIZ_READ = {
         "妨害電腦使用罪"
        ],
        "a": "knid6s",
-       "x": "vqptSAraa690V9y8kRDKExeJ/QQeZFR/1rbHCyuyyHXHs5jQktjQnxsRC2U/jqfYXLgmO2IcG6yePI8EqYzZiWNyaOyESBhqgE48upKGydaTvTAok/hwZlbvyuMiyhcteLeOMrpYa4hf0c6M97cn7SDv8VOrryNqeFaqztOJXqfMOFqwCQDxnW8bbbr+Fcxg2I7pKo1sx1DDCai9HXBKruEiH3MWs9irf/vBxunwxI+ioxApxSFNV90hp4KtC4wxeincZRuWfhkHetbirFe/mJ3oFHHmAc+H+MXiBmW2KwulbzVrBr9xBg=="
+       "x": "vqptSAraa690V9y8kRDKExeJ/QQeZFR/1rbHCyuyyHXHs5jQktjQnxsRC2U/jqfYXLgmO2IcG6yePI8EqYzZiWNyaOyESBhqgE48upKGydaTvTAok/hwZlbvyuMiyhcteLeOMrpYa4hf0c6M97cn7SDv8VOrryNqeFaqztOJXqfMOFqwCQDxnW8bbbr+Fcxg2I7pKo1sx1DDCai9HXBKruEiH3MWs9irf/vBxunwxI+ioxApxSFNV90hp4KtC4wxeincZRuWfhkHetbirFe/mJ3oFHHmAc+H+MXiBmW2KwulbzVrBr9xBg==",
+       "h": "一般說的電腦犯罪，就是刑法第三十六章；名稱跟「妨害」電腦的使用有關。"
       },
       {
        "q": "為什麼大部分的網路犯罪，要用其他法律來規範？",
@@ -1170,7 +1256,8 @@ window.QUIZ_READ = {
         "妨害電腦使用罪規範不到"
        ],
        "a": "ekqv94",
-       "x": "z09x3JxXiwSTYDKiX5wG+9wFtEOkC5FKJxVtJT1Vzc0SJX6uoV0mFYgMWsN2iXWu9y9t83ODK+wpiWSyn83HXnb0umS200Wfh7EkZmhHFTgV7lQ/nxPDW/6Tnrq645z3DoozRq/4DgKCJjSmuqM/d0RBIpN4xTRZ5b49Fu11RyuPOZEZ2FDRLE6u2rV4IH4kHamW5REUbhh4rC8xKMiTLL1y2RZZaK8VFuYb166pEr549F/1sVjwicIcn8Blxrf3eutFP0hC/V/vg6gqb0weUpRJyLKdkCuvnVpjDfST2uruL5LQuodk"
+       "x": "z09x3JxXiwSTYDKiX5wG+9wFtEOkC5FKJxVtJT1Vzc0SJX6uoV0mFYgMWsN2iXWu9y9t83ODK+wpiWSyn83HXnb0umS200Wfh7EkZmhHFTgV7lQ/nxPDW/6Tnrq645z3DoozRq/4DgKCJjSmuqM/d0RBIpN4xTRZ5b49Fu11RyuPOZEZ2FDRLE6u2rV4IH4kHamW5REUbhh4rC8xKMiTLL1y2RZZaK8VFuYb166pEr549F/1sVjwicIcn8Blxrf3eutFP0hC/V/vg6gqb0weUpRJyLKdkCuvnVpjDfST2uruL5LQuodk",
+       "h": "第三十六章只有五條，網路犯罪的種類卻非常多。"
       },
       {
        "q": "數位化的個資和傳統方式相比，有什麼特點？",
@@ -1181,7 +1268,8 @@ window.QUIZ_READ = {
         "效率較差而且風險也較高"
        ],
        "a": "yrjulr",
-       "x": "FUCZ4iG7K+OPWzQZXzsdaJlND+7vXoXmFaz2RJ0rC/OQOQ3q+0DhkexZR8lhWNgAo1pwcKY/UmY55fRNtRIQNtsGiYeZKflzCqMn57Rwzo8d97AN1qj4KMtxzhGcgzmQXjq1LW/WWET8MfEMtKj+WNQkPvupdt9NsQ9Kcg6i078ZSMrzN+Ywu9BTa8z9o4cJbraPQUrbsyCR2tAG5XOJT86x2T+MCgXtWW31NmVuBUG6GtWCbR8Xsw2i6orEpIlLcqjFh6S7rcPESpVf8bHf/tUF8cmp2/Nx"
+       "x": "FUCZ4iG7K+OPWzQZXzsdaJlND+7vXoXmFaz2RJ0rC/OQOQ3q+0DhkexZR8lhWNgAo1pwcKY/UmY55fRNtRIQNtsGiYeZKflzCqMn57Rwzo8d97AN1qj4KMtxzhGcgzmQXjq1LW/WWET8MfEMtKj+WNQkPvupdt9NsQ9Kcg6i078ZSMrzN+Ywu9BTa8z9o4cJbraPQUrbsyCR2tAG5XOJT86x2T+MCgXtWW31NmVuBUG6GtWCbR8Xsw2i6orEpIlLcqjFh6S7rcPESpVf8bHf/tUF8cmp2/Nx",
+       "h": "數位化讓處理變快，但一次外洩就是一大批——好處和壞處各是什麼？"
       },
       {
        "q": "透過資訊科技的工具，哪一種「違法」行為頗為常見？",
@@ -1192,7 +1280,8 @@ window.QUIZ_READ = {
         "在路邊違規停放機車"
        ],
        "a": "iej6m4",
-       "x": "fgUZ0nbD+dtYAua0fbH8bcyyVKeaA2fX7g63OYCLkwhhNM4WJ65mvNWgRDV8XeK673Yw5qrVeXHwkjHlgJ5Ng9HhqePp+f8bv9a3zNBiVDfLacd+pZ3jRkkUzXCHLNHN8yASMAACPWK6cHgAZz6QdtxS+f9Acb3OG3fTrWdSgOCbr1t2oR1ujf1cUYUDMyzi2CbjM1Uz9PzS5AMrfe3+yyGMIpCUdOpaNvGoCFOWXEWgO5zIvsojHEf2A/E6e72eoVWjF0BJbBG7xDA72gTv"
+       "x": "fgUZ0nbD+dtYAua0fbH8bcyyVKeaA2fX7g63OYCLkwhhNM4WJ65mvNWgRDV8XeK673Yw5qrVeXHwkjHlgJ5Ng9HhqePp+f8bv9a3zNBiVDfLacd+pZ3jRkkUzXCHLNHN8yASMAACPWK6cHgAZz6QdtxS+f9Acb3OG3fTrWdSgOCbr1t2oR1ujf1cUYUDMyzi2CbjM1Uz9PzS5AMrfe3+yyGMIpCUdOpaNvGoCFOWXEWgO5zIvsojHEf2A/E6e72eoVWjF0BJbBG7xDA72gTv",
+       "h": "資訊科技讓「複製」變得非常容易，什麼東西最常被非法複製？"
       },
       {
        "q": "資訊科技時代常見的「非法重製著作物」和「網路竊取個資」，分別違反哪兩部法律？",
@@ -1203,7 +1292,8 @@ window.QUIZ_READ = {
         "著作權法及藥事法"
        ],
        "a": "qd4b9h",
-       "x": "WyAi2zbIBfnkfuyRQVtatLvUNk2EtiO5+mH6++Xod8P+zyn3+Ol6dHRbZMgFA4LF3ed812LVdkY3FYT6eWgPiqAyTkBcDcOV0hOhe3/0HUfbKpylteb2vsB8sso3TB557MsH2de6dJVAFWdZ18dvqKXxajQwe+7Ja0jrbREEWP4CZcgL646/Ye0GpVoQ3xEQ9egoGVGKhDIPTkzRzBOLQM0IaMoyxkaJWhbmsRM="
+       "x": "WyAi2zbIBfnkfuyRQVtatLvUNk2EtiO5+mH6++Xod8P+zyn3+Ol6dHRbZMgFA4LF3ed812LVdkY3FYT6eWgPiqAyTkBcDcOV0hOhe3/0HUfbKpylteb2vsB8sso3TB557MsH2de6dJVAFWdZ18dvqKXxajQwe+7Ja0jrbREEWP4CZcgL646/Ye0GpVoQ3xEQ9egoGVGKhDIPTkzRzBOLQM0IaMoyxkaJWhbmsRM=",
+       "h": "一個保護作品，一個保護個人資料。"
       }
      ]
     },
@@ -1231,7 +1321,8 @@ window.QUIZ_READ = {
         "入侵公務機關的電腦設備"
        ],
        "a": "1ksa1oi",
-       "x": "mlnHDVhMkO25Ie2ctCO9icbiupzPVUsJz3JIvdDqrLjZQF5fumPQO/QhAoRX/LzB8ASeYc0CCEN0uyJ9d8NtzefY7OJM7xVvH77+9MN4U7zpEojk5BxX96vPawBu+8YLn2O9Zs8V5XgnWk2Hf7A1TmMzXG2PSINaaYwqzDkhK/tkqra8/+Cv+RF6JpJ5l1W5lPA9PNUt5m5SnLeGfenS6dOWneLbgbZstw6ycIE8k1cSazgs83nJjynr9HfIKAjx6q+S8d6t9Zm03GDhNKAQLbwhFFoQnQI="
+       "x": "mlnHDVhMkO25Ie2ctCO9icbiupzPVUsJz3JIvdDqrLjZQF5fumPQO/QhAoRX/LzB8ASeYc0CCEN0uyJ9d8NtzefY7OJM7xVvH77+9MN4U7zpEojk5BxX96vPawBu+8YLn2O9Zs8V5XgnWk2Hf7A1TmMzXG2PSINaaYwqzDkhK/tkqra8/+Cv+RF6JpJ5l1W5lPA9PNUt5m5SnLeGfenS6dOWneLbgbZstw6ycIE8k1cSazgs83nJjynr9HfIKAjx6q+S8d6t9Zm03GDhNKAQLbwhFFoQnQI=",
+       "h": "318-1 條講的是「秘密」：用電腦知道了別人的秘密，然後怎樣？"
       },
       {
        "q": "刑法為什麼要訂「妨害電腦使用罪」？",
@@ -1242,7 +1333,8 @@ window.QUIZ_READ = {
         "電腦遭干擾破壞會造成傷害"
        ],
        "a": "1hucg9z",
-       "x": "cBBGmNW2BGcfIHFoAl3ZpL7Hr1JwCNZEi5YoAuHTZuPD6A04JXo4PPIUlPFzOvguYxjf5cCzljyN3bsFwd30qot5+jFpvhPZev6HIzRBK7S4AEOoOiVMegtR29PIDiT8jXMmF9gCNidgOuad5Uk9LiOtHw8pJ3akG9yCnqFbXISJeXEH3eE68ca+AxYQ4ILjyxQoySk7fDUi8Cxr8CnJWVOQQTPHupRG9tVJdfx/B5nxFNHmqSF7KRZfmpSVJFuzoNGxoQK/oYPh5Qp6OS5HN7civsYc"
+       "x": "cBBGmNW2BGcfIHFoAl3ZpL7Hr1JwCNZEi5YoAuHTZuPD6A04JXo4PPIUlPFzOvguYxjf5cCzljyN3bsFwd30qot5+jFpvhPZev6HIzRBK7S4AEOoOiVMegtR29PIDiT8jXMmF9gCNidgOuad5Uk9LiOtHw8pJ3akG9yCnqFbXISJeXEH3eE68ca+AxYQ4ILjyxQoySk7fDUi8Cxr8CnJWVOQQTPHupRG9tVJdfx/B5nxFNHmqSF7KRZfmpSVJFuzoNGxoQK/oYPh5Qp6OS5HN7civsYc",
+       "h": "電腦被干擾或破壞，對生活和工作會造成什麼？"
       },
       {
        "q": "下列哪一個罪是「非告訴乃論」？",
@@ -1253,7 +1345,8 @@ window.QUIZ_READ = {
         "破壞電磁紀錄罪"
        ],
        "a": "1a74bu4",
-       "x": "IdBJaSVKs+7a035+1/wwPXn8jEJE7diUFvpdz56eVHxfKgdPqCuZJcCf4NJT7mMk6hpymF9fJAI4SNIGehyFHAEMlevDGSC1MInwOzhTaKauOJFnkIzrsLPUb5h0fZAzRaPq+jp4qxFfBK8Kzx9KxvMcKfj7LnI3rVKrcgD5FDin10Bv10k2bOqyM6F+7YctbdLc1jHO+Fz7OuHoinOkBNQrI2PbIVw4dWhvgKh/KVQN4CIKNvD8UoTz4XEofMhMJvjFAAQ7XlSmfGUacoTsL2sEnbgLVJgz"
+       "x": "IdBJaSVKs+7a035+1/wwPXn8jEJE7diUFvpdz56eVHxfKgdPqCuZJcCf4NJT7mMk6hpymF9fJAI4SNIGehyFHAEMlevDGSC1MInwOzhTaKauOJFnkIzrsLPUb5h0fZAzRaPq+jp4qxFfBK8Kzx9KxvMcKfj7LnI3rVKrcgD5FDin10Bv10k2bOqyM6F+7YctbdLc1jHO+Fz7OuHoinOkBNQrI2PbIVw4dWhvgKh/KVQN4CIKNvD8UoTz4XEofMhMJvjFAAQ7XlSmfGUacoTsL2sEnbgLVJgz",
+       "h": "表格裡只有兩條是非告訴乃論：一條跟公務機關有關，另一條跟「寫程式」有關。"
       },
       {
        "q": "「告訴乃論」是什麼意思？",
@@ -1264,7 +1357,8 @@ window.QUIZ_READ = {
         "受害人提出告訴才會偵辦"
        ],
        "a": "4nkyur",
-       "x": "V5UMUmkbW19B50NBHEWXQ7Nm5vfy05FIH5AeMeDwCfb9TTtccGNZMhCt9qA/MMRo6e75IT1I42BkVvCBzddyGQb8+p0kzahnFORxBmlJlKbJ164+GJu5j0KxFtZgovosGtjbOAcZylxrb3bOpEx1tO3U9Md79sdhb4NNU2CMVsm0aGghMutRzc8wLZPk0RjmUZzYCIApk7n9HZMUM7XSGSRV8zxFH9YV6V1O+VOVg258Tjd1lXtnHUhyWoa6rqqxNzmpJCAlW11I"
+       "x": "V5UMUmkbW19B50NBHEWXQ7Nm5vfy05FIH5AeMeDwCfb9TTtccGNZMhCt9qA/MMRo6e75IT1I42BkVvCBzddyGQb8+p0kzahnFORxBmlJlKbJ164+GJu5j0KxFtZgovosGtjbOAcZylxrb3bOpEx1tO3U9Md79sdhb4NNU2CMVsm0aGghMutRzc8wLZPk0RjmUZzYCIApk7n9HZMUM7XSGSRV8zxFH9YV6V1O+VOVg258Tjd1lXtnHUhyWoa6rqqxNzmpJCAlW11I",
+       "h": "「告訴」是誰去告？「乃論」就是才處理。"
       },
       {
        "q": "刑法第 359 條的罪名是什麼？",
@@ -1275,7 +1369,8 @@ window.QUIZ_READ = {
         "電腦設備詐欺罪"
        ],
        "a": "dm7ul2",
-       "x": "UyLogp1e16UxOeWU6z087NBR9Xfti67mHBVb7usoJNRwiU1Jjbxtu6QvIOCqIgKgoc71iZZgNeUKirvayvuXimfMY4dOJKVWX1JwO2dr2cmyUObC6vnWmbBXef+3J/Hzvj6A/anEo6oau8TtaXuVWIzPt8mpBHvHf2fGTLvyt0aQkZJ20d7Hs4EnPHN3GnFuXLs+E+3TZkifu934rZuVTTs8bwKvDA1C4DmRz/fDsg=="
+       "x": "UyLogp1e16UxOeWU6z087NBR9Xfti67mHBVb7usoJNRwiU1Jjbxtu6QvIOCqIgKgoc71iZZgNeUKirvayvuXimfMY4dOJKVWX1JwO2dr2cmyUObC6vnWmbBXef+3J/Hzvj6A/anEo6oau8TtaXuVWIzPt8mpBHvHf2fGTLvyt0aQkZJ20d7Hs4EnPHN3GnFuXLs+E+3TZkifu934rZuVTTs8bwKvDA1C4DmRz/fDsg==",
+       "h": "358 入侵、359 ？、360 干擾——中間那條和「電磁紀錄」有關。"
       }
      ]
     },
@@ -1295,7 +1390,8 @@ window.QUIZ_READ = {
         "所有在網路上發生的犯罪"
        ],
        "a": "1azrejx",
-       "x": "mYgcwonXVkKk1eExWLTIi/bP8RWQSYcG7jiEpp1WXgsPRQpJgLAYFjxJeaAVhGkSjd48Yj3gBrtCgBOi31DZxoeyaj8Y6dXVK5XYd+RsQ5qlwvGjwxWFKEAcrWy5zflq0Xs9xuRpYVQLauVulndP2nl4hDLZoIndf/1u4V4rSLd4lIcaD9UghLar1UaXTziZg6kN8bXOB5RXJMVEzpv0fKXG1fHaQ8AGyAnyWV+kyyjNxhoHFH3dmzhsm7Ms+ScgspH74yrfqW6N/MqVWdgQ"
+       "x": "mYgcwonXVkKk1eExWLTIi/bP8RWQSYcG7jiEpp1WXgsPRQpJgLAYFjxJeaAVhGkSjd48Yj3gBrtCgBOi31DZxoeyaj8Y6dXVK5XYd+RsQ5qlwvGjwxWFKEAcrWy5zflq0Xs9xuRpYVQLauVulndP2nl4hDLZoIndf/1u4V4rSLd4lIcaD9UghLar1UaXTziZg6kN8bXOB5RXJMVEzpv0fKXG1fHaQ8AGyAnyWV+kyyjNxhoHFH3dmzhsm7Ms+ScgspH74yrfqW6N/MqVWdgQ",
+       "h": "狹義：電腦本身就是被攻擊的對象。"
       },
       {
        "q": "用網路假冒銀行騙人匯款，比較接近哪一種電腦犯罪？",
@@ -1306,7 +1402,8 @@ window.QUIZ_READ = {
         "狹義，因為有人損失金錢"
        ],
        "a": "1bclnf6",
-       "x": "mwKYpyBJBqt5MAHjzAd3aU3k5PHMEiSJDy1n+hXrxPIF5tCiOtrk2tYRKY0AjFBlunQTfcnrMsW1+PiqcSvCyTcKZl8idrXnaTDozGrHZwiY4o1C09LEoleFXt0CdcyHWWs3xUsXpCZc3fXaGA2QPoJlqdqXBX4YHCWsSYujo7GbGKWbIShgCuiLadrD6s0JSEgx/V+5CJliOw+zIGb2aROHhmukxu5+iI50iWCx5nZ8TA0rKBsg99NyLK0XPm3UD1jeb9VWrna3knyircGyfg5OgcOc"
+       "x": "mwKYpyBJBqt5MAHjzAd3aU3k5PHMEiSJDy1n+hXrxPIF5tCiOtrk2tYRKY0AjFBlunQTfcnrMsW1+PiqcSvCyTcKZl8idrXnaTDozGrHZwiY4o1C09LEoleFXt0CdcyHWWs3xUsXpCZc3fXaGA2QPoJlqdqXBX4YHCWsSYujo7GbGKWbIShgCuiLadrD6s0JSEgx/V+5CJliOw+zIGb2aROHhmukxu5+iI50iWCx5nZ8TA0rKBsg99NyLK0XPm3UD1jeb9VWrna3knyircGyfg5OgcOc",
+       "h": "騙錢的目標是「人」，網路只是拿來用的什麼？"
       },
       {
        "q": "透過網路的各種犯罪行為，通稱為什麼？",
@@ -1317,7 +1414,8 @@ window.QUIZ_READ = {
         "資訊倫理"
        ],
        "a": "jw4ziq",
-       "x": "C+vqA+MZulxMGxsJlD9Gp3h+jA+1AM9ayZHi9G7pOf+CHl0IAy2FVRSwFYEv6cPcF5NT+XkNj1JPZV41eNXePzx2n2MRxuuftO8Er41gRsXv/miBUk38Y/ZlNs7SBHFiKAMCYCptAOJ+EQYc9tcJ0pJfJClBtH8i5GZgC6UKDcnDJRPMvaROPcKUQDgrpSG5rQ=="
+       "x": "C+vqA+MZulxMGxsJlD9Gp3h+jA+1AM9ayZHi9G7pOf+CHl0IAy2FVRSwFYEv6cPcF5NT+XkNj1JPZV41eNXePzx2n2MRxuuftO8Er41gRsXv/miBUk38Y/ZlNs7SBHFiKAMCYCptAOJ+EQYc9tcJ0pJfJClBtH8i5GZgC6UKDcnDJRPMvaROPcKUQDgrpSG5rQ==",
+       "h": "透過「網路」做的犯罪，有一個統稱。"
       },
       {
        "q": "為什麼透過網路犯罪的類型非常多樣？",
@@ -1328,7 +1426,8 @@ window.QUIZ_READ = {
         "網路上犯罪一定不會被抓"
        ],
        "a": "12ejic8",
-       "x": "NcMRljDmHVT90ckEDTlibED665FIPEA8HHAlOofjn2OksyjgFITDJtgtfgV1NwVKymDp9hm9JAh/bFGrBFenMS1BvzlxuF8p7z+IOIeNGyi+kBO/Fj4Uy4EUEmW4CbfN/jyqw0bvcaHQnmk1zSKgZdtsI+emJ5//Y/zlojOaClp2EQH3kcj2q5wTMpiQZWU+2MDaL9yPq2/HBCrgzc6xtnTZC+oTWZBKrN1tYajNpYiw3PuZmBAtTwYzb6ORdvgxtd1+6VMlMr4UvTJ8"
+       "x": "NcMRljDmHVT90ckEDTlibED665FIPEA8HHAlOofjn2OksyjgFITDJtgtfgV1NwVKymDp9hm9JAh/bFGrBFenMS1BvzlxuF8p7z+IOIeNGyi+kBO/Fj4Uy4EUEmW4CbfN/jyqw0bvcaHQnmk1zSKgZdtsI+emJ5//Y/zlojOaClp2EQH3kcj2q5wTMpiQZWU+2MDaL9yPq2/HBCrgzc6xtnTZC+oTWZBKrN1tYajNpYiw3PuZmBAtTwYzb6ORdvgxtd1+6VMlMr4UvTJ8",
+       "h": "現在幾乎所有設備都要連上什麼？"
       },
       {
        "q": "下列哪一個「不是」常見的網路犯罪行為？",
@@ -1339,7 +1438,8 @@ window.QUIZ_READ = {
         "侵入他人電腦或網站"
        ],
        "a": "gem4wl",
-       "x": "nF70344BctmM0JP5aB6+psVLpnGG/GVupgxl2WnhsnJ4IfncCrQSRbA4grNldQFdYyI2HJans3n/4X7A0yZPdOLO5Hc5jjqlWih4AoehYTRbELLvgQS6EWkgcp/NzD9z5OWxlK+VNUvWlYPg1LsoqKhtMAQXp47bwb7OP4SAcaG5skkblVgq/m4fNlZqo+RC5ARxFhxwAiDJGu41u1eV8sxobEt1Qr7FKoAFbMURwhF18fxwnuzR37CCJQ8gBCxRqygoUO6uRV4Vo7TlhrKl"
+       "x": "nF70344BctmM0JP5aB6+psVLpnGG/GVupgxl2WnhsnJ4IfncCrQSRbA4grNldQFdYyI2HJans3n/4X7A0yZPdOLO5Hc5jjqlWih4AoehYTRbELLvgQS6EWkgcp/NzD9z5OWxlK+VNUvWlYPg1LsoqKhtMAQXp47bwb7OP4SAcaG5skkblVgq/m4fNlZqo+RC5ARxFhxwAiDJGu41u1eV8sxobEt1Qr7FKoAFbMURwhF18fxwnuzR37CCJQ8gBCxRqygoUO6uRV4Vo7TlhrKl",
+       "h": "常見網路犯罪：誘騙個資、賣違禁品、入侵電腦；哪一個只是正常使用？"
       }
      ]
     },
@@ -1359,7 +1459,8 @@ window.QUIZ_READ = {
         "自動消除所有犯罪"
        ],
        "a": "10n0mi1",
-       "x": "x+rU+0UAa8bZuXVDq4sP0pyB4fJpshlhCA58DbVbxIAEfc+4yghMF0g9FZpmk7iamykUPCYNsTQdUQxQZQvJjlyAbuI5GBHuooui+vrDXHK5132MCE9KdJl29IJbUjeuJwA6cuOxpq+Jqb66+YNq4db29K/qUIZz1gZ2zyE/EjQw8AcHR7eFxLcIWwO9JcRZ92Ub1Sn07uovwQZMcu+PFbW0telXwj58oRZ8gKaiVwWefomT"
+       "x": "x+rU+0UAa8bZuXVDq4sP0pyB4fJpshlhCA58DbVbxIAEfc+4yghMF0g9FZpmk7iamykUPCYNsTQdUQxQZQvJjlyAbuI5GBHuooui+vrDXHK5132MCE9KdJl29IJbUjeuJwA6cuOxpq+Jqb66+YNq4db29K/qUIZz1gZ2zyE/EjQw8AcHR7eFxLcIWwO9JcRZ92Ub1Sn07uovwQZMcu+PFbW0telXwj58oRZ8gKaiVwWefomT",
+       "h": "新科技有好處，也可能帶來什麼？"
       },
       {
        "q": "全球許多國家在「不妨礙技術發展」的前提下，致力做什麼？",
@@ -1370,7 +1471,8 @@ window.QUIZ_READ = {
         "全面禁止 AI 的研究開發"
        ],
        "a": "kqgh85",
-       "x": "gdNTAKSc7zvK7UU0jMiehIofKSq03JxF7LjwO2EaSQlG+79YJA2hgwRcitTvBh2QPildta90795PuKOprI6q2plbnL4KHLC8GCvlE1W249CfDlefP48jSSRG0d4Gle8J6aW5wZB4G8ywKrbWJkzxPJs0kdHkpFhKM8jm+y6ygOfYhUnRxMs8obM/mZt+2WVTyJKpYVelIqDCDNucntBgVPrsibx1LlzYWXfbu1TrF3OT/iPJX0f1bONFeVZ3RS/LAqGgqkqsBUKgCSkXuIGJ+Q=="
+       "x": "gdNTAKSc7zvK7UU0jMiehIofKSq03JxF7LjwO2EaSQlG+79YJA2hgwRcitTvBh2QPildta90795PuKOprI6q2plbnL4KHLC8GCvlE1W249CfDlefP48jSSRG0d4Gle8J6aW5wZB4G8ywKrbWJkzxPJs0kdHkpFhKM8jm+y6ygOfYhUnRxMs8obM/mZt+2WVTyJKpYVelIqDCDNucntBgVPrsibx1LlzYWXfbu1TrF3OT/iPJX0f1bONFeVZ3RS/LAqGgqkqsBUKgCSkXuIGJ+Q==",
+       "h": "不禁止、也不放任，而是訂出「治理」的方向。"
       },
       {
        "q": "「人工智慧基本法」草案，是政府委託哪個單位制訂的？",
@@ -1381,7 +1483,8 @@ window.QUIZ_READ = {
         "國家科學及技術委員會"
        ],
        "a": "uh795y",
-       "x": "1MZuBw4IcWYwcqKnzEdgpkR0Yi4J/Ii0XD4qufExE/ZAU9eVgWgmmYevk1W/BUpRbx/rHmv2nS7eltslehbzH0wRylVqgjXe9XOYDT8NP/lUXdV9ZwRBTcNsGcnW8/8Xz5yhiiOAPLyOVvfU2vH22FXrkp7EvJdkPGhI0NNeibKEJZK+9yVDJSbQLBzYODoxXAldsKZRyLOAkSYZFhSQK8AkWiKIwy1AduTE5GrNDbIw3NeDVqrZwfvfIlyWvwwMS5rUE6tM9wtYrrNGw9UgFQj/SpXeT4cMumkkAHcVg6mrER4D2+SOSet6hmRA7S1srK4JsyF621wJ"
+       "x": "1MZuBw4IcWYwcqKnzEdgpkR0Yi4J/Ii0XD4qufExE/ZAU9eVgWgmmYevk1W/BUpRbx/rHmv2nS7eltslehbzH0wRylVqgjXe9XOYDT8NP/lUXdV9ZwRBTcNsGcnW8/8Xz5yhiiOAPLyOVvfU2vH22FXrkp7EvJdkPGhI0NNeibKEJZK+9yVDJSbQLBzYODoxXAldsKZRyLOAkSYZFhSQK8AkWiKIwy1AduTE5GrNDbIw3NeDVqrZwfvfIlyWvwwMS5rUE6tM9wtYrrNGw9UgFQj/SpXeT4cMumkkAHcVg6mrER4D2+SOSet6hmRA7S1srK4JsyF621wJ",
+       "h": "簡稱「國科會」的那個單位。"
       },
       {
        "q": "「人工智慧基本法」草案是哪一年制訂的？",
@@ -1392,7 +1495,8 @@ window.QUIZ_READ = {
         "2020 年"
        ],
        "a": "oojylt",
-       "x": "uoDc8QR+zw+WLsrdoZP8M4gPXr9JLeKhPe3oYkF5gN2VdN8ySIYEI0SFabKMyIaA1ra84sWgWM1YeOewuidjxLdKHpg0NGq/gsM17BYXrHmCwpTT4rgj+DdbXC/EW+EcQVVG3fwod90bIPhyFgMO+ag="
+       "x": "uoDc8QR+zw+WLsrdoZP8M4gPXr9JLeKhPe3oYkF5gN2VdN8ySIYEI0SFabKMyIaA1ra84sWgWM1YeOewuidjxLdKHpg0NGq/gsM17BYXrHmCwpTT4rgj+DdbXC/EW+EcQVVG3fwod90bIPhyFgMO+ag=",
+       "h": "這份草案是最近兩三年才制訂的。"
       },
       {
        "q": "「人工智慧基本法」草案希望我國的 AI 發展達成什麼？",
@@ -1403,7 +1507,8 @@ window.QUIZ_READ = {
         "只追求最快的技術發展"
        ],
        "a": "15zpe16",
-       "x": "qlFLoNpv61miZXc8gVZDBSVTwGB8DUzAM4/iHUQgWsVeUdy72jwnxuY32RG+yvZFJ7PuZBt0b+XOeMQZHxLNknk6rK6F7tL7FEvIiyL1YRGGbVRM4tjiFjD938b7vFl5Yqj/hJXwokHwup6uWreUrtGM2aMGy/s15lCzTuV6RoTA74N39XdYEOiNzaWhiYMZup5k74Uco/VE+Zmk2W+vi9aRWdxW3vlDWqeaEQwhjtXm187e8Z/lkhGomQkmSIH0wiBP+naCWBC46epvvAuQGmlZ"
+       "x": "qlFLoNpv61miZXc8gVZDBSVTwGB8DUzAM4/iHUQgWsVeUdy72jwnxuY32RG+yvZFJ7PuZBt0b+XOeMQZHxLNknk6rK6F7tL7FEvIiyL1YRGGbVRM4tjiFjD938b7vFl5Yqj/hJXwokHwup6uWreUrtGM2aMGy/s15lCzTuV6RoTA74N39XdYEOiNzaWhiYMZup5k74Uco/VE+Zmk2W+vi9aRWdxW3vlDWqeaEQwhjtXm187e8Z/lkhGomQkmSIH0wiBP+naCWBC46epvvAuQGmlZ",
+       "h": "要創新，也要顧到兩件事：人的權利和可能的危險。"
       }
      ]
     }
@@ -1430,7 +1535,8 @@ window.QUIZ_READ = {
         "破壞電磁紀錄"
        ],
        "a": "12t3vll",
-       "x": "L2lZDZExGmI0AYhiPpqxJMK51u4/Kf2lVKZJoe63FrGcFRzOqCM9s7U9l4gfVG2109rYrf/zfmSrbsoKoiZUUj5yJnn0xQ/y4IgocNV1biQUsb5RUmt4L2KEIE0ARjfsdr+kxjjjmZZjlP1uxTiaM5uQkM8+qI2BSCiYh6tZ9ZonJQwhvvLrxRYlo/OvRrQmGOdz4hikCgBj44AuulPwYC6B9VwJx1t4RyFVtCsNjMBIt7GPUaIO2nPmzGA9SxQQwUqtuyVlFBlylQ=="
+       "x": "L2lZDZExGmI0AYhiPpqxJMK51u4/Kf2lVKZJoe63FrGcFRzOqCM9s7U9l4gfVG2109rYrf/zfmSrbsoKoiZUUj5yJnn0xQ/y4IgocNV1biQUsb5RUmt4L2KEIE0ARjfsdr+kxjjjmZZjlP1uxTiaM5uQkM8+qI2BSCiYh6tZ9ZonJQwhvvLrxRYlo/OvRrQmGOdz4hikCgBj44AuulPwYC6B9VwJx1t4RyFVtCsNjMBIt7GPUaIO2nPmzGA9SxQQwUqtuyVlFBlylQ==",
+       "h": "沒經過同意就登入別人的帳號，是「闖進」了別人的電腦。"
       },
       {
        "q": "小美把小花帳號裡的作業複製到自己帳號，恐觸犯哪一項罪？",
@@ -1441,7 +1547,8 @@ window.QUIZ_READ = {
         "干擾電腦或相關設備"
        ],
        "a": "1ohw9dk",
-       "x": "Xj9Rs5L0RTiqfmNUjiL93KblnkbhWs+zSCfl0kmyUwBNI4k9xM7Vt+TGGKBb5O012O/O9UOjVE+2vnef9mlLv7VjMIGFDKim/MaASl4626+HJqgXMkFEWne47jhEzzIYpnDhe6Udq896UsSmmLrhdZU+dG9w768tFX5MJrqlSQOvTdlNwhuM886nM5ed4OyPW/OBe0hhANB181EATakJclRYMAYv4S9hzD7a+Vd8QoKkA9EkQLm/1w=="
+       "x": "Xj9Rs5L0RTiqfmNUjiL93KblnkbhWs+zSCfl0kmyUwBNI4k9xM7Vt+TGGKBb5O012O/O9UOjVE+2vnef9mlLv7VjMIGFDKim/MaASl4626+HJqgXMkFEWne47jhEzzIYpnDhe6Udq896UsSmmLrhdZU+dG9w768tFX5MJrqlSQOvTdlNwhuM886nM5ed4OyPW/OBe0hhANB181EATakJclRYMAYv4S9hzD7a+Vd8QoKkA9EkQLm/1w==",
+       "h": "作業是存在電腦裡的「紀錄」，被人無故拿走了。"
       },
       {
        "q": "阿強用生日猜中了小游的密碼。密碼最好「不要」怎麼設？",
@@ -1452,7 +1559,8 @@ window.QUIZ_READ = {
         "不同網站用不同密碼"
        ],
        "a": "1mfd3gv",
-       "x": "mdBdUWRnmkwbDk5DbvhpQmkcvvV2gAwJklEHInImCdQb95Zgfd8RfZu1FzDVT2qG8kTkds5vNEQ4gMwTlMSg5eCmwkR4eg2/A0IMk686tlRXbhAOZdZTZao5S0jn4W7JDwVQa9ZMD/Z7GNDYgtLo/NSGSG2nqJCh31Nhb7t5O+gCBQJISLvlenStIxtUsUp2yRt3H9Q0HMmHj8IEy9eWLCntELTVgfi8NFznrrCm"
+       "x": "mdBdUWRnmkwbDk5DbvhpQmkcvvV2gAwJklEHInImCdQb95Zgfd8RfZu1FzDVT2qG8kTkds5vNEQ4gMwTlMSg5eCmwkR4eg2/A0IMk686tlRXbhAOZdZTZao5S0jn4W7JDwVQa9ZMD/Z7GNDYgtLo/NSGSG2nqJCh31Nhb7t5O+gCBQJISLvlenStIxtUsUp2yRt3H9Q0HMmHj8IEy9eWLCntELTVgfi8NFznrrCm",
+       "h": "阿強就是用「別人查得到」的資料猜中密碼的。"
       },
       {
        "q": "小花的作業被同學複製，是因為她匆忙中忘了做什麼？",
@@ -1463,7 +1571,8 @@ window.QUIZ_READ = {
         "登出作業系統帳號"
        ],
        "a": "1shov7i",
-       "x": "2DLDt0f2UQZ+Uz1WXhR16N0U/tf6VA0Ynrv56FmHSU5DD6XNnePTYLPSm4KVO97c0d1CSR1q8eGRc8jZhQV/fj7rNwwCYD/T8gsOz5Weu3lfXICRIhcGlfvlsnzzsRVoLduPqPASGMtdoEZxWWl9jgFs3Win+acw0gHX5nfd8LpqPYJyQJLU6of+Qw8cKr3Qf12bUEV27xQmCBq2/U3rM0CSFFTXRkHT"
+       "x": "2DLDt0f2UQZ+Uz1WXhR16N0U/tf6VA0Ynrv56FmHSU5DD6XNnePTYLPSm4KVO97c0d1CSR1q8eGRc8jZhQV/fj7rNwwCYD/T8gsOz5Weu3lfXICRIhcGlfvlsnzzsRVoLduPqPASGMtdoEZxWWl9jgFs3Win+acw0gHX5nfd8LpqPYJyQJLU6of+Qw8cKr3Qf12bUEV27xQmCBq2/U3rM0CSFFTXRkHT",
+       "h": "離開座位前，電腦上的帳號要記得做什麼？"
       },
       {
        "q": "隨著網路普遍融入日常生活，使用者更需要怎麼做？",
@@ -1474,7 +1583,8 @@ window.QUIZ_READ = {
         "提高警覺保障自身安全"
        ],
        "a": "xmb544",
-       "x": "5ztr8oqwLsdq6m91u7Q6STuT1IKZR684Ie9EqOKTxvnodOEMvjmjwtW7QKFaErwQBlsycSt9iYB1GjAln3ZIMAZMzGwOQPuBndpBekCQ5kMzm3GeD516z7I8ozl7FoY75GvVPBISOwpEbDmQqHjhIsEe2o6Qry/S4pw/UtQZWXDFVT3cgUWRXO+zLQrRVdQYh3bu0ReLw/L0poEMfcgBCW4/2+7qJHmBdcBwFxxCQw=="
+       "x": "5ztr8oqwLsdq6m91u7Q6STuT1IKZR684Ie9EqOKTxvnodOEMvjmjwtW7QKFaErwQBlsycSt9iYB1GjAln3ZIMAZMzGwOQPuBndpBekCQ5kMzm3GeD516z7I8ozl7FoY75GvVPBISOwpEbDmQqHjhIsEe2o6Qry/S4pw/UtQZWXDFVT3cgUWRXO+zLQrRVdQYh3bu0ReLw/L0poEMfcgBCW4/2+7qJHmBdcBwFxxCQw==",
+       "h": "網路越方便，越要對自己的安全怎樣？"
       }
      ]
     },
@@ -1495,7 +1605,8 @@ window.QUIZ_READ = {
         "干擾電腦或其相關設備"
        ],
        "a": "12614qj",
-       "x": "Y6K+/5MoUKelSHCvC2c7lKEwTbHEkCVHMcx9i0AjLmfcQHN11uV3PV/Ok/xXDMf30TDZrHplU3d7N57hO+ABEfMqaZwTS6UTULdv/bkO4XoUbreYIwkHOJrMu0h2lAYQ85GZMo+QJn2/BqJr5Mhw/W8pplFRWM/dRb2g6Tfbe/Y1O+FZ9t0ujgX/NbzkKmKLO9esY/3g1OnKT6md4rWOsFRBHMc5zDeIL5Hbzoo01c0Vw+UxVE6BexnoSLwtgMk+XAwopM49i/mV3WAhRBBVU2+9mE/GvTO2xX5ZYixgconlp0DIYi4AIH+LqLBCRw=="
+       "x": "Y6K+/5MoUKelSHCvC2c7lKEwTbHEkCVHMcx9i0AjLmfcQHN11uV3PV/Ok/xXDMf30TDZrHplU3d7N57hO+ABEfMqaZwTS6UTULdv/bkO4XoUbreYIwkHOJrMu0h2lAYQ85GZMo+QJn2/BqJr5Mhw/W8pplFRWM/dRb2g6Tfbe/Y1O+FZ9t0ujgX/NbzkKmKLO9esY/3g1OnKT6md4rWOsFRBHMc5zDeIL5Hbzoo01c0Vw+UxVE6BexnoSLwtgMk+XAwopM49i/mV3WAhRBBVU2+9mE/GvTO2xX5ZYixgconlp0DIYi4AIH+LqLBCRw==",
+       "h": "課本判斷的重點是結果：老師「連不上」網路——設備的正常使用被怎樣了？"
       },
       {
        "q": "鈴鈴在拍賣網站賣隱形眼鏡，違反了哪一部法律？",
@@ -1506,7 +1617,8 @@ window.QUIZ_READ = {
         "藥事法"
        ],
        "a": "1q1eqz9",
-       "x": "3FNcSuFuGVqKcKzW48GubmAIBhnTY4Q2sCR1qXLXocpfLaXYUXPYuw/0qSYdieQdRLxTLg9KVakcqJUCGXfB3MuBeq6h2+rfWviNkHhQ/TwibxnO3VEbVmf0vFvi990huVR7WfN6qLQOfbibr4kiuRm2rpMdG1eWLdy1CKYKGZXsANL3VCzHEVpTXm5KwraK+Y6E"
+       "x": "3FNcSuFuGVqKcKzW48GubmAIBhnTY4Q2sCR1qXLXocpfLaXYUXPYuw/0qSYdieQdRLxTLg9KVakcqJUCGXfB3MuBeq6h2+rfWviNkHhQ/TwibxnO3VEbVmf0vFvi990huVR7WfN6qLQOfbibr4kiuRm2rpMdG1eWLdy1CKYKGZXsANL3VCzHEVpTXm5KwraK+Y6E",
+       "h": "隱形眼鏡和藥品、醫療器材歸同一部法律管。"
       },
       {
        "q": "違反藥事法販售隱形眼鏡，依法可處多少罰鍰？",
@@ -1517,7 +1629,8 @@ window.QUIZ_READ = {
         "一千元以上、三千元以下"
        ],
        "a": "1fnhee",
-       "x": "LckFVNUMHgj8DZ1VCppnzkO4Lw4aYY3NRgSeGypxG73dk5gWIU4ab3gD04/97kbGtIWf/cI8pyB0kPTAW/RXFJD1egyuufOYkBH8QVftoVj20sTJesHQ0HvRWDacnXO+Q55ILQy7/QXImG1BNvCrAbI3lgFu/tGnqnvvIVQRER45Akbd9aZzvxYtySIFq3+ARwzGVZx+E1iGHpWB0Tk+nih1ffkD5iLRXroL0Yy/pEBnv5d4w8PTgJunOCCIuEFgU8UJbbmwj3Ra+/1ofSCCzHoIxBViPAU9uuQu85TI7CrfKlfWj/hf1z4="
+       "x": "LckFVNUMHgj8DZ1VCppnzkO4Lw4aYY3NRgSeGypxG73dk5gWIU4ab3gD04/97kbGtIWf/cI8pyB0kPTAW/RXFJD1egyuufOYkBH8QVftoVj20sTJesHQ0HvRWDacnXO+Q55ILQy7/QXImG1BNvCrAbI3lgFu/tGnqnvvIVQRER45Akbd9aZzvxYtySIFq3+ARwzGVZx+E1iGHpWB0Tk+nih1ffkD5iLRXroL0Yy/pEBnv5d4w8PTgJunOCCIuEFgU8UJbbmwj3Ra+/1ofSCCzHoIxBViPAU9uuQu85TI7CrfKlfWj/hf1z4=",
+       "h": "這個金額比個資法的賠償（五百～二萬）高，以「萬」起跳。"
       },
       {
        "q": "隱形眼鏡為什麼不能自己拿到網路上賣？",
@@ -1528,7 +1641,8 @@ window.QUIZ_READ = {
         "屬於醫療相關器材"
        ],
        "a": "1mloz1h",
-       "x": "oM8uF+KYaHKyAe49ZsI+GsSQQneBfCjFiMXHTx8pVagr9HShvftiYm9LDy5CDQGENi8XkarrI8mE30kEk8NDgKZHlXvUif2O1jbjlvspNUJvYuBRSY/gLYGz5G4RAeaToXUKDxSthvLt5hiaALWP914ftHDm00qHEkiR2nsOW3XvL3k1gP5LeiXJT9R7MYv1xipk0u/PuQzeypaQT9jKFEm5n22nCSIByRQA"
+       "x": "oM8uF+KYaHKyAe49ZsI+GsSQQneBfCjFiMXHTx8pVagr9HShvftiYm9LDy5CDQGENi8XkarrI8mE30kEk8NDgKZHlXvUif2O1jbjlvspNUJvYuBRSY/gLYGz5G4RAeaToXUKDxSthvLt5hiaALWP914ftHDm00qHEkiR2nsOW3XvL3k1gP5LeiXJT9R7MYv1xipk0u/PuQzeypaQT9jKFEm5n22nCSIByRQA",
+       "h": "隱形眼鏡戴在眼睛上，和醫療有關。"
       },
       {
        "q": "小華請哥哥修改學校無線網路密碼，造成了什麼結果？",
@@ -1539,7 +1653,8 @@ window.QUIZ_READ = {
         "老師的筆電連不上無線網路"
        ],
        "a": "1484z92",
-       "x": "XMWA1V3KYVs5SDrtyilCpK6cfOJ37iqVNQPtugNq+ti3PFsgNELt15Z1ENNSERWUELi489H69XywxXu0emKajIhcevXVrxe+OjCtEI3r1E4+35Yo9jrvoMQEbIwoflMoElGMyE/4PVtwziLxD/NeQc1AC44C"
+       "x": "XMWA1V3KYVs5SDrtyilCpK6cfOJ37iqVNQPtugNq+ti3PFsgNELt15Z1ENNSERWUELi489H69XywxXu0emKajIhcevXVrxe+OjCtEI3r1E4+35Yo9jrvoMQEbIwoflMoElGMyE/4PVtwziLxD/NeQc1AC44C",
+       "h": "小華想讓老師沒辦法做什麼？"
       }
      ]
     },
@@ -1559,7 +1674,8 @@ window.QUIZ_READ = {
         "第 339 條"
        ],
        "a": "1t0f4jd",
-       "x": "9XTm89LjseDz1ze9IgAF2ukBncI4HVlEMdtkXf8D/o3cTYImp2XxI6I5y3cEGMKSZa9F/1k8ILln25fb9/QeQ50LYOJfIPLeN/jS1JHLjd5WJP2f9OoMymUZRpvpHpRdqsKvKcGPdb8xLfJN0AYcjWQcPIAYnL2MrY3BtcAd/A+FWP6h3awPFTuwGBcXe1Ndkv5DpwnHJZsk94WUEipuoVBGwg=="
+       "x": "9XTm89LjseDz1ze9IgAF2ukBncI4HVlEMdtkXf8D/o3cTYImp2XxI6I5y3cEGMKSZa9F/1k8ILln25fb9/QeQ50LYOJfIPLeN/jS1JHLjd5WJP2f9OoMymUZRpvpHpRdqsKvKcGPdb8xLfJN0AYcjWQcPIAYnL2MrY3BtcAd/A+FWP6h3awPFTuwGBcXe1Ndkv5DpwnHJZsk94WUEipuoVBGwg==",
+       "h": "散布猥褻物品的那一條，數字最小，不是 3 開頭。"
       },
       {
        "q": "蓁蓁收到讓她不舒服的圖片連結，她的哪個做法值得學習？",
@@ -1570,7 +1686,8 @@ window.QUIZ_READ = {
         "告訴家長並報警處理"
        ],
        "a": "1foszb5",
-       "x": "APxSMoWmx7WTuf37mcmhEY/4rSZuVrHpivVmpkjvjroCtN0exgC7YtkFlo1depG0+7SchNuDrcPPINAvPLBJro5tym+jtA9NR+XRZ88YZTXFuHOP5sjDJdvH/ExwiQ7C2clhNGRg55ZLrg5ENAFAMERPMXq8wrz6Im9Z0bHhHq8FKtJdeyMXTFgh/5Wee4hdWVU1l1tvO05vnhSJP4amev2cYks66yTs5SSSP40ekdT/2ySuuXGQr2e8LFveqmNNlPROM3ckKGS17Maw6ns29PUp8SHHZd/AAXu5zGiJr6xMdejTrWD/o7atzeg2"
+       "x": "APxSMoWmx7WTuf37mcmhEY/4rSZuVrHpivVmpkjvjroCtN0exgC7YtkFlo1depG0+7SchNuDrcPPINAvPLBJro5tym+jtA9NR+XRZ88YZTXFuHOP5sjDJdvH/ExwiQ7C2clhNGRg55ZLrg5ENAFAMERPMXq8wrz6Im9Z0bHhHq8FKtJdeyMXTFgh/5Wee4hdWVU1l1tvO05vnhSJP4amev2cYks66yTs5SSSP40ekdT/2ySuuXGQr2e8LFveqmNNlPROM3ckKGS17Maw6ns29PUp8SHHZd/AAXu5zGiJr6xMdejTrWD/o7atzeg2",
+       "h": "收到讓人不舒服的東西，要找大人幫忙，必要時交給誰處理？"
       },
       {
        "q": "網友在網路上散布色情圖片，警察可以透過什麼找到他？",
@@ -1581,7 +1698,8 @@ window.QUIZ_READ = {
         "網路暱稱"
        ],
        "a": "l6wjj6",
-       "x": "f8h83Zihj9p4vfKZfIIzQV7oRIAEAwYcRZinPCsrWQ0Fp0fIr4rGPuiSH8RC6FFyNMo1mBDIzBk74/uB+NMtZL3rlcBgF1lDeD3U5XrxYFSYRMayBy1mkfo9AmmUX9rNSTV5o7PN4+LqDxnyREy2lfz/cVJv4SgyZA=="
+       "x": "f8h83Zihj9p4vfKZfIIzQV7oRIAEAwYcRZinPCsrWQ0Fp0fIr4rGPuiSH8RC6FFyNMo1mBDIzBk74/uB+NMtZL3rlcBgF1lDeD3U5XrxYFSYRMayBy1mkfo9AmmUX9rNSTV5o7PN4+LqDxnyREy2lfz/cVJv4SgyZA==",
+       "h": "每一台連上網路的裝置，都有一組像「地址」的號碼。"
       },
       {
        "q": "小明以為在兌換積分，他輸入的「手機驗證碼」其實是什麼？",
@@ -1592,7 +1710,8 @@ window.QUIZ_READ = {
         "電信小額付款的驗證碼"
        ],
        "a": "1bwl1mw",
-       "x": "MD4WBxzUXyJgl+77OexCaY8GdiCI4My3mY8Ze9x0pPZBc/rMXlwMW/Z0bLJhp8UTe9W70YaXTiPrXHGD9Gcp75WOLNY0XcVKIIsMmcgsWBQ7BQCYrCnQA+trBMbr2N1JIv/stg1ISdmewo57Fxah+COlE7gsZq7H4ixLiIkzdvwTj92Odg6PBFm+2F8kQxsIMrwAb5FsQsRzBvbgrTUrJskU2HG3MTQadVczTWGO"
+       "x": "MD4WBxzUXyJgl+77OexCaY8GdiCI4My3mY8Ze9x0pPZBc/rMXlwMW/Z0bLJhp8UTe9W70YaXTiPrXHGD9Gcp75WOLNY0XcVKIIsMmcgsWBQ7BQCYrCnQA+trBMbr2N1JIv/stg1ISdmewo57Fxah+COlE7gsZq7H4ixLiIkzdvwTj92Odg6PBFm+2F8kQxsIMrwAb5FsQsRzBvbgrTUrJskU2HG3MTQadVczTWGO",
+       "h": "帳單上多出來的是哪一種付款？"
       },
       {
        "q": "利用假訊息讓他人提供個資、騙取金錢，恐觸犯刑法哪兩項罪？",
@@ -1603,7 +1722,8 @@ window.QUIZ_READ = {
         "普通詐欺和侵害著作權"
        ],
        "a": "jpybx5",
-       "x": "qbYBJtQXg1lgGIo3uv/fMb2P33lIndjo/SFiaMxygEyP7QN765dN7mZXFJGB0X3I23sfdOfQ1hkhxjqdgJd0tdYCft0vTKa4V7eNdYe85lZ4OYZSO93D4NEzwK4kwD6QDSNroOAHDbQHl+gCCF/64MZ166AVIkMd8LRVCB+2dnHsBMfXJ4nnkfMoT24KLmcNqwqy9rIe"
+       "x": "qbYBJtQXg1lgGIo3uv/fMb2P33lIndjo/SFiaMxygEyP7QN765dN7mZXFJGB0X3I23sfdOfQ1hkhxjqdgJd0tdYCft0vTKa4V7eNdYe85lZ4OYZSO93D4NEzwK4kwD6QDSNroOAHDbQHl+gCCF/64MZ166AVIkMd8LRVCB+2dnHsBMfXJ4nnkfMoT24KLmcNqwqy9rIe",
+       "h": "騙人的叫詐欺；透過電腦設備騙的，還多一條。"
       }
      ]
     }
@@ -1630,7 +1750,8 @@ window.QUIZ_READ = {
         "僅供個人參考使用"
        ],
        "a": "1xiux4k",
-       "x": "e7Yu4nbGGmO0RhFB18PrB82N95PHMbZWgCeVfE+2G/Rwh9c3PBmaXujXIArAlpG4SWeQGiEewhTx/V6OlqWjOAPqXR1wnvidU6j36qHDmXEM4Vq0HfZEEeMAQjUw3KYk6myiQwck26hq/QZhAX2N1aj9uo0TeeCePzuPk34+ajOyqIx/7ndNPfS6J2ANiWltc7giXNaJuPt7YhwXA1NgvACnP/1XM1Jr6b8zT229RGvLo7a/s9CgLk0ji6kuuGj/m1w7Kw3Z"
+       "x": "e7Yu4nbGGmO0RhFB18PrB82N95PHMbZWgCeVfE+2G/Rwh9c3PBmaXujXIArAlpG4SWeQGiEewhTx/V6OlqWjOAPqXR1wnvidU6j36qHDmXEM4Vq0HfZEEeMAQjUw3KYk6myiQwck26hq/QZhAX2N1aj9uo0TeeCePzuPk34+ajOyqIx/7ndNPfS6J2ANiWltc7giXNaJuPt7YhwXA1NgvACnP/1XM1Jr6b8zT229RGvLo7a/s9CgLk0ji6kuuGj/m1w7Kw3Z",
+       "h": "單純複製和「複製來賺錢」，哪一個比較嚴重？"
       },
       {
        "q": "下列哪一種情況「不構成」著作權侵害？",
@@ -1641,7 +1762,8 @@ window.QUIZ_READ = {
         "重製後拿去網路拍賣"
        ],
        "a": "12ib7fr",
-       "x": "EZNxaPPkfI2YqIDgnduC9f6jzi8mnphOdqr50e3Bb13N7s+6daSjKSpM9BqMMRkROFYvgupH7rfm4KbEYWlWXpd2Ut+0pJzrazDqBsKkqq7aMpBuFRnNJXnGcqpPqL8fZ/PPnLvtKbppWeMMu80sJW67OKxd3WnJ/bZC7GnCBpAaAA+Lr2e7gy/bEcsagfJZ04H7Dy1lWgv1gTPRHuf0kgJeFzoP6sztBr9+3VKgV25bgaaRPW1AJ21zHhubfqTc"
+       "x": "EZNxaPPkfI2YqIDgnduC9f6jzi8mnphOdqr50e3Bb13N7s+6daSjKSpM9BqMMRkROFYvgupH7rfm4KbEYWlWXpd2Ut+0pJzrazDqBsKkqq7aMpBuFRnNJXnGcqpPqL8fZ/PPnLvtKbppWeMMu80sJW67OKxd3WnJ/bZC7GnCBpAaAA+Lr2e7gy/bEcsagfJZ04H7Dy1lWgv1gTPRHuf0kgJeFzoP6sztBr9+3VKgV25bgaaRPW1AJ21zHhubfqTc",
+       "h": "自己參考、在合理範圍內使用，不算侵害。"
       },
       {
        "q": "改作他人著作，用在哪一種目的時刑度比較重？",
@@ -1652,7 +1774,8 @@ window.QUIZ_READ = {
         "課堂教學"
        ],
        "a": "1jd3rx8",
-       "x": "xbq4Fw3l9oO5fwrxNVNSnOHwhj83A+U+o5aeHTHBW/RGmM/zgdB82eJlGt43lUVVTyxHenuScZ11NQI7n0kloGhJf1ynUdCMNaK6Eftzbbua5zzdDu+wYAeAR8ZCAnnLmSV3YMBxrb+heY/qBA6K9kEoMZ5uEFQO1zppZPeyvMB6gCRT/NRQENwpVVSAQwXnChHL"
+       "x": "xbq4Fw3l9oO5fwrxNVNSnOHwhj83A+U+o5aeHTHBW/RGmM/zgdB82eJlGt43lUVVTyxHenuScZ11NQI7n0kloGhJf1ynUdCMNaK6Eftzbbua5zzdDu+wYAeAR8ZCAnnLmSV3YMBxrb+heY/qBA6K9kEoMZ5uEFQO1zppZPeyvMB6gCRT/NRQENwpVVSAQwXnChHL",
+       "h": "拿去上課用，和拿去賺錢，哪個刑度重？"
       },
       {
        "q": "下列哪一個「不是」非法利用著作物的方法？",
@@ -1663,7 +1786,8 @@ window.QUIZ_READ = {
         "未經同意改作編輯"
        ],
        "a": "ezrwjr",
-       "x": "t1nWxIgntyXyVIHdctFnRXilo94IwTJFTZqTEukU2a3ex76HcaHdQ0q/4vNhjY/HMv2MWrfDjJwXfIvVcyRmc0w9ZKvtdUF55+zd2tJeuNsobP7tPz3+kNRXzwCljifDd3UjN25rGfpc26U0FMNzSv0fcR3FNKSGddJI+p6NOPy1Aoihd8itQI4ce+SeS7DXT1QNtkWyk6VfI0Ks+m85L6LdLymE0Mi0kZ5ZEBTuLWDGNkWKZ2FFiA0Mwr2T"
+       "x": "t1nWxIgntyXyVIHdctFnRXilo94IwTJFTZqTEukU2a3ex76HcaHdQ0q/4vNhjY/HMv2MWrfDjJwXfIvVcyRmc0w9ZKvtdUF55+zd2tJeuNsobP7tPz3+kNRXzwCljifDd3UjN25rGfpc26U0FMNzSv0fcR3FNKSGddJI+p6NOPy1Aoihd8itQI4ce+SeS7DXT1QNtkWyk6VfI0Ks+m85L6LdLymE0Mi0kZ5ZEBTuLWDGNkWKZ2FFiA0Mwr2T",
+       "h": "播送、傳輸、改作都是沒經過同意的用法；哪一個是合法的？"
       },
       {
        "q": "小波剪輯電影預告片上傳頻道、還打開收益，如果沒有得到誰的同意，原則上就是侵權？",
@@ -1674,7 +1798,8 @@ window.QUIZ_READ = {
         "社群媒體平臺"
        ],
        "a": "1vsneys",
-       "x": "dQ4CgAMfXDPl61XaejTkPwuBYz7jrqsyT5TX3qotM6kVYL7rTJ4szsXW3yXpD/8O5bjVivdD61+L7fCDToXESZsWLNH/uvhJ8n+7Dk4DN8JPMZylaUl48bF8LpB0fWuYSNkF46uYa/cnDTAzmJLvYGAo0SVC/IMiHDSWsFbCZW91XpMSH8yqiQT78Nvu3S01fbIZ1HijlRFX3QYjs0lcuUNdpFTMOcG0kONvLxLgdDgl"
+       "x": "dQ4CgAMfXDPl61XaejTkPwuBYz7jrqsyT5TX3qotM6kVYL7rTJ4szsXW3yXpD/8O5bjVivdD61+L7fCDToXESZsWLNH/uvhJ8n+7Dk4DN8JPMZylaUl48bF8LpB0fWuYSNkF46uYa/cnDTAzmJLvYGAo0SVC/IMiHDSWsFbCZW91XpMSH8yqiQT78Nvu3S01fbIZ1HijlRFX3QYjs0lcuUNdpFTMOcG0kONvLxLgdDgl",
+       "h": "預告片的權利屬於電影的權利擁有者，要經過他同意。"
       }
      ]
     },
@@ -1696,7 +1821,8 @@ window.QUIZ_READ = {
         "停電當機故障"
        ],
        "a": "lirced",
-       "x": "Ow7yrpW9LdXQnStEVFqTFrruKe+vrulOp04UTyK51Ou317g8dbYZcnH+0rjOSTp5NXS7sCTr/ARLRpCWkJjRvnGTJ3VJXYUANlwmpH8CnLqNe67YVZSXLd87mCU5bDYr1FlGliyQSRIb2B0ZpHtRc9e7L8rnPAOVbzNsCSP5iiRBVEnN+q1bKRHhlcco6rWgX2gtVRQycJcYyc7K9mHaJBCpinRt"
+       "x": "Ow7yrpW9LdXQnStEVFqTFrruKe+vrulOp04UTyK51Ou317g8dbYZcnH+0rjOSTp5NXS7sCTr/ARLRpCWkJjRvnGTJ3VJXYUANlwmpH8CnLqNe67YVZSXLd87mCU5bDYr1FlGliyQSRIb2B0ZpHtRc9e7L8rnPAOVbzNsCSP5iiRBVEnN+q1bKRHhlcco6rWgX2gtVRQycJcYyc7K9mHaJBCpinRt",
+       "h": "一種偽裝成正常程式、偷偷打開後門的惡意程式。"
       },
       {
        "q": "公務機關違反個資法造成損害，損害賠償適用哪一部法律？",
@@ -1707,7 +1833,8 @@ window.QUIZ_READ = {
         "公務員服務法"
        ],
        "a": "vo8phw",
-       "x": "q0aV0VeDe2yJjz3a6FcBXk5jK94vefEINqF9MF9rfB1n2UXdckDR9SRl9ZTDA+fik83mF32t+63n/R3uyVn8y+PyptolipqaTlazMs3GlIU+tnU3Xy7C0/7Bvz6cq9xPIXeerONjWmqIW9iN4imjBIfVYV1wNK2eAxuXVQ8aacmeIw1lghIPGMaicWzvPLeL357BpwNlA0Wh+HqZxpwfL2+/"
+       "x": "q0aV0VeDe2yJjz3a6FcBXk5jK94vefEINqF9MF9rfB1n2UXdckDR9SRl9ZTDA+fik83mF32t+63n/R3uyVn8y+PyptolipqaTlazMs3GlIU+tnU3Xy7C0/7Bvz6cq9xPIXeerONjWmqIW9iN4imjBIfVYV1wNK2eAxuXVQ8aacmeIw1lghIPGMaicWzvPLeL357BpwNlA0Wh+HqZxpwfL2+/",
+       "h": "公務機關造成的損害，由「國家」負責賠償。"
       },
       {
        "q": "公務人員假借職務之便故意違反個資法，刑責會怎樣？",
@@ -1718,7 +1845,8 @@ window.QUIZ_READ = {
         "加重刑責至二分之一"
        ],
        "a": "b5pu62",
-       "x": "zfHAOvraT6TWE2RLOeC2FD02ozvtsvvCCWlkofaI3Hp3vddosCDdzUeqx8u3fDG4KIuRu4aNdViBK9sZ5hvq9Prw+wOALQFmb0avurM2uPZZwTFdQcE7hMiU1MVlT3wsaJBPQ4mbtzCeE7/JGfoDHvvEp4nghVrnoRLk8edXuvfdUpTWxyYwDIFG3skxwWlDsqv8QClT42ts6NwXJVLqwDvV6IWPn8ETMnFWpyb1kAeL1tnsS4UeZhHqdUESOxCtuhzb"
+       "x": "zfHAOvraT6TWE2RLOeC2FD02ozvtsvvCCWlkofaI3Hp3vddosCDdzUeqx8u3fDG4KIuRu4aNdViBK9sZ5hvq9Prw+wOALQFmb0avurM2uPZZwTFdQcE7hMiU1MVlT3wsaJBPQ4mbtzCeE7/JGfoDHvvEp4nghVrnoRLk8edXuvfdUpTWxyYwDIFG3skxwWlDsqv8QClT42ts6NwXJVLqwDvV6IWPn8ETMnFWpyb1kAeL1tnsS4UeZhHqdUESOxCtuhzb",
+       "h": "公務員濫用職權，處罰會比一般人更輕還是更重？"
       },
       {
        "q": "某國中新生個資外洩，是怎麼發生的？",
@@ -1729,7 +1857,8 @@ window.QUIZ_READ = {
         "系統產生的暫存檔被搜尋到"
        ],
        "a": "dl9ebk",
-       "x": "ZfIZEuUrGPgeyh7pqks3qEMIJfoZt6WJN4HR9HRS8dHxiClt3K8mi3i6RY+FUr/beqGqpM6XTvP4lkc1SdDsYDhW6Zky/TicJj1WiRV2531eSR8L0ttig4tiLmjZ+YlOTjwMGwPP663xOrRhUP0NtY58gg3RoFjXqcJC7L1xz/o5A1ZnNyz4wlZK1Uo+PNasri0l3TeS6T8yBvkOF6NZq1Mp1pvH8+N/kT1MEZb2RdlCIpSyUxZ1HRZw6NDItsbg"
+       "x": "ZfIZEuUrGPgeyh7pqks3qEMIJfoZt6WJN4HR9HRS8dHxiClt3K8mi3i6RY+FUr/beqGqpM6XTvP4lkc1SdDsYDhW6Zky/TicJj1WiRV2531eSR8L0ttig4tiLmjZ+YlOTjwMGwPP663xOrRhUP0NtY58gg3RoFjXqcJC7L1xz/o5A1ZnNyz4wlZK1Uo+PNasri0l3TeS6T8yBvkOF6NZq1Mp1pvH8+N/kT1MEZb2RdlCIpSyUxZ1HRZw6NDItsbg",
+       "h": "匯入資料後，系統自己多產生了一個檔案，放在暫時的地方。"
       },
       {
        "q": "同一個個資外洩事件，如果 20 人以上受害，可以怎麼做？",
@@ -1740,7 +1869,8 @@ window.QUIZ_READ = {
         "改申請新身分證"
        ],
        "a": "1dn1cv8",
-       "x": "lzfSHng1FqZgo93UU1x77/yI3YO6lzw0Rr4JR6QCAjvkuGRDb4CmDS+UMuO/m+ihqec9tMh4s/eDUEZyi3GEXYiPPw0mjc46adQQ/pkLzFc6ZGhpQb+ALztcN8yEytwuf7eQUr2DlOSRL7IXTXqnTjXp87hcI7VtFlnrFagv6dh8oTMuBEyEp/r0UQcMgt7Mq8bg"
+       "x": "lzfSHng1FqZgo93UU1x77/yI3YO6lzw0Rr4JR6QCAjvkuGRDb4CmDS+UMuO/m+ihqec9tMh4s/eDUEZyi3GEXYiPPw0mjc46adQQ/pkLzFc6ZGhpQb+ALztcN8yEytwuf7eQUr2DlOSRL7IXTXqnTjXp87hcI7VtFlnrFagv6dh8oTMuBEyEp/r0UQcMgt7Mq8bg",
+       "h": "很多人一起告，叫做什麼訴訟？"
       }
      ]
     },
@@ -1763,7 +1893,8 @@ window.QUIZ_READ = {
         "只要寫悔過書就好"
        ],
        "a": "jf9xy1",
-       "x": "3IFEKjEKg0slkEJndkgrzc2dzFChfMdFvgSAulSssMtcmIHJb/KcFRa2wdJ/oo9IjUJNhOuw6/XPur4JMcrWY697xl+9jA0GisxaE0TTzjM+6NOeVmwXy5kp7ftttbsxhbFEI7Kphoc6kRcaRt5puLQSKsD/sY+oM8oaPOyKUXFBiK8/dsP5ZSIsZP0ptZ1uy51GR0Xdwy/0Rhm/oZ9pH6vZhLCGU9Qwg+sQI1UXFb+qjwLEr0h8IPerK6Z6oToX"
+       "x": "3IFEKjEKg0slkEJndkgrzc2dzFChfMdFvgSAulSssMtcmIHJb/KcFRa2wdJ/oo9IjUJNhOuw6/XPur4JMcrWY697xl+9jA0GisxaE0TTzjM+6NOeVmwXy5kp7ftttbsxhbFEI7Kphoc6kRcaRt5puLQSKsD/sY+oM8oaPOyKUXFBiK8/dsP5ZSIsZP0ptZ1uy51GR0Xdwy/0Rhm/oZ9pH6vZhLCGU9Qwg+sQI1UXFb+qjwLEr0h8IPerK6Z6oToX",
+       "h": "公司被罰，負責人也要被罰一樣的金額。"
       },
       {
        "q": "不易證明實際損害額時，個資法規定每人每一事件可求償多少？",
@@ -1774,7 +1905,8 @@ window.QUIZ_READ = {
         "五萬元以上五十萬元以下"
        ],
        "a": "14ho8c0",
-       "x": "dRSjIAbrudvRTFclrsaW7sAwkCDT0jOeiwKi2SFf1+L8pvXvbuMkZx5uJTAcOty7Q1o6JzjS4GphEHbLxAbaUamZIT7zAAGtwaQoRxXPis/zyA9TNTSDU1upz46bigssXhmMf7b8h9gLpR41LBPEsI+oVgQTGtHhKtGa5GvLNrBJ/1ykr4rm0rvGBk5spbkDme8HI5YjRbs5+84LPpdI50PjA2Siv2w/Nr/B2/luk0agt3nXeFmWYQaeYwa4uGzhyypsUu5dGxTICUJghXmtebXOJjrE2qGtaNxMeRM="
+       "x": "dRSjIAbrudvRTFclrsaW7sAwkCDT0jOeiwKi2SFf1+L8pvXvbuMkZx5uJTAcOty7Q1o6JzjS4GphEHbLxAbaUamZIT7zAAGtwaQoRxXPis/zyA9TNTSDU1upz46bigssXhmMf7b8h9gLpR41LBPEsI+oVgQTGtHhKtGa5GvLNrBJ/1ykr4rm0rvGBk5spbkDme8HI5YjRbs5+84LPpdI50PjA2Siv2w/Nr/B2/luk0agt3nXeFmWYQaeYwa4uGzhyypsUu5dGxTICUJghXmtebXOJjrE2qGtaNxMeRM=",
+       "h": "這個金額和學校個資外洩的新聞一樣，從幾百元到幾萬元。"
       },
       {
        "q": "違反個資法，要負哪些責任？",
@@ -1785,7 +1917,8 @@ window.QUIZ_READ = {
         "只要繳行政罰鍰"
        ],
        "a": "1narsup",
-       "x": "9aehdIJX4B8POI8Ekulcgz8ISKm3wzh13H2ph68nRnH5pNXYlJX/vAwUKdTQY9mYW2ROyzCiJzGYTF6DiN50dtlkyMuFZ9EB/HMEiFF78d0jF8TRJJGaXUPpzNFlccnqe2iwk9TGh1GAJnBcxtrYwOoCohysUQTCnVtDaMYse4Ylg0LNDGbSu9YdiCfb9ALbqca4GmASYRwi0ESlhTdIxfHhbajcQVu5fp3aWdnAYUSTOQ9xC4Pa5bjODaj5"
+       "x": "9aehdIJX4B8POI8Ekulcgz8ISKm3wzh13H2ph68nRnH5pNXYlJX/vAwUKdTQY9mYW2ROyzCiJzGYTF6DiN50dtlkyMuFZ9EB/HMEiFF78d0jF8TRJJGaXUPpzNFlccnqe2iwk9TGh1GAJnBcxtrYwOoCohysUQTCnVtDaMYse4Ylg0LNDGbSu9YdiCfb9ALbqca4GmASYRwi0ESlhTdIxfHhbajcQVu5fp3aWdnAYUSTOQ9xC4Pa5bjODaj5",
+       "h": "違反個資法：要賠錢、可能坐牢，還有行政罰。"
       },
       {
        "q": "托比用工作之便查阿賢的個資給小惠，為什麼違反個資法？",
@@ -1796,7 +1929,8 @@ window.QUIZ_READ = {
         "不是基於原本的蒐集目的"
        ],
        "a": "rrv3pe",
-       "x": "Jz6C5IHfTj8RNcKoRJHwaWoHEVWvv82RGwTNvstCJ+0TyoNywTEesL+jv0JvR03lJF7KpbwH4bKWeJOBm+8ec0SY3bxqkoPEXSL1vyP7bY1g6sZrp1aQgjUhAj+7fh4eIn+271Ib8OurlsGZIqQERVMFkhMZjwrbg/kMcRjJFROVwnClDexaCeguzutHU2O95O2PnK+8oFmcjhXwhD8hLitwjgpHHs9W8nN9Phl1V+bUPK36t6hy+thP0g/CuO9Y+bh4LXJNG1VLzuWzFlWxL19r0k+jlaKIvztK85XIoFH68SJx+bolZIL4jYly"
+       "x": "Jz6C5IHfTj8RNcKoRJHwaWoHEVWvv82RGwTNvstCJ+0TyoNywTEesL+jv0JvR03lJF7KpbwH4bKWeJOBm+8ec0SY3bxqkoPEXSL1vyP7bY1g6sZrp1aQgjUhAj+7fh4eIn+271Ib8OurlsGZIqQERVMFkhMZjwrbg/kMcRjJFROVwnClDexaCeguzutHU2O95O2PnK+8oFmcjhXwhD8hLitwjgpHHs9W8nN9Phl1V+bUPK36t6hy+thP0g/CuO9Y+bh4LXJNG1VLzuWzFlWxL19r0k+jlaKIvztK85XIoFH68SJx+bolZIL4jYly",
+       "h": "電信公司蒐集個資是為了辦門號；托比拿來做別的事。"
       },
       {
        "q": "托比的雇主（電信公司）在什麼情況下，也可能連帶負賠償責任？",
@@ -1807,7 +1941,8 @@ window.QUIZ_READ = {
         "未盡到監督責任"
        ],
        "a": "1dws76n",
-       "x": "k/Pda9VK3H7325C/FPTT4rDGOlQsBtGcgw4A53dtfLKpUQ0QiUJWeKI7bOkXbciohjD/t2BWLLH64jRFnxgv8AygVXuIleatTzbwqUy6dNyxEiusauFFGGX4Vr8U4fMIzAXfJ6StFKMI7SoxFsV/bMfVFtpU/PTwuf0sW3t4KE0tHmeZt/ikZtUi+N86aJeVsKl++PbLsfysMDVzHzwm"
+       "x": "k/Pda9VK3H7325C/FPTT4rDGOlQsBtGcgw4A53dtfLKpUQ0QiUJWeKI7bOkXbciohjD/t2BWLLH64jRFnxgv8AygVXuIleatTzbwqUy6dNyxEiusauFFGGX4Vr8U4fMIzAXfJ6StFKMI7SoxFsV/bMfVFtpU/PTwuf0sW3t4KE0tHmeZt/ikZtUi+N86aJeVsKl++PbLsfysMDVzHzwm",
+       "h": "公司如果沒有好好管員工（例如沒簽保密切結書）。"
       }
      ]
     },
@@ -1831,7 +1966,8 @@ window.QUIZ_READ = {
         "連帶"
        ],
        "a": "1t92zjw",
-       "x": "mwVA6+jwkQlbAfU+96m3iRknxEv1UX+mAOGdmWIQoPOov9Abyoyzp3eHctqobk/5SYC/HDaC4xRunqagBc0FzV2AQOVzEHmunKfus7v8iwQfshvloW84sEch0x9W9id4Oyrzx/rStCfOglAQOwDygLSsr80Tct+ShAix"
+       "x": "mwVA6+jwkQlbAfU+96m3iRknxEv1UX+mAOGdmWIQoPOov9Abyoyzp3eHctqobk/5SYC/HDaC4xRunqagBc0FzV2AQOVzEHmunKfus7v8iwQfshvloW84sEch0x9W9id4Oyrzx/rStCfOglAQOwDygLSsr80Tct+ShAix",
+       "h": "記住口訣：併和易，一個是「加上」、一個是「換成」。"
       },
       {
        "q": "判有期徒刑三個月、可易科罰金每日 1,000 元，代表什麼？",
@@ -1842,7 +1978,8 @@ window.QUIZ_READ = {
         "坐牢三天就能抵銷"
        ],
        "a": "vvyfuk",
-       "x": "SxTVoT34nIKjzmj/xsc4cTyS+n0TtO+e1RtxorOuUk5I50dwnkyBBUoGz578FJtBfuGu5IEWQaf2w27AOzUnB/QKLbJEBWAhCNoDANQ8cU+9wSW3f0R3lWvupMD38NZFRU8Ki7B2/RBCKKkzKPBJtjXs0Oe8tdMAY8qpKHKAMCcPXO4uywA/5NEVDUUFSCv8++YuhNFVAMiuCtmQU3SQRvIpIvyVGq4nMqkwNq2w+qz5"
+       "x": "SxTVoT34nIKjzmj/xsc4cTyS+n0TtO+e1RtxorOuUk5I50dwnkyBBUoGz578FJtBfuGu5IEWQaf2w27AOzUnB/QKLbJEBWAhCNoDANQ8cU+9wSW3f0R3lWvupMD38NZFRU8Ki7B2/RBCKKkzKPBJtjXs0Oe8tdMAY8qpKHKAMCcPXO4uywA/5NEVDUUFSCv8++YuhNFVAMiuCtmQU3SQRvIpIvyVGq4nMqkwNq2w+qz5",
+       "h": "易科＝可以「換成」繳錢；三個月是 90 天，一天 1,000 元。"
       },
       {
        "q": "「拘役」的刑期最長不超過多久？",
@@ -1853,7 +1990,8 @@ window.QUIZ_READ = {
         "六個月"
        ],
        "a": "oo7zw1",
-       "x": "xaTHaDAzkRhqeYOfJTZ5sMRu5OyvufytJ9rMmTGvkoMuDfJXKhO1lNZPyy4O4QoE/mW4sQ0yAjFaYB+8xLTyu2wttliDIflEvnKc81YE188/k5qWsL2vX6H95mwWC/5YzUWukf7kZn3hPWo1fhxbx21F+7PDbfNEgQYEllZqHmMhSCVgKBibRiroaB6gPWjyeVa41QpalXSg"
+       "x": "xaTHaDAzkRhqeYOfJTZ5sMRu5OyvufytJ9rMmTGvkoMuDfJXKhO1lNZPyy4O4QoE/mW4sQ0yAjFaYB+8xLTyu2wttliDIflEvnKc81YE188/k5qWsL2vX6H95mwWC/5YzUWukf7kZn3hPWo1fhxbx21F+7PDbfNEgQYEllZqHmMhSCVgKBibRiroaB6gPWjyeVa41QpalXSg",
+       "h": "拘役比有期徒刑輕，最短一個月，最長是半年。"
       },
       {
        "q": "交通違規被警察機關罰三千元，這種處罰叫做什麼？",
@@ -1864,7 +2002,8 @@ window.QUIZ_READ = {
         "罰金"
        ],
        "a": "186vkb3",
-       "x": "TIsXRBfc9KFKR/Otx6oRATSqZYDO30Wo1zEuyJ2Dr90Z6eKY2+Uzmhy1l08h/NryDmsFJAnvaHkuzEehfOET3sAiiXsNYasSmLkFpht8eBpu0AfxGX6xmBEQ+pQF+c/zcY44+h08hEEE2ziigrx040vN61lsRqvNUI0Wi+nm3rF86MMFZbLRbBCYmms5uNFYcfB9yAJXvLm9kljVReeh"
+       "x": "TIsXRBfc9KFKR/Otx6oRATSqZYDO30Wo1zEuyJ2Dr90Z6eKY2+Uzmhy1l08h/NryDmsFJAnvaHkuzEehfOET3sAiiXsNYasSmLkFpht8eBpu0AfxGX6xmBEQ+pQF+c/zcY44+h08hEEE2ziigrx040vN61lsRqvNUI0Wi+nm3rF86MMFZbLRbBCYmms5uNFYcfB9yAJXvLm9kljVReeh",
+       "h": "警察是行政機關；行政機關罰的錢，和法院判的罰金名稱不同。"
       },
       {
        "q": "信用卡被盜刷，被盜者向盜刷者要求賠償，屬於哪一種？",
@@ -1875,7 +2014,8 @@ window.QUIZ_READ = {
         "民事賠償"
        ],
        "a": "18chumm",
-       "x": "xqdqqeegNzp1z0a0x1KFMeVcV/1nG9KtXGDZutQU7U+Wnw5NtXnzVs2qDAftJmzMbW0j0pDFLfx5he+JnxVNYFdeFG8JPhV/+KXN/J9XEqFmtRWPqXBP4bohhEYw9NWGBMigtIT3z9N3F6BawQVSnRJVTwfRui3WADqGGtRea3bMsIpbo6sFlELCseownsqQzaRenL8MTPD4hmXyr3Z1e2VCbVYRt8J5+fYzLVvVooRk99js"
+       "x": "xqdqqeegNzp1z0a0x1KFMeVcV/1nG9KtXGDZutQU7U+Wnw5NtXnzVs2qDAftJmzMbW0j0pDFLfx5he+JnxVNYFdeFG8JPhV/+KXN/J9XEqFmtRWPqXBP4bohhEYw9NWGBMigtIT3z9N3F6BawQVSnRJVTwfRui3WADqGGtRea3bMsIpbo6sFlELCseownsqQzaRenL8MTPD4hmXyr3Z1e2VCbVYRt8J5+fYzLVvVooRk99js",
+       "h": "跟「賠錢」有關的是民事還是刑事？"
       }
      ]
     },
@@ -1899,7 +2039,8 @@ window.QUIZ_READ = {
         "日本"
        ],
        "a": "px177x",
-       "x": "ucZUF207n7P4TkVikVIivRxfA5L+7/eVUYjnfdTl8xyFTbg5xztbC6mkbDU+Vk6jEKdlxFZ6TB7b7GJob3kd+PTkaKK8GdmUAfQ7MjTz771Lh/0dUh+GZ+Zqvobkm9w8RgasjkPVKWIVSHV8FLxg0WsERHIOG1+tRtLTU0NmE8MWP5CtF6bJR1A6vBrrP69SQWpf1mo3FiYls4I/+trTrRM="
+       "x": "ucZUF207n7P4TkVikVIivRxfA5L+7/eVUYjnfdTl8xyFTbg5xztbC6mkbDU+Vk6jEKdlxFZ6TB7b7GJob3kd+PTkaKK8GdmUAfQ7MjTz771Lh/0dUh+GZ+Zqvobkm9w8RgasjkPVKWIVSHV8FLxg0WsERHIOG1+tRtLTU0NmE8MWP5CtF6bJR1A6vBrrP69SQWpf1mo3FiYls4I/+trTrRM=",
+       "h": "第一部 AI 法案在 2024 年 8 月生效，是歐洲的區域組織。"
       },
       {
        "q": "歐盟《人工智慧法案》是用什麼方法來制訂的？",
@@ -1910,7 +2051,8 @@ window.QUIZ_READ = {
         "基於年齡的管理"
        ],
        "a": "1beuof9",
-       "x": "iknfBqD8wHVt/9B328M+XlEtcryWLeGU1TD3pjGxKEECwTLGdC5MFC/zJw58CCryBTuU3VUTix92nIvcYMcc36IPiIf17eXsa8MlJtWwNvFoj+hR6PXbvymSNN84BwH80N6ZFjgPq4NXDkJdQ0iJOHqrnRacgwhtfkPtCWjAYlRpTMDoyhDNCukqCs3aREMw"
+       "x": "iknfBqD8wHVt/9B328M+XlEtcryWLeGU1TD3pjGxKEECwTLGdC5MFC/zJw58CCryBTuU3VUTix92nIvcYMcc36IPiIf17eXsa8MlJtWwNvFoj+hR6PXbvymSNN84BwH80N6ZFjgPq4NXDkJdQ0iJOHqrnRacgwhtfkPtCWjAYlRpTMDoyhDNCukqCs3aREMw",
+       "h": "法案把 AI 依照「危險程度」分成四級。"
       },
       {
        "q": "「政府機關的社會評分系統」屬於哪一個風險等級？",
@@ -1921,7 +2063,8 @@ window.QUIZ_READ = {
         "高風險"
        ],
        "a": "1wdagng",
-       "x": "DFQY3xzDJMnkEgw7kscvVekjN+I9l+ovMJ3uf4XppMydI3aBVF3IkKuGST48PQsKpkOWwjw162mk2QjamhFpAQ9h0jo29eR0fSf//a4Fy7gDVR+yZ2kLO3T19WMXKCVOyjYQJ0L0YugK7iD3W4abpsB/dLeNnMS4jQdkYM2yIa9FIXvdzMMhAA/7/DhLQluXrwCmtyt2IDoN1SN4NhRyYdUdoWxXTNC2bgvSm+tmkS0CG+NWEEhgEjk28Qr1DVuf3TS516cKGjIvKEcIBsPTqbPj"
+       "x": "DFQY3xzDJMnkEgw7kscvVekjN+I9l+ovMJ3uf4XppMydI3aBVF3IkKuGST48PQsKpkOWwjw162mk2QjamhFpAQ9h0jo29eR0fSf//a4Fy7gDVR+yZ2kLO3T19WMXKCVOyjYQJ0L0YugK7iD3W4abpsB/dLeNnMS4jQdkYM2yIa9FIXvdzMMhAA/7/DhLQluXrwCmtyt2IDoN1SN4NhRyYdUdoWxXTNC2bgvSm+tmkS0CG+NWEEhgEjk28Qr1DVuf3TS516cKGjIvKEcIBsPTqbPj",
+       "h": "政府替人民打分數，會嚴重影響人權，是被「禁止」的那一級。"
       },
       {
        "q": "生成式 AI 產生的圖像、音訊或影片，屬於哪個等級、要負什麼義務？",
@@ -1932,7 +2075,8 @@ window.QUIZ_READ = {
         "最小風險，沒有任何義務"
        ],
        "a": "1lj09lv",
-       "x": "j6lGFa/8QkZfuivew2lmHA0R/25ozWFXBmTE7K15Nz6RPPySeQme80Vogay946OcvXaHojeuyUXladg7+d8Dd1iDzqAYxPXnEerQ/+CCj3rkAxkL9cIjRzxsKSvkKukgE8gUQHDT5ADnoFATc/vQZuLcN0OyPB62Eadq4cSTYFSd8fnQ+sTQJ5mA7CpQmiHHJ4JlwdRG97wgMKRIYnduwjT+V4vZqhZMMZY+yyxcKTwXghCtHRybjhT0e03YIzw="
+       "x": "j6lGFa/8QkZfuivew2lmHA0R/25ozWFXBmTE7K15Nz6RPPySeQme80Vogay946OcvXaHojeuyUXladg7+d8Dd1iDzqAYxPXnEerQ/+CCj3rkAxkL9cIjRzxsKSvkKukgE8gUQHDT5ADnoFATc/vQZuLcN0OyPB62Eadq4cSTYFSd8fnQ+sTQJ5mA7CpQmiHHJ4JlwdRG97wgMKRIYnduwjT+V4vZqhZMMZY+yyxcKTwXghCtHRybjhT0e03YIzw=",
+       "h": "生成式 AI 要讓人知道「這是 AI 做的」，這是哪一種義務？"
       },
       {
        "q": "臺灣《人工智慧基本法》草案的七大基本原則，「不包括」哪一項？",
@@ -1943,7 +2087,8 @@ window.QUIZ_READ = {
         "公平與不歧視"
        ],
        "a": "1ihaicd",
-       "x": "QrIPgn24zk2OA7gnPKJjd+hd58xJMddoXQWDperfES4x5e0lLMBM8eUK7m9WfrFjaDcSHoK+5e4YUxypJOlvjHuQs7vWboH0/HnlX1Ur7KuMgcboX/mvcPDupAarwHUTU1YDyPe6p9zosFEw9HTWtZ6tZMv6TUm9RR0PiIL+aEcRHZzGFy+t7U+/IPk44Bv3IVS3YwBo9y1s1TClGZWS2OXBCYyZYt0MjcI3ynQ+Xix+aiZvUSj/j3jcQKVAsu/kboCipN/6lWSjfC1KRc3tnRAI7Xv9g3B+/aJD2jCVfCmPfKFW1DUpHgx3n+8AgiJO"
+       "x": "QrIPgn24zk2OA7gnPKJjd+hd58xJMddoXQWDperfES4x5e0lLMBM8eUK7m9WfrFjaDcSHoK+5e4YUxypJOlvjHuQs7vWboH0/HnlX1Ur7KuMgcboX/mvcPDupAarwHUTU1YDyPe6p9zosFEw9HTWtZ6tZMv6TUm9RR0PiIL+aEcRHZzGFy+t7U+/IPk44Bv3IVS3YwBo9y1s1TClGZWS2OXBCYyZYt0MjcI3ynQ+Xix+aiZvUSj/j3jcQKVAsu/kboCipN/6lWSjfC1KRc3tnRAI7Xv9g3B+/aJD2jCVfCmPfKFW1DUpHgx3n+8AgiJO",
+       "h": "七大原則都在保護人和社會，有沒有一個是在講賺錢？"
       }
      ]
     }

@@ -43,6 +43,16 @@ function seededShuffle(arr, seed) {
 }
 
 let bad = 0, longest = 0;
+/** 最長的共同連續字串長度（和 quizhints.test.js 同一套） */
+function lcs(a, b) {
+  let best = 0;
+  for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) {
+    let k = 0;
+    while (i + k < a.length && j + k < b.length && a[i + k] === b[j + k]) k++;
+    if (k > best) best = k;
+  }
+  return best;
+}
 /** 選項字數：和 qbank.test.js、levelpage.test.js 同一套（去掉空白與標點） */
 /** 題幹、選項不可以出現的字眼（老師 11-06：題目不要有「課文說」之類的用語，或是「本章」這種寫法） */
 const REF_WORDS = /課文|課本|本章|本節|書中|教材|依照|根據|文中|案例|新聞快報|漫畫|圖示|重點回顧|小知識/;
@@ -78,7 +88,16 @@ JOBS.forEach(job => {
         const ref = [q.q].concat(q.o).filter(t => REF_WORDS.test(t));
         if (ref.length) { bad++; console.log('  ⚠️ 題目或選項有「課文說」這類寫法：' + ref[0]); }
         const right = q.o[0];
-        return { q: q.q, options: seededShuffle(q.o, q.q), a: ANSKEY.of(q.q, right), x: ANSKEY.seal(q.q, right, q.ex) };
+        /* ★ 「想一想」提示 h（老師 11-06：整章挑戰用新題庫、舊模式 ⇒ 答錯只給提示、不公布答案）
+             和 quizhints.test.js 同一條洩題規則：和正解連續 5 個字相同（短選項整個出現）就算洩題。 */
+        if (!q.h) { bad++; console.log('  ⚠️ 缺「想一想」提示：' + q.q); }
+        else {
+          if (q.h.length > 90) { bad++; console.log('  ⚠️ 提示超過 90 字：' + q.q); }
+          if (q.h.indexOf(right) >= 0 || lcs(q.h, right) >= Math.min(5, right.length)) { bad++; console.log('  ⚠️ 提示洩漏正解：' + q.q + ' ⇒ ' + q.h); }
+        }
+        const out = { q: q.q, options: seededShuffle(q.o, q.q), a: ANSKEY.of(q.q, right), x: ANSKEY.seal(q.q, right, q.ex) };
+        if (q.h) out.h = q.h;
+        return out;
       }).filter(Boolean);
       return { title: p.title || '', text: p.text || [], qs };
     });

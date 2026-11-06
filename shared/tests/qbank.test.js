@@ -146,6 +146,26 @@ BANKS.forEach(([name, rel]) => {
   const refs = qs.filter(x => REF.test(x.q.q) || x.q.options.some(o => REF.test(o)));
   ok(refs.length === 0, '★ 題目和選項沒有「課文說／依照課文／本章」這類寫法' +
      (refs.length ? '　←　' + refs.length + ' 題，例如 ' + refs[0].at + '「' + refs[0].q.q + '」' : ''));
+  /* 11-06：整章挑戰改用新題庫、舊模式 ⇒ 每題都要有「想一想」提示 h，而且不可以洩漏正解 */
+  const lcs = (a, b) => { let best = 0; for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) {
+    let k = 0; while (i + k < a.length && j + k < b.length && a[i + k] === b[j + k]) k++; if (k > best) best = k; } return best; };
+  const noH = qs.filter(x => !x.q.h), leak = [];
+  qs.forEach(x => { if (!x.q.h) return; const g = x.q.options[A.find(x.q.q, x.q.options, x.q.a)] || '';
+    if (x.q.h.includes(g) || lcs(x.q.h, g) >= Math.min(5, g.length) || x.q.h.length > 90) leak.push(x.at + '「' + x.q.q.slice(0, 14) + '」'); });
+  ok(noH.length === 0, '★★ 每題都有「想一想」提示（整章挑戰答錯時用）' + (noH.length ? '　←　缺 ' + noH.length + ' 題' : ''));
+  ok(leak.length === 0, '★★★ 提示不洩漏正解、90 字以內' + (leak.length ? '　←　' + leak.slice(0, 3).join('；') : ''));
+  /* 11-06：教師端「題目分析」要對得到新題庫（qstat.html 載 *.read.js，QSTAT.bank 合併） */
+  {
+    const W = {}; ['anskey.js', 'qstat.js'].forEach(f => new Function('window', fs.readFileSync(path.join(root, 'shared', f), 'utf8'))(W));
+    const Cn = load(rel.replace('.read.js', '.js'));
+    const merged = W.QSTAT.bank(Cn, w.QUIZ_READ), old = W.QSTAT.bank(Cn);
+    const added = Object.keys(merged).length - Object.keys(old).length;
+    ok(added === qs.length && Object.values(merged).every(x => x.correct >= 0),
+       '★★ 題目分析收得到全部段落題（多 ' + added + ' 題），每題都反查得到正解');
+    ok(/\.read\.js/.test(fs.readFileSync(path.join(root, 'shared', 'qstat.html'), 'utf8')) &&
+       /QSTAT\.bank\(window\.QUIZ_CONTENT, window\.QUIZ_READ\)/.test(fs.readFileSync(path.join(root, 'shared', 'qstat.html'), 'utf8')),
+       '★ qstat.html 有載段落題庫，並交給 QSTAT.bank');
+  }
   ok(longest <= Math.ceil(qs.length * 0.4), '★ 正解是最長選項的題數不超過 4 成（' + longest + '／' + qs.length + '）');
 });
 

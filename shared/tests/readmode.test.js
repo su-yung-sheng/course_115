@@ -234,6 +234,43 @@ async function open(r, id) {
     }
   }
 
+  section('②d 整章挑戰：舊模式、新題庫（老師 11-06：不用維持兩套題庫）');
+  {
+    const CH = { '11501': { 'ch1-all': ['1-1', '1-2', '1-3', '1-4'], 'ch3-all': ['3-1', '3-2', '3-3'], 'review-all': null },
+                 '11502': { '5-all': ['5-1', '5-2', '5-3', '5-4', '5-5'], '6-all': ['6-1', '6-2', '6-3'] } };
+    for (const term of Object.keys(CH)) {
+      for (const cid of Object.keys(CH[term])) {
+        const r = boot({ from: '2000-01-01', term });
+        const secs = CH[term][cid] || Object.keys(r.READ.sections);
+        const want = new Set(secs.flatMap(id => r.READ.sections[id].paras.flatMap(p => p.qs.map(q => q.q))));
+        await open(r, cid);
+        ok(r.$('start-quiz-btn').textContent === '開始測驗挑戰', term + ' ' + cid + '：仍是舊模式的教材頁（不分段）');
+        click(r.w, r.$('start-quiz-btn'));
+        ok(/連對: 0 \/ 10/.test(r.$('score-counter').textContent) && !r.w.document.querySelector('.qz-peek'), '　舊模式計數、沒有「回頭看課文」');
+        const seen = new Set();
+        for (let i = 0; i < 12; i++) { seen.add(qText(r)); answer(r, true); if (r.$('result-screen').className.indexOf('hidden') < 0) break; }
+        ok([...seen].every(q => want.has(q)), '★★★ 出的全是新題庫的題目（' + want.size + ' 題的聯集）');
+        r.units.length = 0;
+      }
+    }
+    /* 答錯：只給「想一想」，不公布答案；連對全部歸零 */
+    const r = boot({ from: '2000-01-01' });
+    await open(r, 'ch1-all');
+    click(r.w, r.$('start-quiz-btn'));
+    answer(r, true); answer(r, true);
+    answer(r, false);
+    const ex = r.$('qz-explain');
+    ok(!!ex && /想一想/.test(ex.textContent), '★★★ 答錯 ⇒ 顯示「想一想」提示');
+    ok(ex && !ex.querySelector('.border-emerald-500') && !/正解是/.test(ex.textContent), '★★★ 不公布正解（整章挑戰維持難度）');
+    ok(/連對: 0 \/ 10/.test(r.$('score-counter').textContent), '★★ 舊模式：連對全部歸零');
+    /* 上線日以前：整章挑戰照舊用舊題庫 */
+    const o = boot({ from: '2999-12-31' });
+    const readQ = new Set(Object.values(o.READ.sections).flatMap(s => s.paras.flatMap(p => p.qs.map(q => q.q))));
+    await open(o, 'ch1-all');
+    click(o.w, o.$('start-quiz-btn'));
+    ok(!readQ.has(qText(o)), '★★ 上線日以前：整章挑戰還是舊題庫');
+  }
+
   section('③ 答錯：公布正解＋理由 → 換同一段另一題');
   {
     const r = boot({ from: '2000-01-01' });

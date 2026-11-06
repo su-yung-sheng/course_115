@@ -32,6 +32,8 @@
   var bank = (t === '11501') ? 'ethics' : 'social';
   document.write('<scr' + 'ipt src="../' + t + '/config.js' + v + '"></scr' + 'ipt>');
   document.write('<scr' + 'ipt src="../' + t + '/content/' + bank + '.js' + v + '"></scr' + 'ipt>');
+  /* 段落閱讀題庫（2026-11-06）：11/25 起四個地方都用這一套，題目分析要對得到 */
+  document.write('<scr' + 'ipt src="../' + t + '/content/' + bank + '.read.js' + v + '"></scr' + 'ipt>');
   /* ⚠️ anskey.js 一定要載：題庫裡的答案是雜湊，
      教師端要靠它反查「哪一個選項才是對的」。 */
   ['auth.js', 'anskey.js', 'qstat.js'].forEach(function (f) {
@@ -100,7 +102,7 @@ function clsOf(sid, r) {
 }
 
 const state = { who: null, cls: '', minN: 5, open: '', students: [], err: '' };
-const BANK = window.QSTAT ? QSTAT.bank(window.QUIZ_CONTENT) : {};
+const BANK = window.QSTAT ? QSTAT.bank(window.QUIZ_CONTENT, window.QUIZ_READ) : {};
 
 /* ── 登入：只有老師 ─────────────────────────────────
    ⚠️ 不能只判斷「有沒有人登入」。教師端和學生頁同一個 Firebase 專案、

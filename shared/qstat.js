@@ -109,26 +109,40 @@
    * ★ 同一題出現在多個地方（節、整章挑戰）只留一筆，
    *   但 where 會把所有出處都記下來 —— 你要回去改題目時得找得到它。
    */
-  function bank(content) {
+  function bank(content, read) {
     var out = {};
+    var add = function (list, where) {
+      (list || []).forEach(function (it) {
+        var k = id(it.q);
+        if (!k) return;
+        /* ★ 2026-08-17：題庫裡不再有明碼的 correct，只有雜湊（a）。
+           教師端要顯示「哪一個才是對的」，只能拿四個選項各算一次雜湊反查。
+           ⚠️ 這也正好說明 anskey 的防護等級：**擋隨手看，不擋有心人**。
+           （舊題庫還有 correct 的話照舊用它 —— 兩種都吃。） */
+        var ci = (it.correct != null) ? it.correct
+               : (global.ANSKEY ? global.ANSKEY.find(it.q, it.options, it.a) : -1);
+        if (!out[k]) out[k] = { id: k, q: it.q, options: it.options, correct: ci, where: [] };
+        if (out[k].where.indexOf(where) < 0) out[k].where.push(where);
+      });
+    };
     (((content || {}).chapters) || []).forEach(function (ch) {
-      var add = function (list, where) {
-        (list || []).forEach(function (it) {
-          var k = id(it.q);
-          if (!k) return;
-          /* ★ 2026-08-17：題庫裡不再有明碼的 correct，只有雜湊（a）。
-             教師端要顯示「哪一個才是對的」，只能拿四個選項各算一次雜湊反查。
-             ⚠️ 這也正好說明 anskey 的防護等級：**擋隨手看，不擋有心人**。
-             （舊題庫還有 correct 的話照舊用它 —— 兩種都吃。） */
-          var ci = (it.correct != null) ? it.correct
-                 : (global.ANSKEY ? global.ANSKEY.find(it.q, it.options, it.a) : -1);
-          if (!out[k]) out[k] = { id: k, q: it.q, options: it.options, correct: ci, where: [] };
-          if (out[k].where.indexOf(where) < 0) out[k].where.push(where);
-        });
-      };
       (ch.sections || []).forEach(function (s) { add(s.questions, s.title || s.id); });
       if (ch.challenge) add(ch.challenge.questions, (ch.title || ch.id) + '（整章挑戰）');
     });
+    /* ★ 2026-11-06：段落閱讀題庫（content/*.read.js 的 QUIZ_READ）也收進來——
+         11/25 起小節、整章挑戰、補給站、排行賽都改用這一套，教師端的題目分析要對得到題目。
+         沒傳 read 就和以前一模一樣。 */
+    if (read && read.sections) {
+      var title = {};
+      (((content || {}).chapters) || []).forEach(function (ch) {
+        (ch.sections || []).forEach(function (s) { title[s.id] = s.title || s.id; });
+      });
+      Object.keys(read.sections).forEach(function (sid) {
+        (read.sections[sid].paras || []).forEach(function (p, i) {
+          add(p.qs, (title[sid] || sid) + '・第 ' + (i + 1) + ' 段');
+        });
+      });
+    }
     return out;
   }
 

@@ -42,7 +42,9 @@
   var HINTS = window.QUIZ_HINTS || {};
   try { delete window.QUIZ_HINTS; } catch (e) { window.QUIZ_HINTS = undefined; }
   function hintFor(item) {
-    var h = item && Object.prototype.hasOwnProperty.call(HINTS, item.q) ? HINTS[item.q] : '';
+    /* 段落題庫的題目自己帶著提示 h（11-06：整章挑戰改用新題庫，答錯只給「想一想」） */
+    var h = item && typeof item.h === 'string' ? item.h
+          : (item && Object.prototype.hasOwnProperty.call(HINTS, item.q) ? HINTS[item.q] : '');
     return typeof h === 'string' ? h.trim() : '';
   }
 
@@ -87,12 +89,16 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
   /** 這一節要不要用段落閱讀模式 */
-  function readOn(id) {
-    var sec = READ && READ.sections && READ.sections[id];
-    if (!sec || !sec.paras || !sec.paras.length) return false;
+  /** 新題庫是否已上線（上線日到了，或預覽網址） */
+  function readLive() {
     if (readPreview()) return true;
     var from = (window.CONFIG && window.CONFIG.READ_MODE_FROM) || '';
     return !!from && todayKey() >= from;
+  }
+  function readOn(id) {
+    var sec = READ && READ.sections && READ.sections[id];
+    if (!sec || !sec.paras || !sec.paras.length) return false;
+    return readLive();
   }
   function readQuestions(id) {
     var sec = READ && READ.sections && READ.sections[id];
@@ -212,6 +218,25 @@
       ORDER.push(cg.id);
     }
   });
+
+  /* ★ 整章挑戰：舊模式、新題庫（老師 2026-11-06：
+       「整章挑戰用的是新題庫吧？這是複習用的，是舊模式，新題庫，不用維持兩套不同的題庫」）
+       ‧ 新題庫上線（READ_MODE_FROM／?preview=read）後，整章挑戰的題目＝所屬小節段落題庫的聯集；
+         沒有小節的（總整理 review-all）＝這學期全部小節。
+       ‧ 作答仍是舊模式：連對 10 題、答錯全部歸零、只給「想一想」（題目的 h），不公布答案。
+       ‧ 有任何一個小節還沒有段落題庫，這一章就整章照舊用舊題庫——不在同一份挑戰裡混兩套。
+       ‧ 記憶補給站讀的是 NODES[挑戰].questions，所以也跟著只剩新題庫。 */
+  if (READ && READ.sections && readLive()) {
+    var allSecIds = [];
+    C.chapters.forEach(function (ch) { (ch.sections || []).forEach(function (s) { allSecIds.push(s.id); }); });
+    C.chapters.forEach(function (ch) {
+      if (!ch.challenge || !NODES[ch.challenge.id]) return;
+      var ids = (ch.sections || []).map(function (s) { return s.id; });
+      if (!ids.length) ids = allSecIds;
+      if (!ids.length || !ids.every(function (id) { var r = READ.sections[id]; return r && r.paras && r.paras.length; })) return;
+      NODES[ch.challenge.id].questions = ids.reduce(function (a, id) { return a.concat(readQuestions(id)); }, []);
+    });
+  }
 
   /* ===================================================================
      3. 版型：整個畫面由這裡產生，兩個學期共用同一份

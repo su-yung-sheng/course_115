@@ -207,7 +207,17 @@ async function boot(opts) {
   const exp = require(path.join(ROOT, 'shared', 'tools', 'export-arena-bank.js'));
   for (const term of Object.keys(exp.TERMS)) {
     ok(read(exp.TERMS[term].out) === exp.build(term),
-       `★★★ ${exp.TERMS[term].out} 和題庫同步（改了題目要跑 node shared/tools/export-arena-bank.js --write）`);
+       `★★★ ${exp.TERMS[term].out} 和題庫同步（改了題目要跑 node shared/tools/export-arena-bank.js --write）` +
+       (exp.useRead(term) ? '　←　⚠️ 段落閱讀題庫已上線（READ_MODE_FROM），排行賽要改用新題庫：跑 --write 後一起推送' : ''));
+  }
+  /* 11-06 老師：「11/25 後只留一套」——日期到了排行賽改從段落題庫抽題 */
+  for (const term of Object.keys(exp.TERMS)) {
+    const r = JSON.parse(exp.build(term, 'read')), o = JSON.parse(exp.build(term, 'old'));
+    const W = {}; new Function('window', read(exp.TERMS[term].read))(W);
+    const want = new Set(Object.values(W.QUIZ_READ.sections).flatMap(s => s.paras.flatMap(p => p.qs.map(q => q.q))));
+    ok(r.count === want.size && r.items.every(it => want.has(it.q)) && JSON.stringify(r.units) === JSON.stringify(o.units),
+       `★★ ${term} 切到新題庫時：題目＝段落題庫全部（${want.size} 題）、參賽資格的章節清單不變`);
+    ok(r.items.every(it => !('h' in it) && !('x' in it)), `　${term} 匯出的只有題目、選項、答案雜湊（不帶提示和加密說明）`);
   }
   ok(!/arenaPage/.test(read('11501/content/ethics.js')) && !/排行賽/.test(read('shared/quiz-engine.js')),
      '★★ 章節選單不放入口（老師 2026-09-30：入口只在闖關基地）');
