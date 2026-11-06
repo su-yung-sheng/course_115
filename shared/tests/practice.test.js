@@ -176,7 +176,8 @@ function playRound(r, firstWrong) {
        '★★ 正式挑戰的計數器、計時器照舊');
     const b = qText(r3);
     r3.w.dispatchEvent(new r3.w.Event('blur')); r3.w.dispatchEvent(new r3.w.Event('focus'));
-    ok(qText(r3) === b, '★ 11501 正式挑戰仍然「不換題」（補給站的開關沒有漏過來）');
+    /* 2026-11-06 老師：「11501 現在就全部開換題」⇒ 正式挑戰也換題了（原本這裡守的是「不換題」） */
+    ok(qText(r3) !== b && qText(r3).length > 3, '★ 11501 正式挑戰也「離開就換題」（老師 11-06 開了）');
     for (let i = 0; i < 10; i++) {
       click(r3.w, r3.w.document.querySelectorAll('.qz-opt')[optIdx(r3, true)]);
       send(r3);

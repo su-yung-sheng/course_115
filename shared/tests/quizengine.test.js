@@ -178,8 +178,10 @@ section('★★ 失焦遮罩與浮水印');
     const before = q.$('question-container').innerHTML;
     q.w.dispatchEvent(new q.w.Event('blur'));
     q.w.dispatchEvent(new q.w.Event('focus'));
-    ok(q.$('question-container').innerHTML === before,
-       '★★ 11501：遮罩收起之後題目沒有被重畫（答案不會被清掉；11501 不換題）');
+    /* 2026-11-06 老師：「11501 現在就全部開換題」⇒ 兩學期都換題了，
+       這一條從「11501 不換題、題目原封不動」改成「11501 也換題、遮罩收乾淨」。 */
+    ok(q.$('question-container').innerHTML !== before && !q.$('qz-veil'),
+       '★★ 11501：回來之後換一題、遮罩收起（11-06 起 11501 也開了換題）');
   }
 }
 
@@ -229,7 +231,8 @@ section('★★ 11502 離開就換題（QUIZ_SWAP_ON_LEAVE）');
   const src = read('shared/quiz-engine.js').replace(/\/\*[\s\S]*?\*\//g, '');
   ok(!/swap:\s*[^,}]*undefined/.test(src) && /if \(swapOn\(\)( \|\| rd)?\) extra\.swap = behav\.swap;/.test(src),
      '★★★ 只有開了換題才寫 swap；不可以寫 swap: undefined（11501 的成績會記不進去）');
-  ok(!/QUIZ_SWAP_ON_LEAVE/.test(read('11501/config.js')), '★★ 11501/config.js 沒有開換題（老師：11501 不用更改）');
+  /* 2026-11-06 老師：「11501 現在就全部開換題」——原本這裡守的是「11501 沒有開」 */
+  ok(/QUIZ_SWAP_ON_LEAVE:\s*true/.test(read('11501/config.js')), '★★ 11501/config.js 也開了換題（老師 11-06：11501 現在就全部開換題）');
 }
 
 /* ── 排行賽不在章節選單放入口（老師 2026-09-30：入口只在闖關基地）── */

@@ -99,7 +99,7 @@ window.CONFIG = {
   //   這一天以前照舊（連對 10 題）；網址加 ?preview=read 可以先試做。要延後就改日期，要關掉就改成 ''。
   READ_MODE_FROM: '2026-11-25',
   // 作答中離開（切分頁、網址列 AI 模式、Gemini 側邊欄、擷取工具）⇒ 題目文字先拿掉，
-  // 回來換一題（shared/quiz-engine.js）。不扣分、不歸零連對。只有 11502 開。
+  // 回來換一題（shared/quiz-engine.js）。不扣分、不歸零連對。（11501 也在 2026-11-06 開了）
   QUIZ_SWAP_ON_LEAVE: true,
 
   COLLECTIONS: {
