@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>1-1 閱讀闖關樣品</title>
+<style>
+:root{--bg:#f1f5f9;--card:#fff;--fg:#1e293b;--mut:#64748b;--line:#e2e8f0;--blue:#2563eb;--blue-l:#eff6ff;--green:#059669;--green-l:#ecfdf5;--red:#dc2626;--red-l:#fef2f2;--amber:#b45309;--amber-l:#fffbeb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f172a;--card:#1e293b;--fg:#e2e8f0;--mut:#94a3b8;--line:#334155;--blue:#60a5fa;--blue-l:#1e3a5f;--green:#34d399;--green-l:#064e3b;--red:#f87171;--red-l:#450a0a;--amber:#fbbf24;--amber-l:#451a03}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.7}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.top h1{font-size:1.25rem;margin:0}
+.pill{font-size:.8rem;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:2px 10px;color:var(--mut)}
+.steps{display:flex;gap:6px;margin-bottom:14px}
+.steps span{flex:1;height:8px;border-radius:99px;background:var(--line)}
+.steps span.done{background:var(--green)}.steps span.now{background:var(--blue)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.tag{display:inline-block;font-size:.75rem;font-weight:800;color:var(--blue);background:var(--blue-l);border-radius:8px;padding:2px 8px;margin-bottom:8px}
+.para{font-size:1.08rem;letter-spacing:.02em}
+.para p{margin:.4em 0}
+.src{font-size:.75rem;color:var(--mut);margin-top:10px}
+.btn{display:block;width:100%;border:0;border-radius:14px;padding:14px;font-size:1.05rem;font-weight:800;cursor:pointer;margin-top:16px;background:var(--blue);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--blue);border:2px solid var(--blue)}
+.q{font-size:1.15rem;font-weight:800;margin:4px 0 12px}
+.opt{display:block;width:100%;text-align:left;border:2px solid var(--line);background:var(--card);color:var(--fg);border-radius:12px;padding:12px 14px;margin-bottom:8px;font-size:1rem;cursor:pointer}
+.opt:hover{border-color:var(--blue)}
+.opt.sel{border-color:var(--blue);background:var(--blue-l)}
+.opt.right{border-color:var(--green);background:var(--green-l);font-weight:800}
+.opt.wrong{border-color:var(--red);background:var(--red-l);text-decoration:line-through}
+.ex{border-radius:14px;padding:14px 16px;margin-top:12px}
+.ex.bad{background:var(--red-l);border:2px solid var(--red)}
+.ex.good{background:var(--green-l);border:2px solid var(--green)}
+.ex b.h{display:block;margin-bottom:4px}
+.peek{font-size:.85rem;color:var(--mut);cursor:pointer;text-decoration:underline;margin-top:8px;display:inline-block}
+.peekbox{background:var(--amber-l);border-left:4px solid var(--amber);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:.95rem}
+.note{background:var(--amber-l);border:1px dashed var(--amber);border-radius:12px;padding:12px 14px;font-size:.9rem;margin-bottom:14px}
+.big{font-size:3rem;text-align:center;margin:6px 0}
+.center{text-align:center}
+@media (max-width:480px){.card{padding:16px}.para{font-size:1rem}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="note"><b>🧪 樣品（只給老師看）</b>：1-1 資訊倫理的意涵。課文 4 段，每段讀完考 2 題；答錯會公布正解和理由，再換同一段的另一題。<br>
+  正式版另外會有：閱讀倒數（離開畫面就暫停）、記錄成績、星星。這份樣品沒有倒數，方便您快速試。</div>
+  <div class="top"><h1>📖 1-1 資訊倫理的意涵</h1><span class="pill" id="score">答對 0 ／ 作答 0</span></div>
+  <div class="steps" id="steps"></div>
+  <div class="card" id="box"></div>
+</div>
+<script>
+'use strict';
+/* 段落：課本原文（11501 第一章 1-1，p.137～138）。每段 5 題的題庫，每段考 2 題。
+   每題：q 題目、o 選項（第一個是正解，出題時會打亂）、ex 答錯時的說明（公布正解＋理由）。 */
+const PARAS = [
+ { title:'倫理是什麼', text:[
+   '傳統社會具有一套倫理規範來維持社會秩序與和諧，然而資訊社會的人際關係及互動與傳統社會有很大的不同，因此需要一套適用於資訊社會的倫理規範。',
+   '倫理（ethic）泛指個人在日常生活中的行為規範。這種規範是人們從小受到長輩的教導、社會文化的薰陶，無形中內化形成個人的行為準則與是非善惡的價值觀。這些行為準則或價值觀告訴每一個人是與非、善與惡的區別；什麼事可以做，什麼事不可以做。生活在社會中，因每個人有了倫理觀念，以致能維持生活及社會的秩序。倫理與道德常相提並論；也就是說，個人如做了不符合倫理基準的事，也會被認為是做了不道德的行為。'],
+   qs:[
+   { q:'依照課文，「倫理」泛指什麼？', o:['個人在日常生活中的行為規範','政府訂定的法律條文','學校規定的考試制度','電腦的操作步驟'],
+     ex:'正解是「個人在日常生活中的行為規範」。課文第二段第一句就寫：倫理泛指個人在日常生活中的行為規範。法律是政府訂的外在規定，和「倫理」不是同一件事。' },
+   { q:'一個人的倫理觀念，課文說主要是怎麼形成的？', o:['從小受長輩教導、社會文化薰陶，慢慢內化','讀完法律條文後背下來','上網搜尋一次就能學會','由電腦系統自動設定好'],
+     ex:'正解是「從小受長輩教導、社會文化薰陶，慢慢內化」。課文說倫理是「從小受到長輩的教導、社會文化的薰陶，無形中內化」形成的 —— 重點在「無形中、慢慢」，不是背出來或查出來的。' },
+   { q:'課文說，每個人都有了倫理觀念，社會會變得怎樣？', o:['能維持生活及社會的秩序','網路速度會變快','不再需要任何法律','每個人的想法都一模一樣'],
+     ex:'正解是「能維持生活及社會的秩序」。課文寫「因每個人有了倫理觀念，以致能維持生活及社會的秩序」。倫理讓社會有秩序，但沒有說從此不需要法律，也不是要大家想法一樣。' },
+   { q:'如果有人做了不符合倫理基準的事，常會被認為是什麼？', o:['做了不道德的行為','一定要被判刑坐牢','只是個人的喜好問題','值得鼓勵的創意'],
+     ex:'正解是「做了不道德的行為」。課文說倫理與道德常相提並論，「做了不符合倫理基準的事，也會被認為是做了不道德的行為」。不道德不等於違法，所以不是「一定判刑」。' },
+   { q:'為什麼資訊社會需要一套「新的」倫理規範？', o:['資訊社會的人際關係與互動，和傳統社會很不一樣','傳統的倫理已經全部作廢','電腦會自動處理所有的糾紛','為了讓網路使用更快速'],
+     ex:'正解是「資訊社會的人際關係與互動，和傳統社會很不一樣」。課文開頭就說：資訊社會的人際關係及互動與傳統社會有很大的不同，因此需要適用於資訊社會的倫理規範。傳統倫理沒有作廢，是不夠用了。' }
+ ]},
+ { title:'什麼是資訊倫理', text:[
+   '在資訊世界裡，使用者面對的人際關係，不僅跨國界、跨文化，也跨世代，相當多元且複雜，更需要一套比傳統社會更多元的倫理規範，來維持這個虛擬世界的秩序。延伸前述傳統的倫理意義，資訊倫理是一套適用於資訊社會，且與資訊科技相關的使用者價值觀。具體的說，就是人們在產生、傳播、整理、保存、檢索及利用資訊時的行為準則。要維繫資訊社會的秩序，必須要有自律的良知及外在的規範，使資訊社會中的每一個人，都能有一個安全與安心的使用環境。'],
+   qs:[
+   { q:'課文說，資訊世界裡的人際關係「跨」了哪三樣？', o:['國界、文化、世代','學校、班級、座號','硬體、軟體、網路','城市、鄉村、海邊'],
+     ex:'正解是「國界、文化、世代」。課文寫：使用者面對的人際關係「不僅跨國界、跨文化，也跨世代」。所以網路上遇到的人可能來自不同國家、不同文化、不同年紀。' },
+   { q:'下列哪一句最接近課文對「資訊倫理」的說明？', o:['人們在產生、傳播、整理、保存、檢索及利用資訊時的行為準則','寫程式時必須遵守的語法規則','電腦硬體必須符合的安全標準','網路公司對員工的上班規定'],
+     ex:'正解是「人們在產生、傳播、整理、保存、檢索及利用資訊時的行為準則」。課文說資訊倫理「具體的說，就是人們在產生、傳播…利用資訊時的行為準則」。它講的是「人怎麼使用資訊」，不是程式語法或硬體標準。' },
+   { q:'下列哪一項「不在」課文列出的資訊行為裡？', o:['修理電腦零件','傳播資訊','保存資訊','檢索資訊'],
+     ex:'正解是「修理電腦零件」。課文列出的是產生、傳播、整理、保存、檢索及利用「資訊」—— 都是處理資訊的行為。修理零件是處理硬體，不在這張清單裡。' },
+   { q:'課文說，要維繫資訊社會的秩序，必須要有哪兩樣？', o:['自律的良知和外在的規範','高速的網路和新的電腦','很多的粉絲和按讚數','嚴格的考試和作業'],
+     ex:'正解是「自律的良知和外在的規範」。課文寫「要維繫資訊社會的秩序，必須要有自律的良知及外在的規範」：一個是自己心裡的（良知），一個是外面訂的（規範），兩樣都要。' },
+   { q:'資訊倫理希望讓資訊社會中的每一個人，擁有什麼樣的環境？', o:['安全與安心的使用環境','完全沒有任何規範的環境','只有大人才能上網的環境','不能發表任何意見的環境'],
+     ex:'正解是「安全與安心的使用環境」。這段最後一句：使資訊社會中的每一個人，都能有一個安全與安心的使用環境。有規範不是為了不讓人說話，而是讓大家用得安心。' }
+ ]},
+ { title:'資訊倫理規範', text:[
+   '資訊世界也是人的社會，當然也需要規範。僅有倫理的價值觀恐不足以約束人的行為，因此需要一套具體規範。資訊倫理規範是指期待個人在資訊社會中，表現合理合法行為而訂的規則，以作為規範資訊科技使用者行為的外在力量。一般來說，提供或主管網路系統者，通常會制訂使用規則以規範使用者。例如：教育部主管之臺灣學術網路（Taiwan Academic Network，簡稱 TANet）就制訂了《臺灣學術網路管理規範》。公私機構的入口網站，也大部分有相關的使用規範，規定使用者可以做及不可以做的行為，違反規範者，可能受到警告或不同程度的使用限制。'],
+   qs:[
+   { q:'課文說，為什麼除了倫理的價值觀，還需要一套具體的規範？', o:['只有價值觀，恐怕不足以約束人的行為','價值觀已經過時，不再需要了','有規範網路才會變快','為了增加網站的使用人數'],
+     ex:'正解是「只有價值觀，恐怕不足以約束人的行為」。課文寫「僅有倫理的價值觀恐不足以約束人的行為，因此需要一套具體規範」。價值觀沒有過時，是光靠它不夠，所以再加上規範。' },
+   { q:'課文把「資訊倫理規範」形容成規範使用者行為的哪一種力量？', o:['外在力量','內在良知','技術力量','商業力量'],
+     ex:'正解是「外在力量」。課文說資訊倫理規範是「作為規範資訊科技使用者行為的外在力量」。上一段的「自律的良知」才是內在的；規範是別人訂好、從外面約束你的。' },
+   { q:'一般來說，網路的使用規則通常是誰制訂的？', o:['提供或主管網路系統的單位','每一位使用者自己','隨機抽選的網友','網路上的廣告商'],
+     ex:'正解是「提供或主管網路系統的單位」。課文寫「提供或主管網路系統者，通常會制訂使用規則以規範使用者」，例如教育部主管的 TANet 就訂了自己的管理規範。' },
+   { q:'教育部主管的臺灣學術網路（TANet），制訂了哪一份規範？', o:['《臺灣學術網路管理規範》','《網路禮儀公約》','《個人資料保護法》','《著作權法》'],
+     ex:'正解是「《臺灣學術網路管理規範》」。這是課文舉的例子。另外三個也都是真的名稱，但個資法和著作權法是國家的法律（第三章會學），不是 TANet 自己訂的使用規範。' },
+   { q:'違反入口網站的使用規範，課文說可能會怎樣？', o:['受到警告或不同程度的使用限制','一律被判刑坐牢','什麼事都不會發生','可以獲得獎勵'],
+     ex:'正解是「受到警告或不同程度的使用限制」。課文最後一句：違反規範者，可能受到警告或不同程度的使用限制（例如停權）。網站的使用規範不是法律，所以不是「一律判刑」，但也不是沒事。' }
+ ]},
+ { title:'資訊從業人員的責任', text:[
+   '資訊倫理當然期待規範所有資訊科技的使用者，但資訊從業人員除了要遵守一般的資訊倫理規範外，也要遵守其職業倫理規範。資訊從業人員因為職業所需，通常有比較大的權限與能力去管理系統、制訂規則、生產資訊科技產品等，因此要負較重的責任。例如：學校的系統管理人員，可以查閱或存取學校師生及行政人員的個人資料（簡稱個資），因此負有保密／保護全校人員個資的責任，這就要靠職業或專業倫理來維持，甚至要簽署切結書（如保密協議書）來規範。'],
+   qs:[
+   { q:'資訊從業人員除了一般的資訊倫理規範，還要遵守什麼？', o:['職業倫理規範','公司的打卡規定就好','不必遵守任何規範','自己的喜好'],
+     ex:'正解是「職業倫理規範」。課文寫資訊從業人員「除了要遵守一般的資訊倫理規範外，也要遵守其職業倫理規範」—— 是「多一層」，不是只遵守其中一種。' },
+   { q:'為什麼資訊從業人員要負比較重的責任？', o:['他們通常有比較大的權限與能力去管理系統、制訂規則','他們每天上網的時間比較長','他們的年紀通常比較大','他們用的電腦比較貴'],
+     ex:'正解是「他們通常有比較大的權限與能力去管理系統、制訂規則」。課文寫「因為職業所需，通常有比較大的權限與能力…因此要負較重的責任」。權限越大、責任越重，和上網時間、年紀無關。' },
+   { q:'學校的系統管理人員能查閱全校師生的個資，所以他們負有什麼責任？', o:['保密、保護全校人員的個資','把個資公開讓大家查詢','把個資提供給廠商使用','只要保護好自己的資料'],
+     ex:'正解是「保密、保護全校人員的個資」。課文的例子：系統管理人員可以查閱或存取全校的個資，「因此負有保密／保護全校人員個資的責任」。看得到，不代表可以給別人看。' },
+   { q:'課文提到，有些職務甚至要簽署什麼來規範保密責任？', o:['切結書（例如保密協議書）','遊戲帳號申請書','圖書館借書證','學期成績單'],
+     ex:'正解是「切結書（例如保密協議書）」。課文最後寫：這要靠職業或專業倫理來維持，甚至要簽署切結書（如保密協議書）來規範 —— 白紙黑字寫下來，違反就要負責。' },
+   { q:'同學跑去問校務人員：「我想知道十班王小美的期末成績。」校務人員最適當的回應是？', o:['婉拒，請他直接去問本人','直接把成績告訴他','把全班成績都印給他','把成績貼在公布欄'],
+     ex:'正解是「婉拒，請他直接去問本人」。這就是課本圖 1-2 的情境：成績是個資，校務人員有保護個資的責任，不能因為有人想知道就給。要不要說，是王小美自己決定。' }
+ ]}
+];
+const PER = 2;   // 每段要答對幾題
+
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+const st = { p:0, mode:'read', got:0, pool:[], cur:null, opts:[], pick:-1, done:false, right:0, total:0, firstTry:0 };
+const $ = id => document.getElementById(id);
+function esc(s){ return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+function steps(){
+  $('steps').innerHTML = PARAS.map((_,i)=>`<span class="${i<st.p?'done':(i===st.p&&!st.done?'now':'')}"></span>`).join('');
+  $('score').textContent = `答對 ${st.right} ／ 作答 ${st.total}`;
+}
+function startPara(){
+  st.mode='read'; st.got=0; st.pool=shuffle(PARAS[st.p].qs); render();
+}
+function nextQ(){
+  if(!st.pool.length){ st.pool=shuffle(PARAS[st.p].qs); st.mode='reread'; render(); return; }
+  st.cur=st.pool.shift(); st.opts=shuffle(st.cur.o.map((t,i)=>({t,ok:i===0}))); st.pick=-1; st.mode='ask'; render();
+}
+function render(){
+  steps();
+  const P=PARAS[st.p], box=$('box');
+  const paraHTML = `<div class="para">${P.text.map(t=>`<p>${esc(t)}</p>`).join('')}</div><div class="src">— 課本第一章 1-1（p.137～138）</div>`;
+  if(st.done){
+    const rate=Math.round(st.right/st.total*100), star=rate>=90?3:rate>=75?2:1;
+    box.innerHTML=`<div class="big">${'⭐'.repeat(star)}</div><div class="center"><b>1-1 完成！</b><br>正確率 ${rate}%（答對 ${st.right} ／ 作答 ${st.total}）</div>
+      <button class="btn ghost" onclick="location.reload()">再試一次</button>`;
+    return;
+  }
+  if(st.mode==='read' || st.mode==='reread'){
+    box.innerHTML=`<span class="tag">第 ${st.p+1} 段／共 ${PARAS.length} 段 · ${esc(P.title)}</span>
+      ${st.mode==='reread'?'<div class="ex bad" style="margin:0 0 12px">這一段的題目都考過了，先把課文再讀一次，再換一組題目。</div>':''}
+      ${paraHTML}<button class="btn" onclick="nextQ()">讀完了，開始作答（這段要答對 ${PER} 題）</button>`;
+    return;
+  }
+  const answered = st.mode==='right' || st.mode==='wrong';
+  box.innerHTML=`<span class="tag">第 ${st.p+1} 段 · ${esc(P.title)}　已答對 ${st.got} ／ ${PER}</span>
+    <div class="q">${esc(st.cur.q)}</div>
+    ${st.opts.map((o,i)=>{
+      let c='opt'; if(!answered && i===st.pick) c+=' sel';
+      if(answered && o.ok) c+=' right'; if(answered && i===st.pick && !o.ok) c+=' wrong';
+      return `<button class="${c}" ${answered?'disabled':''} onclick="pick(${i})">${esc(o.t)}</button>`;}).join('')}
+    ${st.mode==='ask' ? `<button class="btn" ${st.pick<0?'disabled':''} onclick="send()">送出答案</button>
+       <span class="peek" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden">📖 回頭看課文</span><div class="peekbox" hidden>${paraHTML}</div>` : ''}
+    ${st.mode==='right' ? `<div class="ex good"><b class="h">✅ 答對了！</b></div><button class="btn" onclick="after()">${st.got>=PER?(st.p+1<PARAS.length?'下一段 →':'看結果'):'下一題 →'}</button>` : ''}
+    ${st.mode==='wrong' ? `<div class="ex bad"><b class="h">❌ 答錯了，看看為什麼：</b>${esc(st.cur.ex)}</div><button class="btn" onclick="after()">換一題（同一段）→</button>` : ''}`;
+}
+function pick(i){ st.pick=i; render(); }
+function send(){
+  st.total++;
+  if(st.opts[st.pick].ok){ st.right++; st.got++; st.mode='right'; } else st.mode='wrong';
+  render();
+}
+function after(){
+  if(st.mode==='right' && st.got>=PER){
+    if(st.p+1<PARAS.length){ st.p++; startPara(); } else { st.done=true; render(); }
+    return;
+  }
+  nextQ();
+}
+startPara();
+</script>
+</body>
+</html>

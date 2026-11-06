@@ -91,6 +91,10 @@ const KNOWN = {
        node shared/tools/export-arena-bank.js --write
      （arena.test.js 會擋「題庫沒同步」） */
   'shared/tools/export-arena-bank.js': '命令列工具（匯出排行賽題庫給後端），不是網頁',
+  /* 2026-11-06：資訊倫理段落閱讀模式的題庫產生器
+       node shared/tools/build-read.js --write
+     讀 _textbook/read-src/（不進 repo 的明碼原稿）→ 寫 11501/content/ethics.read.js、11502/content/social.read.js */
+  'shared/tools/build-read.js': '命令列工具（產生段落閱讀模式題庫），不是網頁',
   'shared/blocks-demo.html': '積木模擬器的開發用試玩頁，只有改 blocks.js 時自己開',
   'shared/ai-lab.html': 'AI 引導的調校台，改提示詞時自己開；學生端不該連得到',
   '11502/content/flowchart.js': '刻意留的空檔：下學期沒有逐關流程圖，' +

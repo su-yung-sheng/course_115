@@ -224,9 +224,10 @@ section('★★ 11502 離開就換題（QUIZ_SWAP_ON_LEAVE）');
   ok(errs.length === 0, '★ 整個過程沒有例外' + (errs.length ? '　←　' + errs[0].split('\n')[0] : ''));
 }
 {
-  /* 11501 沒開：回報的 extra 不可以有 swap 這一格（更不可以是 undefined —— Firestore 會整筆拒收） */
+  /* （2026-11-06 起：段落閱讀模式一律換題，所以也寫 swap —— behav.swap 開局就是 0，不會是 undefined）
+     11501 沒開：回報的 extra 不可以有 swap 這一格（更不可以是 undefined —— Firestore 會整筆拒收） */
   const src = read('shared/quiz-engine.js').replace(/\/\*[\s\S]*?\*\//g, '');
-  ok(!/swap:\s*[^,}]*undefined/.test(src) && /if \(swapOn\(\)\) extra\.swap = behav\.swap;/.test(src),
+  ok(!/swap:\s*[^,}]*undefined/.test(src) && /if \(swapOn\(\)( \|\| rd)?\) extra\.swap = behav\.swap;/.test(src),
      '★★★ 只有開了換題才寫 swap；不可以寫 swap: undefined（11501 的成績會記不進去）');
   ok(!/QUIZ_SWAP_ON_LEAVE/.test(read('11501/config.js')), '★★ 11501/config.js 沒有開換題（老師：11501 不用更改）');
 }
