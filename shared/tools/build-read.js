@@ -25,7 +25,9 @@ const JOBS = [
   { src: '_textbook/read-src/ethics.json', out: '11501/content/ethics.read.js', label: '11501 資訊倫理' },
   { src: '_textbook/read-src/social.json', out: '11502/content/social.read.js', label: '11502 媒體與社會議題' }
 ];
-const PER = 2;            // 每一段要答對幾題（老師 2026-11-06）
+const TARGET = 10;        // 每一節要連對幾題，平均分到各段（老師 11-06：和原本「連續答對 10 題」同樣難度）
+/** 第 pi 段要連續答對幾題（和 quiz-engine.js 的 readNeed 同一套算法） */
+const needOf = (N, pi) => Math.max(1, Math.floor(TARGET / N) + (pi < TARGET % N ? 1 : 0));
 const write = process.argv.indexOf('--write') >= 0;
 
 /** 用題目當種子的洗牌：同一份原稿每次產生的順序都一樣（diff 才看得懂） */
@@ -42,6 +44,8 @@ function seededShuffle(arr, seed) {
 
 let bad = 0, longest = 0;
 /** 選項字數：和 qbank.test.js、levelpage.test.js 同一套（去掉空白與標點） */
+/** 題幹、選項不可以出現的字眼（老師 11-06：題目不要有「課文說」之類的用語，或是「本章」這種寫法） */
+const REF_WORDS = /課文|課本|本章|本節|書中|教材|依照|根據|文中|案例|新聞快報|漫畫|圖示|重點回顧|小知識/;
 const optLen = t => String(t).replace(/[\s，。、？！（）()]/g, '').length;
 JOBS.forEach(job => {
   const sp = path.join(ROOT, job.src);
@@ -53,7 +57,8 @@ JOBS.forEach(job => {
     const sec = SRC[id];
     const paras = (sec.paras || []).map((p, pi) => {
       if (!p.text || !p.text.length) { bad++; console.log('  ⚠️ ' + id + ' 第 ' + (pi + 1) + ' 段沒有課文'); }
-      if (!p.qs || p.qs.length < PER + 1) { bad++; console.log('  ⚠️ ' + id + ' 第 ' + (pi + 1) + ' 段題目少於 ' + (PER + 1) + ' 題（答錯要能換題）'); }
+      const need = needOf(sec.paras.length, pi);
+      if (!p.qs || p.qs.length < need + 1) { bad++; console.log('  ⚠️ ' + id + ' 第 ' + (pi + 1) + ' 段要連對 ' + need + ' 題，題目至少要 ' + (need + 1) + ' 題（答錯要能換題）'); }
       const seen = {};
       const qs = (p.qs || []).map(q => {
         nq++;
@@ -68,6 +73,10 @@ JOBS.forEach(job => {
         const L = q.o.map(optLen), lead = L[0] - Math.max(L[1], L[2], L[3]);
         if (lead >= 2) { bad++; console.log('  ⚠️ 正解比別的選項長 ' + lead + ' 字：' + q.q); }
         if (lead > 0) longest++;
+        /* ★ 題幹、選項不寫「課文說／依照課文／本章／課本…」（老師 11-06）：
+             題目要自己站得住，不是叫學生回去對課本。答錯說明裡引用課文不受限。 */
+        const ref = [q.q].concat(q.o).filter(t => REF_WORDS.test(t));
+        if (ref.length) { bad++; console.log('  ⚠️ 題目或選項有「課文說」這類寫法：' + ref[0]); }
         const right = q.o[0];
         return { q: q.q, options: seededShuffle(q.o, q.q), a: ANSKEY.of(q.q, right), x: ANSKEY.seal(q.q, right, q.ex) };
       }).filter(Boolean);
@@ -84,7 +93,7 @@ JOBS.forEach(job => {
     + '       a ＝ 正解的雜湊（同 shared/anskey.js）、x ＝ 用正解加密的答錯說明。\n'
     + '     要改題目 → 改原稿再跑 node shared/tools/build-read.js --write。\n'
     + '   ===================================================================== */\n'
-    + 'window.QUIZ_READ = ' + JSON.stringify({ per: PER, sections }, null, 1) + ';\n';
+    + 'window.QUIZ_READ = ' + JSON.stringify({ target: TARGET, sections }, null, 1) + ';\n';
 
   /* 產生完立刻驗：每一題都要能用 a 反查回正解、用正解打開說明 */
   const w = {};

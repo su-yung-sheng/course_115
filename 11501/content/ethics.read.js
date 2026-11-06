@@ -7,7 +7,7 @@
      要改題目 → 改原稿再跑 node shared/tools/build-read.js --write。
    ===================================================================== */
 window.QUIZ_READ = {
- "per": 2,
+ "target": 10,
  "sections": {
   "1-1": {
    "src": "課本第一章 1-1（p.137～138）",
@@ -20,37 +20,37 @@ window.QUIZ_READ = {
      ],
      "qs": [
       {
-       "q": "依照課文，「倫理」泛指什麼？",
+       "q": "「倫理」泛指什麼？",
        "options": [
-        "日常生活中的行為規範",
-        "學校訂定的生活公約",
         "國家明文規定的法律",
-        "個人喜好的生活習慣"
+        "個人喜好的生活習慣",
+        "學校訂定的生活公約",
+        "日常生活中的行為規範"
        ],
-       "a": "vfm94j",
-       "x": "BOQ0HJ2Rk74WbbBfhMdz7la+3bFDMBS052t6llm9v/9b6Bc4BMDgvOY8SqlNwO4R7g8evhB1evUY4/4XK2FyCnTZWk+XKfIVecBGXKYiVZLLh094TgjyssaXzLdYeGGD6q7QoihusaSe5yRJxsel2j+pLusFlyynEeJTHVCywJKBHIiMXoasholsJ6HUth1d6PJKNHXuc9TBu+t1ghP5kskkCZQtx0WY7Via44o3XDCdPFlSF9R5fL1nmCliraX33+2Ixmzwh3IPrOHt9FL42xw976Ju2WyehNDKzIyDHEmhpU4Xf5R0+xoaGaO2Uvm8bb5t2ZBejaxBC7hsot8M"
+       "a": "1c2qdsg",
+       "x": "I2FiCy25Yv799EuOuq1O4jZMRF/MZVJllf5zwW7PNVJ6UUrcdxyRa9sC7dosgESQ1c7XIiRoCWw0M0gi2IxTN4yl7BNdJKxbiL+NRuVlH0oe35ArWMKZcQ3s3MOZDhlYqWEn+jB+v8x9PLkhrdV1NjET9LeU0vDpXGJNsxnDb9vDSloPVaLCX5qlVeAT4yYpdAN8rpM9sM2q8HJ8eR2jpQtrkVqEhgTTwJ5fPdaxgdoVR6xgkBclBc751aAZnxlEVZFDDkqCZPqyTrzQkXrU3HL/4UDTqBuUkwLBqIFLBMzjMvoyCRuZlExeMSJDemY/xD+b6mC4XwBrOobtIWm+"
       },
       {
-       "q": "一個人的倫理觀念，課文說主要是怎麼形成的？",
+       "q": "一個人的倫理觀念，主要是怎麼形成的？",
        "options": [
-        "出生時就具備不必學習",
-        "長輩教導與文化薰陶中內化",
         "背誦法律條文後牢記在心",
-        "上網搜尋資料自學而成"
+        "上網搜尋資料自學而成",
+        "長輩教導與文化薰陶中內化",
+        "出生時就具備不必學習"
        ],
-       "a": "s5uvii",
-       "x": "iVyCXAfWKTNKbgcUDXpTDQtxpXhpLC3KooUdTdN7P7f1bahc2IlzcD3ajJkDrWrTU+hVCHctOYcYgCJ5xWSX+fGc1xE6lE8W23lOB45o0Ujh0WSoBLTGD0SuhZaG0BJ/SDBb7ojBSEtv7b44CZyRtv944hsv1PyIDfK3inObLUsk1s+yj6TVHBZ4EXyZetpUp3d61JtJYCdwk5Hs797SOOKik3sc/qUqh0UaGVdzYxa9EEboF7M9XQNnDAOKcwTd7OcaRpH98FWHO9wToAnRkBYdfmVrAdmnnRFoyyXiZfeB0gCGLliJHaB6ARjWLw3ayR2kT5/bDuOCBEYM"
+       "a": "xsqyzh",
+       "x": "ih4JTd/W3+oq3ItcKvbMxwQykjswWab4DAXIlSOlPoX8bJGXlgZVB5srp4qOw3ipVmJHNV4pqSnNE/q6MjyWF88s+vhirkA0/C6YgjfTT6geVEgEDkgsaAs0A7+KenFZo/d5dJmY9U1NNCQmDA92qQKc7RWoMw0wlr3LpfLjyP3W/++t7GwtZJvdKWrXEKktCn8uu0eIc20IxhCXbeLvkGkqpu+jFeoSOYadr9w/Msq+SqVwNpIkw4yOE0J/noc+R21hK162TtcaE5/7G0rzdJ2ipzVsis4vXA7SEfqkChnA5HnMonXSqtmwhbTvoZOVb/YWpCX4pbijQ47i"
       },
       {
-       "q": "課文說，每個人都有了倫理觀念，社會會變得怎樣？",
+       "q": "每個人都有了倫理觀念，社會會變得怎樣？",
        "options": [
-        "人與人之間不再有衝突",
-        "不再需要制定任何法律",
         "每個人的想法變得一致",
-        "能維持生活及社會的秩序"
+        "不再需要制定任何法律",
+        "能維持生活及社會的秩序",
+        "人與人之間不再有衝突"
        ],
-       "a": "1k0cwa7",
-       "x": "7kMjDx6AXdmLOHpXDUIBSqrkzfLGTLbR8limOSk/lEk3mUisD27sbSQP1Jr2uMa8N3FGCo2HLTXoTET2fb2NRm5+LH+w92GeBDEnphZ7F+N73FRTgRT+TM3j0jqyk15SJv/NgKppJ9nhBOVjSK6TZfoWVj1hOqYOTHROyOb/ovFPU5u2ic5I3OLuKt6wXv1U0TEzwVZkboBhX+zi7fTir3g4+Z0x0uo8PHYXt9aSGYOFZK0B9r60qQF6qiQHoq7teZBJPyfnNAKI8sbQ5h80DvrUJBWDMjOsgWUwFFw+yctTr+nHCDqW3j/YExedy5APnoRigMwEG9OHyn+5Y+ES"
+       "a": "1n2rbo2",
+       "x": "Ze2U+/hq3+a47YoFs5BqGllXTfGrE1fKECqxKR5pyN/SCxUqfa4+bSHJ/z17T4CFZgal5qtakE0mQFG/9S/Jq2PmJ9bLDhpOv5mJ91crz1OKfSU6wwCYhDJUWB5filh/f3DtF8Ve1dFgBmBqJuV5L5GcH4JJCF8iawQFZZrsu/QgZaJmbkQZ8i908lIV/slWnWNrom0lrq3dlfCj/j8QZ/k3a1NPP2BHNVA150jl+ek5CypNdQAaagzj5c83PcLNR0hN/IDDhKLxkIhn0P86oqHd88Y4KkyOZSBag6V0jrWztlyU4VlhBxcOaVcTnNWks8DIzwLcdIUmEy9opuyb"
       },
       {
        "q": "如果有人做了不符合倫理基準的事，常會被認為是什麼？",
@@ -83,48 +83,48 @@ window.QUIZ_READ = {
      ],
      "qs": [
       {
-       "q": "課文說，資訊世界裡的人際關係「跨」了哪三樣？",
+       "q": "資訊世界裡的人際關係，跨越了哪三樣？",
        "options": [
-        "文化、種族、性別",
         "國界、語言、宗教",
-        "國界、文化、世代",
-        "時間、空間、國界"
+        "時間、空間、國界",
+        "文化、種族、性別",
+        "國界、文化、世代"
        ],
-       "a": "9twb2l",
-       "x": "g9+3/YySmCd71dhQnLbBDLhoufxmy7myLI+yOfqpspMSdMJeYUiqF08D3vkDL+fkxxySVYbvD1H/4b6fDCqsVdKWY/9H5pe6u7e+iz64DjrwbT3P8Av+cTrWMuIM62q3Pnbn9wK/he4wPGJPDf0+RTknA7hp7MA7M0uv1SoeDP1n24oU0fHhoDS3IZRPCXPGkrSdf7CyJ+Zjmce02dW3ohh3JL82mPxsf1kvXnT82W/iWlqOrXBs93O6nbVBaJcjyz7w"
+       "a": "19xp3uw",
+       "x": "QijdbSQ1Blbg+ZfXiZGHoFpge6u0sSy8PAqI1bBg8ti+WzoeQJ9oRdFK1T85HI6xX0sJ4o8UJQ+dtkySZPUg50DZPeTIk1wwcMgrrafOrbLbwrQmEYV5QvnTHyolfWBrkw3iNPIYIDoc4lLL4AE8/KzTsgnRIHeai8gwRzPs642Kq5V7DGvzSZ154NEqbR4u48ZILhPktFb83XxxIykKzK9UU5Vkm4MK1kAFV1dVBpS4iSPUvqXPwNterMboP8UoCLam"
       },
       {
-       "q": "下列哪一句最接近課文對「資訊倫理」的說明？",
+       "q": "下列哪一句最符合「資訊倫理」的意義？",
        "options": [
         "網路公司訂定的會員條款",
-        "設計資訊系統時的技術標準",
         "產生到利用資訊時的行為準則",
-        "使用電腦設備時的安全守則"
+        "使用電腦設備時的安全守則",
+        "設計資訊系統時的技術標準"
        ],
-       "a": "8ertej",
-       "x": "dZ0vTtwsnHsWFT/DxEVu4keD+ALrh8qq6PhqKjBsCmrusN6HJaeByY3k6Agf6/RF00q7YO1n/1BYb/KA/wa3X8UTNBWDNrtI7N5wfUiygmu/xSrNbrwoy+tv0vVdvov4KDGXOLtHh9xKVjJVvu8EmwF9OmsllSfUyl/ldzSZreF9EwyRUQNuIXny4tS4RqjET7DB+P0+h5CEFT5eQrqL3w+c7hnEf2Wvbia7voGZMBfmVAl11t/PfohaZadxyOnNwBLVSPTqNHUO4Q76IzkIQxFyZxslHdgFsC8MRl+JkejYBl11a4A3jfH35ACFggPv/kbpC2MkWn4st6KHJB9gnd46zQHGcRK3lQhFo70mDrYGOElE7a4gsUwR+tJCW9ECh8Ph1iHu"
+       "a": "1r7kwjt",
+       "x": "1xghTLAZml6fAr7X3z3u6FmvJs/QWAT/EdscW3bOmzQMvM39Pcf6APP5OpeBlSfF8pOzY9o5tu4+yFO4UgdkdqmOo8VUuVE8/XUvMBOP62AIs5sZFXVhjoIOPMBkgTLExqX3CKapGUj0D7D3htxDgSxPZFTcksvP9iTGa9KO8n6k1VmZK11P3vBZGA0u1iGViqRSus8OyK1xfum0FVEGvENXCC7ZOh+O4ovg4ws2P66rdjapNoPqdu41JrP1X0irkC3AsoamlxWpQQ3NokIaBD9fQlx2u3KX5Sh6PZuC/j5kDlE+z+FqL5Rf0fKMqjpoTjon1Fl+j2SvcoPiEEVyuSQ26nW9lrk0lUhkUf6y+H5TxVf1cMVpl72mDh1n5yM5DOC0KgL8"
       },
       {
-       "q": "下列哪一項「不在」課文列出的資訊行為裡？",
+       "q": "資訊倫理規範的是處理資訊的行為，下列哪一項「不屬於」這類行為？",
        "options": [
         "傳播與分享資訊",
         "保存與整理資訊",
         "檢索與利用資訊",
         "維修電腦設備"
        ],
-       "a": "wyfm58",
-       "x": "EU82B3kLIXdptP+ASGKYlUJ0e37PScXJRZBgYQI0DzfW/+eK8d3Nncx55fLz6xu3JHAa8DTXW78Voi/Yv2LJ4H/63YAvFmehWm4nK/X73vfh38fsTFkyuE0ca3wDMGNVIZxHS7hZH11Te9JQelh9Im8PCBm/iZirtRiFWAjrS3eVXtZ2nxQvmvWGBe+gNn/RCybJ9UMn/DlFXzWWC1+UAwYmJ7XOSWxFZXsTrc64TvO/6ObzZrcmtZ5+QZcxeg12Dxi8flittBMmSue268TJ"
+       "a": "5ye6bj",
+       "x": "jeG3giMeq6LriBWUK3SHfE7vBaUWI+/4uJ1z9O/8ih+HtxTgczk5iX84NWN+M2GGFbv5RVmHdTmQvXo5bXoS/HAz1h6RprrekVsFVGaByj10krQxFW0AdPkAGV9L8ixzlqZuapIiw3r4G9AB2WvVSt7o6oIV6CqOLOyr6ORS3p8LmJRUZnMl87mO2J+CF92suUiFQ15CVJ1KKE+iTdPJeKmxR+QgWdMCGjBq4BmL7dKs/P76YLEKSjhZ2p2FHyri074zyrmVEvpaBm3rHyqX"
       },
       {
-       "q": "課文說，要維繫資訊社會的秩序，必須要有哪兩樣？",
+       "q": "要維繫資訊社會的秩序，必須要有哪兩樣？",
        "options": [
+        "先進的技術和防毒軟體",
         "自律的良知和外在的規範",
-        "家長的監督和學校的考試",
         "嚴格的法律和高額的罰款",
-        "先進的技術和防毒軟體"
+        "家長的監督和學校的考試"
        ],
-       "a": "1k68em3",
-       "x": "FNEYP4moeHcHbP55ZueCAXQ+8L2swS54UpBV+M4+jdM9sFMYBHnxKO/6ImKKbE9NtMTG+tXxnvRGnTtpCGzDTyxUi5qyXLOMGf+Tl6ydikUwlyHDi+PlgOXZivu8kDt1PL/LEAxWaS94Ngcf3ioXBZqWA1SwuP0jbAOToeitL00QCdZZ6Exezqmkpl8a1P2FjswPXSg5darpldHf8RTVMsDGa+/EeMTJn6hekAzZrC/7OpAvroKHia+2vEcY6pvsAVsy4ZLvD9YhLZEPlu2q+7XbybGS3agW/ijFLGPc/TAVXMTCjQ+BNVnqrDmFWR+ygcA9m0hi7C7jfSLhHjxPI1kLGaVbEDy/V8kMTd5T"
+       "a": "1jip0ae",
+       "x": "s7gkBCIWZf6d464muTF0I9dWM+3nqp0oiZvDAVYyw5UHgfLA4tDeK/iqNCWdmgIJoA+X3b9uqRUumKf96UBkzyiUodTmlb5BnlGlBrLHoYkIUVswFYptHWf0R/haE/ojxIYYMm4/veaBW6Q8yGs8MlOADWlxeRN6sWd4tbYgycxoeYpylDS0uJK+6OjeP2PGqQhz1T2u7ojyKQ1Gp2lChycH64JgduvLlU2IeB9qUGVfOqKBO8aG0rRV+zpfDni/1+zR2CkrMQP3itsT/PnT6VHZUa0gVTDI1SkVQcxcfsyNpGv7CLy0OCEjCYzduy9z2z20CAaUvZfowByMCYKCNZMzHyIrm3RfTc3JcD0m"
       },
       {
        "q": "資訊倫理希望讓資訊社會中的每一個人，擁有什麼樣的環境？",
@@ -146,26 +146,26 @@ window.QUIZ_READ = {
      ],
      "qs": [
       {
-       "q": "課文說，為什麼除了倫理的價值觀，還需要一套具體的規範？",
+       "q": "為什麼除了倫理的價值觀，還需要一套具體的規範？",
        "options": [
-        "只有價值觀不足以約束行為",
         "價值觀已經過時不再適用",
+        "只有價值觀不足以約束行為",
         "規範才能保障網站的收入",
         "每個人的價值觀完全相同"
        ],
-       "a": "1pbanbv",
-       "x": "wtjUMQsLJphKKygD1NccSO/Wy50OgF4e/0dNV7S/K8o62DpNZcoi803h6OOwS7/JuHYVM8LgQ7tF0QhxG9b5BwFOESr7kez0nE4nCLJY9Ddj3fTr0Ket8JwvSiwxn0JlZulHzgh4h/Kr8FU4Lxy5az6+ujFy2aR3Q2f4PMu+VLDrNMWYVVlxMn14Vse+GDVrwYld1pfX9Pmc2kTvX5KuQxR4A5aEahrzxTVQ2Uy9kL2NkB5JECwVgz3mmvmoCBssWFtUYroSUSf6Vux7gSc2kVuA3/f2j+SR0qvQYMDw0guIZAC9"
+       "a": "erjcc8",
+       "x": "CptcrHot88fEwGgLsWx2GFEhf+E1i9IpffRMIDZlN4r5HooUpkKC63hpKFKfHC35ATb7zkbfkl4kJEUo3N6cUaCgrpQjro2rYSKSmCx+0KLFRQpRgNjhyLkoEDX6N/fZiPlKmi4Vm7S5f625LOSNONgYw1kjR3aflDOYHsaCeL+JI4a9RWHb6uC9k/VyYJVi2y7bdO6de76EZBTNsk1u0QD5C3gpJdW1aaDJrybo3SdxbbL2/+6XM6i1l+9ukIe4At8nqP7PLpPCCbBN0DqJe9pRtkBEuRQd7QoFLdrWluQsyWIG"
       },
       {
-       "q": "課文把「資訊倫理規範」形容成規範使用者行為的哪一種力量？",
+       "q": "「資訊倫理規範」是規範資訊科技使用者行為的哪一種力量？",
        "options": [
-        "自律力量",
+        "內在良知",
         "外在力量",
         "技術力量",
-        "內在良知"
+        "自律力量"
        ],
-       "a": "1wcfb4",
-       "x": "j2H3TcLGooCG+GBjsIuLRgBfTw+MPQCFsEHB4yzHhjghhqQspvwPYpkHlqynWZGAIAQQT/IrHH2d3ekThB3+kWTe1kaoIsipbRz5QmARnq3lP1sDEDp56/2ILu+xnl9/bwMIlySA09C84mIhvodjzsSkmcdJpgJolkGUtOS1/RdYnHBHOp9Ulc98EROp+hTl0gX/oFZs6pmUsU+efRbU8BQjFUYE7oQeHMk7YQv2umy9qDOEV8iozXrlABpj7BULiKKLK6Cevy+OHtLGjOapgjN4ftEPF4kMp9cOHjis"
+       "a": "xvf7wz",
+       "x": "5hTQHlSAcQgTA/LXC0LH7YvzFpoe1rxeTKusWBkVRlCewA4oPVmuClDY+FH7zEzig/gE1wuVLhar06IRWD+19y2mkQGb7ArWZRRFZeGreCzS800+87jo/e2WEHlZFTKwDdVAdTHmwH/M3Y2qnrHCMNEnkC0gNEPpzNSnbbmkt0XSuIRRiGzGsm6DQwpfoQ92jN05B+dw1wEM+YIHOaTS5m9OcNe3scLdMcc/CceJip7zFhpjlMunBt3fHWg8NhzdybW4TPz5Pnw5RMrvVubAWe9pWikHc7u8fW6Z0X04"
       },
       {
        "q": "一般來說，網路的使用規則通常是誰制訂的？",
@@ -190,15 +190,15 @@ window.QUIZ_READ = {
        "x": "1tN9NY6xoKWHXOGDYhjf8BMDzts96GORhqhZjuydAy1yZ1TIyVYnhFp7Qp2BCkPUOkeySWsq/Kbep6yQcscjDJOLGN/jkAnykiboByvhXgjC9mGIgeDmpWIFTrY2ouJzF9yclyMOzreigLy3Ohjli6c6KtyQYdVeHdCMKJ8JDw+LpUX+/Q0Ux8TwCpVtYs8y/9pHFZ8aVtu+fkkZWlfdIVaYt6szR3VYzZ5Qw81wxB50ux0nP6tMRZEx0oDYBQFL68xs1uyjJWCsRGZc/o4a+YjhawPPcPmvjmh2Oc0SrvfLAusfCysYFgl34QZy/m3A12Smg5UQsPXGFv6e5MqnTQLTmqlx4Ng5SpTH4g=="
       },
       {
-       "q": "違反入口網站的使用規範，課文說可能會怎樣？",
+       "q": "違反入口網站的使用規範，可能會怎樣？",
        "options": [
+        "帳號立刻永久刪除",
         "需要繳交高額罰款",
         "一律移送法院判刑",
-        "帳號立刻永久刪除",
         "受到警告或使用限制"
        ],
-       "a": "j0ylsc",
-       "x": "koFkdKLMd9DXLIPyn/MIfnZ8lV/rE0BFVbC7JBODURl+Dj0ecwHUxvIRDhWod7NrGLRu68pcu8x4dsPLnRX0cRii3SADirBlzQ+RZkkcoCUsrfls8zsVAYHhBee1xTLsctLM/503B6s8dj2aWXHw978mRuhH6GadvO3BzcSteuWn2LzflEpuznF5vV4mAXthXxt5OnyECYKqATqXPKzbV8CHGOZHg42RAVJyRvrabi3yOc/jdKDh9EYK3ThYgQhnLm42rNoxUeD+jnrbWFw8y5flsajA/Oc9KgqMnvd5JrhYyv1UXQJfQY31dcLbFSeEVfsEOTX6+JH3SbkzPb9vKp+qKwKwNIu/"
+       "a": "1bd2bu7",
+       "x": "Op88WbKNIcirFXxMlb6wNQXVCwATNTpNREEde30depj8qo6KpNUMyxXGOHXxEYt0ykzaDRyeRuuNDjvMqUddMwxL601DmW+l0ZGUMd1y6xBxC2NJWuLd6B3S1Qsd+ZBpMJE+aV7qc3J3OLDQqGKPvwdwiB8TD4aQB2FfD07fvxk0VQiLzUV2WtZmS1b33qdliR9ejx+rG+462gVoJmaZI1Z2Vv2/hOugy8C1vXhYK9SAQFNKvxk3Q5xpcFUCZETsznP4izOf8G11J8rE4GIlBSTiKwsKFKe1DRqK/D9Ey3Z7zFoyFDpxclHbVvNOw6P4IwH0U9J+HGRZCoLe2urRo0er9Qnu8+GQ"
       }
      ]
     },
@@ -242,15 +242,15 @@ window.QUIZ_READ = {
        "x": "0hGHCrBO7xdRTf0WHWVNg0kCM9bwO8i8/djfumY6080wbgmoBUHiR3zfAG2ZT5zOQ2z8LBVMCZ0FpflFy/D3VkaaUHty8IJboO+AHvF9M8rBtqP3zxY824PSUb6HbHYQSw7+SaKJlhS/MgGjV5+Ksxj6vbJQgVcyj5o+a+i33VtwlcrLSM9NWf7Wtf5H0NLT8e18Yfe165RuOzMk1hYFArd5MVgG4oY5/rICHpvTVXJRaAzFEMohCqFdUiZP3SHBbp14wvFMgnPDNszxdMXe37WsW23PrnR/7OfMLULNbGyxwYBv"
       },
       {
-       "q": "課文提到，有些職務甚至要簽署什麼來規範保密責任？",
+       "q": "有些資訊相關職務，甚至要簽署什麼來規範保密責任？",
        "options": [
-        "免責聲明書",
         "工作同意書",
+        "免責聲明書",
         "保密協議書",
         "個資授權書"
        ],
-       "a": "stobci",
-       "x": "HGnDCBNGA27oV6j8z+hIVgSYiN6T7V3L/U0dWxGvp0ZtJpIsUGFTWONgcXpTo/RRyWbAX6QpfyNTkioK/fWIgX16qf0VE+TQDfGT8otrLvWMqJ9Uf+jz8AxKOkUjZWvE5TIaoXU1aupRn2XuJiLrqrlG/21gtj77ba2Tn9imgoLnf8hRjWSoTwE+I4Pq0nNYkWpGJbkAwPRw2VBlb0wjyg16ur4IUxChb0wcvYueN97P15tj+KOMQrZvLLPlCmj+fxszlgbCiJTD"
+       "a": "1bve5f4",
+       "x": "WIdKcEBt3CZqFOOTx55rILXsHQGBsEDFsUBFx2aDrKyRFLDue8E2ZbcWM2BU8VQU0FxabfgyM0UFk8QSxD8OuqLIudXg9ENp7ev78OGmKRH9cwIQPDyGOafzn10DnJEC8f8tP4bbssEMANeZpDQJsUFPePkJbpxszCBkAfpjzYjmyDR5CAyKl4HK7U1oQeBXjRN3wtDkCxs2eLliswec8mRYI0chwtQM+enZUrWvpoXE5YgFmLCv/YTgTBHZTUtNiSRjCJxqmnBc"
       },
       {
        "q": "同學跑去問校務人員：「我想知道十班王小美的期末成績。」校務人員最適當的回應是？",
@@ -292,48 +292,48 @@ window.QUIZ_READ = {
        "x": "dfY5mIUzGjPz0oAq8ed47UjliTxLK0VSUA6Yur6E51Gz6+xvnxLmjaXtHt2cEyYEzuQLVy8JNZfV6UEdjFthlWOD8tqhV+nAFuZ7iBu3MGBVEoM0/C091IgpI9x/gz53K1aA551+F/SI8DxO85iwGbhowRc6IppCNp1JLqKFBPTXeSmcNC6jv9/7S21sa7FbHdU7B9k72H9CCgr2WTz5Zg=="
       },
       {
-       "q": "課文說，對任何一位網路公民而言，什麼「無疑是最重要的倫理規範」？",
+       "q": "對任何一位網路公民而言，什麼是最重要的倫理規範？",
        "options": [
-        "個資保護",
-        "著作權法",
         "網路禮儀",
-        "資訊安全"
+        "資訊安全",
+        "個資保護",
+        "著作權法"
        ],
-       "a": "15iqgfz",
-       "x": "5E48wf6L4278LZl+ZpEY+2lnGUk5Eloq5aluqdgv6qt7iEXFPRx3HIhRXteNnOk7WtmTvoHl8zK1OsYEbcXF6Mi2I6fBIDhcpzIDi1dJV4jFy4rpS0ZK/PdY2pDjTFLvEnD8QFcnWBGBH/IJ4kH6PSwlQYIQHZTQYa/Yma2X8e3iaU9QEd12UCzBlVVQIYs4NGwO/ZrV8ocC3Ojug4TwMOhRCGqCrsGZ2lMtK6qr0x572LHWSjf5HnHkuRdB4+wP5Judt/mTsTdS8avR"
+       "a": "jk9u2k",
+       "x": "GUyQIVWpYn9D+pv7jLClI8mw0N9zq5s3QuhY5z6+UVHOjB2Oada0jM+Z9DsO6iwhsiSEWWnA6UiFeEe6426wIWldj9COX5iu4NLziYSofYfJ7kyg2JWA1SsgP4GhKwHgPJ/WmBIIHQWDQYt3Ksdzf7kwaA3RZTZJRyRsFSC52ScWgZSG42kMlZn4lnUhriLByVu+C0sdO9S/QnwRV31kgGft+U3LmTGzsx/wYSbWgFPhT/Pq6NiywhRNBfmqWtQebX+kOtrEjyvBM4lJ"
       },
       {
-       "q": "在群組裡有人說話不禮貌，課文建議怎麼做最好？",
+       "q": "在群組裡有人說話不禮貌，怎麼做最好？",
        "options": [
-        "立刻把他移出群組不再理",
         "以私訊提醒對方、理性對話",
+        "截圖轉傳給其他同學評理",
         "在群組公開指出他的錯誤",
-        "截圖轉傳給其他同學評理"
+        "立刻把他移出群組不再理"
        ],
-       "a": "1vwedb5",
-       "x": "emQlaM/xNSV50FLiqiiJIsGwZ0a65YA+QXYbzwSK84FPu5X4VS647QrdfOFHvX29QClutykpe4dPFnZAtUUpWcrZyl5YcEADwveOXfalYJ6zG5o1A3Hnn00zrHe6tHG/5JVRI2V440OcODxDZrvPprhf04KYiL1sEI+uGzWANuLkhN6U0e/cy7iGb88lYKrKEPGKat4BmkNbLNECzOUYLuzEgd8Fx/fRfsPPZ09U6chYQwL8SkvcpwznjED0VTkW2Iey9W5dQ3+J"
+       "a": "1bfvrw4",
+       "x": "qCuvqBFJInqrebJzXG5Qk5XV5cbjcmZO+LwAB0F2SRbihLVhXfn2NFJeZ6Q0j4hHTDXet7UKzMl4AIlldPdZurZqoeoyrI1KNZ597SLzx8hXjXH/yzBQB5V1xoZac6Ud8zFjKXtquKuPxN/HgXY270vhF9SLRyQCuhYoJqJMqLkURkt+eIcTVGJNuZdJqmNQWn2QLtG5DkUe3/H2d7cUUy7iMWRycR07vfrNNZIkUmnodjdkcD8PGqe2ytn2c4zHBWiuISZyA9UA"
       },
       {
-       "q": "課文把「群組」比喻成什麼？",
+       "q": "在網路禮儀中，「群組」如同什麼樣的地方？",
        "options": [
+        "私人日記",
         "公共場所",
         "祕密基地",
-        "私人日記",
         "個人房間"
        ],
-       "a": "1x3e2kd",
-       "x": "S9jG9C/ZxmJ9Ja6c6/Ghr7muoge1Rd9Y6YFTjKNF+nXjJZkt/DAOMabEHTVrfmaxqa1qQr8kCjZ4I9prAFM5/SgTXUphnn2DFnLG/sVq/SM5vuixm/Rzoovb+jV/Z0E91cWmBCV/Z0MPhLj2qt73YjYtmMvaPBvbESg2h0DR1gKqe1w+Y2Kh6O7QBQvSFhgyTHk4sJLTAXhoBJBqwlyOJ4uZtt+d"
+       "a": "18pkr79",
+       "x": "Sa0QGnWVV0GHgYcm2O3vLq9s5ZVXhCNHZcu2jBnEyjYvx4mdojgyvKfbPoTn+yMcbtDYND63WFATaA3N54MAiISxF+vaVkU7FgCp+IuC+MGRC8twzH9jHUbdFX5hv8DFX9RFsRSp/1F0poHO0rPpY1GTfvbpE0BY8FaNmsFEYhX8u9ystWDmPCFxU5plNDGOqz9humK6ZWOdjRBxEFfj9CIuJVcG"
       },
       {
-       "q": "課本群組對話裡，麗茹最後怎麼做，符合網路禮儀？",
+       "q": "麗茹在報告群組裡說大智在打電動，事後她怎麼做才符合網路禮儀？",
        "options": [
         "退出群組不再參與報告",
-        "向大智道歉承認說錯話",
         "把對話截圖貼到別的群組",
+        "向大智道歉承認說錯話",
         "要求大智先向她道歉"
        ],
-       "a": "1ovtx42",
-       "x": "pDIMxRHhJE45JgMd5qfRSI8kNj/LUqVYUxzLvozG/UQaPCmCzWHcpsQENgA+MACBGtg1NGVzIxlJr/hUFwtZ1FG9o8TZuNwko/KNk1ojonkS53Y1aqdYgDM+nhaZM+YRcFDlfKo/pgasMSAaaQD1sxGStHfMPTcq3BeidWBpeRqhSKuIGN8r4uv8DcNe1TsNcozJudzAFXk9ai2/cYU4MX4ZIvLuxjSio+tP+NVVZftX2oQPMT2kw4upo0zPUOn39Jwk"
+       "a": "vbce5m",
+       "x": "1vKP+XTNvTiNA0tEfWmaejkSnlIenyey2QUr3nmQ5J1GGdpk3fwNAV/hNXyvzmLHSigTA4Y6piV80uv8iSVvxVYUM6adDb+MZUOeArhA4kM3TjskT/n+VODv9S811FelUdy2c+x04uw5WHLShbpK5ZsEEvIgogi9OS1siAGyW6aCz+cMfTPdFUy8VoJZP5XRpWvfg+fcdPbLqX3zAj6lpXVTS//RT5hPtFFBPDf6BvGzA5NG4CAeXNaJuAFtL4KDy/MD"
       }
      ]
     },
@@ -358,26 +358,26 @@ window.QUIZ_READ = {
        "x": "F95FebSe9cp5Vj1tDj3AZDycq3mYcltDH/AV0bNHaqockpNOeNGL2x8dwnOGPMa2DW7CcVf0H5I4QSy4xXe2tGa7YpWgLryg4IlZR2MHoMQ6S3LpNjCikzyDcbQYhCW6U1jP4BR9Wax0WlYBWk+Q+1fMMPnnRU3BFRggW5MAiTEtrDeCkZxayriyFcDEoPgFECBzbpSlZOUpvwPfJKMQQfGxLMsJ29VwtJ9IW7v3UWakKZ48GooWgSGHpaME0oMbKqPZ22X5KPyXAUmE7EgZ0lMgneB1ou6iOrOnourg/LTkUC6i8WJHR7+KBad+SqMbnMstQQskcrIu"
       },
       {
-       "q": "下列哪一項「不是」課文舉例、不該在網路上暴露的個人資訊？",
+       "q": "不該在網路上暴露的個人資訊，「不包括」下列哪一項？",
        "options": [
         "身分證件的照片",
-        "機票或護照照片",
         "私密的生活照片",
-        "喜歡的電影類型"
+        "喜歡的電影類型",
+        "機票或護照照片"
        ],
-       "a": "n78a0e",
-       "x": "OKzCFdsWQ+KhZUy0nVflMniGaLeU7xmHqjKITfaomoJIY6DBSA78CDeftO79dY/ZlVBUl23Nc3Re4ladRp4ZuJQ2M5Cj/afPnMZ3Jd3aZ7/Momc8RO+IaWuUUXYPMC+8wU4F908KcZqenXHv29kCs2qYMjClK7UZU0uj1N5FHmgl5nTW0JxJqMM8uTrtJMGzdRGK0ojwLfiLDNAgPEeExv6vCWUrLhDF/b4PLcRGuuJ05Tr/fE3LTLNMUlc3mJpEng2HUVqnBlp1K4Pt4yy4r8C0"
+       "a": "nrjkk3",
+       "x": "3+uSqvEwygdBGPD7g+NAgCvXA0E6ROTtH24m1jssRSaF+TkAIkpqTZRH7VO+KQxL8Ex6rV14E1leHTwchvUJeYu2PzDfVVyyUt91RMvfoKwfpKUpIET0wRSi9QQMtDy/9hV9+NVMd3oiwBneisCWYhMLpLXXG02rzt/iJgyRF5fONOZFW4qFiBO1JiSyPVSh2DWo8M0JnShvV2/x/KH7v09xIh4AtCwJ7wRRJ6Ge2mALu3jg8kxD9FUS2rcJ10H/x+Y1sCPGOlYuzfSpMN3FxqlP"
       },
       {
-       "q": "朋友私下傳給你的訊息，課文說應該怎麼處理？",
+       "q": "朋友私下傳給你的訊息，應該怎麼處理？",
        "options": [
-        "覺得好笑就轉給其他朋友",
-        "不隨意截圖公開以保護隱私",
+        "公開前先改掉名字就好",
         "截圖存證後貼到班級群組",
-        "公開前先改掉名字就好"
+        "不隨意截圖公開以保護隱私",
+        "覺得好笑就轉給其他朋友"
        ],
-       "a": "pigjen",
-       "x": "xvcP8smJO/miL33A3AWYnfmNTaGpdjdmJQKzdi372E7GsvDA+ceeODTQiTWhQkrrVZG9wq+FoybbNfjcNDE+BzrS8A0+zsh57bOrfrdIY0+4HOb1A9Ebt/eZlrK81ZolFNLv+x7do1VLEgArsM7zakjSJW63FJhTvzxcYZ2+tRG7Sv/MdiWFzlqG9c3F5CPl+1V9sQ+z8CE4+weTcTISV5N1uDWC0bUDYSBlR9PBz0+TXgj0Luhk"
+       "a": "2miyai",
+       "x": "0QXz1YLMrYIUyi9cZI3rtNy0oEOUHHxEN4ihwF2RxUyZduZC/FHQg5ViN2/UNzHHbYyLzw6bRWuzLinIJ/yvg1dlIR8N3JvSgbSM9C3Pt2M9xb0j/N8mR/Z0PGLitnOicAFuyy8z0QdNPRv3v3SU9M6u16DXMB/Z+ZYbrdK90gV/N9ldH3jPKyepuRteePga3f22Jzx1NSh5vbIt6cbSxBYVFAtrWmvLgtQfQwwypp31cpPnRPxp"
       },
       {
        "q": "收到「點這個連結就送免費禮物」的不明訊息，最適當的做法是？",
@@ -391,15 +391,15 @@ window.QUIZ_READ = {
        "x": "BTJuViok1TKtrJwzoBOORehYVhXhVHSJlRrUx5ANgDGrBfAkfBQxZOIBuQE4dsiAD8I7HKr5Fo4pzkuUln8Jlai9lcqv2oH7PuIErCXaSQNiF73iDkxA8JqudEw2pXNQKrHjaga+gqNMZYBKc77GsPD1pA9LGANcp8Fv1JMPnN06ngY1JdIqLCCft3YGifKRpAsbg4H6egbGCaSCelADaO4o2pVwy9GQPh0+SN1mLN7t"
       },
       {
-       "q": "課文說，哪一類內容「不隨便轉發、公開散布」？",
+       "q": "哪一類內容不應該隨便轉發、公開散布？",
        "options": [
         "學校網站的活動公告",
+        "未經求證的圖片與訊息",
         "自己拍攝的風景照片",
-        "政府發布的防災資訊",
-        "未經求證的圖片與訊息"
+        "政府發布的防災資訊"
        ],
-       "a": "oofqi0",
-       "x": "k1fuX2LFcGA07JvT+EQrG002uCf3vACNhrDTO0pQtKhaskEzkEYZ0CStYs0jNLtcV9hTieMRdAjRMPTGJFdTVwDjsJUnsbuj/55szhX4A5jB4GUNFdJgJW5kHLFR5ywJW1SS6ZCczxSBhFcIZCpXrhqSIGR5OY5y/u6sq6RwPwPQhrhP4nmUp3b7+HnRrejgH4h2W13spxHkJkIERCn5CHmmwqiJYE4SEaVGvPZU6O3l96x1Sljkf/LQmHXehQnQNSgyUXm7T+JffPtkJmme"
+       "a": "1wh14q",
+       "x": "+PEGwP1b7hG3SF/UNlzRzpw3IOC8QJw1fCcDmX5ItdXN0ak2OTCMI7FZLwBrgfomoPzbSvyobHWmaNwmUzoXugRG0zTO9SAj4ARp/8FqtI8VjMyOVxx+iwvow7C/5MJKNA/YmlMZgttKtq1rkxmvMdWRbpsgKdTvw8pWloQ8++FcGucHl+W7IA7XXFjFT12o6lMhWsVggDp2hgKmE7MJuZLB895ej9KuhPAKWYyZWc3O/ilYQIvIRZx2RnOAXI/n/umzJYonegmdAUkHsMdQ"
       }
      ]
     },
@@ -414,15 +414,15 @@ window.QUIZ_READ = {
      ],
      "qs": [
       {
-       "q": "寫正式的信件給老師時，課文說應該怎麼做？",
+       "q": "寫正式的信件給老師時，應該怎麼做？",
        "options": [
         "用正式的書信格式",
         "用注音文比較親切",
-        "多用貼圖表達心情",
-        "內容越長越有誠意"
+        "內容越長越有誠意",
+        "多用貼圖表達心情"
        ],
-       "a": "12phfka",
-       "x": "ctVFBHCulPDYtWjdxgxXhaxrR9pv6vV8BRLQq1tawj1xOanncDDl2eYS5FlIYZ8qOZGtOqav7m7+MIk2mR/PC+/unDcUHGuQxRP/6Pnr1OLG1FV5JE2HeuyS6BBAn15qo7Hqkwa7Zn4j2BOpFXzQfHOXGLbrwMJugpnqW14TySohL1hQIT5PBE70t+EzA8dwT4ZfkS32/zcPhrhRsgEBP2/cNqd6yG0So1STJRq5yAtPswC015YYEh9saOnU"
+       "a": "xmqmut",
+       "x": "Yjp/W7eI/XSUYcy2zr9U3IqqVqZ7ogs2KWz7WpozzZh2RsdwY9tDN9CVu7d43E7jSzQ+bhs7YjdRsPiUHsVpspr5VXJMqrjSXBBJ2Lof69rSJJMSA32FtlG3s+wphSRZS8bcxNdDKrhK+oTiy5S6hjYv9BrVpuKtcJaoV6AG1YmXjqbmtykPZLxIbIOUw0fe8iNNwHUVlFACGJ/56gN5OlZGpgfIjOTDM5O4HR/9uxAmJRoX0ZNNwj0HkMWY"
       },
       {
        "q": "寄電子郵件時，為什麼「務必署名」？",
@@ -436,15 +436,15 @@ window.QUIZ_READ = {
        "x": "bJ+IIT1Spum49glGsIixsO6MdYNCcTqISvnVa6VmP2jYZ8HOm0ao4UwxkCIqf51+bvA0GkN1htAbP+5FIpVP9Z4b36T+nVos3icEULbZKjjaR7Ke0FkDsdtDlMDDDKSev5DzqaalhLhLWRLckXb6dbo9ruI1iNfWOvKH19F5UeaMTG7gUvAk/VdGysV74tNL592JdKIyHFOQHewluux/my0g5h/5tUGLCE/LZeWWs4s/pEQF+hST7FcJKtnJUMeEhCwMMh4TJgmoK1buQBef"
       },
       {
-       "q": "課文對「通訊或貼文」的用字遣詞，要求是什麼？",
+       "q": "通訊或貼文的用字遣詞，應該力求什麼？",
        "options": [
-        "正確且簡潔",
-        "越長越完整",
+        "華麗且生動",
         "幽默又搞笑",
-        "華麗且生動"
+        "正確且簡潔",
+        "越長越完整"
        ],
-       "a": "iuc60f",
-       "x": "a/dQgzrrCBzw0SJce5h7iJjexmUbkSCfy4iA4abyNt0GVwJK0yZSoJhdYfOJroZalT9RHd0lwwEIx+KYe0V346SMWjb1xywu8b6OnIXBXB1fRyIiGj29eN4tK0b4iC/JvBZgznOW9o+XtSJ+vS4TtYt252NLA2VqUJOQovlEAwJprrTymFmWwB/qn35Lr/on4AwfPs5vDTXIl1mG3/72i5scIPwpuh44H/9/PxuU"
+       "a": "1oo3kpd",
+       "x": "HJUX/dXEihHi3gxfDh8aFjuLB6tS1cZPPkFXe1DNCbpUz1cU1DGXrMWTFTGZqhGzwoaypTqzjVv/WAIa7UALDxC2o34zRjE1+Fr8yJnANhWF9zMYw0Ie2Lbk8Qs5idperrkxEjCyz2TZIv7ghrRnLRzqB1TrjIdkxK6OknICu21dI8qpgFuqR4vEYNEZSx7ezdgYeRDVfM8aqpZ0eMEnFVBoNDW0wcXIqHMgdAb3"
       },
       {
        "q": "為什麼按下「傳送」鍵之前一定要檢查？",
@@ -458,15 +458,15 @@ window.QUIZ_READ = {
        "x": "FxjsKc21psfPXF0FS1l3a2ZxCwCGJ6AtSOXlrCWE6IaZHPC3fllsP6bVQX3/1s5Gi3QsZQZK+1KxQrvqqUf3VwPCwmIA77Ze++18Gzkf3ZSjpgniM7uCK31/U9whOlkYFn8qk/QMCKNB9iGcB9zDcHzA9GG6coo816FQFvYWElQ7pMMHqaJWiE7bbSzcaR38x+mqbXU3yFt8oRrTy1Jy5In8ilXcRuzPVy4IP7loVEJs0wJ+ZdcuUrAj5+g7cg=="
       },
       {
-       "q": "課文提到，網路上有哪些便利的表達方式？",
+       "q": "網路社交互動中，有哪些便利的表達方式？",
        "options": [
-        "海報、看板或傳單",
         "印章、簽名或指紋",
-        "貼圖、動畫或符號",
-        "電話、傳真或電報"
+        "海報、看板或傳單",
+        "電話、傳真或電報",
+        "貼圖、動畫或符號"
        ],
-       "a": "tyx761",
-       "x": "RD377geST/vPU8eFVPI4kasczgS85AqdSOPvq3Zn5ffyCyQovJEIWRfI3iQ0Q85M26cVW83oUEEAmca5DEy6haGXr6WfEzYqToOsRzbyKDqcKl2cAmjpMGBXIiekwGfCNDWdH0GhwYMvOqFXwPOX5gPCFpcWEdEYKiysLe+GrqllCpRJx3/UQok6yfwUBw8DIv6H9VljQTasWj+LXl4GK+8CFDwDFFjJWErRURM8GruS2yKZBknb1jrMsM+6PEY3/NUcXCUdUDMWAcFz"
+       "a": "w3kj6u",
+       "x": "/ToiL2QUMcC7KT7GuMQxasUvoJPJSMoSEnKbbnOXOcquu5buwU9NKcNqxIxWXW2IYpxYGNW/v19vTu2rLF1fmweeHgT2/wXkLDQsXDKXHeR6OhuK9Kg9DFNMSg46BzxSi/hrtp0rSy2DWUL0fayMpiUq4+Fx3nxuauoHCoccaHGraqYQtqp3lbViN581Tuok3rEyk6GL1rqTja5NdLhJLpTEp9INu95BmecdPiksogxejZIZGWaFG6bVkkmqwrhB9XK4/P7Ohyf5TiQB"
       }
      ]
     }
@@ -506,15 +506,15 @@ window.QUIZ_READ = {
        "x": "35igNaQEKdS1CMpmSwmY8c/kg4FzvhyH+9sPb8ECx6MM0Vw78FIoq/7u5GA4fV6nzMhQ9F8/DOD8B1ymKFvo0kwalXpBdjVCNHu+FlbkuZbIlkqGbTZi3Wcn/TguRjowKRWDA8LFOfwdpbRrOI3okaPt7im/jKNKFKe+2GGcztAvHZmGMkMfWI7JGey9W7ayxl7tb4BZ59Qp7xFk0HQjazxyJOLd2jWpC+okG8Stzw=="
       },
       {
-       "q": "課文說，要維持資訊社會的和諧，哪一個比較重要？",
+       "q": "要維持資訊社會的和諧，哪一個比較重要？",
        "options": [
-        "倫理重於法律",
-        "速度重於安全",
         "法律重於倫理",
-        "技術重於倫理"
+        "技術重於倫理",
+        "倫理重於法律",
+        "速度重於安全"
        ],
-       "a": "6v3b1p",
-       "x": "fNQwd6rBnpxf7t18gV3eFi9oWYstnYDpbbRudF7XFxtv/NY5bdU36283x9+nlg+8LwUrz8hBZb7+R9Ig5OJJtmn/avRxGopAhqbpoUV6XjZtS9ZuA0DQA7DtKCFNRSYkM+0yEW+lUxQwfkqX7qcjhppQpk5bxgJTWLqRXQwfCLwCcCNhmdxYUZAkMOwG1FkNXI1g6QhEYV2XAMXk78bBg5VegIC9ci0Wx6Q+z4T1"
+       "a": "q7z436",
+       "x": "cEBfVUDgW5QcawDp2XfwUhqX3Xwv0WTlXQ2+FRftjSWLFfQrLguUJW4W5+0VDF9ap/IR8oPKl5HLR3j8EBroromjJJDsktFSh5og0M1M6DzNpYHozPJM6gsYSGsD3iNlSvDMy1X4epQWtzC6ElFnYUllcHhQ585oxk85+QU1XDnHpdsucuEcd+oCkpXqTCxn005nwDWtVptjDqkeMyYk8xQnOxCgMJFJXpKTAp2D"
       },
       {
        "q": "「近用」這個詞是什麼的縮寫？",
@@ -552,37 +552,37 @@ window.QUIZ_READ = {
      ],
      "qs": [
       {
-       "q": "依照課文，「隱私權」是什麼樣的權力？",
+       "q": "「隱私權」是什麼樣的權力？",
        "options": [
-        "個人有權決定資料保密或公開",
         "網站有權決定會員資料用途",
         "政府有權決定公開個人資料",
-        "任何人都能查詢他人的資料"
+        "任何人都能查詢他人的資料",
+        "個人有權決定資料保密或公開"
        ],
-       "a": "1ynyds",
-       "x": "IM9WIxa4ItgzjfjowSF4hvNEtS9bMJQ1Czh3A8jRIWlgSxzbWXzrijZE2F0OnG5IGee8Zp33xg7aJqKm1R2q2Vez4XaVufOxJenhyB+LPtMmJOcRC7kNUyqTXylz79+XebJELK1uvO+UK1oLx9tR1hFAAur/09qp5t2+YND0SktPVNC7wRlukjWHREG9KfRjUX2a6HI9OJ6wC0HqJBQ3KY4uLt5q9pdyAiA6PtIhwy2LShgVaVpBE2/er9pkMfslNkwc2RyMA56qNKJ+6ZnN8xwFqZ8Npb2tb05q3G1tR7cf"
+       "a": "gfwo81",
+       "x": "wdrwrLKojQPss/btdFltc5Ckq5q8jYLig78BJf7rOVrh+s0yU5bWiAaKDghpnXyoqfEK7SWASq/vhoMHDiOnADP4mkG6vjI3+Y0J5/x3ag5BqrJiGG1S8qJHLJGP3nbhXpNv9sajshK+QVArhr37U1QU7sQhHj72ciRYv7iiBBumd2bOH568WaQGtz1mULhwrmHCE1Ew6W/8L6q4N6adOfqFY/fYOoMh3+Xs3TIbV26KJpHb5L2TMU9S745DjgMtBd9Wir5oRFx/TSvrnNbfK38oZDWrv3Rl/qOD2jNvFFwu"
       },
       {
-       "q": "課文說倫理是「自律」，那法律是什麼？",
+       "q": "倫理是「自律」，發自於良知；那法律是什麼？",
        "options": [
+        "道德",
         "習俗",
         "他律",
-        "道德",
         "良知"
        ],
-       "a": "12zxzvl",
-       "x": "iy6XuQToHis/NrWRCtJPG5YmGv/YnLRKeKLyFnuQLafNpCnihwGJm8qO2HmlocX5dNn6RuHkORNhhjWVd7pwTXpi8WzLVkAFqTnH33dIuxsDC0XRyFKPovCAUrSUQsiKMetaiCOpH2AOWpvQ9gA5mzSeDX0/looCzlGoefRthCMRdZPt00wyU8BApnSNmmJ/WBBoke2ORA5jfm/on79otSjOadlkn8rNgiTaw53R6ZCn8dkRBgx8ZEHkYdUoqmWo"
+       "a": "q887no",
+       "x": "A0wHNT0OkAAg3MxaODRTNvyRVX6BZFyr4ehsj9hPaeTIVJl/zayMW0ZBe/YKVoa8gZj/wP8zeUAyRKFxoGqUsrhLqlwDudRmgSV+h1rhzaYKaPzI1Qd2YOC+F1IeW3S6O71xMBs8HAgGHOWYXd78MR59YGNdQnSWWpJD+Y7nDU0XjvN+0f4uo9zTLIRkJMGaELsj7cwrG6TX0X/RVk11nf8OCxUu3cbK3ghI32P8a3hMtcf2UuIzpVKFv4qnoVgz"
       },
       {
-       "q": "下列哪一個做法「違反」了課文列出的隱私事項？",
+       "q": "下列哪一個做法，違反了數位公民應嚴守的隱私事項？",
        "options": [
-        "管理者嚴守專業倫理規範",
         "經同意後才分享朋友照片",
         "在討論區指名道姓談私事",
+        "管理者嚴守專業倫理規範",
         "不把同學電話給陌生人"
        ],
-       "a": "8tsarr",
-       "x": "dEru4ki4XpFNBsgfFduXlUnYEXTHrH1q9yjuCVB+LCB2EfEwyFRwASRonFHIhHJa7Mz6vBBSt9jolAML2yK/dF8Lg6tqQuRZWpvPKDSsnrA9f4fDKeIIPGQbGn9EmubSblQS+xH1BrycFj1CIJbIPrxknMIVHvZtKASfZqco8a0aaZY650QWnyTYW7nMWbhL8P4iI8/leRgjwG5Zi2vBYhzl8Uwz2Il3snHox9H0Ma7x"
+       "a": "198p1ho",
+       "x": "yphNewRoddj7JmKGngqmk6uO2JTeoVqT7p2RWkD+d5Sf3uNOqdi7wSKAtNviCs24PQvHxPOFVWmA+HYeMsFQy36MFOJoQgZ+cfAF5IElvptp3O/CB8vfXvBJvC1JP6VfAPgmgWPjLYeP11D/ia4NsCXh/mOigfxSw0OYBTf9O7C7Zaw5BaLFyCTKU0VTeTnYwhHm4+OsSx/TPYhR3AZLzeBEekmMcdf9wJ0IADiK3Q8Q"
       },
       {
        "q": "疫情期間公布確診者，為什麼只說「案 54、30 多歲、北部」，而不公布姓名？",
@@ -596,15 +596,15 @@ window.QUIZ_READ = {
        "x": "ET/cXrkFj7WjPjRb1NTIi3VHWadV0QuPWmi0KtyESqdPp3lYXpLbA8sr15LjVd3oD0UpjDv+rJ0f2bgI5dooMmztnPL8uQEluQogei8wHzIjmsiqo6tk6Ec4QtSTgNzhJB9s9Q3Kk1uIuti5yziYp9qMHjJS8Dgn7ZNaONR6HPi/9lHPzFfvGxSCuJEbkZhiyqe3HC2tgiFXuIITYxx1xHjNJ8I3EoDeclf0A0rm41rWUCyGtFK+"
       },
       {
-       "q": "有人請你把班上同學的電話給補習班，依照課文，你應該怎麼做？",
+       "q": "有人請你把班上同學的電話給補習班，你應該怎麼做？",
        "options": [
-        "只給幾個人應該沒關係",
-        "未經同學同意不能給",
         "補習班是好意可以給",
-        "給電話不算侵犯隱私"
+        "只給幾個人應該沒關係",
+        "給電話不算侵犯隱私",
+        "未經同學同意不能給"
        ],
-       "a": "l1nl6u",
-       "x": "H1PafW6Tapc2Iy4QnkUr80a9QfhyB4F6xTEsIVrUp0FTr7vIGMF+Mxu+rCyjd79XoOOrlzCvO7BiivqVwijCie8Jrs9YPPzhFShWfo3G29MGBmaEEN62I6FcYhcaOf/8hRW1Q26AfjbTEcxNYRTK3RHJJ+oz2jLnbwH/Sr1/rqWzgtEfkHufLKYiaN7KVXFyGbjdTvtuT+FiAEQ+yntaBVFT/gYtR6c8ukAzxcqHs3ZxxI/PqqFJc/DpBxjk"
+       "a": "1bjspff",
+       "x": "OY+/t5ZlsclyphC133qxQ5zv93I3wWjKbzk+sEp/PW3sL+dS4C5Glv6F/DYzf767fGkJtqYTyMemYXy+mLKk5Z0W1LxsUmcHeeU1rVNw8+uEqxI6IdfehnTb70NtDf7Y7q8U2tOIFXnqe/MF2wL4WG7lCxf86tfglJyAKOaD9tlsebKwYcBI/0T/UsuNAbiBRx6tQfs7BP7fRkjG8B9HOjKNnFk3jIHOjwsnI6eohI4y510wnuqoZ6GyIrUF"
       }
      ]
     },
@@ -620,15 +620,15 @@ window.QUIZ_READ = {
      ],
      "qs": [
       {
-       "q": "課文說，網路時代為什麼資訊的正確性特別重要？",
+       "q": "網路時代，為什麼資訊的正確性特別重要？",
        "options": [
         "網路上的資訊一定都是對的",
+        "只有專家才能在網路上發文",
         "資訊傳播速度遠高於傳統社會",
-        "網路資訊比書本更具權威性",
-        "只有專家才能在網路上發文"
+        "網路資訊比書本更具權威性"
        ],
-       "a": "xk870d",
-       "x": "xVmcf77EyJlgWkUFq7ZAcTMYweu5r+78L6OsfRZ94uXWqdzr8ycUrcr3tdq27RlfrXb4PjuPilObVa5zRng6c5wtwAdt9/Yke4pONlHqyMXqRyxvZSk33tQb/Hz68TLmNJtORGRSBU4rR2Gu7vS/m3M1kvaxkBKEO1nhRlqVK4qogBBHR82PTc0rLazvIEk8V+hWSJBky7WR9i/lZkTJWqYopdaBbEfll5CCvqMMVcXk//om9NVbSzoYYnyLBvZAfhQ2b++/3PoyIPwH+auJhcuBRgjCsxbdznK1Xfvy"
+       "a": "16drygs",
+       "x": "hvpjlH87ha2UKXlHJYSD4TdCFxnLLPeDGTWw+l0HgpN3Wq7QXQPyRf1Bf7zIzovVAL1yI8074WZ3e4o9qjM6oGtlhEWVdDvZqCjM5Fw1VB3kCbIkOKrENWCSWDpacKjurYLGC7II9214pW5oj+/7/sccbAs0OZ7GjNe/zUZMxc8Gx48J2MT7FKNZt9aXAHLXSgWIKnvSLXloFn/LDFsexNJdyy+dzlbc7j5sOprKNCPqXJ06mm5z23K8lA2rAcsaP9h54E8oPNM1St0ddq0mRxVI5Oqu7gylZvAeMUTX"
       },
       {
        "q": "梅森在三十多年前就預見，資訊時代會出現什麼問題？",
@@ -642,15 +642,15 @@ window.QUIZ_READ = {
        "x": "BOaofmlXQ5JiINje+TrMWC5Jr+/XFvw5K03kyqDG6oasPnPy4/fOFND/EoDTXTsi1xpH6JpZ7ttDwXIprNBStR/afsBgcRLytpGsnqAfe2fFIDn5mh+bWfkpKxT8c8YiWx+n2tl5V1gYj/aT+kKye7szQ8rLOoDUxUZV7q8zJLGnJT4vhTRCEVg0YDCvxtEr1L2T"
       },
       {
-       "q": "收到一則「某地自來水有毒」、但查不到來源的訊息，依照課文應該怎麼做？",
+       "q": "收到一則「某地自來水有毒」、但查不到來源的訊息，應該怎麼做？",
        "options": [
         "先轉寄給家人提醒小心",
+        "加上「轉發」兩字再傳",
         "轉寄到群組問大家真假",
-        "不轉寄未經查證的訊息",
-        "加上「轉發」兩字再傳"
+        "不轉寄未經查證的訊息"
        ],
-       "a": "tib509",
-       "x": "I6uGvtIjcKvF9oicecfziTQU1DWS6fLjT/sKBRhniBb/7nVgjJEvWl1UYCcyRyv2xtkXyNc2V3GwzX48ugefKUM9n39ibGp53fnCB0IsLdxkMPy3Gh7DAZ4E+MeFhugH23j1zmbi8Be/PW1T+kcEYkndP4tIN52j3ShCj+Jb2q344YbMrwsS8dg/iUa7e3BLIEh0OMEAM2aV6NcFPZ2xAdvdV7yPgwidjOVFkNkoCl3XfB3qs8CISHYbU15NGa9AOmIFqr0cYMrC4TUADyOQ"
+       "a": "1ffwet0",
+       "x": "nUzVrKNMpOGEfm7KXkLH6YjI1ZE32mjcxRDLVqKe7K2m0Ma5zJjmyWu9MOf0HnD/yfNilax+Wafc3+1qBOqz2VnTSVHt7TL/xmxngrkwdLOzG7m1NnilrLwzhcaa7P6/HGbCQ68ysiwjEtKHQ2Fyn9y4bXTTd6ZQVbUGSCy6Ac/KXuV7z4SqWq6zGBFGx3p9Lkmvwk3z3LBhJMZzVjH4jr7RphIRN42spE9v82jCJCFFoB38XyBTHMuMYaHcUDYj5Fpk/bCIl84VUmwKxhdt"
       },
       {
        "q": "從個資法的立法目的來看，除了保護個人隱私，還要維護什麼？",
@@ -664,15 +664,15 @@ window.QUIZ_READ = {
        "x": "jPpcJJA/WSLX3BUSgAdG1RAnKkg8agKp9WXyIGFSynUcgdn6Ljcw4Xvj2Pzci35L5sXSEwl05FmSnARBX4Ye8HZBM3UbOLVLak7rSazPRwrTT1SmqIAKr1hd84tMnrV4zBM59h3AUxa+bv5SIGppW7ZPqFHnsnuZsPqNYmKZAje4UjXi5rvxbkkKSC8hCQuQSkUtm6znlyWfEO7/"
       },
       {
-       "q": "課文的新聞快報裡，一天有七千多筆口罩購買失敗，原因是什麼？",
+       "q": "新冠肺炎期間，一天有七千多筆網路口罩購買失敗，原因是什麼？",
        "options": [
         "口罩的庫存已經全部賣光",
-        "輸入的資料不完整或錯誤",
         "手機 App 尚未正式上線",
-        "網站被駭客攻擊而癱瘓"
+        "網站被駭客攻擊而癱瘓",
+        "輸入的資料不完整或錯誤"
        ],
-       "a": "6l095s",
-       "x": "jSX9G3XrC0pvq71zKGh+NAuu1NGKlwFTXcRUX2M+3EZXZS1bVf5Q6KtN+61knxOuTfUENPkCcosL+phz+QwPYjOgEkSSpTs1+IMW26MzQMg0zs6xKwKm8rtjud5ak98oW6iJIT2eLUJzIOmsyNw4UK2W57mXE6r0JQDmoDDvYUf0aIv12D0SHoMFdcqVtYVwOyF2xuSQ9+YKn+0gtVLvcFT6n8Uzy72IZKnis20uKD8603K08hV8jQkhiVXmvqSaUF+veHHHoGA="
+       "a": "bv9m8j",
+       "x": "0M71h/LOXB7mQWnnKvw2G9A7MjuwCziySpwOt5ObNLfvaeI1lRqQW5iX9WCmojGSZ9eQ0eOk97ttAtFIyoouOGBPx+udM2VtQUG8AmB0YVoUIYuDb8mDFCAjmXpixwfHMNqN8nu+FPRveHWOezr2lhyzvnCbZnJ9KCRFGOgF3rQ6dsSUee+cuCjQfvZn8fHEecBwUgt/mKza/9XN4PxkFHJCVZE1h1qYMfF263ySZpf0MT6Po6C5NCSF3U+PbGcfXlPnfmhWZNw="
       }
      ]
     },
@@ -687,15 +687,15 @@ window.QUIZ_READ = {
      ],
      "qs": [
       {
-       "q": "課文說，梅森強調要尊重的「所有權」包括哪些？",
+       "q": "梅森強調要尊重的「所有權」包括哪些？",
        "options": [
-        "隱私權、肖像權與名譽權",
         "著作權、隱私權與近用權",
         "選舉權、言論權與集會權",
+        "隱私權、肖像權與名譽權",
         "著作權、專利權與商業機密"
        ],
-       "a": "1u9vrwi",
-       "x": "crzUkV5VXxS/ggQwBqTL4yP37s2DVXpVdUB+aD+KE+EgRFYTPFOmIbOdXPcpEbvkNlvyWRF68mUK5hIUIteryAdKeBBCqF7CQ2jiVIJUfXELsSk4IBUjy657DoUbYdkHJtawrgIVgABZ/9WR6r6RHr9xbTHiviOjcuPCseSVl/sBP5KrPP/cJhNg28ASgIpFTjadFQnUHYRzOn+SAvYkdNcl/KVWpYA6s6paWgjqvigi0Ym+dqs9BUfdr6Rl1IUY0XYal9zl/5yE3BXiUXYx9YgkPJUNgsCkMaF5"
+       "a": "cm1913",
+       "x": "/VwYDF1OePG1zF7L5CHIJXJjrj8cpYgr9aA+ZnQM4BdKo7+VTnGad8HbAwU7sIC3qG4NRluCImKsGKPTbTfX9RjrwMtZKLjiz4ZNZ/71RCajDo9efJ3E17zUmaIoLMMl9PTpwxl0iHjJOmjtjRtwWwvzaSoU5UO67j2lBRkwQLOK+96qQLLTGMw9+D2Mi5bLY3r/eo4BmzPbVurK2K/GUo+G/4IvgXOiL6jgioq26Mb7S/FtyNV2EnNybSFViF7aMeBZelEva1gMm87uoSu4g9M0eZPWhuK5JTAn"
       },
       {
        "q": "「物各有主」這個觀念，是要我們做到什麼？",
@@ -709,15 +709,15 @@ window.QUIZ_READ = {
        "x": "K3bD2hyNbevxHklhZWUC9tt8sAi44atp3mWf0l99SmOAA4SejmORGIFFXAUo19hqXedw8pvqbylL5NXEgcbDXLzU6PsEVd2bw10b46duZFs0soZftgB0JBkwBd6nA1hv/El6QyTJ3iy9Lu0/6hsBPCmcDJq008HMbnhdPodUOU3IKGKkI1BuWg6nb4kJiClA6pjfznQ79eou/BllShlEIVO4oceFBseyxElSaMoaxfp6uYj2fzO6gcmWCyafQRNl"
       },
       {
-       "q": "課文說，一個有秩序的和諧社會，什麼「尤甚於」法律？",
+       "q": "一個有秩序的和諧社會，什麼「尤甚於」法律？",
        "options": [
-        "自由",
-        "尊重",
         "技術",
-        "金錢"
+        "尊重",
+        "金錢",
+        "自由"
        ],
-       "a": "fhhgt4",
-       "x": "4amgApqcD48SsaXmAs8K5c6tag7KoWffbbkyQhrZB5i5eTBW6ghoX8KQMReOBBwU5XSDQvieuNmMu8W1IJbWfmRJr8BAif58Eoe7Ai3oFqsyv97kyxbr8aT8BinF5N3nXcKI7pxOhxv8+elZCcei74p4/vUkRHGqH3TwzSooAxLj8nqW0MVHqUfNiJM1eQg+K7j+E22Z"
+       "a": "1qno7on",
+       "x": "juOSqMbtVj+3z6zzyTBUDhBAga8HbLokbxYVfGTXejfjKAZrTPJeFDQDdlKtKKvlndFDgvXUxP5BiuyZJ65llj+mK/lgwoOrpkbwyFY4VX9lDLMM/k4wDHSrzisvN4c3dgE1KFs4iG86BSsSPBNTbtLApdJGxuZQuWU1PMaHFqlvVQBRJVNlK8PVnrfH/w9CIvTdU3Ln"
       },
       {
        "q": "美術課下載了前輩畫家的畫作，下列哪個做法屬於「合理使用」？",
@@ -751,15 +751,15 @@ window.QUIZ_READ = {
      ],
      "qs": [
       {
-       "q": "依照課文，「資訊近用權」主張什麼？",
+       "q": "「資訊近用權」主張什麼？",
        "options": [
-        "只有付費的人才能使用網路資源",
-        "政府可以限制人民使用網路",
         "資訊科技只能用在學校教育",
-        "人人都有使用資訊科技的權力"
+        "只有付費的人才能使用網路資源",
+        "人人都有使用資訊科技的權力",
+        "政府可以限制人民使用網路"
        ],
-       "a": "kpwzt1",
-       "x": "PAvNFUpOcg8pDK9OhK3ul3vFcQkNBDZm2rGABJYviIo+rqE2ta5FAzdsjsFjn1Hac5/3/1QLrwjr3allgYdtybfOAomsGb6K6cVA4Olqv3XJdfyIaoTYflVImu6uk6fyfDjfrT0ZQ00nGUKvxVzhNZGyO0iyoPtcFkcByvtztlSlp0Tyl4ntBh4L3vSa+YPkUIZSU+Yg04s3OXfX8wDkG4p7KsJ76pKpo163wqDoi7v9ied6xwoj4Dcf"
+       "a": "1a1wfqm",
+       "x": "SwiG05phT71u0NzEu9ly4e7iJfhLRbyCBWnD/VfNctLHpw3W7wpv5+TK5slDVqjMrSalUeAgs0wmtojZaV1N+ff8ew5+iUKd5iFgzZVeOCH+mYNIS0avVsCwIdqeFDqrR3UjCLRLvj7czr9EvpWuiiLQY18GuHcmrnmh4ZtFQgjFBzQjDQwP9t3Q1Ml0+GnC516FBOqsowHKKmCD86JcCcfA5q7y4B++WlrvaqgKASkbPRqps7DYB02s"
       },
       {
        "q": "「數位落差」這個詞，是誰首先提出的？",
@@ -784,15 +784,15 @@ window.QUIZ_READ = {
        "x": "hffI7KfCSGcGqXVda4nnXEr81oe0XjHPRZOO+KTqJncZleFRP7I+JHnfzcO9J8CaVXam//IKLSMm+MqC9DIZq3CSqJbEURfGt/RVaCN9WuP9LNElhIDgtpZ7ErfbiZ+Xu+EIhDDFMWZSU0CfDxOdYCtxPdQkjKz2+agRMVe1yQYvPt4HRsf8ig=="
       },
       {
-       "q": "課文說，縮短數位落差是要弭平什麼現象？",
+       "q": "縮短數位落差，是要弭平什麼現象？",
        "options": [
-        "資訊內容真假難辨",
-        "電腦價格越來越高",
+        "使用資訊機會不公平",
         "網路連線速度忽快忽慢",
-        "使用資訊機會不公平"
+        "資訊內容真假難辨",
+        "電腦價格越來越高"
        ],
-       "a": "vurfob",
-       "x": "phUUy0EVVu2J0j2Q4IDk/7VrO9jf9ZEZ8uBIS0YIdaAxaG5R0VvuU/ZKPP0Bo1SqcygaNgPAYTfSD8wZEBoNFmLQPq2tJ3mijycCw0zy6PNBYlKMsVCktmo/cUqVtEJ5yKWa23ekTum8pAU8AA408yBmKSOo1p6BKmEbVfg+1nFH5t/hU7LH8MsQzHEkdMOe2j9vNSRTwCxXb+5hfHqogzPZkI2nsFeN"
+       "a": "cpolqc",
+       "x": "nxJfGjg9KpyzgqtXctWEvTH4nX+IXvVi/6ldci2J+Xpo14uZmmqtP6/CSEeDMuPDZELz5SLXvXuWJu7yU2Kb5EjZMA7TNg9kQENrTMaNddcMCksibZUtCHZtstrMmS/5j01x1RRvLBXEFchIajZ1Z/6bK8vjGermd3ara/aVK7mVb2QBuQZ8myDb01bINcMk3rE7k2u6X8nwHnz7NCW7YvFRF+uk9CdD"
       },
       {
        "q": "縮短數位落差，本質上是 PAPA 中哪一項的實踐？",
@@ -820,37 +820,37 @@ window.QUIZ_READ = {
      ],
      "qs": [
       {
-       "q": "依照課文，「數位落差」指的是什麼？",
+       "q": "「數位落差」指的是什麼？",
        "options": [
-        "數位產品的價格高低不一",
+        "網路訊號強弱不太穩定",
         "近用數位產品的機會不均等",
-        "不同年齡喜歡的軟體不同",
-        "網路訊號強弱不太穩定"
+        "數位產品的價格高低不一",
+        "不同年齡喜歡的軟體不同"
        ],
-       "a": "35d1f1",
-       "x": "Aex03dVpa4iWMunFaIEa9j6O8OkJbZYw4o5KZv+hJ9XRHFBgqThu2ocEBSfzuIAS4Ol17T592bOmF0VGDXc2a+Wgl3uMeRA+aMhd2nTsJGV5A5vslvv+ijco2acfmqmAwdgxzRnqFRhkcBtaTI1e7I+ykEJynjSUJOdOWk/114EED/k0OBi5sI1/Bx9M7Zg1f054DzlLPpagI1LxawMGjMhvI4pgW/adlQpnvzPoTEqCJp90yji5NV5wTBA1fvDahCsh"
+       "a": "na2vt0",
+       "x": "KYULs79g617sCqDf47FjK5pELJP2q+mFa0OOv+XWSTOwc6jRVJ1tYjkf6oWOMH8jAMelioCxUiM2hW0ij72gJrkHs6t0afNliqDAnbNq/6Pge8SqHEJZ6N0q7KwJQOMQWWvhiXeycIIQsaxWeNaOOHhSiM6Rsbez3U91ZiI9UdaEaaLs9D2BEWeI0ne3hBvQfjfr4Qubb7/4YLCwsjWfyQdX9nbeyKO08i80wTVYoOhxT0/bqB8fSmWaWarjnQ+wJqRE"
       },
       {
-       "q": "下列哪一項「不是」課文列出、會造成數位落差的差異？",
+       "q": "造成數位落差的差異，「不包括」下列哪一項？",
        "options": [
-        "身高",
-        "性別",
         "居住環境",
-        "族群"
+        "族群",
+        "身高",
+        "性別"
        ],
-       "a": "872yr1",
-       "x": "aETRfVL6Yp+1dwmpZhYh0xMPePtUlfWaSfeCLoU7qs5hOlxaMG8H4fg7PtagZzh+vBUcEXzhmOeO/+q8dxbfTUaHlm4pkV+36TUToo9+Cw0BlDqSRQ56P4+D7zS0NlWm7n1ORWX38ApnMTAJoc9zhDH3i395ZHGh"
+       "a": "1m5u09q",
+       "x": "jlsz/ob6bBEduhta+Truryr1M4TQgaiRhZ7u0LgB4yepBZ8wCTdGOc/aljGfPsjO5iAACRD2MaFlijNx6OzKZST0ZoyDAibH8LHyinkYnwfiJsPKH/x5qdaKDagov/BcVHy7+t79ZbyvR+zST+M1Q30fIRyV6qrM"
       },
       {
-       "q": "課文說，數位落差可能造成什麼影響？",
+       "q": "數位落差可能造成什麼影響？",
        "options": [
         "網路變得更加安全",
+        "社會兩極化更趨嚴重",
         "社會財富更加平均",
-        "人人都更會用電腦",
-        "社會兩極化更趨嚴重"
+        "人人都更會用電腦"
        ],
-       "a": "boayij",
-       "x": "mHf1pVNbNUN7qgrb1T8bOXmGiqZn/QBWT4xf7vmamcSqaB/Rt0Xu8T/BQpinlnOyVNZN/ibRnr0Th2qiLlzr5yFxrxkCKxKaIzQhfTIeB8A90PCFgtMLAqKGcupXSfNytMlGbl+dqmdxWSp4jm01lNWoBlFlmgiNHeYIILAtCW99+MXTK3qOj9tZGThbFV0BYxePKkRHCQZNv81Sh2Chi44bxP6N3lTByZ2d9DMBdA8QcsR7cVAZ6mFh"
+       "a": "1yiy6ws",
+       "x": "8lekbkuRh/nZ++PhfnO7pzQNnnxcfX1KchVQuGi++0PjwBCYgT4z26K1np3hsWFGu1YgrBXYohzfiw6qvEtQ0KINouSkH0pzVOaBKRizOvRwG3hsEoa4ILlgF4kqglPh25JTZ6yw8A43HjUes5a3XmdAJsZY25o5NpTij2Xc0j5k9GcZtYz3tcLRe6QsrF5ot5Dfhi6WIs1KLl31eKDWSsyeR0CTl+IyLZ8/T0OV0uMn8V9JnPBX0y7+"
       },
       {
        "q": "過去政府縮短數位落差，重點放在哪裡？",
@@ -864,15 +864,15 @@ window.QUIZ_READ = {
        "x": "pbcbpQ7VdKV7Tk4decEaV2ehffxWHvX2L1aGoq3sOR045MCgzEguqgxv3IOpa4pBW+werTN7zwEagBXN5O1RJHo5X/d2DhQUb0ikewjW2skz9vkfzDk4/8jaiUrt/f8XXpsQ6PqpqAAwztQrSLdedtp3CIEkuWS7TnmxnXHXDr75EKeM4P4qVudAo7nt8/vC0O1wOI+RxOb0jQbxQaaN+dPnVo6Vy49K/bHejfcS5QEHs7q6BWP5jpxLOyFhvN4AeC2y/GEH5JPfvFqfkP8nXpkgERNlzhkOp8Pc"
       },
       {
-       "q": "課文說，學生會因數位落差受到什麼影響？",
+       "q": "學生可能因數位落差受到什麼影響？",
        "options": [
         "身高發育變慢",
+        "考試題目變少",
         "影響課業學習",
-        "上學時間變長",
-        "考試題目變少"
+        "上學時間變長"
        ],
-       "a": "1gwuh1r",
-       "x": "OxUZGAbM+1d98Jk/qkdChS2iUvFJkK5A3bmK+u9LwQiwNMTa993vT/4TBcGZB6qwQvAEnu9khNt4topzMmLkyWqttdwpdFlEbYepTlGoPkhc84+KV7HeBUJfpv77EW8kdbQkoJYjdpMqQMZcCrFnlOTcqilr8g9Ehl+NS99rbvT2EGJpnb6SfTI0IT8MjgEOkVO6szFD2jI3kGxW9DhetZTzOsm5qaY/UcBoipVnYMK7"
+       "a": "knn7tx",
+       "x": "oGm3S5LPJwUd/a7nwbFwTrQltS8y5eR/m1G8ftM6NZCzAmmyNXy+bUlAfhn6Kfn/hRJsqCAnbEIyQ7q9tsCJjkdwmbltWXDhN5VeX5/k4zxR2xODqkOXd0KHrGpYMKXIeJFbme3f3il6Ht3jG/s17LoEJsQbG5712lNz671VoTsH2yCuT7x1x8a+JXciAr5fzEi6wCX3vrVWDt5wvug/ni49spM4lXKlcpJLi3UmW9D3"
       }
      ]
     },
@@ -895,15 +895,15 @@ window.QUIZ_READ = {
        "x": "D5S+qE7ztiDHU/OfecX+5QmO4JBW7B2PSGLbxttC+Jo80QQa8/+zaB5L5cU0bChjXiLsnEj+wiEHQpex7wLm373y4D3PZ+VKwhOHralsaOnH49NwgXVN3Zzfk2MeHz3tZSTUYghLIi6Mo8nYM9x5J/hgdrH6seE6PAS3GkwpBlJsAdg="
       },
       {
-       "q": "課文說，為什麼要重新定義數位落差？",
+       "q": "為什麼要重新定義數位落差？",
        "options": [
         "數位落差一詞已經過時了",
-        "偏鄉和都市已經沒有差距",
+        "數位設備已經完全不需要了",
         "設備普及不代表會用數位服務",
-        "數位設備已經完全不需要了"
+        "偏鄉和都市已經沒有差距"
        ],
-       "a": "cttc56",
-       "x": "U1XkJA7YGgYrkymFydK6XU7j7tCYIvd/krous97DD1/0ldVm4tRJlALt9xnB4DCF0A2stshYQtFb6TgOLDiG/ZjYHkcXByCY4xLeVMeab984e5FuQu7/WJlqEDd4EvaGiTs5YNDXlWzZvKgr0GHE2ElboK3nOHEmlVmvjbg2uBiCTh5LH6Mb5DD8iQyGStTrznbM53hrWSeZg4E3zVldds3avJZBhz6a18iM8CYxyL2WCVjHKy9P5sso1uTQAdJOTe3A885KJL/wpVCsxbGNS+8mrgTn"
+       "a": "dw2olp",
+       "x": "js46bFQkzpvpBe3ncReFLqbtNXX8Q8yFdpALq5tkUWxSjCz1qZ5ayMVMJzeLzZUUNjHpFSdeyqGPrjOA59AFGIu9ZoMq6mdcpOYTs7OxWQB+4W9IL+HUlKlwLigSIQi94F+e9RFT3IC3E6zqj10OC+hfCbZV4qYmkzEXR7RSzJrKvRc6N4SqiDVBDX3xOIUfosaxtSy3LqeIqGnTEf9vUjuJMI6hozKpmSmEPOlhIsGzX5YIEUVcuj5nunbVm6Lyx55tt+gk08FjTsn2/zIydIggew1d"
       },
       {
        "q": "相較於過去加強硬體設施，現在更重視什麼？",
@@ -928,15 +928,15 @@ window.QUIZ_READ = {
        "x": "hU7E0BKOcsEknql3qTa3zadQvs48t84K7pRJkhDRGDkU3RYwaK+mAFOYTNHIxmNvWbnWEofu1awxoIoGr5yuT9hD/8GRcxGXf0LRSEeePVvBfCUP/rpjyas/wc1XCX8/ek0OU66WmxZL8ZfhOuavXhNvNyJ3/hrixZAq1QYemXWpklzZGvOwBP15XOF5LjfXO3Uae/+bCaxMGVpUPaOSHSCACvvrvmNXMZiOp5WHNmU5"
       },
       {
-       "q": "下列哪一項是課文舉例的「網路應用服務」？",
+       "q": "下列哪一項屬於「網路應用服務」？",
        "options": [
-        "募集二手電腦",
         "發放平板電腦",
         "建設網路線路",
+        "募集二手電腦",
         "網路報稅"
        ],
-       "a": "1wjmsk6",
-       "x": "uDZ6lmHXpQtsXSac+Dr6RZIAnqHejhhZWYKsNg05juMnDH1cwz/uxRIuEcmgNnxoGMLgOYEThwcRYXnv1yzHnb7NxTBCPbvEnsKqJRXvgZlRPpWWuTAobCI421iZ7owR0znmKZSm+boORjDKMtK9+NHq9X5U5GoICwirZFH3hfR5bG8k28nlP40FtYjgbzRFc6Xg6xCFyCIKKeNuqNPf"
+       "a": "nh7e3g",
+       "x": "ArGChax1WMQ7fqVPiLtq5SEEEjGMqmlFFmfPfgYCPqMdzz3A87go50LZkzBhXPc9Z25dx5Oi9EburZcrB8ULaScXkOVpyxL4BLxf2GAyV08upM0pq/Nym4CFyDHaTiuSMe/y6wF3sJtR3bQ0FsQMPykuvI5eliu/Y6Xm7fEF5tE6oJgyJNOBYmo6YQ8A3yGY6Z0NFr/BPzHI+jw9bLMh"
       }
      ]
     },
@@ -951,15 +951,15 @@ window.QUIZ_READ = {
      ],
      "qs": [
       {
-       "q": "課文說，「數位包容」是由哪個單位推行的？",
+       "q": "我國的「數位包容」政策，是由哪個單位推行的？",
        "options": [
-        "國家通訊傳播委員會",
-        "聯合國教科文組織總部",
         "行政院智慧國家推動小組",
-        "教育部資訊及科技教育司"
+        "教育部資訊及科技教育司",
+        "國家通訊傳播委員會",
+        "聯合國教科文組織總部"
        ],
-       "a": "13o0vu9",
-       "x": "zmwnX22U18sAhzRn7tqDoMSdgkKilFQJRAtyNrgm859i2euacAQPLE1OiV380DiJpfYId2WjV4tTfr/MGC+6xRUOSFiim4li/xR11L+zl5ZDBtv4xqQ3xUblbI8fjXGGZlXjZGxX+bGJX1gr5DGoY7hNO1hKjbCr8ZtBOQnhIJ8BaT6y1Mb6jreihigc+LTnzslZBuhcESrJe2nzt/oeXoAz91c="
+       "a": "18xu9dv",
+       "x": "wr8GsUiyjPJRHM16I24kymjjM4/rMBu/WMBvXKUWFjqM0o3l7i8IW60bwSLGUhTsasOQJPbk4HcLQggQTglap8o4hyJVu/bxauPrq3z7moHR2G+W30Jz37kV8vhZ8P+b0IpFHiC9UfqzsurjGz41Z6huUYayIu9q27Zl+9y52r+r505wp+LeHutbaM9m7yshHUTeYeuF0M++MVM8L1kSMxkt+5U="
       },
       {
        "q": "數位包容政策分成哪三項？",
@@ -1037,15 +1037,15 @@ window.QUIZ_READ = {
        "x": "xUcXBW7Fbs3ympWECncIotBvQdvqt0lZppQhdo4xP4yYUZ/JFpgC4zrCS8VXRc6/ujZn7eL68ZDbjf3XLirq9VUZ52rD9t3MuFI+gWeEMbnyPpumBWwCUcoucj3QP4ddgwkGokCoMkTbWlXVHkxSQLcsSsgDFtfKHJH0IeoD"
       },
       {
-       "q": "課文希望不同領域的工作者，都具備什麼？",
+       "q": "培育數位人才，希望讓不同領域的工作者具備什麼？",
        "options": [
-        "撰寫程式的專業證照",
-        "基本的數位工作能力",
         "經營社群的行銷能力",
+        "基本的數位工作能力",
+        "撰寫程式的專業證照",
         "最新款的電腦設備"
        ],
-       "a": "rgeehz",
-       "x": "zC0zPzQb8dWlZX9fn2/64/f45XOCJ37EH6mIFgmC7oYac0xrKzNRuHLuKj7GtDZqtqKg5itCS7BtUoiTJ36SkYbgyHDrOsMtjuwcDsaUBmeRmL2pcbD3oo5Cpg+qZJ95A+/gz6tc/nnaZQm/rlEUXT5W/y9c4G1r2sZaHj0Y3aBkcbtgYzEWTstVw9MCU7uUm/f/fvu50U+eO7PjP/tiCtBP+oRn5ba1M/xhn/a0i1gS"
+       "a": "wcevyv",
+       "x": "Cd+ynAMqgwqLdxCXyabPb6ojQtlwPkCEMnD4KISFYNU7OJJIJF3o49HwLwDQM//DBh7erWKdF5HTnYizytlJMX8TJ8yArSN+gAuCwodXFOGVE6SdAYfyUJxd0Ny1ENpDiDzG5X3dxGhrdm1+N26BTdeJKSMqUAxDZfPNdaxBBZqAU1j5R8o9v3j7idd8PD6SQ8enoQWKZifwT9Ig/FkXA0j1i9kXGvgMXbzoxb2c/qps"
       },
       {
        "q": "「精進數位學習環境」希望養成學生什麼能力？",
@@ -1125,15 +1125,825 @@ window.QUIZ_READ = {
        "x": "cTEvvFvJBq4Z75zoWchpQ+J1gNEvqEcse78ICam6hju9gqD06cT9tyBkX+TZZcqz5qnrGNrOP93d4uHjgqvfrfxpe8yehKfE5ASvmFMS1LAzbThsqWKdpow3AVvbuqEsYFprDFE/S9nxuCFU1WJn44lQtEI3kAVFAj7hzD4o8ye3M2TmqS8ZPkb+YUQaYf6/w7ISRAmaspnHO7KskVE8ZIPT"
       },
       {
-       "q": "課文說，聽覺障礙者可以透過哪一種感覺來體驗音樂？",
+       "q": "聽覺障礙者可以透過哪一種感覺來體驗音樂？",
        "options": [
-        "聽覺",
+        "嗅覺",
         "觸覺",
-        "味覺",
-        "嗅覺"
+        "聽覺",
+        "味覺"
        ],
-       "a": "19u750o",
-       "x": "BHPnqqOIPitqmuXT6fJGzXrCuciXAJYAhV0FgMMye8ig4+OCIv5/N7nE/MiacQexx4Bt/fQCmx7Zhit978Brf4sJ/W9VSldhwBV1DQ1+IkDMEMQHgnNYR1gevGRePq2WLiShsFexgvTuACznxFiG"
+       "a": "1ygjq0j",
+       "x": "i9fHVLm8+y/GyxtWu0a6zAuTZ5t0LcLbJRFsdWxLG8pU2tgRsQmMUDEbjZpxDHLSOapIN5sIFdPe3KDyEIcxXuW/JOYxqt2nsqAhZilN5N//bfC9Gp6yFWLmMqWDFh2IoL1YFk0qGWXdfKnK52cp"
+      }
+     ]
+    }
+   ]
+  },
+  "3-1": {
+   "src": "課本第三章 3-1（p.220～223、重點回顧 p.234）",
+   "paras": [
+    {
+     "title": "本章導讀：資訊科技與相關法律",
+     "text": [
+      "目前我國政府於刑法第三十六章訂有「妨害電腦使用罪」，也就是一般通稱的電腦犯罪。本章首先介紹此五個條文，這是資訊科技使用者應該要了解的法律條文。",
+      "目前網路發達，不法分子透過網路做案，造成各式各樣的網路犯罪。因其範圍甚廣，本章僅舉若干常見者為例，介紹網路犯罪。刑法「妨害電腦使用罪」未能規範大部分的網路犯罪，常視其犯罪行為或結果，以其他法律來規範。人工智慧也在硬體效能提升下技術不斷進步，故本章會介紹目前人工智慧與其未來將制訂的相關法令。",
+      "在資訊科技時代，著作物的重製或利用非常方便。數位化的個資在處理與管理的運作上，也較傳統方式方便且有效率，但安全維護卻有較高的風險。透過資訊科技的工具，對著作物非法重製與利用，頗為常見。透過網路竊取個資也時有所聞，這些違反著作權法及個資法的罰則，也在本章一併介紹。"
+     ],
+     "qs": [
+      {
+       "q": "一般通稱的「電腦犯罪」，是指刑法第三十六章訂的哪一個罪？",
+       "options": [
+        "妨害名譽信用罪",
+        "電腦設備詐欺罪",
+        "散布猥褻物品罪",
+        "妨害電腦使用罪"
+       ],
+       "a": "knid6s",
+       "x": "vqptSAraa690V9y8kRDKExeJ/QQeZFR/1rbHCyuyyHXHs5jQktjQnxsRC2U/jqfYXLgmO2IcG6yePI8EqYzZiWNyaOyESBhqgE48upKGydaTvTAok/hwZlbvyuMiyhcteLeOMrpYa4hf0c6M97cn7SDv8VOrryNqeFaqztOJXqfMOFqwCQDxnW8bbbr+Fcxg2I7pKo1sx1DDCai9HXBKruEiH3MWs9irf/vBxunwxI+ioxApxSFNV90hp4KtC4wxeincZRuWfhkHetbirFe/mJ3oFHHmAc+H+MXiBmW2KwulbzVrBr9xBg=="
+      },
+      {
+       "q": "為什麼大部分的網路犯罪，要用其他法律來規範？",
+       "options": [
+        "網路犯罪都不算是犯罪",
+        "其他法律的罰則一定比較輕",
+        "網路上發生的事不受法律管",
+        "妨害電腦使用罪規範不到"
+       ],
+       "a": "ekqv94",
+       "x": "z09x3JxXiwSTYDKiX5wG+9wFtEOkC5FKJxVtJT1Vzc0SJX6uoV0mFYgMWsN2iXWu9y9t83ODK+wpiWSyn83HXnb0umS200Wfh7EkZmhHFTgV7lQ/nxPDW/6Tnrq645z3DoozRq/4DgKCJjSmuqM/d0RBIpN4xTRZ5b49Fu11RyuPOZEZ2FDRLE6u2rV4IH4kHamW5REUbhh4rC8xKMiTLL1y2RZZaK8VFuYb166pEr549F/1sVjwicIcn8Blxrf3eutFP0hC/V/vg6gqb0weUpRJyLKdkCuvnVpjDfST2uruL5LQuodk"
+      },
+      {
+       "q": "數位化的個資和傳統方式相比，有什麼特點？",
+       "options": [
+        "方便有效率而且完全安全",
+        "不方便但安全風險比較低",
+        "方便有效率但安全風險較高",
+        "效率較差而且風險也較高"
+       ],
+       "a": "yrjulr",
+       "x": "FUCZ4iG7K+OPWzQZXzsdaJlND+7vXoXmFaz2RJ0rC/OQOQ3q+0DhkexZR8lhWNgAo1pwcKY/UmY55fRNtRIQNtsGiYeZKflzCqMn57Rwzo8d97AN1qj4KMtxzhGcgzmQXjq1LW/WWET8MfEMtKj+WNQkPvupdt9NsQ9Kcg6i078ZSMrzN+Ywu9BTa8z9o4cJbraPQUrbsyCR2tAG5XOJT86x2T+MCgXtWW31NmVuBUG6GtWCbR8Xsw2i6orEpIlLcqjFh6S7rcPESpVf8bHf/tUF8cmp2/Nx"
+      },
+      {
+       "q": "透過資訊科技的工具，哪一種「違法」行為頗為常見？",
+       "options": [
+        "竄改政府的紙本公文",
+        "非法重製與利用著作物",
+        "偽造實體的身分證件",
+        "在路邊違規停放機車"
+       ],
+       "a": "iej6m4",
+       "x": "fgUZ0nbD+dtYAua0fbH8bcyyVKeaA2fX7g63OYCLkwhhNM4WJ65mvNWgRDV8XeK673Yw5qrVeXHwkjHlgJ5Ng9HhqePp+f8bv9a3zNBiVDfLacd+pZ3jRkkUzXCHLNHN8yASMAACPWK6cHgAZz6QdtxS+f9Acb3OG3fTrWdSgOCbr1t2oR1ujf1cUYUDMyzi2CbjM1Uz9PzS5AMrfe3+yyGMIpCUdOpaNvGoCFOWXEWgO5zIvsojHEf2A/E6e72eoVWjF0BJbBG7xDA72gTv"
+      },
+      {
+       "q": "資訊科技時代常見的「非法重製著作物」和「網路竊取個資」，分別違反哪兩部法律？",
+       "options": [
+        "個資法及勞動基準法",
+        "民法及消費者保護法",
+        "著作權法及個資法",
+        "著作權法及藥事法"
+       ],
+       "a": "qd4b9h",
+       "x": "WyAi2zbIBfnkfuyRQVtatLvUNk2EtiO5+mH6++Xod8P+zyn3+Ol6dHRbZMgFA4LF3ed812LVdkY3FYT6eWgPiqAyTkBcDcOV0hOhe3/0HUfbKpylteb2vsB8sso3TB557MsH2de6dJVAFWdZ18dvqKXxajQwe+7Ja0jrbREEWP4CZcgL646/Ye0GpVoQ3xEQ9egoGVGKhDIPTkzRzBOLQM0IaMoyxkaJWhbmsRM="
+      }
+     ]
+    },
+    {
+     "title": "電腦犯罪的法律條文",
+     "text": [
+      "資訊科技對人類生活的影響既深且廣，在生活及工作上，如果人們使用的電腦及相關資訊設備遭受到干擾或破壞，都會造成非常大的不便與傷害，我國刑法第三十六章訂有「妨害電腦使用罪」來處理這些不法行為；而透過電腦或相關資訊設備知悉或持有他人秘密，在刑法第 318-1 條與第 318-2 條有明確的罰則，這些都是電腦犯罪（computer crime）相關的法律條文。",
+      "重點回顧整理的條文：",
+      "・第 318-1 條：無故洩漏因利用電腦或其他相關設備知悉或持有他人之秘密（告訴乃論）",
+      "・第 318-2 條：利用電腦或其相關設備犯第三百十六條至第三百十八條之罪者（告訴乃論）",
+      "・第 358 條：入侵電腦或其相關設備罪（告訴乃論）",
+      "・第 359 條：破壞電磁紀錄罪（告訴乃論）",
+      "・第 360 條：干擾電腦或其相關設備罪（告訴乃論）",
+      "・第 361 條：入侵公務機關電腦或其相關設備罪（非告訴乃論）",
+      "・第 362 條：製作犯罪電腦程式罪（非告訴乃論）",
+      "法律小知識（p.233）：告訴乃論——案件必須由受害人提出告訴，檢察機關才會偵辦；非告訴乃論——案件檢察機關得主動偵查。"
+     ],
+     "qs": [
+      {
+       "q": "刑法第 318-1 條處理的是哪一種行為？",
+       "options": [
+        "用假訊息騙取他人財物",
+        "洩漏用電腦知悉的他人秘密",
+        "製作專門犯罪的電腦程式",
+        "入侵公務機關的電腦設備"
+       ],
+       "a": "1ksa1oi",
+       "x": "mlnHDVhMkO25Ie2ctCO9icbiupzPVUsJz3JIvdDqrLjZQF5fumPQO/QhAoRX/LzB8ASeYc0CCEN0uyJ9d8NtzefY7OJM7xVvH77+9MN4U7zpEojk5BxX96vPawBu+8YLn2O9Zs8V5XgnWk2Hf7A1TmMzXG2PSINaaYwqzDkhK/tkqra8/+Cv+RF6JpJ5l1W5lPA9PNUt5m5SnLeGfenS6dOWneLbgbZstw6ycIE8k1cSazgs83nJjynr9HfIKAjx6q+S8d6t9Zm03GDhNKAQLbwhFFoQnQI="
+      },
+      {
+       "q": "刑法為什麼要訂「妨害電腦使用罪」？",
+       "options": [
+        "限制學生使用電腦的時間",
+        "鼓勵民眾多多購買新電腦",
+        "保護電腦公司的商業利益",
+        "電腦遭干擾破壞會造成傷害"
+       ],
+       "a": "1hucg9z",
+       "x": "cBBGmNW2BGcfIHFoAl3ZpL7Hr1JwCNZEi5YoAuHTZuPD6A04JXo4PPIUlPFzOvguYxjf5cCzljyN3bsFwd30qot5+jFpvhPZev6HIzRBK7S4AEOoOiVMegtR29PIDiT8jXMmF9gCNidgOuad5Uk9LiOtHw8pJ3akG9yCnqFbXISJeXEH3eE68ca+AxYQ4ILjyxQoySk7fDUi8Cxr8CnJWVOQQTPHupRG9tVJdfx/B5nxFNHmqSF7KRZfmpSVJFuzoNGxoQK/oYPh5Qp6OS5HN7civsYc"
+      },
+      {
+       "q": "下列哪一個罪是「非告訴乃論」？",
+       "options": [
+        "入侵電腦或其相關設備罪",
+        "製作犯罪電腦程式罪",
+        "干擾電腦或其相關設備罪",
+        "破壞電磁紀錄罪"
+       ],
+       "a": "1a74bu4",
+       "x": "IdBJaSVKs+7a035+1/wwPXn8jEJE7diUFvpdz56eVHxfKgdPqCuZJcCf4NJT7mMk6hpymF9fJAI4SNIGehyFHAEMlevDGSC1MInwOzhTaKauOJFnkIzrsLPUb5h0fZAzRaPq+jp4qxFfBK8Kzx9KxvMcKfj7LnI3rVKrcgD5FDin10Bv10k2bOqyM6F+7YctbdLc1jHO+Fz7OuHoinOkBNQrI2PbIVw4dWhvgKh/KVQN4CIKNvD8UoTz4XEofMhMJvjFAAQ7XlSmfGUacoTsL2sEnbgLVJgz"
+      },
+      {
+       "q": "「告訴乃論」是什麼意思？",
+       "options": [
+        "法官直接判決不必開庭",
+        "告訴警察後就一定判刑",
+        "檢察機關可以主動偵查",
+        "受害人提出告訴才會偵辦"
+       ],
+       "a": "4nkyur",
+       "x": "V5UMUmkbW19B50NBHEWXQ7Nm5vfy05FIH5AeMeDwCfb9TTtccGNZMhCt9qA/MMRo6e75IT1I42BkVvCBzddyGQb8+p0kzahnFORxBmlJlKbJ164+GJu5j0KxFtZgovosGtjbOAcZylxrb3bOpEx1tO3U9Md79sdhb4NNU2CMVsm0aGghMutRzc8wLZPk0RjmUZzYCIApk7n9HZMUM7XSGSRV8zxFH9YV6V1O+VOVg258Tjd1lXtnHUhyWoa6rqqxNzmpJCAlW11I"
+      },
+      {
+       "q": "刑法第 359 條的罪名是什麼？",
+       "options": [
+        "破壞電磁紀錄罪",
+        "干擾電腦設備罪",
+        "入侵電腦設備罪",
+        "電腦設備詐欺罪"
+       ],
+       "a": "dm7ul2",
+       "x": "UyLogp1e16UxOeWU6z087NBR9Xfti67mHBVb7usoJNRwiU1Jjbxtu6QvIOCqIgKgoc71iZZgNeUKirvayvuXimfMY4dOJKVWX1JwO2dr2cmyUObC6vnWmbBXef+3J/Hzvj6A/anEo6oau8TtaXuVWIzPt8mpBHvHf2fGTLvyt0aQkZJ20d7Hs4EnPHN3GnFuXLs+E+3TZkifu934rZuVTTs8bwKvDA1C4DmRz/fDsg=="
+      }
+     ]
+    },
+    {
+     "title": "電腦犯罪與網路犯罪",
+     "text": [
+      "電腦犯罪有狹義與廣義之分：狹義的電腦犯罪是指專以電腦、相關資訊設備或網路為攻擊目標的犯罪行為；廣義的電腦犯罪則指犯罪的工具或過程牽涉到電腦、相關資訊設備或網路的犯罪行為，其犯罪目的不單單只是攻擊電腦、相關資訊設備或網路。因目前各種資訊設備都離不開網路，透過網路犯罪的類型非常多樣，這類的犯罪行為通稱為網路犯罪（cybercrime）。",
+      "課本圖示「常見的網路犯罪行為」：利用網路誘騙個資、在網路販賣違禁品或藥物、侵入他人電腦或網站。"
+     ],
+     "qs": [
+      {
+       "q": "「狹義」的電腦犯罪是指什麼？",
+       "options": [
+        "過程中有用到電腦的犯罪",
+        "專以電腦或網路為攻擊目標",
+        "長時間使用電腦的行為",
+        "所有在網路上發生的犯罪"
+       ],
+       "a": "1azrejx",
+       "x": "mYgcwonXVkKk1eExWLTIi/bP8RWQSYcG7jiEpp1WXgsPRQpJgLAYFjxJeaAVhGkSjd48Yj3gBrtCgBOi31DZxoeyaj8Y6dXVK5XYd+RsQ5qlwvGjwxWFKEAcrWy5zflq0Xs9xuRpYVQLauVulndP2nl4hDLZoIndf/1u4V4rSLd4lIcaD9UghLar1UaXTziZg6kN8bXOB5RXJMVEzpv0fKXG1fHaQ8AGyAnyWV+kyyjNxhoHFH3dmzhsm7Ms+ScgspH74yrfqW6N/MqVWdgQ"
+      },
+      {
+       "q": "用網路假冒銀行騙人匯款，比較接近哪一種電腦犯罪？",
+       "options": [
+        "不算電腦犯罪，只是詐騙",
+        "廣義，網路是犯罪的工具",
+        "狹義，網路是攻擊的目標",
+        "狹義，因為有人損失金錢"
+       ],
+       "a": "1bclnf6",
+       "x": "mwKYpyBJBqt5MAHjzAd3aU3k5PHMEiSJDy1n+hXrxPIF5tCiOtrk2tYRKY0AjFBlunQTfcnrMsW1+PiqcSvCyTcKZl8idrXnaTDozGrHZwiY4o1C09LEoleFXt0CdcyHWWs3xUsXpCZc3fXaGA2QPoJlqdqXBX4YHCWsSYujo7GbGKWbIShgCuiLadrD6s0JSEgx/V+5CJliOw+zIGb2aROHhmukxu5+iI50iWCx5nZ8TA0rKBsg99NyLK0XPm3UD1jeb9VWrna3knyircGyfg5OgcOc"
+      },
+      {
+       "q": "透過網路的各種犯罪行為，通稱為什麼？",
+       "options": [
+        "網路犯罪",
+        "電腦病毒",
+        "駭客行為",
+        "資訊倫理"
+       ],
+       "a": "jw4ziq",
+       "x": "C+vqA+MZulxMGxsJlD9Gp3h+jA+1AM9ayZHi9G7pOf+CHl0IAy2FVRSwFYEv6cPcF5NT+XkNj1JPZV41eNXePzx2n2MRxuuftO8Er41gRsXv/miBUk38Y/ZlNs7SBHFiKAMCYCptAOJ+EQYc9tcJ0pJfJClBtH8i5GZgC6UKDcnDJRPMvaROPcKUQDgrpSG5rQ=="
+      },
+      {
+       "q": "為什麼透過網路犯罪的類型非常多樣？",
+       "options": [
+        "網路上沒有任何法律規定",
+        "只有專家才會使用網路服務",
+        "各種資訊設備都離不開網路",
+        "網路上犯罪一定不會被抓"
+       ],
+       "a": "12ejic8",
+       "x": "NcMRljDmHVT90ckEDTlibED665FIPEA8HHAlOofjn2OksyjgFITDJtgtfgV1NwVKymDp9hm9JAh/bFGrBFenMS1BvzlxuF8p7z+IOIeNGyi+kBO/Fj4Uy4EUEmW4CbfN/jyqw0bvcaHQnmk1zSKgZdtsI+emJ5//Y/zlojOaClp2EQH3kcj2q5wTMpiQZWU+2MDaL9yPq2/HBCrgzc6xtnTZC+oTWZBKrN1tYajNpYiw3PuZmBAtTwYzb6ORdvgxtd1+6VMlMr4UvTJ8"
+      },
+      {
+       "q": "下列哪一個「不是」常見的網路犯罪行為？",
+       "options": [
+        "上網查詢公車到站時間",
+        "利用網路誘騙個資",
+        "在網路販賣違禁藥物",
+        "侵入他人電腦或網站"
+       ],
+       "a": "gem4wl",
+       "x": "nF70344BctmM0JP5aB6+psVLpnGG/GVupgxl2WnhsnJ4IfncCrQSRbA4grNldQFdYyI2HJans3n/4X7A0yZPdOLO5Hc5jjqlWih4AoehYTRbELLvgQS6EWkgcp/NzD9z5OWxlK+VNUvWlYPg1LsoqKhtMAQXp47bwb7OP4SAcaG5skkblVgq/m4fNlZqo+RC5ARxFhxwAiDJGu41u1eV8sxobEt1Qr7FKoAFbMURwhF18fxwnuzR37CCJQ8gBCxRqygoUO6uRV4Vo7TlhrKl"
+      }
+     ]
+    },
+    {
+     "title": "人工智慧基本法",
+     "text": [
+      "人工智慧（AI）是近年來快速發展的科技，雖帶來社會及經濟效益，同時也可能對個人或社會帶來新的風險或影響。鑑於人工智慧技術創新之速度及可能面臨之挑戰，全球許多國家皆致力在不妨礙技術發展下，尋求建立人工智慧之治理方針與原則。",
+      "為確立我國推動人工智慧技術與應用發展之方向及作法，建構人工智慧技術與應用之良善運作環境，政府委託國家科學及技術委員會於 2024 年制訂「人工智慧基本法」草案，從基本原則、政府推動重點等構面提出基本價值、治理原則及施政方針，期使我國人工智慧發展促進創新兼顧人權與風險進而提升我國競爭力。"
+     ],
+     "qs": [
+      {
+       "q": "人工智慧除了帶來社會及經濟效益，還可能帶來什麼？",
+       "options": [
+        "新的風險或影響",
+        "更低的電費支出",
+        "全面取代學校教育",
+        "自動消除所有犯罪"
+       ],
+       "a": "10n0mi1",
+       "x": "x+rU+0UAa8bZuXVDq4sP0pyB4fJpshlhCA58DbVbxIAEfc+4yghMF0g9FZpmk7iamykUPCYNsTQdUQxQZQvJjlyAbuI5GBHuooui+vrDXHK5132MCE9KdJl29IJbUjeuJwA6cuOxpq+Jqb66+YNq4db29K/qUIZz1gZ2zyE/EjQw8AcHR7eFxLcIWwO9JcRZ92Ub1Sn07uovwQZMcu+PFbW0telXwj58oRZ8gKaiVwWefomT"
+      },
+      {
+       "q": "全球許多國家在「不妨礙技術發展」的前提下，致力做什麼？",
+       "options": [
+        "建立 AI 的治理方針與原則",
+        "讓 AI 完全不受任何管理",
+        "只讓大公司開發 AI 技術",
+        "全面禁止 AI 的研究開發"
+       ],
+       "a": "kqgh85",
+       "x": "gdNTAKSc7zvK7UU0jMiehIofKSq03JxF7LjwO2EaSQlG+79YJA2hgwRcitTvBh2QPildta90795PuKOprI6q2plbnL4KHLC8GCvlE1W249CfDlefP48jSSRG0d4Gle8J6aW5wZB4G8ywKrbWJkzxPJs0kdHkpFhKM8jm+y6ygOfYhUnRxMs8obM/mZt+2WVTyJKpYVelIqDCDNucntBgVPrsibx1LlzYWXfbu1TrF3OT/iPJX0f1bONFeVZ3RS/LAqGgqkqsBUKgCSkXuIGJ+Q=="
+      },
+      {
+       "q": "「人工智慧基本法」草案，是政府委託哪個單位制訂的？",
+       "options": [
+        "教育部國民及學前教育署",
+        "數位發展部",
+        "國家通訊傳播委員會",
+        "國家科學及技術委員會"
+       ],
+       "a": "uh795y",
+       "x": "1MZuBw4IcWYwcqKnzEdgpkR0Yi4J/Ii0XD4qufExE/ZAU9eVgWgmmYevk1W/BUpRbx/rHmv2nS7eltslehbzH0wRylVqgjXe9XOYDT8NP/lUXdV9ZwRBTcNsGcnW8/8Xz5yhiiOAPLyOVvfU2vH22FXrkp7EvJdkPGhI0NNeibKEJZK+9yVDJSbQLBzYODoxXAldsKZRyLOAkSYZFhSQK8AkWiKIwy1AduTE5GrNDbIw3NeDVqrZwfvfIlyWvwwMS5rUE6tM9wtYrrNGw9UgFQj/SpXeT4cMumkkAHcVg6mrER4D2+SOSet6hmRA7S1srK4JsyF621wJ"
+      },
+      {
+       "q": "「人工智慧基本法」草案是哪一年制訂的？",
+       "options": [
+        "2024 年",
+        "2019 年",
+        "1995 年",
+        "2020 年"
+       ],
+       "a": "oojylt",
+       "x": "uoDc8QR+zw+WLsrdoZP8M4gPXr9JLeKhPe3oYkF5gN2VdN8ySIYEI0SFabKMyIaA1ra84sWgWM1YeOewuidjxLdKHpg0NGq/gsM17BYXrHmCwpTT4rgj+DdbXC/EW+EcQVVG3fwod90bIPhyFgMO+ag="
+      },
+      {
+       "q": "「人工智慧基本法」草案希望我國的 AI 發展達成什麼？",
+       "options": [
+        "促進創新兼顧人權與風險",
+        "由政府獨占所有 AI 技術",
+        "限制民眾使用 AI 產品",
+        "只追求最快的技術發展"
+       ],
+       "a": "15zpe16",
+       "x": "qlFLoNpv61miZXc8gVZDBSVTwGB8DUzAM4/iHUQgWsVeUdy72jwnxuY32RG+yvZFJ7PuZBt0b+XOeMQZHxLNknk6rK6F7tL7FEvIiyL1YRGGbVRM4tjiFjD938b7vFl5Yqj/hJXwokHwup6uWreUrtGM2aMGy/s15lCzTuV6RoTA74N39XdYEOiNzaWhiYMZup5k74Uco/VE+Zmk2W+vi9aRWdxW3vlDWqeaEQwhjtXm187e8Z/lkhGomQkmSIH0wiBP+naCWBC46epvvAuQGmlZ"
+      }
+     ]
+    }
+   ]
+  },
+  "3-2": {
+   "src": "課本第三章 3-2（p.224～228、重點回顧 p.235）",
+   "paras": [
+    {
+     "title": "案例 1、2：入侵電腦、破壞電磁紀錄",
+     "text": [
+      "電腦犯罪與網路犯罪都是與資訊科技有關的犯罪行為，隨著網路已普遍融入我們的日常生活之中，使用者更需提高警覺來保障自身的安全。",
+      "案例 1：阿強很喜歡遊戲角色的付費造型，但沒錢購買，恰好阿強的同學小游是課金玩家，於是阿強以加好友名義得到小游帳號後，用小游的生日猜到他的密碼並登入，買了自己喜歡的造型送給自己的帳號。這樣的行為，恐觸犯刑法第 358 條「入侵電腦或相關設備」。",
+      "案例 2：資訊科技課下課時，班長小花聽到廣播去學務處集合，匆忙中沒有登出作業系統帳號就離開，小美發現後就複製小花的作業到自己的帳號底下。這樣的行為，恐觸犯刑法 359 條「破壞電磁紀錄」。",
+      "重點回顧：盜用他人帳號（358 條）、無故取得他人電腦檔案（359 條），都可處有期徒刑、拘役或併科罰金。"
+     ],
+     "qs": [
+      {
+       "q": "阿強用小游的生日猜到密碼並登入小游的帳號，恐觸犯哪一項罪？",
+       "options": [
+        "入侵電腦或相關設備",
+        "干擾電腦或相關設備",
+        "電腦設備詐欺",
+        "破壞電磁紀錄"
+       ],
+       "a": "12t3vll",
+       "x": "L2lZDZExGmI0AYhiPpqxJMK51u4/Kf2lVKZJoe63FrGcFRzOqCM9s7U9l4gfVG2109rYrf/zfmSrbsoKoiZUUj5yJnn0xQ/y4IgocNV1biQUsb5RUmt4L2KEIE0ARjfsdr+kxjjjmZZjlP1uxTiaM5uQkM8+qI2BSCiYh6tZ9ZonJQwhvvLrxRYlo/OvRrQmGOdz4hikCgBj44AuulPwYC6B9VwJx1t4RyFVtCsNjMBIt7GPUaIO2nPmzGA9SxQQwUqtuyVlFBlylQ=="
+      },
+      {
+       "q": "小美把小花帳號裡的作業複製到自己帳號，恐觸犯哪一項罪？",
+       "options": [
+        "普通詐欺",
+        "破壞電磁紀錄",
+        "入侵電腦或相關設備",
+        "干擾電腦或相關設備"
+       ],
+       "a": "1ohw9dk",
+       "x": "Xj9Rs5L0RTiqfmNUjiL93KblnkbhWs+zSCfl0kmyUwBNI4k9xM7Vt+TGGKBb5O012O/O9UOjVE+2vnef9mlLv7VjMIGFDKim/MaASl4626+HJqgXMkFEWne47jhEzzIYpnDhe6Udq896UsSmmLrhdZU+dG9w768tFX5MJrqlSQOvTdlNwhuM886nM5ed4OyPW/OBe0hhANB181EATakJclRYMAYv4S9hzD7a+Vd8QoKkA9EkQLm/1w=="
+      },
+      {
+       "q": "阿強用生日猜中了小游的密碼。密碼最好「不要」怎麼設？",
+       "options": [
+        "英文數字和符號混合",
+        "用生日等容易猜的資料",
+        "長度超過十二個字元",
+        "不同網站用不同密碼"
+       ],
+       "a": "1mfd3gv",
+       "x": "mdBdUWRnmkwbDk5DbvhpQmkcvvV2gAwJklEHInImCdQb95Zgfd8RfZu1FzDVT2qG8kTkds5vNEQ4gMwTlMSg5eCmwkR4eg2/A0IMk686tlRXbhAOZdZTZao5S0jn4W7JDwVQa9ZMD/Z7GNDYgtLo/NSGSG2nqJCh31Nhb7t5O+gCBQJISLvlenStIxtUsUp2yRt3H9Q0HMmHj8IEy9eWLCntELTVgfi8NFznrrCm"
+      },
+      {
+       "q": "小花的作業被同學複製，是因為她匆忙中忘了做什麼？",
+       "options": [
+        "更新電腦防毒軟體",
+        "把作業存到隨身碟",
+        "關閉電腦的螢幕電源",
+        "登出作業系統帳號"
+       ],
+       "a": "1shov7i",
+       "x": "2DLDt0f2UQZ+Uz1WXhR16N0U/tf6VA0Ynrv56FmHSU5DD6XNnePTYLPSm4KVO97c0d1CSR1q8eGRc8jZhQV/fj7rNwwCYD/T8gsOz5Weu3lfXICRIhcGlfvlsnzzsRVoLduPqPASGMtdoEZxWWl9jgFs3Win+acw0gHX5nfd8LpqPYJyQJLU6of+Qw8cKr3Qf12bUEV27xQmCBq2/U3rM0CSFFTXRkHT"
+      },
+      {
+       "q": "隨著網路普遍融入日常生活，使用者更需要怎麼做？",
+       "options": [
+        "把帳號密碼告訴好友保管",
+        "減少使用任何網路服務",
+        "只用免費的公共網路",
+        "提高警覺保障自身安全"
+       ],
+       "a": "xmb544",
+       "x": "5ztr8oqwLsdq6m91u7Q6STuT1IKZR684Ie9EqOKTxvnodOEMvjmjwtW7QKFaErwQBlsycSt9iYB1GjAln3ZIMAZMzGwOQPuBndpBekCQ5kMzm3GeD516z7I8ozl7FoY75GvVPBISOwpEbDmQqHjhIsEe2o6Qry/S4pw/UtQZWXDFVT3cgUWRXO+zLQrRVdQYh3bu0ReLw/L0poEMfcgBCW4/2+7qJHmBdcBwFxxCQw=="
+      }
+     ]
+    },
+    {
+     "title": "案例 3、4：干擾電腦設備、網路販賣醫療器材",
+     "text": [
+      "案例 3：小華為了讓老師連不上網路，便請身為駭客的哥哥入侵並修改學校無線網路的連線密碼，使老師操作筆電時無法連上無線網路。這樣的行為，恐觸犯刑法 360 條「干擾電腦或其相關設備」。",
+      "案例 4：鈴鈴第一次嘗試戴隱形眼鏡，戴了半天後感覺很不舒服就決定不戴了，但剩下的隱形眼鏡覺得很浪費，於是就到拍賣網站上販售，不過很快就被網站下架。因為販售隱形眼鏡的行為違反「藥事法」，依法得處新臺幣三萬元以上、十五萬元以下罰鍰。",
+      "重點回顧：竄改他人無線網路密碼（360 條），可處有期徒刑、拘役或併科罰金；販賣醫療相關器材，違反「藥事法」。"
+     ],
+     "qs": [
+      {
+       "q": "修改學校無線網路密碼、讓老師連不上網路，恐觸犯哪一項罪？",
+       "options": [
+        "入侵電腦或其相關設備",
+        "破壞電磁紀錄",
+        "製作犯罪電腦程式",
+        "干擾電腦或其相關設備"
+       ],
+       "a": "12614qj",
+       "x": "Y6K+/5MoUKelSHCvC2c7lKEwTbHEkCVHMcx9i0AjLmfcQHN11uV3PV/Ok/xXDMf30TDZrHplU3d7N57hO+ABEfMqaZwTS6UTULdv/bkO4XoUbreYIwkHOJrMu0h2lAYQ85GZMo+QJn2/BqJr5Mhw/W8pplFRWM/dRb2g6Tfbe/Y1O+FZ9t0ujgX/NbzkKmKLO9esY/3g1OnKT6md4rWOsFRBHMc5zDeIL5Hbzoo01c0Vw+UxVE6BexnoSLwtgMk+XAwopM49i/mV3WAhRBBVU2+9mE/GvTO2xX5ZYixgconlp0DIYi4AIH+LqLBCRw=="
+      },
+      {
+       "q": "鈴鈴在拍賣網站賣隱形眼鏡，違反了哪一部法律？",
+       "options": [
+        "消費者保護法",
+        "著作權法",
+        "個資法",
+        "藥事法"
+       ],
+       "a": "1q1eqz9",
+       "x": "3FNcSuFuGVqKcKzW48GubmAIBhnTY4Q2sCR1qXLXocpfLaXYUXPYuw/0qSYdieQdRLxTLg9KVakcqJUCGXfB3MuBeq6h2+rfWviNkHhQ/TwibxnO3VEbVmf0vFvi990huVR7WfN6qLQOfbibr4kiuRm2rpMdG1eWLdy1CKYKGZXsANL3VCzHEVpTXm5KwraK+Y6E"
+      },
+      {
+       "q": "違反藥事法販售隱形眼鏡，依法可處多少罰鍰？",
+       "options": [
+        "五百元以上、二萬元以下",
+        "五萬元以上、五十萬元以下",
+        "三萬元以上、十五萬元以下",
+        "一千元以上、三千元以下"
+       ],
+       "a": "1fnhee",
+       "x": "LckFVNUMHgj8DZ1VCppnzkO4Lw4aYY3NRgSeGypxG73dk5gWIU4ab3gD04/97kbGtIWf/cI8pyB0kPTAW/RXFJD1egyuufOYkBH8QVftoVj20sTJesHQ0HvRWDacnXO+Q55ILQy7/QXImG1BNvCrAbI3lgFu/tGnqnvvIVQRER45Akbd9aZzvxYtySIFq3+ARwzGVZx+E1iGHpWB0Tk+nih1ffkD5iLRXroL0Yy/pEBnv5d4w8PTgJunOCCIuEFgU8UJbbmwj3Ra+/1ofSCCzHoIxBViPAU9uuQu85TI7CrfKlfWj/hf1z4="
+      },
+      {
+       "q": "隱形眼鏡為什麼不能自己拿到網路上賣？",
+       "options": [
+        "價格訂得太便宜",
+        "隱形眼鏡已經過期",
+        "沒有開立發票收據",
+        "屬於醫療相關器材"
+       ],
+       "a": "1mloz1h",
+       "x": "oM8uF+KYaHKyAe49ZsI+GsSQQneBfCjFiMXHTx8pVagr9HShvftiYm9LDy5CDQGENi8XkarrI8mE30kEk8NDgKZHlXvUif2O1jbjlvspNUJvYuBRSY/gLYGz5G4RAeaToXUKDxSthvLt5hiaALWP914ftHDm00qHEkiR2nsOW3XvL3k1gP5LeiXJT9R7MYv1xipk0u/PuQzeypaQT9jKFEm5n22nCSIByRQA"
+      },
+      {
+       "q": "小華請哥哥修改學校無線網路密碼，造成了什麼結果？",
+       "options": [
+        "學校網站的資料全被刪除",
+        "老師的帳號密碼被貼上網",
+        "全校電腦都中了病毒",
+        "老師的筆電連不上無線網路"
+       ],
+       "a": "1484z92",
+       "x": "XMWA1V3KYVs5SDrtyilCpK6cfOJ37iqVNQPtugNq+ti3PFsgNELt15Z1ENNSERWUELi489H69XywxXu0emKajIhcevXVrxe+OjCtEI3r1E4+35Yo9jrvoMQEbIwoflMoElGMyE/4PVtwziLxD/NeQc1AC44C"
+      }
+     ]
+    },
+    {
+     "title": "案例 5、6：散布猥褻物品、網路詐欺",
+     "text": [
+      "案例 5：一名網友將不堪入目的色情卡通漫畫圖片，上傳到公開的網路相簿，並將連結隨機傳給多人，讓大家可以在他的相簿瀏覽或下載。就讀國中的蓁蓁收到後，覺得不舒服向家長反映，家長便報警處理，而後警察找到該名網友並移送法辦（課本漫畫：透過 IP 位置就可以定位）。這樣的行為，恐觸犯刑法第 235 條「散布、播送或販賣而製造猥褻物品」。",
+      "案例 6：小明收到一封電信公司的簡訊，提醒他的積分即將到期，點了簡訊中的連結，進到網站後，竟可以用積分兌換最新款的手機，於是小明選擇兌換並輸入個人資料，最後輸入網站發送的手機驗證碼後，就沒有下文了。等到下個月看到帳單，才發現原來當時輸入的驗證碼是電信小額付款，而他不僅沒有收到手機，還損失了一筆不小的金額。利用假訊息讓他人提供個資，這樣的行為，恐觸犯刑法第 339 條「普通詐欺」和第 339-3 條「電腦設備詐欺」。"
+     ],
+     "qs": [
+      {
+       "q": "把色情圖片上傳到公開相簿並散布連結，恐觸犯刑法第幾條？",
+       "options": [
+        "第 235 條",
+        "第 360 條",
+        "第 358 條",
+        "第 339 條"
+       ],
+       "a": "1t0f4jd",
+       "x": "9XTm89LjseDz1ze9IgAF2ukBncI4HVlEMdtkXf8D/o3cTYImp2XxI6I5y3cEGMKSZa9F/1k8ILln25fb9/QeQ50LYOJfIPLeN/jS1JHLjd5WJP2f9OoMymUZRpvpHpRdqsKvKcGPdb8xLfJN0AYcjWQcPIAYnL2MrY3BtcAd/A+FWP6h3awPFTuwGBcXe1Ndkv5DpwnHJZsk94WUEipuoVBGwg=="
+      },
+      {
+       "q": "蓁蓁收到讓她不舒服的圖片連結，她的哪個做法值得學習？",
+       "options": [
+        "刪掉訊息不讓別人知道",
+        "回訊息罵對方出氣",
+        "轉傳給同學一起看",
+        "告訴家長並報警處理"
+       ],
+       "a": "1foszb5",
+       "x": "APxSMoWmx7WTuf37mcmhEY/4rSZuVrHpivVmpkjvjroCtN0exgC7YtkFlo1depG0+7SchNuDrcPPINAvPLBJro5tym+jtA9NR+XRZ88YZTXFuHOP5sjDJdvH/ExwiQ7C2clhNGRg55ZLrg5ENAFAMERPMXq8wrz6Im9Z0bHhHq8FKtJdeyMXTFgh/5Wee4hdWVU1l1tvO05vnhSJP4amev2cYks66yTs5SSSP40ekdT/2ySuuXGQr2e8LFveqmNNlPROM3ckKGS17Maw6ns29PUp8SHHZd/AAXu5zGiJr6xMdejTrWD/o7atzeg2"
+      },
+      {
+       "q": "網友在網路上散布色情圖片，警察可以透過什麼找到他？",
+       "options": [
+        "手機型號",
+        "IP 位置",
+        "相簿名稱",
+        "網路暱稱"
+       ],
+       "a": "l6wjj6",
+       "x": "f8h83Zihj9p4vfKZfIIzQV7oRIAEAwYcRZinPCsrWQ0Fp0fIr4rGPuiSH8RC6FFyNMo1mBDIzBk74/uB+NMtZL3rlcBgF1lDeD3U5XrxYFSYRMayBy1mkfo9AmmUX9rNSTV5o7PN4+LqDxnyREy2lfz/cVJv4SgyZA=="
+      },
+      {
+       "q": "小明以為在兌換積分，他輸入的「手機驗證碼」其實是什麼？",
+       "options": [
+        "手機寄送進度的追蹤碼",
+        "兌換積分用的確認碼",
+        "電信公司的會員密碼",
+        "電信小額付款的驗證碼"
+       ],
+       "a": "1bwl1mw",
+       "x": "MD4WBxzUXyJgl+77OexCaY8GdiCI4My3mY8Ze9x0pPZBc/rMXlwMW/Z0bLJhp8UTe9W70YaXTiPrXHGD9Gcp75WOLNY0XcVKIIsMmcgsWBQ7BQCYrCnQA+trBMbr2N1JIv/stg1ISdmewo57Fxah+COlE7gsZq7H4ixLiIkzdvwTj92Odg6PBFm+2F8kQxsIMrwAb5FsQsRzBvbgrTUrJskU2HG3MTQadVczTWGO"
+      },
+      {
+       "q": "利用假訊息讓他人提供個資、騙取金錢，恐觸犯刑法哪兩項罪？",
+       "options": [
+        "普通詐欺和電腦設備詐欺",
+        "入侵電腦和破壞電磁紀錄",
+        "干擾電腦和散布猥褻物品",
+        "普通詐欺和侵害著作權"
+       ],
+       "a": "jpybx5",
+       "x": "qbYBJtQXg1lgGIo3uv/fMb2P33lIndjo/SFiaMxygEyP7QN765dN7mZXFJGB0X3I23sfdOfQ1hkhxjqdgJd0tdYCft0vTKa4V7eNdYe85lZ4OYZSO93D4NEzwK4kwD6QDSNroOAHDbQHl+gCCF/64MZ166AVIkMd8LRVCB+2dnHsBMfXJ4nnkfMoT24KLmcNqwqy9rIe"
+      }
+     ]
+    }
+   ]
+  },
+  "3-3": {
+   "src": "課本第三章 3-3（p.229～233、AI 探照燈 p.236～237）",
+   "paras": [
+    {
+     "title": "著作權法罰則",
+     "text": [
+      "在七下我們對著作權法及個人資料保護法已有基本的認識，在本章也要一併討論違反這兩個法規的罰則。相對於其他工具，資訊科技對著作物的重製更為容易，著作物的利用也非常方便；但如果違法，罰責也重。",
+      "非法重製著作物：1. 擅自以重製的方法侵害他人之著作財產權者，可處有期徒刑、拘役或科或併科罰金。2. 擅自以重製的方法意圖銷售或出租而侵害他人之著作財產權者，可處有期徒刑，得併科罰金。3. 著作僅供個人參考或合理使用者，不構成著作權侵害。以上三種情況，1 僅擅自重製侵害他人著作，刑度較輕。2 重製後意圖銷售或出租以牟利，其刑度比 1 重。",
+      "非法利用著作物：1. 如果擅自以公開播送、公開傳輸、公開展示、改作、編輯等方法侵害他人之著作財產權者，可處有期徒刑、拘役或科或併科罰金。2. 非法利用著作物，其刑度可能因利用的目的而有別。以改作著作物為例，用於課堂教學或用於銷售牟利，後者的刑度當然重於前者。3. 非法利用的情況非常多，如引起訴訟，司法單位當然會審視非法的嚴重程度判決之。",
+      "生活案例：小波很喜歡機器人電影，所以她下載最新機器人電影的預告片加以剪輯、上傳到自己的頻道、在開頭加上頻道的 logo 與介紹畫面，然後在社群媒體與通訊軟體上大肆宣傳，也將頻道的收益打開。這樣的行為，如果沒有得到著作財產權人的同意，原則上就是一個未經授權且侵害著作權的行為。"
+     ],
+     "qs": [
+      {
+       "q": "擅自重製他人著作，哪一種情況的刑度比較重？",
+       "options": [
+        "只擅自重製給自己用",
+        "符合合理使用的範圍",
+        "重製後意圖銷售或出租",
+        "僅供個人參考使用"
+       ],
+       "a": "1xiux4k",
+       "x": "e7Yu4nbGGmO0RhFB18PrB82N95PHMbZWgCeVfE+2G/Rwh9c3PBmaXujXIArAlpG4SWeQGiEewhTx/V6OlqWjOAPqXR1wnvidU6j36qHDmXEM4Vq0HfZEEeMAQjUw3KYk6myiQwck26hq/QZhAX2N1aj9uo0TeeCePzuPk34+ajOyqIx/7ndNPfS6J2ANiWltc7giXNaJuPt7YhwXA1NgvACnP/1XM1Jr6b8zT229RGvLo7a/s9CgLk0ji6kuuGj/m1w7Kw3Z"
+      },
+      {
+       "q": "下列哪一種情況「不構成」著作權侵害？",
+       "options": [
+        "僅供個人參考或合理使用",
+        "擅自公開播送他人影片",
+        "改作他人作品後出租",
+        "重製後拿去網路拍賣"
+       ],
+       "a": "12ib7fr",
+       "x": "EZNxaPPkfI2YqIDgnduC9f6jzi8mnphOdqr50e3Bb13N7s+6daSjKSpM9BqMMRkROFYvgupH7rfm4KbEYWlWXpd2Ut+0pJzrazDqBsKkqq7aMpBuFRnNJXnGcqpPqL8fZ/PPnLvtKbppWeMMu80sJW67OKxd3WnJ/bZC7GnCBpAaAA+Lr2e7gy/bEcsagfJZ04H7Dy1lWgv1gTPRHuf0kgJeFzoP6sztBr9+3VKgV25bgaaRPW1AJ21zHhubfqTc"
+      },
+      {
+       "q": "改作他人著作，用在哪一種目的時刑度比較重？",
+       "options": [
+        "家人欣賞",
+        "個人收藏",
+        "銷售牟利",
+        "課堂教學"
+       ],
+       "a": "1jd3rx8",
+       "x": "xbq4Fw3l9oO5fwrxNVNSnOHwhj83A+U+o5aeHTHBW/RGmM/zgdB82eJlGt43lUVVTyxHenuScZ11NQI7n0kloGhJf1ynUdCMNaK6Eftzbbua5zzdDu+wYAeAR8ZCAnnLmSV3YMBxrb+heY/qBA6K9kEoMZ5uEFQO1zppZPeyvMB6gCRT/NRQENwpVVSAQwXnChHL"
+      },
+      {
+       "q": "下列哪一個「不是」非法利用著作物的方法？",
+       "options": [
+        "購買正版自己收藏",
+        "未經同意公開傳輸",
+        "未經同意公開播送",
+        "未經同意改作編輯"
+       ],
+       "a": "ezrwjr",
+       "x": "t1nWxIgntyXyVIHdctFnRXilo94IwTJFTZqTEukU2a3ex76HcaHdQ0q/4vNhjY/HMv2MWrfDjJwXfIvVcyRmc0w9ZKvtdUF55+zd2tJeuNsobP7tPz3+kNRXzwCljifDd3UjN25rGfpc26U0FMNzSv0fcR3FNKSGddJI+p6NOPy1Aoihd8itQI4ce+SeS7DXT1QNtkWyk6VfI0Ks+m85L6LdLymE0Mi0kZ5ZEBTuLWDGNkWKZ2FFiA0Mwr2T"
+      },
+      {
+       "q": "小波剪輯電影預告片上傳頻道、還打開收益，如果沒有得到誰的同意，原則上就是侵權？",
+       "options": [
+        "頻道的訂閱者",
+        "著作財產權人",
+        "電影院的經理",
+        "社群媒體平臺"
+       ],
+       "a": "1vsneys",
+       "x": "dQ4CgAMfXDPl61XaejTkPwuBYz7jrqsyT5TX3qotM6kVYL7rTJ4szsXW3yXpD/8O5bjVivdD61+L7fCDToXESZsWLNH/uvhJ8n+7Dk4DN8JPMZylaUl48bF8LpB0fWuYSNkF46uYa/cnDTAzmJLvYGAo0SVC/IMiHDSWsFbCZW91XpMSH8yqiQT78Nvu3S01fbIZ1HijlRFX3QYjs0lcuUNdpFTMOcG0kONvLxLgdDgl"
+      }
+     ]
+    },
+    {
+     "title": "個資法罰則：公務機關的責任",
+     "text": [
+      "目前公務及非公務機構，大都以電腦系統來管理國民及員工的個人資料，在資料處理的運作上確實較傳統的方式方便，也較有效率，但在安全維護上卻有較高的風險。例如：據報導（2019-06-25），我國中央機構電腦系統，曾因遭到木馬病毒程式攻擊，致使有五十九萬筆文官個資外洩。",
+      "公務機關對個資的責任：公務機關如果違反個資法規定，致個資遭不法蒐集、處理、利用或其他侵害當事人權利者，負損害賠償責任。損害賠償，公務機關適用國家賠償法之規定，也就是受侵害當事人可申請國賠，而由國家負其責任。",
+      "公務人員經手大量人民的個人資料，若假借職務上的權力、機會或方法之便，故意違法，應處以更嚴厲的處罰，加重刑責至二分之一，因而意圖犯法的公務人員，可處有期徒刑。",
+      "新聞快報：有民眾在網路上搜尋友人姓名，意外發現某國中外洩新生個資，包括學生姓名、身分證字號、出生年月日、住家地址等。學校資訊組經查後發現，校務系統在匯入新生資料後，會自行產生另一個檔案，存放在暫存區，民眾查詢到的就是暫存檔，已緊急刪除檔案，並回報縣政府，請系統開發單位改善。個人資料因暫存檔外洩，對每一名個資遭影響的學生，都有權依個資法向校方求償新臺幣五百元以上、二萬元以下的賠款。若同一事件造成多人受害，20 人以上可提團體訴訟，最高賠償總額二億元。"
+     ],
+     "qs": [
+      {
+       "q": "2019 年，中央機構電腦系統遭到什麼攻擊，造成五十九萬筆文官個資外洩？",
+       "options": [
+        "木馬病毒程式",
+        "內部員工販售",
+        "勒索郵件詐騙",
+        "停電當機故障"
+       ],
+       "a": "lirced",
+       "x": "Ow7yrpW9LdXQnStEVFqTFrruKe+vrulOp04UTyK51Ou317g8dbYZcnH+0rjOSTp5NXS7sCTr/ARLRpCWkJjRvnGTJ3VJXYUANlwmpH8CnLqNe67YVZSXLd87mCU5bDYr1FlGliyQSRIb2B0ZpHtRc9e7L8rnPAOVbzNsCSP5iiRBVEnN+q1bKRHhlcco6rWgX2gtVRQycJcYyc7K9mHaJBCpinRt"
+      },
+      {
+       "q": "公務機關違反個資法造成損害，損害賠償適用哪一部法律？",
+       "options": [
+        "消費者保護法",
+        "刑事訴訟法",
+        "國家賠償法",
+        "公務員服務法"
+       ],
+       "a": "vo8phw",
+       "x": "q0aV0VeDe2yJjz3a6FcBXk5jK94vefEINqF9MF9rfB1n2UXdckDR9SRl9ZTDA+fik83mF32t+63n/R3uyVn8y+PyptolipqaTlazMs3GlIU+tnU3Xy7C0/7Bvz6cq9xPIXeerONjWmqIW9iN4imjBIfVYV1wNK2eAxuXVQ8aacmeIw1lghIPGMaicWzvPLeL357BpwNlA0Wh+HqZxpwfL2+/"
+      },
+      {
+       "q": "公務人員假借職務之便故意違反個資法，刑責會怎樣？",
+       "options": [
+        "因為是公務員所以減輕",
+        "只要道歉就不必處罰",
+        "改成行政罰鍰就好",
+        "加重刑責至二分之一"
+       ],
+       "a": "b5pu62",
+       "x": "zfHAOvraT6TWE2RLOeC2FD02ozvtsvvCCWlkofaI3Hp3vddosCDdzUeqx8u3fDG4KIuRu4aNdViBK9sZ5hvq9Prw+wOALQFmb0avurM2uPZZwTFdQcE7hMiU1MVlT3wsaJBPQ4mbtzCeE7/JGfoDHvvEp4nghVrnoRLk8edXuvfdUpTWxyYwDIFG3skxwWlDsqv8QClT42ts6NwXJVLqwDvV6IWPn8ETMnFWpyb1kAeL1tnsS4UeZhHqdUESOxCtuhzb"
+      },
+      {
+       "q": "某國中新生個資外洩，是怎麼發生的？",
+       "options": [
+        "老師把名單貼在學校網站",
+        "學生自己把資料上傳網路",
+        "駭客入侵縣政府的系統",
+        "系統產生的暫存檔被搜尋到"
+       ],
+       "a": "dl9ebk",
+       "x": "ZfIZEuUrGPgeyh7pqks3qEMIJfoZt6WJN4HR9HRS8dHxiClt3K8mi3i6RY+FUr/beqGqpM6XTvP4lkc1SdDsYDhW6Zky/TicJj1WiRV2531eSR8L0ttig4tiLmjZ+YlOTjwMGwPP663xOrRhUP0NtY58gg3RoFjXqcJC7L1xz/o5A1ZnNyz4wlZK1Uo+PNasri0l3TeS6T8yBvkOF6NZq1Mp1pvH8+N/kT1MEZb2RdlCIpSyUxZ1HRZw6NDItsbg"
+      },
+      {
+       "q": "同一個個資外洩事件，如果 20 人以上受害，可以怎麼做？",
+       "options": [
+        "要求系統商道歉",
+        "集體轉學到別校",
+        "提起團體訴訟",
+        "改申請新身分證"
+       ],
+       "a": "1dn1cv8",
+       "x": "lzfSHng1FqZgo93UU1x77/yI3YO6lzw0Rr4JR6QCAjvkuGRDb4CmDS+UMuO/m+ihqec9tMh4s/eDUEZyi3GEXYiPPw0mjc46adQQ/pkLzFc6ZGhpQb+ALztcN8yEytwuf7eQUr2DlOSRL7IXTXqnTjXp87hcI7VtFlnrFagv6dh8oTMuBEyEp/r0UQcMgt7Mq8bg"
+      }
+     ]
+    },
+    {
+     "title": "個資法罰則：非公務機關的責任",
+     "text": [
+      "非公務機關若因違法而被處以罰鍰，負責人亦會被課以相同額度的罰鍰，更要負起實質的監督責任，除非能證明已善盡防止的義務。",
+      "在民事損害賠償部分，個資法對於不易或不能證明實際損害額時，規定每人每一事件可求償五百元以上二萬元以下，而同一事件的最高賠償總額為二億元以下。但是若可證明實際損害金額每人超過二萬元、總額超過二億元，則以實際的損害額賠償。",
+      "在刑事責任方面，違法最高可處有期徒刑、拘役或科或併科罰金，對於意圖營利而犯罪者，特別加重罰責。行政處罰也可加重罰責，最高可處新臺幣五萬元以上五十萬元以下罰鍰，並可限期改善，若未改善可繼續處罰。",
+      "具體來說，違反個資法，不僅要民事損害賠償，還要負刑事責任與行政處罰；換句話說，不只要賠錢，還可能要坐牢。",
+      "生活案例：小惠與阿賢日前有過爭執，一段時間後，小惠氣消了，想到阿賢家找他解釋，不料遭到婉拒。而小惠只有阿賢的手機號碼，不知他家住址，因此想起友人托比在某電信公司任職，而商請以手機號碼查詢阿賢的個人資料，托比也答應幫忙，將查到的個資提供給小惠。本案例中，電信公司是因阿賢申辦手機門號而取得其個資，蒐集目的在於辦理電信業務，而托比非基於同一目的取得阿賢的個資，即違反個資法規定，應負民、刑事責任，托比的雇主（電信公司）若未盡到監督責任（如未簽署保密切結書），也可能連帶負賠償責任。在民事方面，被害人得請求法院依侵害情節，以每人每事件處以新臺幣五百元以上二萬元以下罰款；在刑事方面，得處五年以下有期徒刑，得併科新臺幣一百萬元以下罰金。"
+     ],
+     "qs": [
+      {
+       "q": "非公務機關因違反個資法被處以罰鍰，負責人會怎樣？",
+       "options": [
+        "由員工替他繳罰款",
+        "被課以相同額度的罰鍰",
+        "完全不必負任何責任",
+        "只要寫悔過書就好"
+       ],
+       "a": "jf9xy1",
+       "x": "3IFEKjEKg0slkEJndkgrzc2dzFChfMdFvgSAulSssMtcmIHJb/KcFRa2wdJ/oo9IjUJNhOuw6/XPur4JMcrWY697xl+9jA0GisxaE0TTzjM+6NOeVmwXy5kp7ftttbsxhbFEI7Kphoc6kRcaRt5puLQSKsD/sY+oM8oaPOyKUXFBiK8/dsP5ZSIsZP0ptZ1uy51GR0Xdwy/0Rhm/oZ9pH6vZhLCGU9Qwg+sQI1UXFb+qjwLEr0h8IPerK6Z6oToX"
+      },
+      {
+       "q": "不易證明實際損害額時，個資法規定每人每一事件可求償多少？",
+       "options": [
+        "三萬元以上十五萬元以下",
+        "五百元以上二萬元以下",
+        "一百元以上五百元以下",
+        "五萬元以上五十萬元以下"
+       ],
+       "a": "14ho8c0",
+       "x": "dRSjIAbrudvRTFclrsaW7sAwkCDT0jOeiwKi2SFf1+L8pvXvbuMkZx5uJTAcOty7Q1o6JzjS4GphEHbLxAbaUamZIT7zAAGtwaQoRxXPis/zyA9TNTSDU1upz46bigssXhmMf7b8h9gLpR41LBPEsI+oVgQTGtHhKtGa5GvLNrBJ/1ykr4rm0rvGBk5spbkDme8HI5YjRbs5+84LPpdI50PjA2Siv2w/Nr/B2/luk0agt3nXeFmWYQaeYwa4uGzhyypsUu5dGxTICUJghXmtebXOJjrE2qGtaNxMeRM="
+      },
+      {
+       "q": "違反個資法，要負哪些責任？",
+       "options": [
+        "只要民事賠償就好",
+        "只負刑事責任坐牢",
+        "民事、刑事與行政責任",
+        "只要繳行政罰鍰"
+       ],
+       "a": "1narsup",
+       "x": "9aehdIJX4B8POI8Ekulcgz8ISKm3wzh13H2ph68nRnH5pNXYlJX/vAwUKdTQY9mYW2ROyzCiJzGYTF6DiN50dtlkyMuFZ9EB/HMEiFF78d0jF8TRJJGaXUPpzNFlccnqe2iwk9TGh1GAJnBcxtrYwOoCohysUQTCnVtDaMYse4Ylg0LNDGbSu9YdiCfb9ALbqca4GmASYRwi0ESlhTdIxfHhbajcQVu5fp3aWdnAYUSTOQ9xC4Pa5bjODaj5"
+      },
+      {
+       "q": "托比用工作之便查阿賢的個資給小惠，為什麼違反個資法？",
+       "options": [
+        "因為他沒有收取費用",
+        "因為小惠不是電信客戶",
+        "因為查詢超過上班時間",
+        "不是基於原本的蒐集目的"
+       ],
+       "a": "rrv3pe",
+       "x": "Jz6C5IHfTj8RNcKoRJHwaWoHEVWvv82RGwTNvstCJ+0TyoNywTEesL+jv0JvR03lJF7KpbwH4bKWeJOBm+8ec0SY3bxqkoPEXSL1vyP7bY1g6sZrp1aQgjUhAj+7fh4eIn+271Ib8OurlsGZIqQERVMFkhMZjwrbg/kMcRjJFROVwnClDexaCeguzutHU2O95O2PnK+8oFmcjhXwhD8hLitwjgpHHs9W8nN9Phl1V+bUPK36t6hy+thP0g/CuO9Y+bh4LXJNG1VLzuWzFlWxL19r0k+jlaKIvztK85XIoFH68SJx+bolZIL4jYly"
+      },
+      {
+       "q": "托比的雇主（電信公司）在什麼情況下，也可能連帶負賠償責任？",
+       "options": [
+        "公司生意太好",
+        "門號申辦太多",
+        "員工年資太淺",
+        "未盡到監督責任"
+       ],
+       "a": "1dws76n",
+       "x": "k/Pda9VK3H7325C/FPTT4rDGOlQsBtGcgw4A53dtfLKpUQ0QiUJWeKI7bOkXbciohjD/t2BWLLH64jRFnxgv8AygVXuIleatTzbwqUy6dNyxEiusauFFGGX4Vr8U4fMIzAXfJ6StFKMI7SoxFsV/bMfVFtpU/PTwuf0sW3t4KE0tHmeZt/ikZtUi+N86aJeVsKl++PbLsfysMDVzHzwm"
+      }
+     ]
+    },
+    {
+     "title": "法律小知識",
+     "text": [
+      "1. 刑法：規定何種行為構成犯罪，以及犯罪行為應該如何處理的法律。民法：規範私人之間日常生活關係（主要包括財產關係和身分關係）的法律。",
+      "2. 告訴乃論：案件必須由受害人提出告訴，檢察機關才會偵辦。非告訴乃論：案件檢察機關得主動偵查。",
+      "3. 併科罰金：例如處有期徒刑三個月，併科罰金 90,000 元，代表要坐牢三個月，連帶要繳納罰金 90,000 元。易科罰金：例如處有期徒刑三個月，可易科罰金，以每日 1,000 元計，代表可以選擇坐牢三個月，或繳納罰金 90,000 元（1,000 元 × 90 天）。註：併即連帶，易即替代。科處：科即判決；處即處罰，科處即判決處罰。",
+      "4. 拘役：短期剝奪犯罪人自由，就近實行勞動的刑罰方法。它的刑度比有期徒刑輕，比罰金重。刑期最短不少於一個月，最長不超過六個月。",
+      "5. 罰鍰：為行政罰。如交通違規受警察機關（行政機關）罰三千元，稱為罰鍰。罰金：為刑罰。如酒醉駕車被處一年以下有期徒刑、拘役或三萬元以下罰金，除了金錢損失外，還會留下刑事前科的紀錄（法院是司法機關，才能處決罰責）。",
+      "6. 民事與賠償有關；刑事與坐牢有關。例如：信用卡被盜刷，被盜者跟銀行可向盜刷者提出民事賠償；而盜刷者犯公訴罪，由檢察官提出，罪行確定要負刑責（坐牢）。"
+     ],
+     "qs": [
+      {
+       "q": "「併科罰金」的「併」是什麼意思？",
+       "options": [
+        "判決",
+        "替代",
+        "減少",
+        "連帶"
+       ],
+       "a": "1t92zjw",
+       "x": "mwVA6+jwkQlbAfU+96m3iRknxEv1UX+mAOGdmWIQoPOov9Abyoyzp3eHctqobk/5SYC/HDaC4xRunqagBc0FzV2AQOVzEHmunKfus7v8iwQfshvloW84sEch0x9W9id4Oyrzx/rStCfOglAQOwDygLSsr80Tct+ShAix"
+      },
+      {
+       "q": "判有期徒刑三個月、可易科罰金每日 1,000 元，代表什麼？",
+       "options": [
+        "坐牢而且還要繳九萬元",
+        "只要繳一千元就好",
+        "坐牢或繳九萬元擇一",
+        "坐牢三天就能抵銷"
+       ],
+       "a": "vvyfuk",
+       "x": "SxTVoT34nIKjzmj/xsc4cTyS+n0TtO+e1RtxorOuUk5I50dwnkyBBUoGz578FJtBfuGu5IEWQaf2w27AOzUnB/QKLbJEBWAhCNoDANQ8cU+9wSW3f0R3lWvupMD38NZFRU8Ki7B2/RBCKKkzKPBJtjXs0Oe8tdMAY8qpKHKAMCcPXO4uywA/5NEVDUUFSCv8++YuhNFVAMiuCtmQU3SQRvIpIvyVGq4nMqkwNq2w+qz5"
+      },
+      {
+       "q": "「拘役」的刑期最長不超過多久？",
+       "options": [
+        "三個月",
+        "一年",
+        "一個月",
+        "六個月"
+       ],
+       "a": "oo7zw1",
+       "x": "xaTHaDAzkRhqeYOfJTZ5sMRu5OyvufytJ9rMmTGvkoMuDfJXKhO1lNZPyy4O4QoE/mW4sQ0yAjFaYB+8xLTyu2wttliDIflEvnKc81YE188/k5qWsL2vX6H95mwWC/5YzUWukf7kZn3hPWo1fhxbx21F+7PDbfNEgQYEllZqHmMhSCVgKBibRiroaB6gPWjyeVa41QpalXSg"
+      },
+      {
+       "q": "交通違規被警察機關罰三千元，這種處罰叫做什麼？",
+       "options": [
+        "罰鍰",
+        "易科",
+        "拘役",
+        "罰金"
+       ],
+       "a": "186vkb3",
+       "x": "TIsXRBfc9KFKR/Otx6oRATSqZYDO30Wo1zEuyJ2Dr90Z6eKY2+Uzmhy1l08h/NryDmsFJAnvaHkuzEehfOET3sAiiXsNYasSmLkFpht8eBpu0AfxGX6xmBEQ+pQF+c/zcY44+h08hEEE2ziigrx040vN61lsRqvNUI0Wi+nm3rF86MMFZbLRbBCYmms5uNFYcfB9yAJXvLm9kljVReeh"
+      },
+      {
+       "q": "信用卡被盜刷，被盜者向盜刷者要求賠償，屬於哪一種？",
+       "options": [
+        "刑事責任",
+        "行政處罰",
+        "告訴乃論",
+        "民事賠償"
+       ],
+       "a": "18chumm",
+       "x": "xqdqqeegNzp1z0a0x1KFMeVcV/1nG9KtXGDZutQU7U+Wnw5NtXnzVs2qDAftJmzMbW0j0pDFLfx5he+JnxVNYFdeFG8JPhV/+KXN/J9XEqFmtRWPqXBP4bohhEYw9NWGBMigtIT3z9N3F6BawQVSnRJVTwfRui3WADqGGtRea3bMsIpbo6sFlELCseownsqQzaRenL8MTPD4hmXyr3Z1e2VCbVYRt8J5+fYzLVvVooRk99js"
+      }
+     ]
+    },
+    {
+     "title": "AI 探照燈：人工智慧法案",
+     "text": [
+      "人工智慧法案：2024 年 8 月 1 日全球第一部《人工智慧法案》在歐盟生效，而該法案主要規管範圍從供應商、開發經銷商甚至組織高階職位、符合規範的相關單位與部署人員皆有其應負義務。其針對 AI 的定義如下：AI 系統「是指以機器為基礎的系統，具有不同程度的運行自主性，在配置後可適應明確或者隱含的目標，從其接收的輸入中推斷如何生成輸出，例如：預測、提供資訊、建議或決策」，而該法案採用「基於風險的管理」的方法來制訂，並分為四個風險等級：",
+      "・不可接受風險（禁止）：操控人類行為、剝削弱勢群體、政府機關的社會評分系統、公共場所即時遠端生物識別系統。",
+      "・高風險（需合格評定）：評估健康、人壽保險或公共福利資格；分析工作申請或評估候選人；產品安全零組件，如醫療器械、安全防護設備。",
+      "・有限風險（透明度義務）：與消費者互動的系統；生成式 AI，如生成的內容（圖像、音訊或影片）。",
+      "・最小風險或無風險（無義務）：垃圾郵件過濾系統、包含 AI 的遊戲。",
+      "臺灣人工智慧基本法草案：為因應 AI 浪潮，國科會於 2024 年 7 月 15 日預告《人工智慧基本法》草案，明確定義 AI，擬定七大基本原則，並訂定政府應辦理的相關獎勵措施等。七大基本原則：永續發展與福祉、人類自主、隱私保護與資料治理、資安與安全、透明與可解釋、公平與不歧視、確保承擔相應之責任。另由數位發展部參考國際標準或規範，推動 AI 風險分級框架。"
+     ],
+     "qs": [
+      {
+       "q": "全球第一部《人工智慧法案》，是在哪裡生效的？",
+       "options": [
+        "美國",
+        "臺灣",
+        "歐盟",
+        "日本"
+       ],
+       "a": "px177x",
+       "x": "ucZUF207n7P4TkVikVIivRxfA5L+7/eVUYjnfdTl8xyFTbg5xztbC6mkbDU+Vk6jEKdlxFZ6TB7b7GJob3kd+PTkaKK8GdmUAfQ7MjTz771Lh/0dUh+GZ+Zqvobkm9w8RgasjkPVKWIVSHV8FLxg0WsERHIOG1+tRtLTU0NmE8MWP5CtF6bJR1A6vBrrP69SQWpf1mo3FiYls4I/+trTrRM="
+      },
+      {
+       "q": "歐盟《人工智慧法案》是用什麼方法來制訂的？",
+       "options": [
+        "基於產值的管理",
+        "基於風險的管理",
+        "基於國籍的管理",
+        "基於年齡的管理"
+       ],
+       "a": "1beuof9",
+       "x": "iknfBqD8wHVt/9B328M+XlEtcryWLeGU1TD3pjGxKEECwTLGdC5MFC/zJw58CCryBTuU3VUTix92nIvcYMcc36IPiIf17eXsa8MlJtWwNvFoj+hR6PXbvymSNN84BwH80N6ZFjgPq4NXDkJdQ0iJOHqrnRacgwhtfkPtCWjAYlRpTMDoyhDNCukqCs3aREMw"
+      },
+      {
+       "q": "「政府機關的社會評分系統」屬於哪一個風險等級？",
+       "options": [
+        "不可接受風險",
+        "最小風險或無風險",
+        "有限風險",
+        "高風險"
+       ],
+       "a": "1wdagng",
+       "x": "DFQY3xzDJMnkEgw7kscvVekjN+I9l+ovMJ3uf4XppMydI3aBVF3IkKuGST48PQsKpkOWwjw162mk2QjamhFpAQ9h0jo29eR0fSf//a4Fy7gDVR+yZ2kLO3T19WMXKCVOyjYQJ0L0YugK7iD3W4abpsB/dLeNnMS4jQdkYM2yIa9FIXvdzMMhAA/7/DhLQluXrwCmtyt2IDoN1SN4NhRyYdUdoWxXTNC2bgvSm+tmkS0CG+NWEEhgEjk28Qr1DVuf3TS516cKGjIvKEcIBsPTqbPj"
+      },
+      {
+       "q": "生成式 AI 產生的圖像、音訊或影片，屬於哪個等級、要負什麼義務？",
+       "options": [
+        "高風險，需要合格評定",
+        "有限風險，要負透明度義務",
+        "不可接受風險，全面禁止",
+        "最小風險，沒有任何義務"
+       ],
+       "a": "1lj09lv",
+       "x": "j6lGFa/8QkZfuivew2lmHA0R/25ozWFXBmTE7K15Nz6RPPySeQme80Vogay946OcvXaHojeuyUXladg7+d8Dd1iDzqAYxPXnEerQ/+CCj3rkAxkL9cIjRzxsKSvkKukgE8gUQHDT5ADnoFATc/vQZuLcN0OyPB62Eadq4cSTYFSd8fnQ+sTQJ5mA7CpQmiHHJ4JlwdRG97wgMKRIYnduwjT+V4vZqhZMMZY+yyxcKTwXghCtHRybjhT0e03YIzw="
+      },
+      {
+       "q": "臺灣《人工智慧基本法》草案的七大基本原則，「不包括」哪一項？",
+       "options": [
+        "追求最高獲利",
+        "透明與可解釋",
+        "人類自主",
+        "公平與不歧視"
+       ],
+       "a": "1ihaicd",
+       "x": "QrIPgn24zk2OA7gnPKJjd+hd58xJMddoXQWDperfES4x5e0lLMBM8eUK7m9WfrFjaDcSHoK+5e4YUxypJOlvjHuQs7vWboH0/HnlX1Ur7KuMgcboX/mvcPDupAarwHUTU1YDyPe6p9zosFEw9HTWtZ6tZMv6TUm9RR0PiIL+aEcRHZzGFy+t7U+/IPk44Bv3IVS3YwBo9y1s1TClGZWS2OXBCYyZYt0MjcI3ynQ+Xix+aiZvUSj/j3jcQKVAsu/kboCipN/6lWSjfC1KRc3tnRAI7Xv9g3B+/aJD2jCVfCmPfKFW1DUpHgx3n+8AgiJO"
       }
      ]
     }

@@ -48,10 +48,10 @@
 
   /* ── 段落閱讀模式（老師 2026-11-06）─────────────────────────
      「資訊倫理的題目能調整為先閱讀課本段落，再出題？答錯後說明為什麼以加強理解」
-     ★ content/*.read.js 提供 window.QUIZ_READ = { per, sections: { 小節id: { src, paras: [
+     ★ content/*.read.js 提供 window.QUIZ_READ = { target, sections: { 小節id: { src, paras: [
          { title, text: [課本原文段落…], qs: [ { q, options, a, x } ] } ] } } }
        由 shared/tools/build-read.js 從不進 repo 的原稿產生（a＝答案雜湊、x＝用正解加密的說明）。
-     ★ 流程：讀一段 → 考這一段 2 題（要答對 2 題）→ 讀下一段 … 全部段落走完 ＝ 通關。
+     ★ 流程：讀一段 → 這一段連續答對幾題 → 讀下一段 … 全部段落走完 ＝ 通關（每節共連對 10 題，見下方 readNeed）。
        答錯 ⇒ 公布正解＋理由（同樣 10 秒閱讀、2 秒後可跳過）⇒ 換同一段的另一題。
        這一段的題目都考過了 ⇒ 回到這一段課文再讀一次，再換一組。
      ★ 老師 11-06：「原來的作答時失焦原則與其他防弊規則要保留，只有調整作答形式」——
@@ -62,7 +62,23 @@
         網址加 ?preview=read 可以先預覽（給老師試做）。沒有段落資料的章節（整章挑戰、總整理）照舊。 */
   var READ = window.QUIZ_READ || null;
   try { delete window.QUIZ_READ; } catch (e) { window.QUIZ_READ = undefined; }
-  var READ_PER = (READ && READ.per) || 2;
+  /* ★ 通關條件（老師 11-06：「原來是連續答對 10 題，有沒有類似的難度設計？」）
+       每一節一樣要「連對 10 題」，平均分到各段：5 段 → 每段 2 題、4 段 → 3/3/2/2、3 段 → 4/3/3。
+       答錯 ⇒ 只有「這一段」的連對歸零（前面已經過的段落保留，不必重讀）。
+       ⇒ 總題數和舊模式一樣至少 10 題，星等（答對率）門檻不用改，段落多寡也不會造成星等不公平。
+       ⚠️ 第一版是「每段答對 2 題、答錯不歸零」：3 段的節只要 6 題，錯 1 題就掉到 2 星，
+          而舊模式錯 1 題還是 3 星（至少 10/11）。 */
+  function readTarget() { return (READ && READ.target) || TARGET; }
+  /** 第 p 段要連續答對幾題 */
+  function readNeed(p) {
+    var N = rd.sec.paras.length, T = readTarget();
+    return Math.max(1, Math.floor(T / N) + (p < T % N ? 1 : 0));
+  }
+  function readTotal() { var s = 0; for (var i = 0; i < rd.sec.paras.length; i++) s += readNeed(i); return s; }
+  function readCounter() {
+    var done = rd.got; for (var i = 0; i < rd.p; i++) done += readNeed(i);
+    return '連對: ' + done + ' / ' + readTotal() + '（第 ' + (rd.p + 1) + ' / ' + rd.sec.paras.length + ' 段）';
+  }
   function readPreview() {
     try { return new URLSearchParams(location.search).get('preview') === 'read'; } catch (e) { return false; }
   }
@@ -495,7 +511,7 @@
       + (P.title ? '<h4>' + P.title + '</h4>' : '')
       + paraHTML(P)
       + (rd.sec.src ? '<p class="text-xs text-slate-400 mt-4">— ' + rd.sec.src + '</p>' : '');
-    $('start-quiz-btn').textContent = '讀完了，開始作答（這段要答對 ' + READ_PER + ' 題）';
+    $('start-quiz-btn').textContent = '讀完了，開始作答（這段要連續答對 ' + readNeed(rd.p) + ' 題）';
     ['chapter-screen', 'quiz-screen', 'warning-screen', 'result-screen'].forEach(function (x) { if ($(x)) hide(x); });
     show('study-screen');
     var box = $('study-content'); if (box) box.scrollTop = 0;
@@ -615,10 +631,10 @@
       startTimer();
       $('current-chapter-title').textContent = n ? n.title : '';
     }
-    if (!rd.reread) rd.got = 0;      // 重讀同一段：已經答對的題數留著
+    if (!rd.reread) rd.got = 0;      // 重讀同一段：讀課文不算中斷，連對留著
     rd.reread = false;
     rd.pool = shuffle(curPara().qs.slice());
-    $('target-counter').textContent = '共 ' + rd.sec.paras.length + ' 段';
+    $('target-counter').textContent = '目標連對: ' + readTotal();
     paintMark();
     hide('study-screen'); show('quiz-screen');
     loadQuestion();
@@ -632,7 +648,7 @@
   function readAfter(right) {
     if (right) {
       score++; rd.got++;
-      if (rd.got >= READ_PER) {
+      if (rd.got >= readNeed(rd.p)) {
         if (rd.p + 1 >= rd.sec.paras.length) { showResult(); return; }
         rd.p++; rd.got = 0; rd.reread = false;
         showReadPara();
@@ -642,6 +658,7 @@
       return;
     }
     wrong++;
+    rd.got = 0;                      // 答錯：這一段的連對歸零（前面已經過的段落保留）
     if (wrong >= MAX_WRONG) {        // 和舊模式同一條：累積答錯 20 題 → 學習警示單
       saveStat();
       clearInterval(timer); hide('quiz-screen'); show('warning-screen'); return;
@@ -656,7 +673,7 @@
       ? window.ANSKEY.open(item.q, item.shuffled[ans].text, item.x) : '';
     endExplain();
     explain = { hold: null, read: true };
-    $('score-counter').textContent = '第 ' + (rd.p + 1) + ' / ' + rd.sec.paras.length + ' 段：答對 ' + rd.got + ' / ' + READ_PER;
+    $('score-counter').textContent = readCounter();
     $('wrong-counter').textContent = '容錯: ' + (MAX_WRONG - wrong);
     $('question-container').innerHTML =
         '<div id="qz-explain" class="animate-pop">'
@@ -821,7 +838,7 @@
   function loadQuestion() {
     picked = -1;
     if (rd && mode === 'quiz') {     // 段落閱讀模式：從這一段的題目出
-      $('score-counter').textContent = '第 ' + (rd.p + 1) + ' / ' + rd.sec.paras.length + ' 段：答對 ' + rd.got + ' / ' + READ_PER;
+      $('score-counter').textContent = readCounter();
       $('wrong-counter').textContent = '容錯: ' + (MAX_WRONG - wrong);
       if (!rd.pool.length) rd.pool = shuffle(curPara().qs.slice());
       current = rd.pool.shift();

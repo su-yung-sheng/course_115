@@ -140,6 +140,12 @@ BANKS.forEach(([name, rel]) => {
   ok(bad.length === 0, '★ 正解不可以明顯比別的選項長' + (bad.length ? '　←　' + bad.length + ' 題，例如 ' + bad[0] : ''));
   /* 「正解剛好最長」本身不算錯（有時就是比較長），但不可以變成大多數 ——
      那樣「選最長的」雖然不是每題都中，猜中率也遠高於 1/4。舊題庫約 35%。 */
+  /* 老師 11-06：「題目不要有『課文說』之類的用語，或是本章，這種寫法」——
+     題幹和選項都不行（答錯說明可以引用課文，那是說明出處）。 */
+  const REF = /課文|課本|本章|本節|書中|教材|依照|根據|文中|案例|新聞快報|漫畫|圖示|重點回顧|小知識/;
+  const refs = qs.filter(x => REF.test(x.q.q) || x.q.options.some(o => REF.test(o)));
+  ok(refs.length === 0, '★ 題目和選項沒有「課文說／依照課文／本章」這類寫法' +
+     (refs.length ? '　←　' + refs.length + ' 題，例如 ' + refs[0].at + '「' + refs[0].q.q + '」' : ''));
   ok(longest <= Math.ceil(qs.length * 0.4), '★ 正解是最長選項的題數不超過 4 成（' + longest + '／' + qs.length + '）');
 });
 
