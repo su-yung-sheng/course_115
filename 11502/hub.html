@@ -573,7 +573,13 @@
                         : genderCode === '2' ? 'bg-rose-100 text-rose-600 border-rose-300'
                         : 'bg-slate-100 text-slate-500 border-slate-300';
       const avatarChar = (displayName || '學').charAt(0);
-      const nextModule = MODULES.find(m => (cardData(m,mods).status || 'todo') !== 'pass');
+      /* ⛔ 2026-11-09 老師：「上學期的 5016B 專題不是還沒開放，為什麼會有建議下一單元的連結能使用？」
+            原因：這裡只看「還沒通關」，沒看開放日 —— 前三張都通關後，「👉 建議下一關」就指到
+            還沒開放的 5016b.html，而且那是 a 連結，點得進去（卡片本身已經鎖成灰色，這條橫幅漏了）。
+         ⇒ 還沒到開放日的模組不當作「下一關」（和卡片用同一個 SCHEDULE.moduleOpen 判斷；
+            讀不到課表＝放行，和卡片一致）。 */
+      const isOpenNow = m => !(window.SCHEDULE && SCHEDULE.moduleOpen) || SCHEDULE.moduleOpen(state.sched, m.id);
+      const nextModule = MODULES.find(m => isOpenNow(m) && (cardData(m,mods).status || 'todo') !== 'pass');
       const allDone = !nextModule;
 
       /* 卡片尺寸依數量調整。

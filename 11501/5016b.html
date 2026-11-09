@@ -122,6 +122,15 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
   <!-- ★ 完成紀錄要靠它把闖關基地那個登入接過來（沒有它，Firestore 是未登入狀態，
        寫入會被安全規則擋掉 —— 而且擋得很安靜）。 -->
   <script src="../shared/auth.js"></script>
+  <!-- ★ 開放日（老師 2026-11-09：專題還沒開放，網址直接打也要擋）——
+       和闖關基地鎖卡片用同一支 shared/schedule.js、同一份設定（{學期}-config/schedule 的 open_json）。
+       判斷前先把頁面藏起來（最多 4 秒），免得還沒開放的內容先閃一下；讀不到設定＝放行。 -->
+  <script src="../shared/schedule.js"></script>
+  <style>html.gate-wait body > *:not(#open-gate){visibility:hidden}</style>
+  <script>
+    document.documentElement.classList.add('gate-wait');
+    setTimeout(function () { document.documentElement.classList.remove('gate-wait'); }, 4000);
+  </script>
   <!-- ★ 第五節的成果卡要自動填「研發人員」（班級座號姓名）——
        身分從 SSO 的快取拿（同步，不必等 Firestore）。 -->
   <script src="../shared/sso.js"></script>
@@ -210,6 +219,49 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       } catch (e) {
         setState('local', '連不上雲端：' + (e && e.message || e));
         return null;
+      }
+    })();
+
+    /* ═══ 開放日守門（老師 2026-11-09）═══
+       ⛔「上學期的 5016B 專題不是還沒開放，為什麼會有建議下一單元的連結能使用？」
+          闖關基地的卡片和「建議下一關」都修好了，但這一頁本身原本不看開放日 ——
+          知道網址就打得開。⇒ 這裡再擋一次：還沒到開放日，整頁換成「尚未開放」。
+       ⚠️ 讀不到設定（沒登入、規則擋、網路斷）一律放行，和闖關基地一致：
+          不可以拿學生的課去賭一個設定檔。
+       ⚠️ 這仍然是前端判斷（和系統其他地方一樣），擋的是「不小心點進來」，不是有心人。 */
+    function gateDone() { document.documentElement.classList.remove('gate-wait'); }
+    function showClosed(label) {
+      const box = document.createElement('div');
+      box.id = 'open-gate';
+      box.setAttribute('role', 'alert');
+      box.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;background:#e7e5e4';
+      box.innerHTML =
+          '<div style="max-width:420px;width:100%;background:#fff;border-radius:20px;padding:32px 24px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.12);border:2px solid #cbd5e1">'
+        +   '<div style="font-size:48px;line-height:1">🔒</div>'
+        +   '<h1 style="font-size:22px;font-weight:900;margin:12px 0 6px;color:#334155">智慧家居機電專題　尚未開放</h1>'
+        +   '<p style="color:#64748b;font-weight:700;margin:0 0 20px">' + (label || '老師開放後就可以進來了') + '</p>'
+        +   '<a href="hub.html" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:900;padding:12px 22px;border-radius:12px;text-decoration:none">← 回闖關基地</a>'
+        + '</div>';
+      document.body.appendChild(box);
+      Array.prototype.forEach.call(document.body.children, function (el) {
+        if (el !== box && el.tagName !== 'SCRIPT') el.setAttribute('aria-hidden', 'true'), el.style.display = 'none';
+      });
+    }
+    window.LABGATE = (async () => {
+      try {
+        const db = await ready;
+        if (!db || !window.SCHEDULE) return true;
+        const CFGCOL = (CFG.COLLECTIONS && CFG.COLLECTIONS.CONFIG) || (TERM + '-config');
+        const snap = await getDoc(doc(db, CFGCOL, 'schedule'));
+        const sched = { open_json: (snap.exists() && snap.data().open_json) || '' };
+        if (window.SCHEDULE.moduleOpen(sched, 'arduino')) return true;
+        showClosed(window.SCHEDULE.openLabel(sched, 'arduino'));
+        return false;
+      } catch (e) {
+        console.warn('讀不到開放日設定，放行', e);
+        return true;
+      } finally {
+        gateDone();
       }
     })();
 

@@ -113,6 +113,50 @@ for (const TERM of ['11501', '11502']) {
      '★ 開放日 11/25 ⇒ 11/24 還是排行賽、11/25 當天換回專題');
 }
 
+section('★★★ 「👉 建議下一關」不可以指到還沒開放的模組（老師 2026-11-09，兩學期）');
+{
+  for (const t of ['11501', '11502']) {
+    const src = read(t + '/hub.html');
+    const line = (src.match(/const nextModule = MODULES\.find\([^\n]*\);/) || [''])[0];
+    ok(/isOpenNow\(m\)/.test(line) && /SCHEDULE\.moduleOpen\(state\.sched, m\.id\)/.test(src.slice(src.indexOf('const isOpenNow'), src.indexOf('const isOpenNow') + 200)),
+       '★★★ ' + t + '：下一關要跳過未到開放日的模組（橫幅和「👉 下一關」標籤都靠它）');
+    /* 實際跑一次：前三張都通關、專題卡未開放 ⇒ 沒有下一關（顯示「都通關了」），不是指到 5016b.html */
+    const decl = src.slice(src.indexOf('const isOpenNow'), src.indexOf('const allDone'));
+    const run = (M, cd, mo, st, win) => new Function('MODULES', 'cardData', 'mods', 'state', 'window', 'SCHEDULE', decl + '; return nextModule;')(M, cd, mo, st, win, win.SCHEDULE);
+    const MODS = [{ id: 'ethics' }, { id: 'thinking' }, { id: 'scratch' }, { id: 'arduino', href: '5016b.html' }];
+    const sched = { open_json: JSON.stringify({ arduino: '2999-12-31' }) };
+    const passAll = m => ({ status: m.id === 'arduino' ? 'todo' : 'pass' });
+    ok(run(MODS, passAll, {}, { sched }, { SCHEDULE: S }) === undefined, '★★★ ' + t + '：專題未開放 ⇒ 不會建議 5016b.html');
+    ok(run(MODS, passAll, {}, { sched: { open_json: '' } }, { SCHEDULE: S }).id === 'arduino', '　' + t + '：開放了（或沒設日期）⇒ 照常建議專題');
+    ok(run(MODS, () => ({ status: 'todo' }), {}, { sched }, { SCHEDULE: S }).id === 'ethics', '　' + t + '：還有沒通關的 ⇒ 建議第一個沒通關的');
+  }
+}
+
+section('★★★ 5016b.html 本身也要擋（老師 2026-11-09：網址直接打也要擋）');
+{
+  const src = read('11501/5016b.html');
+  const at = k => src.indexOf(k);
+  ok(at('../shared/schedule.js') > 0 && at('../shared/schedule.js') < at('<script type="module">'), '★★ 載入 shared/schedule.js（和闖關基地同一套判斷）');
+  const gate = src.slice(at('window.LABGATE'), at('const localKey'));
+  ok(/SCHEDULE\.moduleOpen\(sched, 'arduino'\)/.test(gate) && /CFG\.COLLECTIONS\.CONFIG/.test(gate) && /'schedule'/.test(gate),
+     '★★★ 讀 {學期}-config/schedule 的 open_json，用 moduleOpen 判斷 arduino');
+  ok(/if \(!db \|\| !window\.SCHEDULE\) return true;/.test(gate) && /catch \(e\)[\s\S]*?return true;/.test(gate),
+     '★★★ 讀不到（沒登入、規則擋、網路斷）⇒ 放行，不把學生擋在外面');
+  ok(/finally \{\s*gateDone\(\);/.test(gate) && /setTimeout\(function \(\) \{ document\.documentElement\.classList\.remove\('gate-wait'\); \}, 4000\)/.test(src),
+     '★★ 判斷前先藏頁面，判斷完（或最多 4 秒）一定會顯示回來');
+  /* 實際畫一次「尚未開放」 */
+  let JSDOM; try { ({ JSDOM } = require('jsdom')); } catch (e) {}
+  if (JSDOM) {
+    const fn = src.slice(at('function showClosed'), at('window.LABGATE'));
+    const dom = new JSDOM('<!DOCTYPE html><body><main id="m">專題內容</main></body>');
+    new dom.window.Function('document', fn + '; showClosed("預計於 2026/11/25 開放");')(dom.window.document);
+    const d = dom.window.document;
+    ok(!!d.getElementById('open-gate') && /尚未開放/.test(d.body.textContent) && /2026\/11\/25/.test(d.getElementById('open-gate').textContent),
+       '★★ 未開放 ⇒ 顯示「尚未開放」和預計開放日');
+    ok(d.getElementById('m').style.display === 'none' && !!d.querySelector('#open-gate a[href="hub.html"]'), '★★ 原本的內容藏起來，只留「回闖關基地」');
+  }
+}
+
 section('★★ 教師端：不可以把設定洗掉（兩學期）');
 for (const TERM of ['11501', '11502']) {
   console.log('  （' + TERM + '）');
