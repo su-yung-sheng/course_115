@@ -431,11 +431,13 @@
           const _v = Object.values(d.unitStars).map(Number).filter(v=>v>0);
           if(_v.length) stars = _v.reduce((a,b)=>a+b,0);
         }
-        stars += bonusOf(mods, m.id);
+        /* ★ 2026-11-09：星數一律走 GRADING.moduleStars（含加分；即時看板用同一個）。 */
+        if(typeof GRADING!=='undefined' && GRADING.moduleStars && ['ethics','thinking','flowchart','scratch'].indexOf(m.id)>=0) stars = GRADING.moduleStars(mods, m.id);
+        else stars += bonusOf(mods, m.id);
         return Object.assign({ levelSum: Number(d.level)||0 }, d, { stars });
       }
       let stars=0, level=0, levelSum=0; const sts=[];
-      m.combines.forEach(id=>{ const dd=mods[id]||{}; stars+=(dd.stars||0)+bonusOf(mods,id); levelSum+=(Number(dd.level)||0); if(dd.level) level=Math.max(level,dd.level); sts.push(dd.status||'todo'); });
+      m.combines.forEach(id=>{ const dd=mods[id]||{}; stars+=(typeof GRADING!=='undefined'&&GRADING.moduleStars)?GRADING.moduleStars(mods,id):((dd.stars||0)+bonusOf(mods,id)); levelSum+=(Number(dd.level)||0); if(dd.level) level=Math.max(level,dd.level); sts.push(dd.status||'todo'); });
       let status='todo';
       if(sts.every(s=>s==='pass')) status='pass';
       else if(sts.includes('pending')) status='pending';

@@ -3257,8 +3257,10 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       const rows=_lvRoster.map(s=>{
         const d=_lvData[s.studentId];
         const mods=(d&&d.modules)||{};
-        const total=['ethics','thinking','flowchart','scratch']
-          .reduce((a,k)=>a+(Number((mods[k]||{}).stars)||0),0);
+        /* ⛔ 2026-11-09 老師：「即時看板中的星星數比登錄系統檢視狀態的星星數少？」
+              原本只把 modules.{科}.stars 相加，漏了繳交加分 ⇒ 改用和闖關基地同一個函式。 */
+        const total=(window.GRADING&&GRADING.totalStars) ? GRADING.totalStars(d||{}, ['ethics','thinking','scratch'])   // 11502 沒有流程圖卡（和闖關基地一致）
+          : ['ethics','thinking','flowchart','scratch'].reduce((a,k)=>a+(Number((mods[k]||{}).stars)||0),0);
         const hist=(window.GRADING&&GRADING.statHistory)?GRADING.statHistory(d||{}):((d&&d.history)||[]);
         const recent=hist.filter(h=>Number(h.at)>=since);
         const gained=recent.reduce((a,h)=>a+(Number(h.stars)||0),0);

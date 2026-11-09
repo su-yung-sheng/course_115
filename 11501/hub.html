@@ -334,7 +334,10 @@
           const vals = Object.values(dd.unitStars).map(Number).filter(v=>v>0);
           if(vals.length){ st = vals.reduce((a,b)=>a+b,0); lv = vals.length; }
         }
-        st += bonusOf(mods, id);          // ★ 老師給的加分星也要算進去
+        /* ★ 2026-11-09：星數一律走 GRADING.moduleStars（含加分；即時看板用同一個），
+             上面那段只留給「關卡數」用；讀不到 GRADING 才退回舊算法。 */
+        if(typeof GRADING!=='undefined' && GRADING.moduleStars) st = GRADING.moduleStars(mods, id);
+        else st += bonusOf(mods, id);     // ★ 老師給的加分星也要算進去
         stars+=st; levelSum+=lv; if(lv) level=Math.max(level,lv); sts.push(dd.status||'todo');
       });
       let status='todo';

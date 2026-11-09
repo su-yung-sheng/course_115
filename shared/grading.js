@@ -145,6 +145,47 @@ window.GRADING = {
   },
 
   /* ===================================================================
+     學生總共幾顆星（單一來源，2026-11-09）
+     -------------------------------------------------------------------
+     ⛔ 老師：「教師端的『即時看板』中的星星數比登錄系統檢視狀態的星星數少？」
+        原因：闖關基地是「各科星數＋繳交加分」，即時看板只把 modules.{科}.stars 相加，
+        漏了加分（流程圖交圖片、程式交錄影各 +1⭐）。
+     ⇒ 闖關基地、即時看板都改用這兩個函式，以後加分規則再變，兩邊一起變。
+     ★ 程式設計：有各關星數（unitStars）就以各關加總為準，沒有才退回匯總欄位 stars
+       （和闖關基地 2026-09-06 的修法一樣：`{}` 是 truthy，算出 0 時沿用匯總值；
+        也不可以取 max —— 老師扣掉一關的星要生效得了）。
+     =================================================================== */
+  STAR_MODULES: ['ethics', 'thinking', 'flowchart', 'scratch'],
+
+  /** 某一科的星數（含繳交加分）。mods＝progress.modules */
+  moduleStars: function (mods, key) {
+    mods = mods || {};
+    var d = mods[key] || {};
+    var st = Number(d.stars) || 0;
+    if (key === 'scratch' && d.unitStars && typeof d.unitStars === 'object') {
+      var sum = 0, n = 0;
+      for (var k in d.unitStars) {
+        if (!Object.prototype.hasOwnProperty.call(d.unitStars, k)) continue;
+        var v = Number(d.unitStars[k]) || 0;
+        if (v > 0) { sum += v; n++; }
+      }
+      if (n) st = sum;
+    }
+    var b = this.starsWithBonus({ modules: mods });
+    if (key === 'flowchart') st += b.flowchartBonus || 0;
+    if (key === 'scratch') st += b.scratchBonus || 0;
+    return st;
+  },
+
+  /** 學生總星數（含繳交加分）。doc＝整份 progress（有 modules 的那一層）。
+      keys：要算哪幾科（預設四科）。⚠️ 11502 沒有流程圖卡 —— 舊資料裡留著的 modules.flowchart
+      闖關基地不算，教師端也要傳 ['ethics','thinking','scratch']，兩邊才對得起來。 */
+  totalStars: function (doc, keys) {
+    var mods = (doc && doc.modules) || {}, self = this;
+    return (keys || this.STAR_MODULES).reduce(function (a, k) { return a + self.moduleStars(mods, k); }, 0);
+  },
+
+  /* ===================================================================
      加分的合理性檢查
      -------------------------------------------------------------------
      ★ 這件事的前提：學生要先把流程圖排對，才生得出 Mermaid 圖片；
