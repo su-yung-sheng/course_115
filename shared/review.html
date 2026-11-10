@@ -543,7 +543,12 @@ function students() {
         : [];
       return {
         sid, name: r.name || '', cls: clsOf(sid, r), no: noOf(sid, r),
-        stars: GRADING.starsWithBonus(p),
+        /* ★ 2026-11-10：流程圖／程式的星數改用 GRADING.moduleStars（有逐關紀錄就以逐關為準，含加分），
+             和闖關基地、教師端同一套；以前讀匯總欄位（starsWithBonus），記少了就對不起來。 */
+        stars: GRADING.moduleStars
+          ? { flowchart: GRADING.moduleStars(p.modules || {}, 'flowchart', p.history || []),
+              scratch:   GRADING.moduleStars(p.modules || {}, 'scratch',   p.history || []) }
+          : GRADING.starsWithBonus(p),
         sub, per, note, asks,
         // 看不出類型的附件單獨列出來，不要默默藏起來
         other: sub ? (sub.attachments || []).filter(a => CLASSROOM.guessKind(a) === 'unknown') : []

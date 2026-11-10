@@ -1015,9 +1015,17 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       state.done[state.unit.id]=true;
       state.status='clear'; render();
       if(!already){
-        const count = Object.keys(state.done).length;
         const now = Date.now();
         try{
+          /* ★ 2026-11-10：合計（level／stars）改成「資料庫裡已完成的關卡 ∪ 這一關」再算。
+               以前只數這台電腦記得的 state.done：在 A 電腦做了幾關、換到 B 電腦（或頁面沒重新載入）再做，
+               合計就會記少（1410202 的 114/120 就是這樣來的）。units 本身用 arrayUnion，一直是對的。 */
+          try{
+            const snap = await getDoc(doc(db, COLLECTION, state.studentId));
+            const fm = (snap.exists() && snap.data().modules && snap.data().modules.flowchart) || {};
+            (Array.isArray(fm.units) ? fm.units : []).forEach(u=>{ state.done[u]=true; });
+          }catch(e){ console.warn('讀取已完成關卡失敗，先用這台電腦的紀錄', e); }
+          const count = Object.keys(state.done).length;
           await setDoc(doc(db, COLLECTION, state.studentId), {
             studentId: state.studentId,
             modules: { flowchart: { status: count>=UNITS.length?'pass':'in-progress', level: count, stars: window.GRADING.flowchartStars(count), source:'auto', units: arrayUnion(state.unit.id), updatedAt: now } },

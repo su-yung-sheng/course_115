@@ -1641,6 +1641,9 @@
 
     /** 這個學生在這一科的這一關拿了幾顆（含加分） */
     function unitStarOf(student, key, unitId) {
+      /* ★ 2026-11-10：規則搬到 GRADING.unitStar（和總計的 moduleStars 放在一起，只寫一份）；
+           讀不到 GRADING 才用下面的舊算法。 */
+      if (window.GRADING && GRADING.unitStar) return GRADING.unitStar(student.__modules || {}, key, unitId, student.history || []);
       const m = (student.__modules) || {};
       if (key === 'ethics') {
         const u = ((m.ethics || {}).units || {})[unitId];
@@ -2357,10 +2360,12 @@ const __bn = bonusOf(student, sub.key);
           if(p.exists){
             const m = p.data().modules || {};
             const parts = [];
-            if(m.ethics)    parts.push(`資訊倫理 ${m.ethics.stars||0}★`);
-            if(m.thinking)  parts.push(`運算思維 ${m.thinking.stars||0}★`);
-            if(m.flowchart) parts.push(`流程圖 ${m.flowchart.stars||0}★`);
-            if(m.scratch)   parts.push(`程式設計 ${m.scratch.stars||0}★`);
+            /* ★ 2026-11-10：星數用 GRADING.moduleStars（和闖關基地同一套，含加分） */
+            const __S = (k) => (window.GRADING && GRADING.moduleStars) ? GRADING.moduleStars(m, k, p.data().history || []) : ((m[k] && m[k].stars) || 0);
+            if(m.ethics)    parts.push(`資訊倫理 ${__S('ethics')}★`);
+            if(m.thinking)  parts.push(`運算思維 ${__S('thinking')}★`);
+            if(m.flowchart) parts.push(`流程圖 ${__S('flowchart')}★`);
+            if(m.scratch)   parts.push(`程式設計 ${__S('scratch')}★`);
             summary = parts.length ? parts.join('、') : '目前沒有任何星星';
           } else summary = '目前沒有進度資料';
         }catch(e){ summary = '（無法讀取目前進度）'; }

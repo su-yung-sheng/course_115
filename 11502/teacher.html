@@ -1667,6 +1667,9 @@
 
     /** 這個學生在這一科的這一關拿了幾顆（含加分） */
     function unitStarOf(student, key, unitId) {
+      /* ★ 2026-11-10：規則搬到 GRADING.unitStar（和總計的 moduleStars 放在一起，只寫一份）；
+           讀不到 GRADING 才用下面的舊算法。 */
+      if (window.GRADING && GRADING.unitStar) return GRADING.unitStar(student.__modules || {}, key, unitId, student.history || []);
       const m = (student.__modules) || {};
       if (key === 'ethics') {
         const u = ((m.ethics || {}).units || {})[unitId];

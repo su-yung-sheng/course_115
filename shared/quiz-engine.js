@@ -1417,7 +1417,13 @@
       });
       var info = $('chapter-progress');
       if (info) {
+        /* ★ 2026-11-10：和闖關基地同一套（GRADING.moduleStars：有各章紀錄就以各章為準）。
+             以前讀匯總欄位 stars，記少了就會和闖關基地對不起來。 */
         var st = (mod && mod.stars) || 0;
+        if (window.GRADING && window.GRADING.moduleStars && mod) {
+          var one = {}; one[C.moduleId] = mod;
+          if ((window.GRADING.STAR_MODULES || []).indexOf(C.moduleId) >= 0) st = window.GRADING.moduleStars(one, C.moduleId);
+        }
         /* ⚠️ 有星星卻一個章節都對不上 —— 連 history 都救不回來的舊資料。
            這時候**不可以**說「還沒有通關的章節」：那和小卡上的星數互相打臉，
            學生會以為成績不見了。照實說：星數還在，明細找不到。 */

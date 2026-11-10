@@ -88,5 +88,37 @@ section('③ 闖關基地實際算出來的數字＝GRADING.totalStars（即時�
   }
 }
 
+section('④ 剩下讀星數的地方也都用同一套（2026-11-10 老師：「目前的星星計算都是同一套統計程式了嗎？」）');
+{
+  const mods = {
+    ethics: { stars: 2, units: { '1-1': { star: 3 }, '1-2': { star: 2 }, '2-1': { star: 0 } } },
+    thinking: { stars: 0 },
+    flowchart: { stars: 2, units: ['1', '2', '3'], imgUnits: { '2': 1 } },
+    scratch: { stars: 0, unitStars: { a: 3, b: 2, c: 0 }, vidUnits: { b: 1, c: 1 } }
+  };
+  const hist = [{ module: 'thinking', challenge: 1 }, { module: 'thinking', challenge: 3 }, { module: 'flowchart', unit: '1' }];
+  const sum = (k, ids) => ids.reduce((a, id) => a + G.unitStar(mods, k, id, hist), 0);
+  ok(sum('ethics', ['1-1', '1-2', '2-1']) === G.moduleStars(mods, 'ethics', hist), '★★ 資訊倫理：各章加總＝科目合計');
+  ok(sum('thinking', [1, 2, 3, 4]) === G.moduleStars(mods, 'thinking', hist), '★★ 運算思維：各題加總＝科目合計');
+  ok(sum('flowchart', ['1', '2', '3', '4']) === G.moduleStars(mods, 'flowchart', hist), '★★ 流程圖（含交圖片加分）：各關加總＝科目合計');
+  ok(sum('scratch', ['a', 'b', 'c']) === G.moduleStars(mods, 'scratch', hist), '★★ 程式設計（含錄影加分；0 星的關有錄影紀錄也不加，和逐關表一致）：各關加總＝科目合計');
+  ok(G.moduleStars({ flowchart: { units: ['1'], imgUnits: { '1': 1, '9': 1 } } }, 'flowchart') === 2 + G.BONUS.img,
+     '★★ 交錯關的流程圖加分（第 9 關還沒排對）不算進總計 —— 加分不會自己長出星星');
+  ok(G.unitStar({}, 'ethics', 'x') === 0 && G.unitStar(null, 'scratch', 'x') === 0 && G.unitStar(mods, 'nope', 'x') === 0, '沒有資料 ⇒ 0，不丟例外');
+
+  for (const t of ['11501', '11502']) {
+    const src = read(t + '/teacher.html');
+    ok(/function unitStarOf\(student, key, unitId\) \{[\s\S]{0,200}GRADING\.unitStar\(student\.__modules \|\| \{\}, key, unitId, student\.history \|\| \[\]\)/.test(src),
+       '★★ ' + t + ' 教師端「各科關卡進度」改呼叫 GRADING.unitStar');
+  }
+  ok(/GRADING\.moduleStars\(m, k, p\.data\(\)\.history/.test(read('11501/teacher.html')), '★ 11501 清進度的確認視窗：星數用 moduleStars');
+  ok(/GRADING\.moduleStars\(one, C\.moduleId\)/.test(read('shared/quiz-engine.js')), '★★ 資訊倫理章節頁「累積 ⭐」用 moduleStars');
+  const rv = read('shared/review.html');
+  ok(/moduleStars\(p\.modules \|\| \{\}, 'flowchart'/.test(rv) && /moduleStars\(p\.modules \|\| \{\}, 'scratch'/.test(rv), '★★ 作品回顧頁的流程圖／程式星數用 moduleStars');
+  const fc = read('11501/flowchart.html'), fu = fc.slice(fc.indexOf('async function finishUnit'), fc.indexOf('async function finishUnit') + 2000);
+  ok(fu.indexOf('getDoc(') > 0 && fu.indexOf('getDoc(') < fu.indexOf('const count') && fu.indexOf('const count') < fu.indexOf('setDoc('),
+     '★★★ 流程圖頁寫合計前，先讀資料庫已完成的關卡再數（不再只數這台電腦記得的）');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

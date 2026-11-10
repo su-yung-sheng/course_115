@@ -204,10 +204,52 @@ window.GRADING = {
     }
     var cap = { ethics: 30, thinking: 20, flowchart: 20, scratch: 30 }[key];
     if (cap != null) st = Math.min(st, cap);
-    var b = this.starsWithBonus({ modules: mods });
-    if (key === 'flowchart') st += b.flowchartBonus || 0;
-    if (key === 'scratch') st += b.scratchBonus || 0;
+    /* 加分：有逐關資料時，只算「這關有原始星數」的加分 —— 和 unitStar（教師端各科關卡進度）同一條規則：
+       加分不會自己長出星星（交錯關、還沒排對、還沒批改到的那關，交了也不算）。
+       2026-11-10 以前這裡用 starsWithBonus，會把這種加分也算進總計，教師端逐關表卻不算，兩邊差 1。
+       沒有逐關資料（很舊的紀錄）才退回 starsWithBonus。 */
+    var b = this.starsWithBonus({ modules: mods }), self = this;
+    if (key === 'flowchart') {
+      if (Array.isArray(d.units) && d.units.length) {
+        var fu = d.units.map(String);
+        st += Object.keys(d.imgUnits || {}).filter(function (id) { return d.imgUnits[id] && fu.indexOf(String(id)) >= 0; }).length * self.BONUS.img;
+      } else st += b.flowchartBonus || 0;
+    }
+    if (key === 'scratch') {
+      if (d.unitStars && typeof d.unitStars === 'object' && Object.keys(d.unitStars).length) {
+        st += Object.keys(d.vidUnits || {}).filter(function (id) { return d.vidUnits[id] && (Number(d.unitStars[id]) || 0) > 0; }).length * self.BONUS.vid;
+      } else st += b.scratchBonus || 0;
+    }
     return st;
+  },
+
+  /** 某一科某一關拿了幾顆（含該關的繳交加分）。教師端「各科關卡進度」用（2026-11-10 搬進來，
+      和 moduleStars 放在一起，規則只寫一份）。history＝progress.history（運算思維要用）。 */
+  unitStar: function (mods, key, unitId, history) {
+    var m = (mods || {})[key] || {};
+    if (key === 'ethics') {
+      var u = (m.units || {})[unitId];
+      return Math.min(3, Number(u && u.star) || 0);
+    }
+    if (key === 'thinking') {
+      /* 運算思維沒有 units，只有 history 裡的 challenge；每完成一題固定 2 顆 */
+      var hit = (Array.isArray(history) ? history : []).some(function (h) {
+        return h && h.module === 'thinking' && String(h.challenge) === String(unitId);
+      });
+      return hit ? this.thinkingStars(1) : 0;
+    }
+    if (key === 'flowchart') {
+      var done = (Array.isArray(m.units) ? m.units : []).map(String).indexOf(String(unitId)) >= 0;
+      var fb = (m.imgUnits || {})[unitId] ? this.BONUS.img : 0;
+      return done ? this.FLOWCHART_PER_UNIT + fb : 0;
+    }
+    if (key === 'scratch') {
+      var st = Number((m.unitStars || {})[unitId]) || 0;
+      /* 加分是附加在原始星數上的：這關 0 星（沒批改到／交錯關）就不算加分（matrix.test 守） */
+      var vb = (m.vidUnits || {})[unitId] ? this.BONUS.vid : 0;
+      return st + (st > 0 ? vb : 0);
+    }
+    return 0;
   },
 
   /** 學生總星數（含繳交加分）。doc＝整份 progress（有 modules 的那一層）。
