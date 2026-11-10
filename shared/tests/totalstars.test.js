@@ -32,11 +32,34 @@ section('① 算法');
   ok(G.totalStars(doc, ['ethics', 'thinking', 'scratch']) === G.totalStars(doc) - G.moduleStars(doc.modules, 'flowchart'), '★ 可以指定只算哪幾科（11502 沒有流程圖）');
   ok(/GRADING\.totalStars\(d\|\|\{\}, \['ethics','thinking','scratch'\]\)/.test(read('11502/teacher.html')), '★★ 11502 即時看板不算舊資料裡的流程圖（和闖關基地一致）');
 }
+section('①b 匯總欄位比逐關少（2026-11-10，1410202：各科都滿、總計 114 / 120）');
+{
+  const all = n => Object.fromEntries([...Array(10)].map((_, i) => [n + i, 1]));
+  const units = Object.fromEntries([...Array(10)].map((_, i) => ['u' + i, { star: 3 }]));
+  const full = { modules: {
+    ethics: { stars: 30, units }, thinking: { stars: 20, level: 10 },
+    flowchart: { stars: 14, units: [...Array(10)].map((_, i) => 'f' + i), imgUnits: all('f') },   // ← 匯總只記 14
+    scratch: { stars: 30, unitStars: Object.fromEntries([...Array(10)].map((_, i) => ['s' + i, 3])), vidUnits: all('s') }
+  } };
+  ok(G.totalStars(full) === 120, '★★★ 流程圖匯總記成 14，但 10 關都完成 ⇒ 以逐關為準，總計 120');
+  ok(G.moduleStars({ ethics: { stars: 21, units } }, 'ethics') === 30, '★★ 資訊倫理：以各章最佳星數加總為準');
+  ok(G.moduleStars({ thinking: { stars: 14, level: 7 } }, 'thinking', [...Array(10)].map((_, i) => ({ module: 'thinking', challenge: i + 1 }))) === 20,
+     '★★ 運算思維：history 裡完成 10 題 ⇒ 20（和教師端關卡進度同一套）');
+  ok(G.moduleStars({ ethics: { stars: 99, units: { a: { star: 9 } } } }, 'ethics') === 3 && G.moduleStars({ flowchart: { units: [...Array(15)].map((_, i) => i) } }, 'flowchart') === 20,
+     '★ 每章最多 3、每科不超過上限（不含加分）');
+  ok(G.moduleStars({ flowchart: { stars: 6, units: [] } }, 'flowchart') === 6, '沒有逐關資料 ⇒ 退回匯總欄位');
+  for (const t of ['11501', '11502']) {
+    const src = read(t + '/teacher.html');
+    ok(/function detailStars\(data, key\)/.test(src) && (src.match(/detailStars\((studentData|student), sub\.key\)/g) || []).length >= 3,
+       '★★ ' + t + ' 教師端成績表的總計、分組小計、明細都依逐關資料（detailStars）');
+  }
+}
+
 section('② 四個頁面都用它');
 {
   for (const t of ['11501', '11502']) {
     ok(/GRADING\.totalStars\(d\|\|\{\}(, \['ethics','thinking','scratch'\])?\)/.test(read(t + '/teacher.html')), '★★★ ' + t + ' 教師端即時看板用 GRADING.totalStars');
-    ok(/GRADING\.moduleStars\(mods,\s*(id|m\.id)\)/.test(read(t + '/hub.html')), '★★ ' + t + ' 闖關基地用 GRADING.moduleStars');
+    ok(/GRADING\.moduleStars\(mods,\s*(id|m\.id)(,[^)]*)?\)/.test(read(t + '/hub.html')), '★★ ' + t + ' 闖關基地用 GRADING.moduleStars');
   }
 }
 section('③ 闖關基地實際算出來的數字＝GRADING.totalStars（即時看板）');

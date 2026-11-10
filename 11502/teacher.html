@@ -893,11 +893,22 @@
     /* 這一科拿到幾顆加分星（老師在「繳交審核」給的）。
        ⚠️ 只用在「顯示與百分比」，永遠不寫回 stars —— 見名冊載入那一段的說明。 */
     function bonusOf(data, key) { return ((data && data.__bonusMap) || {})[key] || 0; }
+    /** 這一科「依逐關資料」的星數（含加分）；不是四科之一或沒有模組資料就回 null（照舊算）。 */
+    function detailStars(data, key) {
+      if (!data || !data.__modules || !window.GRADING || !GRADING.moduleStars) return null;
+      if ((GRADING.STAR_MODULES || []).indexOf(key) < 0) return null;
+      return GRADING.moduleStars(data.__modules, key, data.history || []);
+    }
 
     function calculateTotalStarsForData(studentData, subjectList = subjects) {
       let totalStars = 0;
       let displaySubjects = activeCategory === 'all' ? subjectList : subjectList.filter(sub => sub.group === activeCategory);
       displaySubjects.forEach(sub => {
+        /* ★ 2026-11-10：有逐關資料就以逐關為準（GRADING.moduleStars，含加分）——
+             和學生明細的「各科關卡進度」、闖關基地、即時看板同一套。
+             ⚠️ 只用在顯示；studentData[sub.key] 本身不改（那一格會被寫回 stars）。 */
+        const __ds = detailStars(studentData, sub.key);
+        if (__ds != null) { totalStars += __ds; return; }
         let val = parseInt(studentData[sub.key]);
         if (!isNaN(val) && val > 0) totalStars += val;  // 不再封頂 3，反映實際星數
         totalStars += bonusOf(studentData, sub.key);   // ★ 加分也是星星：分母算了，分子就要算
@@ -1746,8 +1757,9 @@
         if (activeCategory !== 'all' && activeCategory !== groupName) return;
         const groupTasks = groupedSubjects[groupName];
         let groupTotalStars = 0; let groupMaxStars = groupTasks.reduce((a, s) => a + subjMax(s.key), 0);
-        groupTasks.forEach(sub => { let val = parseInt(student[sub.key]); if (!isNaN(val) && val > 0) groupTotalStars += val;
-          groupTotalStars += bonusOf(student, sub.key); });   // ★ 同上
+        groupTasks.forEach(sub => { const __ds = detailStars(student, sub.key); if (__ds != null) { groupTotalStars += __ds; return; }
+          let val = parseInt(student[sub.key]); if (!isNaN(val) && val > 0) groupTotalStars += val;
+          groupTotalStars += bonusOf(student, sub.key); });   // ★ 同上（有逐關資料就以逐關為準）
         const isGroupComplete = (groupTotalStars === groupMaxStars && groupMaxStars > 0);
 
         cards += `
@@ -1772,9 +1784,17 @@
           if (max > 3) {
             // 自動累加型（運算思維／資訊倫理）：唯讀顯示星數 + 可展開明細
             const __bn = bonusOf(student, sub.key);
+            /* ★ 2026-11-10：原始星數改用逐關資料算（和「各科關卡進度」一致）；匯總欄位比較少時標出來。 */
+            const __ds = detailStars(student, sub.key);
+            let __stale = '';
+            if (__ds != null) {
+              const __raw = Math.max(0, __ds - __bn);
+              if (__raw !== currentStars) __stale = `<div class="text-[11px] text-amber-600 mt-0.5">ⓘ 匯總欄位記成 ${currentStars}⭐，已依各關明細更正為 ${__raw}⭐</div>`;
+              currentStars = __raw;
+            }
             /* 顯示成「原始 + 加分」兩段，不要合成一個數字 ——
                合起來就看不出加分給了沒，老師會找不到為什麼是這個數。 */
-controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStars}${__bn ? `<span class="text-emerald-600"> ＋${__bn} 加分</span>` : ''} <span class="text-xs text-slate-400 font-normal">/ ${max}</span></span><span class="text-[11px] text-slate-400 ml-2">自動</span>`;
+controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStars}${__bn ? `<span class="text-emerald-600"> ＋${__bn} 加分</span>` : ''} <span class="text-xs text-slate-400 font-normal">/ ${max}</span></span><span class="text-[11px] text-slate-400 ml-2">自動</span>` + __stale;
             if (meta.level != null) lvlNote = `<div class="text-[11px] text-slate-400 mt-0.5">已完成 ${meta.level} ${sub.key === 'ethics' ? '章節' : '關'}</div>`;
             detailHTML = `
               <details class="mt-2">

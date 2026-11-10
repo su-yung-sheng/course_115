@@ -432,7 +432,7 @@
           if(_v.length) stars = _v.reduce((a,b)=>a+b,0);
         }
         /* ★ 2026-11-09：星數一律走 GRADING.moduleStars（含加分；即時看板用同一個）。 */
-        if(typeof GRADING!=='undefined' && GRADING.moduleStars && ['ethics','thinking','flowchart','scratch'].indexOf(m.id)>=0) stars = GRADING.moduleStars(mods, m.id);
+        if(typeof GRADING!=='undefined' && GRADING.moduleStars && ['ethics','thinking','flowchart','scratch'].indexOf(m.id)>=0) stars = GRADING.moduleStars(mods, m.id, (typeof state!=='undefined' && state && state.data && state.data.history) || []);
         else stars += bonusOf(mods, m.id);
         return Object.assign({ levelSum: Number(d.level)||0 }, d, { stars });
       }

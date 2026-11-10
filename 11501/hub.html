@@ -314,7 +314,15 @@
     }
 
     function cardData(m, mods){
-      if(!m.combines){ const d = mods[m.id] || { status:'todo' }; return Object.assign({ levelSum: Number(d.level)||0 }, d); }
+      /* ★ 2026-11-10：星數一律走 GRADING.moduleStars（有逐關資料就以逐關為準，和教師端「各科關卡進度」同一套），
+           1410202 就是匯總欄位比逐關少，總計 114 / 120、各科卻都顯示滿。 */
+      const H = (typeof state!=='undefined' && state && state.data && state.data.history) || [];
+      if(!m.combines){
+        const d = mods[m.id] || { status:'todo' };
+        const out = Object.assign({ levelSum: Number(d.level)||0 }, d);
+        if(typeof GRADING!=='undefined' && GRADING.moduleStars && GRADING.STAR_MODULES && GRADING.STAR_MODULES.indexOf(m.id)>=0) out.stars = GRADING.moduleStars(mods, m.id, H);
+        return out;
+      }
       let stars=0, level=0, levelSum=0; const sts=[];
       m.combines.forEach(id=>{
         const dd=mods[id]||{};
@@ -336,7 +344,7 @@
         }
         /* ★ 2026-11-09：星數一律走 GRADING.moduleStars（含加分；即時看板用同一個），
              上面那段只留給「關卡數」用；讀不到 GRADING 才退回舊算法。 */
-        if(typeof GRADING!=='undefined' && GRADING.moduleStars) st = GRADING.moduleStars(mods, id);
+        if(typeof GRADING!=='undefined' && GRADING.moduleStars) st = GRADING.moduleStars(mods, id, H);
         else st += bonusOf(mods, id);     // ★ 老師給的加分星也要算進去
         stars+=st; levelSum+=lv; if(lv) level=Math.max(level,lv); sts.push(dd.status||'todo');
       });

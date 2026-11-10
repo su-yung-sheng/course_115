@@ -157,20 +157,53 @@ window.GRADING = {
      =================================================================== */
   STAR_MODULES: ['ethics', 'thinking', 'flowchart', 'scratch'],
 
-  /** 某一科的星數（含繳交加分）。mods＝progress.modules */
-  moduleStars: function (mods, key) {
+  /** 某一科的星數（含繳交加分）。mods＝progress.modules；history＝progress.history（可省略）
+      ⛔ 2026-11-10 老師：「學生端全部完成，但總計只顯示 114？」（1410202：教師端各科關卡進度
+         30/30、20/20、30/30、40/40 加起來 120，總計卻是 114/120）
+         原因：「各科關卡進度」是逐關算的（教師端 unitStarOf），總計卻讀各科的匯總欄位 stars；
+         匯總欄位是頁面「當下」算好寫進去的（例如流程圖用這台電腦記得的完成數 × 2），
+         換電腦、開兩個分頁、舊版留下的資料都可能比實際少。
+      ⇒ 一律「有逐關資料就以逐關為準」，和各科關卡進度用同一套：
+           資訊倫理  units 各章最佳星數加總
+           運算思維  完成題數（level 或 history 裡不同的題目，取多的）× 2
+           流程圖    units（完成的關卡清單）數量 × 2
+           程式設計  unitStars 各關加總
+         沒有逐關資料才退回匯總欄位；每科不超過上限（不含加分）。 */
+  moduleStars: function (mods, key, history) {
     mods = mods || {};
     var d = mods[key] || {};
-    var st = Number(d.stars) || 0;
-    if (key === 'scratch' && d.unitStars && typeof d.unitStars === 'object') {
-      var sum = 0, n = 0;
-      for (var k in d.unitStars) {
-        if (!Object.prototype.hasOwnProperty.call(d.unitStars, k)) continue;
-        var v = Number(d.unitStars[k]) || 0;
+    var own = Object.prototype.hasOwnProperty;
+    var st = Number(d.stars) || 0, k, v, sum, n;
+    if (key === 'ethics' && d.units && typeof d.units === 'object') {
+      sum = 0; n = 0;
+      for (k in d.units) {
+        if (!own.call(d.units, k)) continue;
+        v = Math.min(3, Number(d.units[k] && d.units[k].star) || 0);
+        if (v > 0) { sum += v; n++; }
+      }
+      if (n) st = sum;
+    } else if (key === 'thinking') {
+      var seen = {}, cnt = 0;
+      (Array.isArray(history) ? history : []).forEach(function (h) {
+        if (h && h.module === 'thinking' && h.challenge != null && !seen[h.challenge]) { seen[h.challenge] = 1; cnt++; }
+      });
+      cnt = Math.max(cnt, Number(d.level) || 0);
+      if (cnt) st = this.thinkingStars(cnt);
+    } else if (key === 'flowchart' && Array.isArray(d.units) && d.units.length) {
+      var u = {};
+      d.units.forEach(function (x) { u[String(x)] = 1; });
+      st = this.flowchartStars(Object.keys(u).length);
+    } else if (key === 'scratch' && d.unitStars && typeof d.unitStars === 'object') {
+      sum = 0; n = 0;
+      for (k in d.unitStars) {
+        if (!own.call(d.unitStars, k)) continue;
+        v = Number(d.unitStars[k]) || 0;
         if (v > 0) { sum += v; n++; }
       }
       if (n) st = sum;
     }
+    var cap = { ethics: 30, thinking: 20, flowchart: 20, scratch: 30 }[key];
+    if (cap != null) st = Math.min(st, cap);
     var b = this.starsWithBonus({ modules: mods });
     if (key === 'flowchart') st += b.flowchartBonus || 0;
     if (key === 'scratch') st += b.scratchBonus || 0;
@@ -181,8 +214,8 @@ window.GRADING = {
       keys：要算哪幾科（預設四科）。⚠️ 11502 沒有流程圖卡 —— 舊資料裡留著的 modules.flowchart
       闖關基地不算，教師端也要傳 ['ethics','thinking','scratch']，兩邊才對得起來。 */
   totalStars: function (doc, keys) {
-    var mods = (doc && doc.modules) || {}, self = this;
-    return (keys || this.STAR_MODULES).reduce(function (a, k) { return a + self.moduleStars(mods, k); }, 0);
+    var mods = (doc && doc.modules) || {}, self = this, hist = (doc && doc.history) || [];
+    return (keys || this.STAR_MODULES).reduce(function (a, k) { return a + self.moduleStars(mods, k, hist); }, 0);
   },
 
   /* ===================================================================
