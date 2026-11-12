@@ -223,6 +223,22 @@ window.GRADING = {
     return st;
   },
 
+  /** 這一關算不算「通關」（2026-11-12 老師：全部通關也要註明，只是比滿星低調）。
+      ⚠️ 看逐關紀錄，不看 modules.{科}.status —— 那是匯總欄位，和 stars 一樣可能記錯。
+      - 資訊倫理：這一節／整章挑戰拿到 ≥1★（＝連對過關）
+      - 運算思維、流程圖：完成就算
+      - 程式設計：程式 ≥ GATE.PASS_STARS（和「能不能進下一關」同一條線）；
+        沒有作品要交的關（GATE.NO_UPLOAD）看「實作體驗」做完沒（modules.scratch.play）。
+        老師手動開放（unlocks）是通行證不是成就，不算。 */
+  unitCleared: function (mods, key, unitId, history) {
+    if (key === 'scratch') {
+      var m = (mods || {}).scratch || {};
+      if (!this.GATE.needsUpload(unitId)) return !!(m.play || {})[unitId];
+      return (Number((m.unitStars || {})[unitId]) || 0) >= this.GATE.PASS_STARS;
+    }
+    return this.unitStar(mods, key, unitId, history) > 0;
+  },
+
   /** 某一科某一關拿了幾顆（含該關的繳交加分）。教師端「各科關卡進度」用（2026-11-10 搬進來，
       和 moduleStars 放在一起，規則只寫一份）。history＝progress.history（運算思維要用）。 */
   unitStar: function (mods, key, unitId, history) {

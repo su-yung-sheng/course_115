@@ -120,5 +120,29 @@ section('④ 剩下讀星數的地方也都用同一套（2026-11-10 老師：�
      '★★★ 流程圖頁寫合計前，先讀資料庫已完成的關卡再數（不再只數這台電腦記得的）');
 }
 
+section('⑤ 全部關卡通關（2026-11-12 老師：滿星以外，全通關也要註明、但低調一點）');
+{
+  const mods = {
+    ethics: { units: { '1-1': { star: 1 }, '1-2': { star: 0 } } },
+    flowchart: { units: ['a'] },
+    scratch: { unitStars: { a: 2, b: 1 }, play: { '6-1-1': 1 } }
+  };
+  const hist = [{ module: 'thinking', challenge: 2 }];
+  ok(G.unitCleared(mods, 'ethics', '1-1') === true && G.unitCleared(mods, 'ethics', '1-2') === false, '★★ 資訊倫理：≥1★ 才算通關');
+  ok(G.unitCleared(mods, 'thinking', '2', hist) === true && G.unitCleared(mods, 'thinking', '3', hist) === false, '運算思維：完成就算');
+  ok(G.unitCleared(mods, 'flowchart', 'a') === true && G.unitCleared(mods, 'flowchart', 'b') === false, '流程圖：排對就算');
+  ok(G.unitCleared(mods, 'scratch', 'a') === true && G.unitCleared(mods, 'scratch', 'b') === false,
+     '★★ 程式設計：要到 ' + G.GATE.PASS_STARS + '★（和能不能進下一關同一條線），1★ 不算');
+  ok(G.unitCleared(mods, 'scratch', '6-1-1') === true && G.unitCleared({ scratch: {} }, 'scratch', '6-3-3') === false,
+     '★★ 不用交作品的關：看實作體驗做完沒（不然永遠全通關不了）');
+  ok(G.unitCleared({}, 'ethics', 'x') === false && G.unitCleared(null, 'scratch', 'a') === false, '沒有資料 ⇒ 沒通關，不丟例外');
+  for (const t of ['11501', '11502']) {
+    const src = read(t + '/teacher.html');
+    ok(/let isAllClear = !isMaxStars && allClearedOf\(student\)/.test(src) && /GRADING\.unitCleared\(st\.__modules/.test(src) && /✓全通關/.test(src),
+       '★★ ' + t + ' 教師端卡片：全通關（未滿星）有綠框＋✓全通關，用 GRADING.unitCleared 逐關判斷');
+    ok(/displaySubjects\.some\(s => s\.key === c\.key\)/.test(src), '★ ' + t + ' 只看目前篩選的科目（和星數分母一致）');
+  }
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);
