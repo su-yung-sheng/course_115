@@ -144,5 +144,30 @@ section('⑤ 全部關卡通關（2026-11-12 老師：滿星以外，全通關�
   }
 }
 
+section('⑥ 運算思維兩學期寫法不同、證書有但統一進度少一筆（2026-11-13 老師：1411007）');
+{
+  // 11502 走 REPORT.unit：history {unit} ＋ modules.thinking.units
+  const m2 = { thinking: { level: 2, units: { '1': { star: 2 }, '3': { star: 2 } } } };
+  const h2 = [{ module: 'thinking', unit: '1', stars: 2 }, { module: 'thinking', unit: '3', stars: 2 }];
+  ok(G.unitStar(m2, 'thinking', '1', h2) === 2 && G.unitStar(m2, 'thinking', '3', []) === 2 && G.unitStar(m2, 'thinking', '2', h2) === 0,
+     '★★ 11502（history.unit／units）的逐題星數認得出來');
+  ok(G.moduleStars(m2, 'thinking', h2) === 4, '★ 同一題在 history 和 units 都有，只算一次');
+  ok(G.unitStar({ thinking: {} }, 'thinking', '4', [{ module: 'thinking', challenge: 4 }]) === 2, '11501（history.challenge）照舊');
+  const t1 = read('11501/thinking.html');
+  ok(/backfill\.push\(\{ module: 'thinking', challenge: n, at: dayOf\(/.test(t1) && /history: fbStore\.arrayUnion\(\.\.\.backfill\)/.test(t1),
+     '★★★ 11501 運算思維頁：登入時把「證書有、統一進度 history 沒有」的題目補一筆（日期用通關日）');
+  ok(/const have = new Set\(hist\.filter\(h => h && h\.module === 'thinking'\)/.test(t1), '★ 只補 history 沒有的（不重複加）');
+  const t2 = read('11502/thinking.html');
+  ok(/REPORT\.unit\('thinking', String\(n\), \{ star: GRADING\.thinkingStars\(1\), score: 100, extra: \{ backfill: true \} \}\)/.test(t2)
+     && /backfillDone\.current = true;\s*const ids/.test(t2),
+     '★★ 11502 運算思維頁：同樣補記，走 REPORT.unit；一登入就鎖上，不和之後的通關同時寫');
+  // dayOf 的日期解析
+  const m = t1.match(/const dayOf = \(s\) => \{[\s\S]*?\n\s*\};/);
+  const dayOf = new Function('return ' + m[0].replace(/^const dayOf = /, '').replace(/;$/, ''))();
+  const d = new Date(dayOf('2026年9月11日 星期五'));
+  ok(d.getFullYear() === 2026 && d.getMonth() === 8 && d.getDate() === 11, '★ 「2026年9月11日 星期五」解析成 9/11');
+  ok(new Date(dayOf('2026-09-03')).getDate() === 3 && Math.abs(dayOf('') - Date.now()) < 5000, '「2026-09-03」也認得；沒有日期 ⇒ 今天');
+}
+
 console.log('\n通過 ' + pass + '／失敗 ' + fail);
 process.exit(fail ? 1 : 0);

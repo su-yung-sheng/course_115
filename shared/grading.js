@@ -183,10 +183,17 @@ window.GRADING = {
       }
       if (n) st = sum;
     } else if (key === 'thinking') {
+      /* 兩學期寫法不同（2026-11-13 查 11502 時發現）：
+         11501 thinking.html 寫 history {challenge}；11502 走 REPORT.unit，寫 history {unit} ＋ modules.thinking.units。
+         ⇒ 三種都認，同一題只算一次。 */
       var seen = {}, cnt = 0;
+      var mark = function (id) { if (id != null && !seen[String(id)]) { seen[String(id)] = 1; cnt++; } };
       (Array.isArray(history) ? history : []).forEach(function (h) {
-        if (h && h.module === 'thinking' && h.challenge != null && !seen[h.challenge]) { seen[h.challenge] = 1; cnt++; }
+        if (h && h.module === 'thinking') mark(h.challenge != null ? h.challenge : h.unit);
       });
+      if (d.units && typeof d.units === 'object' && !Array.isArray(d.units)) {
+        for (k in d.units) if (own.call(d.units, k) && (Number(d.units[k] && d.units[k].star) || 0) > 0) mark(k);
+      }
       cnt = Math.max(cnt, Number(d.level) || 0);
       if (cnt) st = this.thinkingStars(cnt);
     } else if (key === 'flowchart' && Array.isArray(d.units) && d.units.length) {
@@ -249,9 +256,10 @@ window.GRADING = {
     }
     if (key === 'thinking') {
       /* 運算思維沒有 units，只有 history 裡的 challenge；每完成一題固定 2 顆 */
+      /* 11501 寫 history.challenge；11502（REPORT.unit）寫 history.unit ＋ modules.thinking.units —— 都認 */
       var hit = (Array.isArray(history) ? history : []).some(function (h) {
-        return h && h.module === 'thinking' && String(h.challenge) === String(unitId);
-      });
+        return h && h.module === 'thinking' && String(h.challenge != null ? h.challenge : h.unit) === String(unitId);
+      }) || (!Array.isArray(m.units) && (Number(((m.units || {})[unitId] || {}).star) || 0) > 0);
       return hit ? this.thinkingStars(1) : 0;
     }
     if (key === 'flowchart') {

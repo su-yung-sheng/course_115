@@ -1096,6 +1096,34 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                ⇒ 用 ref 記「目前最新的清單」，每補一關就同步更新。 */
             const completedRef = useRef([]);
             completedRef.current = completedChallenges;
+
+            /* ⛔ 2026-11-13（11501 1411007 那件事，見 11501/thinking.html 的 doSidLogin）：
+               通關是兩次寫入 —— 先寫運算思維紀錄（學生端、證書看這份），再 REPORT.unit 寫統一進度
+               （教師端逐題進度、每週評分看這份）。第二次沒寫成，兩邊就對不起來，而且沒有人回頭補。
+               ⇒ 登入後比一次：運算思維紀錄有、統一進度 units 沒有的，用 REPORT.unit 補（走同一支，不另寫）。
+               每次載入頁面只跑一次；讀不到就算了，下次登入再試。 */
+            const backfillDone = useRef(false);
+            useEffect(() => {
+                if (!user || backfillDone.current || !window.REPORT || !window.GRADING) return;
+                /* ⚠️ 一登入就鎖上，只看登入當下的清單：之後才通關的那一關由 handleChallengeComplete 自己回報，
+                   這裡再補一次會和它同時寫，history 多一筆、每週分數多算。
+                   （user 和 completedChallenges 在同一個 setTimeout 裡設定，React 18 會一起更新。） */
+                backfillDone.current = true;
+                const ids = [...new Set((completedRef.current || []).map(Number))].filter(Number.isFinite);
+                if (!ids.length) return;
+                (async () => {
+                    try {
+                        const mod = await REPORT.get('thinking');
+                        if (mod === null && !(window.SSO && SSO.sid())) return;   // REPORT 沒準備好
+                        const units = (mod && mod.units) || {};
+                        const miss = ids.filter(n => !((Number((units[String(n)] || {}).star) || 0) > 0));
+                        if (miss.length) console.log('[補記] 統一進度少了第', miss.join('、'), '題，補上');
+                        for (const n of miss) {
+                            await REPORT.unit('thinking', String(n), { star: GRADING.thinkingStars(1), score: 100, extra: { backfill: true } });
+                        }
+                    } catch (e) { console.warn('補統一進度失敗（下次登入再試）', e); }
+                })();
+            }, [user]);
             /* 補記的狀態要讓學生看得到：
                'down' ＝兩台後端都問不到（系統會每分鐘再試）
                {kind:'fixed', ids} ＝剛剛自動補回了哪幾關 */

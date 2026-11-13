@@ -1288,7 +1288,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 const docId = `${classRoom}_${seatNo}_${name}`;
 
                 // 載入先前進度
-                let loadedProgress = [], loadedDates = {}, loadedUrls = {};
+                let loadedProgress = [], loadedDates = {}, loadedUrls = {}, loadedOcr = {};
                 try {
                     const progressRef = fbStore.doc(fbStore.db, 'artifacts', 'comp-think-app', 'public', 'data', 'progress', docId);
                     const snap = await fbStore.getDoc(progressRef);
@@ -1297,6 +1297,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         loadedProgress = data.completed || [];
                         loadedDates = data.completionDates || {};
                         loadedUrls = data.certificateUrls || {};
+                        loadedOcr = data.ocrTexts || {};
                         Object.keys(data).forEach(key => {
                             if (key.startsWith('completionDates.')) loadedDates[key.split('.')[1]] = data[key];
                             if (key.startsWith('certificateUrls.')) loadedUrls[key.split('.')[1]] = data[key];
@@ -1307,9 +1308,35 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 // 依目前完成數同步統一進度的星數（每小關 3 星），讓舊資料也套用新規則
                 if (loadedProgress.length > 0) {
                     const cnt = new Set(loadedProgress.map(Number)).size;   // 重複的編號不重複算星
+                    /* ⛔ 2026-11-13 老師：「1411007 為什麼有運算思維證書，但教師端統計資料沒有？」
+                       通關時是**兩次**寫入：先寫運算思維自己的紀錄（證書、學生端看這份），
+                       再寫 11501-progress 的 history（教師端逐題進度、每週評分看這份）。
+                       第二次沒寫成（關分頁、斷網…），證書在、history 少一筆，而且以前沒有人回頭補 ——
+                       上面「補記」只補「後端說過了、運算思維紀錄卻沒有」的，正好是反方向。
+                       當時全學期 5 位各少一筆（1410405、1410502、1420618、1411007、1421219）。
+                       ⇒ 登入時比對：運算思維紀錄有、history 沒有的，補一筆 history。
+                         日期用證書上的通關日（每週評分才會算在那一週），標 backfill。
+                         只用 arrayUnion 新增，不改、不刪；讀不到 progress 就這次先不補（下次登入再試）。 */
+                    let backfill = [];
+                    try {
+                        const ps = await fbStore.getDoc(fbStore.doc(fbStore.db, '11501-progress', sid));
+                        const hist = (ps.exists() && ps.data().history) || [];
+                        const have = new Set(hist.filter(h => h && h.module === 'thinking').map(h => String(h.challenge)));
+                        const dayOf = (s) => {
+                            const m = String(s || '').match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);   // 2026年9月11日 星期五／2026-09-11
+                            const t = m ? new Date(+m[1], +m[2] - 1, +m[3], 12).getTime() : NaN;
+                            return isNaN(t) ? Date.now() : t;
+                        };
+                        [...new Set(loadedProgress.map(Number))].filter(n => Number.isFinite(n) && !have.has(String(n))).forEach(n => {
+                            backfill.push({ module: 'thinking', challenge: n, at: dayOf(loadedDates[n] || loadedDates[String(n)]),
+                                            stars: 2, ocr: loadedOcr[n] || loadedOcr[String(n)] || '', backfill: true });
+                        });
+                    } catch (e) { console.warn('讀統一進度失敗，這次先不補歷程', e); backfill = []; }
+                    if (backfill.length) console.log('[補記] 統一進度少了第', backfill.map(b => b.challenge).join('、'), '題，補上');
                     fbStore.setDoc(fbStore.doc(fbStore.db, '11501-progress', sid), {
                         studentId: sid,
                         modules: { thinking: { status: cnt >= 10 ? 'pass' : 'in-progress', level: cnt, stars: window.GRADING.thinkingStars(cnt), source: 'auto', updatedAt: Date.now() } },
+                        ...(backfill.length && { history: fbStore.arrayUnion(...backfill) }),
                         updatedAt: Date.now()
                     }, { merge: true }).catch(e => console.error('同步統一進度失敗', e));
                 }
