@@ -87,6 +87,7 @@
 <!-- 登入邏輯單一來源（含「不要蓋掉 Google 身分」的匿名登入把關）-->
 <script src="auth.js"></script>
 <script src="grading.js"></script>
+<script src="sb3name.js"></script>   <!-- 檔名看得出是別關的作品 ⇒ 選檔當下就擋（2026-11-17） -->
 <style>
 /* === 全站紙膠帶手作風套件（以 hub 為準） === */
 html, body, button, input, select { font-family:'Noto Sans TC', system-ui, sans-serif; }
@@ -250,9 +251,28 @@ fi.onchange=()=>pick(fi.files[0]);
 ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag');}));
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag');}));
 drop.addEventListener('drop',e=>{ if(e.dataTransfer.files[0]) pick(e.dataTransfer.files[0]); });
+/* ⛔ 2026-11-17 老師：「今天程式設計第三關上傳第二關程式，結果評為 100」→「也能比照運算思維，先檢查檔名？」
+   老師發的範本檔名帶關卡代號或名稱，學生存檔會沿用。
+   老師定案：檔名**一定要**有這一關的代號或名稱才放行（寫別關、看不出是哪一關都擋）。
+   規則在 shared/sb3name.js；後端另外會擋「同一個檔案在別關拿過 75 分以上」。 */
+function nameMismatch(name){
+  if(!window.SB3NAME || !UNIT) return '';
+  const units = (window.CONFIG && window.CONFIG.UNITS) || [];
+  const r = SB3NAME.check(name, UNIT, units);
+  if(r.ok) return '';
+  const lab = id => ((UNITS.find(u=>u[0]===id)||[])[1]) || id;
+  const cur = (units.find(u=>u[0]===UNIT)||[])[1] || UNIT;
+  const fix = '檔名要含「' + cur + '」或「' + UNIT + '」，例如「' + UNIT + ' ' + cur + '.sb3」。';
+  if(!r.others.length)
+    return '⛔ 這個檔名看不出是哪一關，先不要傳。請確認選的是這一關（' + lab(UNIT) + '）的作品；' + fix;
+  return '⛔ 這個檔案的檔名看起來是「' + r.others.map(lab).join('、') + '」的作品，不是這一關（' + lab(UNIT) + '）。'
+       + '請確認選對檔案再上傳。如果它真的是這一關的作品，' + fix;
+}
 function pick(f){
   if(!f) return;
   if(!f.name.toLowerCase().endsWith('.sb3')){ setStatus('請選擇 .sb3 檔案喔！','err'); return; }
+  const bad = nameMismatch(f.name);
+  if(bad){ chosen=null; fi.value=''; $('fileName').textContent='⛔ '+f.name; $('gradeBtn').disabled=true; setStatus(bad,'err'); return; }
   chosen=f; $('fileName').textContent='✅ '+f.name; $('gradeBtn').disabled=false; setStatus('');
 }
 function setStatus(m,c){ const e=$('status'); e.textContent=m; e.className='status '+(c||''); }
@@ -377,6 +397,8 @@ async function loadTask(){
 
 async function grade(){
   if(!chosen) return;
+  // 選完檔案才換關卡（下拉選單）也要擋
+  { const bad = nameMismatch(chosen.name); if(bad){ setStatus(bad,'err'); $('gradeBtn').disabled=true; return; } }
   const sid=$('studentId').value.trim();
   if(!/^14\d{5}$/.test(sid)){ setStatus('請輸入 7 位數字、以 14 開頭的學號！','err'); $('studentId').focus(); return; }
   sessionStorage.setItem('sid11501', sid);   // 記住學號，其他關卡也能沿用
