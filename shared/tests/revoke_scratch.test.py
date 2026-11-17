@@ -114,8 +114,11 @@ class FakeFS(object):
             mask = q.get("updateMask.fieldPaths")
             fields = (body or {}).get("fields", {})
             if not mask:
-                cur.update(fields)
-                return {"fields": cur}
+                # ⛔ 2026-11-17：真的 Firestore 沒帶 updateMask 是**整份覆蓋**，不是合併。
+                #    這裡原本寫 cur.update（合併）—— 替身比真貨寬容，於是
+                #    record_work_hash 把 revoked_json 洗掉的 bug 一直測不出來。
+                self.docs[path] = dict(fields)
+                return {"fields": self.docs[path]}
             for m in mask:
                 segs = _split_path(m)
                 src_v = {"mapValue": {"fields": fields}}
@@ -288,6 +291,83 @@ ok("if _rv:" in _blk and "}), 403" in _blk.split("if _rv:")[1],
    "★★★ 查到被取消 ⇒ 直接回 403、不往下評分")
 ok("reason" not in _blk.split("return jsonify")[1].split("}), 403")[0],
    "★★ 回給學生的訊息**不帶**取消原因（裡面可能有別的同學的學號）")
+
+section("⑥ 交錯關卡：同一個檔案已經在別關拿到 75 分以上 ⇒ 不評分（2026-11-17）")
+# ⛔ 1410605 把 2-1-1B 的檔案交到 2-1-2，模型給 100。全學期 14 組同檔跨關，4 次 80 分以上。
+fs = setup()
+def _put(raw, owners, **extra):
+    d = {"owners_json": json.dumps(owners)}
+    d.update({k: json.dumps(v) for k, v in extra.items()})
+    fs.docs[HASH + "/" + hashlib.sha256(raw).hexdigest()] = core._to_fs_fields(d)
+def _home(sid, unit, raw):
+    r = core.work_home_unit(sid, unit, raw, "11501")
+    return r and r["cid"]
+
+# record_work_hash 記分數（同一關取最高）、而且不洗掉同一份文件的其他欄位
+rw = b"file-A"
+_put(rw, [], revoked_json=[{"sid": "1419999", "cid": "2-1-3", "reason": "r"}])
+core.record_work_hash("1410605", "2-1-1B", rw, "11501", score=75)
+core.record_work_hash("1410605", "2-1-1B", rw, "11501", score=60)
+_doc = core._from_fs_fields(fs.docs[HASH + "/" + hashlib.sha256(rw).hexdigest()])
+_own = json.loads(_doc["owners_json"])
+ok(len(_own) == 1 and _own[0]["score"] == 75, "★★ 分數記在自己那一筆，同一關重交取最高（75，不被 60 蓋掉）")
+ok(json.loads(_doc.get("revoked_json") or "[]") and core.work_revoked("1419999", "2-1-3", rw, "11501"),
+   "★★★ 記雜湊不會洗掉老師的取消紀錄（以前沒帶 updateMask，整份覆蓋）")
+core.record_work_hash("1410605", "2-1-2", rw, "11501", score=None)
+ok(len(json.loads(core._from_fs_fields(fs.docs[HASH + "/" + hashlib.sha256(rw).hexdigest()])["owners_json"])) == 2
+   and "score" not in json.loads(core._from_fs_fields(fs.docs[HASH + "/" + hashlib.sha256(rw).hexdigest()])["owners_json"])[1],
+   "　批改失敗（score=None）不記分數，免得故障被當成 0 分")
+
+# 用全學期真實的 14 組重播（關卡、先後、分數照實際）
+REAL = [
+    ("1410605", [("2-1-1B", 75), ("2-1-2", 100)], "2-1-2"),     # 今天這一件
+    ("1410615", [("2-1-5", 100), ("2-2-1", 100), ("2-2-2", 0)], "2-2-1"),
+    ("1410128", [("2-1-2", 100), ("2-1-4", 95)], "2-1-4"),
+    ("1411003", [("2-1-2", 100), ("2-1-3", 80)], "2-1-3"),
+    ("1410904", [("2-1-1A", 100), ("2-1-1B", 0)], "2-1-1B"),
+    ("1421220", [("2-2-2", 100), ("2-1-5", 0)], "2-1-5"),
+    ("1410205", [("2-1-4", 100), ("2-1-5", 32)], "2-1-5"),
+    ("1410507", [("2-1-3", 100), ("2-1-4", 0)], "2-1-4"),
+    ("1410809", [("2-1-3", 100), ("2-1-1A", 10)], "2-1-1A"),
+    ("1410502", [("2-1-5", 100), ("2-2-1", 0)], "2-2-1"),
+    ("1411209", [("2-1-1A", 100), ("2-1-1B", 0)], "2-1-1B"),
+]
+for i, (sid, ups, wrong) in enumerate(REAL):
+    raw = ("real-%d" % i).encode()
+    _put(raw, [{"sid": sid, "cid": u, "at": "2026-11-17 10:%02d:00" % k, "score": sc}
+               for k, (u, sc) in enumerate(ups) if u != wrong])
+    ok(_home(sid, wrong, raw) == ups[0][0], "★★ %s 交到 %s ⇒ 擋（這是「%s」的檔案）" % (sid, wrong, ups[0][0]))
+# 不可以誤擋的
+raw = b"1421027"
+_put(raw, [{"sid": "1421027", "cid": "2-1-1B", "at": "2026-11-13 09:57:28", "score": 0}])
+ok(_home("1421027", "2-1-2", raw) is None,
+   "★★★ 1421027 先把第 3 關的檔案誤交到第 2 關（0 分）、再交到第 3 關 ⇒ **不擋**（交對的那一次要能評分）")
+raw = b"1410602"
+_put(raw, [{"sid": "1410602", "cid": "2-1-3", "at": "2026-11-10 10:41:10", "score": 70}])
+ok(_home("1410602", "2-1-4", raw) is None, "★ 之前那一關沒到 75 分 ⇒ 不算那一關的作品，不擋")
+raw = b"same-unit"
+_put(raw, [{"sid": "1410605", "cid": "2-1-2", "at": "2026-11-17 10:00:00", "score": 100}])
+ok(_home("1410605", "2-1-2", raw) is None, "★ 同一關重交同一個檔案 ⇒ 不擋（走快取）")
+ok(_home("1410606", "2-1-3", raw) is None, "★★ 檔案在**別人**名下 ⇒ 這裡不管（那是重複作品稽核的事）")
+raw = b"legacy"
+_put(raw, [{"sid": "1410615", "cid": "2-1-5", "at": "2026-11-17 10:40:57"}])
+ok(_home("1410615", "2-2-1", raw) is None, "★ 11-17 以前沒記分數的舊紀錄 ⇒ 放行（寧可放行，不要冤枉）")
+raw = b"two-homes"
+_put(raw, [{"sid": "1410615", "cid": "2-2-1", "at": "2026-11-17 10:55:00", "score": 100},
+           {"sid": "1410615", "cid": "2-1-5", "at": "2026-11-17 10:40:00", "score": 100}])
+ok(_home("1410615", "2-2-1", raw) == "2-1-5", "★ 兩關都 ≥75 ⇒ 以最早的那一關為準")
+core._fs_http = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("Firestore 掛了"))
+ok(core.work_home_unit("1410605", "2-1-2", b"file-A", "11501") is None, "★★ 讀不到 Firestore ⇒ 放行")
+core._fs_http = fs.http
+ok(core.WRONG_UNIT_MIN_SCORE == 75, "★ 門檻和 GATE.PASS_STARS（2⭐ ＝ 75 分）同一條線")
+
+_g = SRV[SRV.index("def student_grade"):]
+ok(_g.index("core.work_home_unit(") < _g.index("core.grade_project_file("),
+   "★★★ 在**評分之前**擋（不花額度，也不會被模型硬改成 100）")
+_hb = _g[_g.index("core.work_home_unit("):_g.index("core.grade_project_file(")]
+ok("if _home:" in _hb and "}), 409" in _hb, "★★ 擋下 ⇒ 回 409 和說明，不往下評分")
+_rw = _g[_g.index("core.record_work_hash("):][:300]
+ok("score=" in _rw and 'result.get("ok") is False' in _rw, "★★ 記雜湊時把分數一起記（失敗不記）")
 
 print("\n通過 %d／失敗 %d" % (_pass[0], _fail[0]))
 sys.exit(1 if _fail[0] else 0)
