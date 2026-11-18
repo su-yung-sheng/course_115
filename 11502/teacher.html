@@ -18,6 +18,7 @@
   <!-- 老師 email 的判斷（與 shared/firestore.rules 的 isTeacher 同一份定義）-->
   <script src="../shared/auth.js"></script>
   <script src="../shared/grading.js"></script>
+  <script src="../shared/route.js"></script>   <!-- 闖關路線：學生在哪個 Stage、老師放行（老師 2026-11-18） -->
   <!-- 可疑紀錄的判斷（學生面板的 ⏱⚠ 和 shared/audit.html 用同一份） -->
   <script src="../shared/audit.js"></script>
   <!-- 課表與「這週有沒有上課日」的判定（學生端 hub 同一支）-->
@@ -833,6 +834,7 @@
           ? GRADING.starsWithBonus({ modules: mods }) : {};
         student.__bonusMap = { flowchart: __b.flowchartBonus || 0, scratch: __b.scratchBonus || 0 };
         student.__modules = mods;               // 各模組 meta（level/score…）供明細用
+        student.__stagePass = Number(r.stage_pass) || 0;   // 闖關路線：老師放行到第幾個 Stage（存在名冊）
         student.history = histMap[student.id] || [];
         student.attendance = attMap[student.id] || {};  // 出席紀錄（日期 → 首次登入時間）  // 過關歷程供明細分析
         sheets[cls].push(student);
@@ -960,7 +962,9 @@
         filteredData = currentData.filter(s => s.name.toLowerCase().includes(lowerSearch) || String(s.id).toLowerCase().includes(lowerSearch));
       }
 
-      document.getElementById('student-count').innerText = `共 ${filteredData.length} 名學生`;
+      /* 闖關路線（老師 2026-11-18）：全班在哪個 Stage 的分布，一眼看出卡在哪裡 */
+      const __dist = routeDist(filteredData);
+      document.getElementById('student-count').innerText = `共 ${filteredData.length} 名學生` + (__dist ? '　🗺️ ' + __dist : '');
 
       if (filteredData.length === 0) {
         grid.innerHTML = '';
@@ -1025,6 +1029,7 @@
             </div>
             <div class="text-center w-full relative z-10">
               <h3 class="font-bold text-gray-800 text-sm truncate leading-tight" title="${student.name}">${student.name}</h3>
+              ${(() => { const __r = routeOf(student); return __r ? `<p class="text-[10px] font-bold text-indigo-600 leading-tight" title="闖關路線${__r.stagePass ? '（老師放行到 Stage ' + __r.stagePass + '）' : ''}">🗺️ ${routeLabel(__r)}${__r.stagePass ? ' ⚑' : ''}</p>` : ''; })()}
               <p class="text-[10px] text-gray-500 font-mono whitespace-nowrap">${student.id}${isAllClear ? '<span class="font-sans font-bold text-emerald-600 ml-1" title="全部關卡都通關了（還有星星可以補滿）">✓全通關</span>' : ''}</p>
             </div>
             <div class="mt-2 w-full relative z-10">
@@ -1437,6 +1442,49 @@
     }
     window.renderStudentAttendance = renderStudentAttendance;
 
+    /* ── 闖關路線（老師 2026-11-18；判斷在 shared/route.js，學生端同一份）── */
+    function routeOf(student) {
+      if (!window.ROUTE || !window.CONFIG.ROUTE || !student) return null;
+      return ROUTE.forDoc({ modules: student.__modules || {}, history: student.history || [] },
+                          { stage_pass: student.__stagePass || 0 }, window.CONFIG);
+    }
+    function routeLabel(rt) {
+      const n = window.CONFIG.ROUTE.stages.length;
+      return rt.stage > n ? 'Final' : 'Stage ' + rt.stage;
+    }
+    function routeDist(list) {
+      if (!window.ROUTE || !window.CONFIG.ROUTE || !list || !list.length) return '';
+      const c = {};
+      list.forEach(s => { const r = routeOf(s); if (r) { const k = routeLabel(r); c[k] = (c[k] || 0) + 1; } });
+      const keys = window.CONFIG.ROUTE.stages.map((_, i) => 'Stage ' + (i + 1)).concat(['Final']);
+      return keys.filter(k => c[k]).map(k => k + '：' + c[k] + ' 人').join('、');
+    }
+    function routePanelHtml(student) {
+      const rt = routeOf(student);
+      if (!rt) return '';
+      const R = window.CONFIG.ROUTE, cur = rt.stagePass || 0;
+      const btn = (n, label) => `<button onclick="setStagePass('${student.id}', ${n})"
+          class="px-3 py-1.5 rounded-lg text-xs font-bold border ${cur === n ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'}">${label}</button>`;
+      return `<div class="mb-4 bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <h4 class="font-black text-indigo-800">🗺️ 闖關路線：目前在 ${routeLabel(rt)}${rt.stagePass ? `（老師放行到 Stage ${rt.stagePass}）` : ''}</h4>
+            <div class="flex gap-1.5 flex-wrap">${R.stages.map((st, i) => i ? btn(i + 1, '放行到 Stage ' + (i + 1)) : '').join('')}${cur ? btn(0, '取消放行') : ''}</div>
+          </div>
+          <p class="text-sm text-indigo-700 mt-2">${rt.next ? '下一道門：' + rt.next.title + '　還差：' + rt.next.missing.join('、') : '路線全部開放了。'}</p>
+          <p class="text-[11px] text-indigo-500 mt-1">放行只開門、不給星星（例如請假、某一關卡在 74 分）。學生重新整理闖關基地就會生效。</p>
+        </div>`;
+    }
+    window.setStagePass = async function (id, n) {
+      const col = (window.CONFIG.COLLECTIONS && window.CONFIG.COLLECTIONS.ROSTER) || 'roster';
+      try {
+        // ⚠️ 名冊上還有別的欄位（unlocks_json、hasCode…），一定要 merge
+        await extDb.collection(col).doc(id).set({ stage_pass: Number(n) || 0, stage_pass_at: Date.now() }, { merge: true });
+        Object.keys(spreadsheetData).forEach(k => (spreadsheetData[k] || []).forEach(s => { if (s.id === id) s.__stagePass = Number(n) || 0; }));
+        showToast(n ? `✅ 已放行到 Stage ${n}` : '✅ 已取消放行', false);
+        renderModalTasks(); renderCards();
+      } catch (e) { showToast('放行失敗：' + e.message, true); }
+    };
+
     function openModal(studentId) {
       currentEditingStudentId = studentId;
       const classData = spreadsheetData[activeSheet];
@@ -1767,7 +1815,7 @@
       /* ★ 矩陣放最上面（老師 2026-08-19：「一眼看出每位學生的進度狀態」），
          原本那幾張科目卡收進可展開的區塊 ——
          它們還有用（可編輯的星星、逐筆歷程），只是不必一開啟就佔滿畫面。 */
-      let html = unitMatrixHtml(student);
+      let html = routePanelHtml(student) + unitMatrixHtml(student);
       let cards = '';
       Object.keys(groupedSubjects).forEach((groupName) => {
         if (activeCategory !== 'all' && activeCategory !== groupName) return;

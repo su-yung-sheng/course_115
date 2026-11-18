@@ -309,6 +309,8 @@
     +       '<h2 id="welcome-info" class="text-lg font-bold text-slate-500 mb-2"></h2>'
     +       '<h2 class="text-2xl font-black text-slate-800">請選擇學習章節</h2>'
     +       '<p id="chapter-progress" class="mt-2 text-sm font-bold text-slate-500">讀取進度中…</p>'
+    /* 闖關路線（11502，老師 2026-11-18）：還沒開放的小節為什麼鎖著、還差什麼 */
+    +       '<p id="route-note" class="hidden mt-3 text-sm font-bold text-indigo-800 bg-indigo-50 border-2 border-indigo-200 rounded-xl px-4 py-2 leading-relaxed"></p>'
     +       '<p class="mt-1 text-xs text-slate-400 leading-relaxed">💡 小提示：<span class="hl">章節大標題也是測驗</span>，點下去可一次挑戰整章；下方小方塊則是單一小節的測驗。</p>'
     +     '</div>'
     +     '<div class="space-y-6">' + C.chapters.map(chapterCard).join('') + '</div>'
@@ -523,7 +525,55 @@
     setTimeout(paintBadges, 300);
   }
 
+  /* ── 闖關路線（11502，老師 2026-11-18；判斷在 shared/route.js）──
+     閱讀小節、整章挑戰依程式進度開放。沒有 ROUTE 的學期（11501）RTQ 一直是 null ＝ 全部開放。
+     ⚠️ 有 ROUTE 的學期：路線還沒算出來之前先擋（避免進度讀到一半就點進還沒開放的小節）；
+        讀取失敗則放行 —— 和闖關基地「讀不到課表＝放行」一致，不要因為連線問題整節課卡住。 */
+  // 算得出路線的條件：學期有 ROUTE、載了 route.js、進度模組有 doc() —— 缺一個就當作沒有路線（不擋）
+  var routeAble = !!(window.CONFIG && window.CONFIG.ROUTE && window.ROUTE && window.ROUTE.forDoc && window.REPORT && window.REPORT.doc);
+  var RTQ = null, routeReady = !routeAble;
+  function routeOpen(id) { return routeReady && (!RTQ || !!RTQ.sections[id]); }
+  function loadRoute() {
+    if (!routeAble) return Promise.resolve(null);
+    return Promise.all([window.REPORT.doc(),
+                        window.REPORT.roster ? Promise.resolve(window.REPORT.roster()).catch(function () { return null; }) : null])
+      .then(function (r) { RTQ = ROUTE.forDoc(r[0] || {}, r[1], window.CONFIG); routeReady = true; return RTQ; })
+      .catch(function (e) { console.error('闖關路線讀取失敗', e); RTQ = null; routeReady = true; return null; });
+  }
+  function paintRoute() {
+    var note = $('route-note');
+    var anyLocked = false;
+    document.querySelectorAll('.qz-open').forEach(function (btn) {
+      var id = btn.getAttribute('data-ch'), lock = !routeOpen(id);
+      if (lock) anyLocked = true;
+      btn.classList.toggle('opacity-40', lock);
+      btn.classList.toggle('cursor-not-allowed', lock);
+      btn.querySelectorAll('.route-lock').forEach(function (el) { el.remove(); });
+      if (lock) {
+        var k = document.createElement('span');
+        k.className = 'route-lock mr-1'; k.textContent = '🔒';
+        btn.insertBefore(k, btn.firstChild);
+        btn.title = '還沒開放：' + (window.ROUTE.lockText(RTQ) || '依闖關路線開放');
+      } else if (btn.title && btn.title.indexOf('還沒開放') === 0) btn.title = '';
+    });
+    if (note) {
+      note.classList.toggle('hidden', !(RTQ && anyLocked && RTQ.next));
+      note.textContent = (RTQ && anyLocked && RTQ.next) ? window.ROUTE.lockText(RTQ) : '';
+    }
+  }
+
   function openChapter(id) {
+    // 闖關路線還沒開放的小節／整章挑戰：不進去，把「還差什麼」講清楚
+    if (!routeOpen(id)) {
+      var note = $('route-note');
+      if (note) {
+        note.classList.remove('hidden');
+        note.textContent = !routeReady ? '讀取進度中，請稍候再點一次…'
+          : ((window.ROUTE && window.ROUTE.lockText(RTQ)) || '這一節還沒開放，請先完成闖關基地上的路線。');
+        note.scrollIntoView && note.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
     currentId = id;
 
     // 沒接上進度模組（或讀不到）就直接進閱讀頁，不擋學生
@@ -1383,7 +1433,7 @@
   /* ── 通關標記 ────────────────────────────────────────── */
   function paintBadges() {
     if (!window.REPORT) return Promise.resolve();
-    return window.REPORT.get(C.moduleId).then(function (mod) {
+    return loadRoute().then(function () { paintRoute(); return window.REPORT.get(C.moduleId); }).then(function (mod) {
       /* ★ 2026-08-19 老師回報：「小卡顯示三星，點進去卻沒看到那一個單元獲得？」
          2026-08-11 以前的舊章節測驗頁只寫 stars，沒有寫 units
          （「哪一章過了」存在另一個集合，用班級座號姓名比對）。

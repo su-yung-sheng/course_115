@@ -32,9 +32,11 @@ ok(logic.length > 0, '找得到 doneSet／isDone／allDone');
 ok(opener.length > 0, '找得到 handleOpenChallenge');
 
 const CH = Array.from({ length: 10 }, (_, i) => ({ id: i + 1, title: 'T' + (i + 1), url: 'u' + (i + 1) }));
-function run(completed) {
+function run(completed, capped) {
   const opened = [], selected = [];
   const ctx = {
+    /* capped：闖關路線到本階段上限（11502，2026-11-18）。11501 沒有路線，這裡給 false 就是原本的行為。 */
+    capped: !!capped,
     completedChallenges: completed, challenges: CH,
     setSelectedChallenge: c => selected.push(c.id),
     window: { open: (u) => opened.push(u), screen: { width: 1920, height: 1080 } },
@@ -55,6 +57,12 @@ function run(completed) {
   ok(r.opened.length === 1 && r.opened[0] === 'u5',
      '★★★ 還沒通關的關卡照常開遊戲視窗');
   ok(r.ctx.allDone === false, '三關而已 ⇒ 不可以鎖上傳');
+}
+if (TERM === '11502') {
+  const r = run([1, 2, 3, 4, 5], true);
+  r.ctx.h(CH[6]);
+  ok(r.opened.length === 0 && r.selected[0] === 7,
+     '★★ 11502 闖關路線到本階段上限（例如 Stage 2 的 5 題）⇒ 還沒拿到的關卡也不開遊戲，但仍然選取');
 }
 {
   /* ⚠️ completed 存在 Firestore，歷史資料的編號可能是字串 */
@@ -109,11 +117,12 @@ section('★★ 右邊面板：已通關只顯示人數');
 
 section('★★ 十關全拿：證書製作反灰');
 {
-  const btn = (CODE.match(/<button\s+onClick=\{\(\) => \{ if \(!allDone\) setShowCertModal\(true\); \}\}[\s\S]*?<\/button>/) || [''])[0];
+  /* 11502 多了闖關路線的上限（capped，2026-11-18）：條件變成 allDone || capped，兩學期都要擋住十關全拿 */
+  const btn = (CODE.match(/<button\s+onClick=\{\(\) => \{ if \(!allDone( && !capped)?\) setShowCertModal\(true\); \}\}[\s\S]*?<\/button>/) || [''])[0];
   ok(btn.length > 0, '找得到證書製作按鈕');
-  ok(/disabled=\{allDone\}/.test(btn),
+  ok(/disabled=\{allDone( \|\| capped)?\}/.test(btn),
      '★★★ 要用 disabled —— 只改顏色的話還是按得下去');
-  ok(/if \(!allDone\) setShowCertModal/.test(btn),
+  ok(/if \(!allDone( && !capped)?\) setShowCertModal/.test(btn),
      '★★ onClick 裡也要擋一次（disabled 被瀏覽器外掛或開發者工具拿掉時的保險）');
   ok(/cursor-not-allowed/.test(btn) && /bg-slate-300/.test(btn), '★ 反灰的樣式');
   ok(/十關全部通關/.test(btn),

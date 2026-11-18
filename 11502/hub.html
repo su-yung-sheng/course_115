@@ -38,6 +38,8 @@
   <script src="../shared/grading.js"></script>
   <!-- 課表與「這週有沒有上課日」的判定（教師端同一支）-->
   <script src="../shared/schedule.js"></script>
+  <!-- 闖關路線：依進度解鎖（老師 2026-11-18）。路線內容在 config.js 的 ROUTE -->
+  <script src="../shared/route.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged,
@@ -224,6 +226,7 @@
          cls   = 這個學生哪一班（從名冊來）
          sched = 課表（整班共用一份，登入後讀一次） */
       cls: '', sched: null,
+      roster: null,        // 名冊這一筆（闖關路線要讀老師的放行旗標 stage_pass）
       authReady: false,
       studentId: '',
       studentName: '',
@@ -371,6 +374,7 @@
             at:  Date.now()
           };
           sessionStorage.setItem('me11502', JSON.stringify(me));
+          state.roster = r;            // 闖關路線：老師的放行旗標（stage_pass）在名冊上
           state.studentName = me.name;
           state.cls = me.cls;          // 出席判定要知道是哪一班（見 loadSchedule）
           loadSchedule();
@@ -524,6 +528,44 @@
     }
 
     // ===== 畫面 =====
+    /* ── 闖關路線看板（老師 2026-11-18：Stage 名稱、徽章、還差什麼）──
+       ⚠️ 只是畫面：開不開放由 shared/route.js 決定，這裡不另外判斷。 */
+    function stageBoard(rt){
+      const R = window.CONFIG.ROUTE, all = R.stages.concat([R.final]);
+      const badges = all.map((st, i) => {
+        const no = i + 1, isFinal = i === R.stages.length;
+        const got = isFinal ? rt.final.done : !!rt.done[no];
+        const cur = rt.stage === no && !got;
+        const label = isFinal ? 'Final' : 'Stage ' + no;
+        const cls = got ? 'bg-amber-100 border-amber-400 text-amber-800'
+                  : cur ? 'bg-indigo-50 border-indigo-400 text-indigo-800 ring-2 ring-indigo-300'
+                  : 'bg-slate-50 border-slate-200 text-slate-400';
+        return `<div class="flex-1 min-w-[120px] rounded-xl border-2 ${cls} px-3 py-2 text-center">
+            <div class="text-2xl ${got || cur ? '' : 'grayscale opacity-60'}">${got ? '🎖️' : st.icon}</div>
+            <div class="text-[11px] font-black tracking-wide">${label}</div>
+            <div class="text-sm font-black leading-tight">${st.name}</div>
+            <div class="text-[10px] font-bold mt-0.5">${got ? '通關！' : cur ? '進行中' : '🔒'}</div>
+          </div>`;
+      }).join('');
+      const nx = rt.next;
+      const tip = rt.openAll
+        ? `<div class="mt-3 text-xs font-bold text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">🛠️ 備課模式：全部關卡暫時開放（${window.CONFIG.OPEN_ALL_UNTIL || ''} 之後照路線解鎖）</div>`
+        : nx ? `<div class="mt-3 text-sm bg-white border border-slate-200 rounded-lg px-3 py-2">
+              <span class="font-black text-slate-700">🔒 下一道門：${nx.title}</span>
+              <span class="block text-slate-600 mt-1">還差：${nx.missing.map(x => `<span class="inline-block bg-rose-50 text-rose-700 border border-rose-200 rounded-full px-2 py-0.5 text-xs font-bold mr-1 mb-1">${x}</span>`).join('')}</span>
+            </div>`
+        : `<div class="mt-3 text-sm font-black text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-center">🏆 路線全部開放了！</div>`;
+      const passNote = rt.stagePass ? `<span class="ml-2 text-[10px] font-bold text-sky-700 bg-sky-50 border border-sky-200 rounded-full px-2 py-0.5">老師已放行到 Stage ${rt.stagePass}</span>` : '';
+      return `<section class="mb-8 bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 pop">
+          <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h2 class="text-base font-black text-slate-700">🗺️ 闖關路線 · 目前在 ${rt.stage > R.stages.length ? 'Final' : 'Stage ' + rt.stage}${passNote}</h2>
+            <span class="text-[11px] text-slate-400">先完成程式設計，閱讀測驗和運算思維會依進度打開</span>
+          </div>
+          <div class="flex gap-2 overflow-x-auto pb-1">${badges}</div>
+          ${tip}
+        </section>`;
+    }
+
     function render(){
       const el = document.getElementById('app');
 
@@ -578,7 +620,13 @@
             還沒開放的 5016b.html，而且那是 a 連結，點得進去（卡片本身已經鎖成灰色，這條橫幅漏了）。
          ⇒ 還沒到開放日的模組不當作「下一關」（和卡片用同一個 SCHEDULE.moduleOpen 判斷；
             讀不到課表＝放行，和卡片一致）。 */
-      const isOpenNow = m => !(window.SCHEDULE && SCHEDULE.moduleOpen) || SCHEDULE.moduleOpen(state.sched, m.id);
+      const isOpenNow = m => (!(window.SCHEDULE && SCHEDULE.moduleOpen) || SCHEDULE.moduleOpen(state.sched, m.id)) && !routeLocked(m);
+      /* ── 闖關路線（老師 2026-11-18）：程式設計先開，閱讀測驗、運算思維依進度解鎖 ──
+         判斷全部在 shared/route.js（各頁共用同一份）。沒有 ROUTE 的學期回 null ＝ 照舊全部開。 */
+      const RT = (window.ROUTE && ROUTE.forDoc) ? ROUTE.forDoc(data, isDemo ? null : state.roster, window.CONFIG) : null;
+      const routeMsg = () => (RT && RT.next) ? `${RT.next.title}　還差：${RT.next.missing.slice(0, 3).join('、')}${RT.next.missing.length > 3 ? '…' : ''}` : '';
+      const routeLocked = m => !!RT && ((m.id === 'ethics' && !Object.keys(RT.sections).length)
+                                     || (m.id === 'thinking' && !(RT.thinkingMax > 0)));
       const nextModule = MODULES.find(m => isOpenNow(m) && (cardData(m,mods).status || 'todo') !== 'pass');
       const allDone = !nextModule;
 
@@ -672,6 +720,22 @@
               <span class="${SZ.tag} font-bold bg-white/50 px-2.5 py-1 rounded-full border border-black/5">${m.tag}</span>
             </div>
             <span class="mt-3 inline-flex items-center gap-1 ${SZ.go} font-bold">🔒 ${openMsg || '尚未開放'}</span>
+          </div>`;
+        }
+        /* 闖關路線鎖住的卡片（老師 2026-11-18）：和「還沒到開放日」同一種灰卡，
+           說明換成「Stage 2 開放・還差什麼」。判斷在 shared/route.js。 */
+        if (routeLocked(m)) {
+          return `
+          <div class="relative block ${SZ.pad} rounded-2xl border shadow-md ${m.rot} bg-slate-100 border-slate-300 text-slate-500 opacity-75 cursor-not-allowed select-none"
+               aria-disabled="true" title="${routeMsg()}">
+            <span class="tape bg-slate-400/25"></span>
+            <div class="flex items-center justify-between mb-2">
+              <div class="${SZ.icon} grayscale">${m.icon}</div>
+              <span class="${SZ.badge} font-bold px-2.5 py-1 rounded-full border bg-white/60 text-indigo-600 border-indigo-200">Stage 2 開放</span>
+            </div>
+            <h3 class="${SZ.title} font-black leading-tight mb-1">${m.title}</h3>
+            <p class="${SZ.desc} opacity-75 leading-relaxed mb-3">${m.desc}</p>
+            <span class="mt-1 inline-flex items-start gap-1 ${SZ.go} font-bold text-indigo-700">🔒 ${routeMsg() || '完成程式設計 Stage 1 就會打開'}</span>
           </div>`;
         }
         return `
@@ -785,6 +849,8 @@
               </div>
             </div>
           </header>
+
+          ${RT ? stageBoard(RT) : ''}
 
           ${nextModule ? `
             <a href="${nextModule.href}" class="block mb-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl p-4 sm:p-5 shadow-md transition flex items-center justify-between gap-3 pop">

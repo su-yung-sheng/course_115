@@ -82,6 +82,7 @@
 <script src="../shared/auth.js"></script>
 <script src="../shared/guard.js"></script>
 <script src="../shared/grading.js"></script>
+<script src="../shared/route.js"></script>   <!-- 闖關路線：程式 5、8 關要先過 Stage 的「先做」 -->
 <script src="../shared/readhold.js"></script>
 <script src="../shared/blocks.js"></script>
 <script src="../shared/derive.js"></script>
@@ -160,10 +161,25 @@ const GATE = (window.GRADING && window.GRADING.GATE) || null;
    ⚠️ 開著的時候畫面上一定要看得到 —— 見 render() 裡的橘色橫幅。
       安靜地全部打開，就等於哪天忘了關也不會有人發現。 */
 const OPEN_ALL = !!(window.GRADING && window.GRADING.openAll && window.GRADING.openAll(window.CONFIG));
+/* ── 闖關路線（老師 2026-11-18，shared/route.js；和 scratch.html 同一套）──
+   ① 前一關要通關（GATE）② 這個 Stage 的「先做」完成了沒（路線），兩道都過才開。 */
+let RT = null;
+function routeCap() {
+  /* 還沒讀到進度（RT 還是 null）時只放行 Stage 1 —— 不然讀完星數、還沒讀完名冊那一瞬間，第 5 關會先閃一下開著。 */
+  if (!RT) return (window.CONFIG.ROUTE && !OPEN_ALL) ? window.CONFIG.ROUTE.stages[0].units.length : Infinity;
+  return (window.ROUTE && ROUTE.unitCap) ? ROUTE.unitCap(RT, UNITS) : Infinity;
+}
+function seqOpen(no) {
+  return GATE ? GATE.isOpen(no, UNITS, true, null, unitStars, playDone, RT && RT.assumeCleared) : (no === 1);
+}
 function unitOpen(no) {
   if (OPEN_ALL) return true;
-  return GATE ? GATE.isOpen(no, UNITS, true, null, unitStars, playDone) : (no === 1);
+  return seqOpen(no) && no <= routeCap();
 }
+window.applyRoute = function (docData, roster) {
+  RT = (window.ROUTE && ROUTE.forDoc) ? ROUTE.forDoc(docData, roster, window.CONFIG) : null;
+  render();
+};
 
 /* ── 五個步驟 ─────────────────────────────────────
    ★ 為什麼是這五個而不是「拆解 → 拼圖 → 上傳」
@@ -294,8 +310,11 @@ function render() {
   if (!unitOpen(unit.no)) {
     /* ★ 這一段是拆成兩頁之後最容易破的地方。
        上一頁不畫連結只是「不方便」，這裡才是真的擋。 */
+    // 卡在闖關路線（前一關已通過、但這個 Stage 的「先做」還沒完成）⇒ 講清楚還差什麼
+    const byRoute = seqOpen(unit.no) && unit.no > routeCap();
     $('app').innerHTML = card('🔒 這一關還沒開',
-      `要先完成<b>第 ${unit.no - 1} 關</b>才會開啟第 ${unit.no} 關。` +
+      (byRoute ? esc(ROUTE.lockText(RT)) + '<br>到<a class="underline font-bold" href="hub.html">闖關基地</a>完成之後就會打開。'
+               : `要先完成<b>第 ${unit.no - 1} 關</b>才會開啟第 ${unit.no} 關。`) +
       '<br>回<a class="underline font-bold" href="scratch.html">闖關地圖</a>看看目前該做哪一關。');
     return;
   }
@@ -987,6 +1006,13 @@ render();
                            (mods.scratch && mods.scratch.quiz) || {},
                            (mods.scratch && mods.scratch.step) || {},
                            (mods.scratch && mods.scratch.play) || {});
+      // 闖關路線（老師 2026-11-18）：要整份進度＋名冊上的老師放行旗標（stage_pass）
+      try {
+        const rs = await getDoc(doc(db, window.CONFIG.COLLECTIONS.ROSTER, sid));
+        if (window.applyRoute) window.applyRoute(snap.exists() ? snap.data() : {}, rs.exists() ? rs.data() : null);
+      } catch (e) {
+        if (window.applyRoute) window.applyRoute(snap.exists() ? snap.data() : {}, null);
+      }
     } catch (e) {
       /* 讀不到就維持「只開第 1 關」。寧可少開，也不要因為連線問題整批放行。 */
       console.error('讀進度失敗', e);

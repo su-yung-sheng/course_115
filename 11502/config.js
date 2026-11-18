@@ -195,6 +195,28 @@ window.CONFIG = {
   OPEN_ALL_UNITS: true,
   OPEN_ALL_UNTIL: '2027-01-25',      // ← 下學期開學前。請改成你自己的日期
 
+  /* ── 闖關路線：依進度解鎖（老師 2026-11-18 定案）─────────────
+     一律從程式設計開始；判斷寫在 shared/route.js，闖關基地、程式關卡頁、閱讀測驗、
+     運算思維、教師端都看這一份。上面的備課模式（OPEN_ALL_UNITS）開著時全部開放。
+       stages[i].units          這個 Stage「再做」的程式關卡（要先完成「先做」才開）
+       stages[i].thinking       運算思維最多可以做到幾題（也是開程式關卡的門檻）
+       stages[i].sections       這個 Stage「先做」的閱讀小節（≥1⭐ 才開程式關卡）
+       stages[i].extraSections  跟著程式關卡一起開的閱讀小節（不擋程式）
+       final.challenges         最後一個 Stage 完成、全部小節都 ≥1⭐ 才開的整章挑戰
+     ⚠️ 閱讀小節的代號要和 content/social.js 一致；關卡代號要和下面的 UNITS 一致（route.test.js 會比對）。 */
+  ROUTE: {
+    stages: [
+      { name: '程式小畫家', icon: '🎨',
+        units: ['4-2-1', '4-2-2', '4-2-3', '4-3-1'] },
+      { name: '排序大師', icon: '📊', thinking: 5, sections: ['6-2'],
+        units: ['6-1-1', '6-2-1', '6-2-2'] },
+      { name: '搜尋偵探', icon: '🔍', thinking: 10, sections: ['6-1', '6-3'],
+        units: ['6-3-1', '6-3-2', '6-3-3'],
+        extraSections: ['5-1', '5-2', '5-3', '5-4', '5-5'] }
+    ],
+    final: { name: '總複習', icon: '🏆', challenges: ['5-all', '6-all'] }
+  },
+
   UNITS: [
     ['4-2-1', '平行的正方形'],
     ['4-2-2', '愈畫愈大的正方形'],

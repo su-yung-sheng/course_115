@@ -46,6 +46,7 @@
 <script src="../shared/sso.js"></script>
 <!-- 星等門檻的單一來源 -->
 <script src="../shared/grading.js"></script>
+<script src="../shared/route.js"></script>   <!-- 闖關路線：運算思維依程式進度開放（Stage 2 開 5 題、Stage 3 開 10 題） -->
 <!-- 截圖上傳的號碼牌制（兩學期共用一份；見那支檔案開頭的說明） -->
 <script src="../shared/ocrclient.js"></script>
 <script src="../shared/waittime.js"></script>
@@ -1097,6 +1098,23 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
             const completedRef = useRef([]);
             completedRef.current = completedChallenges;
 
+            /* ── 闖關路線（老師 2026-11-18；判斷在 shared/route.js）──
+               Stage 1 還沒開；Stage 2 可以任選 5 題，拿滿 5 張證書就暫停；Stage 3 再開剩下 5 題。
+               RT 讀的是統一進度＋名冊（老師的放行旗標）；沒有 ROUTE 的學期（11501）一直是 null ＝ 不限制。
+               ⚠️ 張數用這一頁自己的證書清單算（學生看到的就是這份），上限用 RT.thinkingMax。 */
+            const [RT, setRT] = useState(null);
+            useEffect(() => {
+                if (!user || !window.ROUTE || !window.CONFIG.ROUTE || !window.REPORT || !REPORT.doc) return;
+                let alive = true;
+                (async () => {
+                    try {
+                        const [d, ro] = await Promise.all([REPORT.doc(), REPORT.roster ? REPORT.roster() : null]);
+                        if (alive) setRT(ROUTE.forDoc(d || {}, ro, window.CONFIG));
+                    } catch (e) { console.warn('闖關路線讀取失敗（不限制）', e); }
+                })();
+                return () => { alive = false; };
+            }, [user]);
+
             /* ⛔ 2026-11-13（11501 1411007 那件事，見 11501/thinking.html 的 doSidLogin）：
                通關是兩次寫入 —— 先寫運算思維紀錄（學生端、證書看這份），再 REPORT.unit 寫統一進度
                （教師端逐題進度、每週評分看這份）。第二次沒寫成，兩邊就對不起來，而且沒有人回頭補。
@@ -1600,11 +1618,22 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
             const doneSet = new Set((completedChallenges || []).map(Number));
             const isDone = (id) => doneSet.has(Number(id));
             const allDone = challenges.length > 0 && challenges.every(c => isDone(c.id));
+            // 闖關路線：目前可以做到幾題、是不是已經到上限（到上限＝還沒拿到的關卡先暫停）
+            const doneCount = challenges.filter(c => isDone(c.id)).length;
+            const routeMax = (RT && !RT.openAll) ? RT.thinkingMax : Infinity;
+            const capped = !allDone && doneCount >= routeMax;
+            const routeMsg = capped
+                ? (routeMax === 0
+                    ? '🔒 運算思維在 Stage 2 開放。' + (window.ROUTE.lockText(RT) ? '（' + window.ROUTE.lockText(RT).replace(/^🔒\s*/, '') + '）' : '')
+                    : '⏸️ 目前開放 ' + routeMax + ' 題，你已經完成 ' + doneCount + ' 題，先去做闖關基地上的下一步。' + (window.ROUTE.lockText(RT) ? window.ROUTE.lockText(RT) : ''))
+                : '';
 
             const handleOpenChallenge = (challenge) => {
                 setSelectedChallenge(challenge);
                 /* 已經拿到這一關的證書 ⇒ 只選取（右邊顯示本班通關人數），不開遊戲。 */
                 if (isDone(challenge.id)) return;
+                /* 闖關路線到上限 ⇒ 還沒拿到的關卡先不開遊戲（上面的橫幅會說還差什麼） */
+                if (capped) return;
                 const width = 1024;
                 const height = 768;
                 const left = (window.screen.width - width) / 2;
@@ -1725,6 +1754,11 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                                     ⚠️ 通關紀錄暫時無法同步（後端沒開），最近通過的關卡可能還沒出現。系統每分鐘會自動再試，<b>不用重新上傳</b>。
                                                 </div>
                                             )}
+                                            {routeMsg && (
+                                                <div className="mt-2 text-sm font-bold text-indigo-800 bg-indigo-50 border-2 border-indigo-200 rounded-lg px-3 py-2 leading-relaxed">
+                                                    {routeMsg}
+                                                </div>
+                                            )}
                                             {syncNote && syncNote.kind === 'fixed' && (
                                                 <div className="mt-2 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
                                                     ✅ 找到第 {syncNote.ids.join('、')} 關的通關紀錄，已經自動補上
@@ -1746,15 +1780,17 @@ if (window.self !== window.top) { var b = document.getElementById('back-to-hub')
                                               左邊其實沒選任何東西，於是被 alert 擋住。 */}
                                         {/* ★ 十張證書都拿到 ⇒ 反灰、不能按，並換字說明原因。 */}
                                         <button 
-                                            onClick={() => { if (!allDone) setShowCertModal(true); }} 
-                                            disabled={allDone}
-                                            title={allDone ? '十關都已經拿到證書了' : ''}
-                                            className={allDone
+                                            onClick={() => { if (!allDone && !capped) setShowCertModal(true); }} 
+                                            disabled={allDone || capped}
+                                            title={allDone ? '十關都已經拿到證書了' : (capped ? routeMsg : '')}
+                                            className={(allDone || capped)
                                                 ? "w-full sm:w-auto px-5 py-3 rounded-xl font-bold flex items-center justify-center bg-slate-300 text-slate-500 cursor-not-allowed"
                                                 : "w-full sm:w-auto px-5 py-3 rounded-xl font-bold flex items-center justify-center shadow-md transition-all bg-gradient-to-r from-green-500 to-purple-600 hover:from-green-600 hover:to-purple-700 text-white transform hover:scale-105"}
                                         >
                                             {allDone
                                                 ? <><i className="fa-solid fa-circle-check text-xl mr-2"></i> 十關全部通關</>
+                                                : capped
+                                                ? <><i className="fa-solid fa-lock text-xl mr-2"></i> {routeMax === 0 ? 'Stage 2 開放' : '已達本階段 ' + routeMax + ' 題'}</>
                                                 : <><i className="fa-solid fa-award text-xl mr-2"></i> 證書製作</>}
                                         </button>
                                     </div>

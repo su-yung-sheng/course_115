@@ -350,8 +350,27 @@
     } catch (e) { /* 已經鎖過：保留第一份 */ }
   }
 
+  /** 整份進度文件（闖關路線要用：shared/route.js 看程式、運算思維、閱讀的進度）。讀不到回 {}。 */
+  async function docAll() {
+    if (!ready()) return {};
+    return readDoc();
+  }
+
+  /** 名冊這一筆（闖關路線要讀老師的放行旗標 stage_pass）。讀不到回 null。
+      ⚠️ 名冊學生只能讀自己那一筆、只有老師能寫 —— 旗標學生改不了。 */
+  async function roster() {
+    if (!ready()) return null;
+    try {
+      var col = (CFG.COLLECTIONS && CFG.COLLECTIONS.ROSTER) || 'roster';
+      var snap = await fb.getDoc(fb.doc(fb.db, col, SSO.sid()));
+      return snap.exists() ? (snap.data() || {}) : null;
+    } catch (e) { console.error('[REPORT] 讀取名冊失敗', e); return null; }
+  }
+
   global.REPORT = {
     configure: configure,
+    doc: docAll,
+    roster: roster,
     pass: pass,
     unit: unit,
     qstat: qstat,
