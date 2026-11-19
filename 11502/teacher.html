@@ -3078,7 +3078,8 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
       _gdSay('gdModelStatus', '偵測中…（需 Colab 後端已啟動）');
       try {
         const r = await fetch(GD_SERVER + '/api/teacher/models', {
-          method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, GD_H), body: '{}'
+          method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, GD_H),
+          body: JSON.stringify({ idToken: await gdTok() })
         });
         const j = await r.json();
         if (!j.ok) throw new Error(j.error || '偵測失敗');
@@ -3127,6 +3128,14 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
     // ===== 與 Colab 後端溝通（需先在 Colab 執行 shared/backend.ipynb）=====
     const GD_SERVER = window.CONFIG.SERVER_URL;                 // 設定集中在 config.js
     const GD_H = { 'ngrok-skip-browser-warning': 'true' };
+    /* ★ 下學期的新後端（11502/backend.ipynb）：試評、模型清單、建議規則只給老師用（會花 AI 額度），
+         所以每次都附上老師的 Google 登入憑證（idToken 欄位）。
+       ⚠️ 放在表單／JSON 欄位、不放 Authorization 標頭：上學期的後端 CORS 不收那個標頭，
+          加了的話一月以前教師端這幾個功能會整個連不上。上學期的後端會直接忽略這個欄位。 */
+    async function gdTok() {
+      try { const u = extAuth.currentUser; return (u && u.email) ? await u.getIdToken() : ''; }
+      catch (e) { return ''; }
+    }
 
     // ===== 取消通關（老師用；**刻意不做成按鈕**）=====
     /* ⚠️⚠️ 這會動到成績。和「重算星星」一樣不放在畫面上 ——
@@ -3157,7 +3166,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         method: 'POST',
         headers: Object.assign({ 'Content-Type': 'application/json' }, GD_H),
         body: JSON.stringify({ student_id: sid, challenge_id: cid,
-                               reason: reason, term: window.CONFIG.TERM })
+                               reason: reason, term: window.CONFIG.TERM, idToken: await gdTok() })
       });
       const j = await r.json();
       // ★ 兩份分開印：只成功一份是最危險的狀態，一定要看得出是哪一份。
@@ -3176,10 +3185,12 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
        用法（主控台）： await setBadgeCheck(false)
        ⚠️ 重開 Colab 會回到「開啟」。 */
     async function setBadgeCheck(on) {
-      const r = await fetch(GD_SERVER + '/api/teacher/badge-check', {
+      /* ⚠️ 徽章檢查在 OCR 那台（OCR_SERVER_URL）—— 打到批改那台的話開關不會生效，而且沒有任何徵兆。 */
+      const ocrBase = (window.CONFIG.OCR_SERVER_URL || '').trim() || GD_SERVER;
+      const r = await fetch(ocrBase + '/api/teacher/badge-check', {
         method: 'POST',
         headers: Object.assign({ 'Content-Type': 'application/json' }, GD_H),
-        body: JSON.stringify({ on: !!on })
+        body: JSON.stringify({ on: !!on, idToken: await gdTok() })
       });
       const j = await r.json();
       console.log(j.on ? '✅ 徽章形狀檢查：開啟' : '⚠️ 徽章形狀檢查：已關閉（重開 Colab 會自動恢復）');
@@ -3194,7 +3205,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
     }
     // 把 .sb3 轉成 AI 看得懂的虛擬碼
     async function _gdConvert(file) {
-      const fd = new FormData(); fd.append('file', file);
+      const fd = new FormData(); fd.append('file', file); fd.append('idToken', await gdTok());
       const r = await fetch(GD_SERVER + '/api/teacher/convert_sb3', { method: 'POST', headers: GD_H, body: fd });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || '解析 .sb3 失敗');
@@ -3215,7 +3226,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         const r = await fetch(GD_SERVER + '/api/teacher/suggest_rules', {
           method: 'POST',
           headers: Object.assign({ 'Content-Type': 'application/json' }, GD_H),
-          body: JSON.stringify({ clean_code: code })
+          body: JSON.stringify({ clean_code: code, idToken: await gdTok() })
         });
         const j = await r.json();
         if (!j.ok) throw new Error(j.error || '生成失敗');
@@ -3262,6 +3273,7 @@ controlHTML = `<span class="font-bold text-yellow-500 text-lg">⭐ ${currentStar
         fd.append('file', f);
         fd.append('overrides', JSON.stringify(overrides));
         fd.append('term', '11502');   // 共用後端：不指定會用上學期(11501)的批改標準
+        fd.append('idToken', await gdTok());
         const r = await fetch(GD_SERVER + '/api/teacher/test', { method: 'POST', headers: GD_H, body: fd });
         const j = await r.json();
         if (!j.ok) throw new Error(j.error || '試評失敗');

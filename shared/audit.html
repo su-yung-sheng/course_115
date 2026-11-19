@@ -125,6 +125,8 @@ async function loadAll() {
   state.quiz = AUDIT.quiz(state.progress);
   state.ver = AUDIT.verified(state.progress);
   state.vid = AUDIT.vidShort(state.progress, window.GRADING);
+  state.sim = AUDIT.simOdd ? AUDIT.simOdd(state.progress) : [];   // ⑥ 模擬器通關（下學期）
+  state.hasSim = Object.keys(state.progress || {}).some(k => (((state.progress[k] || {}).scratchVerified) || {}).sim);
   state.busy = '';
 }
 
@@ -296,6 +298,29 @@ function rebuildBox() {
     </section>`;
 }
 
+/* ⑥ 模擬器通關的過程很不尋常（下學期，2026-11-18）。沒有任何模擬器紀錄的學期（上學期）不顯示這一區。 */
+function simBox() {
+  if (!state.hasSim) return '';
+  const list = (state.sim || []).slice().sort(bySeat);
+  return `<section class="bg-white rounded-2xl p-5 shadow-sm mt-5">
+      <h2 class="font-black text-lg mb-1">⑥ 模擬器通關的過程不尋常 <span class="text-slate-400 text-sm font-bold">${list.length} 筆</span></h2>
+      <p class="text-xs text-slate-400 mb-3 leading-relaxed">
+        模擬器拼對＝通關（2⭐）。後端會重新判定、也確認是本人，但擋不住「照著虛擬碼自己組請求送出答案」。
+        這裡列出一次都沒按「執行」就拼對、或不到 ${(window.AUDIT && AUDIT.SIM_FAST_SECS) || 20} 秒就拼對的。<br>
+        ⚠️ 只是提醒：手很快、或在別台電腦先拼過一次的學生也會出現在這裡。請你看過再決定。</p>
+      ${list.length
+        ? `<div class="overflow-x-auto"><table class="w-full text-sm">
+            <thead class="text-left text-slate-400 text-xs"><tr>
+              <th class="px-3 py-2">班級</th><th class="px-3 py-2">座號</th><th class="px-3 py-2">姓名</th>
+              <th class="px-3 py-2">關卡</th><th class="px-3 py-2">時間</th><th class="px-3 py-2">說明</th></tr></thead>
+            <tbody>${list.map(f => row(f.sid,
+              `<td class="px-3 py-2 whitespace-nowrap">${esc(f.unit)} <span class="text-slate-400 text-xs">${esc(UNIT_TITLE[f.unit] || '')}</span></td>
+               <td class="px-3 py-2 whitespace-nowrap text-slate-500">${esc(when(f.at))}</td>`,
+              f.why + `（檢查 ${f.tries} 次、執行 ${f.runs} 次、${f.secs} 秒）`)).join('')}</tbody></table></div>`
+        : `<p class="text-emerald-700 text-sm">✅ 沒有。每一筆模擬器通關都有正常的拼圖過程。</p>`}
+    </section>`;
+}
+
 function render() {
   const app = el('app');
   if (!state.who) {
@@ -377,6 +402,7 @@ function render() {
         : `<p class="text-emerald-700 text-sm">✅ 沒有。每一筆錄影加分，那一關程式都有 3⭐。</p>`}
     </section>
 
+    ${simBox()}
     ${verBox()}
     ${rebuildBox()}`;
 }

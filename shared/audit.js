@@ -194,8 +194,35 @@
     return out;
   }
 
+  /**
+   * ⑥ 模擬器通關的過程很不尋常（下學期，老師 2026-11-18）
+   * ★ 模擬器拼對＝通關，後端會重新判定、也確認是本人 —— 但擋不住「照著虛擬碼自己組請求送出答案」。
+   *   後端記下了拼對時的過程（檢查幾次、執行幾次、花幾秒），這裡列出不像人在拼的：
+   *     · 一次都沒按過「執行」就拼對（正常的學生會先執行看看小貓怎麼動）
+   *     · 從打開到拼對不到 SIM_FAST_SECS 秒
+   * ⚠️ 只列出來給老師看，不自動扣分：手很快、或在別台電腦先拼過一次的學生也可能出現在這裡。
+   * 回傳 [{ sid, unit, at, tries, runs, secs, why }]
+   */
+  var SIM_FAST_SECS = 20;
+  function simOdd(progressById) {
+    var out = [];
+    Object.keys(progressById || {}).forEach(function (sid) {
+      var sim = (((progressById[sid] || {}).scratchVerified) || {}).sim || {};
+      Object.keys(sim).forEach(function (unit) {
+        var r = sim[unit] || {}, why = [];
+        var runs = Number(r.runs) || 0, secs = Number(r.secs) || 0, tries = Number(r.tries) || 0;
+        if (!runs) why.push('一次都沒按「執行」就拼對');
+        if (secs < SIM_FAST_SECS) why.push('從打開到拼對只花 ' + secs + ' 秒');
+        if (why.length) out.push({ sid: sid, unit: unit, at: Number(r.at) || 0, tries: tries, runs: runs, secs: secs, why: why.join('、') });
+      });
+    });
+    return out;
+  }
+
   global.AUDIT = {
     VERSION: VERSION,
+    simOdd: simOdd,
+    SIM_FAST_SECS: SIM_FAST_SECS,
     vidShort: vidShort,
     TRACE_SINCE: TRACE_SINCE,
     unitOfSubmission: unitOfSubmission,

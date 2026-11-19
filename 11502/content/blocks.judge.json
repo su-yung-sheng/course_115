@@ -1,0 +1,1353 @@
+{
+ "note": "由 shared/tools/export-sim-judge.js 產生，不要手改",
+ "defs": {
+  "arg.param": {
+   "shape": "reporter",
+   "args": [
+    "邊長"
+   ],
+   "idArgs": [
+    0
+   ],
+   "idNs": [
+    "param"
+   ]
+  },
+  "control.clone": {
+   "shape": "stack"
+  },
+  "control.delclone": {
+   "shape": "stack"
+  },
+  "control.forever": {
+   "shape": "c"
+  },
+  "control.if": {
+   "shape": "c",
+   "args": [
+    ""
+   ]
+  },
+  "control.ifelse": {
+   "shape": "c2",
+   "args": [
+    ""
+   ]
+  },
+  "control.iffound": {
+   "shape": "c2"
+  },
+  "control.iffoundmid": {
+   "shape": "c2"
+  },
+  "control.ifless": {
+   "shape": "c",
+   "args": [
+    1,
+    2
+   ]
+  },
+  "control.ifmid": {
+   "shape": "c2"
+  },
+  "control.ifover": {
+   "shape": "c2"
+  },
+  "control.ifsmaller": {
+   "shape": "c"
+  },
+  "control.repeat": {
+   "shape": "c",
+   "args": [
+    10
+   ]
+  },
+  "control.repeatlen": {
+   "shape": "c"
+  },
+  "control.until": {
+   "shape": "c"
+  },
+  "control.untilempty": {
+   "shape": "c"
+  },
+  "control.untilfound": {
+   "shape": "c"
+  },
+  "control.untilhalf": {
+   "shape": "c"
+  },
+  "control.untilspot": {
+   "shape": "c"
+  },
+  "control.wait": {
+   "shape": "stack",
+   "args": [
+    1
+   ]
+  },
+  "control.whenclone": {
+   "shape": "hat"
+  },
+  "data.changevar": {
+   "shape": "stack",
+   "args": [
+    "我的變數",
+    1
+   ],
+   "idArgs": [
+    0
+   ],
+   "idNs": [
+    "var"
+   ]
+  },
+  "data.setvar": {
+   "shape": "stack",
+   "args": [
+    "我的變數",
+    0
+   ],
+   "idArgs": [
+    0
+   ],
+   "idNs": [
+    "var"
+   ]
+  },
+  "data.var": {
+   "shape": "reporter",
+   "args": [
+    "我的變數"
+   ],
+   "idArgs": [
+    0
+   ],
+   "idNs": [
+    "var"
+   ]
+  },
+  "events.whenclicked": {
+   "shape": "hat"
+  },
+  "events.whenflag": {
+   "shape": "hat"
+  },
+  "list.changeidx": {
+   "shape": "stack",
+   "args": [
+    "位置",
+    1
+   ],
+   "idArgs": [
+    0
+   ],
+   "idNs": [
+    "var"
+   ]
+  },
+  "list.delfirst": {
+   "shape": "stack"
+  },
+  "list.insertcard": {
+   "shape": "stack"
+  },
+  "list.insertfirst": {
+   "shape": "stack"
+  },
+  "list.say": {
+   "shape": "stack",
+   "args": [
+    1
+   ]
+  },
+  "list.setidx": {
+   "shape": "stack",
+   "args": [
+    "位置",
+    1
+   ],
+   "idArgs": [
+    0
+   ],
+   "idNs": [
+    "var"
+   ]
+  },
+  "list.setlen": {
+   "shape": "stack",
+   "args": [
+    "結束位置"
+   ],
+   "idArgs": [
+    0
+   ],
+   "idNs": [
+    "var"
+   ]
+  },
+  "list.setmid": {
+   "shape": "stack"
+  },
+  "list.setmin": {
+   "shape": "stack"
+  },
+  "list.settarget": {
+   "shape": "stack"
+  },
+  "list.swap": {
+   "shape": "stack",
+   "args": [
+    1,
+    2
+   ]
+  },
+  "list.takenext": {
+   "shape": "stack"
+  },
+  "list.tohi": {
+   "shape": "stack"
+  },
+  "list.tolo": {
+   "shape": "stack"
+  },
+  "looks.change": {
+   "shape": "stack",
+   "args": [
+    10
+   ]
+  },
+  "looks.costume": {
+   "shape": "stack",
+   "args": [
+    "造型1"
+   ]
+  },
+  "looks.hide": {
+   "shape": "stack"
+  },
+  "looks.next": {
+   "shape": "stack"
+  },
+  "looks.say": {
+   "shape": "stack",
+   "args": [
+    "Hello!"
+   ]
+  },
+  "looks.saycompare": {
+   "shape": "stack"
+  },
+  "looks.saycomparemid": {
+   "shape": "stack"
+  },
+  "looks.sayfor": {
+   "shape": "stack",
+   "args": [
+    "Hello!",
+    2
+   ]
+  },
+  "looks.sayfound": {
+   "shape": "stack"
+  },
+  "looks.sayfoundmid": {
+   "shape": "stack"
+  },
+  "looks.saynone": {
+   "shape": "stack"
+  },
+  "looks.saytake": {
+   "shape": "stack"
+  },
+  "looks.show": {
+   "shape": "stack"
+  },
+  "motion.changex": {
+   "shape": "stack",
+   "args": [
+    10
+   ]
+  },
+  "motion.changey": {
+   "shape": "stack",
+   "args": [
+    10
+   ]
+  },
+  "motion.goto": {
+   "shape": "stack",
+   "args": [
+    0,
+    0
+   ]
+  },
+  "motion.gotomouse": {
+   "shape": "stack"
+  },
+  "motion.gotorandom": {
+   "shape": "stack"
+  },
+  "motion.move": {
+   "shape": "stack",
+   "args": [
+    10
+   ]
+  },
+  "motion.point": {
+   "shape": "stack",
+   "args": [
+    90
+   ]
+  },
+  "motion.setx": {
+   "shape": "stack",
+   "args": [
+    0
+   ]
+  },
+  "motion.sety": {
+   "shape": "stack",
+   "args": [
+    0
+   ]
+  },
+  "motion.turnleft": {
+   "shape": "stack",
+   "args": [
+    15
+   ]
+  },
+  "motion.turnright": {
+   "shape": "stack",
+   "args": [
+    15
+   ]
+  },
+  "my.call": {
+   "shape": "stack",
+   "args": [
+    "畫正方形"
+   ],
+   "idArgs": [
+    0
+   ],
+   "idNs": [
+    "proc"
+   ]
+  },
+  "my.callp": {
+   "shape": "stack",
+   "args": [
+    "畫正方形",
+    50
+   ],
+   "idArgs": [
+    0
+   ],
+   "idNs": [
+    "proc"
+   ]
+  },
+  "my.callp2": {
+   "shape": "stack",
+   "args": [
+    "畫圖形",
+    4,
+    30
+   ],
+   "idArgs": [
+    0
+   ],
+   "idNs": [
+    "proc"
+   ]
+  },
+  "my.define": {
+   "shape": "c",
+   "args": [
+    "畫正方形"
+   ],
+   "idArgs": [
+    0
+   ],
+   "idNs": [
+    "proc"
+   ]
+  },
+  "my.definep": {
+   "shape": "c",
+   "args": [
+    "畫正方形",
+    "邊長"
+   ],
+   "idArgs": [
+    0,
+    1
+   ],
+   "idNs": [
+    "proc",
+    "param"
+   ]
+  },
+  "my.definep2": {
+   "shape": "c",
+   "args": [
+    "畫圖形",
+    "N",
+    "邊長"
+   ],
+   "idArgs": [
+    0,
+    1,
+    2
+   ],
+   "idNs": [
+    "proc",
+    "param",
+    "param"
+   ]
+  },
+  "op.and": {
+   "shape": "reporter",
+   "args": [
+    "",
+    ""
+   ]
+  },
+  "op.div": {
+   "shape": "reporter",
+   "args": [
+    360,
+    4
+   ]
+  },
+  "op.or": {
+   "shape": "reporter",
+   "args": [
+    "",
+    ""
+   ]
+  },
+  "pen.clear": {
+   "shape": "stack"
+  },
+  "pen.color": {
+   "shape": "stack",
+   "args": [
+    "紅"
+   ]
+  },
+  "pen.down": {
+   "shape": "stack"
+  },
+  "pen.up": {
+   "shape": "stack"
+  },
+  "sensing.ask": {
+   "shape": "stack",
+   "args": [
+    "要搜尋的數字是？"
+   ]
+  },
+  "sensing.keydown": {
+   "shape": "reporter",
+   "args": [
+    "空白"
+   ]
+  },
+  "sensing.mousedown": {
+   "shape": "reporter"
+  },
+  "sensing.touchcolor": {
+   "shape": "reporter",
+   "args": [
+    "紅"
+   ]
+  },
+  "sensing.touching": {
+   "shape": "reporter",
+   "args": [
+    "蟲"
+   ]
+  },
+  "sound.play": {
+   "shape": "stack",
+   "args": [
+    "喵"
+   ]
+  }
+ },
+ "levels": {
+  "4-2-1": {
+   "loose": [],
+   "sprites": [
+    {
+     "goal": [
+      {
+       "id": "my.define",
+       "args": [
+        "畫正方形"
+       ],
+       "children": [
+        {
+         "id": "pen.down"
+        },
+        {
+         "id": "control.repeat",
+         "args": [
+          4
+         ],
+         "children": [
+          {
+           "id": "motion.move",
+           "args": [
+            30
+           ]
+          },
+          {
+           "id": "motion.turnright",
+           "args": [
+            90
+           ]
+          }
+         ]
+        },
+        {
+         "id": "pen.up"
+        }
+       ]
+      },
+      {
+       "id": "events.whenflag"
+      },
+      {
+       "id": "pen.clear"
+      },
+      {
+       "id": "motion.goto",
+       "args": [
+        -140,
+        -20
+       ]
+      },
+      {
+       "id": "control.repeat",
+       "args": [
+        6
+       ],
+       "children": [
+        {
+         "id": "my.call",
+         "args": [
+          "畫正方形"
+         ]
+        },
+        {
+         "id": "motion.move",
+         "args": [
+          60
+         ]
+        }
+       ]
+      }
+     ],
+     "alts": [
+      {
+       "goal": [
+        {
+         "id": "my.define",
+         "args": [
+          "畫正方形"
+         ],
+         "children": [
+          {
+           "id": "control.repeat",
+           "args": [
+            4
+           ],
+           "children": [
+            {
+             "id": "pen.down"
+            },
+            {
+             "id": "motion.move",
+             "args": [
+              30
+             ]
+            },
+            {
+             "id": "motion.turnright",
+             "args": [
+              90
+             ]
+            },
+            {
+             "id": "pen.up"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "events.whenflag"
+        },
+        {
+         "id": "pen.clear"
+        },
+        {
+         "id": "motion.goto",
+         "args": [
+          -140,
+          -20
+         ]
+        },
+        {
+         "id": "control.repeat",
+         "args": [
+          6
+         ],
+         "children": [
+          {
+           "id": "my.call",
+           "args": [
+            "畫正方形"
+           ]
+          },
+          {
+           "id": "motion.move",
+           "args": [
+            60
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "4-2-2": {
+   "loose": [],
+   "sprites": [
+    {
+     "goal": [
+      {
+       "id": "my.definep",
+       "args": [
+        "畫正方形",
+        "邊長"
+       ],
+       "children": [
+        {
+         "id": "pen.down"
+        },
+        {
+         "id": "control.repeat",
+         "args": [
+          4
+         ],
+         "children": [
+          {
+           "id": "motion.move",
+           "args": [
+            {
+             "id": "arg.param",
+             "args": [
+              "邊長"
+             ]
+            }
+           ]
+          },
+          {
+           "id": "motion.turnright",
+           "args": [
+            90
+           ]
+          },
+          {
+           "id": "control.wait",
+           "args": [
+            0.2
+           ]
+          }
+         ]
+        },
+        {
+         "id": "pen.up"
+        }
+       ]
+      },
+      {
+       "id": "events.whenflag"
+      },
+      {
+       "id": "pen.clear"
+      },
+      {
+       "id": "motion.goto",
+       "args": [
+        -120,
+        80
+       ]
+      },
+      {
+       "id": "my.callp",
+       "args": [
+        "畫正方形",
+        50
+       ]
+      },
+      {
+       "id": "my.callp",
+       "args": [
+        "畫正方形",
+        100
+       ]
+      },
+      {
+       "id": "my.callp",
+       "args": [
+        "畫正方形",
+        150
+       ]
+      },
+      {
+       "id": "my.callp",
+       "args": [
+        "畫正方形",
+        200
+       ]
+      }
+     ],
+     "alts": [
+      {
+       "goal": [
+        {
+         "id": "my.definep",
+         "args": [
+          "畫正方形",
+          "邊長"
+         ],
+         "children": [
+          {
+           "id": "control.repeat",
+           "args": [
+            4
+           ],
+           "children": [
+            {
+             "id": "pen.down"
+            },
+            {
+             "id": "motion.move",
+             "args": [
+              {
+               "id": "arg.param",
+               "args": [
+                "邊長"
+               ]
+              }
+             ]
+            },
+            {
+             "id": "motion.turnright",
+             "args": [
+              90
+             ]
+            },
+            {
+             "id": "control.wait",
+             "args": [
+              0.2
+             ]
+            },
+            {
+             "id": "pen.up"
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "events.whenflag"
+        },
+        {
+         "id": "pen.clear"
+        },
+        {
+         "id": "motion.goto",
+         "args": [
+          -120,
+          80
+         ]
+        },
+        {
+         "id": "my.callp",
+         "args": [
+          "畫正方形",
+          50
+         ]
+        },
+        {
+         "id": "my.callp",
+         "args": [
+          "畫正方形",
+          100
+         ]
+        },
+        {
+         "id": "my.callp",
+         "args": [
+          "畫正方形",
+          150
+         ]
+        },
+        {
+         "id": "my.callp",
+         "args": [
+          "畫正方形",
+          200
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "4-2-3": {
+   "loose": [],
+   "sprites": [
+    {
+     "goal": [
+      {
+       "id": "my.definep2",
+       "args": [
+        "畫圖形",
+        "N",
+        "邊長"
+       ],
+       "children": [
+        {
+         "id": "pen.down"
+        },
+        {
+         "id": "control.repeat",
+         "args": [
+          {
+           "id": "arg.param",
+           "args": [
+            "N"
+           ]
+          }
+         ],
+         "children": [
+          {
+           "id": "motion.move",
+           "args": [
+            {
+             "id": "arg.param",
+             "args": [
+              "邊長"
+             ]
+            }
+           ]
+          },
+          {
+           "id": "motion.turnright",
+           "args": [
+            {
+             "id": "op.div",
+             "args": [
+              360,
+              {
+               "id": "arg.param",
+               "args": [
+                "N"
+               ]
+              }
+             ]
+            }
+           ]
+          }
+         ]
+        },
+        {
+         "id": "pen.up"
+        }
+       ]
+      },
+      {
+       "id": "events.whenflag"
+      },
+      {
+       "id": "pen.clear"
+      },
+      {
+       "id": "motion.point",
+       "args": [
+        90
+       ]
+      },
+      {
+       "id": "motion.goto",
+       "args": [
+        -180,
+        120
+       ]
+      },
+      {
+       "id": "control.repeat",
+       "args": [
+        6
+       ],
+       "children": [
+        {
+         "id": "my.callp2",
+         "args": [
+          "畫圖形",
+          4,
+          30
+         ]
+        },
+        {
+         "id": "motion.move",
+         "args": [
+          60
+         ]
+        }
+       ]
+      },
+      {
+       "id": "motion.setx",
+       "args": [
+        -180
+       ]
+      },
+      {
+       "id": "motion.changey",
+       "args": [
+        -80
+       ]
+      },
+      {
+       "id": "control.repeat",
+       "args": [
+        6
+       ],
+       "children": [
+        {
+         "id": "my.callp2",
+         "args": [
+          "畫圖形",
+          6,
+          40
+         ]
+        },
+        {
+         "id": "motion.move",
+         "args": [
+          60
+         ]
+        }
+       ]
+      },
+      {
+       "id": "motion.setx",
+       "args": [
+        -180
+       ]
+      },
+      {
+       "id": "motion.changey",
+       "args": [
+        -80
+       ]
+      },
+      {
+       "id": "control.repeat",
+       "args": [
+        6
+       ],
+       "children": [
+        {
+         "id": "my.callp2",
+         "args": [
+          "畫圖形",
+          10,
+          40
+         ]
+        },
+        {
+         "id": "motion.move",
+         "args": [
+          60
+         ]
+        }
+       ]
+      }
+     ],
+     "alts": []
+    }
+   ]
+  },
+  "4-3-1": {
+   "loose": [],
+   "sprites": [
+    {
+     "goal": [
+      {
+       "id": "my.define",
+       "args": [
+        "產生蟲"
+       ],
+       "children": [
+        {
+         "id": "motion.gotorandom"
+        },
+        {
+         "id": "control.clone"
+        }
+       ]
+      },
+      {
+       "id": "events.whenflag"
+      },
+      {
+       "id": "looks.show"
+      },
+      {
+       "id": "control.repeat",
+       "args": [
+        10
+       ],
+       "children": [
+        {
+         "id": "my.call",
+         "args": [
+          "產生蟲"
+         ]
+        }
+       ]
+      },
+      {
+       "id": "looks.hide"
+      },
+      {
+       "id": "control.whenclone"
+      },
+      {
+       "id": "control.forever",
+       "children": [
+        {
+         "id": "control.if",
+         "args": [
+          {
+           "id": "op.and",
+           "args": [
+            {
+             "id": "sensing.touchcolor",
+             "args": [
+              "紅"
+             ]
+            },
+            {
+             "id": "sensing.mousedown"
+            }
+           ]
+          }
+         ],
+         "children": [
+          {
+           "id": "my.call",
+           "args": [
+            "產生蟲"
+           ]
+          },
+          {
+           "id": "control.delclone"
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "alts": []
+    },
+    {
+     "goal": [
+      {
+       "id": "events.whenflag"
+      },
+      {
+       "id": "control.forever",
+       "children": [
+        {
+         "id": "motion.gotomouse"
+        },
+        {
+         "id": "control.ifelse",
+         "args": [
+          {
+           "id": "sensing.mousedown"
+          }
+         ],
+         "children": [
+          {
+           "id": "looks.costume",
+           "args": [
+            "小鳥彎腰"
+           ]
+          }
+         ],
+         "children2": [
+          {
+           "id": "looks.costume",
+           "args": [
+            "小鳥站立"
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "alts": []
+    }
+   ]
+  },
+  "6-2-1": {
+   "loose": [],
+   "sprites": [
+    {
+     "goal": [
+      {
+       "id": "my.define",
+       "args": [
+        "找出最小值位置"
+       ],
+       "children": [
+        {
+         "id": "list.setidx",
+         "args": [
+          "資料位置",
+          1
+         ]
+        },
+        {
+         "id": "list.setidx",
+         "args": [
+          "最小值位置",
+          1
+         ]
+        },
+        {
+         "id": "control.repeatlen",
+         "children": [
+          {
+           "id": "control.ifsmaller",
+           "children": [
+            {
+             "id": "list.setmin"
+            }
+           ]
+          },
+          {
+           "id": "list.changeidx",
+           "args": [
+            "資料位置",
+            1
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ],
+     "alts": []
+    }
+   ]
+  },
+  "6-2-2": {
+   "loose": [],
+   "sprites": [
+    {
+     "goal": [
+      {
+       "id": "events.whenclicked"
+      },
+      {
+       "id": "control.repeat",
+       "args": [
+        5
+       ],
+       "children": [
+        {
+         "id": "looks.saytake"
+        },
+        {
+         "id": "list.setidx",
+         "args": [
+          "插入位置",
+          1
+         ]
+        },
+        {
+         "id": "control.untilspot",
+         "children": [
+          {
+           "id": "list.changeidx",
+           "args": [
+            "插入位置",
+            1
+           ]
+          }
+         ]
+        },
+        {
+         "id": "list.insertfirst"
+        },
+        {
+         "id": "list.delfirst"
+        }
+       ]
+      }
+     ],
+     "alts": []
+    }
+   ]
+  },
+  "6-3-1": {
+   "loose": [],
+   "sprites": [
+    {
+     "goal": [
+      {
+       "id": "events.whenclicked"
+      },
+      {
+       "id": "sensing.ask",
+       "args": [
+        "請輸入要搜尋的數字（1-100）："
+       ]
+      },
+      {
+       "id": "list.setidx",
+       "args": [
+        "位置",
+        1
+       ]
+      },
+      {
+       "id": "control.untilfound",
+       "children": [
+        {
+         "id": "looks.saycompare"
+        },
+        {
+         "id": "list.changeidx",
+         "args": [
+          "位置",
+          1
+         ]
+        }
+       ]
+      },
+      {
+       "id": "control.ifover",
+       "children": [
+        {
+         "id": "looks.saynone"
+        }
+       ],
+       "children2": [
+        {
+         "id": "looks.sayfound"
+        }
+       ]
+      }
+     ],
+     "alts": []
+    }
+   ]
+  },
+  "6-3-2": {
+   "loose": [],
+   "sprites": [
+    {
+     "goal": [
+      {
+       "id": "events.whenclicked"
+      },
+      {
+       "id": "sensing.ask",
+       "args": [
+        "請輸入要搜尋的數字（1-100）："
+       ]
+      },
+      {
+       "id": "list.setidx",
+       "args": [
+        "開始位置",
+        1
+       ]
+      },
+      {
+       "id": "list.setlen",
+       "args": [
+        "結束位置"
+       ]
+      },
+      {
+       "id": "list.setidx",
+       "args": [
+        "位置",
+        0
+       ]
+      },
+      {
+       "id": "control.untilhalf",
+       "children": [
+        {
+         "id": "list.setmid"
+        },
+        {
+         "id": "looks.saycomparemid"
+        },
+        {
+         "id": "control.ifmid",
+         "children": [
+          {
+           "id": "list.tolo"
+          }
+         ],
+         "children2": [
+          {
+           "id": "list.tohi"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "id": "control.iffoundmid",
+       "children": [
+        {
+         "id": "looks.sayfoundmid"
+        }
+       ],
+       "children2": [
+        {
+         "id": "looks.saynone"
+        }
+       ]
+      }
+     ],
+     "alts": []
+    }
+   ]
+  }
+ }
+}

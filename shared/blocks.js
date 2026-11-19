@@ -805,6 +805,8 @@
          留兩條路徑的話，總有一條長期沒人走，而沒人走的那條遲早壞掉。
        ⚠️ 函式區要不要出現，是**課程作者**在 sprite 上指定的（hasDefine）。
           不去看那個角色的 goal 裡有沒有定義積木 —— 那等於把答案畫在畫面上。 */
+    /* 過程紀錄（下學期模擬器通關要送給後端，2026-11-18）：按了幾次「檢查答案」、幾次「執行」、從打開到拼對幾秒 */
+    var stats = { tries: 0, runs: 0, t0: Date.now() };
     var SPRITES = (opts.sprites && opts.sprites.length) ? opts.sprites
                 : [{ name: '', goal: goal, hasDefine: hasDefine,
                      alts: opts.alts, pseudo: opts.pseudo }];
@@ -1334,6 +1336,7 @@
     var running = false;
     function run() {
       if (running) return;
+      stats.runs++;
       running = true; runBtn.disabled = true;
       resetStage();
       var steps = [];
@@ -1505,6 +1508,7 @@
     }
 
     function check() {
+      stats.tries++;
       if (!whole().length) { say('程式區還是空的，先從左邊拖幾塊積木過來。'); return; }
 
       /* ★ 一個角色一份判定。
@@ -1531,7 +1535,11 @@
             ? '✅ 這樣也對！' + notes.join(' ')
             : ('✅ 組對了！' + (passed ? '' : ' 這一關通過。')),
           true);
-      if (!passed) { passed = true; if (opts.onPass) opts.onPass(plain(whole())); }
+      /* 第二個參數：每個角色各一份程式（後端重新判定要用，見 judge）。
+         第一個參數照舊（全部角色串起來），舊的呼叫端不受影響。 */
+      /* 第三個參數：過程紀錄（檢查幾次、執行幾次、花幾秒）—— 後端記下來，教師端可疑紀錄頁用。 */
+      if (!passed) { passed = true; if (opts.onPass) opts.onPass(plain(whole()), SP.map(function (sp) { return plain(wholeOf(sp)); }),
+                                                                  { tries: stats.tries, runs: stats.runs, secs: Math.round((Date.now() - stats.t0) / 1000) }); }
     }
     /** 給一句「差在哪」，不要只說錯 —— 學生看到「錯了」只會亂試。
         差別藏在 C 型積木裡面時要一路追進去講（「第 5 塊裡面的第 2 塊」）：
@@ -1608,10 +1616,37 @@
     };
   }
 
+  /**
+   * 不碰畫面的判定：和 mount 裡的 check() 同一套規則（逐角色、參考解答或任一 alts、loose、名字只看對應）。
+   * ★ 2026-11-18：下學期模擬器通關改由後端重新判定（防 F12 假造），
+   *   後端的 Python 版（11502/backend.ipynb 的 sim_judge）必須和這一支**結果一模一樣** ——
+   *   shared/tests/simjudge.test.js 用同一批程式兩邊各判一次對照。
+   * @param level    關卡資料（goal／alts／sprites／loose）
+   * @param programs 每個角色一份 plain 程式，順序同 level.sprites（沒有 sprites 就是一份）
+   */
+  function judge(level, programs) {
+    level = level || {};
+    var sprites = (level.sprites && level.sprites.length) ? level.sprites
+                : [{ goal: level.goal || [], alts: level.alts || [] }];
+    if (!programs || programs.length !== sprites.length) return false;
+    var loose = level.loose || [];
+    // 全部角色都沒有積木＝還沒做（和 check() 一樣是看「全部」，不是逐角色）
+    if (!programs.some(function (p) { return p && p.length; })) return false;
+    for (var k = 0; k < sprites.length; k++) {
+      var p = programs[k] || [];
+      var ts = [sprites[k].goal || []].concat((sprites[k].alts || []).map(function (a) { return a.goal || []; }));
+      var hit = false;
+      for (var i = 0; i < ts.length && !hit; i++) hit = same(p, ts[i], loose);
+      if (!hit) return false;
+    }
+    return true;
+  }
+
   global.BLOCKS = {
     CATS: CATS,
     DEFS: DEFS,
     mount: mount,
+    judge: judge,
     _plain: plain,
     _canon: canon,
     _same: same,

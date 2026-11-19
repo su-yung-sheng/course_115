@@ -490,6 +490,9 @@ async function grade(){
   fd.append('term', window.CONFIG.TERM);        // 共用後端：批改結果寫回本學期的集合
   // ★ Scratch 星星切換第 ③步：開關打開時請後端順便寫星星（見 shared/grading.js）
   fd.append('trust', (window.GRADING && GRADING.trustBackendScratch()) ? '1' : '0');
+  /* ★ 下學期的新後端要確認是本人（Google 登入憑證）；上學期的後端會忽略這個欄位。
+     ⚠️ 用表單欄位不用標頭：標頭會觸發 CORS 預檢，上學期的後端不收。 */
+  try { const tk = window.gradeIdToken ? await window.gradeIdToken() : ''; if (tk) fd.append('idToken', tk); } catch (e) {}
   /* ⚠️⚠️ 這個請求原本**沒有任何逾時**：後端當掉或被回收時，fetch 會一直掛著，
      學生看到永遠轉不完的圈圈，而且 gradeBtn 停在 disabled —— 連重試都按不了。
      ★ 運算思維那邊 2026-08-26 就修過同一個坑（/analyze 的 180 秒），
@@ -510,6 +513,9 @@ async function grade(){
          後端沒寫成功（沒有 verified）時照舊自己記 —— 規則鎖上之後那一筆會被擋，
          畫面會顯示「星星記錄失敗」，學生重交一次就好。 */
       const _v = j.result && j.result.verified;
+      /* ★ 下學期：後端回報是「加分制」（bonusMode）⇒ 用加分的講法（見 showBonus）。
+         後端這次沒寫成功（沒有 verified）時走下面原本那條：講「沒記到，再傳一次」。 */
+      if (_v && _v.bonusMode) { await showBonus(_v, chosen, sid, j.result.score); return; }
       const _trust = !!(window.GRADING && GRADING.trustBackendScratch());
       /* ⛔ 2026-09-29（切換第 ④步）：規則鎖上之後，學生頁面**寫不動**星星欄位了。
          開關打開、後端這次卻沒寫成功時，再自己寫一次只會換來一行 permission-denied
@@ -630,6 +636,48 @@ function paintNextStep(rep){
   if(btn) btn.textContent='🔄 改完再傳一次，挑戰 '+(best+1)+' 星';
 }
 
+/* ★ 下學期（11502）：程式拼圖拼對＝通關 2⭐，Scratch 作品是加分（老師 2026-11-18）
+     75 分以上 +1⭐、90 分以上 +2⭐，同一關取最好的一次；拼圖還沒拼對時，加分先記著、拼對才算進星數。
+   ⚠️ 星星只由後端寫（學生頁面寫不動那些欄位），這裡只負責把狀況講清楚。 */
+async function showBonus(v, file, sid, score){
+  const b = Number(v.bonus) || 0, tb = Number(v.thisBonus) || 0;
+  let msg;
+  if (!v.simDone) {
+    msg = b ? '🎁 加分 +' + b + '⭐ 先幫你記著了 —— 回上一步把程式拼圖拼對，這一關通關（2⭐）時會一起算進去。'
+            : '這次沒有加分（75 分以上才 +1⭐）。別忘了：回上一步把程式拼圖拼對，這一關就通關了（2⭐）。';
+  } else if (!b) {
+    msg = '這次沒有加分（75 分以上 +1⭐、90 分以上 +2⭐）。拼圖已經拼對，這一關的通關不受影響 —— 看看下面的建議再挑戰！';
+  } else if (v.improved) {
+    msg = '⭐ 加分 +' + b + '⭐！這一關共 ' + v.star + '⭐，程式設計目前共 ' + v.total + '⭐';
+  } else {
+    msg = '已記錄。這一關之前的加分比較好（+' + b + '⭐），維持 ' + v.star + '⭐；程式設計目前共 ' + v.total + '⭐';
+  }
+  setStatus(msg, b ? '' : 'err');
+  const box = $('nextStep'), txt = $('nextText'), btn = $('againBtn');
+  if (box && txt) {
+    box.style.display = 'block';
+    if (b >= 2) {
+      txt.textContent = '🏆 加分已經拿滿（+2⭐）！可以回關卡列表挑戰下一關。';
+      if (btn) btn.textContent = '🔄 還想再改改看';
+    } else {
+      const need = b >= 1 ? 90 : 75;
+      txt.textContent = (showScore && v.bestScore != null)
+        ? '你目前最好 ' + v.bestScore + ' 分＝加分 +' + b + '⭐。' + need + ' 分以上就有 +' + (b + 1) + '⭐ —— '
+          + '看上面「可以再加強的地方」，改完再傳一次（加分只會變好不會變差）。'
+        : '還可以再挑戰更多加分。看上面「可以再加強的地方」，改完再傳一次（加分只會變好不會變差）。';
+      if (btn) btn.textContent = '🔄 改完再傳一次，挑戰 +' + (b + 1) + '⭐';
+    }
+  }
+  // 有加分、而且分數比上次高才備份（每人每關只留一份最好的作品，和上學期同一個規則）
+  if (tb >= 1 && v.scoreImproved) {
+    const prevMsg = $('status').textContent;
+    setStatus(prevMsg + '　📤 作品備份中…');
+    const bk = await backupWork(file, sid, UNIT, score);
+    setStatus(prevMsg + (bk.url ? '　📦 作品已備份到雲端硬碟'
+                                : '　⚠️ 作品備份失敗：' + bk.err + '（加分已記錄，請截圖告訴老師）'), bk.url ? '' : 'err');
+  }
+}
+
 function fill(sec,txt,val){
   const empty=!val||val==='無';
   $(sec).style.display=empty?'none':'block';
@@ -656,6 +704,8 @@ function reset(){
   // AUTH.attachSession()：已經有身分（例如剛在闖關基地用學校 Google 帳號登入）
   //    就不要再匿名登入，否則會把 Google 身分蓋掉，安全規則的 isOwner() 失效。
   AUTH.attachSession(auth, signInAnonymously, onAuthStateChanged);
+  // 下學期的新後端要確認是本人：學校 Google 帳號登入才有憑證（匿名登入沒有 email ⇒ 不送）
+  window.gradeIdToken = () => (auth.currentUser && auth.currentUser.email) ? auth.currentUser.getIdToken() : Promise.resolve('');
 
   // 查名冊（姓名讓學生確認沒打錯學號；班級座號給作品備份用）
   window.lookupStudent = async function (sid) {

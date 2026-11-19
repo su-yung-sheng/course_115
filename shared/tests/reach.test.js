@@ -95,6 +95,11 @@ const KNOWN = {
        node shared/tools/build-read.js --write
      讀 _textbook/read-src/（不進 repo 的明碼原稿）→ 寫 11501/content/ethics.read.js、11502/content/social.read.js */
   'shared/tools/build-read.js': '命令列工具（產生段落閱讀模式題庫），不是網頁',
+  /* 2026-11-18：下學期模擬器通關改由後端重新判定。改了 11502 的拼圖題目之後要重跑
+       node shared/tools/export-sim-judge.js --write
+     產生 11502/content/blocks.judge.json 給後端抓（simjudge.test.js 會擋沒同步） */
+  'shared/tools/export-sim-judge.js': '命令列工具（匯出模擬器判定資料給下學期後端），不是網頁',
+  '11502/backend.ipynb': 'Colab 下學期專用後端（建置中），不是網頁',
   'shared/blocks-demo.html': '積木模擬器的開發用試玩頁，只有改 blocks.js 時自己開',
   'shared/ai-lab.html': 'AI 引導的調校台，改提示詞時自己開；學生端不該連得到',
   '11502/content/flowchart.js': '刻意留的空檔：下學期沒有逐關流程圖，' +

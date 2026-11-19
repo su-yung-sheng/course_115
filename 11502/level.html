@@ -83,6 +83,7 @@
 <script src="../shared/guard.js"></script>
 <script src="../shared/grading.js"></script>
 <script src="../shared/route.js"></script>   <!-- 闖關路線：程式 5、8 關要先過 Stage 的「先做」 -->
+<script src="../shared/simsubmit.js"></script>   <!-- 模擬器拼對 → 送後端確認（拼對＝通關 2⭐，2026-11-18） -->
 <script src="../shared/readhold.js"></script>
 <script src="../shared/blocks.js"></script>
 <script src="../shared/derive.js"></script>
@@ -814,7 +815,9 @@ function draw(s) {
             等於一邊說「你自己想」、一邊把答案寫在旁邊。 */
       hide: lv.mustDerive,
       hint: lv.task, steps: lv.build,
-      onPass: () => { markPre(); advance(); }
+      /* ★ 2026-11-18：拼對＝通關（2⭐），但星星由後端確認後才寫（不接受 F12 假造）。
+         programs：每個角色一份程式；log：檢查幾次、執行幾次、花幾秒。 */
+      onPass: (all, programs, log) => { markPre(); simSubmit(unit.id, programs, log); advance(); }
     });
     return;
   }
@@ -911,10 +914,11 @@ function draw(s) {
   // 實作測試：共用的自評站
   markPre();
   body.innerHTML = `
-    <h2 class="text-xl font-black mb-2">🚀 動手做，然後上傳</h2>
+    <h2 class="text-xl font-black mb-2">🚀 加分挑戰：在 Scratch 做一次</h2>
     <p class="text-sm text-slate-600 leading-relaxed mb-4">
-      在 Scratch 做出來，「檔案 → 儲存到你的電腦」會得到 <code class="bg-slate-100 px-1 rounded">.sb3</code>，
-      上傳給 AI 助教批改。<span class="hl">75 分以上才算通關</span>。
+      <b>上一步程式拼圖拼對，這一關就已經通關了（2⭐）。</b>想再加分：在 Scratch 做出來，
+      「檔案 → 儲存到你的電腦」會得到 <code class="bg-slate-100 px-1 rounded">.sb3</code>，上傳給 AI 助教批改 ——
+      <span class="hl">75 分以上 +1⭐、90 分以上 +2⭐</span>。
     </p>
     <iframe id="gf" class="w-full block bg-white rounded-xl border border-slate-200"
             style="height:560px;border:0;overflow:hidden" scrolling="no" title="Scratch 作品評分"></iframe>`;
@@ -974,6 +978,38 @@ function sid() {
 }
 /* 思考關卡做完 → 記起來，下次不必重做（存失敗不擋人） */
 let preSaved = false;
+/* ── 模擬器通關：送後端確認，結果用畫面下方的提示條講（換步驟也看得到）── */
+function simToast(msg, kind) {
+  let t = document.getElementById('sim-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'sim-toast';
+    t.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9998;max-width:min(92vw,640px);' +
+                      'padding:12px 16px;border-radius:14px;font-weight:700;font-size:14px;line-height:1.6;box-shadow:0 10px 25px rgba(0,0,0,.18)';
+    document.body.appendChild(t);
+  }
+  const C = { wait: ['#eef2ff', '#3730a3', '#c7d2fe'], ok: ['#ecfdf5', '#065f46', '#6ee7b7'],
+              warn: ['#fffbeb', '#92400e', '#fcd34d'], err: ['#fff1f2', '#9f1239', '#fda4af'] }[kind || 'wait'];
+  t.style.background = C[0]; t.style.color = C[1]; t.style.border = '2px solid ' + C[2];
+  t.textContent = msg;
+  clearTimeout(simToast._h);
+  if (kind === 'ok') simToast._h = setTimeout(() => { t.remove(); }, 12000);
+}
+async function simSubmit(unitId, programs, log) {
+  if (!window.submitSim) return;
+  simToast('⏳ 拼對了！送到批改伺服器確認中…', 'wait');
+  const r = await window.submitSim(unitId, programs, log);
+  if (r.ok) {
+    unitStars[unitId] = Math.max(Number(unitStars[unitId]) || 0, Number(r.star) || 0);   // 下一關馬上開（不用重新整理）
+    simToast(r.already ? '✅ 這一關之前就通關了。'
+                       : '✅ 後端確認通過：這一關通關，記錄 ' + r.star + '⭐！下一關已經打開。想再加分，可以上傳 Scratch 作品。', 'ok');
+  } else if (r.queued) {
+    simToast('⚠️ 批改伺服器現在沒開，你拼對的程式已經先記下來了。下次打開闖關地圖或這一關時會自動補送，不用重拼。', 'warn');
+  } else {
+    simToast('❌ ' + (r.msg || '後端沒有確認通過') + '（請截圖告訴老師）', 'err');
+  }
+}
+
 function markPre() {
   if (preSaved) return;
   preSaved = true;
@@ -1007,17 +1043,48 @@ render();
                            (mods.scratch && mods.scratch.step) || {},
                            (mods.scratch && mods.scratch.play) || {});
       // 闖關路線（老師 2026-11-18）：要整份進度＋名冊上的老師放行旗標（stage_pass）
+      let ro = null;     // 名冊這一筆（補送成功後重算路線還要用）
       try {
         const rs = await getDoc(doc(db, window.CONFIG.COLLECTIONS.ROSTER, sid));
-        if (window.applyRoute) window.applyRoute(snap.exists() ? snap.data() : {}, rs.exists() ? rs.data() : null);
+        ro = rs.exists() ? rs.data() : null;
+        if (window.applyRoute) window.applyRoute(snap.exists() ? snap.data() : {}, ro);
       } catch (e) {
         if (window.applyRoute) window.applyRoute(snap.exists() ? snap.data() : {}, null);
+      }
+      /* 模擬器通關：之前後端沒開時先記下來的，補送一次（後端確認後會刪掉那一筆） */
+      if (window.SIMSUBMIT && snap.exists()) {
+        const res = await SIMSUBMIT.retryPending(snap.data(), { sid, getToken: getIdToken });
+        if (res.some(x => x.r && x.r.ok)) {
+          const s2 = await getDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid));
+          const m2 = (s2.exists() && s2.data().modules) || {};
+          window.applyProgress((m2.scratch && m2.scratch.unitStars) || {}, (m2.scratch && m2.scratch.pre) || {},
+                               (m2.scratch && m2.scratch.quiz) || {}, (m2.scratch && m2.scratch.step) || {},
+                               (m2.scratch && m2.scratch.play) || {});
+          if (window.applyRoute) window.applyRoute(s2.data() || {}, ro);
+          if (window.simToast) simToast('✅ 之前先記下來的拼圖，後端已經確認通過了：' + res.filter(x => x.r && x.r.ok).map(x => x.unit).join('、'), 'ok');
+        }
       }
     } catch (e) {
       /* 讀不到就維持「只開第 1 關」。寧可少開，也不要因為連線問題整批放行。 */
       console.error('讀進度失敗', e);
     }
   });
+
+  /* ── 模擬器通關送後端（2026-11-18）──
+     後端要 Google 登入憑證確認是本人；沒開的話先記在自己的進度（simPending，那不是星星），之後補送。 */
+  const getIdToken = () => (auth.currentUser ? auth.currentUser.getIdToken() : '');
+  window.submitSim = async function (unitId, programs, log) {
+    const r = window.SIMSUBMIT ? await SIMSUBMIT.send({ sid, unit: unitId, programs, log, getToken: getIdToken })
+                               : { ok: false, code: 'offline' };
+    if (window.SIMSUBMIT && SIMSUBMIT.shouldQueue(r) && sid) {
+      try {
+        await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
+          { modules: { scratch: { simPending: { [unitId]: SIMSUBMIT.pendingRecord(programs, log) } } } }, { merge: true });
+        r.queued = true;
+      } catch (e) { console.error('先記下拼圖失敗', e); r.queued = false; }
+    }
+    return r;
+  };
 
   window.savePre = async function (unitId) {
     if (!sid || !unitId) return;
