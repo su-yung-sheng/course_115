@@ -167,6 +167,42 @@ is(/!window\.READHOLD/.test(sCode), true, '沒載到就放行，不是把學生�
      '   而且真的把它傳給倒數（不是算完就丟掉）');
 }
 
+/* ── 閱讀時間依「今天被退回重讀幾次」拉長（老師 2026-11-20）────────
+   第一次 10 秒、被退回一次 20 秒、兩次以上 30 秒；以日期記在資料庫，重開視窗不會變回 10 秒。 */
+{
+  console.log('\n── 閱讀時間 10 → 20 → 30 秒（老師 2026-11-20）──');
+  const seg = s.slice(s.indexOf('const READ_STEPS'), s.indexOf('const HINT_SECONDS'));
+  const box = { state: { done: {}, readFails: null } };
+  /* 把頁面上那幾支函式抽出來真的跑（bumpReadFail 要連資料庫，不抽；state 換成 box.state 才能從外面改） */
+  const F = new Function('box', 'const state = box.state;\n' + seg.replace(/async function bumpReadFail[\s\S]*?\n    \}\n/, '') +
+    '\nreturn { READ_STEPS, todayKey, readFailsOf, readSecondsFor };')(box);
+  const u = { id: 'u3' }, today = F.todayKey();
+  is(JSON.stringify(F.READ_STEPS), '[10,20,30]', '階梯是 10、20、30 秒');
+  is(F.readSecondsFor(u), 10, '★ 今天第一次讀 ⇒ 10 秒');
+  box.state.readFails = { day: today, units: { u3: 1 } };
+  is(F.readSecondsFor(u), 20, '★ 今天被退回重讀 1 次 ⇒ 20 秒');
+  box.state.readFails = { day: today, units: { u3: 2 } };
+  is(F.readSecondsFor(u), 30, '★ 2 次 ⇒ 30 秒');
+  box.state.readFails = { day: today, units: { u3: 7 } };
+  is(F.readSecondsFor(u), 30, '   再多次也是 30 秒（不會再往上加）');
+  is(F.readSecondsFor({ id: 'u4' }), 10, '別的關卡不受影響（每一關各算各的）');
+  box.state.readFails = { day: '2000-01-01', units: { u3: 2 } };
+  is(F.readSecondsFor(u), 10, '★ 不是今天的次數不算 ⇒ 隔天重新從 10 秒');
+  box.state.readFails = { day: today, units: { u3: 2 } }; box.state.done = { u3: true };
+  is(F.readSecondsFor(u), 0, '排對過的關卡照舊 0 秒');
+  const sc = s.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  is(/mergeFields:\s*\['modules\.flowchart\.readFails'\]/.test(sc) && /readFails:\s*\{\s*\[day\]/.test(sc), true,
+     '★ 次數存進資料庫（以日期為鍵），重開視窗、換電腦都還在；只換掉 readFails 這一格');
+  is(/localStorage/.test(sc.replace(/\/\/[^\n]*/g, ' ')), false, '   不用 localStorage（電腦教室有還原卡）');
+  is(/rf\[day\]/.test(sc), true, '讀進度時只取今天那一份');
+  const sel = sc.slice(sc.indexOf('function confirmSelect'), sc.indexOf('function pickStep'));
+  const pick = sc.slice(sc.indexOf('function pickStep'), sc.indexOf('async function finishUnit'));
+  is(/bumpReadFail\(state\.unit\)[\s\S]*readLeft=readSecondsFor/.test(sel), true, '★ 挑元件三次沒挑對 ⇒ 次數 +1，再算這次要讀幾秒');
+  is(/bumpReadFail\(state\.unit\)[\s\S]*readLeft=readSecondsFor/.test(pick), true, '★ 排流程圖錯太多次 ⇒ 次數 +1');
+  const hint = sc.slice(sc.indexOf("closest('#hint-btn')"), sc.indexOf("closest('#hint-btn')") + 400);
+  is(/bumpReadFail/.test(hint), false, '自己按提示回去重讀不算「被退回」，秒數不加');
+}
+
 /* ── 每一關顯示的星數，要和闖關基地那張卡對得起來 ────────────
    ★ 2026-08-19 老師問：「程式設計的星星數不同，內頁關卡上的星數比較多，
      是因為加分的因素嗎？」

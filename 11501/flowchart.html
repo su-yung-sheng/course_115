@@ -517,7 +517,39 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         .replace(/(\d+(?:\s*[～~-]\s*\d+)?\s*(?:張|次|項|個|人|拍|秒|分))/g, '<span class="hl-b">$1</span>');
     }
 
-    const READ_SECONDS = 30;   // 閱讀頁強制停留秒數（切走畫面會暫停）
+    /* ★ 閱讀頁強制停留秒數（切走畫面會暫停）—— 老師 2026-11-20：
+         第一次 10 秒；這一關「被退回重讀」一次 ⇒ 20 秒；兩次以上 ⇒ 30 秒。
+         「被退回重讀」＝ 挑元件三次都沒挑對、或排流程圖錯太多次（自己按提示回去重讀不算）。
+       ⚠️ 次數以「日期＋關卡」記在資料庫（modules.flowchart.readFails = { 今天: { 關卡: 次數 } }），
+          重開視窗、換電腦都還在；隔天這一關重新從 10 秒算。
+          ⚠️ 不放 localStorage：電腦教室有還原卡，而且換一台電腦就沒了。 */
+    const READ_STEPS = [10, 20, 30];
+
+    /** 'YYYY-MM-DD'（本地時間，和老師、學生看到的日期一致） */
+    function todayKey() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    /** 這一關今天被退回重讀幾次 */
+    function readFailsOf(u) {
+      const day = (state.readFails && state.readFails.day === todayKey()) ? state.readFails.units : {};
+      return Number((day || {})[u && u.id]) || 0;
+    }
+    /** 被退回重讀：這一關今天的次數 +1，存進資料庫（存失敗不擋人，這次開著的視窗照樣算） */
+    async function bumpReadFail(u) {
+      if (!u) return;
+      const day = todayKey();
+      if (!state.readFails || state.readFails.day !== day) state.readFails = { day, units: {} };
+      state.readFails.units[u.id] = readFailsOf(u) + 1;
+      if (!state.studentId) return;
+      try {
+        /* ★ mergeFields：整個 readFails 換成「只有今天」那一份 —— 舊日期自己清掉，欄位不會越長越大。
+           別的欄位（units、星數、加分…）一個都不碰。 */
+        await setDoc(doc(db, COLLECTION, state.studentId),
+          { modules: { flowchart: { readFails: { [day]: Object.assign({}, state.readFails.units) } } } },
+          { mergeFields: ['modules.flowchart.readFails'] });
+      } catch (e) { console.error('閱讀時間的錯誤次數沒存進去（不影響闖關）', e); }
+    }
 
     /* 這一關要強制讀幾秒。
        ⚠️ 已經排對過流程圖的關卡回傳 0 —— 強制停留是為了「第一次別亂點」，
@@ -526,7 +558,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
           排錯太多次被退回重讀時也一樣：他本來就會通關的關卡，
           再罰他讀一次沒有意義。 */
     function readSecondsFor(u) {
-      return (u && state.done[u.id]) ? 0 : READ_SECONDS;
+      return (u && state.done[u.id]) ? 0 : READ_STEPS[Math.min(readFailsOf(u), READ_STEPS.length - 1)];
     }
     const HINT_SECONDS = 10;   // 選件頁提示顯示秒數（只有一次機會）
     const SELECT_TRIES = 3;    // 選元件可確認的次數，用完退回重讀
@@ -736,6 +768,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         const mods = (snap.exists() && snap.data().modules) || {};
         const units = (mods.flowchart && mods.flowchart.units) || [];
         state.done = {}; units.forEach(u=>state.done[u]=true);
+        // 閱讀時間：今天每一關被退回重讀幾次（不是今天的一律不算 ⇒ 隔天從 10 秒重新開始）
+        { const rf = (mods.flowchart && mods.flowchart.readFails) || {}, day = todayKey();
+          state.readFails = { day, units: Object.assign({}, rf[day] || {}) }; }
         const sunits = (mods.scratch && mods.scratch.units) || [];
         state.progDone = {}; sunits.forEach(u=>state.progDone[u]=true);
         // 各單元的程式星數（由 AI 批改寫入）→ 有星數就代表這關的程式完成了
@@ -978,10 +1013,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       const left = SELECT_TRIES - state.selTries;
       if(left <= 0){
         clearTimers();
+        bumpReadFail(state.unit);              // 被退回重讀 ⇒ 下一次閱讀時間拉長（10 → 20 → 30 秒）
         state.status='read'; state.readLeft=readSecondsFor(state.unit); state.hintUsed=false; state.hintLeft=0; state.selTries=0;
         state.selMsg='';
         render();
-        setTimeout(()=>alert('三次都沒挑對，先回去把步驟再讀一次，我們再來一次！'), 50);
+        const sec = readSecondsFor(state.unit);
+        setTimeout(()=>alert('三次都沒挑對，先回去把步驟再讀一次（這次要讀 ' + sec + ' 秒），我們再來一次！'), 50);
         return;
       }
       state.selMsg = `再想想～${missing?`還少了 ${missing} 個需要的步驟`:''}${missing&&extra?'、':''}${extra?`多選了 ${extra} 個用不到的`:''}。還有 ${left} 次機會，用完要回去重讀喔！`;
@@ -1000,10 +1037,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         // 錯誤次數超過待排積木總數 → 退回重新閱讀
         if(state.mistakes > state.unit.steps.length){
           clearTimers();
+          bumpReadFail(state.unit);            // 被退回重讀 ⇒ 下一次閱讀時間拉長（10 → 20 → 30 秒）
           state.status='read'; state.readLeft=readSecondsFor(state.unit); state.hintUsed=false; state.hintLeft=0;
           state.selTries=0; state.selMsg=''; state.mistakes=0;
           render();
-          setTimeout(()=>alert('排錯太多次了，先回去把流程再讀一次，等一下就會順很多！'), 50);
+          const sec = readSecondsFor(state.unit);
+          setTimeout(()=>alert('排錯太多次了，先回去把流程再讀一次（這次要讀 ' + sec + ' 秒），等一下就會順很多！'), 50);
           return;
         }
         render();
@@ -1299,7 +1338,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             ${state.readLeft > 0
               ? `<button id="begin-sel" disabled class="mt-5 w-full bg-slate-300 text-white font-bold text-lg py-3 rounded-xl cursor-not-allowed transition">請先仔細閱讀…（還要 ${state.readLeft} 秒）</button>`
               : `<button id="begin-sel" class="mt-5 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg py-3 rounded-xl active:scale-95 transition">我讀完了，開始闖關 →</button>
-                 ${state.done[u.id] ? `<p class="text-xs text-emerald-600 font-bold mt-2 text-center">✓ 這一關你已經排對過了，不用再等 ${READ_SECONDS} 秒</p>` : ''}`}
+                 ${state.done[u.id] ? `<p class="text-xs text-emerald-600 font-bold mt-2 text-center">✓ 這一關你已經排對過了，不用再等</p>` : ''}`}
+            ${(!state.done[u.id] && readFailsOf(u) > 0)
+              ? `<p class="text-xs text-amber-600 font-bold mt-2 text-center">⏱ 這一關今天被退回重讀 ${readFailsOf(u)} 次，閱讀時間是 ${readSecondsFor(u)} 秒（明天會重新從 ${READ_STEPS[0]} 秒算）</p>` : ''}
             <p class="text-xs text-slate-400 mt-3 text-center">先把上面的步驟讀懂，等一下要自己挑出正確的元件　·　也可對照 <a href="reference.html" class="text-purple-600 underline">完整參考說明</a></p>
           </div>`;
         startReadCountdown();
@@ -1564,7 +1605,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
       if(e.target.closest('#toggle-lead')){ state.leadOpen=!state.leadOpen; render(); return; }
       if(e.target.closest('#toggle-ref')){ state.refOpen=!state.refOpen; render(); return; }
       if(e.target.closest('#hint-btn')){
-        if(state.hintUsed){                    // 已用掉提示 → 退回上一步重新閱讀（重新計時 30 秒）
+        if(state.hintUsed){                    // 已用掉提示 → 退回上一步重新閱讀（重新計時；自己回去讀不算「被退回」，秒數不加）
           clearTimers();
           state.status='read'; state.readLeft=readSecondsFor(state.unit); render();
         }else{
