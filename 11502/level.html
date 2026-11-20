@@ -428,7 +428,12 @@ function card(title, html) {
    ⚠️ 計時器一定要在 render() 裡清掉。
       不清的話，每重畫一次就多一個計時器在跑，
       倒數會愈跳愈快 —— 而且畫面上看不出原因。 */
-const HOLD_SEC = 30;
+/* ★ 2026-11-20 老師：停留秒數改成看「這一關今天程式拼圖沒拼對幾次」——
+     0 次 10 秒、1 次 20 秒、2 次以上 30 秒（和 11501 流程圖同一個規則）。
+   ⚠️ 次數以「日期＋關卡」記在資料庫（modules.scratch.readFails = { 今天: { 關卡: 次數 } }），
+      重開視窗、換電腦都還在；隔天這一關重新從 10 秒算。不放 localStorage（還原卡、換電腦就沒了）。 */
+const HOLD_STEPS = [10, 20, 30];
+let readFails = { day: '', units: {} };   // 今天每一關拼圖沒拼對幾次（讀進度時填進來）
 let held = {};          // 這一步的停留時間已經滿了沒
 let hold = null;        // 目前的倒數（READHOLD 傳回來的控制器）
 
@@ -438,7 +443,29 @@ function stopHold() { if (hold) { hold.stop(); hold = null; } }
     ⚠️ 看的是作品星（unitStars），不是概念星 ——
        作品星是「這一關真的做完了」唯一的憑據，也是依序開放讀的那一組。 */
 function holdSecFor() {
-  return (unit && unitStars[unit.id] > 0) ? 0 : HOLD_SEC;
+  if (unit && unitStars[unit.id] > 0) return 0;
+  return HOLD_STEPS[Math.min(unit ? readFailsOf(unit.id) : 0, HOLD_STEPS.length - 1)];
+}
+/** 'YYYY-MM-DD'（本地時間） */
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+/** 這一關今天拼圖沒拼對幾次（不是今天的一律不算） */
+function readFailsOf(id) {
+  return readFails.day === todayKey() ? (Number(readFails.units[id]) || 0) : 0;
+}
+/** 讀進度時把資料庫裡的次數交進來（只取今天那一份；呼叫完照常 applyProgress 重畫） */
+window.applyReadFails = function (rf) {
+  const day = todayKey();
+  readFails = { day, units: Object.assign({}, (rf || {})[day] || {}) };
+};
+/** 拼圖沒拼對：這一關今天的次數 +1，存進資料庫（存失敗不擋人，這個視窗照樣算） */
+function simWrong(id) {
+  const day = todayKey();
+  if (readFails.day !== day) readFails = { day, units: {} };
+  readFails.units[id] = readFailsOf(id) + 1;
+  if (window.saveReadFails) window.saveReadFails(day, Object.assign({}, readFails.units));
 }
 
 /* ⚠️ 第二個參數不要叫 hold —— 那會蓋掉上面存控制器的 hold，
@@ -446,9 +473,12 @@ function holdSecFor() {
 function nextBtn(label, wantHold) {
   const step = at;
   const needHold = wantHold && !held[step] && holdSecFor() > 0;
+  const nf = (needHold && unit) ? readFailsOf(unit.id) : 0;
   $('foot').innerHTML = `<button id="go" ${needHold ? 'disabled' : ''}
     class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white
-    font-black text-lg rounded-2xl px-6 py-4 shadow-md transition">${label} →</button>`;
+    font-black text-lg rounded-2xl px-6 py-4 shadow-md transition">${label} →</button>` +
+    (nf > 0 ? `<p class="text-xs text-amber-600 font-bold mt-2 text-center">⏱ 這一關今天程式拼圖沒拼對 ${nf} 次，` +
+              `閱讀時間是 ${holdSecFor()} 秒（明天會重新從 ${HOLD_STEPS[0]} 秒算）</p>` : '');
 
   const btn = $('go');
   btn.onclick = () => {
@@ -510,7 +540,7 @@ const STEP_GOAL = {
     why: '先看清楚「這一關要做出什麼」。不知道成品長什麼樣的話，' +
          '後面的分析等於在拆一段不知道要幹嘛的程式。',
     pass: '讀完，按下面的按鈕。' +
-          '<br>（第一次做這一關的話，按鈕會等你 <b>30 秒</b> —— ' +
+          '<br>（第一次做這一關的話，按鈕會等你 <b>10 秒</b>；今天程式拼圖沒拼對過，會變成 20、最多 30 秒 —— ' +
           '不是懲罰，是讓「讀完」真的發生過。已經通關過就不會等。）'
   },
   combo: {
@@ -817,7 +847,9 @@ function draw(s) {
       hint: lv.task, steps: lv.build,
       /* ★ 2026-11-18：拼對＝通關（2⭐），但星星由後端確認後才寫（不接受 F12 假造）。
          programs：每個角色一份程式；log：檢查幾次、執行幾次、花幾秒。 */
-      onPass: (all, programs, log) => { markPre(); simSubmit(unit.id, programs, log); advance(); }
+      onPass: (all, programs, log) => { markPre(); simSubmit(unit.id, programs, log); advance(); },
+      /* ★ 沒拼對 ⇒ 下一次「這一關要做出什麼」的閱讀時間拉長（10 → 20 → 30 秒，以日期記） */
+      onWrong: () => simWrong(unit.id)
     });
     return;
   }
@@ -1037,6 +1069,7 @@ render();
     try {
       const snap = await getDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid));
       const mods = (snap.exists() && snap.data().modules) || {};
+      window.applyReadFails((mods.scratch && mods.scratch.readFails) || {});   // 先交次數，applyProgress 重畫時才算得對
       window.applyProgress((mods.scratch && mods.scratch.unitStars) || {},
                            (mods.scratch && mods.scratch.pre) || {},
                            (mods.scratch && mods.scratch.quiz) || {},
@@ -1108,6 +1141,16 @@ render();
         11502 的進度在 2027-02-01 之前只有測試帳號寫得進去，
         規則沒重新發布的話連測試帳號也會被擋 —— 那時候這裡會一直失敗，
         而學生**照樣要能把這一關走完**。 */
+  /* 閱讀時間的次數（見 HOLD_STEPS）。★ mergeFields：整個 readFails 換成「只有今天」那一份 ——
+     舊日期自己清掉；modules.scratch 的星星、作品分數一個都不碰（那幾格安全規則也鎖著）。 */
+  window.saveReadFails = async function (day, units) {
+    if (!sid) return;
+    try {
+      await setDoc(doc(db, window.CONFIG.COLLECTIONS.PROGRESS, sid),
+        { modules: { scratch: { readFails: { [day]: units } } } },
+        { mergeFields: ['modules.scratch.readFails'] });
+    } catch (e) { console.error('閱讀時間的次數沒存進去（不影響闖關）', e); }
+  };
   window.saveStep = async function (unitId, n) {
     if (!sid || !unitId || !(n > 0)) return;
     try {

@@ -1529,6 +1529,9 @@
           if (sc > bs) { bs = sc; best = w; }
         });
         say('❌ ' + who(sp) + diffHint(got, best));
+        /* ★ 沒拼對（程式區不是空的）⇒ 告訴頁面。11502 關卡頁拿它拉長下一次「這一關要做出什麼」的閱讀時間
+           （老師 2026-11-20：10 → 20 → 30 秒）。已經拼對過的關卡再試錯不算。 */
+        if (!passed && opts.onWrong) opts.onWrong(stats.tries);
         return;
       }
       say(notes.length

@@ -329,7 +329,7 @@ section('⏱️ 純閱讀的步驟要停留 30 秒');
   ok(w.document.querySelectorAll('.stp')[0].className.indexOf('stp-now') >= 0,
      '★ 硬按也不會跳到下一步');
 }
-ok(/HOLD_SEC = 30/.test(levelSrc), '停留 30 秒');
+ok(/HOLD_STEPS = \[10, 20, 30\]/.test(levelSrc), '停留 10 → 20 → 30 秒（老師 2026-11-20：看今天拼圖沒拼對幾次）');
 {
   /* ★ 規則本身在 shared/readhold.js（readhold.test.js 顧），
      這裡只釘「這一頁真的有接上去、而且沒有自己再判一次」。
@@ -362,6 +362,37 @@ ok(/HOLD_SEC = 30/.test(levelSrc), '停留 30 秒');
      '★ 已經拿到作品星的關卡 → 不必再等（回來查資料被鎖 30 秒只會讓人覺得在找麻煩）');
   ok(!/（\d+）|暫停/.test(go.textContent),
      '   按鈕直接是可以按的（' + go.textContent.trim() + '）');
+}
+{
+  /* ★ 2026-11-20 老師：閱讀時間看「這一關今天程式拼圖沒拼對幾次」—— 0 次 10 秒、1 次 20 秒、2 次以上 30 秒。
+     以日期記在資料庫，重開視窗不會變回 10 秒；隔天重新從 10 秒算。 */
+  section('⏱️ 閱讀時間 10 → 20 → 30 秒（老師 2026-11-20）');
+  const d = new Date(), today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const at = (rf) => {
+    const w = level('4-2-1');
+    w.applyReadFails(rf); w.applyProgress({}, {});
+    return { w, txt: w.document.getElementById('go').textContent, foot: w.document.getElementById('foot').textContent };
+  };
+  ok(/（10）/.test(at({}).txt), '★ 今天第一次 ⇒ 10 秒（' + at({}).txt.trim() + '）');
+  ok(!/沒拼對/.test(at({}).foot), '   沒錯過就不多講話');
+  const one = at({ [today]: { '4-2-1': 1 } });
+  ok(/（20）/.test(one.txt), '★ 今天拼圖沒拼對 1 次 ⇒ 20 秒');
+  ok(/沒拼對 1 次/.test(one.foot) && /明天會重新從 10 秒算/.test(one.foot), '   講清楚為什麼變長、明天會恢復');
+  ok(/（30）/.test(at({ [today]: { '4-2-1': 2 } }).txt) && /（30）/.test(at({ [today]: { '4-2-1': 9 } }).txt), '★ 2 次以上 ⇒ 30 秒（不再往上加）');
+  ok(/（10）/.test(at({ '2000-01-01': { '4-2-1': 5 } }).txt), '★ 不是今天的次數不算 ⇒ 隔天從 10 秒');
+  ok(/（10）/.test(at({ [today]: { '4-2-2': 5 } }).txt), '別關的次數不影響這一關');
+  /* 拼圖沒拼對 ⇒ +1 並存進資料庫 */
+  const w = level('4-2-1'); const saved = [];
+  w.saveReadFails = (day, units) => saved.push([day, units]);
+  w.eval('simWrong("4-2-1"); simWrong("4-2-1");');
+  ok(saved.length === 2 && saved[1][0] === today && saved[1][1]['4-2-1'] === 2, '★ 每沒拼對一次 +1，以今天的日期存進資料庫');
+  ok(/onWrong: \(\) => simWrong\(unit\.id\)/.test(levelSrc), '程式拼圖接上 onWrong');
+  ok(/mergeFields: \['modules\.scratch\.readFails'\]/.test(levelSrc), '★ 只換掉 readFails 這一格（作品星那幾格不碰）');
+  ok(/applyReadFails\([\s\S]{0,80}\)[\s\S]{0,200}applyProgress\(/.test(levelSrc), '讀進度時先交次數再重畫');
+  const blk = fs.readFileSync(path.join(root, 'shared', 'blocks.js'), 'utf8');
+  const chk = blk.slice(blk.indexOf('function check()'), blk.indexOf('function diffHint'));
+  ok(/diffHint\(got, best\)\);\s*[\s\S]{0,300}if \(!passed && opts\.onWrong\) opts\.onWrong/.test(chk), '★ 積木模組：判定沒拼對才通知（空的程式區、已經拼對過的不算）');
+  ok(chk.indexOf('程式區還是空的') < chk.indexOf('opts.onWrong'), '   空的程式區在前面就回去了，不會算一次');
 }
 ok(/function render\(\) \{\s*\n?\s*stopHold\(\)/.test(levelSrc),
    '★ render 一開始就清掉計時器 —— 不清的話倒數會愈跳愈快，而且看不出原因');
@@ -461,7 +492,7 @@ section('🍔 套餐工廠只掛在第 1 關');
       學生就永遠進不了下一步。**結構測試抓不到這種 bug。** */
 (async () => {
   section('⏱️ 倒數真的會走（把 30 秒換成 2 秒跑一次）');
-  const w = level('4-2-1', null, src => src.replace('HOLD_SEC = 30', 'HOLD_SEC = 2'));
+  const w = level('4-2-1', null, src => src.replace('HOLD_STEPS = [10, 20, 30]', 'HOLD_STEPS = [2, 2, 2]'));
   const go = () => w.document.getElementById('go');
   ok(go().disabled === true, '一開始鎖著');
   await new Promise(r => setTimeout(r, 1200));
@@ -487,7 +518,7 @@ section('🍔 套餐工廠只掛在第 1 關');
         這裡只確認「這一頁真的把規則接上了」。 */
   section('🪟 並列視窗：焦點跑掉這一頁也停得下來');
   {
-    const w2 = level('4-2-1', null, src => src.replace('HOLD_SEC = 30', 'HOLD_SEC = 20'));
+    const w2 = level('4-2-1', null, src => src.replace('HOLD_STEPS = [10, 20, 30]', 'HOLD_STEPS = [20, 20, 20]'));
     const b = () => w2.document.getElementById('go').textContent;
     let focus = true;
     w2.document.hasFocus = () => focus;      // 這一下讓 sawFocus 閂起來

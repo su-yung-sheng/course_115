@@ -171,9 +171,9 @@ section('★ 標準要和程式**真的**判定的一致');
      '★ 第 2 顆概念星的門檻（' + W.GRADING.QUIZ_FULL + ' 題）也對得上');
 
   const sceneTxt = goalSrc.slice(goalSrc.indexOf('  scene:'), goalSrc.indexOf('  combo:'));
-  const holdSec = (SRC.match(/const HOLD_SEC = (\d+)/) || [])[1];
-  ok(new RegExp('<b>' + holdSec + ' 秒</b>').test(sceneTxt),
-     '★★ 情境那一步寫的秒數（' + holdSec + '）和 HOLD_SEC 一致');
+  const holdSec = (SRC.match(/const HOLD_STEPS = \[(\d+), (\d+), (\d+)\]/) || []);
+  ok(new RegExp('<b>' + holdSec[1] + ' 秒</b>').test(sceneTxt) && new RegExp('最多 ' + holdSec[3] + ' 秒').test(sceneTxt),
+     '★★ 情境那一步寫的秒數（' + holdSec[1] + '、最多 ' + holdSec[3] + '）和 HOLD_STEPS 一致');
   ok(/已經通關過就不會等/.test(sceneTxt),
      '★ 而且講明「通關過就不用等」—— 不講的話重看的人會以為系統壞了');
 

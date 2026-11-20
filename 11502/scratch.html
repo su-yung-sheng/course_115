@@ -404,29 +404,6 @@ function repaint(){ renderStages(); renderTotal(); }
    這一頁現在只做一件事：畫闖關地圖，讓學生知道自己走到哪、下一關是哪一關。
    ⚠️ 別再把「正在做的事」塞回這一頁 —— 它一長，重點就沉到最底下。 */
 
-/** 按鈕（秒數 0 = 直接可按；讀秒的用法已經拿掉，留著是給推導完成用的） */
-function countdown(host, sec, label, done){
-  const b = document.createElement('button');
-  b.className = 'w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white '
-              + 'font-bold py-2.5 rounded-xl transition';
-  host.innerHTML = '';
-  host.appendChild(b);
-  let left = sec;
-  function tick(){
-    if (left > 0) {
-      b.disabled = true;
-      b.textContent = '請先仔細看過…（還要 ' + left + ' 秒）';
-      left--;
-      setTimeout(tick, 1000);
-    } else {
-      b.disabled = false;
-      b.textContent = label;
-      b.onclick = done;
-    }
-  }
-  tick();
-}
-
 /* 讀完 Firestore 的那支 module script 用這個把星數交進來。
    刻意包成函式而不是直接改變數：跨 script 改別人的變數不好追，
    也讓「拿到新星數就一定重畫」變成沒辦法忘記的事。 */
