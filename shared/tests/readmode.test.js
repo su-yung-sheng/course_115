@@ -26,7 +26,7 @@ section('設定與載入順序');
 {
   [['11501', 'cyberethics.html', 'ethics.read.js'], ['11502', 'social.html', 'social.read.js']].forEach(([term, page, bank]) => {
     const cfg = read(term + '/config.js');
-    ok(/READ_MODE_FROM:\s*'2026-11-25'/.test(cfg), '★★★ ' + term + ' 上線日是 2026-11-25（老師：11/25 之後才全面更動）');
+    ok(/READ_MODE_FROM:\s*'2026-11-24'/.test(cfg), '★★★ ' + term + ' 上線日是 2026-11-24（原定 11/25；老師 11/24 課程告一段落提早上線）');
     const html = read(term + '/' + page);
     const at = s => html.indexOf(s);
     ok(at(bank) > 0 && at(bank) < at('quiz-engine.js'), '★★ ' + term + ' 在引擎之前載入 ' + bank);
@@ -34,7 +34,7 @@ section('設定與載入順序');
     ok(!/"correct"\s*:/.test(src) && !/"ex"\s*:/.test(src) && !/"o"\s*:/.test(src),
        '★★★ ' + term + ' 段落題庫裡沒有明碼答案、沒有明碼說明（repo 是公開的）');
   });
-  ok(/READ_MODE_FROM:\s*'2026-11-25'/.test(read('11502/config.js')), '★★ 11502 上線日也是 2026-11-25');
+  ok(/READ_MODE_FROM:\s*'2026-11-24'/.test(read('11502/config.js')), '★★ 11502 上線日也是 2026-11-24');
 }
 
 let JSDOM, VirtualConsole;

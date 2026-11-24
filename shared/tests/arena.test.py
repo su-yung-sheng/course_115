@@ -126,10 +126,11 @@ else:
            % (_bank, bad_a))
 
 BANK = core.arena_prepare_bank(RAW)
-ok(len(BANK) == RAW["count"] == 141, "★★ 141 題都反查得到正確選項（%d）" % len(BANK))
+# ⚠️ 題數不寫死：11/24 起排行賽改用段落閱讀題庫（11501 145 題、11502 183 題；舊題庫是 141／185）
+ok(len(BANK) == RAW["count"] >= 140, "★★ %d 題都反查得到正確選項（%d）" % (RAW["count"], len(BANK)))
 RAW2 = json.load(io.open(os.path.join(ROOT, "11502", "content", "social.arena.json"), encoding="utf-8"))
-ok(len(core.arena_prepare_bank(RAW2)) == RAW2["count"] == 185 and RAW2["term"] == "11502",
-   "★★ 11502 媒體與社會議題：185 題都反查得到正確選項")
+ok(len(core.arena_prepare_bank(RAW2)) == RAW2["count"] >= 180 and RAW2["term"] == "11502",
+   "★★ 11502 媒體與社會議題：%d 題都反查得到正確選項" % RAW2["count"])
 ok(core.ARENA_BANK_URLS.get("11502", "").endswith("/11502/content/social.arena.json"),
    "★★ 後端知道 11502 的題庫在哪裡")
 ok(RAW2["units"] == ["5-1", "5-2", "5-3", "5-4", "5-5", "5-all", "6-1", "6-2", "6-3", "6-all"],
