@@ -158,6 +158,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
   <script src="../shared/projlab.js"></script>
   <script src="../shared/doorlab.js"></script>
   <script src="../shared/lightlab.js"></script>
+  <!-- ★ 5016B 的成績與依序開放（老師 2026-11-24）：百分制、不跟星星合計；規則只在 labscore.js 一份。
+       grading.js 只拿來判斷「備課模式」（OPEN_ALL_UNITS）。 -->
+  <script src="../shared/grading.js"></script>
+  <script src="../shared/labscore.js"></script>
 
   <!-- ═══ 完成紀錄（老師 2026-08-24：「每次都要重玩? 要有記錄」）═══
        ⚠️⚠️ 2026-08-24 修：第一版**只 import 了 firebase-app 和 firestore，
@@ -300,6 +304,25 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
           return mine;
         }
       },
+      /** 整份進度＋名冊（依序開放、成績要用）：{ arduino:{u1…}, roster:{…}|null, ok:讀到雲端了沒 }
+          ⚠️ 讀不到雲端時 ok=false —— 呼叫端要**放行**，不可以拿學生的課去賭一次讀取。 */
+      async all() {
+        const mine = localAll();
+        const db = await ready;
+        if (!db) return { arduino: mine, roster: null, ok: false };
+        try {
+          const ROS = (CFG.COLLECTIONS && CFG.COLLECTIONS.ROSTER) || 'roster';
+          const [ps, rs] = await Promise.all([getDoc(doc(db, COL, sid)), getDoc(doc(db, ROS, sid))]);
+          const cloud = ((ps.exists() && ps.data().modules) || {}).arduino || {};
+          const merged = {};
+          ['u1', 'u2', 'u3', 'u4', 'u5'].forEach(function (u) {
+            if (cloud[u] || mine[u]) merged[u] = Object.assign({}, mine[u] || {}, cloud[u] || {});
+          });
+          return { arduino: merged, roster: rs.exists() ? rs.data() : null, ok: true };
+        } catch (e) {
+          return { arduino: mine, roster: null, ok: false };
+        }
+      },
       /** 記一段完成。part 是 'warm'／'checks'／'say'。 */
       async save(unit, part, info) {
         const rec = Object.assign({ at: Date.now() }, info || {});
@@ -316,6 +339,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             updatedAt: Date.now()
           }, { merge: true });
           setState('cloud', '');
+          /* ★ 暖身、檢核做完 ⇒ 分數和下一節的鎖要跟著更新 */
+          if ((part === 'warm' || part === 'checks') && window.LABPROGRESS) window.LABPROGRESS.refresh();
         } catch (e) {
           /* ★★ 不可以只寫 console.warn —— 那正是這次的病根。 */
           setState('local', '寫入被拒：' + (e && e.code || e));
@@ -405,6 +430,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-4">微課程單元規劃</h2>
                 <p class="text-slate-500 max-w-2xl mx-auto text-lg">前四節一節學一樣：感應、換算、調速、混色；第五節換你自己出題做專題。點任一節開啟【互動學習包】。</p>
             </div>
+
+            <!-- ★ 專題成績與依序開放（老師 2026-11-24）：由 LABPROGRESS 畫，讀不到雲端就不顯示、不上鎖 -->
+            <div id="lab-progress" class="hidden max-w-3xl mx-auto mb-10"></div>
+            <div id="lab-lockmsg" class="hidden max-w-3xl mx-auto mb-6 bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 text-amber-900 font-bold text-center"></div>
 
             <!-- Time Grid / Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -1856,6 +1885,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         function openCourseDetail(unitId) {
             const data = courseData[unitId];
             if (!data) return;
+            /* ★ 依序開放（老師 2026-11-24）：前一節完成才開下一節；老師可以在教師端放行。 */
+            if (window.LABPROGRESS && !window.LABPROGRESS.canOpen(unitId)) {
+                window.LABPROGRESS.refuse(unitId);
+                return;
+            }
 
             // Clear any lingering animations from previous unit
             clearAnimations();
@@ -2165,6 +2199,87 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             // Scroll view back to top
             window.scrollTo(0, 0);
         }
+
+        /* ═══ 專題成績＋依序開放（老師 2026-11-24）══════════════════════
+           ★ 百分制、不跟星星合計：第 1～4 節各 15（暖身 5＋檢核 10），第 5 節 40（設計單 10＋成果卡 15＋老師實作驗收 15）。
+           ★ 第 n 節要等第 n−1 節「暖身＋檢核」都過才開；老師在教師端「5016B 專題」放行的照開。
+           ⚠️ 讀不到雲端（斷網、規則擋）⇒ **全部放行、不顯示分數** —— 不可以因為一次讀取失敗把整班鎖住。
+           規則在 shared/labscore.js，這裡只負責畫。 */
+        window.LABPROGRESS = (function () {
+            let st = null;                 // { arduino, info, upTo, score }
+            function cards() { return Array.prototype.slice.call(document.querySelectorAll('#curriculum .unit-card')); }
+            function paint() {
+                const box = document.getElementById('lab-progress');
+                if (!st || !box) return;
+                const S = st.score, L = window.LABSCORE;
+                box.classList.remove('hidden');
+                box.innerHTML =
+                  '<div class="bg-white border-2 border-indigo-200 rounded-2xl p-5 shadow-sm">' +
+                    '<div class="flex flex-wrap items-baseline justify-between gap-2 mb-2">' +
+                      '<div class="font-black text-slate-800 text-lg">🔧 專題成績 <span class="text-indigo-600 text-2xl">' + S.total + '</span> <span class="text-slate-400">／ 100 分</span></div>' +
+                      '<div class="text-sm font-bold text-slate-500">完成 ' + S.done + '／5 節</div>' +
+                    '</div>' +
+                    '<div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-500" style="width:' + S.total + '%"></div></div>' +
+                    '<p class="text-xs text-slate-500 mt-2 leading-relaxed">第 1～4 節各 15 分（暖身 3＋動手檢核 6＋老師實作驗收 6）；第 5 節 40 分（設計單 10＋成果卡 15＋老師實作驗收 15）。' +
+                    '實作驗收：把裝置動起來的照片或影片交到 Classroom 那一節的作業，老師看過就會打勾。' +
+                    '這是專題自己的分數，<b>不算進星星</b>。前一節做完才會開下一節。</p>' +
+                  '</div>';
+                cards().forEach(function (el, i) {
+                    const no = i + 1, u = L.LESSONS[i], p = S.parts[u];
+                    if (!p) return;
+                    const open = no <= st.upTo;
+                    el.classList.toggle('opacity-60', !open);
+                    el.classList.toggle('grayscale', !open);
+                    el.setAttribute('aria-disabled', open ? 'false' : 'true');
+                    let tag = el.querySelector('.lab-tag');
+                    if (!tag) {
+                        tag = document.createElement('div');
+                        tag.className = 'lab-tag mt-3 text-sm font-black';
+                        el.appendChild(tag);
+                    }
+                    const bits = Object.keys(L.POINTS[u]).map(function (k) {
+                        return (p[k] ? '✅' : '⬜') + ' ' + L.partName(u, k);
+                    }).join('　');
+                    /* ★ 老師在 Classroom 繳交審核退件 ⇒ 卡片上直接講原因（學生自己的名冊那一筆讀得到） */
+                    const rej = (!p.verify && st.info.rej && st.info.rej[u]) ? st.info.rej[u] : null;
+                    const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                    tag.innerHTML = open
+                      ? '<span class="' + (p.pts === p.max ? 'text-emerald-600' : 'text-indigo-600') + '">' + p.pts + '／' + p.max + ' 分</span>' +
+                        '<span class="block text-xs font-bold text-slate-500 mt-1">' + bits + '</span>' +
+                        (rej ? '<span class="block text-xs font-bold text-rose-600 mt-1">⚠️ 實作作品被退件：' + esc(rej.reason) + '（改好後到 Classroom 重交）</span>' : '')
+                      : '<span class="text-slate-500">' + L.lockText(no) + '</span>';
+                });
+            }
+            async function refresh() {
+                const L = window.LABSCORE;
+                if (!L || !window.LABSAVE || !window.LABSAVE.all) return;
+                const r = await window.LABSAVE.all();
+                if (!r.ok) { st = null; return; }               // 讀不到 ⇒ 不鎖、不顯示
+                const info = L.fromRoster(r.roster);
+                const openAll = !!(window.GRADING && window.GRADING.openAll && window.GRADING.openAll(window.CONFIG || {}));
+                st = { arduino: r.arduino, info: info, upTo: L.openUpTo(r.arduino, info, openAll),
+                       score: L.score(r.arduino, info) };
+                paint();
+            }
+            function canOpen(no) { return !st || Number(no) <= st.upTo; }
+            function refuse(no) {
+                const m = document.getElementById('lab-lockmsg');
+                if (!m) return;
+                m.textContent = window.LABSCORE.lockText(Number(no)) + '。卡住的話請找老師。';
+                m.classList.remove('hidden');
+                if (m.scrollIntoView) m.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            /* 等開放日守門跑完再讀（還沒開放的話整頁本來就被蓋住了）。
+               ⚠️ LABSAVE、LABGATE 在 <head> 的 module 裡 —— module 會延後到整頁解析完才跑，
+                  比這一段晚。所以要等 DOMContentLoaded（module 一定在它之前跑完）再接上。 */
+            function start() {
+                (window.LABGATE && window.LABGATE.then ? window.LABGATE : Promise.resolve(true))
+                  .then(function (ok) { if (ok !== false) refresh(); });
+            }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+            else start();
+            return { refresh: refresh, canOpen: canOpen, refuse: refuse, state: function () { return st; } };
+        })();
 
         function closeCourseDetail() {
             clearAnimations();

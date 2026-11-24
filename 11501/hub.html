@@ -30,6 +30,7 @@
 <!-- 學校 Google 帳號登入（單一來源，兩學期共用）-->
 <script src="../shared/auth.js"></script>
   <script src="../shared/grading.js"></script>
+  <script src="../shared/labscore.js"></script>   <!-- 5016B 專題的百分制成績（老師 2026-11-24；不算星） -->
   <!-- 課表與「這週有沒有上課日」的判定（教師端同一支）-->
   <script src="../shared/schedule.js"></script>
   <script type="module">
@@ -283,7 +284,9 @@
       render();
       recordAttendance(t);   // 記錄今天的首次登入時間（當作出席）
       // 取名冊姓名顯示（親切辨識）
-      getDoc(doc(db, ROSTER, t)).then(s=>{ if(s.exists()){ const r=s.data(); state.studentName = r.name || ''; state.cls = String(r.cls||''); render(); loadSchedule(); } }).catch(()=>{});
+      getDoc(doc(db, ROSTER, t)).then(s=>{ if(s.exists()){ const r=s.data(); state.studentName = r.name || ''; state.cls = String(r.cls||'');
+        state.labInfo = (typeof LABSCORE!=='undefined') ? LABSCORE.fromRoster(r) : null;   // 5016B：老師的實作驗收、放行
+        render(); loadSchedule(); } }).catch(()=>{});
       const ref = doc(db, COLLECTION, t);
       if(unsub) unsub();
       unsub = onSnapshot(ref, snap=>{
@@ -314,6 +317,14 @@
     }
 
     function cardData(m, mods){
+      /* ★ 5016B 專題（老師 2026-11-24）：另一個成績、百分制，不算星 ⇒ 這張卡顯示「幾分／100」。
+           ⚠️ 不回傳 stars —— 這張卡 maxStars 是 0，回傳星星總進度會超過 100%。
+           老師的實作驗收在名冊（state.labInfo，startSession 讀名冊時填）。 */
+      if(m.id==='arduino' && typeof LABSCORE!=='undefined'){
+        const ar = (mods && mods.arduino) || {};
+        const info = (typeof state!=='undefined' && state && state.labInfo) || null;
+        return { status: LABSCORE.status(ar, info), labScore: LABSCORE.score(ar, info), levelSum: 0 };
+      }
       /* ★ 2026-11-10：星數一律走 GRADING.moduleStars（有逐關資料就以逐關為準，和教師端「各科關卡進度」同一套），
            1410202 就是匯總欄位比逐關少，總計 114 / 120、各科卻都顯示滿。 */
       const H = (typeof state!=='undefined' && state && state.data && state.data.history) || [];
@@ -503,7 +514,9 @@
         const st = STATUS[d.status] || STATUS['todo'];
         const isNext = nextModule && m.id === nextModule.id;
         const showStars = (d.stars||0) > 0;
-        const starsHtml = showStars
+        const starsHtml = d.labScore
+          ? `<div class="text-indigo-700 ${roomy?'text-base':'text-sm'} font-black mt-1">🔧 專題 ${d.labScore.total}／100 分<span class="font-bold opacity-70">　完成 ${d.labScore.done}／5 節</span></div>`
+          : showStars
           ? ((m.maxStars||3) > 3
               ? `<div class="text-amber-500 ${roomy?'text-base':'text-sm'} font-black mt-1">⭐ ${d.stars} 星</div>`
               : `<div class="text-amber-500 ${roomy?'text-xl':'text-lg'} tracking-widest mt-1">${starStr(d.stars)}</div>`)

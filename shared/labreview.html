@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5016B 繳交審核 · 資訊科技課程</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- ═════════════════════════════════════════════════════════════════════
+     5016B 智慧家居機電專題：Classroom 繳交審核（老師 2026-11-24）
+     ─────────────────────────────────────────────────────────────────────
+     和「📥 繳交審核與加分」（shared/review.html）同一套做法：選班級、選第幾節 →
+     自動找到 Classroom 那一份作業（「2026/11/27 專題一：感應大門：超音波與馬達」）→
+     全班的繳交排成小卡，點附件預覽，看完按「✔ 實作驗收」或「退件」。
+     ★ 不給星、不寫每週歷程 —— 5016B 是另一個成績（百分制，規則在 shared/labscore.js）：
+        實作驗收第 1～4 節各 6 分、第 5 節 15 分。
+     ★ 驗收與退件寫在名冊 roster/{學號}.arduino_json（只有老師寫得動，merge 寫入），
+        和教師端「🔧 5016B 專題」進度表的驗收是同一格。學生的 5016B 頁面會顯示退件原因。
+     ★ 讀取量：名冊整份 1 次（列班級）＋選到的那一班每人進度各 1 次 —— 不掃整個進度集合。
+     ═════════════════════════════════════════════════════════════════════ -->
+<script src="semester.js"></script>
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('term');
+  if (!t || !/^115\d{2}$/.test(t)) t = (window.SEMESTER && SEMESTER.current) ? SEMESTER.current() : '11501';
+  window.__TERM = t;
+  /* 防快取：config.js、classroom.js 改了之後要馬上看到（和 review.html 同一個理由） */
+  var v = '?v=' + Date.now();
+  document.write('<scr' + 'ipt src="../' + t + '/config.js' + v + '"></scr' + 'ipt>');
+  ['auth.js', 'labscore.js', 'classroom.js'].forEach(function (f) {
+    document.write('<scr' + 'ipt src="' + f + v + '"></scr' + 'ipt>');
+  });
+})();
+</script>
+<style>
+  html,body,button,input,select{font-family:'Noto Sans TC',system-ui,sans-serif}
+  body{background:#e7e5e4}
+  .pop{animation:pop .3s ease both}
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body class="min-h-screen text-slate-800">
+
+<main class="max-w-5xl mx-auto px-4 py-8">
+  <header class="mb-6">
+    <a href="#" id="back-teacher" class="text-sm font-bold text-slate-400 hover:text-slate-700">← 回教師端</a>
+    <h1 class="text-2xl sm:text-3xl font-black mt-2">🔧 5016B 繳交審核</h1>
+    <p class="text-slate-500 text-sm mt-2 leading-relaxed">
+      選班級和第幾節，系統會到 Classroom 找那一節的作業（作業名稱含「專題一」或課程名稱）。
+      看過學生交的照片／影片再按 <b>✔ 實作驗收</b>（第 1～4 節 +6 分、第 5 節 +15 分），
+      或 <b>退件</b>（學生的 5016B 頁面會看到原因）。<br>
+      <span class="text-slate-400 text-xs">這是專題自己的百分制成績，不給星、不影響每週評分。</span>
+    </p>
+  </header>
+  <div id="app"></div>
+</main>
+
+<div id="modal" class="hidden fixed inset-0 z-50 bg-black/60 p-4 sm:p-8" role="dialog" aria-modal="true">
+  <div class="bg-white rounded-2xl max-w-4xl mx-auto h-full flex flex-col overflow-hidden shadow-2xl">
+    <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200">
+      <div id="modal-title" class="font-bold truncate min-w-0"></div>
+      <div class="flex items-center gap-2 shrink-0">
+        <a id="modal-open" href="#" target="_blank" rel="noopener" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline">在新分頁開啟</a>
+        <button id="modal-close" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 font-black">✕</button>
+      </div>
+    </div>
+    <div id="modal-body" class="flex-1 bg-slate-50"></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
+         setPersistence, browserSessionPersistence }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, collection, getDocs, getDoc, doc, setDoc }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const C = window.CONFIG || {};
+const TERM = window.__TERM;
+const app = initializeApp(C.FIREBASE);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const PROGRESS = (C.COLLECTIONS && C.COLLECTIONS.PROGRESS) || (TERM + '-progress');
+const ROSTER = (C.COLLECTIONS && C.COLLECTIONS.ROSTER) || 'roster';
+const L = window.LABSCORE;
+const REASONS = ['照片／影片看不出裝置有在動作', '不是這一節的作品', '沒有拍到完整的裝置和接線', '檔案打不開'];
+
+const state = {
+  who: null, klass: '', no: 1,
+  roster: {},              // 學號 → 名冊（整份讀一次，列班級用）
+  progress: {},            // 學號 → 進度（只讀選到的那一班）
+  loadedClass: '',
+  cr: { on: false, err: '', courses: [], works: [], courseId: '', workId: '', rows: {}, matched: '', many: null },
+  busy: '', msg: ''
+};
+const el = id => document.getElementById(id);
+const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+{ const b = el('back-teacher'); if (b) b.href = '../' + TERM + '/teacher.html'; }
+const U = () => L.LESSONS[state.no - 1];
+
+function clsOf(sid, r) {
+  const v = String((r && r.cls) || '').trim();
+  if (v) return v;
+  sid = String(sid || '');
+  return sid.length >= 4 ? '8' + sid.slice(-4, -2) : '';
+}
+function noOf(sid, r) { const v = String((r && r.no) || '').trim(); return v || String(sid || '').slice(-2); }
+function allClasses() {
+  const set = {};
+  Object.keys(state.roster).forEach(sid => { const c = clsOf(sid, state.roster[sid]); if (c) set[c] = true; });
+  return Object.keys(set).sort();
+}
+
+/* ── 登入：只有老師（和 review.html 同一套：SESSION 持久性，教師端點進來不必再登） ── */
+function isTeacher(u) { return !!(u && u.email && window.AUTH && AUTH.isTeacherEmail(u.email)); }
+setPersistence(auth, browserSessionPersistence)
+  .catch(e => console.warn('設定持久性失敗', e))
+  .finally(() => {
+    onAuthStateChanged(auth, async (u) => {
+      if (!isTeacher(u)) { state.who = null; render(); return; }
+      state.who = u;
+      await loadRoster();
+      render();
+    });
+  });
+
+async function loadRoster() {
+  state.busy = '讀取名冊…'; render();
+  try {
+    const rs = await getDocs(collection(db, ROSTER));
+    const r = {};
+    rs.forEach(d => { r[d.id] = d.data() || {}; });
+    state.roster = r;
+    if (!state.klass) { const cs = allClasses(); state.klass = cs.length ? cs[0] : ''; }
+    await loadClassProgress();
+    const gasUrl = (C.CLASSROOM && C.CLASSROOM.GAS_URL) || '';
+    if (gasUrl && CLASSROOM.savedKey() && !state.cr.on) connectClassroom();
+  } catch (e) { state.msg = '讀不到名冊：' + e.message; }
+  state.busy = '';
+}
+/* ★ 只讀這一班每個人的進度（N 次單筆讀取），不掃整個進度集合 */
+async function loadClassProgress() {
+  const k = state.klass;
+  if (!k || state.loadedClass === k) return;
+  state.busy = '讀取 ' + k + ' 班的進度…'; render();
+  const sids = Object.keys(state.roster).filter(sid => clsOf(sid, state.roster[sid]) === k);
+  const got = await Promise.all(sids.map(async sid => {
+    try { const s = await getDoc(doc(db, PROGRESS, sid)); return [sid, s.exists() ? s.data() : {}]; }
+    catch (e) { return [sid, {}]; }
+  }));
+  if (state.klass !== k) return;          // 中途換班：這份已經過期
+  got.forEach(([sid, d]) => { state.progress[sid] = d; });
+  state.loadedClass = k;
+  state.busy = '';
+}
+
+/* ── Classroom（shared/classroom.js；和 review.html 同一支 Apps Script，不必重新部署） ── */
+async function connectClassroom(keyFromInput) {
+  const gasUrl = (C.CLASSROOM && C.CLASSROOM.GAS_URL) || '';
+  const key = String(keyFromInput != null ? keyFromInput : CLASSROOM.savedKey()).trim();
+  state.cr.err = ''; state.busy = '連線 Classroom…'; render();
+  try {
+    CLASSROOM.init(gasUrl, key);
+    await CLASSROOM.ping();
+    CLASSROOM.saveKey(key);
+    state.cr.courses = await CLASSROOM.courses();
+    state.cr.on = true;
+    await autoPickCourse();
+  } catch (e) { state.cr.err = e.message; }
+  state.busy = ''; render();
+}
+async function autoPickCourse() {
+  if (!state.cr.on || !state.klass) return;
+  const r = CLASSROOM.findCourse(state.cr.courses, state.klass);
+  if (r.course && r.course.id !== state.cr.courseId) await pickCourse(r.course.id);
+}
+async function pickCourse(id) {
+  state.cr.courseId = id; state.cr.workId = ''; state.cr.rows = {};
+  state.cr.works = []; state.cr.matched = ''; state.cr.many = null;      // ⚠️ 換課一定要清（review.html 09-16 的教訓）
+  state.busy = '讀取作業清單…'; render();
+  let ws = null, err = '';
+  try { ws = await CLASSROOM.coursework(id); } catch (e) { err = e.message; }
+  if (state.cr.courseId !== id) return;                                  // 過期的回應丟掉
+  if (ws) state.cr.works = ws;
+  if (err) state.cr.err = err;
+  state.busy = '';
+  await findThisLesson();
+}
+/** 依「第幾節」自動找作業：先比整個課程名稱，再比「專題一」。找不到或多份就不猜。 */
+async function findThisLesson() {
+  state.cr.matched = ''; state.cr.many = null; state.cr.workId = ''; state.cr.rows = {};
+  if (!(state.cr.works || []).length) { render(); return; }
+  const r = CLASSROOM.findWork(state.cr.works, L.workIds(U()));
+  if (r.work) { state.cr.matched = r.work.title; return pickWork(r.work.id); }
+  state.cr.many = r.many || null;
+  state.cr.err = r.many && r.many.length
+    ? `作業名稱含「${r.id}」的不只一份（${r.many.length} 份），請自己指定。`
+    : `這門課裡找不到作業名稱含「專題${L.NUM_ZH[U()]}」或「${L.TITLES[U()]}」的那一份，請自己從下拉選單指定。`;
+  render();
+}
+async function pickWork(id) {
+  const cid = state.cr.courseId;
+  state.cr.workId = id; state.cr.err = '';
+  state.busy = '讀取繳交狀況…'; render();
+  try {
+    const rows = await CLASSROOM.submissions(cid, id);
+    if (state.cr.courseId !== cid) return;
+    state.cr.rows = rows;
+  } catch (e) {
+    if (state.cr.courseId !== cid) return;
+    state.cr.err = e.message;
+  }
+  state.busy = ''; render();
+}
+
+/* ── 驗收／退件：寫名冊 arduino_json（先讀最新的那一份再改，merge 寫回） ── */
+async function writeArduino(sid, mutate) {
+  const ref = doc(db, ROSTER, sid);
+  const snap = await getDoc(ref);
+  const r = snap.exists() ? snap.data() : {};
+  let cur = {};
+  try { cur = JSON.parse(r.arduino_json || '{}') || {}; } catch (e) { cur = {}; }
+  if (!cur.ok || typeof cur.ok !== 'object') cur.ok = {};
+  if (!cur.rej || typeof cur.rej !== 'object') cur.rej = {};
+  mutate(cur);
+  const raw = JSON.stringify(cur);
+  await setDoc(ref, { arduino_json: raw }, { merge: true });
+  state.roster[sid] = Object.assign({}, r, { arduino_json: raw });
+}
+async function verify(sid, on) {
+  const u = U(), w = (state.cr.works || []).find(x => x.id === state.cr.workId);
+  state.busy = '寫入…'; render();
+  try {
+    await writeArduino(sid, cur => {
+      if (on) { cur.ok[u] = { at: Date.now(), by: state.who.email, work: w ? w.title : '' }; delete cur.rej[u]; }
+      else delete cur.ok[u];
+    });
+    state.msg = '';
+  } catch (e) { state.msg = '寫入失敗：' + e.message; }
+  state.busy = ''; render();
+}
+async function reject(sid, reason) {
+  const u = U(), info = L.fromRoster(state.roster[sid]);
+  if (reason && info.ok[u]) { state.msg = '這一節已經驗收過了，要退件請先取消驗收。'; render(); return; }
+  const w = (state.cr.works || []).find(x => x.id === state.cr.workId);
+  state.busy = '寫入…'; render();
+  try {
+    await writeArduino(sid, cur => {
+      if (reason) cur.rej[u] = { reason: String(reason).slice(0, 200), at: Date.now(), by: state.who.email, work: w ? w.title : '' };
+      else delete cur.rej[u];
+    });
+    state.msg = '';
+  } catch (e) { state.msg = '寫入失敗：' + e.message; }
+  state.busy = ''; render();
+}
+
+function students() {
+  const u = U();
+  return Object.keys(state.roster).sort()
+    .filter(sid => clsOf(sid, state.roster[sid]) === state.klass)
+    .map(sid => {
+      const r = state.roster[sid] || {};
+      const ar = (((state.progress[sid] || {}).modules) || {}).arduino || {};
+      const info = L.fromRoster(r);
+      const sub = state.cr.rows[sid] || null;
+      const subAt = sub && sub.updateTime ? Date.parse(sub.updateTime) || 0 : 0;
+      const rej = info.rej[u] || null;
+      return { sid, name: r.name || '', cls: clsOf(sid, r), no: noOf(sid, r), ar, info,
+               lesson: L.score(ar, info).parts[u], total: L.score(ar, info).total,
+               sub, atts: sub ? (sub.attachments || []) : [], ok: !!info.ok[u], rej,
+               resub: !!(rej && subAt && subAt > (Number(rej.at) || 0)) };
+    })
+    .sort((a, b) => (Number(a.no) || 0) - (Number(b.no) || 0));
+}
+
+/* ── 畫面 ── */
+function render() {
+  if (!state.who) {
+    el('app').innerHTML = `
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center pop">
+        <div class="text-4xl mb-3">🔐</div>
+        <h2 class="text-xl font-black mb-2">請用老師的學校 Google 帳號登入</h2>
+        <p class="text-slate-500 text-sm mb-5">從教師端點「🔧 5016B 專題 → Classroom 繳交審核」進來的話會沿用登入。</p>
+        <button id="login" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-6 py-3 rounded-xl">用 Google 登入</button>
+      </div>`;
+    return;
+  }
+  const u = U(), list = students(), pts = L.POINTS[u].verify;
+  const inCnt = list.filter(s => s.sub && CLASSROOM.handedIn(s.sub)).length;
+  el('app').innerHTML = `
+    ${state.busy ? `<div class="mb-3 text-sm font-bold text-slate-500">⏳ ${esc(state.busy)}</div>` : ''}
+    ${state.msg ? `<div class="mb-3 bg-amber-50 border border-amber-300 text-amber-800 text-sm rounded-xl px-4 py-3">${esc(state.msg)}</div>` : ''}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-4 pop">
+      <div class="flex items-center gap-2 flex-wrap mb-4">
+        ${allClasses().map(c => `<button data-klass="${esc(c)}" class="px-4 py-2 rounded-full text-sm transition-all
+            ${c === state.klass ? 'font-bold bg-blue-600 text-white shadow-md' : 'font-medium bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}">${esc(c)}</button>`).join('')
+          || '<span class="text-sm text-slate-400">名冊是空的</span>'}
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        ${L.LESSONS.map((x, i) => `<button data-no="${i + 1}" class="px-3 h-10 rounded-full text-sm transition-all
+            ${i + 1 === state.no ? 'font-bold bg-indigo-600 text-white shadow-md' : 'font-medium bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}">專題${L.NUM_ZH[x]}</button>`).join('')}
+      </div>
+      <div class="mt-3 text-xs text-slate-500 leading-relaxed">
+        ${esc(state.klass || '—')} 班 ${list.length} 人｜專題${L.NUM_ZH[u]}：${esc(L.TITLES[u])}（實作驗收 ${pts} 分）
+        <br>已驗收 <b class="text-emerald-600">${list.filter(s => s.ok).length}</b>｜退件 <b class="text-rose-600">${list.filter(s => s.rej && !s.ok).length}</b>
+        ${state.cr.on ? `｜Classroom 已繳交 <b class="text-indigo-600">${inCnt}</b>` : ''}
+      </div>
+    </div>
+    ${crPanel()}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      ${list.map(card).join('') || '<div class="text-slate-400 text-sm">這一班名冊是空的。</div>'}
+    </div>`;
+}
+function crPanel() {
+  const gasUrl = (C.CLASSROOM && C.CLASSROOM.GAS_URL) || '';
+  if (!gasUrl) return `<div class="mb-4 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 text-sm">config.js 沒有設定 CLASSROOM.GAS_URL，讀不到 Classroom（驗收仍可在教師端進度表打勾）。</div>`;
+  if (!state.cr.on) return `
+    <div class="mb-4 bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-2">
+      <span class="text-sm font-bold">連接 Classroom：</span>
+      <input id="crkey" type="password" placeholder="通行碼（和繳交審核頁同一組）" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5">
+      <button id="crgo" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm">連接</button>
+      ${state.cr.err ? `<div class="w-full text-sm text-rose-600 mt-1">${esc(state.cr.err)}</div>` : ''}
+    </div>`;
+  const opt = (arr, sel) => arr.map(x => `<option value="${esc(x.id)}" ${x.id === sel ? 'selected' : ''}>${esc(x.name || x.title)}</option>`).join('');
+  return `
+    <div class="mb-4 bg-white border border-slate-200 rounded-2xl p-4 text-sm">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="font-bold">課程</span>
+        <select id="crcourse" class="border border-slate-300 rounded-lg px-2 py-1.5"><option value="">（請選）</option>${opt(state.cr.courses, state.cr.courseId)}</select>
+        <span class="font-bold ml-2">作業</span>
+        <select id="crwork" class="border border-slate-300 rounded-lg px-2 py-1.5 max-w-xs"><option value="">（請選）</option>${opt(state.cr.many && state.cr.many.length ? state.cr.many : state.cr.works, state.cr.workId)}</select>
+      </div>
+      ${state.cr.matched ? `<div class="text-xs text-emerald-700 mt-2">✅ 自動找到：${esc(state.cr.matched)}</div>` : ''}
+      ${state.cr.err ? `<div class="text-xs text-rose-600 mt-2">${esc(state.cr.err)}</div>` : ''}
+    </div>`;
+}
+function card(s) {
+  const u = U(), handed = s.sub && CLASSROOM.handedIn(s.sub), p = s.lesson;
+  const web = Object.keys(L.POINTS[u]).filter(k => k !== 'verify')
+    .map(k => `${p[k] ? '✅' : '⬜'}${esc(L.partName(u, k))}`).join(' ');
+  const frame = s.ok ? 'bg-emerald-50 border-emerald-300'
+    : handed ? 'bg-white border-blue-300 shadow-[0_0_0_3px_rgba(147,197,253,0.35)]' : 'bg-white border-gray-200 border-dashed';
+  const atts = s.atts.map((a, i) => `<button data-prev="${esc(s.sid)}|${i}" class="block w-full text-left text-xs text-indigo-700 hover:underline truncate">
+      ${CLASSROOM.guessKind(a) === 'video' ? '🎬' : CLASSROOM.guessKind(a) === 'image' ? '🖼️' : '📎'} ${esc(a.title || a.link || '附件')}</button>`).join('');
+  return `
+    <div class="${frame} border rounded-2xl p-4">
+      <div class="flex items-baseline justify-between mb-2">
+        <h3 class="font-bold text-gray-800 text-lg truncate">${esc(s.name || '（名冊沒有姓名）')}</h3>
+        <span class="text-xs text-gray-400 font-mono ml-2">${esc(s.cls)} ${esc(s.no)}號</span>
+      </div>
+      <div class="text-xs text-slate-500 mb-2">網頁：${web}　｜　專題總分 <b>${s.total}</b></div>
+      <div class="text-xs mb-2">${state.cr.workId ? (handed ? '<span class="text-blue-700 font-bold">📤 已繳交</span>' : '<span class="text-slate-400">尚未繳交</span>') : '<span class="text-slate-400">（還沒讀 Classroom）</span>'}</div>
+      <div class="mb-3 space-y-1">${atts}</div>
+      ${s.rej && !s.ok ? `<div class="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2 py-1 mb-2">退件：${esc(s.rej.reason)}${s.resub ? '　<b class="text-blue-700">（之後重交了，請再看一次）</b>' : ''}</div>` : ''}
+      <div class="flex flex-wrap gap-2">
+        <button data-ok="${esc(s.sid)}" class="px-3 py-1.5 rounded-lg text-sm font-bold border
+          ${s.ok ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50'}">${s.ok ? '✔ 已驗收（取消）' : `✔ 實作驗收 +${L.POINTS[u].verify}`}</button>
+        ${s.ok ? '' : (s.rej
+          ? `<button data-unrej="${esc(s.sid)}" class="px-3 py-1.5 rounded-lg text-sm font-bold border bg-white text-slate-600 border-slate-300 hover:bg-slate-50">撤回退件</button>`
+          : `<select data-rej="${esc(s.sid)}" class="text-sm border border-rose-300 text-rose-700 rounded-lg px-2 py-1.5"><option value="">退件…</option>${REASONS.map(r => `<option>${esc(r)}</option>`).join('')}<option value="__other">其他（自己寫）</option></select>`)}
+      </div>
+    </div>`;
+}
+
+/* ── 事件 ── */
+document.addEventListener('click', async (e) => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.id === 'login') { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (er) { state.msg = '登入失敗：' + er.message; render(); } return; }
+  if (t.id === 'crgo') return connectClassroom(el('crkey').value);
+  if (t.id === 'modal-close') { el('modal').classList.add('hidden'); el('modal-body').innerHTML = ''; return; }
+  if (t.dataset.klass) {
+    state.klass = t.dataset.klass; await loadClassProgress(); render();
+    if (state.cr.on) await autoPickCourse();
+    return;
+  }
+  if (t.dataset.no) { state.no = Number(t.dataset.no); render(); if (state.cr.on && state.cr.courseId) await findThisLesson(); return; }
+  if (t.dataset.ok) { const s = students().find(x => x.sid === t.dataset.ok); return verify(t.dataset.ok, !(s && s.ok)); }
+  if (t.dataset.unrej) return reject(t.dataset.unrej, '');
+  if (t.dataset.prev) {
+    const [sid, i] = t.dataset.prev.split('|');
+    const s = students().find(x => x.sid === sid), a = s && s.atts[Number(i)];
+    if (!a) return;
+    const url = CLASSROOM.previewUrl(a);
+    el('modal-title').textContent = (s.name || sid) + '　' + (a.title || '');
+    el('modal-open').href = a.link || '#';
+    el('modal-body').innerHTML = url ? `<iframe src="${esc(url)}" class="w-full h-full" allow="autoplay" allowfullscreen></iframe>`
+      : '<div class="p-8 text-center text-slate-500">這個附件不能在這裡預覽，請按右上角「在新分頁開啟」。</div>';
+    el('modal').classList.remove('hidden');
+  }
+});
+document.addEventListener('change', async (e) => {
+  const t = e.target;
+  if (t.id === 'crcourse' && t.value) return pickCourse(t.value);
+  if (t.id === 'crwork' && t.value) { state.cr.matched = ''; return pickWork(t.value); }
+  if (t.dataset && t.dataset.rej && t.value) {
+    let reason = t.value;
+    if (reason === '__other') reason = (prompt('退件原因（學生會看到）：') || '').trim();
+    if (reason) await reject(t.dataset.rej, reason); else render();
+  }
+});
+render();
+</script>
+</body>
+</html>
