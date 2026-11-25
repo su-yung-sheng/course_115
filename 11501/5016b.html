@@ -158,6 +158,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
   <script src="../shared/projlab.js"></script>
   <script src="../shared/doorlab.js"></script>
   <script src="../shared/lightlab.js"></script>
+  <!-- ★ 模擬器上方的三個任務（老師 2026-11-25：「模擬互動目前沒有強制」）—— 三個都完成才打開動手檢核 -->
+  <script src="../shared/simtask.js"></script>
+  <!-- ★ 程式碼上方的「▶ 執行結果」動畫（老師 2026-11-25）：只畫程式用到的元件，邊跑邊亮那一行 -->
+  <script src="../shared/runanim.js"></script>
   <!-- ★ 5016B 的成績與依序開放（老師 2026-11-24）：百分制、不跟星星合計；規則只在 labscore.js 一份。
        grading.js 只拿來判斷「備課模式」（OPEN_ALL_UNITS）。 -->
   <script src="../shared/grading.js"></script>
@@ -612,6 +616,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             <p class="text-slate-500 text-sm">操作下方模擬元件，觀察數值變化 —— 和 NKNU 5016B 模組上跑起來的行為一致。</p>
                         </div>
 
+                        <!-- 🎮 模擬任務：三個，依序完成；完成才打開動手檢核（老師 2026-11-25） -->
+                        <div id="sim-tasks" class="hidden bg-white p-4 rounded-2xl border-2 border-amber-300"></div>
                         <div id="interactive-playground" class="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-center items-center min-h-[300px] relative">
                             <!-- Dynamic Simulation Loaded Here -->
                         </div>
@@ -644,6 +650,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     </div>
                     <div id="demo-wrap">
                         <div id="demo-howto" class="hidden mb-4 bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4 text-emerald-900 text-sm leading-relaxed"></div>
+                        <!-- ▶ 執行結果動畫（shared/runanim.js；第 1～4 節） -->
+                        <div id="run-anim"></div>
                         <!-- 邏輯解析：整個寬度 -->
                         <div id="detail-demo-container">
                             <!-- Code Displayed Here -->
@@ -675,6 +683,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         function clearAnimations() {
             animationRequests.forEach(req => cancelAnimationFrame(req));
             animationRequests = [];
+            if (window.SIMTASK) window.SIMTASK.stop();      // 模擬任務的「停住」計時一起作廢
+            if (window.RUNANIM) window.RUNANIM.stopAll();   // 執行結果動畫也停
         }
 
         function scrollToCurriculum() {
@@ -909,12 +919,18 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     /* ⚠️ 不用 setTimeout —— 這一頁只有 cancelAnimationFrame 的清理
                        （clearAnimations），計時器留下來會在切換單元後還在跑。
                        改成在動畫迴圈裡比對時間，切走就一起停。 */
+                    /* 🎮 回報給模擬任務（shared/simtask.js）：距離、門開著沒、馬達在轉沒 */
+                    let curDist = 60;
+                    function simReport() {
+                        if (window.SIMTASK) window.SIMTASK.report('u1', { dist: curDist, open: doorOpen, moving: dir !== 0 });
+                    }
                     function tick(now) {
                         if (dir !== 0) {
                             if (now >= until) {          // 時間到 → 停，並記住門的狀態
                                 dir = 0;
                                 doorOpen = !doorOpen;
                                 paint();
+                                simReport();             // ★ 門動完才算開／關好了
                             } else {
                                 rotation += (dir > 0 ? 9 : -9);
                                 blade.style.transform = `rotate(${rotation}deg)`;
@@ -927,9 +943,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         // 往右（值大）＝ 靠近，所以距離要反過來算
                         const dist = 65 - parseInt(e.target.value);
                         distVal.textContent = dist;
-                        if (dir !== 0) return;           // 門正在動：不重新判斷
-                        if (dist < NEAR && !doorOpen)      { dir = 1;  until = performance.now() + RUN_MS; paint(); }
-                        else if (dist > FAR && doorOpen)   { dir = -1; until = performance.now() + RUN_MS; paint(); }
+                        curDist = dist;
+                        if (dir === 0) {                 // 門正在動：不重新判斷
+                            if (dist < NEAR && !doorOpen)      { dir = 1;  until = performance.now() + RUN_MS; paint(); }
+                            else if (dist > FAR && doorOpen)   { dir = -1; until = performance.now() + RUN_MS; paint(); }
+                        }
+                        simReport();
                     });
 
                     paint();
@@ -1018,7 +1037,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                           '所以需要一塊新積木：<b>對應</b>。',
                 objectives: [
                     "認識 WS2812B 的「定址」特性：一條線就能分別控制每一顆燈珠",
-                    "應用<span class=\"hl\">對應</span>積木：把距離數值（例如 10～100 公分）換算成燈珠數量（1～8 顆）",
+                    "應用<span class=\"hl\">對應</span>積木：把距離（55～1 公分）換算成<b>亮度</b>（1～200）或<b>第幾顆燈</b>（1～8）",
                     "撰寫迴圈 (For-Loop) 來動態更新燈條的點亮與熄滅狀態"
                 ],
                 materials: [
@@ -1026,63 +1045,125 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "超音波距離感測器（HC-SR04，Trig = A2、Echo = A3）",
                     "RGB 全彩燈條（WS2812B，8 顆燈珠）"
                 ],
+                /* 🎛️ 模擬器（老師 2026-11-25：「讓兩邊一致」）
+                   ⚠️ 舊版模擬器是「10 到 100 公分 → 亮 1 到 8 顆（長度）」，
+                      和下面的程式（對應 55→1、模式一亮度 1～200、模式二只亮第幾顆）各說各話。
+                   ⇒ 改成照程式跑：按 1／按 2 切模式、距離 1～55 公分、
+                      模式二可以切「最後一行（設回 0,0,0）」有沒有寫 —— 正好是下面「兩種效果」那一段。
+                   ★ 換算用 Arduino 的 map()（整數運算，小數捨去）：對應積木燒錄後就是它。
+                      55 個距離只有頭尾整除，其餘一律捨去小數。
+                   ★ 拉桿方向和第一節一樣：往右＝人走近。 */
                 initPlayground: function(container) {
                     container.innerHTML = `
-                        <div class="flex flex-col items-center gap-6 w-full">
-                            <div class="text-center w-full max-w-sm">
-                                <div class="flex justify-between text-xs text-slate-500 font-mono mb-2">
-                                    <span>超音波偵測距離: <span id="u-led-dist-text" class="text-sky-400 font-bold text-lg">100</span> cm</span>
-                                    <span>亮燈數: <span id="u-led-count-text" class="text-sky-400 font-bold text-lg">0</span> 顆</span>
-                                </div>
-                                <input type="range" id="u-led-slider" min="10" max="150" value="150" class="w-full big-range" style="--thumb:#0ea5e9">
+                        <div class="flex flex-col items-center gap-5 w-full">
+                            <div class="flex rounded-xl border-2 border-sky-300 overflow-hidden text-sm font-bold" id="u-led-modes">
+                                <button data-mode="1" class="px-4 py-2">按 1：亮度模式</button>
+                                <button data-mode="2" class="px-4 py-2 border-l-2 border-sky-300">按 2：位置模式</button>
                             </div>
-                            
-                            <!-- LED Strip Display -->
-                            <div class="bg-[#0f172a] p-6 rounded-2xl border-2 border-slate-200 w-full flex justify-center shadow-inner mt-4">
-                                <div class="flex gap-3 justify-center items-center" id="u-led-strip">
-                                    <!-- LEDs generated via JS -->
+                            <div class="flex justify-center gap-4 w-full flex-wrap">
+                                <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-center w-32">
+                                    <div class="text-[10px] text-slate-500 mb-1">距離 (cm)</div>
+                                    <div id="u-led-dist-text" class="text-sky-500 font-bold text-xl font-mono">55</div>
                                 </div>
+                                <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-center w-40">
+                                    <div class="text-[10px] text-slate-500 mb-1" id="u-led-out-label">亮度（1～200）</div>
+                                    <div id="u-led-out-text" class="text-indigo-600 font-bold text-xl font-mono">1</div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-slate-500 font-mono text-center" id="u-led-formula"></div>
+                            <div class="w-full max-w-md">
+                                <input type="range" id="u-led-slider" min="1" max="55" value="1" class="w-full big-range" style="--thumb:#0ea5e9">
+                                <div class="flex justify-between text-xs text-slate-500 mt-1">
+                                    <span>← 遠 (55cm)</span><span>近 (1cm) →</span>
+                                </div>
+                            </div>
+                            <div class="bg-[#0f172a] p-5 rounded-2xl border-2 border-slate-200 w-full flex flex-col items-center gap-2 shadow-inner">
+                                <div class="flex gap-2 sm:gap-3 justify-center items-center" id="u-led-strip"></div>
+                                <div class="flex gap-2 sm:gap-3 justify-center text-[10px] text-slate-500 font-mono" id="u-led-nums"></div>
+                            </div>
+                            <div id="u-led-keep-row" class="hidden flex flex-wrap items-center justify-center gap-2">
+                                <label class="flex items-center gap-2 text-sm text-slate-700 bg-rose-50 border-2 border-rose-200 rounded-xl px-3 py-2 cursor-pointer select-none">
+                                    <input type="checkbox" id="u-led-keep" class="w-4 h-4">
+                                    拿掉程式最後一行（不設回 0,0,0）—— 走過的燈會留著
+                                </label>
+                                <button id="u-led-clear" class="text-sm font-bold bg-white border-2 border-slate-300 hover:bg-slate-50 rounded-xl px-3 py-2">🔄 清掉燈條</button>
                             </div>
                         </div>
                     `;
 
                     const slider = document.getElementById('u-led-slider');
                     const distText = document.getElementById('u-led-dist-text');
-                    const countText = document.getElementById('u-led-count-text');
+                    const outText = document.getElementById('u-led-out-text');
+                    const outLabel = document.getElementById('u-led-out-label');
+                    const formula = document.getElementById('u-led-formula');
                     const strip = document.getElementById('u-led-strip');
+                    const nums = document.getElementById('u-led-nums');
+                    const keepBox = document.getElementById('u-led-keep');
+                    const keepRow = document.getElementById('u-led-keep-row');
+                    const modeBtns = [...document.querySelectorAll('#u-led-modes button')];
 
-                    // Spawn 8 LEDs
-                    for(let i=0; i<8; i++) {
+                    /* Arduino map()：整數運算、小數捨去（對應積木燒錄後就是它） */
+                    function amap(x, a, b, c, d) { return Math.trunc((x - a) * (d - c) / (b - a)) + c; }
+                    const brightAt = d => amap(d, 55, 1, 1, 200);    // 模式一：對應(距離, 55→1, 1→200)
+                    const ledAt    = d => amap(d, 55, 1, 1, 8);      // 模式二：對應(距離, 55→1, 1→8)
+
+                    const leds = [];
+                    for (let i = 0; i < 8; i++) {
                         const led = document.createElement('div');
-                        led.className = 'w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white shadow-inner border border-slate-200/50 transition-all duration-300';
+                        led.className = 'w-7 h-7 sm:w-9 sm:h-9 rounded-full border border-slate-600 transition-all duration-150';
                         led.id = `u-pixel-${i}`;
                         strip.appendChild(led);
+                        leds.push(led);
+                        const n = document.createElement('div');
+                        n.className = 'w-7 sm:w-9 text-center';
+                        n.textContent = i + 1;
+                        nums.appendChild(n);
                     }
 
-                    slider.addEventListener('input', (e) => {
-                        const dist = parseInt(e.target.value);
+                    let mode = 1, dist = 55, lit = new Set();
+                    function paint() {
+                        modeBtns.forEach(b => {
+                            const on = Number(b.dataset.mode) === mode;
+                            b.className = (on ? 'bg-sky-500 text-white' : 'bg-white text-sky-700 hover:bg-sky-50') + ' px-4 py-2' +
+                                          (b.dataset.mode === '2' ? ' border-l-2 border-sky-300' : '');
+                        });
+                        keepRow.classList.toggle('hidden', mode !== 2);
                         distText.textContent = dist;
-                        
-                        // Map distance (10 to 100 cm) to LEDs (8 to 0)
-                        let activeLeds = 0;
-                        if (dist <= 100) {
-                            activeLeds = Math.floor(((100 - dist) / 90) * 8) + 1; 
-                            if (activeLeds > 8) activeLeds = 8;
+                        if (mode === 1) {
+                            const b = brightAt(dist);
+                            outLabel.textContent = '亮度（1～200）';
+                            outText.textContent = b;
+                            formula.textContent = `亮度 = 對應(${dist}, 55→1, 1→200) = ${b}　→ 全部 (${b}, ${b}, ${b})`;
+                            const g = Math.round(40 + (b / 200) * 215), a = (b / 200).toFixed(2);
+                            leds.forEach(led => {
+                                led.style.backgroundColor = `rgb(${g},${g},${g})`;
+                                led.style.boxShadow = `0 0 ${Math.round(4 + b / 10)}px rgba(255,255,255,${a})`;
+                            });
+                        } else {
+                            const n = ledAt(dist);
+                            if (!keepBox.checked) lit = new Set();
+                            lit.add(n);
+                            outLabel.textContent = '燈號（1～8）';
+                            outText.textContent = n;
+                            formula.textContent = `燈號 = 對應(${dist}, 55→1, 1→8) = ${n}　→ 第 ${n} 顆 (50, 50, 50)`;
+                            leds.forEach((led, i) => {
+                                const on = lit.has(i + 1);
+                                led.style.backgroundColor = on ? (i + 1 === n ? '#fde68a' : '#94a3b8') : '#1e293b';
+                                led.style.boxShadow = on && i + 1 === n ? '0 0 14px 3px rgba(253,230,138,.7)' : 'none';
+                            });
                         }
-
-                        countText.textContent = activeLeds;
-
-                        for(let i=0; i<8; i++) {
-                            const led = document.getElementById(`u-pixel-${i}`);
-                            if (i < activeLeds) {
-                                led.style.backgroundColor = '#0ea5e9'; // Sky blue
-                                led.style.boxShadow = '0 0 15px #0ea5e9';
-                            } else {
-                                led.style.backgroundColor = '#1e293b';
-                                led.style.boxShadow = 'none';
-                            }
-                        }
-                    });
+                        /* 🎮 回報給模擬任務（shared/simtask.js） */
+                        if (window.SIMTASK) window.SIMTASK.report('u2', {
+                            mode: mode, dist: dist, bright: brightAt(dist), led: ledAt(dist),
+                            keep: keepBox.checked, lit: [...lit].sort((x, y) => x - y)
+                        });
+                    }
+                    slider.addEventListener('input', (e) => { dist = 56 - parseInt(e.target.value); paint(); });
+                    modeBtns.forEach(b => b.addEventListener('click', () => { mode = Number(b.dataset.mode); lit = new Set(); paint(); }));
+                    keepBox.addEventListener('change', () => { lit = new Set(); paint(); });
+                    /* 燈留著之後，實機要重新開機（或重新燒錄）才會熄 —— 這顆按鈕就是那個動作 */
+                    document.getElementById('u-led-clear').addEventListener('click', () => { lit = new Set(); paint(); });
+                    paint();
                 },
                 demoHTML: `
                     <div class="flex items-center gap-3 mb-2">
@@ -1264,39 +1345,49 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "⚠️ 這一顆<b>不在模組上</b>，要自己接：開發板 <b>G→腳1</b>、<b>P→腳3</b>、<b>S→腳2</b>（訊號進 <b>A7</b>）",
                     "直流馬達（腳位對照：馬達 腳位 2、3）"
                 ],
+                /* 🎛️ 模擬器（老師 2026-11-25：「讓兩邊一致」—— 第三節也照程式跑）
+                   ⚠️ 舊版是「A0 讀數 → PWM 0 到 255、只會正轉」，和下面的程式各說各話：
+                      程式讀的是 A7、類比對應(A7, −250, 250)，旋鈕中間停、往兩邊正轉／反轉，
+                      還有一個角色「指針」：類比對應(A7, 0, 180) → 面向那個角度。
+                   ⇒ 照程式畫：旋鈕（A7）、馬達（轉速 −250～250）、舞台上的指針。
+                   ★ 類比對應的取整用四捨五入（和第四節、▶ 執行結果動畫同一條；實機取法未驗證）。 */
                 initPlayground: function(container) {
                     container.innerHTML = `
-                        <div class="flex flex-col items-center gap-6 w-full">
-                            <div class="flex justify-center gap-6 w-full">
-                                <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-center w-36">
-                                    <div class="text-[10px] text-slate-500 mb-1">類比讀取 (A0)</div>
-                                    <div id="pot-val" class="text-amber-400 font-bold text-xl font-mono">0</div>
+                        <div class="flex flex-col items-center gap-5 w-full">
+                            <div class="flex justify-center gap-3 w-full flex-wrap">
+                                <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-center w-32">
+                                    <div class="text-[10px] text-slate-500 mb-1">A7 讀到（0～1023）</div>
+                                    <div id="pot-val" class="text-amber-500 font-bold text-xl font-mono">512</div>
                                 </div>
                                 <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-center w-36">
-                                    <div class="text-[10px] text-slate-500 mb-1">PWM 輸出 (~腳位)</div>
-                                    <div id="pwm-val" class="text-red-400 font-bold text-xl font-mono">0</div>
+                                    <div class="text-[10px] text-slate-500 mb-1">轉速（−250～250）</div>
+                                    <div id="spd-val" class="text-rose-500 font-bold text-xl font-mono">0</div>
+                                </div>
+                                <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 text-center w-32">
+                                    <div class="text-[10px] text-slate-500 mb-1">指針角度（0～180）</div>
+                                    <div id="ang-val" class="text-indigo-600 font-bold text-xl font-mono">90</div>
                                 </div>
                             </div>
-                            
-                            <div class="flex flex-col sm:flex-row items-center justify-around w-full mt-6 gap-12">
-                                <!-- Potentiometer Input -->
-                                <div class="flex flex-col items-center gap-3">
-                                    <div class="w-16 h-16 rounded-full bg-slate-100 border-4 border-slate-500 flex items-center justify-center relative">
-                                        <div id="pot-knob-indicator" class="w-1 h-6 bg-amber-400 absolute top-2 rounded-full transform origin-bottom transition-transform duration-75"></div>
-                                        <div class="w-6 h-6 bg-slate-50 rounded-full z-10"></div>
-                                    </div>
-                                    <input type="range" id="pot-slider" min="0" max="1023" value="0" class="w-full max-w-xs big-range" style="--thumb:#f59e0b">
-                                    <span class="text-xs text-slate-500 font-bold">轉動可變電阻</span>
-                                </div>
-
-                                <!-- Motor Visual -->
-                                <div class="flex flex-col items-center gap-3">
-                                    <div class="w-24 h-24 bg-white rounded-full border-4 border-slate-300 flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.5)] relative">
-                                        <div id="pwm-motor-blade" class="w-2 h-20 bg-emerald-400 rounded-full motor-prop absolute"></div>
-                                        <div id="pwm-motor-blade2" class="w-20 h-2 bg-emerald-400 rounded-full motor-prop absolute"></div>
+                            <div class="text-xs text-slate-500 font-mono text-center" id="pot-formula"></div>
+                            <div class="w-full max-w-md">
+                                <input type="range" id="pot-slider" min="0" max="1023" value="512" class="w-full big-range" style="--thumb:#f59e0b">
+                                <div class="flex justify-between text-xs text-slate-500 mt-1"><span>轉到最左</span><span>正中間</span><span>轉到最右</span></div>
+                            </div>
+                            <div class="flex flex-col sm:flex-row items-center justify-around w-full gap-8">
+                                <div class="flex flex-col items-center gap-2">
+                                    <div class="w-24 h-24 bg-white rounded-full border-4 border-slate-300 flex items-center justify-center relative">
+                                        <div id="pwm-motor-blade" class="w-2 h-20 bg-emerald-400 rounded-full absolute"></div>
+                                        <div id="pwm-motor-blade2" class="w-20 h-2 bg-emerald-400 rounded-full absolute"></div>
                                         <div class="w-6 h-6 bg-slate-300 rounded-full z-10"></div>
                                     </div>
-                                    <span class="text-xs text-slate-500 font-bold">風扇轉速</span>
+                                    <span class="text-xs text-slate-500 font-bold">直流馬達（腳位 2、3）　<span id="spd-dir">■ 停</span></span>
+                                </div>
+                                <div class="flex flex-col items-center gap-2">
+                                    <div class="w-24 h-24 bg-white rounded-xl border-2 border-slate-300 relative">
+                                        <div id="ptr-arrow" class="absolute h-1 bg-rose-500 rounded" style="left:48px;top:46px;width:36px;transform-origin:0 2px"></div>
+                                        <div class="absolute w-3 h-3 bg-slate-800 rounded-full" style="left:42px;top:42px"></div>
+                                    </div>
+                                    <span class="text-xs text-slate-500 font-bold">舞台上的角色：指針</span>
                                 </div>
                             </div>
                         </div>
@@ -1304,39 +1395,41 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 
                     const slider = document.getElementById('pot-slider');
                     const potText = document.getElementById('pot-val');
-                    const pwmText = document.getElementById('pwm-val');
-                    const knob = document.getElementById('pot-knob-indicator');
+                    const spdText = document.getElementById('spd-val');
+                    const angText = document.getElementById('ang-val');
+                    const dirText = document.getElementById('spd-dir');
+                    const formula = document.getElementById('pot-formula');
                     const blade1 = document.getElementById('pwm-motor-blade');
                     const blade2 = document.getElementById('pwm-motor-blade2');
+                    const arrow = document.getElementById('ptr-arrow');
 
-                    let currentSpeed = 0;
-                    let mRotation = 0;
+                    /* 類比對應(A7, 下限, 上限)：0～1023 換到下限～上限（四捨五入） */
+                    const amapA7 = (v, lo, hi) => Math.round(lo + (v / 1023) * (hi - lo));
+                    const MAXS = 250;                                   // 轉速上限（下限是負的同一個數）
+                    const fmt = n => (n < 0 ? '−' + (-n) : String(n));    // ⚠️ 畫面上的負號用全形「−」（glossary.test）
+                    let speed = 0, mRotation = 0;
 
                     function rotateMotor() {
-                        if (currentSpeed > 0) {
-                            mRotation += currentSpeed;
+                        if (speed !== 0) {
+                            mRotation += speed / 12;          // 負的就反轉
                             blade1.style.transform = `rotate(${mRotation}deg)`;
                             blade2.style.transform = `rotate(${mRotation}deg)`;
                         }
                         animationRequests.push(requestAnimationFrame(rotateMotor));
                     }
-
-                    slider.addEventListener('input', (e) => {
-                        const val = parseInt(e.target.value);
+                    function paint(val) {
+                        speed = amapA7(val, -MAXS, MAXS);
+                        const angle = amapA7(val, 0, 180);
                         potText.textContent = val;
-                        
-                        // Map 0-1023 to 0-255
-                        const pwm = Math.floor((val / 1023) * 255);
-                        pwmText.textContent = pwm;
-                        
-                        // Map PWM to rotation speed for visual
-                        currentSpeed = (pwm / 255) * 20; 
-                        
-                        // Rotate knob visually (-135deg to 135deg roughly)
-                        const knobAngle = -135 + (val / 1023) * 270;
-                        knob.style.transform = `rotate(${knobAngle}deg)`;
-                    });
-
+                        spdText.textContent = fmt(speed);
+                        angText.textContent = angle;
+                        dirText.textContent = speed > 0 ? '正轉 ▶' : (speed < 0 ? '◀ 反轉' : '■ 停');
+                        formula.textContent = `轉速 = 類比對應(A7, −250, 250) = ${fmt(speed)}　｜　角度 = 類比對應(A7, 0, 180) = ${angle}`;
+                        arrow.style.transform = `rotate(${angle - 90}deg)`;   // Scratch：0＝朝上、90＝朝右
+                        if (window.SIMTASK) window.SIMTASK.report('u3', { pot: val, speed: speed, angle: angle });
+                    }
+                    slider.addEventListener('input', (e) => paint(parseInt(e.target.value)));
+                    paint(512);
                     rotateMotor();
                     lucide.createIcons();
                 },
@@ -1491,70 +1584,105 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                      ③ 用 360 換算，但積木裡是 **359**。
                      ④ 只畫 4 顆燈，實際燈條是 8 顆。
                    ⇒ 改成把「讀到什麼 → 哪一塊換算 → 換成什麼」三層都寫出來。 */
+                /* 🎛️ 模擬器（老師 2026-11-25：「讓兩邊一致」—— 第四節也照程式跑）
+                   ⚠️ 舊版只有混色、顏色用一般的色相（0 紅、120 綠…），
+                      但下面的程式是「按 1 燈號移動／按 2 混色」，而且紅綠藍是用 **sin 公式**算的：
+                      顏色 0 其實是黃綠、30 黃、90 紅、150 洋紅、210 藍、270 青、330 綠。
+                   ⇒ 照程式畫：按 1／按 2 切換、紅綠藍照 sin 公式（Scratch 的 sin 是角度）。
+                   ★ 公式在 LABKIT.hueRgb（暖身、第五節、檢核共用同一份）。 */
                 initPlayground: function(container) {
                     container.innerHTML = `
-                        <div class="flex flex-col items-center gap-5 w-full">
-                            <div class="w-full max-w-md bg-slate-50 border-2 border-slate-200 rounded-2xl p-4">
-                                <div class="flex items-center justify-between gap-2 text-sm font-mono">
-                                    <span class="text-slate-600">A7 讀到</span>
-                                    <span><b id="color-pot-val" class="text-amber-600 text-lg">0</b>
-                                        <span class="text-xs text-slate-400">／ 1023</span></span>
-                                </div>
-                                <div class="text-center text-xs text-slate-400 my-1">
-                                    ↓　類比對應（A7，0，359）　↓
-                                </div>
-                                <div class="flex items-center justify-between gap-2 text-sm font-mono">
-                                    <span class="text-slate-600">色相</span>
-                                    <span><b id="hue-val" class="text-indigo-600 text-lg">0</b>
-                                        <span class="text-xs text-slate-400">／ 359</span></span>
+                        <div class="flex flex-col items-center gap-4 w-full">
+                            <div class="flex rounded-xl border-2 border-fuchsia-300 overflow-hidden text-sm font-bold" id="hue-modes">
+                                <button data-mode="1" class="px-4 py-2">按 1：燈號移動</button>
+                                <button data-mode="2" class="px-4 py-2 border-l-2 border-fuchsia-300">按 2：混色</button>
+                            </div>
+                            <div class="w-full max-w-md bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 text-sm font-mono">
+                                <div class="flex items-center justify-between"><span class="text-slate-600">A7 讀到</span>
+                                    <span><b id="color-pot-val" class="text-amber-600 text-lg">0</b> <span class="text-xs text-slate-400">／ 1023</span></span></div>
+                                <div class="text-center text-xs text-slate-500 my-1" id="hue-formula"></div>
+                                <div class="flex items-center justify-between"><span class="text-slate-600" id="hue-out-label">燈號</span>
+                                    <b id="hue-val" class="text-indigo-600 text-lg">1</b></div>
+                                <div id="hue-rgb" class="hidden flex justify-center gap-3 mt-2 text-xs font-bold">
+                                    <span class="text-red-600">紅 <b id="hue-r">0</b></span><span class="text-green-600">綠 <b id="hue-g">0</b></span><span class="text-blue-600">藍 <b id="hue-b">0</b></span>
                                 </div>
                             </div>
-
                             <div class="w-full max-w-md">
-                                <input type="range" id="color-slider" min="0" max="1023" value="0"
-                                    class="w-full big-range"
-                                    style="--thumb:#a855f7; background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);">
-                                <div class="flex justify-between text-xs text-slate-400 font-mono mt-1">
-                                    <span>轉到最左</span><span>轉到最右</span>
-                                </div>
+                                <input type="range" id="color-slider" min="0" max="1023" value="0" class="w-full big-range" style="--thumb:#a855f7">
+                                <div id="hue-bar" class="hidden h-3 rounded-full mt-2"></div>
+                                <div id="hue-bar-labels" class="hidden relative h-4 text-[10px] text-slate-500 font-bold mt-0.5"></div>
+                                <div class="flex justify-between text-xs text-slate-400 font-mono mt-1"><span>轉到最左</span><span>轉到最右</span></div>
                             </div>
-
                             <div id="hue-strip" class="flex gap-2 sm:gap-3 justify-center items-center bg-slate-900 p-5 rounded-2xl w-full"></div>
-
-                            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-md">
-                                ⚠️ 上面那個 <b>0～1023</b> 是 <b>A7 原本讀到的數字</b>
-                                （第三節那把尺，旋鈕轉到哪就讀到多少）。<br>
-                                你<span class="hl">不必自己除</span> ——
-                                「類比對應」那塊積木會直接把它換成 <b>0～359</b> 的色相。
-                            </p>
+                            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-md" id="hue-note"></p>
                         </div>
                     `;
 
                     const slider = document.getElementById('color-slider');
                     const potText = document.getElementById('color-pot-val');
-                    const hueText = document.getElementById('hue-val');
+                    const outText = document.getElementById('hue-val');
+                    const outLabel = document.getElementById('hue-out-label');
+                    const formula = document.getElementById('hue-formula');
+                    const rgbBox = document.getElementById('hue-rgb');
+                    const bar = document.getElementById('hue-bar'), barLabels = document.getElementById('hue-bar-labels');
+                    const note = document.getElementById('hue-note');
                     const strip = document.getElementById('hue-strip');
-                    /* 燈條是 8 顆（和第二、四節的程式一致）。 */
+                    const modeBtns = [...document.querySelectorAll('#hue-modes button')];
+                    const amapA7 = (v, lo, hi) => Math.round(lo + (v / 1023) * (hi - lo));
+                    const rgbOf = h => window.LABKIT.hueRgb(h);     // 程式那三行 sin
+                    const css = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+                    /* 色環條：照 sin 公式取樣（不是一般的彩虹），下面標幾個顏色的位置 */
+                    const stops = [];
+                    for (let h = 0; h <= 359; h += 15) stops.push(css(rgbOf(h)) + ' ' + (h / 359 * 100).toFixed(1) + '%');
+                    bar.style.background = 'linear-gradient(90deg,' + stops.join(',') + ')';
+                    barLabels.innerHTML = [[30, '黃'], [90, '紅'], [150, '洋紅'], [210, '藍'], [270, '青'], [330, '綠']]
+                        .map(([h, n]) => `<span style="position:absolute;left:${(h / 359 * 100).toFixed(1)}%;transform:translateX(-50%)">${h} ${n}</span>`).join('');
                     const leds = [];
                     for (let i = 0; i < 8; i++) {
                         const d = document.createElement('div');
-                        d.className = 'w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-colors';
+                        d.className = 'w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-slate-600 transition-colors';
                         strip.appendChild(d);
                         leds.push(d);
                     }
 
+                    let mode = 1;
                     function paint(val) {
-                        potText.textContent = val;
-                        /* ★ 上限是 359，和積木裡那一組一模一樣（不是 360）。 */
-                        const hue = Math.round((val / 1023) * 359);
-                        hueText.textContent = hue;
-                        const colorString = `hsl(${hue}, 100%, 50%)`;
-                        leds.forEach(led => {
-                            led.style.backgroundColor = colorString;
-                            led.style.boxShadow = `0 0 18px ${colorString}`;
+                        modeBtns.forEach(b => {
+                            const on = Number(b.dataset.mode) === mode;
+                            b.className = (on ? 'bg-fuchsia-500 text-white' : 'bg-white text-fuchsia-700 hover:bg-fuchsia-50') + ' px-4 py-2' +
+                                          (b.dataset.mode === '2' ? ' border-l-2 border-fuchsia-300' : '');
                         });
+                        potText.textContent = val;
+                        [rgbBox, bar, barLabels].forEach(x => x.classList.toggle('hidden', mode !== 2));
+                        let state;
+                        if (mode === 1) {
+                            const n = amapA7(val, 1, 8);
+                            outLabel.textContent = '燈號';
+                            outText.textContent = n;
+                            formula.textContent = `↓ 燈號 = 類比對應(A7, 1, 8) = ${n} ↓`;
+                            leds.forEach((d, i) => {
+                                d.style.backgroundColor = i + 1 === n ? '#e2e8f0' : '#1e293b';
+                                d.style.boxShadow = i + 1 === n ? '0 0 14px rgba(226,232,240,.8)' : 'none';
+                            });
+                            note.innerHTML = '只亮<b>第「燈號」顆</b>（50,50,50），其他顆是 (0,0,0) —— 程式每 0.4 秒先清整條、再亮下一顆。';
+                            state = { mode: 1, pot: val, led: n };
+                        } else {
+                            const h = amapA7(val, 0, 359), c = rgbOf(h);
+                            outLabel.textContent = '顏色（0～359）';
+                            outText.textContent = h;
+                            formula.textContent = `↓ 顏色 = 類比對應(A7, 0, 359) = ${h}　→ 紅綠藍用 sin 公式算 ↓`;
+                            document.getElementById('hue-r').textContent = c[0];
+                            document.getElementById('hue-g').textContent = c[1];
+                            document.getElementById('hue-b').textContent = c[2];
+                            leds.forEach(d => { d.style.backgroundColor = css(c); d.style.boxShadow = '0 0 18px ' + css(c); });
+                            note.innerHTML = '⚠️ 上面的 <b>0～1023</b> 是 A7 原本讀到的數字；你<b>不必自己除</b> —— 「類比對應（A7，0，359）」會把它換成 <b>0～359</b> 的「顏色」，' +
+                                             '再用三行 sin 算出<b>紅、綠、藍</b>三盞燈各多亮 —— 三盞疊在一起就是你看到的顏色。';
+                            state = { mode: 2, pot: val, hue: h, rgb: c };
+                        }
+                        if (window.SIMTASK) window.SIMTASK.report('u4', state);
                     }
                     slider.addEventListener('input', (e) => paint(parseInt(e.target.value)));
+                    modeBtns.forEach(b => b.addEventListener('click', () => { mode = Number(b.dataset.mode); paint(parseInt(slider.value)); }));
                     paint(0);
                 },
                 demoHTML: `
@@ -1977,6 +2105,10 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 }
             };
             window.LABCODE(!codeLock);
+            /* ▶ 執行結果動畫（老師 2026-11-25）：跟著程式碼一起出現（一起鎖），學生按「播放」才開始跑 */
+            const animBox = document.getElementById('run-anim');
+            animBox.innerHTML = '';
+            if (data.lab && window.RUNANIM && window.RUNANIM.LESSONS[data.lab.unit]) window.RUNANIM.mount(animBox, data.lab.unit);
             
             /* 🎯 動手檢核：暖身關卡過了才開三個檢核。
                ★ 老師 2026-08-24：「暖身關卡通關才會打開動手檢核? 每次都要重玩? 要有記錄」
@@ -1996,6 +2128,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             const labCfg  = data.lab || null;
             const warmMod = labCfg && labCfg.warm   ? window[labCfg.warm]   : null;
             const chkMod  = labCfg && labCfg.checks ? window[labCfg.checks] : null;
+            document.getElementById('sim-tasks').classList.add('hidden');
             if (warmMod) {
                 const seed = new URLSearchParams(location.search).get('seed');
                 const seedTxt = seed ? ('全班同題　seed = ' + seed) : '每個人的數字都不一樣';
@@ -2057,6 +2190,44 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         '<button class="redo bg-white border-2 border-emerald-400 text-emerald-700 font-black text-sm px-4 py-2 rounded-xl hover:bg-emerald-100">再玩一次</button>' +
                       '</div>';
                     box.querySelector('.redo').addEventListener('click', redo);
+                }
+
+                /* 🎮 模擬任務（老師 2026-11-25：「模擬互動目前沒有強制，加入讓學生互動到特定數值的操作流程」）
+                   ★ 第 1～4 節：模擬器上方三個任務（數字隨機），**暖身＋模擬任務都完成**才打開動手檢核。
+                   ★ 之前就通過動手檢核的人不必補做（rec.checks 視同完成）。
+                   ⚠️ 不計分：只寫 modules.arduino.uN.sim，分數和依序開放仍看暖身＋檢核。 */
+                const simBox = document.getElementById('sim-tasks');
+                const simOn = !!(window.SIMTASK && window.SIMTASK.TASKS[labCfg.unit] && labCfg.gate !== false && chkMod);
+                let warmOk = false, simOk = !simOn;
+                function lockChecks(html) {
+                    checks.innerHTML = '';
+                    checks.classList.add('hidden');
+                    locked.innerHTML = html;
+                    locked.classList.remove('hidden');
+                }
+                function tryOpenChecks(rec) {
+                    if (!warmOk) return lockChecks('🔒 先完成上面的<b>暖身關卡</b>，這裡才會打開。');
+                    if (!simOk) return lockChecks('🔒 先完成上面「硬體行為模擬」的<b>三個模擬任務</b>，這裡才會打開。');
+                    openChecks(rec);
+                }
+                function mountSim(rec) {
+                    simBox.classList.remove('hidden');
+                    window.SIMTASK.mount(simBox, {
+                        unit: labCfg.unit,
+                        seed: seed,
+                        onDone: function () {
+                            const first = !simOk;
+                            simOk = true;
+                            if (!(rec && rec.sim)) {          // ⚠️ 重做不覆寫第一次完成的時間
+                                rec.sim = { at: Date.now() };
+                                save.save(labCfg.unit, 'sim', {});
+                            }
+                            setTimeout(function () {          // 讓學生看一下第三個 ✅ 再收起來
+                                doneCard(simBox, rec.sim.at, '三個模擬任務都完成了', () => mountSim(rec));
+                                if (first) tryOpenChecks(rec);
+                            }, 900);
+                        }
+                    });
                 }
 
                 function openChecks(rec) {
@@ -2191,7 +2362,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                 planRec = info.plan;
                                 save.save(UNIT, 'plan', { plan: info.plan });   // ★ 每次都覆寫
                             }
-                            openChecks(rec);
+                            warmOk = true;
+                            tryOpenChecks(rec);          // ★ 模擬任務也完成了才會真的打開
                             /* ⚠️ 這裡**不自動捲到檢核**。暖身過了之後，
                                學生應該往下讀模擬與虛擬碼，最後才做檢核 ——
                                直接把他丟到最底下，中間那段教材就跳過去了。 */
@@ -2211,13 +2383,23 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         openChecks(rec);
                         return;
                     }
+                    if (simOn) {
+                        if (rec.sim || rec.checks) {
+                            simOk = true;
+                            simBox.classList.remove('hidden');
+                            doneCard(simBox, rec.sim ? rec.sim.at : 0,
+                                     rec.sim ? '三個模擬任務都完成了' : '模擬任務：你之前就通過動手檢核了，可以不用做（想玩可以按「再玩一次」）',
+                                     () => mountSim(rec));
+                        } else {
+                            mountSim(rec);
+                        }
+                    }
                     if (rec.warm) {
+                        warmOk = true;
                         doneCard(wrap, rec.warm.at, '暖身關卡已通過', () => mountWarm(rec));
-                        openChecks(rec);          // ★ 鑰匙已經拿過了，不必再拿一次
+                        tryOpenChecks(rec);       // ★ 鑰匙已經拿過了，不必再拿一次（模擬任務還要完成）
                     } else {
-                        checks.innerHTML = '';
-                        checks.classList.add('hidden');
-                        locked.classList.remove('hidden');
+                        lockChecks('🔒 先完成上面的<b>暖身關卡</b>' + (simOn ? '和<b>模擬任務</b>' : '') + '，這裡才會打開。');
                         mountWarm(rec);
                     }
                     lucide.createIcons();

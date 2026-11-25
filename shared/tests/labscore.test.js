@@ -162,6 +162,21 @@ function done() {
     const txt = w.document.getElementById('labTable').textContent;
     ok(/9／15/.test(txt) && /試 3 次/.test(txt), '進度表：每節分數、檢核試了幾次');
     ok(/第 3 節/.test(txt), '老師放行到第 3 節的學生，「可進到」顯示第 3 節');
+    /* ★ 老師 2026-11-25：通關確認 —— 選班級、關卡，全班頭貼；灰＝未完成、淺綠＝完成待檢查、藍＝老師確認通關 */
+    const st = () => [...w.document.querySelectorAll('#labGrid [data-st]')].map(e => e.dataset.st).join(',');
+    ok(!w.document.getElementById('labGridWrap').classList.contains('hidden') && w.document.getElementById('labTableWrap').classList.contains('hidden'),
+       '★ 打開先看「🎯 通關確認」頭貼，成績表切過去');
+    ok(w.document.getElementById('labLesson').options.length === 5, '關卡選單：第 1～5 節');
+    ok(st() === 'green,gray', '★ 完成暖身＋檢核 ⇒ 淺綠；還沒完成 ⇒ 灰色');
+    ok(!/<img/.test(w.document.getElementById('labGrid').innerHTML), '   頭貼名單的姓名也逸出');
+    await w.labPass(1);
+    ok(writes.length === 0 && st() === 'green,gray', '★★ 灰色點了不能通關（沒有寫入）');
+    w.document.getElementById('labLesson').value = 'u2'; w.renderLab();
+    ok(st() === 'gray,gray' && /第 2 節/.test(w.document.getElementById('labGrid').textContent), '換關卡 ⇒ 不重新讀取，直接換顏色');
+    w.document.getElementById('labLesson').value = 'u1'; w.renderLab();
+    w.labSetView('table');
+    ok(w.document.getElementById('labGridWrap').classList.contains('hidden'), '切到成績表');
+    w.labSetView('grid');
     w.labToggle(0);
     const html = w.document.getElementById('labTable').innerHTML;
     ok(!/<img/.test(html) && /記住門/.test(w.document.getElementById('labTable').textContent), '★★ 點姓名看「用自己的話說」—— 學生寫的 HTML 不會被執行');
@@ -171,6 +186,13 @@ function done() {
     ok(writes.length === 1 && writes[0][0] === 'roster' && writes[0][3] && writes[0][3].merge === true && aj.ok.u1 && !aj.rej.u1,
        '★ 實作驗收（任何一節）：寫名冊 arduino_json.ok.u1（merge），之前的退件一併清掉');
     ok(/✔ 已驗收/.test(w.document.getElementById('labTable').innerHTML), '   畫面立刻變成「已驗收」');
+    ok(st() === 'blue,gray', '★ 通關＝實作驗收同一格 ⇒ 頭貼立刻變藍');
+    w.confirm = () => false;
+    await w.labPass(0);
+    ok(writes.length === 1 && st() === 'blue,gray', '點藍色會先問；按取消就不動');
+    w.confirm = () => true;
+    await w.labPass(0);
+    ok(writes.length === 2 && !JSON.parse(writes[1][2].arduino_json).ok.u1 && st() === 'green,gray', '確定取消 ⇒ 回到淺綠、分數拿掉');
     await w.labOpen(1, 0);
     ok(!('open' in JSON.parse(roster['1410102'].arduino_json)), '取消放行 ⇒ open 拿掉');
     finish();

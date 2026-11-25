@@ -94,12 +94,16 @@
   var CASES_B = [
     { key: 'mood', thing: '上限',
       code: '重複無限次｜色相 ← 類比對應（A7，0，<b>255</b>）、燈條顏色 ← 色相',
-      symptom: '這一支要做的是氣氛燈「旋鈕轉一圈，顏色也繞一圈回到紅色」，' +
-               '可是旋鈕**轉到底了，顏色卻停在洋紅**，紅色一直回不來。',
+      /* ★ 2026-11-25：顏色照第四節程式的 sin 公式（LABKIT.hueRgb）——
+           0 黃綠、30 黃、90 紅、150 洋紅、210 藍、270 青、330 綠。
+           上限寫 255 ⇒ 走到 255（天藍）就停，青、綠那一段出不來。
+           ⚠️ 原本的症狀寫「停在洋紅、紅色回不來」，那是一般色相的說法，和實機不一樣。 */
+      symptom: '這一支要做的是氣氛燈「旋鈕轉一圈，顏色也繞一圈回到起點」，' +
+               '可是旋鈕**轉到底了，顏色卻停在天藍色**，青色和綠色那一段一直出不來。',
       fixes: [
         { key: 'max', good: true,
           text: '把上限從 255 改成 359',
-          after: '旋鈕轉到底時剛好繞完整個色環回到紅色 —— 這才是「轉一圈」。' },
+          after: '旋鈕轉到底時剛好繞完整個色環回到起點 —— 這才是「轉一圈」。' },
         { key: 'lo', good: false,
           text: '把下限從 0 改成 1',
           after: '幾乎沒有差別 —— 少的那一截在**後面**，不在前面。' },
@@ -110,29 +114,29 @@
     { key: 'sign', thing: '上限',
       code: '重複無限次｜色相 ← 類比對應（A7，0，<b>255</b>）、招牌顏色 ← 色相',
       symptom: '這一支要做的是招牌「旋鈕慢慢轉，七彩跑一輪」，' +
-               '可是**紅色和粉紅色那一段永遠出不來**，轉到底就沒了。',
+               '可是**青色和綠色那一段永遠出不來**，轉到天藍色就沒了。',
       fixes: [
         { key: 'max', good: true,
           text: '把上限從 255 改成 359',
-          after: '色環最後那一段（洋紅回到紅）補回來了，七彩才真的跑完一輪。' },
+          after: '色環最後那一段（天藍 → 青 → 綠 → 回到起點）補回來了，七彩才真的跑完一輪。' },
         { key: 'speed', good: false,
           text: '加一個「等待 0.1 秒」讓它轉慢一點',
           after: '只是變慢，**能到的顏色還是那些** —— 走不到的地方不會因為慢就走到。' },
         { key: 'swap', good: false,
           text: '把 0 和 255 對調，寫成 (255, 0)',
-          after: '⚠️ 顏色會**反著跑**（從洋紅倒回紅），但能到的範圍一樣少一截。' }
+          after: '⚠️ 顏色會**反著跑**（從天藍倒回黃綠），但能到的範圍一樣少一截。' }
       ] },
     { key: 'night', thing: '上限',
       code: '重複無限次｜色相 ← 類比對應（A7，0，<b>255</b>）、夜燈顏色 ← 色相',
       symptom: '這一支要做的是夜燈「想調成什麼顏色都可以」，' +
-               '可是不管怎麼轉，**就是調不出紅色**，最紅只能到橙色。',
+               '可是不管怎麼轉，**就是調不出綠色**，轉到底只到天藍色。',
       fixes: [
         { key: 'max', good: true,
           text: '把上限從 255 改成 359',
-          after: '整個色環都到得了，紅色自然就調得出來了。' },
+          after: '整個色環都到得了，綠色自然就調得出來了。' },
         { key: 'led', good: false,
-          text: '換一條紅色比較亮的燈條',
-          after: '⚠️ 燈條本來就做得出紅色 —— 是**那個數字沒讓它走到那裡**。' },
+          text: '換一條綠色比較亮的燈條',
+          after: '⚠️ 燈條本來就做得出綠色 —— 是**那個數字沒讓它走到那裡**。' },
         { key: 'level', good: false,
           text: '把上限改成 1023（A7 讀到的最大值）',
           after: '⚠️ 這是把**讀到的範圍**當成色環的範圍。色環一圈只有 0～359，' +
@@ -170,13 +174,16 @@
   /* ── C：自己填「類比對應」的兩個數字 ─────────────────
      ★ 目標隨機，所以背不起來。
      ⚠️ 判定要分得出「超過一圈」「對調」「範圍不夠」—— 症狀完全不同。 */
+  /* ★ 2026-11-25：顏色照第四節程式的 sin 公式（30 黃、90 紅、150 洋紅、210 藍、270 青、330 綠）。
+       ⚠️ 原本的目標是一般色相（紅 0、黃 60、青 180），和學生燒進去的程式顏色不一樣 ——
+          照那個數字做，實機上看到的根本不是題目說的顏色。 */
   var GOALS = [
     { key: 'full', want: [0, 359],
-      text: '旋鈕轉一圈，顏色**繞完整個色環**再回到紅色' },
-    { key: 'warm', want: [0, 60],
-      text: '只在**紅色到黃色之間**變化（暖色系夜燈，不要出現藍綠）' },
-    { key: 'half', want: [0, 180],
-      text: '旋鈕轉到底剛好走**半圈**：從紅色變到青色' }
+      text: '旋鈕轉一圈，顏色**繞完整個色環**再回到起點' },
+    { key: 'warm', want: [30, 90],
+      text: '旋鈕最左是**黃色**、最右是**紅色**，只在這之間變化（暖色系夜燈，不要出現藍綠）' },
+    { key: 'half', want: [90, 270],
+      text: '旋鈕轉到底剛好走**半圈**：最左是**紅色**、最右是**青色**' }
   ];
   function caseC(rng, prev) { return LK().pick(rng, GOALS, prev); }
   function judgeC(lo, hi, c) {
@@ -204,7 +211,7 @@
              '（B 那一題就是這個錯。）';
     if (r.how === 'range')
       return '⛔ 範圍不對。⚠️ 先想清楚：這一題要走**多少度**？' +
-             '整圈是 ' + HUE_MAX + '、半圈是 180、紅到黃大約是 60。';
+             '看下面那條色環：每個顏色在幾度，最左、最右就填那個數字（整圈是 0～' + HUE_MAX + '）。';
     return '兩格都要填數字。';
   }
 
@@ -231,6 +238,18 @@
     var st = document.createElement('style');
     st.id = 'mixlab-css'; st.textContent = CSS;
     document.head.appendChild(st);
+  }
+  /* 色環條：照程式的 sin 公式取樣（LABKIT.hueRgb），標出幾個顏色在幾度 */
+  var WHEEL = [[0, '0'], [30, '30 黃'], [90, '90 紅'], [150, '150 洋紅'], [210, '210 藍'], [270, '270 青'], [330, '330 綠']];
+  function wheelCss() {
+    var st = [];
+    for (var h = 0; h <= HUE_MAX; h += 15) st.push(hex(LK().hueRgb(h)) + ' ' + (h / HUE_MAX * 100).toFixed(1) + '%');
+    return 'linear-gradient(90deg,' + st.join(',') + ')';
+  }
+  function wheelLabels() {
+    return WHEEL.map(function (w) {
+      return '<span style="position:absolute;left:' + (w[0] / HUE_MAX * 100).toFixed(1) + '%;transform:translateX(' + (w[0] ? '-50%' : '0') + ');white-space:nowrap">' + w[1] + '</span>';
+    }).join('');
   }
   function hex(rgb) {
     return '#' + rgb.map(function (v) {
@@ -376,9 +395,8 @@
         '⚠️ 兩格都要自己填（色環一圈是 0～' + HUE_MAX + '）。<br>' +
         '<span class="dl-note"><b>第一格（下限）</b>＝旋鈕轉到<b>最左</b>時的顏色（色相）；<b>第二格（上限）</b>＝轉到<b>最右</b>時的顏色。</span>' +
         /* ★ 2026-11-25：色相的數字對到什麼顏色要畫出來 —— 不知道「黃色是 60」就填不出來 */
-        '<div style="margin-top:8px;height:14px;border-radius:7px;background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"></div>' +
-        '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:900;color:#475569;margin-top:2px">' +
-          '<span>0 紅</span><span>60 黃</span><span>120 綠</span><span>180 青</span><span>240 藍</span><span>300 洋紅</span><span>' + HUE_MAX + '</span></div>' +
+        '<div style="margin-top:8px;height:14px;border-radius:7px;background:' + wheelCss() + '"></div>' +
+        '<div style="position:relative;height:16px;font-size:12px;font-weight:900;color:#475569;margin-top:2px">' + wheelLabels() + '</div>' +
         '</div>' +
         '<div class="mx-row">色相 ← 類比對應（' + PIN + '，' +
           '<input class="mx-n" id="mx-lo" placeholder="最左">，' +

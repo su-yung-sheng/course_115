@@ -2932,10 +2932,28 @@ const __bn = bonusOf(student, sub.key);
             <label class="block text-xs font-bold text-slate-600 mb-1">班級</label>
             <select id="labClass" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5"></select>
           </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">關卡</label>
+            <select id="labLesson" onchange="renderLab()" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5"></select>
+          </div>
           <button onclick="loadLab()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition">讀取</button>
           <button onclick="exportLabCsv()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-sm transition">匯出 CSV</button>
           <a href="../shared/labreview.html?term=11501" data-bust class="px-4 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold rounded-lg text-sm transition">📥 Classroom 繳交審核</a>
+          <div class="ml-auto flex rounded-lg border border-slate-300 overflow-hidden text-sm font-bold">
+            <button id="labViewGrid" onclick="labSetView('grid')" class="px-3 py-2">🎯 通關確認</button>
+            <button id="labViewTable" onclick="labSetView('table')" class="px-3 py-2 border-l border-slate-300">📋 成績表</button>
+          </div>
         </div>
+        <div id="labGridWrap">
+          <p class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 leading-relaxed">
+            <span class="inline-block w-3 h-3 rounded bg-slate-200 border border-slate-300 align-middle"></span> 灰色＝還沒完成這一關的暖身＋動手檢核　
+            <span class="inline-block w-3 h-3 rounded bg-emerald-200 border border-emerald-400 align-middle"></span> 淺綠＝完成了、等老師檢查　
+            <span class="inline-block w-3 h-3 rounded bg-blue-500 border border-blue-600 align-middle"></span> 藍色＝老師確認通關（＝實作驗收，加分）<br>
+            實際檢查過學生的程式和裝置後，<b>點淺綠的頭貼就會變成藍色</b>；點藍色可以取消。灰色的還不能通關。
+          </p>
+          <div id="labGrid" class="text-sm text-slate-500">選好班級、關卡後按「讀取」。</div>
+        </div>
+        <div id="labTableWrap" class="hidden">
         <p class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 leading-relaxed">
           滿分 100：第 1～4 節各 15 分（<b>暖身 3＋動手檢核 6＋實作驗收 6</b>）；第 5 節 40 分（<b>設計單 10＋成果卡 15＋實作驗收 15</b>）。<b>不算進星星、不影響每週評分。</b><br>
           實作驗收可以在這裡直接按，或到「📥 Classroom 繳交審核」看學生交的照片／影片再按（同一格）。<br>
@@ -2943,6 +2961,7 @@ const __bn = bonusOf(student, sub.key);
           點學生姓名可以看他寫的「用自己的話說」和第 5 節的設計單、成果卡。
         </p>
         <div id="labTable" class="overflow-x-auto text-sm text-slate-500">選好班級後按「讀取」。</div>
+        </div>
       </div>
     </div>
   </div>
@@ -4263,6 +4282,7 @@ const __bn = bonusOf(student, sub.key);
      規則全部在 shared/labscore.js（學生頁、闖關基地也用同一份）；這裡只負責讀、畫、寫名冊。
      ⚠️ 學生寫的文字一律逸出再顯示。 */
   let _labRows = [];
+  let _labView = 'grid';      // ★ 老師 2026-11-25：打開先看「通關確認」頭貼；成績表切過去
   function _labEsc(t) {
     return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
@@ -4279,6 +4299,78 @@ const __bn = bonusOf(student, sub.key);
         sel.innerHTML = [...set].sort().map(c => `<option value="${c}">${c} 班</option>`).join('');
       } catch (e) { sel.innerHTML = '<option value="">（讀取班級失敗）</option>'; }
     }
+    const ls = document.getElementById('labLesson');
+    if (ls && !ls.options.length && window.LABSCORE) {
+      ls.innerHTML = LABSCORE.LESSONS.map((u, i) => `<option value="${u}">第 ${i + 1} 節　${LABSCORE.TITLES[u]}</option>`).join('');
+    }
+    labSetView(_labView);
+  }
+  function labSetView(v) {
+    _labView = v === 'table' ? 'table' : 'grid';
+    const g = _labView === 'grid';
+    document.getElementById('labGridWrap').classList.toggle('hidden', !g);
+    document.getElementById('labTableWrap').classList.toggle('hidden', g);
+    const on = 'px-3 py-2 bg-indigo-600 text-white', off = 'px-3 py-2 bg-white text-slate-600 hover:bg-slate-50';
+    document.getElementById('labViewGrid').className = g ? on : off;
+    document.getElementById('labViewTable').className = (g ? off : on) + ' border-l border-slate-300';
+  }
+  function _labU() { const ls = document.getElementById('labLesson'); return (ls && ls.value) || 'u1'; }
+  /** 這一關的狀態：gray 還沒完成暖身＋檢核／green 完成、等老師檢查／blue 老師確認通關（＝實作驗收） */
+  function _labState(row, u) {
+    if (row.info.ok && row.info.ok[u]) return 'blue';
+    return LABSCORE.lessonDone(row.ar, u) ? 'green' : 'gray';
+  }
+  /* ══ 🎯 通關確認：全班頭貼（老師 2026-11-25）══════════════════════════
+     「與之前狀態類似，但圖案小一點」⇒ 和首頁學生卡同一種頭貼，頭像 44→28px、一排最多 10 個。
+     ★ 通關＝實作驗收（同一格 arduino_json.ok.uN），所以分數、成績表、Classroom 審核頁全部同步。
+     ⚠️ 灰色不能點：老師要求「完成進度後」才能通關（要直接給，請用成績表的「驗收」按鈕）。 */
+  function renderLabGrid() {
+    const box = document.getElementById('labGrid');
+    if (!box) return;
+    if (!_labRows.length) return;
+    const u = _labU(), no = LABSCORE.LESSONS.indexOf(u) + 1;
+    const n = { gray: 0, green: 0, blue: 0 };
+    const look = {
+      gray:  { card: 'bg-slate-50 border-slate-200 cursor-not-allowed', face: 'bg-slate-200 text-slate-400', name: 'text-slate-400', tip: '還沒完成暖身＋動手檢核' },
+      green: { card: 'bg-emerald-50 border-emerald-300 hover:border-emerald-500 hover:shadow cursor-pointer', face: 'bg-emerald-200 text-emerald-700', name: 'text-emerald-800', tip: '完成了，檢查過程式後點一下通關' },
+      blue:  { card: 'bg-blue-500 border-blue-600 hover:bg-blue-600 cursor-pointer', face: 'bg-white/25 text-white', name: 'text-white', tip: '老師已確認通關（點一下可以取消）' }
+    };
+    const cards = _labRows.map((row, idx) => {
+      const st = _labState(row, u), k = look[st];
+      n[st]++;
+      const rej = st !== 'blue' && row.info.rej && row.info.rej[u];
+      const tip = rej ? '退件：' + (row.info.rej[u].reason || '') : k.tip;
+      return `<div onclick="labPass(${idx})" title="${_labEsc(tip)}" data-st="${st}" class="${k.card} ${row.busy ? 'opacity-50 pointer-events-none' : ''} border rounded-lg p-1.5 flex flex-col items-center relative transition select-none">
+        ${rej ? '<span class="absolute top-0.5 left-0.5 text-[9px] font-bold bg-rose-500 text-white rounded px-1 leading-tight">退</span>' : ''}
+        <div class="w-7 h-7 rounded-full flex items-center justify-center relative ${k.face}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          ${st === 'blue' ? '<span class="absolute -top-1 -right-1 bg-white text-blue-600 rounded-full w-3.5 h-3.5 text-[9px] font-black flex items-center justify-center">✓</span>' : ''}
+        </div>
+        <div class="text-xs font-bold truncate w-full text-center mt-0.5 ${k.name}">${_labEsc(row.r.name || row.id)}</div>
+        <div class="text-[10px] font-mono leading-none ${st === 'blue' ? 'text-blue-100' : 'text-slate-400'}">${_labEsc(row.r.no)}</div>
+      </div>`;
+    }).join('');
+    box.innerHTML = `<div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 text-sm">
+        <b class="text-slate-800">第 ${no} 節　${_labEsc(LABSCORE.TITLES[u])}</b>
+        <span class="text-slate-500">⬜ 未完成 <b>${n.gray}</b></span>
+        <span class="text-emerald-700">🟩 待檢查 <b>${n.green}</b></span>
+        <span class="text-blue-700">🟦 已通關 <b>${n.blue}</b>／${_labRows.length}</span>
+      </div>
+      <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">${cards}</div>`;
+  }
+  /** 點頭貼：淺綠 → 藍（通關）；藍 → 問一下再取消；灰 → 不能點 */
+  async function labPass(idx) {
+    const row = _labRows[idx], u = _labU(), no = LABSCORE.LESSONS.indexOf(u) + 1;
+    if (!row || row.busy) return;
+    const st = _labState(row, u);
+    if (st === 'gray') {
+      if (typeof showToast === 'function') showToast((row.r.name || row.id) + `　還沒完成第 ${no} 節的暖身＋動手檢核，不能通關`, true);
+      return;
+    }
+    if (st === 'blue' && !confirm(`取消 ${row.r.name || row.id} 第 ${no} 節的通關？（實作驗收的分數會一起拿掉）`)) return;
+    row.busy = true; renderLabGrid();
+    try { await labVerify(idx, u); }
+    finally { row.busy = false; renderLabGrid(); }
   }
   function closeLabModal() {
     const m = document.getElementById('labModal');
@@ -4290,11 +4382,12 @@ const __bn = bonusOf(student, sub.key);
     if (!cls) { box.textContent = '請先選擇班級。'; return; }
     if (!window.LABSCORE) { box.textContent = '沒有載入 shared/labscore.js'; return; }
     box.textContent = '讀取中…';
+    document.getElementById('labGrid').textContent = '讀取中…';
     try {
       const rs = await _labDb().collection(window.CONFIG.COLLECTIONS.ROSTER).where('cls', '==', cls).get();
       const list = rs.docs.map(d => ({ id: d.id, r: d.data() }))
         .sort((a, b) => (Number(a.r.no) || 0) - (Number(b.r.no) || 0));
-      if (!list.length) { box.textContent = '此班尚無名冊資料。'; return; }
+      if (!list.length) { box.textContent = '此班尚無名冊資料。'; document.getElementById('labGrid').textContent = '此班尚無名冊資料。'; _labRows = []; return; }
       _labRows = await Promise.all(list.map(async ({ id, r }) => {
         let ar = {};
         try {
@@ -4306,6 +4399,7 @@ const __bn = bonusOf(student, sub.key);
       renderLab();
     } catch (e) {
       box.textContent = '讀取失敗：' + (e && e.message || e);
+      document.getElementById('labGrid').textContent = box.textContent;
     }
   }
   function renderLab() {
@@ -4343,6 +4437,7 @@ const __bn = bonusOf(student, sub.key);
     });
     html += `<tr class="bg-slate-50 font-bold text-slate-600"><td></td><td>完成人數</td>${sum.map(n => `<td class="px-2 py-2">${n}／${_labRows.length}</td>`).join('')}<td></td><td></td></tr>`;
     box.innerHTML = html + '</tbody></table>';
+    renderLabGrid();
   }
   /** 展開：學生自己寫的東西（用自己的話說、第 5 節設計單與成果卡） */
   function labDetail(row) {
@@ -4416,6 +4511,7 @@ const __bn = bonusOf(student, sub.key);
     URL.revokeObjectURL(a.href);
   }
   window.openLabModal = openLabModal; window.closeLabModal = closeLabModal; window.loadLab = loadLab;
+  window.labSetView = labSetView; window.labPass = labPass; window.renderLab = renderLab;
   window.labToggle = labToggle; window.labVerify = labVerify; window.labOpen = labOpen; window.exportLabCsv = exportLabCsv;
 </script>
 </body>

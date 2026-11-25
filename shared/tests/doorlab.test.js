@@ -624,8 +624,10 @@ section('★ 完成要有紀錄（老師 2026-08-24：「每次都要重玩? 要
   ok(/sessionStorage\.setItem\(localKey/.test(c), '   斷網／規則沒發布時，本機至少記得住');
 
   /* 重點：做完的人回來不必重玩。 */
-  ok(/if \(rec\.warm\)[\s\S]{0,300}openChecks\(rec\)/.test(c),
-     '★★ 暖身已通過 → 檢核直接是開的（鑰匙拿過就不必再拿一次）');
+  /* ★ 2026-11-25 起還要加上「模擬任務」（shared/simtask.js）：暖身＋模擬任務都過才開，詳見 simtask.test.js。 */
+  ok(/if \(rec\.warm\) \{\s*warmOk = true;[\s\S]{0,300}tryOpenChecks\(rec\)/.test(c) &&
+     /function tryOpenChecks\(rec\) \{[\s\S]{0,400}openChecks\(rec\);/.test(c),
+     '★★ 暖身已通過 → 不必再做一次（模擬任務也完成就直接打開檢核）');
   ok(/doneCard\(wrap, rec\.warm\.at/.test(c), '   暖身顯示「已完成」卡，不是第一題');
   ok(/doneCard\(checks, rec\.checks\.at/.test(c), '   三個檢核也一樣');
   ok(/再玩一次/.test(c), '★ 但要留一個「再玩一次」（想練的人可以練）');

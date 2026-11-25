@@ -110,8 +110,13 @@ section('★★ C：自己填兩個數字');
 {
   const g = k => M.GOALS.filter(x => x.key === k)[0];
   ok(String(g('full').want) === '0,359', '★ 轉一圈 → 0～359');
-  ok(String(g('half').want) === '0,180', '★ 半圈 → 0～180');
-  ok(String(g('warm').want) === '0,60', '★ 紅到黃 → 0～60');
+  /* ★ 2026-11-25：顏色照第四節程式的 sin 公式（30 黃、90 紅、270 青）—— 原本是一般色相的 0～60、0～180 */
+  ok(String(g('half').want) === '90,270', '★ 半圈：紅（90）→ 青（270）');
+  ok(String(g('warm').want) === '30,90', '★ 黃（30）→ 紅（90）');
+  const W = {}; new Function('window', read('shared/labkit.js'))(W);
+  const rgb = h => W.LABKIT.hueRgb(h).join();
+  ok(rgb(30) === '191,191,1' && rgb(90) === '255,64,64' && rgb(270) === '1,191,191',
+     '★★ 目標用的顏色是照程式算出來的（30 黃、90 紅、270 青）—— 學生在實機上看到的就是題目說的');
   ok(M.judgeC(0, 359, g('full')).ok, '答對過關');
   ok(M.judgeC('0', '359', g('full')).ok, '★ 輸入框給的是字串，一樣要判得對');
   /* ⚠️ 四種錯的症狀完全不同，回饋不可以混在一起。 */
