@@ -2211,7 +2211,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     if (!simOk) return lockChecks('🔒 先完成上面「硬體行為模擬」的<b>三個模擬任務</b>，這裡才會打開。');
                     openChecks(rec);
                 }
+                /* ⏱️ 計時（老師 2026-11-25：成績表加「完成時間／用了多久」）——
+                   從這一塊掛上去開始算，到完成那一刻；只在第一次完成時存（和完成時間一樣不覆寫）。 */
+                function timed(t0) { return { startAt: t0, ms: Date.now() - t0 }; }
                 function mountSim(rec) {
+                    const t0 = Date.now();
                     simBox.classList.remove('hidden');
                     window.SIMTASK.mount(simBox, {
                         unit: labCfg.unit,
@@ -2221,7 +2225,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             simOk = true;
                             if (!(rec && rec.sim)) {          // ⚠️ 重做不覆寫第一次完成的時間
                                 rec.sim = { at: Date.now() };
-                                save.save(labCfg.unit, 'sim', {});
+                                save.save(labCfg.unit, 'sim', timed(t0));
                             }
                             setTimeout(function () {          // 讓學生看一下第三個 ✅ 再收起來
                                 doneCard(simBox, rec.sim.at, '三個模擬任務都完成了', () => mountSim(rec));
@@ -2301,6 +2305,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 }
                 function mountChecks(rec) {
                     if (!chkMod) return;
+                    const t0 = Date.now();
                     checks.innerHTML = '';
                     let sid = '';
                     try { sid = sessionStorage.getItem('sid' + ((window.CONFIG || {}).TERM || '11501')) || ''; } catch (e) {}
@@ -2337,7 +2342,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                             if (work) save.save(UNIT, 'work', { work: work });
                         },
                         onDone: function (info) {
-                            if (!(rec && rec.checks)) save.save(UNIT, 'checks', { tries: info && info.tries });
+                            if (!(rec && rec.checks)) save.save(UNIT, 'checks', Object.assign({ tries: info && info.tries }, timed(t0)));
                             /* ★ 三關都過 ⇒ 程式碼打開，捲過去讓他接著做實作 */
                             if (window.LABCODE) {
                                 window.LABCODE(true);
@@ -2352,13 +2357,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     fillWhoLater();      // ★ 快取沒有就去問名冊，拿到再補
                 }
                 function mountWarm(rec) {
+                    const t0 = Date.now();
                     wrap.innerHTML = '';
                     warmMod.mount(wrap, {
                         mode: 'warmup',          // ultralab 才看這個；maplab 會忽略
                         seed: seed,
                         plan: planRec,           // 第五節：帶著上次的設計單回來
                         onDone: function (info) {
-                            if (!(rec && rec.warm)) save.save(UNIT, 'warm', { tries: info && info.tries });
+                            if (!(rec && rec.warm)) save.save(UNIT, 'warm', Object.assign({ tries: info && info.tries }, timed(t0)));
                             if (info && info.plan) {
                                 planRec = info.plan;
                                 save.save(UNIT, 'plan', { plan: info.plan });   // ★ 每次都覆寫

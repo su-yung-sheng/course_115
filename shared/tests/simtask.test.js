@@ -263,7 +263,7 @@ ok(/if \(!warmOk\) return lockChecks[\s\S]{0,200}if \(!simOk\) return lockChecks
 ok(/simOn = !!\(window\.SIMTASK && window\.SIMTASK\.TASKS\[labCfg\.unit\] && labCfg\.gate !== false && chkMod\)/.test(H), '   只有第 1～4 節（第 5 節不鎖）');
 ok(/if \(rec\.sim \|\| rec\.checks\) \{\s*simOk = true;/.test(H), '★ 之前就通過動手檢核的人不必補做');
 ok(/warmOk = true;\s*tryOpenChecks\(rec\);/.test(H) && !/\n\s*openChecks\(rec\);\s*\/\/ ★ 鑰匙已經拿過了/.test(H), '   暖身完成時也要檢查模擬任務（不可以直接打開檢核）');
-ok(/if \(!\(rec && rec\.sim\)\) \{[^\n]*\n\s*rec\.sim = \{ at: Date\.now\(\) \};\s*save\.save\(labCfg\.unit, 'sim', \{\}\);/.test(H), '完成寫 modules.arduino.uN.sim；重做不覆寫第一次的時間');
+ok(/if \(!\(rec && rec\.sim\)\) \{[^\n]*\n\s*rec\.sim = \{ at: Date\.now\(\) \};\s*save\.save\(labCfg\.unit, 'sim', timed\(t0\)\);/.test(H), '完成寫 modules.arduino.uN.sim（含用時）；重做不覆寫第一次的時間');
 ok(/window\.SIMTASK\.stop\(\)/.test(H.slice(H.indexOf('function clearAnimations'), H.indexOf('function clearAnimations') + 300)), '離開單元時計時作廢');
 
 console.log('\n通過 ' + pass + '／失敗 ' + fail);

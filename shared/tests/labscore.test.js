@@ -74,6 +74,26 @@ section('③ 依序開放＋老師放行');
   ok(JSON.stringify(h3) === JSON.stringify(L.LESSONS.map(u => L.TITLES[u])), '★ labscore 的各節名稱和 5016B 頁面卡片標題一模一樣（作業名稱要靠它對）');
 }
 
+section('③b ⏱️ 完成時間／用了多久（老師 11-25）');
+{
+  const T0 = Date.parse('2026-11-27T10:00:00+08:00'), OLD = Date.parse('2026-11-20T10:00:00+08:00');
+  ok(L.fmtMs(65000) === '1:05' && L.fmtMs(750000) === '12:30' && L.fmtMs(4e6) === '1 小時以上' && L.fmtMs(null) === '—', '格式：分:秒、超過 1 小時另外寫');
+  ok(L.timeOf({}, 'warm') === null, '沒做過 ⇒ 沒有時間');
+  const t = L.timeOf({ checks: { at: T0, ms: 190000 } }, 'checks');
+  ok(t.ms === 190000 && !t.guess && t.flag === '', '有計時 ⇒ 照存的用時，不標');
+  ok(L.timeOf({ checks: { at: T0, ms: 12000 } }, 'checks').flag === 'fast' && L.timeOf({ sim: { at: T0, ms: 9000 } }, 'sim').flag === 'fast' &&
+     L.timeOf({ warm: { at: T0, ms: 30000 } }, 'warm').flag === '', '★ 快得不合理（檢核 45 秒、模擬 15 秒、暖身 20 秒以內）⇒ 標 ⚠️');
+  ok(L.timeOf({ checks: { at: T0 } }, 'checks').flag === 'notimer', '★★ 11-26 以後的紀錄卻沒有計時 ⇒ 標 ⚠️（不是從頁面正常做完的）');
+  const g = L.timeOf({ warm: { at: OLD - 300000 }, checks: { at: OLD } }, 'checks');
+  ok(g.guess && g.ms === 300000 && g.flag === '', '舊紀錄（沒有計時）：檢核用「檢核完成 − 暖身／模擬完成」估，標 ≈、不標 ⚠️');
+  ok(L.timeOf({ warm: { at: OLD - 5 * 3600000 }, checks: { at: OLD } }, 'checks').ms === null, '   隔太久（2 小時以上）就不估');
+  const H0 = read('11501/5016b.html');
+  ok(/save\.save\(UNIT, 'warm', Object\.assign\(\{ tries: info && info\.tries \}, timed\(t0\)\)\)/.test(H0) &&
+     /save\.save\(UNIT, 'checks', Object\.assign\(\{ tries: info && info\.tries \}, timed\(t0\)\)\)/.test(H0) &&
+     /save\.save\(labCfg\.unit, 'sim', timed\(t0\)\)/.test(H0) && /function timed\(t0\) \{ return \{ startAt: t0, ms: Date\.now\(\) - t0 \}; \}/.test(H0),
+     '★ 學生頁存暖身、模擬任務、檢核的開始時間和用時（第一次完成時存，不覆寫）');
+}
+
 section('④ 5016b.html：畫分數、上鎖、讀不到就放行');
 {
   const H = read('11501/5016b.html');
@@ -162,7 +182,9 @@ function done() {
   new Function('window', read('shared/labscore.js'))(w);
   const roster = { '1410101': { cls: '801', no: 1, name: '王<小明>' }, '1410102': { cls: '801', no: 2, name: '李小華', arduino_json: '{"open":3}' },
                    '1420101': { cls: '802', no: 1, name: '陳大文' } };
-  const prog = { '1410101': { modules: { arduino: { u1: { warm: {}, checks: { tries: 3 }, say: { text: '<img src=x onerror=alert(1)>記住門' } } } } } };
+  const TT = Date.parse('2026-11-27T10:32:00+08:00');
+  const prog = { '1410101': { modules: { arduino: { u1: { warm: { at: TT - 400000, ms: 80000 }, sim: { at: TT - 200000, ms: 8000 }, checks: { tries: 3, at: TT, ms: 200000 },
+                                                           say: { text: '<img src=x onerror=alert(1)>記住門' } } } } } };
   const writes = [], reads = { progress: 0 };
   const A = {
     rosterAll: async () => Object.keys(roster).map(id => ({ id, data: roster[id] })),
@@ -193,6 +215,9 @@ function done() {
     const txt = $('#labTable').textContent;
     ok(/9／15/.test(txt) && /試 3 次/.test(txt) && /第 3 節/.test(txt), '📋 成績表：每節分數、檢核試幾次、放行到第 3 節的「可進到」');
     ok(!/data-pass|onclick="labVerify/.test($('#labTable').innerHTML) && /未通關/.test(txt), '★★ 成績表不能按通關（給分只在「🎯 通關確認」）');
+    const dT = new Date(TT), whenT = (dT.getMonth() + 1) + '/' + dT.getDate() + ' ' + ('0' + dT.getHours()).slice(-2) + ':' + ('0' + dT.getMinutes()).slice(-2);   // 依跑測試那台的時區
+    ok(txt.indexOf('🕒 ' + whenT) >= 0 && /暖 1:20/.test(txt) && /檢 3:20/.test(txt), '★ ⏱️ 成績表：完成時間＋暖身／模擬／檢核各用了多久');
+    ok(/模 0:08⚠️/.test(txt) && /text-rose-600 font-black[^>]*>模 0:08/.test($('#labTable').innerHTML), '★ 模擬任務 8 秒就做完 ⇒ 紅字 ⚠️');
     $('[data-toggle="0"]').click();
     ok(!/<img/.test($('#labTable').innerHTML) && /記住門/.test($('#labTable').textContent), '★★ 點姓名看「用自己的話說」—— 學生寫的 HTML 不會被執行');
     $('[data-view="grid"]').click();

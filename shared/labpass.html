@@ -228,6 +228,24 @@ window.LABPASS = (function () {
         '<span class="text-blue-700">🟦 已通關 <b>' + n.blue + '</b>／' + S.rows.length + '</span></div>' +
       '<div id="labGrid" class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">' + cards + '</div>';
   }
+  /* ⏱️ 完成時間／用了多久（老師 11-25）：每一節一行時間、一行用時；太快或沒有計時的標紅 ⚠️ */
+  var SHORT = { warm: '暖', sim: '模', checks: '檢' }, SHORT5 = { warm: '設計單', checks: '成果卡' };
+  function two(n) { return ('0' + n).slice(-2); }
+  function when(t) { var d = new Date(t); return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + two(d.getHours()) + ':' + two(d.getMinutes()); }
+  function timeCell(u, rec) {
+    var parts = u === 'u5' ? ['warm', 'checks'] : ['warm', 'sim', 'checks'], last = 0, bits = [];
+    parts.forEach(function (k) {
+      var t = L.timeOf(rec, k);
+      if (!t) return;
+      last = Math.max(last, t.at);
+      var name = (u === 'u5' ? SHORT5 : SHORT)[k];
+      var txt = t.flag === 'notimer' ? '⚠️無計時' : (t.guess ? '≈' : '') + L.fmtMs(t.ms) + (t.flag === 'fast' ? '⚠️' : '');
+      bits.push('<span class="' + (t.flag ? 'text-rose-600 font-black' : '') + '" title="' + esc(L.partName(u, k) + '：' + when(t.at) + ' 完成' +
+        (t.flag === 'fast' ? '，比一般快很多（' + L.fmtMs(L.SUSPECT[k]) + ' 以內）' : t.flag === 'notimer' ? '，沒有計時紀錄（不是從頁面正常做完的？）' : t.guess ? '，舊紀錄沒有計時，用完成時間估的' : '')) + '">' + name + ' ' + txt + '</span>');
+    });
+    if (!bits.length) return '';
+    return '<div class="text-[11px] text-slate-400 mt-0.5">🕒 ' + when(last) + '</div><div class="text-[11px] text-slate-500">' + bits.join('・') + '</div>';
+  }
   function detail(row) {
     var out = [];
     ['u1', 'u2', 'u3', 'u4'].forEach(function (u, i) {
@@ -247,7 +265,8 @@ window.LABPASS = (function () {
     var head = ['座號', '姓名', '第 1 節', '第 2 節', '第 3 節', '第 4 節', '第 5 節', '可進到', '總分'], sum = [0, 0, 0, 0, 0];
     var h = '<p class="text-xs text-slate-500 bg-white/70 border border-slate-200 rounded-lg p-3 mb-3 leading-relaxed">' +
       '滿分 100：第 1～4 節各 15 分（<b>暖身 3＋動手檢核 6＋通關 6</b>）；第 5 節 40 分（<b>設計單 10＋成果卡 15＋通關 15</b>）。不算進星星。<br>' +
-      '<b>通關只在「🎯 通關確認」按</b>，這張表只顯示。前一節通關才開下一節；學生卡住（或斷網沒記到）時用「放行到」—— <b>只開門、不給分</b>。點姓名看學生寫的內容。</p>' +
+      '<b>通關只在「🎯 通關確認」按</b>，這張表只顯示。前一節通關才開下一節；學生卡住（或斷網沒記到）時用「放行到」—— <b>只開門、不給分</b>。點姓名看學生寫的內容。<br>' +
+      '🕒 完成時間；「暖／模／檢」＝暖身、模擬任務、動手檢核各用了多久（分:秒）。<span class="text-rose-600 font-bold">⚠️</span> ＝快得不太合理（暖身 20 秒、模擬 15 秒、檢核 45 秒以內）或沒有計時紀錄 —— 只是提示，通關前多看一眼就好；≈ 是舊紀錄估的。</p>' +
       '<div id="labTable" class="overflow-x-auto bg-white rounded-xl border border-slate-200"><table class="min-w-full text-sm"><thead><tr class="bg-slate-100 text-slate-700">' +
       head.map(function (x) { return '<th class="px-2 py-2 text-left font-black whitespace-nowrap">' + x + '</th>'; }).join('') + '</tr></thead><tbody>';
     S.rows.forEach(function (row, idx) {
@@ -262,7 +281,7 @@ window.LABPASS = (function () {
         }).join(' ');
         var lock = (i + 1) > up ? '<span class="text-[11px] text-slate-400">🔒</span> ' : '';
         var rej = (!p.verify && row.info.rej && row.info.rej[u]) ? '<div class="text-[11px] text-rose-600 mt-0.5" title="' + esc(row.info.rej[u].reason) + '">退件：' + esc(String(row.info.rej[u].reason || '').slice(0, 14)) + '</div>' : '';
-        return '<td class="px-2 py-2 align-top whitespace-nowrap"><div class="font-black ' + (p.pts === p.max ? 'text-emerald-600' : 'text-slate-700') + '">' + lock + p.pts + '／' + p.max + '</div><div class="text-[11px] mt-0.5">' + bits + tries + '</div>' + rej + '</td>';
+        return '<td class="px-2 py-2 align-top whitespace-nowrap"><div class="font-black ' + (p.pts === p.max ? 'text-emerald-600' : 'text-slate-700') + '">' + lock + p.pts + '／' + p.max + '</div><div class="text-[11px] mt-0.5">' + bits + tries + '</div>' + timeCell(u, r) + rej + '</td>';
       }).join('');
       var opt = [0, 1, 2, 3, 4, 5].map(function (n) { return '<option value="' + n + '"' + (row.info.open === n ? ' selected' : '') + '>' + (n ? '放行到第 ' + n + ' 節' : '不放行') + '</option>'; }).join('');
       h += '<tr class="border-b border-slate-100 hover:bg-slate-50"><td class="px-2 py-2 align-top">' + esc(row.r.no) + '</td>' +

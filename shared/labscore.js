@@ -113,12 +113,42 @@
 
   function partName(u, k) { return (u === 'u5' ? U5_NAME : PART_NAME)[k] || k; }
 
+  /* ⏱️ 完成時間／用了多久（老師 2026-11-25：成績表要看得出「5 秒就全過」這種異常）
+     · 新紀錄：學生頁存 { at, startAt, ms }（從那一塊打開到完成）
+     · 舊紀錄（11-25 以前）沒有 ms：檢核用「檢核完成 − 模擬／暖身完成」估（2 小時內才估，標 ≈）
+     · 11-26 起的紀錄卻沒有 ms ⇒ 不是從頁面正常做完的（例如主控台直接寫）⇒ 標 ⚠️
+     ★ 只是提示，不擋、不扣分 —— 通關還是老師現場看裝置決定。 */
+  var SUSPECT = { warm: 20000, sim: 15000, checks: 45000 };      // 比這個快就標 ⚠️（毫秒）
+  var TIMER_FROM = Date.parse('2026-11-26T00:00:00+08:00');       // 這天以後的紀錄一定有計時
+  function timeOf(lesson, part) {
+    var r = (lesson || {})[part];
+    if (!r || !r.at) return null;
+    var o = { at: r.at, ms: null, guess: false, flag: '' };
+    if (typeof r.ms === 'number' && r.ms >= 0) o.ms = r.ms;
+    else if (part === 'checks') {
+      var prev = Math.max((lesson.sim && lesson.sim.at) || 0, (lesson.warm && lesson.warm.at) || 0);
+      var d = r.at - prev;
+      if (prev && d > 0 && d < 2 * 3600 * 1000) { o.ms = d; o.guess = true; }
+    }
+    if (o.ms != null && !o.guess && SUSPECT[part] && o.ms < SUSPECT[part]) o.flag = 'fast';
+    else if (o.ms == null && r.at >= TIMER_FROM && SUSPECT[part]) o.flag = 'notimer';
+    return o;
+  }
+  /** 1:05、12:30、1 小時以上 */
+  function fmtMs(ms) {
+    if (ms == null) return '—';
+    if (ms >= 3600000) return '1 小時以上';
+    var s = Math.round(ms / 1000);
+    return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+  }
+
   var api = { LESSONS: LESSONS, POINTS: POINTS, TITLES: TITLES, NUM_ZH: NUM_ZH, workIds: workIds,
               fromRoster: fromRoster, lessonDone: lessonDone, passed: passed,
+              SUSPECT: SUSPECT, timeOf: timeOf, fmtMs: fmtMs,
               score: score, openUpTo: openUpTo, status: status, lockText: lockText, partName: partName };
   try {
     Object.keys(POINTS).forEach(function (k) { Object.freeze(POINTS[k]); });
-    Object.freeze(POINTS); Object.freeze(LESSONS); Object.freeze(TITLES); Object.freeze(NUM_ZH); Object.freeze(api);
+    Object.freeze(POINTS); Object.freeze(LESSONS); Object.freeze(SUSPECT); Object.freeze(TITLES); Object.freeze(NUM_ZH); Object.freeze(api);
   } catch (e) {}
   global.LABSCORE = api;
 })(typeof window !== 'undefined' ? window : globalThis);
