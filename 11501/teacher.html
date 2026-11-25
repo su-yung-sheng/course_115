@@ -4321,7 +4321,9 @@ const __bn = bonusOf(student, sub.key);
     return LABSCORE.lessonDone(row.ar, u) ? 'green' : 'gray';
   }
   /* ══ 🎯 通關確認：全班頭貼（老師 2026-11-25）══════════════════════════
-     「與之前狀態類似，但圖案小一點」⇒ 和首頁學生卡同一種頭貼，頭像 44→28px、一排最多 10 個。
+     「與之前狀態類似，但圖案小一點」⇒ 和首頁學生卡同一種頭貼，頭像 44→28px。
+     ★ 老師 2026-11-25：「一排 8 個就好，可能會用平板」⇒ 自動調整、最多 8 個：
+        手機 4 個、平板直拿（≥640px）6 個、平板橫拿／電腦（≥1024px）8 個。
      ★ 通關＝實作驗收（同一格 arduino_json.ok.uN），所以分數、成績表、Classroom 審核頁全部同步。
      ⚠️ 灰色不能點：老師要求「完成進度後」才能通關（要直接給，請用成績表的「驗收」按鈕）。 */
   function renderLabGrid() {
@@ -4356,7 +4358,7 @@ const __bn = bonusOf(student, sub.key);
         <span class="text-emerald-700">🟩 待檢查 <b>${n.green}</b></span>
         <span class="text-blue-700">🟦 已通關 <b>${n.blue}</b>／${_labRows.length}</span>
       </div>
-      <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">${cards}</div>`;
+      <div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">${cards}</div>`;
   }
   /** 點頭貼：淺綠 → 藍（通關）；藍 → 問一下再取消；灰 → 不能點 */
   async function labPass(idx) {
