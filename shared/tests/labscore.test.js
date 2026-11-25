@@ -141,80 +141,76 @@ function done() {
   ok(/state\.labInfo = \(typeof LABSCORE!=='undefined'\) \? LABSCORE\.fromRoster\(r\)/.test(HB), '讀名冊時一起拿老師的實作驗收');
   ok(/🔧 專題 \$\{d\.labScore\.total\}／100 分/.test(HB), '卡片顯示「專題 xx／100 分」');
 
-  section('⑥ 教師端：進度表、實作驗收、放行');
-  const T = read('11501/teacher.html');
-  ok(T.indexOf('../shared/labscore.js') > 0 && /onclick="openLabModal\(\)"/.test(T) && /id="labModal"/.test(T), '有「🔧 5016B 專題」按鈕和視窗');
-  const js = T.slice(T.indexOf('let _labRows = []'), T.lastIndexOf('</script>'));
-  ok(/where\('cls', '==', cls\)/.test(js) && !/collection\(window\.CONFIG\.COLLECTIONS\.PROGRESS\)\.get\(\)/.test(js),
-     '★ 只讀這一班（名冊 1 次＋每人進度 1 次），不掃整個集合（11-17 額度的教訓）');
-  ok(/set\(\{ arduino_json: raw \}, \{ merge: true \}\)/.test(js), '★★ 驗收、放行寫名冊的 arduino_json，而且 merge（名冊其他欄位不碰）');
-  ok(/_labEsc\(say\.text\)/.test(js) && /_labEsc\(work\[k\]\)/.test(js), '★ 學生寫的文字一律逸出再顯示');
+  section('⑥ 教師端 5016B：獨立頁 shared/labpass.html（通關確認、成績表、放行）');
+  /* ★ 老師 11-25：「為什麼是浮動視窗? 不像其他功能都是開新分頁?」⇒ 從教師端的浮動視窗搬成獨立頁 */
+  const T = read('11501/teacher.html'), P = read('shared/labpass.html');
+  ok(/<a href="\.\.\/shared\/labpass\.html\?term=11501" data-bust/.test(T) && !/target="_blank"[^>]*labpass|labpass[^>]*target="_blank"/.test(T),
+     '★ 教師端「🔧 5016B 專題」改成連到獨立頁（同一個分頁開，登入才帶得過去；data-bust 防快取）');
+  ok(!/id="labModal"/.test(T) && !/openLabModal/.test(T) && !/_labRows/.test(T), '   舊的浮動視窗整段拿掉（不留兩份）');
+  ok(/'labscore\.js'/.test(P) && /config\.js/.test(P) && /AUTH\.isTeacherEmail/.test(P) && /browserSessionPersistence/.test(P),
+     '獨立頁：載 labscore.js、學期 config；只有老師；登入持久性和教師端一致（SESSION）');
+  ok(/where\('cls', '==', cls\)/.test(P) && !/getDocs\(collection\(db, PROGRESS\)\)/.test(P) && /getDoc\(doc\(db, PROGRESS, id\)\)/.test(P),
+     '★ 只讀這一班（名冊 where cls＋每人進度各 1 次），不掃整個進度集合（11-17 額度的教訓）');
+  ok(/setDoc\(doc\(db, ROSTER, id\), obj, \{ merge: true \}\)/.test(P) && /await A\.rosterGet\(row\.id\)/.test(P),
+     '★★ 通關、放行寫名冊 arduino_json：先讀最新的再改、merge 寫回（名冊其他欄位不碰）');
+  ok(/history\.replaceState/.test(P) && /q\.set\('cls'/.test(P) && /q\.set\('u'/.test(P), '★ 班級、關卡、畫面記在網址上（重新整理、平板加書籤都回到同一個地方）');
   let JSDOM; try { JSDOM = require('jsdom').JSDOM; } catch (e) {}
   if (!JSDOM) return finish();
-  const m0 = T.indexOf('<div id="labModal"');
-  const modal = T.slice(m0, T.indexOf('📦 學生程式作品下載', m0));
-  const dom = new JSDOM('<!doctype html><body>' + modal.replace(/<!--[\s\S]*$/, '') + '</body>', { runScripts: 'outside-only' });
+  const s0 = P.indexOf('window.LABPASS = (function'), s1 = P.indexOf('</script>', s0);
+  const dom = new JSDOM('<!doctype html><body><div id="app"></div><div id="toast"></div></body>', { runScripts: 'outside-only', url: 'https://x/course_115/shared/labpass.html?term=11501' });
   const w = dom.window;
   new Function('window', read('shared/labscore.js'))(w);
-  w.CONFIG = { COLLECTIONS: { ROSTER: 'roster', PROGRESS: '11501-progress' } };
-  const roster = { '1410101': { cls: '801', no: 1, name: '王<小明>' }, '1410102': { cls: '801', no: 2, name: '李小華', arduino_json: '{"open":3}' } };
+  const roster = { '1410101': { cls: '801', no: 1, name: '王<小明>' }, '1410102': { cls: '801', no: 2, name: '李小華', arduino_json: '{"open":3}' },
+                   '1420101': { cls: '802', no: 1, name: '陳大文' } };
   const prog = { '1410101': { modules: { arduino: { u1: { warm: {}, checks: { tries: 3 }, say: { text: '<img src=x onerror=alert(1)>記住門' } } } } } };
-  const writes = [];
-  const col = name => ({
-    where: () => ({ get: async () => ({ docs: Object.keys(roster).map(id => ({ id, data: () => roster[id] })) }) }),
-    get: async () => ({ forEach: f => Object.keys(roster).forEach(id => f({ data: () => roster[id] })) }),
-    doc: id => ({
-      get: async () => name === 'roster' ? { exists: !!roster[id], data: () => roster[id] } : { exists: !!prog[id], data: () => prog[id] },
-      set: async (d, o) => { writes.push([name, id, d, o]); roster[id] = Object.assign({}, roster[id], d); }
-    })
-  });
-  w.firebase = { firestore: () => ({ collection: col }) };
-  w.showToast = () => {};
-  w.eval(js);
+  const writes = [], reads = { progress: 0 };
+  const A = {
+    rosterAll: async () => Object.keys(roster).map(id => ({ id, data: roster[id] })),
+    rosterOfClass: async cls => Object.keys(roster).filter(id => roster[id].cls === cls).map(id => ({ id, data: roster[id] })),
+    progress: async id => { reads.progress++; return prog[id] || null; },
+    rosterGet: async id => roster[id] || null,
+    rosterMerge: async (id, obj) => { writes.push([id, obj]); roster[id] = Object.assign({}, roster[id], obj); }
+  };
+  w.confirm = () => true;
+  w.eval(P.slice(s0, s1));
+  const $ = q => w.document.querySelector(q), $$ = q => [...w.document.querySelectorAll(q)];
+  const st = () => $$('#labGrid [data-st]').map(e => e.dataset.st).join(',');
+  const tick = () => new Promise(r => setTimeout(r, 10));
   (async () => {
-    await w.openLabModal();
-    /* ★ 老師 11-25：班級藥丸＋關卡圓鈕（和 review.html 同一套），點班級就讀取 */
-    ok(w.document.querySelectorAll('#labClassPills [data-lcls]').length === 1 && w.document.querySelectorAll('#labLessonPills [data-lu]').length === 5,
-       '★ 班級一排藥丸（名冊有的班）、關卡 1～5 一排圓鈕');
-    await w.labPickClass('801');
-    ok(/bg-blue-600/.test(w.document.querySelector('[data-lcls="801"]').className), '   點了的班級變藍色、直接讀取（不用再按讀取）');
-    const txt = w.document.getElementById('labTable').textContent;
-    ok(/9／15/.test(txt) && /試 3 次/.test(txt), '進度表：每節分數、檢核試了幾次');
-    ok(/第 3 節/.test(txt), '老師放行到第 3 節的學生，「可進到」顯示第 3 節');
-    /* ★ 老師 2026-11-25：通關確認 —— 選班級、關卡，全班頭貼；灰＝未完成、淺綠＝完成待檢查、藍＝老師確認通關 */
-    const st = () => [...w.document.querySelectorAll('#labGrid [data-st]')].map(e => e.dataset.st).join(',');
-    ok(!w.document.getElementById('labGridWrap').classList.contains('hidden') && w.document.getElementById('labTableWrap').classList.contains('hidden'),
-       '★ 打開先看「🎯 通關確認」頭貼，成績表切過去');
-    ok(/第 1 節　感應大門/.test(w.document.getElementById('labLessonTitle').textContent), '關卡圓鈕旁邊寫出這一節的名稱');
+    await w.LABPASS.start(A);
+    ok($$('#labClassPills [data-lcls]').length === 2 && $$('#labLessonPills [data-lu]').length === 5, '★ 班級一排藥丸（801、802）、關卡 1～5 一排圓鈕（統一規格）');
+    ok(/bg-blue-600/.test($('[data-lcls="801"]').className) && reads.progress === 2, '一打開就選好第一個班並讀取（只讀那一班 2 人的進度）');
+    ok(/第 1 節　感應大門/.test($('#labLessonTitle').textContent), '關卡圓鈕旁邊寫出這一節的名稱');
     ok(st() === 'green,gray', '★ 完成暖身＋檢核 ⇒ 淺綠；還沒完成 ⇒ 灰色');
-    ok(!/<img/.test(w.document.getElementById('labGrid').innerHTML), '   頭貼名單的姓名也逸出');
-    await w.labPass(1);
+    ok(!/<img/.test($('#app').innerHTML), '   頭貼名單的姓名逸出');
+    await w.LABPASS.pass(1);
     ok(writes.length === 0 && st() === 'green,gray', '★★ 灰色點了不能通關（沒有寫入）');
-    w.labPickLesson('u2');
-    ok(st() === 'gray,gray' && /第 2 節/.test(w.document.getElementById('labGrid').textContent), '換關卡 ⇒ 不重新讀取，直接換顏色');
-    w.labPickLesson('u1');
-    w.labSetView('table');
-    ok(w.document.getElementById('labGridWrap').classList.contains('hidden'), '切到成績表');
-    w.labSetView('grid');
-    w.labToggle(0);
-    const html = w.document.getElementById('labTable').innerHTML;
-    ok(!/<img/.test(html) && /記住門/.test(w.document.getElementById('labTable').textContent), '★★ 點姓名看「用自己的話說」—— 學生寫的 HTML 不會被執行');
+    $('[data-lu="u2"]').click();
+    ok(st() === 'gray,gray' && /第 2 節/.test($('#app').textContent) && reads.progress === 2, '換關卡 ⇒ 不重新讀取，直接換顏色');
+    ok(/[?&]u=u2/.test(w.location.search) && /[?&]cls=801/.test(w.location.search), '   網址記下班級和關卡');
+    $('[data-lu="u1"]').click();
+    $('[data-view="table"]').click();
+    const txt = $('#labTable').textContent;
+    ok(/9／15/.test(txt) && /試 3 次/.test(txt) && /第 3 節/.test(txt), '📋 成績表：每節分數、檢核試幾次、放行到第 3 節的「可進到」');
+    ok(!/data-pass|onclick="labVerify/.test($('#labTable').innerHTML) && /未通關/.test(txt), '★★ 成績表不能按通關（給分只在「🎯 通關確認」）');
+    $('[data-toggle="0"]').click();
+    ok(!/<img/.test($('#labTable').innerHTML) && /記住門/.test($('#labTable').textContent), '★★ 點姓名看「用自己的話說」—— 學生寫的 HTML 不會被執行');
+    $('[data-view="grid"]').click();
     roster['1410101'].arduino_json = JSON.stringify({ rej: { u1: { reason: '舊的退件' } } });
-    await w.labVerify(0, 'u1');
-    const aj = JSON.parse(writes[0][2].arduino_json);
-    ok(writes.length === 1 && writes[0][0] === 'roster' && writes[0][3] && writes[0][3].merge === true && aj.ok.u1 && !aj.rej.u1,
-       '★ 實作驗收（任何一節）：寫名冊 arduino_json.ok.u1（merge），之前的退件一併清掉');
-    ok(/✔ 已通關/.test(w.document.getElementById('labTable').innerHTML), '   成績表立刻顯示「已通關」');
-    ok(!/onclick="labVerify/.test(w.document.getElementById('labTable').innerHTML), '★★ 成績表不能按驗收（老師 11-25：給分只在「🎯 通關確認」）');
-    ok(st() === 'blue,gray', '★ 通關＝實作驗收同一格 ⇒ 頭貼立刻變藍');
+    $('[data-pass="0"]').click(); await tick();
+    const aj = JSON.parse(writes[0][1].arduino_json);
+    ok(writes.length === 1 && writes[0][0] === '1410101' && aj.ok.u1 && !aj.rej.u1, '★ 點淺綠 ⇒ 名冊 arduino_json.ok.u1（先讀最新的；之前的退件一併清掉）');
+    ok(st() === 'blue,gray', '   頭貼立刻變藍');
     w.confirm = () => false;
-    await w.labPass(0);
+    $('[data-pass="0"]').click(); await tick();
     ok(writes.length === 1 && st() === 'blue,gray', '點藍色會先問；按取消就不動');
     w.confirm = () => true;
-    await w.labPass(0);
-    ok(writes.length === 2 && !JSON.parse(writes[1][2].arduino_json).ok.u1 && st() === 'green,gray', '確定取消 ⇒ 回到淺綠、分數拿掉');
-    await w.labOpen(1, 0);
+    $('[data-pass="0"]').click(); await tick();
+    ok(writes.length === 2 && !JSON.parse(writes[1][1].arduino_json).ok.u1 && st() === 'green,gray', '確定取消 ⇒ 回到淺綠、分數拿掉');
+    await w.LABPASS.openTo(1, 0);
     ok(!('open' in JSON.parse(roster['1410102'].arduino_json)), '取消放行 ⇒ open 拿掉');
+    $('[data-lcls="802"]').click(); await tick(); await tick();
+    ok(/802 班/.test($('#app').textContent) && st() === 'gray', '點 802 ⇒ 直接讀那一班（不用再按讀取）');
     finish();
   })();
 }

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5016B 通關確認 · 資訊科技課程</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- ★ 老師 2026-11-25：「為什麼是浮動視窗? 不像其他功能都是開新分頁?」
+     ⇒ 原本是教師端裡的浮動視窗（labModal），搬成獨立頁，和「繳交審核與加分」（review.html）同一套：
+        · 用 ?term= 決定學期；教師端用同一個分頁開（sessionStorage 的登入才帶得過來）
+        · 平板可以直接開這個網址；班級、關卡、畫面記在網址上，重新整理還是同一班同一關
+     規則全部在 labscore.js；這一頁只負責讀、畫、寫名冊的 arduino_json。 -->
+<script src="semester.js"></script>
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('term');
+  if (!t || !/^115\d{2}$/.test(t)) t = (window.SEMESTER && SEMESTER.current) ? SEMESTER.current() : '11501';
+  window.__TERM = t;
+  /* ?v= 防快取（老師的工具頁永遠拿最新的；理由見 review.html） */
+  var v = '?v=' + Date.now();
+  document.write('<scr' + 'ipt src="../' + t + '/config.js' + v + '"></scr' + 'ipt>');
+  ['auth.js', 'labscore.js'].forEach(function (f) { document.write('<scr' + 'ipt src="' + f + v + '"></scr' + 'ipt>'); });
+})();
+</script>
+<style>
+  html,body,button,input,select{font-family:'Noto Sans TC',system-ui,sans-serif}
+  body{background:#e7e5e4}
+</style>
+</head>
+<body class="min-h-screen text-slate-800">
+
+<main class="max-w-6xl mx-auto px-4 py-6">
+  <header class="mb-4">
+    <a href="#" id="back-teacher" class="text-sm font-bold text-slate-400 hover:text-slate-700">← 回教師端</a>
+    <h1 class="text-2xl sm:text-3xl font-black mt-2">🔧 5016B 智慧家居機電專題　通關確認</h1>
+  </header>
+  <div id="app"></div>
+</main>
+<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl shadow-lg text-sm font-bold text-white"></div>
+
+<script>
+/* ══ 5016B 通關確認（不碰 Firebase；資料進出走 start() 給的 adapter，測試可以換成假的）══════
+   adapter：
+     rosterAll()          → [{ id, data }]       名冊全部（只拿來列班級）
+     rosterOfClass(cls)   → [{ id, data }]       這一班的名冊
+     progress(id)         → data | null           這位學生的進度
+     rosterGet(id)        → data | null           名冊這一筆（寫之前先讀最新的）
+     rosterMerge(id, obj) → Promise               merge 寫回名冊
+   ⚠️ 學生寫的文字一律逸出再顯示。 */
+window.LABPASS = (function () {
+  'use strict';
+  var L = window.LABSCORE, A = null, $ = function (id) { return document.getElementById(id); };
+  var S = { classes: null, cls: '', lesson: 'u1', view: 'grid', rows: [], busy: '', msg: '' };
+  function esc(t) {
+    return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  }
+  var tt = null;
+  function toast(text, bad) {
+    var t = $('toast'); if (!t) return;
+    t.textContent = text;
+    t.className = 'fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl shadow-lg text-sm font-bold text-white ' + (bad ? 'bg-rose-600' : 'bg-slate-800');
+    clearTimeout(tt); tt = setTimeout(function () { t.className += ' hidden'; }, 2600);
+  }
+  /* 班級、關卡、畫面記在網址上 ⇒ 重新整理、加書籤都回到同一個地方 */
+  function readUrl() {
+    var q = new URLSearchParams(location.search);
+    if (q.get('cls')) S.cls = q.get('cls');
+    if (L.LESSONS.indexOf(q.get('u')) >= 0) S.lesson = q.get('u');
+    if (q.get('view') === 'table') S.view = 'table';
+  }
+  function writeUrl() {
+    try {
+      var q = new URLSearchParams(location.search);
+      q.delete('v');
+      if (S.cls) q.set('cls', S.cls); else q.delete('cls');
+      q.set('u', S.lesson); q.set('view', S.view);
+      history.replaceState(null, '', location.pathname + '?' + q.toString());
+    } catch (e) {}
+  }
+
+  /** 這一關的狀態：gray 還沒完成暖身＋檢核／green 完成、等老師檢查／blue 老師通關 */
+  function stateOf(row, u) {
+    if (row.info.ok && row.info.ok[u]) return 'blue';
+    return L.lessonDone(row.ar, u) ? 'green' : 'gray';
+  }
+
+  /* ── 讀 ─────────────────────────────────────────── */
+  async function start(adapter) {
+    A = adapter;
+    readUrl();
+    S.busy = '讀取班級…'; render();
+    try {
+      var all = await A.rosterAll(), set = {};
+      all.forEach(function (d) { var c = d.data && d.data.cls; if (c) set[String(c)] = 1; });
+      S.classes = Object.keys(set).sort();
+    } catch (e) { S.classes = []; S.msg = '讀取名冊失敗：' + (e && e.message || e); }
+    S.busy = '';
+    if (!S.cls || S.classes.indexOf(S.cls) < 0) S.cls = S.classes[0] || '';
+    if (S.cls) await load(); else render();
+  }
+  /** 讀一班：名冊（where cls）1 次＋每人進度各 1 次 —— 不掃整個進度集合 */
+  async function load() {
+    if (!S.cls) return render();
+    S.busy = '讀取 ' + S.cls + ' 班…'; S.rows = []; render();
+    try {
+      var list = (await A.rosterOfClass(S.cls))
+        .sort(function (a, b) { return (Number(a.data.no) || 0) - (Number(b.data.no) || 0); });
+      S.rows = await Promise.all(list.map(async function (d) {
+        var ar = {};
+        try { var p = await A.progress(d.id); ar = ((p || {}).modules || {}).arduino || {}; } catch (e) {}
+        return { id: d.id, r: d.data, ar: ar, info: L.fromRoster(d.data), open: false, busy: false };
+      }));
+      S.msg = '';
+    } catch (e) { S.msg = '讀取失敗：' + (e && e.message || e); }
+    S.busy = ''; writeUrl(); render();
+  }
+
+  /* ── 寫：名冊的 arduino_json（先讀最新的再改，merge 寫回；名冊其他欄位一個都不碰）── */
+  async function save(row, mutate) {
+    var cur = {};
+    try { cur = JSON.parse(((await A.rosterGet(row.id)) || {}).arduino_json || '{}') || {}; } catch (e) { cur = {}; }
+    if (!cur.ok || typeof cur.ok !== 'object') cur.ok = {};
+    mutate(cur);
+    var raw = JSON.stringify(cur);
+    await A.rosterMerge(row.id, { arduino_json: raw });
+    row.r = Object.assign({}, row.r, { arduino_json: raw });
+    row.info = L.fromRoster(row.r);
+  }
+  /** 點頭貼：淺綠 → 藍（通關＝加分＋開下一節）；藍 → 先問再取消；灰 → 不能點 */
+  async function pass(idx) {
+    var row = S.rows[idx], u = S.lesson, no = L.LESSONS.indexOf(u) + 1;
+    if (!row || row.busy) return;
+    var st = stateOf(row, u), who = row.r.name || row.id;
+    if (st === 'gray') { toast(who + '　還沒完成第 ' + no + ' 節的暖身＋動手檢核，不能通關', true); return; }
+    if (st === 'blue' && !confirm('取消 ' + who + ' 第 ' + no + ' 節的通關？（實作驗收的分數會一起拿掉，下一節也會鎖回去）')) return;
+    var on = st !== 'blue';
+    row.busy = true; render();
+    try {
+      await save(row, function (cur) {
+        if (!cur.rej || typeof cur.rej !== 'object') cur.rej = {};
+        if (on) { cur.ok[u] = { at: Date.now(), by: 'teacher' }; delete cur.rej[u]; }   // 通關 ⇒ 之前的退件一併清掉
+        else delete cur.ok[u];
+      });
+      toast(who + (on ? '　第 ' + no + ' 節通關 ✔（+' + L.POINTS[u].verify + ' 分）' : '　已取消第 ' + no + ' 節通關'));
+    } catch (e) { toast('沒有寫進去（請確認用教師帳號登入）：' + (e && e.message || e), true); }
+    row.busy = false; render();
+  }
+  async function openTo(idx, n) {
+    var row = S.rows[idx]; if (!row) return;
+    n = Math.max(0, Math.min(5, Number(n) || 0));
+    try {
+      await save(row, function (cur) { if (n) cur.open = n; else delete cur.open; });
+      toast((row.r.name || row.id) + (n ? '　放行到第 ' + n + ' 節（只開門、不給分）' : '　取消放行'));
+    } catch (e) { toast('沒有寫進去（請確認用教師帳號登入）：' + (e && e.message || e), true); }
+    render();
+  }
+  function csv() {
+    if (!S.rows.length) { toast('這一班還沒讀到資料', true); return; }
+    var lines = [['座號', '姓名', '第1節', '第2節', '第3節', '第4節', '第5節', '通關節數', '總分'].join(',')];
+    S.rows.forEach(function (row) {
+      var sc = L.score(row.ar, row.info);
+      lines.push([row.r.no || '', row.r.name || ''].concat(L.LESSONS.map(function (u) { return sc.parts[u].pts; }))
+        .concat([L.LESSONS.filter(function (u) { return sc.parts[u].verify; }).length, sc.total]).join(','));
+    });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' }));
+    a.download = '5016B專題成績_' + S.cls + '班.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  /* ── 畫 ─────────────────────────────────────────── */
+  function pills() {
+    var cls = (S.classes || []).map(function (c) {
+      return '<button data-lcls="' + esc(c) + '" class="px-4 py-2 rounded-full text-sm transition-all duration-200 ' + (c === S.cls
+        ? 'font-bold bg-blue-600 text-white shadow-md transform hover:scale-105'
+        : 'font-medium bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 hover:shadow-sm') + '">' + esc(c) + '</button>';
+    }).join('') || '<span class="text-sm text-slate-400">' + (S.classes ? '名冊是空的' : '讀取班級…') + '</span>';
+    var les = L.LESSONS.map(function (u, i) {
+      return '<button data-lu="' + u + '" title="第 ' + (i + 1) + ' 節　' + esc(L.TITLES[u]) + '" class="w-10 h-10 rounded-full text-sm transition-all duration-200 ' + (u === S.lesson
+        ? 'font-bold bg-indigo-600 text-white shadow-md'
+        : 'font-medium bg-white text-gray-600 hover:bg-gray-100 border border-gray-200') + '">' + (i + 1) + '</button>';
+    }).join('');
+    var on = 'px-3 py-2 bg-indigo-600 text-white', off = 'px-3 py-2 bg-white text-slate-600 hover:bg-slate-50';
+    return '<div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-4">' +
+        '<div id="labClassPills" class="flex items-center gap-2 flex-wrap mb-3">' + cls + '</div>' +
+        '<div class="flex items-center gap-2 flex-wrap"><div id="labLessonPills" class="flex items-center gap-2 flex-wrap">' + les + '</div>' +
+          '<span id="labLessonTitle" class="text-sm font-bold text-slate-600 ml-1">第 ' + (L.LESSONS.indexOf(S.lesson) + 1) + ' 節　' + esc(L.TITLES[S.lesson]) + '</span></div>' +
+      '</div>' +
+      '<div class="flex flex-wrap items-center gap-2 mb-4">' +
+        '<button data-act="reload" class="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-600 font-bold rounded-lg text-sm">🔄 重新讀取</button>' +
+        '<button data-act="csv" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-sm">匯出 CSV</button>' +
+        '<div class="ml-auto flex rounded-lg border border-slate-300 overflow-hidden text-sm font-bold">' +
+          '<button data-view="grid" class="' + (S.view === 'grid' ? on : off) + '">🎯 通關確認</button>' +
+          '<button data-view="table" class="' + (S.view === 'table' ? on : off) + ' border-l border-slate-300">📋 成績表</button>' +
+        '</div></div>';
+  }
+  function grid() {
+    var u = S.lesson, no = L.LESSONS.indexOf(u) + 1, n = { gray: 0, green: 0, blue: 0 };
+    var look = {
+      gray:  { card: 'bg-slate-50 border-slate-200 cursor-not-allowed', face: 'bg-slate-200 text-slate-400', name: 'text-slate-400', tip: '還沒完成暖身＋動手檢核' },
+      green: { card: 'bg-emerald-50 border-emerald-300 hover:border-emerald-500 hover:shadow cursor-pointer', face: 'bg-emerald-200 text-emerald-700', name: 'text-emerald-800', tip: '完成了，檢查過程式和裝置後點一下通關' },
+      blue:  { card: 'bg-blue-500 border-blue-600 hover:bg-blue-600 cursor-pointer', face: 'bg-white/25 text-white', name: 'text-white', tip: '已通關（點一下可以取消）' }
+    };
+    var cards = S.rows.map(function (row, idx) {
+      var st = stateOf(row, u), k = look[st];
+      n[st]++;
+      var rej = st !== 'blue' && row.info.rej && row.info.rej[u];
+      return '<div data-pass="' + idx + '" title="' + esc(rej ? '退件：' + (rej.reason || '') : k.tip) + '" data-st="' + st + '" class="' + k.card + ' ' + (row.busy ? 'opacity-50 pointer-events-none' : '') + ' border rounded-lg p-1.5 flex flex-col items-center relative transition select-none">' +
+        (rej ? '<span class="absolute top-0.5 left-0.5 text-[9px] font-bold bg-rose-500 text-white rounded px-1 leading-tight">退</span>' : '') +
+        '<div class="w-7 h-7 rounded-full flex items-center justify-center relative ' + k.face + '">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>' +
+          (st === 'blue' ? '<span class="absolute -top-1 -right-1 bg-white text-blue-600 rounded-full w-3.5 h-3.5 text-[9px] font-black flex items-center justify-center">✓</span>' : '') +
+        '</div>' +
+        '<div class="text-xs font-bold truncate w-full text-center mt-0.5 ' + k.name + '">' + esc(row.r.name || row.id) + '</div>' +
+        '<div class="text-[10px] font-mono leading-none ' + (st === 'blue' ? 'text-blue-100' : 'text-slate-400') + '">' + esc(row.r.no) + '</div></div>';
+    }).join('');
+    return '<p class="text-xs text-slate-500 bg-white/70 border border-slate-200 rounded-lg p-3 mb-3 leading-relaxed">' +
+        '<span class="inline-block w-3 h-3 rounded bg-slate-200 border border-slate-300 align-middle"></span> 灰＝還沒完成暖身＋動手檢核　' +
+        '<span class="inline-block w-3 h-3 rounded bg-emerald-200 border border-emerald-400 align-middle"></span> 淺綠＝完成了、等你檢查　' +
+        '<span class="inline-block w-3 h-3 rounded bg-blue-500 border border-blue-600 align-middle"></span> 藍＝通關（加實作驗收分數、開下一節）<br>' +
+        '現場檢查過學生的程式和裝置後，<b>點淺綠的頭貼就變藍色</b>；點藍色可以取消。學生按卡片上的「🔄 重新檢查」或重新整理就會開下一節。</p>' +
+      '<div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 text-sm">' +
+        '<b class="text-slate-800">' + esc(S.cls) + ' 班　第 ' + no + ' 節　' + esc(L.TITLES[u]) + '</b>' +
+        '<span class="text-slate-500">⬜ 未完成 <b>' + n.gray + '</b></span>' +
+        '<span class="text-emerald-700">🟩 待檢查 <b>' + n.green + '</b></span>' +
+        '<span class="text-blue-700">🟦 已通關 <b>' + n.blue + '</b>／' + S.rows.length + '</span></div>' +
+      '<div id="labGrid" class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">' + cards + '</div>';
+  }
+  function detail(row) {
+    var out = [];
+    ['u1', 'u2', 'u3', 'u4'].forEach(function (u, i) {
+      var say = (row.ar[u] || {}).say;
+      if (say && say.text) out.push('<div class="mb-2"><b>第 ' + (i + 1) + ' 節　用自己的話說：</b>' + esc(say.text) + '</div>');
+    });
+    var u5 = row.ar.u5 || {}, plan = u5.plan && u5.plan.plan, work = u5.work && u5.work.work;
+    if (plan) out.push('<div class="mb-2"><b>第 5 節　設計單：</b>' + esc(plan.scene || '') + '　<span class="text-slate-500">（輸入 ' + esc(plan.input || '') + '、輸出 ' + esc(plan.output || '') + '、' + esc(plan.act || '') + '）</span></div>');
+    if (work && typeof work === 'object') {
+      var lines = Object.keys(work).filter(function (k) { return typeof work[k] === 'string' && work[k].trim() && !/^(aiSig|warned)$/.test(k); })
+        .map(function (k) { return '<div><span class="text-slate-500">' + esc(k) + '：</span>' + esc(work[k]) + '</div>'; });
+      if (lines.length) out.push('<div class="mb-2"><b>第 5 節　成果卡：</b>' + lines.join('') + '</div>');
+    }
+    return out.length ? out.join('') : '<span class="text-slate-400">還沒有寫任何東西。</span>';
+  }
+  function table() {
+    var head = ['座號', '姓名', '第 1 節', '第 2 節', '第 3 節', '第 4 節', '第 5 節', '可進到', '總分'], sum = [0, 0, 0, 0, 0];
+    var h = '<p class="text-xs text-slate-500 bg-white/70 border border-slate-200 rounded-lg p-3 mb-3 leading-relaxed">' +
+      '滿分 100：第 1～4 節各 15 分（<b>暖身 3＋動手檢核 6＋通關 6</b>）；第 5 節 40 分（<b>設計單 10＋成果卡 15＋通關 15</b>）。不算進星星。<br>' +
+      '<b>通關只在「🎯 通關確認」按</b>，這張表只顯示。前一節通關才開下一節；學生卡住（或斷網沒記到）時用「放行到」—— <b>只開門、不給分</b>。點姓名看學生寫的內容。</p>' +
+      '<div id="labTable" class="overflow-x-auto bg-white rounded-xl border border-slate-200"><table class="min-w-full text-sm"><thead><tr class="bg-slate-100 text-slate-700">' +
+      head.map(function (x) { return '<th class="px-2 py-2 text-left font-black whitespace-nowrap">' + x + '</th>'; }).join('') + '</tr></thead><tbody>';
+    S.rows.forEach(function (row, idx) {
+      var sc = L.score(row.ar, row.info), up = L.openUpTo(row.ar, row.info, false);
+      var cells = L.LESSONS.map(function (u, i) {
+        var p = sc.parts[u], r = row.ar[u] || {};
+        if (p.done) sum[i]++;
+        var tries = r.checks && r.checks.tries ? '<span class="text-[11px] text-slate-400">　試 ' + esc(r.checks.tries) + ' 次</span>' : '';
+        var bits = Object.keys(L.POINTS[u]).map(function (k) {
+          if (k === 'verify') return '<span class="text-[11px] font-bold px-1.5 py-0.5 rounded border ' + (p.verify ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-white border-slate-200 text-slate-400') + '">' + (p.verify ? '✔ 已通關' : '未通關') + '</span>';
+          return '<span class="' + (p[k] ? 'text-emerald-700' : 'text-slate-300') + '">' + (p[k] ? '✅' : '⬜') + L.partName(u, k) + '</span>';
+        }).join(' ');
+        var lock = (i + 1) > up ? '<span class="text-[11px] text-slate-400">🔒</span> ' : '';
+        var rej = (!p.verify && row.info.rej && row.info.rej[u]) ? '<div class="text-[11px] text-rose-600 mt-0.5" title="' + esc(row.info.rej[u].reason) + '">退件：' + esc(String(row.info.rej[u].reason || '').slice(0, 14)) + '</div>' : '';
+        return '<td class="px-2 py-2 align-top whitespace-nowrap"><div class="font-black ' + (p.pts === p.max ? 'text-emerald-600' : 'text-slate-700') + '">' + lock + p.pts + '／' + p.max + '</div><div class="text-[11px] mt-0.5">' + bits + tries + '</div>' + rej + '</td>';
+      }).join('');
+      var opt = [0, 1, 2, 3, 4, 5].map(function (n) { return '<option value="' + n + '"' + (row.info.open === n ? ' selected' : '') + '>' + (n ? '放行到第 ' + n + ' 節' : '不放行') + '</option>'; }).join('');
+      h += '<tr class="border-b border-slate-100 hover:bg-slate-50"><td class="px-2 py-2 align-top">' + esc(row.r.no) + '</td>' +
+        '<td class="px-2 py-2 align-top whitespace-nowrap"><button data-toggle="' + idx + '" class="font-bold text-indigo-700 hover:underline">' + esc(row.r.name || row.id) + '</button></td>' + cells +
+        '<td class="px-2 py-2 align-top whitespace-nowrap"><div class="font-bold">第 ' + up + ' 節</div><select data-open="' + idx + '" class="mt-1 text-[11px] border border-slate-300 rounded px-1 py-0.5">' + opt + '</select></td>' +
+        '<td class="px-2 py-2 align-top text-lg font-black ' + (sc.total >= 100 ? 'text-emerald-600' : 'text-indigo-700') + '">' + sc.total + '</td></tr>' +
+        (row.open ? '<tr class="bg-indigo-50/40"><td></td><td colspan="8" class="px-3 py-3">' + detail(row) + '</td></tr>' : '');
+    });
+    h += '<tr class="bg-slate-50 font-bold text-slate-600"><td></td><td>完成人數</td>' + sum.map(function (n) { return '<td class="px-2 py-2">' + n + '／' + S.rows.length + '</td>'; }).join('') + '<td></td><td></td></tr>';
+    return h + '</tbody></table></div>';
+  }
+  function render() {
+    var app = $('app'); if (!app) return;
+    var body = S.busy ? '<div class="text-sm font-bold text-slate-500 py-8 text-center">⏳ ' + esc(S.busy) + '</div>'
+      : !S.cls ? '<div class="text-sm text-slate-400 py-8 text-center">名冊裡沒有班級。</div>'
+      : !S.rows.length ? '<div class="text-sm text-slate-400 py-8 text-center">這一班名冊是空的。</div>'
+      : (S.view === 'grid' ? grid() : table());
+    app.innerHTML = (S.msg ? '<div class="mb-3 bg-amber-50 border border-amber-300 text-amber-800 text-sm rounded-xl px-4 py-3">' + esc(S.msg) + '</div>' : '') + pills() + body;
+  }
+  function needLogin(onLogin, msg) {
+    $('app').innerHTML = '<div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">' +
+      '<div class="text-4xl mb-3">🔐</div><h2 class="text-xl font-black mb-2">請用老師的學校 Google 帳號登入</h2>' +
+      '<p class="text-slate-500 text-sm mb-5">這一頁會讀全班成績、按通關，只有老師進得來。從教師端點進來的話會沿用那邊的登入。</p>' +
+      (msg ? '<p class="text-rose-600 text-sm mb-3">' + esc(msg) + '</p>' : '') +
+      '<button id="login" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-6 py-3 rounded-xl">用 Google 登入</button></div>';
+    $('login').addEventListener('click', onLogin);
+  }
+
+  /* ── 事件（委派；畫面整塊重畫也不會掉）── */
+  document.addEventListener('click', function (e) {
+    var t;
+    if ((t = e.target.closest('[data-lcls]'))) { S.cls = t.getAttribute('data-lcls'); load(); return; }
+    if ((t = e.target.closest('[data-lu]'))) { S.lesson = t.getAttribute('data-lu'); writeUrl(); render(); return; }   // 換關卡不重新讀
+    if ((t = e.target.closest('[data-view]'))) { S.view = t.getAttribute('data-view') === 'table' ? 'table' : 'grid'; writeUrl(); render(); return; }
+    if ((t = e.target.closest('[data-pass]'))) { pass(Number(t.getAttribute('data-pass'))); return; }
+    if ((t = e.target.closest('[data-toggle]'))) { var r = S.rows[Number(t.getAttribute('data-toggle'))]; if (r) { r.open = !r.open; render(); } return; }
+    if ((t = e.target.closest('[data-act="reload"]'))) { load(); return; }
+    if ((t = e.target.closest('[data-act="csv"]'))) { csv(); return; }
+  });
+  document.addEventListener('change', function (e) {
+    var t = e.target.closest('[data-open]');
+    if (t) openTo(Number(t.getAttribute('data-open')), t.value);
+  });
+
+  return { start: start, load: load, pass: pass, openTo: openTo, needLogin: needLogin, render: render, state: function () { return S; } };
+})();
+</script>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, setPersistence, browserSessionPersistence }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, collection, getDocs, getDoc, doc, setDoc, query, where }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const C = window.CONFIG || {};
+const TERM = window.__TERM;
+const app = initializeApp(C.FIREBASE);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const PROGRESS = (C.COLLECTIONS && C.COLLECTIONS.PROGRESS) || (TERM + '-progress');
+const ROSTER = (C.COLLECTIONS && C.COLLECTIONS.ROSTER) || 'roster';
+{ const b = document.getElementById('back-teacher'); if (b) b.href = '../' + TERM + '/teacher.html'; }
+
+const adapter = {
+  rosterAll: async () => (await getDocs(collection(db, ROSTER))).docs.map(d => ({ id: d.id, data: d.data() || {} })),
+  rosterOfClass: async (cls) => (await getDocs(query(collection(db, ROSTER), where('cls', '==', cls)))).docs.map(d => ({ id: d.id, data: d.data() || {} })),
+  progress: async (id) => { const s = await getDoc(doc(db, PROGRESS, id)); return s.exists() ? s.data() : null; },
+  rosterGet: async (id) => { const s = await getDoc(doc(db, ROSTER, id)); return s.exists() ? s.data() : null; },
+  rosterMerge: (id, obj) => setDoc(doc(db, ROSTER, id), obj, { merge: true })
+};
+
+/* 只有老師（和 review.html 同一套）：同網域的學生登入狀態會共用，不能只看「有沒有人登入」。
+   持久性用 SESSION，和教師端一致 —— 從教師端同一分頁點過來不必再登一次。 */
+const isTeacher = u => !!(u && u.email && window.AUTH && AUTH.isTeacherEmail(u.email));
+const login = async () => { try { await signInWithPopup(auth, new GoogleAuthProvider()); } catch (e) { LABPASS.needLogin(login, '登入失敗：' + e.message); } };
+let started = false;
+setPersistence(auth, browserSessionPersistence).catch(() => {}).finally(() => {
+  onAuthStateChanged(auth, (u) => {
+    if (!isTeacher(u)) { started = false; LABPASS.needLogin(login, u ? '這個帳號不是老師帳號：' + u.email : ''); return; }
+    if (!started) { started = true; LABPASS.start(adapter); }
+  });
+});
+</script>
+</body>
+</html>
