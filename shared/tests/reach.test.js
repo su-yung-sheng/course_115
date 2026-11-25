@@ -62,6 +62,7 @@ const KNOWN = {
   'stu_gmail_login_08.html': '課堂用的 Gmail 登入練習單，老師上課時直接給網址，不掛在系統裡',
   'stu_gmail_practise_08.html': '同上，Gmail 操作練習',
   '11501/scratch_ScratchGrader_teacher.html': '教師端的批改工具，從 teacher.html 開',
+  'shared/labreview.html': '5016B 繳交審核頁，2026-11-25 老師要求暫停（改成現場「🎯 通關確認」）—— 入口拿掉、程式停用，留著以後要恢復',
   /* ⚠️ 2026-08-11：這裡曾經有 11501/music.html，理由寫「沒人連」——
      那是錯的。它是第 3 關（演奏小星星）的參考教材，
      由 content/flowchart.js 的 ref.href 指過去、嵌成 iframe。

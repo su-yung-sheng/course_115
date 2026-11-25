@@ -50,15 +50,19 @@ section('③ 依序開放＋老師放行');
 {
   ok(L.openUpTo({}, null, false) === 1, '一開始只開第 1 節');
   ok(L.openUpTo({ u1: { warm: {} } }, null, false) === 1, '第 1 節只過暖身 ⇒ 還是只開第 1 節');
-  ok(L.openUpTo({ u1: { warm: {}, checks: {} } }, null, false) === 2, '★ 第 1 節暖身＋檢核 ⇒ 開到第 2 節');
-  ok(L.openUpTo({ u1: { warm: {}, checks: {} }, u3: { warm: {}, checks: {} } }, null, false) === 2, '跳著做的不算（第 2 節沒完成就停在第 2 節）');
+  /* ★ 2026-11-25 老師：「要老師通關才開下一節」—— 暖身＋檢核過了還不夠 */
+  const ok1 = L.fromRoster({ arduino_json: '{"ok":{"u1":{"at":1}}}' });
+  ok(L.openUpTo({ u1: { warm: {}, checks: {} } }, null, false) === 1, '★★ 第 1 節暖身＋檢核過了、老師還沒通關 ⇒ 還是只開第 1 節');
+  ok(L.openUpTo({ u1: { warm: {}, checks: {} } }, ok1, false) === 2, '★ 老師按了第 1 節通關 ⇒ 開到第 2 節');
+  ok(L.openUpTo({}, L.fromRoster({ arduino_json: '{"ok":{"u1":{},"u3":{}}}' }), false) === 2, '跳著通關的不算（第 2 節沒通關就停在第 2 節）');
   ok(L.openUpTo({}, L.fromRoster({ arduino_json: '{"open":3}' }), false) === 3, '★ 老師放行到第 3 節 ⇒ 開到第 3 節');
-  ok(L.openUpTo({ u1: { warm: {}, checks: {} }, u2: { warm: {}, checks: {} }, u3: { warm: {}, checks: {} } }, L.fromRoster({ arduino_json: '{"open":2}' }), false) === 4,
+  ok(L.openUpTo({}, L.fromRoster({ arduino_json: '{"open":2,"ok":{"u1":{},"u2":{},"u3":{}}}' }), false) === 4,
      '放行比自己的進度少 ⇒ 取較大的（放行不會把人關回去）');
   ok(L.openUpTo({}, null, true) === 5, '備課模式 ⇒ 全開');
   ok(L.fromRoster({ arduino_json: '{"open":99}' }).open === 5 && L.fromRoster({ arduino_json: 'x{' }).open === 0 && L.fromRoster(null).open === 0,
      '名冊欄位壞掉、超出範圍都不會出錯');
-  ok(/先完成第 1 節/.test(L.lockText(2)), '鎖住時講清楚要先完成哪一節');
+  ok(/第 1 節要先完成/.test(L.lockText(2)) && /老師通關/.test(L.lockText(2)), '鎖住時講清楚要先完成哪一節（含老師通關）');
+  ok(/等老師檢查實作/.test(L.lockText(2, { u1: { warm: {}, checks: {} } })), '★ 前一節做完了 ⇒ 說「等老師檢查實作」，不是叫他再做一次');
   const C = {}; new Function('window', read('shared/classroom.js'))(C);
   const works = [{ id: 'a', title: '2026/11/27 專題一：感應大門：超音波與馬達' }, { id: 'b', title: '2026/12/04 專題二：迎賓走廊：超音波與燈條' },
                  { id: 'c', title: '2026/12/11 專題十一：別的' }, { id: 'd', title: '2026/08/06 任務一：2-1-1A 班級置物櫃' }];
@@ -88,21 +92,33 @@ section('④ 5016b.html：畫分數、上鎖、讀不到就放行');
     const dom = new JSDOM('<!doctype html><body>' + cur + '</body>', { runScripts: 'outside-only' });
     const w = dom.window;
     new Function('window', read('shared/labscore.js'))(w);
-    let rec = { arduino: { u1: { warm: {}, checks: {} }, u2: { warm: {} } }, roster: null, ok: true };
+    let rec = { arduino: { u1: { warm: {}, checks: {} }, u2: { warm: {} } }, roster: { arduino_json: '{"ok":{"u1":{"at":1}}}' }, ok: true };
     w.LABSAVE = { all: async () => rec };
     const code = H.slice(H.indexOf('window.LABPROGRESS = (function'), H.indexOf('function closeCourseDetail()'));
     w.eval(code);
     (async () => {
       await new Promise(r => setTimeout(r, 30));
       const P = w.LABPROGRESS;
-      ok(/12/.test(w.document.getElementById('lab-progress').textContent) && /完成 1／5 節/.test(w.document.getElementById('lab-progress').textContent),
-         '★ 頁面上方顯示「專題成績 12／100、完成 1／5 節」');
-      ok(P.canOpen(1) && P.canOpen(2) && !P.canOpen(3), '★ 第 1 節完成 ⇒ 可以進第 2 節、第 3 節鎖住');
+      ok(/18/.test(w.document.getElementById('lab-progress').textContent) && /完成 1／5 節/.test(w.document.getElementById('lab-progress').textContent),
+         '★ 頁面上方顯示「專題成績 18／100（第 1 節 15＋第 2 節暖身 3）、完成 1／5 節」');
+      ok(P.canOpen(1) && P.canOpen(2) && !P.canOpen(3), '★ 第 1 節老師通關 ⇒ 可以進第 2 節、第 3 節鎖住');
       const cards = w.document.querySelectorAll('#curriculum .unit-card');
-      ok(cards.length === 5 && /先完成第 2 節/.test(cards[2].textContent) && cards[2].getAttribute('aria-disabled') === 'true', '第 3 節卡片畫成鎖住、寫明原因');
-      ok(/9／15/.test(cards[0].textContent) && /3／15/.test(cards[1].textContent), '每一節卡片顯示自己的分數');
+      ok(cards.length === 5 && /第 2 節要先完成/.test(cards[2].textContent) && cards[2].getAttribute('aria-disabled') === 'true', '第 3 節卡片畫成鎖住、寫明原因');
+      ok(/15／15/.test(cards[0].textContent) && /3／15/.test(cards[1].textContent), '每一節卡片顯示自己的分數');
+      ok(!/等老師檢查實作/.test(cards[0].textContent), '已通關的那一節不顯示「等老師檢查」');
       P.refuse(3);
-      ok(/先完成第 2 節/.test(w.document.getElementById('lab-lockmsg').textContent), '硬點第 3 節 ⇒ 上方跳出原因');
+      ok(/第 2 節要先完成/.test(w.document.getElementById('lab-lockmsg').textContent), '硬點第 3 節 ⇒ 上方跳出原因');
+      /* ★ 第 1 節做完、老師還沒通關 ⇒ 第 2 節鎖住，第 1 節卡片寫「等老師檢查」＋「重新檢查」按鈕 */
+      rec = { arduino: { u1: { warm: {}, checks: {} } }, roster: null, ok: true };
+      await P.refresh();
+      const cw = w.document.querySelectorAll('#curriculum .unit-card');
+      ok(!P.canOpen(2) && /等老師檢查實作/.test(cw[0].textContent) && /舉手請老師現場檢查/.test(cw[0].textContent) && cw[0].querySelector('.lab-recheck'),
+         '★★ 第 1 節做完、還沒通關 ⇒ 第 2 節鎖住；第 1 節卡片寫「等老師檢查實作：舉手請老師現場檢查」＋「🔄 重新檢查」');
+      ok(/等老師檢查實作/.test(cw[1].textContent), '   第 2 節卡片也寫「等老師檢查」，不是叫他再做一次第 1 節');
+      rec = { arduino: { u1: { warm: {}, checks: {} } }, roster: { arduino_json: '{"ok":{"u1":{"at":2}}}' }, ok: true };
+      cw[0].querySelector('.lab-recheck').click();
+      await new Promise(r => setTimeout(r, 20));
+      ok(P.canOpen(2), '★ 老師按了通關 → 學生按「重新檢查」⇒ 第 2 節開了');
       rec = { arduino: {}, roster: { arduino_json: '{"open":4,"rej":{"u1":{"reason":"<b>看不出在動</b>"}}}' }, ok: true };
       await P.refresh();
       ok(P.canOpen(4) && !P.canOpen(5), '★ 老師放行到第 4 節 ⇒ 第 4 節打得開');
@@ -185,7 +201,8 @@ function done() {
     const aj = JSON.parse(writes[0][2].arduino_json);
     ok(writes.length === 1 && writes[0][0] === 'roster' && writes[0][3] && writes[0][3].merge === true && aj.ok.u1 && !aj.rej.u1,
        '★ 實作驗收（任何一節）：寫名冊 arduino_json.ok.u1（merge），之前的退件一併清掉');
-    ok(/✔ 已驗收/.test(w.document.getElementById('labTable').innerHTML), '   畫面立刻變成「已驗收」');
+    ok(/✔ 已通關/.test(w.document.getElementById('labTable').innerHTML), '   成績表立刻顯示「已通關」');
+    ok(!/onclick="labVerify/.test(w.document.getElementById('labTable').innerHTML), '★★ 成績表不能按驗收（老師 11-25：給分只在「🎯 通關確認」）');
     ok(st() === 'blue,gray', '★ 通關＝實作驗收同一格 ⇒ 頭貼立刻變藍');
     w.confirm = () => false;
     await w.labPass(0);
@@ -214,7 +231,10 @@ function labreview() {
   ok(/esc\(s\.rej\.reason\)/.test(R) && /esc\(a\.title/.test(R), '學生交的檔名、退件原因都逸出');
   ok(/if \(state\.cr\.courseId !== id\) return;/.test(R) && /state\.cr\.works = \[\]/.test(R), '換課時清掉舊的作業清單、過期的回應丟掉（review.html 09-16 的教訓）');
   const T = read('11501/teacher.html');
-  ok(/href="\.\.\/shared\/labreview\.html\?term=11501"/.test(T), '教師端 5016B 視窗有「📥 Classroom 繳交審核」入口');
+  /* ⏸️ 2026-11-25 老師：「先 disable，要現場人工通關確認」⇒ 入口拿掉、頁面的程式停用（程式碼留著，要恢復改回 type="module"） */
+  ok(!/href="\.\.\/shared\/labreview\.html/.test(T), '★★ 教師端拿掉「📥 Classroom 繳交審核」入口（暫停使用）');
+  ok(!/<script type="module">/.test(R) && /<script type="text\/plain" data-disabled=/.test(R) && /暫停使用/.test(R),
+     '★★ 繳交審核頁的程式停用（直接打網址也只看到暫停說明，寫不了分數）');
   const opens = (R.match(/<div[\s>]/g) || []).length, closes = (R.match(/<\/div>/g) || []).length;
   ok(opens === closes, 'div 開合數量相同（' + opens + '／' + closes + '）');
 }
@@ -229,7 +249,8 @@ function codeGate() {
   ok(/window\.GRADING\.openAll\(window\.CONFIG/.test(H.slice(H.indexOf('const codeLock'), H.indexOf('const codeLock') + 400)), '備課模式全開（老師看得到）');
   ok(/doneCard\(checks, rec\.checks\.at, '三個檢核都通過了'[\s\S]{0,120}window\.LABCODE\(true\)/.test(H), '★ 之前就通過的人一進來就看得到程式碼');
   ok(/onDone: function \(info\) \{[\s\S]{0,300}window\.LABCODE\(true\)/.test(H), '★ 當場通過 ⇒ 程式碼打開並捲過去');
-  ok(/最後的實作/.test(H) && /交到 Classroom 的「<b>專題' \+ L\.NUM_ZH\[u\]/.test(H), '程式碼上方說明最後的實作，並提醒交到 Classroom 那一節的作業（實作驗收）');
+  ok(/最後的實作/.test(H) && /舉手請老師到位子上檢查/.test(H) && !/交到 Classroom/.test(H),
+     '程式碼上方說明最後的實作：舉手請老師現場檢查（11-25 起不再叫學生交 Classroom）');
 }
 
 function finish() {

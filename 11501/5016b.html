@@ -2023,7 +2023,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
         function openCourseDetail(unitId) {
             const data = courseData[unitId];
             if (!data) return;
-            /* ★ 依序開放（老師 2026-11-24）：前一節完成才開下一節；老師可以在教師端放行。 */
+            /* ★ 依序開放（老師 2026-11-24／11-25）：前一節老師通關才開下一節；老師可以在教師端放行。 */
             if (window.LABPROGRESS && !window.LABPROGRESS.canOpen(unitId)) {
                 window.LABPROGRESS.refuse(unitId);
                 return;
@@ -2097,8 +2097,9 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 if (on && data.lab && window.LABSCORE) {
                     const u = data.lab.unit, L = window.LABSCORE;
                     howto.innerHTML = '🛠️ <b>最後的實作</b>：照下面這段程式，用上課的積木程式軟體把積木組出來、燒錄到 5016B 模組，' +
-                        '讓真的裝置動起來。<br>📷 拍一段<b>裝置動作的影片</b>（或照片），交到 Classroom 的「<b>專題' + L.NUM_ZH[u] + '：' +
-                        L.TITLES[u] + '</b>」作業 —— 老師看過就會「實作驗收」（+' + L.POINTS[u].verify + ' 分）。';
+                        '讓真的裝置動起來。<br>🙋 裝置動起來之後<b>舉手請老師到位子上檢查</b> —— 老師現場看過按「通關」，' +
+                        '就加實作驗收 ' + L.POINTS[u].verify + ' 分，並開放下一節。';
+                    /* ⚠️ 2026-11-25 老師：「要現場人工通關確認」⇒ 不再叫學生交 Classroom（繳交審核頁已暫停） */
                     howto.classList.remove('hidden');
                 } else {
                     howto.classList.add('hidden');
@@ -2195,7 +2196,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                 /* 🎮 模擬任務（老師 2026-11-25：「模擬互動目前沒有強制，加入讓學生互動到特定數值的操作流程」）
                    ★ 第 1～4 節：模擬器上方三個任務（數字隨機），**暖身＋模擬任務都完成**才打開動手檢核。
                    ★ 之前就通過動手檢核的人不必補做（rec.checks 視同完成）。
-                   ⚠️ 不計分：只寫 modules.arduino.uN.sim，分數和依序開放仍看暖身＋檢核。 */
+                   ⚠️ 不計分：只寫 modules.arduino.uN.sim，分數照舊；依序開放看老師通關。 */
                 const simBox = document.getElementById('sim-tasks');
                 const simOn = !!(window.SIMTASK && window.SIMTASK.TASKS[labCfg.unit] && labCfg.gate !== false && chkMod);
                 let warmOk = false, simOk = !simOn;
@@ -2441,8 +2442,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     '</div>' +
                     '<div class="h-3 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-indigo-500" style="width:' + S.total + '%"></div></div>' +
                     '<p class="text-xs text-slate-500 mt-2 leading-relaxed">第 1～4 節各 15 分（暖身 3＋動手檢核 6＋老師實作驗收 6）；第 5 節 40 分（設計單 10＋成果卡 15＋老師實作驗收 15）。' +
-                    '實作驗收：把裝置動起來的照片或影片交到 Classroom 那一節的作業，老師看過就會打勾。' +
-                    '這是專題自己的分數，<b>不算進星星</b>。前一節做完才會開下一節。</p>' +
+                    '實作驗收：裝置動起來後舉手請老師<b>現場檢查</b>，老師按「通關」就打勾。' +
+                    '這是專題自己的分數，<b>不算進星星</b>。<b>前一節老師通關（實作驗收打勾）後</b>才會開下一節。</p>' +
                   '</div>';
                 cards().forEach(function (el, i) {
                     const no = i + 1, u = L.LESSONS[i], p = S.parts[u];
@@ -2463,11 +2464,18 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     /* ★ 老師在 Classroom 繳交審核退件 ⇒ 卡片上直接講原因（學生自己的名冊那一筆讀得到） */
                     const rej = (!p.verify && st.info.rej && st.info.rej[u]) ? st.info.rej[u] : null;
                     const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                    /* ★ 2026-11-25：下一節要老師通關才開 ⇒ 做完暖身＋檢核、還沒通關的那一節要講清楚「在等老師」，
+                         並給一顆「重新檢查」（老師在教師端按了通關，學生這邊不重新讀是看不到的） */
+                    const wait = !p.verify && !rej && p.done && u !== 'u5';
                     tag.innerHTML = open
                       ? '<span class="' + (p.pts === p.max ? 'text-emerald-600' : 'text-indigo-600') + '">' + p.pts + '／' + p.max + ' 分</span>' +
                         '<span class="block text-xs font-bold text-slate-500 mt-1">' + bits + '</span>' +
-                        (rej ? '<span class="block text-xs font-bold text-rose-600 mt-1">⚠️ 實作作品被退件：' + esc(rej.reason) + '（改好後到 Classroom 重交）</span>' : '')
-                      : '<span class="text-slate-500">' + L.lockText(no) + '</span>';
+                        (rej ? '<span class="block text-xs font-bold text-rose-600 mt-1">⚠️ 實作作品被退件：' + esc(rej.reason) + '（改好後再請老師檢查）</span>' : '') +
+                        (wait ? '<span class="block text-xs font-bold text-amber-700 mt-1">⏳ 等老師檢查實作：裝置動起來後舉手請老師現場檢查，老師通關後開放下一節 ' +
+                                '<button type="button" class="lab-recheck ml-1 px-2 py-0.5 rounded-lg border-2 border-amber-300 bg-white hover:bg-amber-50">🔄 重新檢查</button></span>' : '')
+                      : '<span class="text-slate-500">' + L.lockText(no, st.arduino) + '</span>';
+                    const rb = tag.querySelector('.lab-recheck');
+                    if (rb) rb.addEventListener('click', function (e) { e.stopPropagation(); rb.textContent = '讀取中…'; refresh(); });
                 });
             }
             async function refresh() {
@@ -2485,7 +2493,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             function refuse(no) {
                 const m = document.getElementById('lab-lockmsg');
                 if (!m) return;
-                m.textContent = window.LABSCORE.lockText(Number(no)) + '。卡住的話請找老師。';
+                m.textContent = window.LABSCORE.lockText(Number(no), st && st.arduino) + '。卡住的話請找老師。';
                 m.classList.remove('hidden');
                 if (m.scrollIntoView) m.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
@@ -2498,6 +2506,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             }
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
             else start();
+            /* ★ 學生切回這個分頁時重讀一次（老師可能剛按了通關）。⚠️ 不定時輪詢 —— 全班一起輪詢很耗讀取額度。 */
+            document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && st) refresh(); });
             return { refresh: refresh, canOpen: canOpen, refuse: refuse, state: function () { return st; } };
         })();
 

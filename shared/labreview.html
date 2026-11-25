@@ -52,7 +52,14 @@
       <span class="text-slate-400 text-xs">這是專題自己的百分制成績，不給星、不影響每週評分。</span>
     </p>
   </header>
-  <div id="app"></div>
+  <!-- ⏸️ 2026-11-25 老師：「先 disable，因為要現場人工通關確認，加分應該是在按下通關確認後才給分」
+       ⇒ 教師端的入口拿掉；這一頁的程式整段停用（下面的 module 改成 type="text/plain"，瀏覽器不會執行），
+          直接打網址也只會看到這段說明。要恢復：把 type 改回 "module"、教師端把入口加回去。 -->
+  <div id="app" class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-6 text-amber-900 leading-relaxed">
+    <div class="font-black text-lg mb-2">⏸️ 5016B 繳交審核暫停使用</div>
+    實作驗收改成<b>現場人工通關</b>：請到教師端「🔧 5016B 專題」→「🎯 通關確認」，
+    檢查過學生的程式和裝置後點頭貼通關（按下通關才給分、才開下一節）。
+  </div>
 </main>
 
 <div id="modal" class="hidden fixed inset-0 z-50 bg-black/60 p-4 sm:p-8" role="dialog" aria-modal="true">
@@ -68,7 +75,7 @@
   </div>
 </div>
 
-<script type="module">
+<script type="text/plain" data-disabled="2026-11-25 暫停：給分只在教師端「🎯 通關確認」">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
          setPersistence, browserSessionPersistence }
