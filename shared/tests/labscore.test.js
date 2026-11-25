@@ -197,7 +197,21 @@ function labreview() {
   ok(opens === closes, 'div 開合數量相同（' + opens + '／' + closes + '）');
 }
 
+function codeGate() {
+  section('⑧ 程式碼要通過動手檢核才顯示（老師 2026-11-25）');
+  const H = read('11501/5016b.html');
+  const lab = H.indexOf('id="detail-lab"'), lock = H.indexOf('id="demo-locked"'), demo = H.indexOf('id="detail-demo-container"');
+  ok(lab > 0 && lab < lock && lock < demo, '★ 順序：動手檢核 → 🔒 鎖住的程式碼 → 程式碼（拿來做最後的實作）');
+  ok(/const codeLock = !!\(data\.lab && data\.lab\.checks && data\.lab\.gate !== false/.test(H),
+     '★ 只鎖第 1～4 節（第 5 節的任務卡骨架做專題要用，照舊顯示）');
+  ok(/window\.GRADING\.openAll\(window\.CONFIG/.test(H.slice(H.indexOf('const codeLock'), H.indexOf('const codeLock') + 400)), '備課模式全開（老師看得到）');
+  ok(/doneCard\(checks, rec\.checks\.at, '三個檢核都通過了'[\s\S]{0,120}window\.LABCODE\(true\)/.test(H), '★ 之前就通過的人一進來就看得到程式碼');
+  ok(/onDone: function \(info\) \{[\s\S]{0,300}window\.LABCODE\(true\)/.test(H), '★ 當場通過 ⇒ 程式碼打開並捲過去');
+  ok(/最後的實作/.test(H) && /交到 Classroom 的「<b>專題' \+ L\.NUM_ZH\[u\]/.test(H), '程式碼上方說明最後的實作，並提醒交到 Classroom 那一節的作業（實作驗收）');
+}
+
 function finish() {
+  codeGate();
   labreview();
   console.log('\n通過 ' + pass + '／失敗 ' + fail);
   process.exit(fail ? 1 : 0);

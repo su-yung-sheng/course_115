@@ -122,7 +122,7 @@
         猜錯的代價是眼見為憑，不是一句「答錯」。 */
   var CASES_B = [
     { key: 'door', thing: '門開了沒',
-      code: '重複無限次｜距離 &lt; 10 → 馬達 250、等 1.3 秒、馬達 0',
+      code: '重複無限次｜距離 &lt; 10 → 馬達 250、等 2 秒、馬達 0',
       symptom: '人站在門口不動，馬達就一直轉。',
       fixes: [
         { key: 'state', good: true,
@@ -241,11 +241,19 @@
     if (Math.abs(diff) <= TOL) return { ok: true, how: 'fit' };
     return { ok: false, how: diff < 0 ? 'short' : 'long', diff: diff };
   }
-  function sayC(r) {
+  /* ★ 老師 2026-11-25：「動手檢核的提示不夠明確，有時候會不知道要輸入什麼」
+     ⚠️ C 原本的回饋只有「太少／太多」，第二輪換一台新馬達後**完全沒有線索**，
+        只能用猜的（±0.2 秒，約八分之一的機會），猜錯還要從第一輪重來。
+     ⇒ 回饋改成講「門開到幾 %」，第二輪先給一次「試轉 0.5 秒開到幾 %」——
+        要練的是「從看到的結果估出要轉多久」，這樣才估得出來。 */
+  function pctOf(v, n) { return Math.round(Math.max(0, v) / n * 100); }
+  var TEST_SEC = 0.5;            // 第二輪的試轉秒數
+  function sayC(r, v, n) {
     if (r.how === 'fit')   return '剛剛好，門完全打開就停住了。';
-    if (r.how === 'short') return '⛔ 門只開了一半 —— 馬達還沒轉到底就被叫停了。';
-    if (r.how === 'long')  return '⛔ 門已經到底了，馬達還在推 —— 聽到「嘎嘎」的聲音了嗎？';
-    return '請填一個數字（例如 1.2）。';
+    if (r.how === 'short') return '⛔ 門只開到大約 **' + pctOf(Number(v), n) + '%** —— 馬達還沒轉到底就被叫停了，要再久一點。';
+    if (r.how === 'long')  return '⛔ 門已經到底了，馬達還在推 —— 聽到「嘎嘎」的聲音了嗎？（你設的時間是門全開所需的大約 **' +
+                                  pctOf(Number(v), n) + '%**）要短一點。';
+    return '請填一個數字，單位是**秒**（可以有小數，例如 1.2）。';
   }
 
   /* ═══ 以下是畫面 ═══════════════════════════════════════
@@ -298,10 +306,23 @@
     }
 
     /* ── A ── */
+    /* ★ 這一題人走過來時，超音波量到的距離（還沒套門檻，所以沒有顏色）。
+       ⚠️ 2026-11-25 補：原本這排數字**按了播放才出現** —— 第一次只能用猜的，
+          而答錯換題之後，畫面上又只剩「上一題」的那排，這一題的數字看不到。
+          門檻要設多少，正是要讀這排數字才知道。 */
+    function seqHtml(seq) {
+      return '<div class="dl-note" style="margin-top:8px">📏 這一題超音波一格一格量到的距離（公分，由左到右）：</div>' +
+        '<div class="dl-tape">' + seq.map(function (d) {
+          return '<div class="dl-cell" title="' + d + ' 公分">' + d + '</div>';
+        }).join('') + '</div>';
+    }
     function viewA(msg, cls, res) {
       view(
         '<div class="dl-ask">有人從遠處走過來，在門口停下來晃了一下，然後走遠。<br>' +
-        '你要設定兩個門檻，讓門<b>乾淨地開一次、關一次</b>。</div>' +
+        '你要設定兩個門檻，讓門<b>乾淨地開一次、關一次</b>。<br>' +
+        '<span class="dl-note">① 看下面那排距離，找出人停下來晃的是<b>幾公分到幾公分</b>那一段。' +
+        '② 門檻如果設在那一段<b>裡面</b>，人一晃門就會跟著開開關關。③ 兩格都填整數（公分），再猜門會開關幾次。</span></div>' +
+        seqHtml(aCase.seq) +
         /* ⚠️ 門檻**不預填**（老師 2026-08-24 之後的補強）——
            預填等於送分：學生連那排數字都不必看。
            人這次停在哪一段是隨機的，10／20 不再是萬用解。 */
@@ -310,7 +331,7 @@
         '<div class="dl-ask">⚠️ 先講：這樣設，門一共會<b>開關幾次</b>？（開一次算一次、關一次也算一次）</div>' +
         '<div class="dl-row"><input class="dl-num" id="dl-pred" placeholder="?"> 次 ' +
         '<button class="dl-go" id="dl-runA">送出並播放</button></div>' +
-        (res ? tapeHtml(res) : ''), msg, cls);
+        (res ? '<div class="dl-note" style="margin-top:10px">⬇️ 剛才那一題的結果（現在已經換成上面那一題）：</div>' + tapeHtml(res) : ''), msg, cls);
     }
     function doA() {
       tries.A++;
@@ -447,11 +468,15 @@
     function viewC(msg, cls) {
       var one = cRound === 1;
       view(
-        '<div class="dl-ask">🔧 第 ' + cRound + ' 輪：這台馬達要轉<b>幾秒</b>，門才會剛好全開？<br>' +
-        (one ? '<span class="dl-note">可以一直試，看門開太少還是推過頭。</span>'
-             : '⚠️ <b>換了一台新的馬達</b>。這次<b>先寫下你的答案再執行</b>，只有一次機會。') +
+        '<div class="dl-ask">🔧 第 ' + cRound + ' 輪：程式是「馬達轉 → <b>等待 ? 秒</b> → 馬達停」。' +
+        '要等<b>幾秒</b>，門才會剛好全開？<br>' +
+        (one ? '<span class="dl-note">填秒數（可以有小數，例如 1.5），按「執行」看門開到幾 %，再調整。可以一直試。</span>'
+             : '⚠️ <b>換了一台新的馬達</b>（快慢和剛才不一樣）。先看下面這一次試轉，<b>算出要等幾秒再執行</b>，只有一次機會。' +
+               '<div class="dl-note" style="margin-top:6px;font-size:15px">🔎 試轉：等待 <b>' + TEST_SEC + '</b> 秒 → 門開到大約 <b>' +
+               pctOf(TEST_SEC, cN) + '%</b></div>' +
+               '<span class="dl-note">想一想：' + TEST_SEC + ' 秒開到 ' + pctOf(TEST_SEC, cN) + '%，那開到 100% 要幾秒？</span>') +
         '</div>' +
-        '<div class="dl-row">等待 <input class="dl-num" id="dl-sec" placeholder="1.0"> 秒 ' +
+        '<div class="dl-row">等待 <input class="dl-num" id="dl-sec" placeholder="秒"> 秒 ' +
         '<button class="dl-go" id="dl-runC">' + (one ? '執行' : '寫下並執行') + '</button></div>',
         msg, cls);
     }
@@ -461,17 +486,18 @@
       var r = judgeC(v, cN);
       if (!r.ok) {
         if (cRound === 2) {           // 第二輪只有一次機會 → 換一台重來
+          var nOld = cN;
           cN = caseC(rng, cN);
-          viewC(sayC(r) + '　⚠️ 第二輪只有一次機會，**再換一台**從第一輪開始。', 'bad');
-          cRound = 1;
+          cRound = 1;                 // ⚠️ 先改回第一輪再畫，不然畫面會停在第二輪
+          viewC(sayC(r, v, nOld) + '　（這台其實要等 ' + nOld + ' 秒）⚠️ 第二輪只有一次機會，**換一台**從第一輪開始。', 'bad');
           return;
         }
-        viewC(sayC(r), 'bad');
+        viewC(sayC(r, v, cN), 'bad');
         return;
       }
       if (cRound === 1) {
         cRound = 2; cN = caseC(rng, cN);
-        viewC('✅ 第一輪過了。' + sayC(r) + '　現在換一台新馬達 —— **先寫下秒數再執行**。', 'good');
+        viewC('✅ 第一輪過了。' + sayC(r, v, cN) + '　現在換一台新馬達 —— **先看試轉的結果，算出秒數再執行**。', 'good');
         return;
       }
       done.C = true;

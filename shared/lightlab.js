@@ -273,9 +273,12 @@
       view(
         '<div class="dl-ask">程式裡寫的是：<br>' +
         '<span style="font-family:monospace;font-size:14px">' + esc(textA(aCase)) + '</span><br>' +
+        /* ★ 2026-11-25：程式碼改成通過檢核才顯示 ⇒ 「對應」的讀法要在題目裡講，不能靠程式碼補 */
+        '<span class="dl-note">讀法：距離從 <b>' + (aCase.rev ? aCase.hi + '→0' : '0→' + aCase.hi) + '</b> 公分，照比例換成第 <b>1→' + N_LED +
+          '</b> 顆（距離 ' + (aCase.rev ? aCase.hi : 0) + ' ＝ 第 1 顆、距離 ' + (aCase.rev ? 0 : aCase.hi) + ' ＝ 第 ' + N_LED + ' 顆）。</span><br>' +
         '現在量到的距離是 <b>' + aCase.d + '</b> 公分。<br>' +
-        '⚠️ 先講：<b>第幾顆</b>燈會亮？</div>' +
-        '<div class="dl-row"><input class="dl-num" id="ll-pred" placeholder="?"> 顆 ' +
+        '⚠️ 先講：<b>第幾顆</b>燈會亮？（填 1～' + N_LED + ' 的整數）</div>' +
+        '<div class="dl-row">第 <input class="dl-num" id="ll-pred" placeholder="?"> 顆 ' +
         '<button class="dl-go" id="ll-runA">送出並播放</button></div>' +
         /* ⚠️ 燈條**一開始就要畫出來**（全暗）。
            等按了才出現的話，學生在猜的時候沒有東西可以指著數 ——
@@ -364,10 +367,12 @@
       view(
         '<div class="dl-ask">🎛️ 目標：<b>手' + (cCase.near ? '越靠近，燈越亮' : '越靠近，燈反而越暗') +
         '</b>，而且要<b>用滿整條</b>（最暗 0、最亮 ' + cCase.out + '）。<br>' +
-        '距離量得到的範圍是 0～' + cCase.hi + ' 公分。⚠️ 四格都要自己填。</div>' +
+        '距離量得到的範圍是 0～' + cCase.hi + ' 公分。⚠️ 四格都要自己填。<br>' +
+        '<span class="dl-note">填法和 A 那一行一樣：<b>前兩格是距離</b>（從幾公分→到幾公分），<b>後兩格是亮度</b>（從多少→到多少）。' +
+        '第 1 格的距離會變成第 3 格的亮度、第 2 格的距離會變成第 4 格的亮度 —— 方向要自己對好。</span></div>' +
         '<div class="ll-four">亮度 ← 對應（距離，' +
-          '<input class="ll-n" id="ll-a" placeholder="?">→<input class="ll-n" id="ll-b" placeholder="?">，' +
-          '<input class="ll-n" id="ll-x" placeholder="?">→<input class="ll-n" id="ll-y" placeholder="?">）' +
+          '<input class="ll-n" id="ll-a" placeholder="距離">→<input class="ll-n" id="ll-b" placeholder="距離">，' +
+          '<input class="ll-n" id="ll-x" placeholder="亮度">→<input class="ll-n" id="ll-y" placeholder="亮度">）' +
         '</div>' +
         '<div class="dl-row"><button class="dl-go" id="ll-runC">送出並執行</button></div>',
         msg, cls);

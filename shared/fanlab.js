@@ -266,14 +266,16 @@
         '<div class="dl-ask">程式裡寫的是：<br>' +
         '<span style="font-family:monospace;font-size:14px">轉速 ← 類比對應（' + PIN +
           '，' + LO + '，' + HI + '）</span><br>' +
+        '<span class="dl-note">讀法：旋鈕轉到最左＝<b>' + LO + '</b>、最右＝<b>' + HI + '</b>，中間照比例（所以正中間＝0，停）。' +
+          '負數＝反轉、正數＝正轉。</span><br>' +
         '旋鈕現在轉到 <b>' + aCase.pct + '%</b>（0%＝最左、100%＝最右）。<br>' +
-        '⚠️ 先講：<b>轉速</b>會是多少？</div>' +
+        '⚠️ 先講：<b>轉速</b>會是多少？（填一個整數，反轉要寫負號，例如 -100）</div>' +
         '<div class="fn-stage">' +
           '<div class="fn-tick"><span>最左 0%</span><span>中間 50%</span><span>最右 100%</span></div>' +
           (show ? fanHtml(aCase.answer)
                 : '<div class="fn-fan">❓</div><div class="fn-state">按下去才知道</div>') +
         '</div>' +
-        '<div class="dl-row"><input class="dl-num" id="fn-pred" placeholder="?"> ' +
+        '<div class="dl-row">轉速 <input class="dl-num" id="fn-pred" placeholder="?"> ' +
         '<button class="dl-go" id="fn-runA">送出並執行</button></div>',
         msg, cls);
     }
@@ -364,10 +366,12 @@
     function viewC(msg, cls) {
       view(
         '<div class="dl-ask">🎚️ 目標：' + LK().md(cCase.text) + '<br>' +
-        '⚠️ 兩格都要自己填（馬達收得到的最大是 ' + HI + '）。</div>' +
+        '⚠️ 兩格都要自己填（馬達收得到的最大是 ' + HI + '，反轉最快是 ' + LO + '）。<br>' +
+        '<span class="dl-note"><b>第一格（下限）</b>＝旋鈕轉到<b>最左</b>時的轉速；<b>第二格（上限）</b>＝轉到<b>最右</b>時的轉速。' +
+        '停＝0，反轉要寫負號。</span></div>' +
         '<div class="fn-row">轉速 ← 類比對應（' + PIN + '，' +
-          '<input class="fn-n" id="fn-lo" placeholder="下限">，' +
-          '<input class="fn-n" id="fn-hi" placeholder="上限">）</div>' +
+          '<input class="fn-n" id="fn-lo" placeholder="最左">，' +
+          '<input class="fn-n" id="fn-hi" placeholder="最右">）</div>' +
         '<div class="dl-row"><button class="dl-go" id="fn-runC">送出並執行</button></div>',
         msg, cls);
     }

@@ -617,14 +617,11 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         </div>
                     </div>
 
-                    <!-- 邏輯解析：整個寬度 -->
-                    <div id="detail-demo-container">
-                        <!-- Code Displayed Here -->
-                    </div>
-
                     <!-- 🎯 三個檢核（暖身過了才出現；沒有 lab 的單元整塊隱藏）
-                         ⚠️ 位置在最後**是刻意的**：學生要先讀完模擬與虛擬碼，
-                            才有東西可以被檢核。暖身則在最前面（見上面 #detail-warm）。 -->
+                         ⚠️ 順序（老師 2026-11-25 改）：暖身 → 模擬 → **動手檢核 → 程式碼 → 實作**。
+                            原本程式碼（邏輯解析）放在檢核前面，但那段程式裡就寫著門檻、秒數、範圍 ——
+                            等於先看答案再考。⇒ 程式碼要**通過動手檢核才顯示**，拿來完成最後的實作。
+                            所以檢核的題目本身要講清楚「填什麼、單位、從哪裡看」，不能靠程式碼補。 -->
                     <div id="detail-lab" class="hidden">
                         <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
                             <h3 class="text-2xl font-bold text-slate-800" id="lab-title">🎯 動手檢核</h3>
@@ -637,6 +634,19 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         <div id="lab-checks" class="bg-white p-5 rounded-2xl border-2 border-slate-200"></div>
                         <div id="lab-locked" class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center text-slate-500 font-bold">
                             🔒 先完成上面的<b>暖身關卡</b>，這裡才會打開。
+                        </div>
+                    </div>
+
+                    <!-- 🛠️ 程式碼與最後的實作（通過動手檢核才顯示；老師 2026-11-25） -->
+                    <div id="demo-locked" class="hidden bg-slate-50 border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center text-slate-500 font-bold">
+                        🔒 通過上面的<b>動手檢核</b>（A、B、C 三關）後，這裡會顯示這一節的<b>完整程式</b>，
+                        讓你照著組出來、接上真的硬體完成實作。
+                    </div>
+                    <div id="demo-wrap">
+                        <div id="demo-howto" class="hidden mb-4 bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4 text-emerald-900 text-sm leading-relaxed"></div>
+                        <!-- 邏輯解析：整個寬度 -->
+                        <div id="detail-demo-container">
+                            <!-- Code Displayed Here -->
                         </div>
                     </div>
 
@@ -704,7 +714,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
            結構：暖身關卡（超音波原理）＋ 三個概念檢核
 
            ★ 三個概念（老師 2026-08-24 定的順序）
-             ① 感測 → 判斷   感測器把遠近變成數字，用門檻變成決定（含 10／20 的中間地帶）
+             ① 感測 → 判斷   感測器把遠近變成數字，用門檻變成決定（含 10／30 的中間地帶）
              ② 狀態         程式要記住現在的情況，否則會重複做同一件事
              ③ 時間即動作    馬達沒有回饋，只能用「轉多久」把轉動變成開門
 
@@ -802,7 +812,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     "用「正轉 / 反轉 / 停」三個狀態控制直流馬達",
                     "用『等待幾秒』決定<span class=\"hl\">馬達轉多久</span> —— 並實測出自己這組的秒數",
                     "用一個變數記住『門現在開著還是關著』，避免重複開門",
-                    "認識門檻的『中間地帶』(10～20cm)：避免門一直開開關關"
+                    "認識門檻的『中間地帶』(10～30cm)：避免門一直開開關關"
                 ],
                 /* ⚠️ 2026-08-24 老師更正：「這個單元沒有使用到馬達驅動板 (如 L298N)」。
                    控制板本身就有馬達接孔（積木寫的是「設定馬達 腳位2、3」），
@@ -827,7 +837,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                        往右靠近、往左變遠。」
                        ⇒ 拉桿的值是「物體的位置」，距離 = 65 − 位置：
                          最右邊 = 5cm（貼著感測器）、最左邊 = 60cm（遠）。
-                       ⚠️ 順便把判斷改成和上面那段虛擬碼一樣（10／20、轉 1.3 秒就停、
+                       ⚠️ 順便把判斷改成和上面那段虛擬碼一樣（10／30、轉 2 秒就停、
                           記住門的狀態）。本來是「距離 < 50 就一直轉」——
                           示範和虛擬碼各說各話的話，學生只會相信眼睛看到的那個。 */
                     container.innerHTML = `
@@ -870,8 +880,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                                 </div>
                             </div>
                             <p class="text-xs text-slate-500 text-center max-w-md leading-relaxed">
-                                走近到 <span class="hl-b">10cm</span> 以內門會開；退到 <span class="hl-b">20cm</span> 以外門才關。
-                                中間那段刻意不動作 —— <span class="hl">馬達每次只轉 1.3 秒就停</span>。
+                                走近到 <span class="hl-b">10cm</span> 以內門會開；退到 <span class="hl-b">30cm</span> 以外門才關。
+                                中間那段刻意不動作 —— <span class="hl">馬達每次只轉 2 秒就停</span>。
                             </p>
                         </div>
                     `;
@@ -882,8 +892,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     const statusVal = document.getElementById('motor-status-val');
                     const blade = document.getElementById('motor-blade');
 
-                    const RUN_MS = 1300;          // ★ 馬達轉多久（＝虛擬碼裡的 1.3 秒）
-                    const NEAR = 10, FAR = 20;    // 門檻：中間 10～20 不動作
+                    const RUN_MS = 2000;          // ★ 馬達轉多久（＝虛擬碼裡的 2 秒）
+                    const NEAR = 10, FAR = 30;    // 門檻：中間 10～30 不動作（老師 2026-11-25 改 10／30、2 秒）
                     let rotation = 0;
                     let doorOpen = false;         // 門的狀態
                     let dir = 0;                  // 0 停、1 正轉、-1 反轉
@@ -949,14 +959,14 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
 <span class="col-span-2 text-emerald-600">  // ② 有人靠近，而且門還關著 → 開門</span>
 <span class="col-span-2">  <span class="text-rose-600">如果</span> <span class="text-sky-600">距離</span> &lt; <span class="text-indigo-600">10</span> <span class="text-rose-600">而且</span> <span class="text-sky-600">門的狀態</span> = <span class="text-indigo-600">「關」</span> <span class="text-rose-600">則</span></span>
 <span>    <span class="text-amber-600">設定 馬達</span> <span class="text-indigo-600">250</span></span><span class="text-emerald-600">// 正轉</span>
-<span>    <span class="text-rose-600">等待</span> <span class="text-indigo-600">1.3</span> 秒</span><span class="text-emerald-600">// ★ 門開到底要多久</span>
+<span>    <span class="text-rose-600">等待</span> <span class="text-indigo-600">2</span> 秒</span><span class="text-emerald-600">// ★ 門開到底要多久</span>
 <span>    <span class="text-amber-600">設定 馬達</span> <span class="text-indigo-600">0</span></span><span class="text-emerald-600">// 停</span>
 <span>    <span class="text-sky-600">門的狀態</span> <span class="text-rose-600">設為</span> <span class="text-indigo-600">「開」</span></span><span class="text-emerald-600">// 記起來</span>
 <span class="col-span-2">&nbsp;</span>
 <span class="col-span-2 text-emerald-600">  // ③ 人走遠了，而且門還開著 → 關門（馬達反轉）</span>
-<span class="col-span-2">  <span class="text-rose-600">如果</span> <span class="text-sky-600">距離</span> &gt; <span class="text-indigo-600">20</span> <span class="text-rose-600">而且</span> <span class="text-sky-600">門的狀態</span> = <span class="text-indigo-600">「開」</span> <span class="text-rose-600">則</span></span>
+<span class="col-span-2">  <span class="text-rose-600">如果</span> <span class="text-sky-600">距離</span> &gt; <span class="text-indigo-600">30</span> <span class="text-rose-600">而且</span> <span class="text-sky-600">門的狀態</span> = <span class="text-indigo-600">「開」</span> <span class="text-rose-600">則</span></span>
 <span>    <span class="text-amber-600">設定 馬達</span> <span class="text-indigo-600">−250</span></span><span class="text-emerald-600">// 反轉</span>
-<span>    <span class="text-rose-600">等待</span> <span class="text-indigo-600">1.3</span> 秒</span><span class="text-emerald-600">// 和開門一樣久</span>
+<span>    <span class="text-rose-600">等待</span> <span class="text-indigo-600">2</span> 秒</span><span class="text-emerald-600">// 和開門一樣久</span>
 <span>    <span class="text-amber-600">設定 馬達</span> <span class="text-indigo-600">0</span></span><span class="text-emerald-600">// 停</span>
 <span>    <span class="text-sky-600">門的狀態</span> <span class="text-rose-600">設為</span> <span class="text-indigo-600">「關」</span></span>
 </code></pre>
@@ -968,7 +978,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                          而且完全沒有「轉多久」，正好漏掉這節課的重點。 -->
                     <div class="grid sm:grid-cols-3 gap-3 mt-5">
                       <div class="bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
-                        <div class="font-black text-amber-800 mb-1">⏱️ 為什麼要「等 1.3 秒」？</div>
+                        <div class="font-black text-amber-800 mb-1">⏱️ 為什麼要「等 2 秒」？</div>
                         <p class="text-sm text-amber-900 leading-relaxed"><span class="hl">馬達不知道門開到底了沒有</span> —— 它沒有眼睛。我們只能用<b>時間</b>來決定它轉多久。太短門開不完，太長<span class="hl">馬達會一直推著門硬轉</span>。</p>
                       </div>
                       <div class="bg-sky-50 border-2 border-sky-200 rounded-xl p-4">
@@ -976,8 +986,8 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         <p class="text-sm text-sky-900 leading-relaxed">人站在門口不動，距離一直小於 <span class="hl-b">10</span>。沒有這個變數的話，程式會<span class="hl">一直重複開門</span>，馬達就一直轉。記住「已經開了」，它才知道不用再開一次。</p>
                       </div>
                       <div class="bg-violet-50 border-2 border-violet-200 rounded-xl p-4">
-                        <div class="font-black text-violet-800 mb-1">↔️ 為什麼開門看 10、關門看 20？</div>
-                        <p class="text-sm text-violet-900 leading-relaxed">中間那段 <span class="hl-b">10～20</span> 公分<span class="hl">故意什麼都不做</span>。不然人在 10 公分附近晃一下，門就會開開關關 —— 就像冷氣不會到 26.0 度就立刻停一樣。</p>
+                        <div class="font-black text-violet-800 mb-1">↔️ 為什麼開門看 10、關門看 30？</div>
+                        <p class="text-sm text-violet-900 leading-relaxed">中間那段 <span class="hl-b">10～30</span> 公分<span class="hl">故意什麼都不做</span>。不然人在 10 公分附近晃一下，門就會開開關關 —— 就像冷氣不會到 26.0 度就立刻停一樣。</p>
                       </div>
                     </div>
                 `
@@ -1946,6 +1956,27 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
             // Render specific block logic codes
             const demoContainer = document.getElementById('detail-demo-container');
             demoContainer.innerHTML = typeof data.demoHTML === 'function' ? data.demoHTML() : data.demoHTML;
+            /* 🛠️ 程式碼要通過動手檢核才顯示（老師 2026-11-25）。
+               ★ 只鎖第 1～4 節（有暖身＋檢核的）；第 5 節的任務卡骨架是做專題要用的，照舊直接顯示。
+               ★ 備課模式（OPEN_ALL_UNITS）全開，老師看得到。
+               ⚠️ 讀不到紀錄時 save.load 會退回這台電腦的紀錄，不會卡死。 */
+            const codeLock = !!(data.lab && data.lab.checks && data.lab.gate !== false &&
+                                !(window.GRADING && window.GRADING.openAll && window.GRADING.openAll(window.CONFIG || {})));
+            const howto = document.getElementById('demo-howto');
+            window.LABCODE = function (on) {
+                document.getElementById('demo-wrap').classList.toggle('hidden', !on);
+                document.getElementById('demo-locked').classList.toggle('hidden', on);
+                if (on && data.lab && window.LABSCORE) {
+                    const u = data.lab.unit, L = window.LABSCORE;
+                    howto.innerHTML = '🛠️ <b>最後的實作</b>：照下面這段程式，用上課的積木程式軟體把積木組出來、燒錄到 5016B 模組，' +
+                        '讓真的裝置動起來。<br>📷 拍一段<b>裝置動作的影片</b>（或照片），交到 Classroom 的「<b>專題' + L.NUM_ZH[u] + '：' +
+                        L.TITLES[u] + '</b>」作業 —— 老師看過就會「實作驗收」（+' + L.POINTS[u].verify + ' 分）。';
+                    howto.classList.remove('hidden');
+                } else {
+                    howto.classList.add('hidden');
+                }
+            };
+            window.LABCODE(!codeLock);
             
             /* 🎯 動手檢核：暖身關卡過了才開三個檢核。
                ★ 老師 2026-08-24：「暖身關卡通關才會打開動手檢核? 每次都要重玩? 要有記錄」
@@ -2042,6 +2073,7 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                     }
                     if (rec && rec.checks) {
                         doneCard(checks, rec.checks.at, '三個檢核都通過了', () => mountChecks(rec));
+                        if (window.LABCODE) window.LABCODE(true);      // ★ 檢核過了 ⇒ 顯示程式碼
                     } else {
                         mountChecks(rec);
                     }
@@ -2134,6 +2166,12 @@ body{ background-color:#e7e5e4 !important; background-image:linear-gradient(rgba
                         },
                         onDone: function (info) {
                             if (!(rec && rec.checks)) save.save(UNIT, 'checks', { tries: info && info.tries });
+                            /* ★ 三關都過 ⇒ 程式碼打開，捲過去讓他接著做實作 */
+                            if (window.LABCODE) {
+                                window.LABCODE(true);
+                                const w = document.getElementById('demo-wrap');
+                                if (w && w.scrollIntoView) setTimeout(function () { w.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 600);
+                            }
                             /* 第五節：任務卡與成果發表的內容也要留著 ——
                                ⚠️ 電腦教室關機會還原，不存的話學生下一節要重打一次。 */
                             if (info && info.work) save.save(UNIT, 'work', { work: info.work });

@@ -373,10 +373,16 @@
     function viewC(msg, cls) {
       view(
         '<div class="dl-ask">🎚️ 目標：' + LK().md(cCase.text) + '<br>' +
-        '⚠️ 兩格都要自己填（色環一圈是 0～' + HUE_MAX + '）。</div>' +
+        '⚠️ 兩格都要自己填（色環一圈是 0～' + HUE_MAX + '）。<br>' +
+        '<span class="dl-note"><b>第一格（下限）</b>＝旋鈕轉到<b>最左</b>時的顏色（色相）；<b>第二格（上限）</b>＝轉到<b>最右</b>時的顏色。</span>' +
+        /* ★ 2026-11-25：色相的數字對到什麼顏色要畫出來 —— 不知道「黃色是 60」就填不出來 */
+        '<div style="margin-top:8px;height:14px;border-radius:7px;background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"></div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:900;color:#475569;margin-top:2px">' +
+          '<span>0 紅</span><span>60 黃</span><span>120 綠</span><span>180 青</span><span>240 藍</span><span>300 洋紅</span><span>' + HUE_MAX + '</span></div>' +
+        '</div>' +
         '<div class="mx-row">色相 ← 類比對應（' + PIN + '，' +
-          '<input class="mx-n" id="mx-lo" placeholder="下限">，' +
-          '<input class="mx-n" id="mx-hi" placeholder="上限">）</div>' +
+          '<input class="mx-n" id="mx-lo" placeholder="最左">，' +
+          '<input class="mx-n" id="mx-hi" placeholder="最右">）</div>' +
         '<div class="dl-row"><button class="dl-go" id="mx-runC">送出並執行</button></div>',
         msg, cls);
     }

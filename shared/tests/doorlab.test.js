@@ -150,8 +150,25 @@ section('C｜秒數校準（兩輪）');
   ok(D.judgeC(1.1, 1.4).how === 'short', '★ 設太短 → 判「門只開一半」');
   ok(D.judgeC(1.8, 1.4).how === 'long', '★ 設太長 → 判「馬達還在推」');
   ok(D.judgeC('abc', 1.4).how === 'bad', '   非數字不當成 0');
-  ok(/一半/.test(D.sayC(D.judgeC(1.1, 1.4))) && /還在推/.test(D.sayC(D.judgeC(1.8, 1.4))),
+  ok(/只開到/.test(D.sayC(D.judgeC(1.1, 1.4), 1.1, 1.4)) && /還在推/.test(D.sayC(D.judgeC(1.8, 1.4), 1.8, 1.4)),
      '★★ 兩種錯的回饋不一樣 —— 學生要從「哪一種錯」學會怎麼調');
+  /* ★ 老師 2026-11-25：「提示不夠明確，有時候會不知道要輸入什麼」——
+       回饋要講「門開到幾 %」，第二輪才估得出新馬達要轉多久（原本只能用猜的）。 */
+  ok(/79%/.test(D.sayC(D.judgeC(1.1, 1.4), 1.1, 1.4)), '★ 太短時講出門開到幾 %（1.1 秒／要 1.4 秒 ⇒ 79%）');
+  ok(/秒/.test(D.sayC(D.judgeC('abc', 1.4), 'abc', 1.4)), '填錯格式時講清楚單位是秒');
+  {
+    const src = read('shared/doorlab.js');
+    ok(/試轉：等待 <b>' \+ TEST_SEC/.test(src) && /pctOf\(TEST_SEC, cN\)/.test(src),
+       '★★ 第二輪先給一次「試轉 0.5 秒開到幾 %」—— 有線索才算得出來，不是用猜的');
+    ok(/seqHtml\(aCase\.seq\)/.test(src), '★★ A 一開始就顯示這一題量到的距離（門檻要讀這排數字才定得出來）');
+    /* 試轉的線索真的算得回答案（四捨五入成整數 % 之後，誤差仍在 ±0.2 秒內） */
+    let worst = 0;
+    for (let n = 0.8; n <= 2.4001; n += 0.1) {
+      const pct = Math.round(0.5 / n * 100), est = 0.5 * 100 / pct;
+      worst = Math.max(worst, Math.abs(est - n));
+    }
+    ok(worst <= D.TOL, '   用試轉的 % 換算回去，誤差最多 ' + worst.toFixed(3) + ' 秒（容許 ' + D.TOL + '）');
+  }
 }
 
 section('真的掛得起來');
@@ -188,7 +205,7 @@ section('★ 頁面順序（老師 2026-08-24：「暖身活動不是應該在�
   ok([apps, goals, warm, sim, demo, lab].every(x => x > 0), '六個區塊都在');
   ok(apps < goals && goals < warm, '★ 暖身排在生活應用與學習目標之後');
   ok(warm < sim && warm < demo, '★★ 暖身在**教材之前** —— 它是進場券，不是複習');
-  ok(demo < lab, '★ 三個檢核排在最後（學完才驗）');
+  ok(sim < lab && lab < demo, '★★ 動手檢核在程式碼之前（老師 2026-11-25：通過檢核才顯示程式碼，拿來做最後的實作）');
 
   /* 暖身過了之後不可以直接把學生丟到最底下 —— 中間那段教材就跳過去了。 */
   ok(!/onDone: function \(\) \{[\s\S]{0,400}scrollIntoView/.test(page),
