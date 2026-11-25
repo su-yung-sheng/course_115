@@ -2927,17 +2927,16 @@ const __bn = bonusOf(student, sub.key);
         <button onclick="closeLabModal()" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">&times;</button>
       </div>
       <div class="p-6">
-        <div class="flex flex-wrap items-end gap-3 mb-4">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">班級</label>
-            <select id="labClass" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5"></select>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-4">
+          <div id="labClassPills" class="flex items-center gap-2 flex-wrap mb-3"><span class="text-sm text-slate-400">讀取班級…</span></div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <div id="labLessonPills" class="flex items-center gap-2 flex-wrap"></div>
+            <span id="labLessonTitle" class="text-sm font-bold text-slate-600 ml-1"></span>
           </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">關卡</label>
-            <select id="labLesson" onchange="renderLab()" class="text-sm border border-slate-300 rounded-lg px-2 py-1.5"></select>
-          </div>
-          <button onclick="loadLab()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-sm transition">讀取</button>
-          <button onclick="exportLabCsv()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-sm transition">匯出 CSV</button>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+          <button onclick="loadLab()" class="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-600 font-bold rounded-lg text-sm transition">🔄 重新讀取</button>
+          <button onclick="exportLabCsv()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-sm transition">匯出 CSV</button>
           <div class="ml-auto flex rounded-lg border border-slate-300 overflow-hidden text-sm font-bold">
             <button id="labViewGrid" onclick="labSetView('grid')" class="px-3 py-2">🎯 通關確認</button>
             <button id="labViewTable" onclick="labSetView('table')" class="px-3 py-2 border-l border-slate-300">📋 成績表</button>
@@ -2951,7 +2950,7 @@ const __bn = bonusOf(student, sub.key);
             實際檢查過學生的程式和裝置後，<b>點淺綠的頭貼就會變成藍色</b>；點藍色可以取消。灰色的還不能通關。<br>
             ⚠️ <b>通關了學生才進得去下一節</b>。學生按卡片上的「🔄 重新檢查」或重新整理頁面就會開。
           </p>
-          <div id="labGrid" class="text-sm text-slate-500">選好班級、關卡後按「讀取」。</div>
+          <div id="labGrid" class="text-sm text-slate-500">點上面的班級就會讀取。</div>
         </div>
         <div id="labTableWrap" class="hidden">
         <p class="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 leading-relaxed">
@@ -2960,7 +2959,7 @@ const __bn = bonusOf(student, sub.key);
           依序開放：<b>前一節你按了通關（實作驗收）才開下一節</b>。學生卡住（或斷網沒記到）時，用「放行到」直接開到第幾節 —— <b>只開門、不給分</b>。學生重新整理 5016B 頁面（或按卡片上的「🔄 重新檢查」）才會生效。<br>
           點學生姓名可以看他寫的「用自己的話說」和第 5 節的設計單、成果卡。
         </p>
-        <div id="labTable" class="overflow-x-auto text-sm text-slate-500">選好班級後按「讀取」。</div>
+        <div id="labTable" class="overflow-x-auto text-sm text-slate-500">點上面的班級就會讀取。</div>
         </div>
       </div>
     </div>
@@ -4287,24 +4286,43 @@ const __bn = bonusOf(student, sub.key);
     return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
   function _labDb() { return firebase.firestore(); }
+  let _labClasses = null, _labCls = '', _labLesson = 'u1';
   async function openLabModal() {
     const m = document.getElementById('labModal');
     m.classList.remove('hidden'); m.classList.add('flex');
-    const sel = document.getElementById('labClass');
-    if (!sel.options.length) {
+    if (!_labClasses) {
       try {
         const snap = await _labDb().collection(window.CONFIG.COLLECTIONS.ROSTER).get();
         const set = new Set();
         snap.forEach(d => { const c = d.data().cls; if (c) set.add(String(c)); });
-        sel.innerHTML = [...set].sort().map(c => `<option value="${c}">${c} 班</option>`).join('');
-      } catch (e) { sel.innerHTML = '<option value="">（讀取班級失敗）</option>'; }
+        _labClasses = [...set].sort();
+      } catch (e) { _labClasses = null; document.getElementById('labClassPills').innerHTML = '<span class="text-sm text-rose-600">讀取班級失敗，關掉再開一次</span>'; }
     }
-    const ls = document.getElementById('labLesson');
-    if (ls && !ls.options.length && window.LABSCORE) {
-      ls.innerHTML = LABSCORE.LESSONS.map((u, i) => `<option value="${u}">第 ${i + 1} 節　${LABSCORE.TITLES[u]}</option>`).join('');
-    }
+    _labPills();
     labSetView(_labView);
   }
+  /* 班級藥丸＋關卡圓鈕（和 shared/review.html 同一套樣式）
+     ★ 老師 2026-11-25：「能不能變成統一規格的介面 801…812／1…10 列出式的」⇒ 點了就換，不用再按讀取。
+     ⚠️ 說明寫在這裡、不寫成 HTML 註解：labscore.test 切 labModal 那一段時，遇到 <!-- 會把後面整段切掉。 */
+  function _labPills() {
+    const cp = document.getElementById('labClassPills'), lp = document.getElementById('labLessonPills');
+    if (_labClasses) {
+      cp.innerHTML = _labClasses.length ? _labClasses.map(c => `<button data-lcls="${_labEsc(c)}" onclick="labPickClass(this.dataset.lcls)" class="px-4 py-2 rounded-full text-sm transition-all duration-200 ${c === _labCls
+          ? 'font-bold bg-blue-600 text-white shadow-md transform hover:scale-105'
+          : 'font-medium bg-white text-gray-600 hover:bg-gray-100 border border-gray-200 hover:shadow-sm'}">${_labEsc(c)}</button>`).join('')
+        : '<span class="text-sm text-slate-400">名冊是空的</span>';
+    }
+    if (window.LABSCORE) {
+      lp.innerHTML = LABSCORE.LESSONS.map((u, i) => `<button data-lu="${u}" onclick="labPickLesson('${u}')" title="第 ${i + 1} 節　${_labEsc(LABSCORE.TITLES[u])}" class="w-10 h-10 rounded-full text-sm transition-all duration-200 ${u === _labLesson
+          ? 'font-bold bg-indigo-600 text-white shadow-md'
+          : 'font-medium bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}">${i + 1}</button>`).join('');
+      document.getElementById('labLessonTitle').textContent = '第 ' + (LABSCORE.LESSONS.indexOf(_labLesson) + 1) + ' 節　' + LABSCORE.TITLES[_labLesson];
+    }
+  }
+  /** 點班級 ⇒ 直接讀那一班（不用再按讀取） */
+  async function labPickClass(c) { _labCls = String(c || ''); _labPills(); await loadLab(); }
+  /** 點關卡 ⇒ 不重新讀取，只換顏色 */
+  function labPickLesson(u) { if (window.LABSCORE && LABSCORE.LESSONS.indexOf(u) >= 0) _labLesson = u; _labPills(); renderLab(); }
   function labSetView(v) {
     _labView = v === 'table' ? 'table' : 'grid';
     const g = _labView === 'grid';
@@ -4314,7 +4332,7 @@ const __bn = bonusOf(student, sub.key);
     document.getElementById('labViewGrid').className = g ? on : off;
     document.getElementById('labViewTable').className = (g ? off : on) + ' border-l border-slate-300';
   }
-  function _labU() { const ls = document.getElementById('labLesson'); return (ls && ls.value) || 'u1'; }
+  function _labU() { return _labLesson || 'u1'; }
   /** 這一關的狀態：gray 還沒完成暖身＋檢核／green 完成、等老師檢查／blue 老師確認通關（＝實作驗收） */
   function _labState(row, u) {
     if (row.info.ok && row.info.ok[u]) return 'blue';
@@ -4380,8 +4398,8 @@ const __bn = bonusOf(student, sub.key);
   }
   async function loadLab() {
     const box = document.getElementById('labTable');
-    const cls = document.getElementById('labClass').value;
-    if (!cls) { box.textContent = '請先選擇班級。'; return; }
+    const cls = _labCls;
+    if (!cls) { box.textContent = '請先點上面的班級。'; document.getElementById('labGrid').textContent = '請先點上面的班級。'; return; }
     if (!window.LABSCORE) { box.textContent = '沒有載入 shared/labscore.js'; return; }
     box.textContent = '讀取中…';
     document.getElementById('labGrid').textContent = '讀取中…';
@@ -4509,12 +4527,13 @@ const __bn = bonusOf(student, sub.key);
     const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `5016B專題成績_${document.getElementById('labClass').value}班.csv`;
+    a.download = `5016B專題成績_${_labCls}班.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
   window.openLabModal = openLabModal; window.closeLabModal = closeLabModal; window.loadLab = loadLab;
   window.labSetView = labSetView; window.labPass = labPass; window.renderLab = renderLab;
+  window.labPickClass = labPickClass; window.labPickLesson = labPickLesson;
   window.labToggle = labToggle; window.labVerify = labVerify; window.labOpen = labOpen; window.exportLabCsv = exportLabCsv;
 </script>
 </body>

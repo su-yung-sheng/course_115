@@ -173,8 +173,11 @@ function done() {
   w.eval(js);
   (async () => {
     await w.openLabModal();
-    w.document.getElementById('labClass').innerHTML = '<option value="801">801</option>';
-    await w.loadLab();
+    /* ★ 老師 11-25：班級藥丸＋關卡圓鈕（和 review.html 同一套），點班級就讀取 */
+    ok(w.document.querySelectorAll('#labClassPills [data-lcls]').length === 1 && w.document.querySelectorAll('#labLessonPills [data-lu]').length === 5,
+       '★ 班級一排藥丸（名冊有的班）、關卡 1～5 一排圓鈕');
+    await w.labPickClass('801');
+    ok(/bg-blue-600/.test(w.document.querySelector('[data-lcls="801"]').className), '   點了的班級變藍色、直接讀取（不用再按讀取）');
     const txt = w.document.getElementById('labTable').textContent;
     ok(/9／15/.test(txt) && /試 3 次/.test(txt), '進度表：每節分數、檢核試了幾次');
     ok(/第 3 節/.test(txt), '老師放行到第 3 節的學生，「可進到」顯示第 3 節');
@@ -182,14 +185,14 @@ function done() {
     const st = () => [...w.document.querySelectorAll('#labGrid [data-st]')].map(e => e.dataset.st).join(',');
     ok(!w.document.getElementById('labGridWrap').classList.contains('hidden') && w.document.getElementById('labTableWrap').classList.contains('hidden'),
        '★ 打開先看「🎯 通關確認」頭貼，成績表切過去');
-    ok(w.document.getElementById('labLesson').options.length === 5, '關卡選單：第 1～5 節');
+    ok(/第 1 節　感應大門/.test(w.document.getElementById('labLessonTitle').textContent), '關卡圓鈕旁邊寫出這一節的名稱');
     ok(st() === 'green,gray', '★ 完成暖身＋檢核 ⇒ 淺綠；還沒完成 ⇒ 灰色');
     ok(!/<img/.test(w.document.getElementById('labGrid').innerHTML), '   頭貼名單的姓名也逸出');
     await w.labPass(1);
     ok(writes.length === 0 && st() === 'green,gray', '★★ 灰色點了不能通關（沒有寫入）');
-    w.document.getElementById('labLesson').value = 'u2'; w.renderLab();
+    w.labPickLesson('u2');
     ok(st() === 'gray,gray' && /第 2 節/.test(w.document.getElementById('labGrid').textContent), '換關卡 ⇒ 不重新讀取，直接換顏色');
-    w.document.getElementById('labLesson').value = 'u1'; w.renderLab();
+    w.labPickLesson('u1');
     w.labSetView('table');
     ok(w.document.getElementById('labGridWrap').classList.contains('hidden'), '切到成績表');
     w.labSetView('grid');
