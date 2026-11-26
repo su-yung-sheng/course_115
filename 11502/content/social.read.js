@@ -47,25 +47,25 @@ window.QUIZ_READ = {
       {
        "q": "資訊化之後，使用者的角色有什麼改變？",
        "options": [
-        "不能再自己發表任何意見",
-        "只能被動接收媒體發布的資訊",
-        "必須付費才能閱讀所有新聞",
+        "傳統媒體的播放功能被取代",
+        "從資訊產出者變成接收者",
+        "由媒體替使用者決定內容",
         "擁有產出與播放資訊的主動權"
        ],
        "a": "1xjt4s1",
-       "x": "/JLPLR3WDtwkhael0wQFAav31pTvQXQrqyhQa3tmPlPvT7+W9mtxBFFGp7ljAN1z+jlXDx4hSyAbgriWXorBv+H9dlxE6y/cH4B0bAclEKy44R+7E7j+uKol1C2jx9IsvGCB7jyffzms8qTgAarPr9A40mZNgga87vFMugBVIK+KStnzJoDNqUHV7I4pa8nP0UvEOcVR5wyJLLTdfkn2yWUiZLvHQ6GVxQH1Ux2s8jzdOgLIyumE",
+       "x": "/JLPLR3WDtwkhael0wQFAav31pTvQXQrqyhQa3tmPlPvT7+W9mtxBFFGp7ljAN1z+jlXDx4hSyAbgriWXorBv+H9dlxE6y/cH4B0bAclEKy44R+7E7j+uKol1C2jx9IsvGCB7jyffzms8qTgAarPr9A40mZNgga87vFMugBVIK+KStnzI5b4pHPv7IwnaOLX0ETKP8pR7ii8L7nKc3fUyWQjaZbmQpGlxgbdUhOe+wPUODDUzPWuLIi4NrjCmOVSaCnKAufrpQtkJEobr1Y25GTYe2k8ZN+r6jOf+GowJc4I2oFBuH8z1CdGTwheU/BkPsJcxV8/5VFlofW+ZuPVpjmk",
        "h": "以前只能看別人發的消息，現在每個人都可以自己做什麼？"
       },
       {
        "q": "為什麼資訊化的社會，衍生了多元且複雜的社會議題？",
        "options": [
-        "傳統的媒體已經全部消失了",
-        "只有少數人能夠上網發表言論",
-        "網路上的資訊都經過審查",
+        "傳統媒體的傳輸功能變弱",
+        "資訊科技取代了媒體功能",
+        "網路資訊比傳統媒體更正確",
         "傳播量與速度遠高於傳統媒體"
        ],
        "a": "1hlmi46",
-       "x": "GCLnPRswmIjOMwN9OD1mDiBK5u4xSQbGaWdm7AeDvlFTWJP4Cac+/ZF6zu/S9NLcgtN0DsuUb262lQQqFa0FKwbdUOpy1ffbFUNAf7ewBawb54YBxuH/nNqbyOzYC6902nsvTBMGlDNc2xhQLdelXFpURyz5RXyWbVAtp3CX9wd2XJQtoCn575cDWgpeqWmcY527cqnwHO3S5gPPgX9SQ6w5p/0vzKsf6bnMB/gZ8bWgAEmRGE4gn0SWAWNV1oJs/7Il3Nd1KcVWf82V",
+       "x": "GCLnPRswmIjOMwN9OD1mDiBK5u4xSQbGaWdm7AeDvlFTWJP4Cac+/ZF6zu/S9NLcgtN0DsuUb262lQQqFa0FKwbdUOpy1ffbFUNAf7ewBawb54YBxuH/nNqbyOzYC6902nsvTBMGlDNc2xhQLdelXFpURyz5RXyWbVAtp3CX9wd2XJQtoCn575cDWgpeqWmcY527cqnwHO3S5gPPgX9SQ6w5p/0vzKsf6bnMB/gZ8bWgAEmRGE4gn0SWAWNV1oJs/7Il3Nd1KcVWf82VTdq3Jc79JyQVPMtnkNkY7fv+pfpEKLKHlEAD93ZhW1H8CYu+yhQqVZtaYZr0947zWMmd3XCgrRqftJOdgA58r2IQP1ifOw3e17WltqOn",
        "h": "網路上的消息又多又快，人人都能發言，問題自然就變多了。"
       },
       {
@@ -95,13 +95,13 @@ window.QUIZ_READ = {
       {
        "q": "要在正當與逾越之間取得平衡點，有賴什麼？",
        "options": [
-        "網路平臺自動過濾所有內容",
-        "政府全面管制網路的言論",
-        "更新更快速的電腦設備",
+        "政府立法加重刑罰",
+        "平臺業者的內容審查",
+        "更快速的網路傳輸技術",
         "個人的媒體與資訊素養"
        ],
        "a": "dyzzsa",
-       "x": "htXojDmjsfxVE1AX2fkQm97D2wasmMHQx7KRz4/GrwEooX81Exu2lOh2aEqAiQvScazuhuaB73URBW1E9I/ahl2Q168kVBh6GGFDphuqf2Hm8heGvAGYy9Kufmu7LzK6QW6ijJ1v+JpiC/LxLZ6FvBQlPUMOJFP66IcseiQIxw1bOSx9",
+       "x": "htXojDmjsfxVE1AX2fkQm97D2wasmMHQx7KRz4/GrwEooX81Exu2lOh2aEqAiQvScazuhuaB73URBW1E9I/ahl2Q168kVBh6GGFDphuqf2Hm8heGvAGYy9Kufmu7LzK6QW6ijJ1v+JpiC/LxLZ6FvBQlPUMOJFP66IcseiQIxw1bOSx98lYL7Eai2jRex4PxV7hifudCjkiRSdXURw/U3FE7PF8HOXyXNYILcehtPRZQIB4muJ3c5i9dAniVfELoDcq6mlMPwqpgEN9Kg1sAsTESmR1oI3WDC3tv16FI7cYnM8WnZxpDekaEOTpQL0+HnYoavTmP",
        "h": "要自己判斷什麼該發、什麼不該發，靠的是哪兩種素養？"
       }
      ]
@@ -223,26 +223,26 @@ window.QUIZ_READ = {
       {
        "q": "現今資訊的供應量快速增加，但有什麼問題？",
        "options": [
-        "速度太慢",
-        "全部收費",
+        "無法分享",
+        "難以搜尋",
         "未必正確",
-        "無法搜尋"
+        "傳遞變慢"
        ],
        "a": "zwp5y",
-       "x": "uoFfDEuEhPaRTZoLuet8WZy9EtUVPJuyryEeLpkil06R+exO71j8nRugpLWX2wH7mc7fMtHbS1jH2YSE/DVhI+2AuUIQGA4kWmSpMHHfS/mEpVvrBi2Z+JbOjpQ3VmfmjrrJwy6NvEfBHQcpY4aMxY4UeizxurkJ6dY8uvBadEDGooR6RIpev8ewIqul",
+       "x": "uoFfDEuEhPaRTZoLuet8WZy9EtUVPJuyryEeLpkil06R+exO71j8nRugqrqm1jv/l+3EP8naSlrJ2ZCD8AJfLtGWtXwHGBMRWWCFOULyR/eFqH7aDw2/+qb1jIIeWXbbhJLXxRCCvEnIEDsDYLCqxZILdyjut4Au7sI6ufl8eGn3oKZWSZxOvdajJomdPens8gazTrtoC939HTYCBv1zyeOP78J4hhNlv5ipK4TsSya5j6a9MI9Q69DK",
        "h": "資訊變多了，但多不代表對。"
       },
       {
-       "q": "媒體素養和資訊素養之間是什麼關係？",
+       "q": "下列哪一句，最能說明「資訊素養」和「媒體素養」的關係？",
        "options": [
-        "只能擇一",
-        "相輔相成",
-        "互相衝突",
-        "完全無關"
+        "資訊素養有助提升媒體素養",
+        "兩者是可以互相取代的能力",
+        "資訊素養就是電腦操作能力",
+        "媒體素養是資訊素養的一部分"
        ],
-       "a": "1ig1l1g",
-       "x": "BZnN8Ab8aH9iWOvR2gCSrp37SCXAlsdDeljanOiU+NJ+bwzUCMvsjCbENKx2IqNC8OxSw9AXVEAL1WHf9QRGQdX4FPj2/tANYnhwr0AF2+nk4H8gy/i6l1cEPaNBCpA9SaBbjJygrdkm6X2zuJJR9FLdABqgvt7mnOaacCm7IaHgyJM5ONQKRvyHiKRCmHxz",
-       "h": "兩種素養互相幫助，四個字形容。"
+       "a": "1o2xqtv",
+       "x": "di1dt2o6Dr8Ga/jXHnqrfvK53G4kcpev9PZijbMM1pcXOzu1jZ/bN36pu+qhX3C1z3JtHYQ4kzpRSCJI3vtlsfYOoBkHv8cCRf9T7p5Lq9xBfQKMufrgdLBCpfbYnjQljAHsyO6oiqneSTSOnLY21kxH16kIHgVb9aSKeL1wR1UD6YmRrMSw3IQ7gdm/DfPS5M609hj/Aeh3iQNzA3y8HTKfo/I3uIbDebJ3+RWsFpoo89VrqOOKSHQkcMrj7tweMDGjAfDpdsx7A5aSIeDV+wKjeAoT3DTAaODX3TxNopPNoxEk1uWt67VAOUAX2EG/",
+       "h": "兩種素養是互相幫助的關係。想想：會找資訊、評估資訊，對解讀媒體有沒有幫助？"
       },
       {
        "q": "目前資訊幾乎都藉由網路傳播，它傳遞訊息的速度和傳統媒體相比如何？",
@@ -267,6 +267,30 @@ window.QUIZ_READ = {
        "a": "1jnvbr8",
        "x": "a5ZQYP4iR8GWaAGA6vjxewjk9cO1sBFlvohXOB8ZqyCQuOe1UPZReeNv4sjX/I1c7RXq8Aol299Wzi3GReK9PbD3SnR3SbYzQF4rFQ1cErINagapgSMH7Fk5vhxnTSWsI50Y4sTUPCnkS499R14SrxXYj0tEmEbd",
        "h": "想想你上網查資料時，第一個打開的是什麼網站？"
+      },
+      {
+       "q": "小芬遇到颱風天，先想清楚自己需要哪些消息，再到政府網站找資料、比對新聞是否正確，她展現的是哪一種素養？",
+       "options": [
+        "媒體素養",
+        "資訊素養",
+        "程式設計",
+        "數位落差"
+       ],
+       "a": "1naj6xm",
+       "x": "IjraObBbYctDiQ6Dus/gxQ58zERbzxXZQoFFdHU6V+8Unq0gvaUp/Si5p24Ruhg6gk8Pya0nqMk26PL2b2s6+XUXgPB4WXRzbJiWtQb6BPLMY7YQYd4+pKzxnJyFEcP5vidfpnVKd4NNPu1NXcZM0CMw0nFTrfsFJQ0pnLIxXHq2h9u5MkoPgQXaEfI+H2rW5Cazx8clcAvNAn89HlMCspB0NENGo38VmaK9si1/UVhKGrIm8gG9kc6z59Ynt0YdlNgT15qc",
+       "h": "關鍵在「知道自己什麼時候需要資訊」再「找尋、評估」。對照兩種素養的定義。"
+      },
+      {
+       "q": "小凱拍了一支宣傳短片，剪輯時一直思考觀眾看了會有什麼感受、會不會誤會，他展現的是哪一種素養？",
+       "options": [
+        "資訊素養",
+        "數位落差",
+        "網路成癮",
+        "媒體素養"
+       ],
+       "a": "14bhexw",
+       "x": "Z1cyr5uNjGQEF7EQCuBJrbAFMKn0aQ3fDLmzVLNpfFOdNrJJwIC/AdGfCHHFNWPtB37cpWa8FzBW/ffri+4FiwDXpeopphEx8kOhKe+y4q/rfSx2lnQRJta1Os7Njtptf33PjalIkIXe0YN5xl6iMuvi80u7X/SWdkY2OYDOQ/qDjkjLQeCShDZpacykPlDV6EZRWrga4T5+nBWJEkzN/duJo8mvLstNKnNlpphi00xvx8Fex3z2/yDXFk6XPEcF",
+       "h": "他在「製作」影片，並分析影片對觀眾的影響。哪一種素養的定義裡有「產製」？"
       }
      ]
     }
@@ -438,6 +462,66 @@ window.QUIZ_READ = {
        "a": "12bh2b0",
        "x": "uxwsnestZbT3UpmfDKEU06menOBs43hQPWj1cwXGeNGCRPHmjUIzXqnwEfnZXwB1P0nonvYsPvFqfB8ub79X4VNDiKvL7BsZAhpspT+UNdozaI0xwUzWAR1e4Dy+4BPDW4TwnsQ5V4+MazqfZr0Use4EXZNttQcP1LjKEqIptg8UwNEq+EcX9fxPiArBg2JD6CHOgOn5cT4SVr6ZWUrGl6vov6CTcW3UK4m6TivF411Uq0tD9IQUJq+8lUs+Yw==",
        "h": "這個罰則很重：好幾年的徒刑，罰金是「百萬」等級。"
+      },
+      {
+       "q": "「錯誤資訊」和「不實資訊」最大的差別在哪裡？",
+       "options": [
+        "傳播的速度",
+        "有沒有惡意",
+        "是否用 AI 做",
+        "是否符合事實"
+       ],
+       "a": "mnbz83",
+       "x": "Me2h5DQJEj0+JT5xfHm76nqwYBablfBNSSvI7pplSDYWZHUMwKUgMYqh9tZCF3JwNflC0x2juCw0aYToIK5subrPqrt0OmeWiMB1nBMDgOc67QBCB/H3RbuUpE167ie3oFD+4Mbjf90YO7N4FOKGx2XywHCSFt/4xUadGGGMgX3w5xoYIAFeYohIruyPco2NRreVho15iSvrUUw8HBz3",
+       "h": "兩種都和事實不符。差在發布的人「心裡想的」是什麼。"
+      },
+      {
+       "q": "「不實資訊」和「惡意資訊」最大的差別在哪裡？",
+       "options": [
+        "傳播的範圍大小",
+        "有沒有傷人的意圖",
+        "是否已經觸犯法律",
+        "內容是否符合事實"
+       ],
+       "a": "yxpdg4",
+       "x": "W0tuY47hSkNIWj04KZjHAzDTZI2qO7Q5d2OKPRjkhCKDdbBAx87kYgkgSKnB62dkZzCLMK1Dk51hqywPjxYJs9UwJFbgxBPx8XN9wYsTWccXKEyE1zzPrQfmbyDaTVtJi22y8zBNPLFKfnM7gBvV5bixKx7v3hpKvSsy942fDbDhTH3A3nn+iX8LhuW0ujN6/4FiqXUnkfNE2hHVyEEqXat1iTNyHSxi",
+       "h": "兩種都有惡意，想傷害別人。差在內容本身是真的還是假的。"
+      },
+      {
+       "q": "阿姨以為是好心提醒，在家族群組轉傳「喝熱水能殺死病毒」，其實並不正確，這屬於哪一類？",
+       "options": [
+        "惡意資訊",
+        "正確資訊",
+        "不實資訊",
+        "錯誤資訊"
+       ],
+       "a": "1xufnx0",
+       "x": "mswmgQIF5lRJpvSlH2TBibh1tsGvEw1uznYIKEhTL9K/FcdTnCyy0QOlZZAfxD8+mDXMU3D/E5CZDOqMrZc593WFNmjY2JW8R+n9LT0cHmodq5Cvuk0P5/Rmllndo1bVuYnpXT159GaR/Hn0NlGv/ieNhhQH94Hty7dKj/JH1RdzT3MkIU77SDKmblcxX5Aq9J6XFOFOYCCI6euGxlWMC/ZYEihQHpa20hPqWizJ0xNY0a5D",
+       "h": "先問兩件事：內容是真的嗎？阿姨有沒有想傷害誰？"
+      },
+      {
+       "q": "選舉前，有人故意編造候選人收賄的假消息來打擊對手，這屬於哪一類？",
+       "options": [
+        "不實資訊",
+        "錯誤資訊",
+        "合理評論",
+        "惡意資訊"
+       ],
+       "a": "1hn7g4a",
+       "x": "KcSUBlriKeddBqvsyA0V6ruVWiAq06hMLNCQxUs5i0ZRdO+Axlu3bTPcIRhPp8WVDOL8xVpHJaWimfSPTtITSm0N7tEzxHApfYsF5aLjHyyyoQidtVprvBt9qyfwii2D1Ftw+2Km3Z4YS1S7X2FHC/HbV1YNPQTXC0CzNCT0dNVYypc2Tf4vfI9A0Zo4/I+86iZfPZiB55YS/VqBa4nV",
+       "h": "先問兩件事：消息是真的嗎？發布的人有沒有目的、想傷害誰？"
+      },
+      {
+       "q": "有人把同學真實發生的糗事照片，刻意配上嘲笑文字到處散布，想讓對方難堪，這屬於哪一類？",
+       "options": [
+        "正確資訊",
+        "錯誤資訊",
+        "不實資訊",
+        "惡意資訊"
+       ],
+       "a": "apqr3n",
+       "x": "CXrLaTk9Y7u+4V+qN+8dFPw2zYdHyj0lO1W6AIxLThXLIPtJz2idsnaFZrfdLS3eRCZj6XURPXd3y7vP4dZxMwAGHOt6kqtuNN1aYaQ9cUdZ0/VD2ZUccVTZ0R5HhkuZwR8jVwSmq1GXvyI2Ds+oSl3+8Osi192oLBvvb6tOk4Go0pD6f294lvsONWrXw2vBaQnrJYYqj3mc",
+       "h": "照片是真的，沒有造假。但散布的人有沒有想傷害對方？"
       }
      ]
     },
@@ -453,9 +537,9 @@ window.QUIZ_READ = {
       {
        "q": "網傳「T 牌高級鹽不能吃，只能醃漬和洗蔬果」，專家怎麼說？",
        "options": [
-        "兩種鹽都不能吃",
-        "高級鹽只能洗菜",
-        "只有特級鹽能吃",
+        "高級鹽限用於醃漬",
+        "兩種鹽都不宜食用",
+        "特級鹽才可以吃",
         "兩種鹽都可以吃"
        ],
        "a": "9szul8",
@@ -501,13 +585,13 @@ window.QUIZ_READ = {
       {
        "q": "消費者在網路上發布誇大事實的負評來抹黑店家，恐涉及什麼？",
        "options": [
-        "只會被店家列入黑名單",
-        "違反著作權法與藥事法",
+        "恐嚇罪與妨害秘密罪",
+        "著作權法與民事責任",
         "刑法毀謗罪與民事責任",
-        "沒有任何法律責任"
+        "受消保法保護不必負責"
        ],
        "a": "ah0505",
-       "x": "t4saozSNGnL8irJLhbX0lXHCLUxkDbfJ1OZrY0mEbCk9maUilNU+7EwFwhNIsWO1qWg4i7JETpVuC+GN6zuTHwIhC4McVnKxsIvPwAcVhHYVFyfd8DfeP0Y7xN/ZbGf4gTgUyXr8MQPr6UbQ/+nstsBK5ovu4C/03qW6M1E27DuI2DzlZW/z1SEJb6R0D/MmKVIOPTtJ/pzoiCDXzLftcWZpb/rkjwq/TOyMehqIZlb4ttNPCglICrnRQaGrOE0HK9me",
+       "x": "t4saozSNGnL8irJLhbX0lXHCLUxkDbfJ1OZrY0mEbCk9maUilNU+7EwFwhNIsWO1qWg4i7JETpVuC+GN6zuTHwIhC4McVnKxsIvPwAcVhHYVFyfd8DfeP0Y7xN/ZbGf4gTgUyXr8MQPr6UbQ/+nstsBK5ovu4C/03qW6M1E27DuI2DzlZW/z1SEJb6R0D/MmKVIOPTtJ/pzoiCDXzLftcWZpb/rkjwq/TOyMehqIZlb4ttNPCglICrnRQaGrOE0HK9meLogBR3fPWNQAJUMk3A4EMeLstL2GVKLaTpAqbm7MIRrlKuOCWqqc",
        "h": "誇大事實去抹黑別人，除了刑事上的罪，還要賠償店家的損失。"
       }
      ]
@@ -583,6 +667,30 @@ window.QUIZ_READ = {
        "a": "g2ys08",
        "x": "a3Fa0pA+Om278jQ8sYuP9vTE0ap4esjAvYZgxvbVUJnkPJScnOOXTC7MwrPR155spwbkd8WXqBs2s3OE4O5MXnOQg0Ybrewo7gSYU4u5i4LKe1Qrp0wA9yBrS7aM9MfrzgIXXmGLwsGQ8g2WyIpZsecoGXw60W01baoT3eCInWQ819MCZk3/YWSfjHD0yJ3hZbFIYqiYAQFu7gjOW94WyHkuwCedbkLrYdABBFnkTyfmxgqOdgCD+n4woFvsN7QDAICikwTpof4d",
        "h": "要查證，就去問「真正負責」這件事的單位。"
+      },
+      {
+       "q": "電商平臺發現有人假冒它的名義推出「分期付款」，立刻公告說明沒有這項服務，這是三不二要的哪一項？",
+       "options": [
+        "不散播",
+        "不製造",
+        "要查證",
+        "要澄清"
+       ],
+       "a": "13d87b",
+       "x": "b6Vlce9c5f/o1A+4NR3ezzp/CqDyP4jbX3ZbQ35VKxfo/b2ppIi5hacEYjvbIyjntUEBzAAlN4iW7WBRiH6xsuM0Hs5DaKN423pyapdjXgErJ/gecJl2QovKg2B913I+163mI7tDt/65023HQxbhK4Iyai8axhe3gJDORPN8MgJTob+yScG6X74LroJ1Wu0QgfULG8k+D8ZDvBHtx9DW5OCL",
+       "h": "平臺自己出來說明「我們沒有這樣做」，是在更正錯誤的消息。"
+      },
+      {
+       "q": "小宇用 AI 做了一段名人說出他從沒說過的話的影片，還沒發出去。依三不二要，他已經違反了哪一項？",
+       "options": [
+        "不製造",
+        "要查證",
+        "不輕信",
+        "不散播"
+       ],
+       "a": "qcmlei",
+       "x": "qXV4VkfPp3Ig60B2sqtlm5MfpeVysz/jrSfJW6V17lATQKW4nQYD3DuiLHslZMlddiZBbnTB/6bnfJQwYs1KZURUsa5dYqczQEiHgRC4REoWL2ThQZVGX3iEzZGUgLfCcGrzhVeRZKJ3L6g090x3JY19jvrkzEXM2tUcwnAiwJjSUdljIbAn+m1dqmcpynBmjQGUesduk6pT0POCGOhM8RSTI5vKyk0W12KZe5kootTcxc4V/Ge7twW4+9XpzMjRdg+C",
+       "h": "影片還沒傳出去，所以還沒散播。他「做」了什麼？"
       }
      ]
     }
@@ -613,10 +721,10 @@ window.QUIZ_READ = {
       {
        "q": "小明寫了一首歌來表達對時事的看法，這算不算言論？",
        "options": [
-        "不算，只有說話才算",
+        "不算，言論要用說的",
         "算，歌曲也是表達方式",
-        "不算，要刊登在報紙才算",
-        "算，但只限職業歌手"
+        "不算，要刊在報紙上",
+        "不算，歌曲屬於藝術"
        ],
        "a": "1cxqjz9",
        "x": "tPJBbYd9m+CgpyEYeAYTj92cSX9dLOom0dHCpFK/3LlReaW+wL72Z29UGO89AeR4LN3qMukJVpnqSJlGdX6vzHiNbtTUKGeGsDIrmxgJnBUSwJT8UnQrTnBjAFNTELOmg7a2G1J83QR2nCctErZz5bJ4xIEZdu8VCSDgPqTVoiCEl+sklEoJeNUHUQyGkR0NxcnIresQ+u64s2oSWmyiAjuo3Qqf5zhNcZ8L",
@@ -661,13 +769,13 @@ window.QUIZ_READ = {
       {
        "q": "憲法保障的言論自由，包含哪兩件事？",
        "options": [
-        "自由發表言論且完全不必負責",
-        "只能在私下場合發表言論",
-        "只能聽取政府發布的意見",
+        "自由發表言論與審查他人言論",
+        "聽取他人意見與要求媒體刊登",
+        "自由發表言論與匿名不受追查",
         "自由發表言論與聽取他人意見"
        ],
        "a": "13e7eye",
-       "x": "Bmkf1grUb0nx5xhbRqisnHTT2B1RFeY2UkoB0CAe/d9eEnsHOEClKgBdORmGIsaQRzRAWmZqqoFnFj6xgqMp6TLIwASYUiZZ/SOxNmGPdVZfwScVdrO88WMNvwA9ywHlhrum8Pp/apj3F0wR870HR4naVH6mfRhlg8+ZO8dnjvsVwRI44NYGd3HrvxIuCLbzeR72BY3h1x9OtJnDDGLKQ9dvBzz4/MgYK5qj",
+       "x": "Bmkf1grUb0nx5xhbRqisnHTT2B1RFeY2UkoB0CAe/d9eEnsHOEClKgBdORmGIsaQRzRAWmZqqoFnFj6xgqMp6TLIwASYUiZZ/SOxNmGPdVZfwScVdrO88WMNvwA9ywHlhrum8Pp/apj3F0wR870HR4naVH6mfRhlg8+ZO8dnjvsVwRI44NYGenbCsSYdBbn8ejD9ArXt1ihSuajmDV/KTtpGDA7Z8cYDIKWKPNOvPlVDaseQWTIUwqu/XOAqVYCLCzybcKwF6rdj",
        "h": "可以自己說，也可以聽別人說。"
       }
      ]
@@ -708,11 +816,11 @@ window.QUIZ_READ = {
        "options": [
         "事後懲罰",
         "事前限制",
-        "完全不管",
-        "全面禁止"
+        "平臺自管",
+        "網友自律"
        ],
        "a": "1572ose",
-       "x": "BMCpzWvQPM1S4LhI/Y+kt69+Nf6jr1Lecozoz+1iV1D1uefQ2ibZgNWczlrYK5BYni4bEdVjzku9LSrZRVG0wjbcU83isR0PlafDZ1cPHByvwtSgARQM5HV6cp7Ivcd1tAIZF29c3mjSPkRp",
+       "x": "BMCpzWvQPM1S4LhI/Y+kt69+Nf6jr1Lecozoz+1iV1D1uefQ2ibZgNWczlrYK5BYni4bEdVjzku9LSrZRVG0wjbcU83isR0PlafDZ1cPHByvwtSgARQM5HV6cp7Ivcd1tAIZF29c3mjSMnhwRAj2cZrPkblFhfxG5OEraairP8hWf9Q+iFm2+DupV3H4LTB+h3sbQmZPm/oF",
        "h": "現在是先讓你說，說了觸法「之後」才處罰。"
       },
       {
@@ -750,6 +858,30 @@ window.QUIZ_READ = {
        "a": "q1ikha",
        "x": "PBtYmSS6tvjttsFxRJV7mgVJR4PpuQ4X+m+fpwGkIBudkbpiPC4B6vGCfv6VmhoWrkUlbUsCt7oB8zLu4L3+JJOQyIvoj7IMUoa3qsPGZj0eSUgU53hMBbShuxfEEMY13n4jAC7J5XVwYHNspsdwAWu0n8K88tzLI120n4ef4t8uV50V64spqDBNtVSHhc0y2zkvlLCxWwQGAr9AXpdrZdzYb146bJE3Etfjyoa5T72daAMdBbB7cwbKWglrh/iGKht0aMD5Y/be1NcCAk/3",
        "h": "言論自由不代表說什麼都不用承擔後果。"
+      },
+      {
+       "q": "某國規定：所有文章都要先送政府審查通過才能刊登。這屬於哪一種規範言論的方式？",
+       "options": [
+        "事後懲罰",
+        "網友自律",
+        "平臺自管",
+        "事前限制"
+       ],
+       "a": "1u3x0gz",
+       "x": "ZKEz3Ccsd8cTuz+RBnjt6WY8UHgRfAdhJbYC3erkZplsKG+odzN9qwFLF0AJRGJzG5F5d1YOK0tIE048q1GD/WoOa4Wq2drGk7g/q5xZYDFF+0zCx2z99cR9Bg6GOeLcHZQ5+EY9HrJDI2HslbrY7yLcqetNJUItD9vdHpVq5uldekyZ7gGVUQ0EHjIlZ6nzUMG0Jz/TOW+hROpy6PtYm/tP0gfHbFWS",
+       "h": "審查是發生在文章刊登「之前」還是「之後」？"
+      },
+      {
+       "q": "小美的貼文發表時沒有人阻止，三天後因內容毀損他人名譽被告。這符合哪一種規範言論的方式？",
+       "options": [
+        "事後懲罰",
+        "網友自律",
+        "事前限制",
+        "事前審查"
+       ],
+       "a": "1n4tncx",
+       "x": "cac2tjTyMZXnaMjTg9Vyy9Mx57rIHXYFLL/P2QKnby+QnyuFGsyy0ws3iOsaJFwEMW26h2pxtely7401OBl3GP/c+52uTZ2Ctxxqmt8bG0zRZVKZyjoR1TWW8rUFV1XWwmNQ+5+mfGcPPzzuEJcJbsIjBub+LY3C/cB1/OMwzdlcsM8nCYYVeAprjer1U+zMypSK5SwZ8AjCPNt9YzVNbg9m+VYzPput3In3X1lXl0RwhN11oQgAuD9O",
+       "h": "發表時沒有被擋，是之後才要負責。是「之前」管還是「之後」管？"
       }
      ]
     },
@@ -799,26 +931,38 @@ window.QUIZ_READ = {
       {
        "q": "網路社會和現實社會相比，是什麼樣的環境？",
        "options": [
-        "只有朋友看得到",
-        "完全不受法律規範",
+        "是不受法律規範的空間",
         "比現實社會更為私密",
+        "和現實社會一樣公開",
         "比現實社會更為公開"
        ],
        "a": "1aikmx8",
-       "x": "GyOdV7d67xsYH6bfxu24HKPJAhITZkFL0Fn/5i0XiP18kp1NpacXU9Coomu6/eQ2CclXRVTw0WY6bJTlshBVmZ69EQt/xJyEQsGLQFxHUyj3vvdsKck4KxU6MQdm27Fry9tevxUwqXaDoqPm1AjJ+cXAPhZlLeapPXrDY5dsWLbUFvGnGnIPvjxEytOvQQn1PR5re8QCx2/M",
+       "x": "GyOdV7d67xsYH6bfxu24HKPJAhITZkFL0Fn/5i0XiP18kp1NpacXU9Coomu6/eQ2CclXRVTw0WY6bJTlshBVmZ69EQt/xJyEQsGLQFxHUyj3vvdsKck4KxU6MQdm27Fry9tevxUwqXaDoqPm1AjJ+cXAPhZlLeapPXrDY5dsWLbUFvGnGnIPvjxEytOvQQn1PR5re8QCx2/MwvFlD+987E8QqlWa5bQfmbY2rZNyiUeRgODS7Ll7MA1f6ADTm5csxR3miI+HGKOc",
        "h": "網路上的貼文可能被全世界看到，比現實生活更公開還是更私密？"
       },
       {
        "q": "現實社會中法律對言論自由的保障和規範，在網路社會怎麼樣？",
        "options": [
-        "只適用一半",
-        "完全不適用",
         "由平臺決定",
+        "不再適用",
+        "須實名才適用",
         "同樣適用"
        ],
        "a": "a7sxs1",
-       "x": "xUT/Qq6XhfWJTMyfikPsAiJuuU7eCz0+ICYiB+d/cUMQ7dMXWKZn3HuGh2cZRTL2eZu2IGNMAl+GBdjdhCqOacE4/IgeAbcvpMJiUw5I3O1t6Mfbtc8ixuQQUZYQnWbimH5Amjg9YBqye2tBu8dnjLMxMdG408xrI8L5bx9oTM9Q2OcfexO7",
+       "x": "xUT/Qq6XhfWJTMyfikPsAiJuuU7eCz0+ICYiB+d/cUMQ7dMXWKZn3HuGh2cZRTL2eZu2IGNMAl+GBdjdhCqOacE4/IgeAbcvpMJiUw5I3O1t6Mfbtc8ixuQQUZYQnWbimH5Amjg9YBqye2tBu8dnjLMxMdG408xrI8L5bx9oTM9Q2OcfexO7pbSJ8aso17DW6NswcybNG1cae3lGgtJf2pKfnjx5nHo3BdsskUP3X7hhEguR",
        "h": "現實社會的規範，到了網路上一樣有效嗎？"
+      },
+      {
+       "q": "小傑在 30 人的班級 LINE 群組裡罵某位同學是「廢物」，這算不算法律上的「公然」？",
+       "options": [
+        "不算，訊息可以收回",
+        "不算，群組不是公共場所",
+        "不算，成員都是特定人",
+        "算，多數人能共見共聞"
+       ],
+       "a": "ubf4u2",
+       "x": "z+yk4944lTIXWmkZFqZnzb52qRBPC2GMi6oNYPcrK226/jjp1xJdZT4Bj1JP8nqpaqq8xFpgOBaLJaJVR9GXgTQPzdKHPyIZKarVIEJYv31yutZVJVSCcIi/t8KAD9m1pE1D+twM88MUWhRFvMcNct9Q6WzrhkMN42daSXVLfGR1Byn1WY9XfbT012BuLd9gcKexhjUjp6gWcvQhtNUj0yaxG55tgIcBksJrXlxZRSwcfDaCSqHc1T3/ufryRXbZtpx+D2qf4YgFKR0A5zxEJXy00S2Q",
+       "h": "公然的定義裡，「多數人」包不包括彼此認識的特定多數人？30 人算少數嗎？"
       }
      ]
     },
@@ -846,13 +990,13 @@ window.QUIZ_READ = {
       {
        "q": "誹謗罪和公然侮辱罪相比，有什麼不同？",
        "options": [
-        "只處罰謾罵、不管事實",
+        "處罰謾罵而不是事實",
         "私下傳述也可能成立",
-        "只有民事賠償沒有刑責",
-        "一定要在公開場合才成立"
+        "不必負刑事責任",
+        "須在公開狀態才成立"
        ],
        "a": "1wnv74w",
-       "x": "TLDf0hCkG95JVe8PqNEirPG/0lwaD1p8zbPkO0f0PpgkkVUeTYp11uRBuCjATVmuIrFndzdYPHQBks7hhoG05seh97arCFJASK5N9JsHSZoKOxlbb25hDmtOYpy0T+BbC8/2GEgBIOqmCAJXvUkCzC8GNFNFjSiZk/cDrnrxuHL3wdH3uElHLjjHfbYeRdG1glz95pK+bW9UiLZLbmGrUIxSyDlF",
+       "x": "TLDf0hCkG95JVe8PqNEirPG/0lwaD1p8zbPkO0f0PpgkkVUeTYp11uRBuCjATVmuIrFndzdYPHQBks7hhoG05seh97arCFJASK5N9JsHSZoKOxlbb25hDmtOYpy0T+BbC8/2GEgBIOqmCAJXvUkCzC8GNFNFjSiZk/cDrnrxuHL3wdH3uElHLjjHfbYeRdG1glz95pK+bW9UiLZLbmGrUIxSyDlFvF7EXCfftQmS9TVXjr4fffzK9B0ND0dVhhNiCi/xKoUU9cs6UJdjcRSQploO0c37SvfkdIPovOd9cqa3bkC/IilZ3BGQmPpsjGY69l5qkXEAChRm0eM1FnSM",
        "h": "公然侮辱要在公開場合；誹謗呢？私底下說，會不會也有事？"
       },
       {
@@ -871,12 +1015,12 @@ window.QUIZ_READ = {
        "q": "被人公然侮辱、名譽受損時，受害者可以怎麼做？",
        "options": [
         "請求民事損害賠償",
-        "向學校申請轉學",
-        "只能自己默默承受",
-        "只能要求平臺刪文"
+        "公布對方個人資料",
+        "請求刑事損害賠償",
+        "依法要求對方轉學"
        ],
        "a": "b4rm73",
-       "x": "+KSEgh5bsSlUys0oUw/BZY4JUwAOW4a+XIv1BJ4vq32ntdHKoWnPQp1kS1/ckEPLi0kPJDYrgFZvTwjkWCqEEhjMglwkL57TKmVoCY/x2sNC3qG0dKGw9OBe2tlY3odxQ1qwHzW+0GM4tk2kNNecy/euLpfJMc3guZqkkqg5pUwYQ9P1pKmqtNi2dFcxScKqtOUta0zQ",
+       "x": "+KSEgh5bsSlUys0oUw/BZY4JUwAOW4a+XIv1BJ4vq32ntdHKoWnPQp1kS1/ckEPLi0kPJDYrgFZvTwjkWCqEEhjMglwkL57TKmVoCY/x2sNC3qG0dKGw9OBe2tlY3odxQ1qwHzW+0GM4tk2kNNecy/euLpfJMc3guZqkkqg5pUwYQ9P1pKmqtNi2dFcxScKqtOUta0zQR38gRby1MePNUq+VbOnLSXMIxaWHTWuJaO0DJ0JYcvCsdFFdB3hECdTC6CxSzRwC1yOKdiNQ/Dk9cqOYEr5ZGEWtPQqXv99PTXvZzkPGxy4al4bGgYotaUqu",
        "h": "名譽受損的人可以要求對方賠償。"
       },
       {
@@ -890,6 +1034,30 @@ window.QUIZ_READ = {
        "a": "pv46d2",
        "x": "VWBPrDk2bkQi1Qw2P+RIqPkshEwmmniROk9NFDJUZyfX0ksWjRR5DByhXSL/rYrg3SfuuzJc88Q5NHPiprX1vZTHNFYpB1ZJHzKRRcLcluCBGpgnGQSvOEBLCNaC0Ok2u92hYcG+BFIYzt7HZoKWb27mtCviS2W6mGAALNAWcfyxogGAxJYMHp9YgfvRFehJEA==",
        "h": "自己說出口的話，要自己承擔後果。"
+      },
+      {
+       "q": "阿明私下只對一位同學說：「小華偷了班費。」（其實沒有這回事）這可能構成什麼？",
+       "options": [
+        "不構成犯罪",
+        "誹謗罪",
+        "恐嚇罪",
+        "公然侮辱罪"
+       ],
+       "a": "6jgvh9",
+       "x": "TDLS0AlkJX6xLsxMPtmD/Ek754B/dr7f3t7PjJ+S8anob0gu0i3TUQkUZFUkzqyvE87XICa6t7eNpWsDbdCUbX2D79q9MvIroceTxR99jERY1MHDsY2zTVS3elBSOUe4zXmNHTjFiFNM+96FgiIKdG7H7X54qcELDozrNEkYR4X7xHPbAQ5UxpMiT+BB89iBBn0JouHvRyCMWor60t/autm3L97r7ONi4F4NjtCOg3ekD7NUCg7oeiy5vhrfwMFIy+GF6Fyt",
+       "h": "他說的是一件「具體的事」，而且是私下說。哪一種罪不需要在公開場合才成立？"
+      },
+      {
+       "q": "公然侮辱罪和誹謗罪，哪一個是處罰指摘或傳述「具體事實」？",
+       "options": [
+        "兩者都不是",
+        "誹謗罪",
+        "公然侮辱罪",
+        "兩者都是"
+       ],
+       "a": "f4bsdy",
+       "x": "d3KiCOWSeXBlnpd+EK25OguvPIccj/vgq5r79I9LcN418u2ofeqaq8D8HxEdlBN0Z/AYde13Lgf7yFu5Y00d19Qp9zRksVQbgF3YCxZStQbfZv25lyL+7avxH7wqWhT3Tvl7YDvQUUbToTt54m1dx+IkWybWE1cUsL2iggxTCF4N4HXr6BIuLNhA23TbwQ8Kf0Y1mddPdlUKXkPMosDZn8GbQlbOsh5un+UClQiBvgRF",
+       "h": "一個是「罵人」（例如罵笨蛋），一個是「說某人做了某件事」。哪一個需要說出事情？"
       }
      ]
     }
@@ -931,16 +1099,16 @@ window.QUIZ_READ = {
        "h": "發生的地點，就是名稱的開頭。"
       },
       {
-       "q": "校園霸凌的發生地點，包括哪裡？",
+       "q": "週末在補習班，甲校學生長期嘲笑、排擠乙校學生，算不算校園霸凌？",
        "options": [
-        "只限教室之中",
-        "只限網路之上",
-        "只限校園之內",
-        "校園內、外都算"
+        "不算，發生在校園之外",
+        "不算，兩人讀不同學校",
+        "不算，假日不屬上課時間",
+        "算，校內外、不同校都算"
        ],
-       "a": "gay9d6",
-       "x": "zLiyjEbgV9DHesB/kw50LWvn7GUueXu7B+QMVcyD9ywHwLpJ/HUjXb5mTzpNtER0DPVc8X02V0I07Z0Eu/QutYWW/37tRbXXtyQGED1ooxMrNDY7h7wg8GuFslhsA76YJb4oddRS9L5PDzBmSS5f/i1iui67YhiNiX2/ZXd5AkXwFdmM09SlJ60gXCAD4nSy+MI5YxOz",
-       "h": "校園霸凌防制準則：只算學校裡面，還是學校外面也算？"
+       "a": "65fzgi",
+       "x": "e3Iv9lI5ChpJhmgv9W6sOKdDk4tBQZkOpPRsXHqwm/ygmlfvZTcxpvpjYVVJ/4uEQFXzbcDbxiptuLTAWmV4uMxt0j8Uea9+i58HdPXwPaiuA5qv1m7tRL/eB9/zZNpBQba96ZIkBSIxS0q0UphlZooz1fcnqZYIIZwSLFaHwPwbq4SFfsOJWX1+3wm7KCPEJQ8cu0ALulQyNQeMkzCVJwgjaQtXT69UJLlezEFeYIvjAb0+s5LNc6xvMsjED64N2dd32eqyj5oweS0zuo5b",
+       "h": "校園霸凌防制準則寫的是「相同或不同學校的學生」、「校園內、外」。地點和學校不同，有影響嗎？"
       },
       {
        "q": "實體校園的霸凌方式中，哪一種「無法」在網路上進行？",
@@ -1174,16 +1342,16 @@ window.QUIZ_READ = {
        "h": "記不得的話，回頭看課文最後的小知識。"
       },
       {
-       "q": "霸凌事件若不及時遏止，會影響哪些人的身心發展？",
+       "q": "霸凌事件若不及時遏止，除了受凌者，還有誰的身心發展也會受到很大影響？",
        "options": [
-        "只有被霸凌的受凌者",
-        "只有霸凌者和他的家人",
-        "受凌者、旁觀者與霸凌者",
-        "只有處理事件的老師"
+        "處理的師長與家長",
+        "旁觀者與霸凌者",
+        "學校的行政人員",
+        "網路平臺的管理者"
        ],
-       "a": "14lt3xz",
-       "x": "0f4ocrK1eIp0BjEuYoy/ejXjtsHwP/r4clkzUtBy71+n+Uxw1N+8xVvPFzuROf6SYZBsQ1RdsbfoOEOscg+GJcv1Ge77HumOOrweMg0PH1AN/5P5j2O9mKAQNbhrqPqZF8lF/ZFyfM83f5BG6767uIlxeKG5rjnhR+U+bB+D6r0LxWtLPBquG8O9OX/+JvRKeVfmOSkkMd5PItKl",
-       "h": "霸凌不只傷害被欺負的人，旁邊看的人、做壞事的人也會受影響。"
+       "a": "tcct1k",
+       "x": "dgWDNM/dmhDM5HT6B0nvExTMW368KwIDk9OXQCGvzjAAQkDGFDUlXaUq3GMNPua0ZwDJwQXm11pktwtUQxjmsWay3e7nr0Be4nVrCyjwHjAZDFZxvHVSswRWaDsMdFcKEcz3S0Umo1X2UIsMN3q7+oM06I/JWYrmfbATfRs5pOjrlxHRk4IYWzW49hJQmynH",
+       "h": "霸凌現場除了被欺負的人，還有兩種人：在旁邊看的人，和做這件事的人。"
       }
      ]
     },
@@ -1260,6 +1428,18 @@ window.QUIZ_READ = {
        "a": "1lwg51c",
        "x": "kPzR05G0P9z0hoJ1B+tkXK04heoEJXiZNl5yfiIEV9jK/i2YgHQtLvUc1dGYHUitL1Q0+4S3KqiuBr4Wcq31l3vos7yWkHN9sMe40wpeEiwdTWnl22IlM6tcFaKQDmtoGNhD7owAKkkW8l0Aw8/Q7kGUModFv13SYky0gktfvrqVwp/QP8+XyG+Qt37npgl3nDlAoX7LO17Y66FcN8aTBH+w5DjHAvBg",
        "h": "現在不一定違法，但不改的話，以後會變成什麼？"
+      },
+      {
+       "q": "在公開的社群留言對同學說「放學後給我小心一點」，可能觸犯什麼？",
+       "options": [
+        "恐嚇危害安全罪",
+        "公然侮辱罪與誹謗罪",
+        "無故入侵電腦罪",
+        "個資法與妨害秘密罪"
+       ],
+       "a": "14qr09v",
+       "x": "Eadm4EeAgaPbQDddH+X1DrjVhzAbFLvPm31JuoeAUVXBPR+jOgTiTNCDS6CaDOOsb3vIEm9dD7YDi+9upZRxXoWiUkNKcLl0a0JY3dwN5r300PLEIQqPltGP3wr1fPgTSr+UgoeqVIUfRYPeAPGILnonLo8vbCH2MF56X0oAbuOrtOHWEHQL0LMp",
+       "h": "這句話是在「警告、威脅」對方的安全，不是罵人或公布資料。"
       }
      ]
     }
@@ -1276,16 +1456,16 @@ window.QUIZ_READ = {
      ],
      "qs": [
       {
-       "q": "臺灣 18 至 30 歲民眾的上網率是多少？",
+       "q": "臺灣民眾上網率已達百分之八十以上，這個數據最能說明什麼？",
        "options": [
-        "百分之五十",
-        "百分之三十",
-        "百分之百",
-        "百分之八十"
+        "多數人已有網路沉迷傾向",
+        "上網時間應該有統一標準",
+        "不上網就無法生活學習",
+        "網路已成為日常生活一部分"
        ],
-       "a": "1imfg33",
-       "x": "nNMrDW3rPzCSN5qkWuo7doeyQLLgyQLUhNOY+DSPqVgNx49IAvpJACWC0wOjnwaa1zCnFeBVWvBGcAmi1wrjLZ+iz1SyLXCJAWQthMIt4ZYQhLg0TKr7myQyD6zwvmQAhvv4Mo5usyVIrMHQsiLCUFXwp5tqkvM0YUEeFNxIiuVLFQ6iWPks64mHrfPfyZJCaOzzCwcILcF69Ex5Juu/VrwH3/4Td1F0/kiE5wmDpVu3Qmw=",
-       "h": "18～30 歲是上網率最高的年齡層，高到多少？"
+       "a": "w24dju",
+       "x": "l4HUHFbZDh01kdIVokV0oQHLV+84LnWqOolqQOs0Dy8Qtu/ShYKHzdeftRf0lksN7G6wyS4ROkc5YyA4xhNZybvCr/ldio+3iD0aQm16nMLowSno9Y8jwQBRauQooE2tnCO1Sh4q1a/71RUPEmxfUGv61VcevfqGOOxutIffR6D8ypz6dg8Q97+TQtMuP4v57Lah1uX5bNDxHxncM6WFxzHmYPVGn+cFwe43y3MhFyfVulQRKzQMMe5X4tjJolIvTrqz13OPsWXH2HMFg/N7VAGtyIvo",
+       "h": "上網率很高，代表大家「有在用」網路。這跟「用太多」是同一件事嗎？"
       },
       {
        "q": "使用網路多久才算合理，原則是什麼？",
@@ -1314,13 +1494,13 @@ window.QUIZ_READ = {
       {
        "q": "很少或完全不使用資訊科技產品，可能會怎樣？",
        "options": [
-        "身體一定會變得比較健康",
+        "專注力與睡眠都會下降",
         "喪失使用網路資源的機會",
-        "完全不會受到任何影響",
-        "考試成績一定會進步很多"
+        "被認定是不當使用網路",
+        "每週上網時數低於標準"
        ],
        "a": "qd9zsu",
-       "x": "0OYVxnE+xVX+pT3KGhfKgm1tEZERGN1AEeL1V6TpJjaHstIoKOfcnBw2vaXX3PIgSkxCmpYujzdp6MFgDg3wDlaIfVEy2Fg23qTob9pRHZAp35NpGeoeZQTGZWC1wRjfZjhbffqP+zFRPWBfecQ+irx10mEBe68G2XzR4AJ/Jmckl+Q1HZ9GtUBVZUnlVYO6cSmA3+OxTbbGjvMp4psZL/NSYovajqyItH9m/cVVajbPH8zHmJGM6DQK+GbdUO3B6zPOEP5x",
+       "x": "0OYVxnE+xVX+pT3KGhfKgm1tEZERGN1AEeL1V6TpJjaHstIoKOfcnBw2vaXX3PIgSkxCmpYujzdp6MFgDg3wDlaIfVEy2Fg23qTob9pRHZAp35NpGeoeZQTGZWC1wRjfZjhbffqP+zFRPWBfecQ+irx10mEBe68G2XzR4AJ/Jmckl+Q1HZ9GtUBVZUnlVYO6cSmA3+OxTbbGjvMp4psZL/NSYovagpCRt19B89h7azTkE8fLnIWl6DME+0XdUMfn4Az1Gv99l7klOU19Hn/nR8d+V7QCLWUWL/E4Y+prRYffXibwFjrgkSQfSJ2U6myjpeObLDt47vh5sOL81IRgeSE4",
        "h": "完全不用網路，會錯過網路上的什麼？"
       },
       {
@@ -1381,28 +1561,28 @@ window.QUIZ_READ = {
        "h": "上網越久，心情越……？跟情緒有關。"
       },
       {
-       "q": "調查中，假日上網總時數超過 6 小時的受訪者占多少？",
+       "q": "董氏基金會的上網調查結果，最能支持下列哪一個說法？",
        "options": [
-        "42.7％",
-        "21.1％",
-        "18.3％",
-        "36.5％"
+        "上網能減輕青少年的憂鬱",
+        "每次上網都超過四小時",
+        "上網時數與憂鬱程度有關",
+        "平日上網比假日上網更久"
        ],
-       "a": "fow27o",
-       "x": "JdbUlBOAYqbRNUK8mv4ihq3YlznPGM12JM3WWcqwnYDuzy5QO6uDBIEt3oFbyfIdQEYzd3arXDrmT4xdGZUrvCgnSudZsSdBsnA0BUy60vSgkdBC8iYfPM/J4iVbJ9yZy/XWYDrKRQVTIMsSyH51KP4rjoQLMFoHe/P0+dFidElkioDwE9HGpn25GkdCELhonPl2j6Jy/Hca/x26hHyUfXNDJmUSLQ==",
-       "h": "假日超過 6 小時的比例比平日高很多，大約三分之一多一點。"
+       "a": "1q44vox",
+       "x": "Mw+BPMS9HEzkUG6d+VPgdVhxs511HrielePCUK5qfRZIcP0eN3QfLy0Bo4t3qu+aLgaLsLch41vXgE+aeIaeC1iDTfFAHVEefv88ZimFP4EqRyt2gqyurl/6sX6jMwrk4yjyiEoxprw0Zzz72qF7AEN4olGYykoOGlPpTCrnzpc5nYF5k80UHfpDtfCxMhygjL1Xb1d2l1OsI+uwUoTANeXziLXz4oWIsp+0QowstQbWbpWnI9b6XV8+VM47TzqRTYvd9jZ+RjbSTj074oALTrSZdI3ZUY1H7AizpyttG49FSqTxOMR3nhvZgQZSxcvt",
+       "h": "調查最後一句發現：時數愈久，某種心理狀態也愈高。再對照假日和平日的百分比。"
       },
       {
-       "q": "調查中有 42.7％ 的受訪者，有什麼情形？",
+       "q": "「網路使用習慣量表」檢測結果是「危險」等級，代表什麼？",
        "options": [
-        "每隔 30 分鐘就想上網",
-        "平日上網超過 6 小時",
-        "假日上網超過 6 小時",
-        "每次上網超過 4 小時"
+        "過度使用網路",
+        "需要立刻斷網",
+        "病態使用習慣",
+        "上網行為正常"
        ],
-       "a": "tewpy8",
-       "x": "AjrnlNY6R5b73iR+GmFbxtK6TQuKKcjRDlBkk9JmZrXIIp8JiGvg557nBuZvQHANAm6XCS9Znoq1FSDOjshfLskLQlIbG7vAlTZEexBvcXmKnVRIwAM9wsOO/RG0ppJA9T220dODS7fldzK6n1TC2rTGqHa7bN90EGKbTex00F6BrFWJepu5",
-       "h": "這是四個數字裡最高的一個，跟「多久就想上網」有關。"
+       "a": "1wxh6u6",
+       "x": "v0xZ5C3T8aorD8Iak+5dqQu8aXCfe+iCwXGmAKV9uVdzM/ZgOt4P1378mX5MP/mRmCougI/D2bV/sKVCCTAYJuTwe3Hq6e/5GLaIhIDJWgmSqpEm4ds82ZaPiQGx3wq6QXWNt/8lvpPUMwPflrgU/v/2zDH99oHEs+MeHnMt2TK1JhVi493WCRNJrvVNimvG",
+       "h": "三個等級由輕到重：正常、預警、危險。最嚴重的那一級，形容的是什麼樣的使用習慣？"
       },
       {
        "q": "「網路使用習慣量表」把網路沉迷分成哪三個等級？",
@@ -1455,12 +1635,12 @@ window.QUIZ_READ = {
        "q": "使用圖片生成 AI 工具，主要的好處是什麼？",
        "options": [
         "減少拍攝繪製的時間成本",
-        "保證生成的圖片完全正確",
-        "可以任意使用他人的作品",
-        "完全不需要輸入任何指令"
+        "生成的內容不必再檢查",
+        "圖片會比照片更加真實",
+        "可以免除著作權的責任"
        ],
        "a": "4m53qa",
-       "x": "UMnbUXmwrdbKFHwOxZtLGtUY9vlAoyz5zdIII/0BzHXC+MwIUlfAZYhmofOTVnO2KpALTkFHyHsc5hr/qRHOkbK6fwhgG0GzzPC4B6kAtetyP7wMb6geFZNN1QzY9H/WjqusI+V/cFBTDVp/rh4/v99CFJ5+vXE+R0vJTePKdEffbueTfZOgiFKwz8BglxfUnOZhrpDW1FOgZkQNGE6VCEUV1Gzm0HquzYPo8hmhPMCRpJkS8kEk4YtfwzD/VtDwpU4j",
+       "x": "UMnbUXmwrdbKFHwOxZtLGtUY9vlAoyz5zdIII/0BzHXC+MwIUlfAZYhmofOTVnO2KpALTkFHyHsc5hr/qRHOkbK6fwhgG0GzzPC4B6kAtetyP7wMb6geFZNN1QzY9H/WjqusI+V/cFBTDVp/rh4/v99CFJ5+vXE+R0vJTePKdEffbueTfZOgiFKwz8BglxfUnOZhrpDW1FOgZkQNGE6VCEUV1Gzm0HquzYPo8hmhPMCRpa4w/n0E77pfzTf4Xs7Go3Eki7OcTOwpuOavHFqIy+qofpfj",
        "h": "不用自己拍、自己畫，省下什麼？"
       },
       {
@@ -1490,10 +1670,10 @@ window.QUIZ_READ = {
       {
        "q": "使用 Dream Studio 輸入指令時，要注意什麼？",
        "options": [
-        "只能用中文輸入",
+        "需使用中文輸入",
         "需使用英文輸入",
-        "不需輸入指令",
-        "只能用語音輸入"
+        "需先上傳參考照片",
+        "需使用語音輸入"
        ],
        "a": "16x4oyg",
        "x": "vSBgzD5SiCSYEU/17Lr7SnczYTQaYvSTqrLsQZeH9FYlGI59Cj/3zMXBVMLhKTWCIA+dV4u5JbmdAz8RHa4GgClGAvkHJtgRXAqI0Jd3HtFWG2L6ENxzwbUDbKn4Rl7ij/v6JxXCN7YnHZSEiTyg6tw=",
@@ -1562,14 +1742,38 @@ window.QUIZ_READ = {
       {
        "q": "為什麼要以負責任的態度了解、使用 AI？",
        "options": [
-        "使用 AI 都必須付費才行",
+        "AI 比人類更懂得思考",
         "AI 依賴大數據與指令運作",
-        "AI 完全不會出任何錯誤",
-        "AI 可以取代所有的學習"
+        "AI 會自行查證內容對錯",
+        "AI 生成內容都有版權"
        ],
        "a": "sttgz9",
-       "x": "BZlKcAdoPh8yaHJkmUwW6YHP8Uz0CHfLtWiJy03eBHUVDZBGqTHaBrxB3pKATVl/EoQLqK5O3CYvVYy4wiOo4LyuLu7fqbE6ePyPnheZ4Be4k+2q3ctvWDNW1ym9Hy4qvbgOpPAvrZ/Xr+Vph4ysaCjJ3MSPtChjsOajlYpArhg7W1j55IjCq18weqLzHN4sMa3RNcFyNJGPSgvtIyvbfHdlwmn1mJpM4UN7gJoNks7ajMjatLyM9WY=",
+       "x": "BZlKcAdoPh8yaHJkmUwW6YHP8Uz0CHfLtWiJy03eBHUVDZBGqTHaBrxB3pKATVl/EoQLqK5O3CYvVYy4wiOo4LyuLu7fqbE6ePyPnheZ4Be4k+2q3ctvWDNW1ym9Hy4qvbgOpPAvrZ/Xr+Vph4ysaCjJ3MSPtChjsOajlYpArhg7W1j55IjCq18weqLzHN4sMa3RNcFyNJGPSgvtIyvbfHdlwmn1mJpM4UN7gJoNks7ajMjatLyM9WaWwFINxDn3QIYTNYxHfHo0JYu32OlUomTIjfNlaVE1DlyFM3qxbyTYQxNVASF3h2KPOyY=",
        "h": "AI 再強，也要靠大量的資料和人下的指令。"
+      },
+      {
+       "q": "小婷用 ChatGPT 幫忙寫一位歷史人物的介紹，最恰當的做法是什麼？",
+       "options": [
+        "挑最長的回答來使用",
+        "查證內容後再修改使用",
+        "直接繳交生成的內容",
+        "請 AI 保證內容正確"
+       ],
+       "a": "1iwceg0",
+       "x": "A8zEp/lzTwsTGe4Gv+KT0l55e0nJdBnCmqAHFG5/uMlJqTl3x1XqL1zOEtbR0wQQf8aSoDmUxin3ZZx9MDpLNvwacGdgZSwPVu3r0HSedkE5NXht0ATf+mR8HCICMESgbnLusOnovY7cp4hTdswub7dzGYqXXoy+D9GpSE8CJnmewSBmHBFc8z1XpK1UfdCIoHxo9X2CsrWzMi4UAuiudT3f1tvO6qgZ2RjeHol80jGrkIIJtWt3NKUjmKn87MNqK1gb+YVT90NfeSKTyncD",
+       "h": "ChatGPT 的畫面也提醒「可能會發生錯誤」。拿到答案之後，自己要做什麼？"
+      },
+      {
+       "q": "Gemini 和 ChatGPT 的畫面都提醒「可能會出錯」，這說明了什麼？",
+       "options": [
+        "網路太慢造成錯誤",
+        "要換別的工具才正確",
+        "AI 生成內容可能有誤",
+        "免費版本才會出錯"
+       ],
+       "a": "zlqqs9",
+       "x": "ls+TiZbDYhmqwUhv47c3M426enyM2aP9EWjm156YAkvFbt559cdz0Ubowr8I3rS+dTtSUl7a5Ty6qKi8Lo61ZVLl6N/06glUbfOhbahh2vWzApZ0zHMNRLFDumOXIZBvXuRy/+dDL61pKkLdRgQI+z9tjpP6isVwIoaFFVXrmykl7T4Wvp4WI+sA45/t+ivvq2zyzwIspKufg9Ve762+z0lC",
+       "h": "兩個不同工具都有同樣的提醒，問題出在 AI 本身，還是出在版本或網路？"
       }
      ]
     }
@@ -1589,37 +1793,37 @@ window.QUIZ_READ = {
       {
        "q": "簡單的說，「演算法」是什麼？",
        "options": [
-        "上網的連線方式",
-        "電腦的硬體零件",
+        "畫流程圖的規則",
+        "一種程式語言",
         "解決問題的方法",
-        "一種程式語言"
+        "電腦程式的指令"
        ],
        "a": "18hyxji",
-       "x": "752EphR6uijUv5hY9go5APVs1F0kF0H7Db6eqKRhzJualZBOuzeeB5AwGuahd4FZJwCpevsjJrV9OcoqxGSVYB9ZeIxFV3mnZBD3Bd+oMcT2EjuRw80vGATVN0YQ4FLtgUz311BOYl2plJxTeR69hxev56bTapt9jd7ivwOA5UmCx4g0xl39LZ29Rl5kaeqknvB+WXLF0Fdm97saJsVquyhjzPei+ztGI5SvA9M5SYr2bGa1mGjs",
+       "x": "752EphR6uijUv5hY9go5APVs1F0kF0H7Db6eqKRhzJualZBOuzeeB5AwGuahd4FZJwCpevsjJrV9OcoqxGSVYB9ZeIxFV3mnZBD3Bd+oMcT2EjuRw80vGATVN0YQ4FLtgUz311BOYl2plJxTeR69hxev56bTapt9jd7ivwOA5UmCx4g0xl39LZ29Rl5kaeqknvB+WXLF0Fdm97saJsVquyhjzPei+ztGI5SvA9M5SYr2bGa1lFTiHQ5zc+dXRn9Glu96EeTp81aLGYX27SMujBHv6O6oJJd9GtpnrCuhy4waE504",
        "h": "簡單說，演算法就是處理問題的一種……？"
       },
       {
        "q": "下列哪一個可以視為一種演算法？",
        "options": [
-        "一首好聽的流行歌曲",
-        "一張美麗的風景照片",
+        "一盤蛋炒飯的成品照",
+        "蛋炒飯的營養成分表",
         "蛋炒飯的食譜步驟",
-        "一本全新的空白筆記本"
+        "蛋炒飯的價格清單"
        ],
        "a": "1wmtprc",
-       "x": "W3yTJGsQjJ9IoIr3PAT6Y/g358rpWI8o3XUNnNk6rmv/QPMbOd/m2+ivO3DqIjSRIJhEaVmCvuu1ynmGE8EUAKjMr2EVb9nCZNny944hcjGNZO9Na+UindCVq/fFzuH4DK0R2ow3x6OgR1BHHD2jYyCi3gnO8hThEiKWomqAU56gSkChrYzWpnYGRuE3HSNLxRn/+0jaNLFHKK0MCIBIe3IgSfJUJK7X",
+       "x": "W3yTJGsQjJ9IoIr3PAT6Y/g358rpWI8o3XUNnNk6rmv/QPMbOd/m2+ivO3DqIjSRIJhEaVmCvuu1ynmGE8EUAKjMr2EVb9nCZNny944hcjGNZO9Na+UindCVq/fFzuH4DK0R2ow3x6OgR1BHHD2jYyCi3gnO8hThEiKWomqAU56gSkChrYzWpnYGRuE3HSNLxRn/+0jaNLFHKK0MCIBIe3IgSfJUJK7XRcw9RZFma3+30elNig20GsH3lAyUKn7GfE/19/5Z1FU/fA6z2JgYlXIEY0cbCRhXfZO4",
        "h": "演算法是一步一步的做法；哪一個有清楚的步驟？"
       },
       {
        "q": "在資訊科技領域中，演算法是什麼？",
        "options": [
-        "電腦主機內部的電子零件",
-        "電腦螢幕上顯示的圖片",
-        "網路上可以使用的搜尋引擎",
+        "電腦執行後的輸出結果",
+        "沒有終點的反覆運算",
+        "某一種特定的程式語言",
         "交由電腦計算的具體步驟"
        ],
        "a": "1najwez",
-       "x": "j3UVz0ezmPh6xc2FHTQjShtLdntkfPc6dXMkl60Nre9RdN8SiQ7z+HW/W4FQrRMiUbetf6LQYRC5XySNfpW9Be3dO45EZ2o1Nbfbzk95RnQHLqBmkNAIGeOZjK7tzI+aLwde6l9Z7+davIrUddtncPrLgu93qv0ev5RQA7NQHPK2GM1PkDvv5tvwDN+6T9gY/dT17ivSkoL34Z0f",
+       "x": "j3UVz0ezmPh6xc2FHTQjShtLdntkfPc6dXMkl60Nre9RdN8SiQ7z+HW/W4FQrRMiUbetf6LQYRC5XySNfpW9Bs3hNJNUaXEqNIjlzH15SlQULrBWkNMAEuWxjYbIwrq2ITFt5UdE4/5WsaLXd/pfc9vqg9BkpMI7sKJOAp9pGs6IFcJAngvI5c3nDPC6TMEm/ebx4Qf8nIX/6rsSsVgyAIvGd9abx1aF49pVjcQ3984rcPHczNG9es6XNsongq/+wbrPxGu6LrT8BBEQFqL1aNhDiVQp7B39fH1CdDxTQk2IPzzYrWTInW3KPm0hhI24DRXARLrBaIP4",
        "h": "在資訊科技裡，演算法要能交給「電腦」去算。"
       },
       {
@@ -1637,25 +1841,25 @@ window.QUIZ_READ = {
       {
        "q": "演算法包含問題精確的哪三個部分？",
        "options": [
+        "排序、搜尋、輸出",
+        "輸入、處理、儲存",
         "輸入、儲存、列印",
-        "開機、上網、關機",
-        "設計、銷售、維修",
         "輸入、處理、輸出"
        ],
        "a": "1hvoif7",
-       "x": "ibsj4AjAobh7qjBulZqi5dQ/No/OM/Jpvvixfulf7hkXF/aTfcpE9jagvnlL3yhGarHG3EBzkVqCA+ci5iTWCOJG14OOJ5m84fcYLKdHteENHzJySGD3IMlEv1uJSHKoGG04WW33IXBeFVoVdVQtkC13",
+       "x": "ibsj4AjAobh7qjBulZqi5dQ/No/OM/Jpvvixfulf7hkXF/aTfcpE9jagvnlL3yhGarHG3EBzkVqCA+ci5iTWCOJG14OOJ5m84fcYLKdHteENHzJySGD3IMlEv1uJSHKoGG04WW33IXBeFVoVdVQtkC13/6qvkPNcVXWdEVTkUhga6MH/vh2PLyGIpQ94lm4wGE8eAQOHnJgrBJtrOSvIKXDmgC6+Sf7q",
        "h": "先給資料、再處理、最後得到結果。"
       },
       {
        "q": "常見的兩種基本演算法問題，是下列哪兩種？",
        "options": [
         "排序與搜尋",
-        "繪圖與動畫",
-        "上網與購物",
-        "打字與列印"
+        "搜尋與繪圖",
+        "排序與加密",
+        "輸入與輸出"
        ],
        "a": "l5w2mg",
-       "x": "zFS69tEfMRVcOGMOEW0SF35/KOWF4wQ9H67URtIiqxmMd6l46cntkgBWyK+9SYsVfMUvu5XO+PrYG0HTI22zM1PC/w921FhgIdZogGK8bS4cpMyB6Lybvoxzcr4gvpJfP3BiNILoVDiaUNNCyJ1w9ma/rsW2Up5nF4yEzWFZlXGyVr277RafO7cRc8aJW+DbtRv2lqiJ90qX0c3OCqEnlpZ52CZhqgVwFKFLaPTrmcv9",
+       "x": "zFS69tEfMRVcOGMOEW0SF35/KOWF4wQ9H67URtIiqxmMd6l46cntkgBWyK+9SYsVfMUvu5XO+PrYG0HTI22zM1PC/w921FhgIdZogGK8bS4cpMyB6Lybvoxzcr4gvpJfP3BiNILoVDiaUNNCyJ1w9ma/rsW2Up5nF4yEzWFZlXGyVr277RafO7cRc8aJW+DbtRv2lqiJ90qX0c3OCqEnlpZ52CZhqgVwFKFLaPTrmcv9Lhj/7GvgHcXPaX6jCQscnjxJd1pOJJ+GqV64lCbrMAx7ZTLzXMMXJsnTOQI8wjT9Sa63r9KWvwdQxeifilAtYVu2wk2hxK1R",
        "h": "這一章後面兩節要學的兩種問題。"
       },
       {
@@ -1681,16 +1885,16 @@ window.QUIZ_READ = {
      ],
      "qs": [
       {
-       "q": "演算法可以用哪些方式來表示？",
+       "q": "演算法常見的表示方式，是下列哪一組？",
        "options": [
-        "文字敘述、流程圖等方式",
-        "只能用程式語言來表示",
-        "只能用數學公式來表示",
-        "只能畫成卡通插圖來表示"
+        "排序法、搜尋法",
+        "時間、金錢成本",
+        "文字敘述、流程圖",
+        "輸入、處理、輸出"
        ],
-       "a": "9v0ixk",
-       "x": "QCr7O3+IZ16gNRFnFxZ6q8r1poOB1+DHK/h0ZAe3J2LbMz2G3/Ih0qXtuX/MN2rNqYTli2VAasuZE4O4DDHL+4eVdzjoKa91Tr8DL6mI0rtiHh6oJgRZM3fIDJRYisWr0TMZod4VMEzwU7wghcJQsz2tv7hr/dNEzIbSpoLnltrcgSsn",
-       "h": "搭火車的流程用了「寫字」和「畫圖」兩種方式表示。"
+       "a": "1jhc314",
+       "x": "evIoJkZsgMAXDsb8hgKeM+NlmCT/qH3Ylvj/YzRPAiJJFl+h+CnklLWL+auHmICRyyyPDhSlxgG72VOHzp4pW/xwVTKnYxRFDGlwe9YfyazGyF8eSBk9CdwGn/kRmhB/vuDJC5xCOvVnBIKB6e1TWqUwl6306+Jtbr1KLQFjJ2wIHmsb7wDTsP9r8WZgLVGnvenjuZCTUWgW99DzzQMgxCnqs968jkh23HRZuvXTgtj9KdmPkQfSvrLU7e/pCHhFFhLZTqzilc+Ec7xAi6kujvj8TiU24yTosRgIXsdlcjuUPc4l7xjd",
+       "h": "搭火車的流程畫了兩次：一次用寫的條列步驟，一次用方框和箭頭畫。"
       },
       {
        "q": "搭乘臺鐵的流程中，如果車票售完了，該怎麼做？",
@@ -1743,13 +1947,13 @@ window.QUIZ_READ = {
       {
        "q": "同一個搭火車的演算法，用文字敘述和用流程圖表示，兩者有什麼關係？",
        "options": [
-        "只有文字敘述才算演算法",
+        "文字敘述才算是演算法",
         "表示方式不同，步驟相同",
-        "兩種表示解決不同的問題",
-        "流程圖的步驟一定比較多"
+        "兩者解決的是不同問題",
+        "流程圖比文字多一個步驟"
        ],
        "a": "1h7lyy7",
-       "x": "W6Eux+xBPj5Km3zPOQ+yDpe3//xa0KmRRUG6GFA/VnrK2g9L5f8lriKP6bkNqOTAaYj6OJx0ixsi1/t6YxC5vTtyP25RUvIFM7CtLaVgMFMztioFkpgb9jD9eAPW2rz6TKgIeiLZyAAeQopqqpPAkS44Ag3PzOC457v3hZoflSFk55XUbPmNhVkW4DHfR0JyYPN8L0APe1YXXQ==",
+       "x": "W6Eux+xBPj5Km3zPOQ+yDpe3//xa0KmRRUG6GFA/VnrK2g9L5f8lriKP6bkNqOTAaYj6OJx0ixsi1/t6YxC5vTtyP25RUvIFM7CtLaVgMFMztioFkpgb9jD9eAPW2rz6TKgIeiLZyAAeQopqqpPAkS44Ag3PzOC457v3hZoflSFk55XUbPmNhVkW4DHfR0JyYPN8L0APe1orUx7eYN6InbAjiV0QDDTwQjlaRw==",
        "h": "兩種表示方法描述的，是不是同一件事？"
       }
      ]
@@ -1786,24 +1990,24 @@ window.QUIZ_READ = {
        "h": "星兒一天要跑好幾個行程，她最缺的是什麼？"
       },
       {
-       "q": "從臺北車站到新左營車站，搭臺鐵自強號需要多少時間？",
+       "q": "臺北到新左營，臺鐵自強號和高鐵相比，下列哪一個敘述正確？",
        "options": [
-        "1 小時 34 分鐘",
-        "4 小時 36 分鐘",
-        "6 小時 10 分鐘",
-        "2 小時 30 分鐘"
+        "兩者時間和金錢差不多",
+        "臺鐵較省時也比較便宜",
+        "高鐵較便宜也比較省時",
+        "臺鐵較便宜但較花時間"
        ],
-       "a": "1k434nx",
-       "x": "m3VAk+Qeo/iNOkm3ijWCIXgIrfG5RqFHN9LyX11hYfHfxDCA7TWfxxI4NxjyBcLlNsoUsni+osGjjvPJzGeuNewvPAXi/EL3QQiKvueIv0DNhRREpUVzhkB4s3GOLDpmMfLnsyujy5QnscNW37o/cd69Tl1XyU7MjdiZ0sLQqV1ocR5K4xj+Jw==",
-       "h": "臺鐵比高鐵慢很多，要四個多小時。"
+       "a": "18fm10q",
+       "x": "nYHmMl1IEhRY6mOFYQRvhq1gZrNyqgqqg/4GHX13hJhUc8jIJF1vtMI2hMlSpNPt3/4oTbTzPJ2YP5RGtYrj3LpZ/MY7to1R3agVhlN9wbHbPhAdALOToo11yRB53BgId8fmDjjLtRN3EUDzCaB1MYQS5ADVKvqk7GJMS2sStpdg58e3EZICjRYzuRr+7o3tewRZW6iNVgXm5C4ZL2G186SXeDUhf4NIkiUiAbhJPaq7IJXCU/unzF/ordrcNsU=",
+       "h": "阿顯為了省錢選了一種，星兒為了省時間選了另一種。兩種各有什麼代價？"
       },
       {
        "q": "不同的交通方式會付出不同的成本，例如哪兩種？",
        "options": [
-        "身高、體重",
-        "顏色、形狀",
+        "班次、座位",
+        "路線、距離",
         "時間、金錢",
-        "天氣、溫度"
+        "天氣、心情"
        ],
        "a": "j0dxj3",
        "x": "yrgQVmXx/at2KYCe8JSLQBllQzDeYaun9vWiKwicRmjuA9ZUzUxs1ru1qsa3g7Qx8lSzDUoGXt5tVZw98azUc92AdM5n9gQx7XcKtTYmRkpMDhm1FTfEyhz1DwUZKdxxpAdvBs/x2Y3qsWL+vcuiI3wtY3cV/xO0VR1HAMWICK4j",
@@ -1822,16 +2026,16 @@ window.QUIZ_READ = {
        "h": "不同演算法都能解決問題，但有的快、有的慢——要比較什麼？"
       },
       {
-       "q": "高鐵標準車廂從臺北車站到新左營車站，票價是多少？",
+       "q": "「搭高鐵比較快但比較貴」放到演算法上，提醒我們什麼？",
        "options": [
-        "1490 元",
-        "824 元",
-        "2000 元",
-        "1250 元"
+        "越貴的方法結果越正確",
+        "最快的方法就是最好的",
+        "花錢越多越能解決問題",
+        "不同方法付出的成本不同"
        ],
-       "a": "qhpw5u",
-       "x": "UzibKtqG0fnZqPY5ICUjvEw5LXqE2tu0lLJBmqANg+HPaaIRuiiSEWpyQMN6DcpzK58MawEp5WF3IWsH+6GXANIx2NdCHkZwznmKcKAv41Yt5hIkGd9DwEpmW/Ka8PnBOl8bJYT0BOjQlPxc",
-       "h": "高鐵比臺鐵貴很多，將近兩倍。"
+       "a": "mgjda9",
+       "x": "bMFipGRiltHKZYwJ51KRW7ZoAPkF5+sT/RPVtBj6Bj+KO2chJDX3CpDu2z2jiFHFmWqQdBKw2Vujx2Yfx49F3Mm5y/ljKqYoQNUZf09bYdRIFqsRQKzThpMNgjtQI+mc4Hm7bTGN/Oc4GCvSjVe6xBp61uEZnGXcibPXWza2/msCDhBcyY/rZjUMORvcohGe1zg7EOq0tBAya5wB2Hv19v1UoKSihPSnc7Os4OpPjkbj24nVpJQ2Kms3J4ex+KeZRE9xZCh8Ngxkzc81Hy5GWD/V1bIIAdcYNuYYV3ca+Lig8W3AEGxniDMrdWQGibL+5YcQk95BXU7p",
+       "h": "兩種方法都能到達目的地，差別在付出的代價。選演算法時要看情況，評估哪一種適當。"
       }
      ]
     }
@@ -1989,6 +2193,42 @@ window.QUIZ_READ = {
        "a": "1rkufg3",
        "x": "fCcGBNlPZy9pS5pyHvxkrwsxUjUqIXad/4hugxsz291hrwWFyGZJnUlG3Q/Hcoqk4veWnLK49g798t2FXEMFGVvknpijf43p6SWNv4lkI2ZwsY+devfFM3sJR2TI9vfhGCdej+p3Mb0w4oSdtCXgTCzBuNqkdf5yxIY+QHcta56Vl1ScD2nA49hY",
        "h": "每次從翻開的牌裡「挑」出最小的——跟哪一種排序法的做法一樣？"
+      },
+      {
+       "q": "用選擇排序法排 6、9、2、7、4，第 2 回合結束後，已排序數列是什麼？",
+       "options": [
+        "2、6",
+        "9、7",
+        "2、4",
+        "6、9"
+       ],
+       "a": "1c7bm41",
+       "x": "YHF8yJP0Z7eYz8IeObqNjypewBpdnFeUXzzHxMfLFlUFkcLrvUPBh+VRUjXs1ot5ImbTmtjZIDOZezE9xmeuJHAFk1XghxP5ch2pCV05JYck9D9rA2/yrJVqxKmIzaZLp9scrc7l4oWZcLARc8pXTWgaPVmHE0HUAwJocL69T4CTAVKf6mHoCZBY8Vde2OdC1iymWD8S2NOy79l2am9n8bov2onbyGY/k7gz5JBllUrj35o6xQ==",
+       "h": "選擇排序法每回合都從「剩下的」數字中挑最小的，加到最後面。前兩回合各挑到誰？"
+      },
+      {
+       "q": "用選擇排序法排 6、9、2、7、4，第 1 回合結束後，原始資料剩下什麼？",
+       "options": [
+        "6、9、2、7、4",
+        "9、2、7、4",
+        "6、9、7、4",
+        "6、9、2、7"
+       ],
+       "a": "ks6k6p",
+       "x": "/1c8V1UkUkqFTuUK184N7RT7bVhfmQtM35VR8p2Q4oBzDauID9JO8Ko6kgI+Gohp5qSHkxQvU69nlu4ToE5npQ/mNEvU7G8zzhNF972wc9luYP5IASY3SVzPN9CKph74k09RVCpAvt7EDxQupjGmco45fRg03QSIoYGddZRaXOoj3jAPMYGsE1PjQwkTSzbObCMhgDnAJGf2kWudozWpBwLFvHXh0rhYb57VTr2sWGb+3srU0082UYlMKultaY4c4ZQoYDa4X/M=",
+       "h": "被取出的是哪一個數字？它在第幾項？把那一項刪掉。"
+      },
+      {
+       "q": "用選擇排序法排 6、9、2、7、4，第 3 回合取出的數字是多少？",
+       "options": [
+        "2",
+        "6",
+        "7",
+        "9"
+       ],
+       "a": "1ewoc5r",
+       "x": "J760Z3BwVMwF7w9TnF724qCFZInLJl7N4Ok8AkpO3dKJaQVXShoQ4bEKwTGYxYkgOh0KS2fUqvrO0cSDpURGrB1VEFiODKZfoapBR2GUdFVq7HARJvnluy/T/hvCDeuzaeO+RLmt7Q8EeazDQx1U/naui2fkEXE+RW+FnT2u3uOXa08pffL/QnVu1JJTChBpJrlQguQ2jnlTO3DAwAv5bF7TJxc7STgp/3ZOFQ==",
+       "h": "先寫出前兩回合取走了誰，再從剩下的三個數字裡找最小的。"
       }
      ]
     },
@@ -2071,6 +2311,42 @@ window.QUIZ_READ = {
        "a": "1qb87t0",
        "x": "+sUNn3MNmKiCXyZX8eHxkYBHdapEwcoUExOoFNgQCpvsXC3O18tKLmJu9pNR1FtC5/P9nXTdSLIowWf9B0bfLis0iFrlOe9vp5Sak48+g8UNcteVtqF3K5ck5jMNn+IAp+q+rryJWAvwKCfzqD5P9J/ZdIhkfYj/Ca57Wt8rLA/CUsBKfKvfn6cc",
        "h": "抽一張、插到手上牌中適當的位置——跟哪一種排序法一樣？"
+      },
+      {
+       "q": "用插入排序法排 6、9、2、7、4，第 2 回合結束後，已排序數列是什麼？",
+       "options": [
+        "2、4",
+        "6、9",
+        "9、6",
+        "2、6"
+       ],
+       "a": "11j9x8a",
+       "x": "3UdQi8Nv/ftOJqiwt8pU/3v0ZsNfx9oJYif6BXfyMp/uLPaR1rPRmtZeNdxiglBvSg3yTtP7c/XavKdNRa6Lx3XZm650EfU7J2izB25lKQgEKSRnL6Rx5LGDoLMHdTK3XzrKQHPXPiX7a5qPdAGs4tF5+YHAJ7anplq8OJQe3+SQxNIelEgwads4Z3vP96MnMYQU/tMndMZrh4rxfhi350V+g7lpkElTlzwTaRWAcDxEg+sUtH+nCZzjskibIorWeg==",
+       "h": "插入排序法不是挑最小的，而是照原本的順序一個一個拿。前兩個是誰？"
+      },
+      {
+       "q": "用插入排序法排 6、9、2、7、4，第 3 回合結束後，已排序數列是什麼？",
+       "options": [
+        "2、6、9",
+        "2、4、6",
+        "6、9、2",
+        "6、2、9"
+       ],
+       "a": "am5t2f",
+       "x": "2X7kSBwbNgEphP3oXep12hW1TeqmUmR3jiVnohJKhw7YxhDw637Q1emvn1Cul/kZYl0/ohGbzDlTPuWOTXXLJ9HckFB7emROpZCEERFBU3vOCTOi+dvf5LqLS4YdZi76SX7qnJAktDXS/Wt2btFURQ5K4AodHXBp/awjKHCMan/D3oNRgZzFfky76STtFGpytpC48zbRfKU+ns7IAJIpelq9Bo1X5qycPrkJ13JxKp0YhgI6ASP4kN2PzMAW2MP6mQ==",
+       "h": "第 3 個取出的數字，由前往後比較，遇到比自己大的就插在它前面。"
+      },
+      {
+       "q": "插入排序法中，已排序數列是 2、6、9，接著取出 7，7 要放在哪裡？",
+       "options": [
+        "插在最後一項",
+        "插在 6 的前面",
+        "插在第一項",
+        "插在 9 的前面"
+       ],
+       "a": "1y0rmny",
+       "x": "Nux70ZLvwn/Ra8q+zAzoicHNIXKaHkAxT+42CU8Kl0eL7Uv72szlyvlKMXN/7vJRUJeBgdgSjU1AP0vE8AWqJalLzzPVj7xwyDoFEy1Tnpno2mfiTvXR1cCpxM/vGhaEM1pPtM8RWB4AHEaEiE5qLOtBXhJPF6JMDYDDjqdhmaPEn1YPCKuTt1Sgomk+ALZzWWGM/G/HQFr+HN4nj1KFJCqu0L1yLryVz4VrAuJLbZpx9m8Qnwm/tQ==",
+       "h": "由前往後一個一個比，找到「第一個比 7 大」的數字。"
       }
      ]
     },
@@ -2135,13 +2411,49 @@ window.QUIZ_READ = {
        "q": "每回合找到最小值、添加到已排序資料之後，原始資料要怎麼處理？",
        "options": [
         "刪除這個最小值",
-        "把它移到第一項",
-        "把清單全部清空",
-        "保留不做任何處理"
+        "移到原始資料第一項",
+        "和第一項交換位置",
+        "保留在原始資料中"
        ],
        "a": "ag93yk",
        "x": "GmUE2RAdrA+GnE1IjpJbiSi6jNss5R9CPvldBUmycQxxtN3oVtM/Mqa0QFAL/citNZS5ptrRWbY0F+MC+Kd4i+CfcUBruhThGjzfE2CDtn5/30grQ1Zyef0r376gMX0BIH5W/xb+bvwVosQ+gXVB+Z/fWwZLIWqqXwdr25o2MGIk7Fkf9e2xvop6luVuGAhjlWeeGYL5KvJZgpgncNChTfd20NO5vJBdM18aOt54kW4UhJUdemmO/FnvHxmZHk//aYGK6RI43xuuSVDc8URbE9bgmc2E",
        "h": "已經放進已排序資料的數字，還要留在原始資料裡嗎？"
+      },
+      {
+       "q": "預設最小值位置是第 1 項，原始資料是 6、9、2、7、4，全部比對完後，最小值位置是第幾項？",
+       "options": [
+        "第 3 項",
+        "第 5 項",
+        "第 1 項",
+        "第 2 項"
+       ],
+       "a": "igxvnw",
+       "x": "qJjrTUT9Ejkln5II/jvr8c5aAYpmmCGJ0/l5WvuYHj//tkzb1dYWnf4l3XwvZMoNRaFZ6H668a0AdKeXC1OYwyDIknNDG63UtAcKQwc6+OgDpmLKXj2we5j+Ra7o4IDGvvRvlD2fEun3915gqQ5vV67CryuK8OZ1CZ8hNMbXaoO28K6ZyBQOhR1FSwN6+WHum8nV9ji2YNVpJNhNtpXO8pFso0bJHI2vPzXPM0AdzRJmmyanGMR8a/pnMg==",
+       "h": "先找出最小的數字，再數它排在第幾個。小心：要的是位置，不是數字。"
+      },
+      {
+       "q": "原始資料是 6、9、2、7、4，找最小值時，「最小值位置」總共被改了幾次？",
+       "options": [
+        "1 次",
+        "2 次",
+        "0 次",
+        "4 次"
+       ],
+       "a": "1a14v7t",
+       "x": "uhw+lAI5mlijkTrWRNTieWDKJ45CPJTxzkyhXXz3pmUzQRNh7xY4PAY30urrudER5v3g1j5BUmGQ/ExDibE5DKLv9IgZvj4kK3Aw015yAZsrlO0RvqAoD3Q5EVTDiZUnmX4MNqsJRhxEanxE0WMYZy09G9FCboowdlZc5qqgnU56wIyFn5ieNVXs5jWqGfjoiW6dV03ReFYuKPevwtTp2V5eri7HSNDW1lcZYetYQcY=",
+       "h": "一個一個比，只有「比目前最小值還小」才要改。記得目前最小值會隨時變。"
+      },
+      {
+       "q": "原始資料清單是 8、5、10、1、7，第一回合刪除第 4 項後，清單變成什麼？",
+       "options": [
+        "8、5、10、1",
+        "8、5、10、7",
+        "5、10、1、7",
+        "8、5、1、7"
+       ],
+       "a": "uqwp07",
+       "x": "8ouwA7dqk0tuvqQZRgRUSQw0pqsUjSwO5lKyha/T7aKE1/anFbVqqyWX98AyvzBOYTbH4br5KynabjLoCcPTJtFs3YhVfPYsjwF4awttSiQQoR4WoJtat0/HNTjymM8bUN2zBAliWWfr6BM+WJ/4JvcaAHc0InIBHImWAGhZ2zEytbuFYqdLj/B9eoVEfz66SOjMTpvhWYhn0l7pwRVb/KpUL8qtjLzrAICFb1X1C185dQoXGQ==",
+       "h": "從第 1 項開始數，數到第 4 個是誰？把它拿掉，後面的往前補。"
       }
      ]
     },
@@ -2182,12 +2494,12 @@ window.QUIZ_READ = {
        "q": "為什麼要把「找出最小值」做成副程式（函式積木）？",
        "options": [
         "這樣就不需要使用迴圈",
-        "Scratch 規定一定要用",
+        "才能建立清單來存資料",
         "這個流程會一直重複使用",
-        "函式積木的顏色比較好看"
+        "副程式執行速度比較快"
        ],
        "a": "pcxirq",
-       "x": "bfpHm78UqEsMuCcFYBSHaukYbrdHx4cw++b24dz0C1hEb8NYmsaFth3JdojUJtcy923x1hjLd+7iiWT49B3kcJxZ+oRIZ2NTVVo8VNOUsuwmrl/u7ORJSOkhlVnMYboqfMEVl7ZhgFOeD5lhRWUPILROTq8TfIcBPdM+mzJSy06dJ66nPjp6oKjDgHQA5FrUxhGpJxEmW95I6rXzTNKpiN1Nk85IEnL87J0D",
+       "x": "bfpHm78UqEsMuCcFYBSHaukYbrdHx4cw++b24dz0C1hEb8NYmsaFth3JdojUJtcy923x1hjLd+7iiWT49B3kcJxZ+oRIZ2NTVVo8VNOUsuwmrl/u7ORJSOkhlVnMYboqfMEVl7ZhgFOeD5lhRWUPILROTq8TfIcBPdM+mzJSy06dJ66nPjp6oKjDgHQA5FrUxhGpJxEmW95I6rXzTNKpiN1Nk85IEnL87J0D4l6P5aavz0v3ZOIkxF2GDb8YCmoKH3rsL18FLI6pjYoN0v1UHXgu",
        "h": "同一段程式要用好幾次，就包成一個積木反覆呼叫。"
       },
       {
@@ -2213,6 +2525,42 @@ window.QUIZ_READ = {
        "a": "g4w95r",
        "x": "sPJ90tFPSGfY/BD85+yNhVyWItrsRENrNPaWUXCv7zluzBth6YlIKeVpkEs7uew0R5sS7xm4lNDUDdECETw2hqJTw0uCLdd9v3TZjeP8WWSixqV0vCfAeeA49BCWjP0RBG5n+9UnLKLEpeFmD8TYc1CWGasybwy0j1z+Qy3p1WnFfKgR70dLiODyTzSGMT/vb/SDHfofrpFBiZb/",
        "h": "清單的選單裡有一個功能可以從電腦讀進文字檔，用滑鼠哪一鍵叫出來？"
+      },
+      {
+       "q": "清單是 3、8、6，執行「插入 5 到清單第 2 項」之後，清單變成什麼？",
+       "options": [
+        "3、5、8、6",
+        "3、8、5、6",
+        "5、3、8、6",
+        "3、5、6"
+       ],
+       "a": "10ljcoa",
+       "x": "/6sYlxTkhgirgEzlGtLvFA6mMe9hSJbOQFLQXkkFQhgIQ4uTNl2gbImSFO7Von4DrYczyjSj4ZbeYz72DsRaZBHyYNDDf6+g4hYaSwAMpTivwQGfdVD1vrUOoy+UVo89lUWb92r2bQX1lfb+eYLxn3WU0nPaGj034MYNOlDKRF8ygVqeDfSNF6la5yahn299INePkEUml/IeY0s0t4p7r+iSA0nTXZR6jECmExUYAfQWPfNc+HZzn3psr0Hp+yzgbktdeNZUPsUt5g==",
+       "h": "插入會讓清單多一項，原本那一項和後面的都往後擠一格。"
+      },
+      {
+       "q": "清單「已排序資料」是 1、5，要把下一個最小值 7 放進去，用哪一個做法最恰當？",
+       "options": [
+        "添加 7 到已排序資料",
+        "將第 2 項換成 7",
+        "插入 7 到第 1 項",
+        "刪除第 2 項再加 7"
+       ],
+       "a": "cia0iw",
+       "x": "20DxvsaFqzGZaoq7zXqD39wPNoBeJiLUE767zsvw/zzHfN1PE07CI+CmZJV/enhAkE/tMTUJuFO7ogtpv3chHtQ8FIG9wSs+l5X5x799KI32lsVjvm7LKAhrXP9eKujbkdDVUrC/gV7gTVykXgh40twgepA9IZY2sfHaG1K1NBCgDqqRWS0JZRrNPC1x1Ma0fe14OTHhoV8nxAyEbzh2WbcIpUeWdO4xejzCvJyzaiqnGsDaum8RGcsIDOBPSpCPa2q/PCNchmJnEu+OjQlhXPAU2GDoSWOtWFjy0NbQ9IpK",
+       "h": "後找到的最小值會比較大，應該放在清單的哪裡？哪個積木會放到那裡？"
+      },
+      {
+       "q": "清單是 3、8、6，執行「刪除清單第 1 項」之後，清單變成什麼？",
+       "options": [
+        "3、6",
+        "6、8",
+        "3、8",
+        "8、6"
+       ],
+       "a": "117pydr",
+       "x": "wFHuJng4pNmWkYHflMqLwQSZy7sSCfY8mTkh4bnv/sgCjqwMjGbYOGKgRC2bohm8dD8AEXQqDX67AFm+F1gsivpQHL9zynNdTGiVsG56GdZL6JrghUqAmhRK5FU1Hq7gwg==",
+       "h": "第 1 項是誰？拿掉之後，剩下的數字順序會不會改變？"
       }
      ]
     }
@@ -2371,6 +2719,30 @@ window.QUIZ_READ = {
        "a": "1snve8",
        "x": "5HWVifz2YCMLxvmFdNNlJanFnsUczejeK4yLUKDlZh7j8YwRUgvZLk7lyFDhRpI+MYPa0364tTAxekdqQ7iX1MjVCcQOW2n+25EdUpvAur5po1+zZY4TaZ6Av8T+8nzFJgnEggUFHoruLEG+z/iJy9NVj4WoHVHAAWKuqC34LqkujFgs",
        "h": "從頭依序一個一個比——就是哪一種搜尋法？"
+      },
+      {
+       "q": "在 4、9、2、7、5 中用循序搜尋法找 7，總共要比對幾次？",
+       "options": [
+        "7 次",
+        "4 次",
+        "3 次",
+        "5 次"
+       ],
+       "a": "t4z6ak",
+       "x": "ktw8/kTQxRRMTAkWFezt0DGk+mcE/3UY3vdl/B/lq58l18V2fI1WhaKHow17BLEUavHl3N6Bsr6AponVuB6w5TADaPmq1kEx2apLtgytNKo46J+HMHbGxYjuLQjhnBmUuQfFMr5ZDwtz50OHFvQ8nQvTEsH9tII463cXwbapexNpdZ5+RXpOjiz6OHNhY9GEZmhE8AvpBqlwnvhHeL/c7Q==",
+       "h": "從第一個開始一個一個比，比到目標出現為止。目標排在第幾個？"
+      },
+      {
+       "q": "循序搜尋法找到目標資料之後，還要繼續比對後面的資料嗎？",
+       "options": [
+        "不用，比到中間就停",
+        "不用，找到就停止",
+        "要，全部比完才停",
+        "要，再比對一次確認"
+       ],
+       "a": "zd8csb",
+       "x": "AmNXiuRhIbuIutG+Fra1Wchhg8YK0S0UGE15k9HqPcUOuxyM6Eua5xgDevu0wIAjRaRJnPqiYNGekRyfDG3rnOkL7VQrfPeuX/6aQ+NmtRKnpi8YCi7p6W909IovahjJXqZHMB/pARyo6dAmVpDlEw0SWxnwmqNQk0dcnPIQP4jiQpVlNXXQ1hr1b4PdU6vTBcdouh9mwTHI",
+       "h": "停止的條件有兩個，其中一個就是「找到了」。"
       }
      ]
     },
@@ -2421,13 +2793,13 @@ window.QUIZ_READ = {
       {
        "q": "二元搜尋法為什麼效率很高？",
        "options": [
-        "每次都只比較一個數字",
-        "會從第一個數字逐一比較",
-        "資料完全不需要事先排序",
+        "每次都從中間往兩邊找",
+        "從第一個數字逐一比較",
+        "資料不需要事先排序",
         "每次比較後資料量少一半"
        ],
        "a": "11mqckp",
-       "x": "rN2MXBBOHVnfN3edyyydgLeIXTnuglrmvxvFMU5QEzucCf6ZHYc7o2/5y1SM8ICLoydrSlV3geO+5pFuWQBv6Lhc/Kb/QJRKeG1GrtwBl6RgwHnLu3KWJsXxY7oFDGB/QKmjiQJya/EAkSMQc28+CyMgOSzPwejdqIlboRCJZhXy3bdKswW9/zqccmgphuK65Q==",
+       "x": "rN2MXBBOHVnfN3edyyydgLeIXTnuglrmvxvFMU5QEzucCf6ZHYc7o2/5y1SM8ICLoydrSlV3geO+5pFuWQBv6Lhc/Kb/QJRKeG1GrtwBl6RgwHnLu3KWJsXxY7oFDGB/QKmjiQJya/EAkSMQc28+CyMgOSzPwejdqIlboRCJZhXy3bdKswW9/zqccmgphuK65bou50GZFtEVrKNWPpJSxCJmB0YmWf24JfbyL44+u3ZOUN7CWAP++Gj6+76AKL6HeRBNDu321+YxIGsi26jZ/A==",
        "h": "每比一次，要找的資料量就少掉多少？"
       },
       {
@@ -2453,6 +2825,66 @@ window.QUIZ_READ = {
        "a": "1srgl81",
        "x": "1L5k92DDt+5uOEWokoB7qLKgNw7pilR3CpMH+zQFEI72jhQwKKZn6w2BnP2vTcHpUKsPrJtR7uKwL51W4B0l9wl96w4QPKl48uEa31ZBiV1I355svQvyRPNHMrVrXYGvo0Clp0EdwjNADfztc6SccgSvgJXJOf7ulYgz6vDDUWBtTh4ouOSU0sSvAJtXdBZ5+XdG",
        "h": "每次挑範圍中間的數字——就是哪一種搜尋法？"
+      },
+      {
+       "q": "已排序資料共 9 筆，二元搜尋法第 1 回合的二分位置是第幾個？",
+       "options": [
+        "第 5 個",
+        "第 4.5 個",
+        "第 4 個",
+        "第 9 個"
+       ],
+       "a": "1bcvps6",
+       "x": "wkEXsT7B+3KkF7tQPSFt3ACsi+NpocMOvlZNu8fprlla/mQlzMegNM++sn2QvEe9sl6tL3C0efDbRfRt24De4F9xFSE4tXgCWZherrnugui0ycQwj1OLBMAlI4JPnA==",
+       "h": "二分位置＝（開始位置＋結束位置）÷2。"
+      },
+      {
+       "q": "二元搜尋法中，開始位置 1、結束位置 10，二分位置是第幾個？",
+       "options": [
+        "第 5 個",
+        "第 5.5 個",
+        "第 11 個",
+        "第 6 個"
+       ],
+       "a": "ea7bk",
+       "x": "LXRMzZmyTWpgMQx9KCkaV24qgN4aVK2yKjXU+qAy3CfYMNuaOh28VoYMjNKD2schhnKUp4tx/PFSwGD3CYIMd1E8CJLA7WHD68m0vIsMue7lciblRBKi8VBvKqEaIOxZ+lEDBrb82NqbuiMf8ltDnA==",
+       "h": "先算（開始＋結束）÷2。如果有小數，是取整數部分還是四捨五入？"
+      },
+      {
+       "q": "搜尋 67 的第 1 回合：第 7 個元素 58＜67，下一回合的搜尋範圍是什麼？",
+       "options": [
+        "第 1～6 個",
+        "第 7～13 個",
+        "第 1～7 個",
+        "第 8～13 個"
+       ],
+       "a": "a7eimv",
+       "x": "OCjQL89sgCm7+G+qYRVFcHiXcodbA61hfL1OElqP8PTY/ROktIm74gYotlivliNCpaobkAMui61UPmTL9EQXdmPJYt+xwHs8vcRbdNsA3DXbYTnD4xJ/dMn8lizq6chW+flyjGy4lJzvhyiVDdxazscbEbsH374Ce/6+c+Ux+gGY8rRwfPc2y1k8xp5jS7lILs/bM1/Y3Pj3nay+T1yb91p1cXg1WS1k8DgKTo2jNLRYMNtgPxFaXW/X6W1plsUmFmvS/EKr",
+       "h": "要往哪一邊找？已經比過的那一個，下一回合還要再算進去嗎？"
+      },
+      {
+       "q": "已排序資料 3、8、15、21、30、42、56，用二元搜尋法找 42，第 1 回合取出哪一個數字？",
+       "options": [
+        "21",
+        "15",
+        "42",
+        "30"
+       ],
+       "a": "vrwqem",
+       "x": "aJ1zcgGuY6f8YEoN5LCqMk7709q2ityaW/mDLnWrJD/YNIaGA0yeIfO5ZnZwy/psFaVsFftwVw2eKemvGwXzjL9KCREsRqlHPDZf+I0pmy47vSlqUQ7QU876m09eWy6mH9JhjqX6rgwgoaI6n2/Q6/NDOmrVIJQdmXCy9HxIPHlvmGtFyA==",
+       "h": "先算二分位置是第幾個，再數那個位置上的數字。"
+      },
+      {
+       "q": "已排序資料 3、8、15、21、30、42、56，用二元搜尋法找 42，共要比較幾次？",
+       "options": [
+        "2 次",
+        "3 次",
+        "1 次",
+        "6 次"
+       ],
+       "a": "1kjk2bn",
+       "x": "iPm/4/yS1D/yCwp62Cvp1RvFFKFXRLQb3Pu6QWtk+KfJ1DWe96/RjXVB7PpfLNN3V/rfc/FYOzRyb9G9KBTe5rAUgNShqTDNShELrhhh7nKpg+2QMIPGp965+8r59J8BUrLG5dqkb6EZr8NExO7fStce8hLXhY/vFc9Mp8TbNNl1y/eiVQ8w7+iGUWOJ/HUy/ujtGesCrQlSt+roQQtwhtv2TKfXl+sk0cPCT+MNikksz64GITvRwvPb",
+       "h": "一回合一回合算：每回合的範圍和二分位置是多少？哪一回合取到目標？"
       }
      ]
     },
@@ -2522,6 +2954,30 @@ window.QUIZ_READ = {
        "a": "kdt4f6",
        "x": "ULa4kLUK11WutW1NOw5MOhy6ZsHoE4PxvHyE9hX4lkkpwWRQadrr7TsCOQVcR9/h3TS0xCCNYaUxhzJ28pBIN+EHhtKXQ8heY0rPMoME0XQZyUMBYA506FYS5tc1y3qn7R9M9UFwKfSYissN1lrBTZ+pzqLozGUj9pxFj5chtNanDLvwthOaQ/aOLUFEKQUuMEUTcsmyIMO1u+FB/5o=",
        "h": "目標比取出的元素小，就要往「比較小」的那一邊找。"
+      },
+      {
+       "q": "搜尋 40 的第 2 回合：第 3 個元素 27＜40，下一回合的搜尋範圍是什麼？",
+       "options": [
+        "第 3～6 個",
+        "第 1～3 個",
+        "第 4～6 個",
+        "第 4～13 個"
+       ],
+       "a": "4t1ttk",
+       "x": "WCVmH8rf9ZnDojLGI7s7q17xz3Trk3kM3Ydb+3IkTviYKeeOQYq6w+ymFiHjdJj14B+C+l27J4cdIIBWARTqggHR1dff05tCWHe2omsmeQ7iHAyScvkV//sKgZNKCehNXbrWZWkHQIQmfFAwToTH5EFg5MNgwQcxGb2Goxdk+a2/y33/su2ShOkvQRTx1ngqgDmrp7zSLqip+qx/thc3",
+       "h": "這一回合的範圍是第 1～6 個。往哪一邊找？開始和結束位置各要怎麼改？"
+      },
+      {
+       "q": "已排序資料 3、8、15、21、30、42、56，用二元搜尋法找 10，第 1 回合取出 21 之後，下一回合的範圍是什麼？",
+       "options": [
+        "第 5～7 個",
+        "第 4～7 個",
+        "第 1～4 個",
+        "第 1～3 個"
+       ],
+       "a": "1vvtvbw",
+       "x": "UEmoLOs3MIEHU+y0FsqoXG3z0qNEqfCagxYaPtxtA8UpKPKTx23H+JH/x2U1OKtKpNQhbGvlQ5f7aU+WkVPnLV7QumAjePdQxX5xh2iJyzAK/RkIJUKLQbMBk9O6yBGSRJPtwg0YgVCTUXccaIcB",
+       "h": "10 比 21 小，要往哪一邊找？21 那一格已經比過了。"
       }
      ]
     },
@@ -2592,6 +3048,18 @@ window.QUIZ_READ = {
        "a": "1y224uj",
        "x": "T6Tj/bzqlQxnSOqgX6WA88YcQ3YuEdwamDrF0MbTXYN2FZNmDuUbfPe+SBfEkGjNTsow2sIgiVW8XZ4q/apheleGtIe9iTAahsXFZvTenS23oRNErBdvosGIW9iZg3N22azBMLzlhabq7EPSAvbImphtqWvY3DWlCzdUxbFBnXjNGTU7OWSdnn0x3yso",
        "h": "找到時說「找到了，位於第幾個數字」；找不到時說的是相反的意思。"
+      },
+      {
+       "q": "循序搜尋的程式中，原始資料有 50 項，迴圈結束後變數「位置」是 51，代表什麼？",
+       "options": [
+        "找不到目標資料",
+        "目標在第 51 項",
+        "目標在第 50 項",
+        "程式發生錯誤"
+       ],
+       "a": "ju4wk6",
+       "x": "1fbZeURnumxVqak0MJZmtq0Z2trGQWhfZeP5KLAdv5wfbLl6N6oTJUiqSZqk9rggp760Ima+hi6h9at+3+LjJ3Irhvv+EOUF60Cw7ImooegkKftw9UwyQaAUm681pTvTmNr/Jk5qTtJbX0pJc0AhmyrJPRUkIDZNw4yUFD9XsW+CaOeC0zzG9jznCC5kE0okMha+WM/eCltIZPqjGy3RjL2gYTVxyBK7hV9VPqkPkfC6xw==",
+       "h": "清單只有 50 項，位置卻到了 51。這表示前面 50 項比對的結果怎樣？"
       }
      ]
     }
