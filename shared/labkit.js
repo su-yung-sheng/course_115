@@ -179,9 +179,36 @@
         每次重畫（提示、覆核回來）學生打的字就沒了。
         第一節那個 textarea 曾經整整一版是死的：沒有人讀它、沒有存檔，
         placeholder 卻寫著「老師會看」。 */
+  /* ★ 老師 2026-11-27：「文字輸入的部份能多一點提示嗎? 不然都會隨便輸入而無法通過」
+       ⇒ ① 把過關標準直接寫在輸入框上面（以前學生不知道系統在看什麼）
+         ② 三層提示（老師 11-27「提示變三層」）：提示 1＝回想剛才的執行結果；
+            提示 2＝填空句型；提示 3＝想想方向（最接近答案，但仍不含關鍵字）。
+            答錯 n 次才打開前 n 層；學生不能自己點開（老師 11-27）。
+       ⚠️ 提示裡**不可以出現關鍵字**（測試會擋）—— 關鍵字講到一個就過，
+          提示裡有的話，學生打兩個字就過了，等於沒問。
+       ⚠️ 提示**不**列進抄襲來源：句型本來就是要學生照著填，填完會和句型重疊很多字。
+          空白句型（沒填）判定時碰不到任何關鍵字，所以照貼不會過。 */
   function sayHtml(o) {
     o = o || {};
+    var hints = o.hints || [], fails = o.fails || 0;
+    /* ★ 老師 11-27：「學生不能自己點開提示」⇒ 答錯幾次才看得到幾層；
+         沒解鎖的只顯示鎖頭，提示文字不放進畫面（檢查元素看不到）。
+         ⚠️ JS 原始碼裡還是有提示 —— 但提示本來就不含關鍵字，照貼也不會過，所以不必再藏。 */
+    var LABEL = ['先回想', '照句型填空', '想想方向'];
+    var hintHtml = hints.map(function (h, i) {
+      var open = fails > i, box = 'margin-top:6px;border-radius:10px;padding:6px 10px;font-size:14px;';
+      return open
+        ? '<div class="lk-hint open" style="' + box + 'background:#fffbeb;border:1px solid #fde68a">' +
+            '<b>💡 提示 ' + (i + 1) + '：' + (LABEL[i] || '') + '</b><div style="margin-top:4px">' + esc(h) + '</div></div>'
+        : '<div class="lk-hint locked" style="' + box + 'background:#f1f5f9;border:1px dashed #cbd5e1;color:#64748b">' +
+            '🔒 提示 ' + (i + 1) + '：' + (LABEL[i] || '') + '（答錯 ' + (i + 1) + ' 次後出現）</div>';
+    }).join('');
     return '<div class="dl-ask" style="margin-top:16px">✍️ ' + esc(o.q || '') + '</div>' +
+      '<div class="dl-note" style="font-size:14px">📏 過關標準：用自己的話說出「為什麼」，' +
+      '講中一個重點就過。沒講中的話，至少要寫 8 個字才會幫你看；照抄題目、選項或執行結果不算。</div>' +
+      hintHtml +
+      (fails ? '<div class="dl-note" style="font-size:13px">已經試了 ' + fails + ' 次' +
+        (fails >= 3 ? '，看「提示 3」的方向，再用自己的話寫一次。' : fails >= 2 ? '，照「提示 2」的句型把空格填完試試看。' : '，看「提示 1」想一想。') + '</div>' : '') +
       '<textarea id="dl-say" rows="2" style="width:100%;border:2px solid #cbd5e1;' +
       'border-radius:12px;padding:10px;font-size:15px" ' +
       'placeholder="寫幾句就好，講得沒那麼漂亮沒關係">' + esc(o.text || '') + '</textarea>' +

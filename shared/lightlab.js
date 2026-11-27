@@ -154,12 +154,18 @@
         any: ['一顆', '一格', '只亮', '位置', '哪一顆', '哪一格', '上一顆', '上一格', '前一顆', '現在'] }
     ],
     min: 8,
-    full: 1
+    full: 1,
+    /* ★ 老師 11-27：三層提示（見 labkit.sayHtml）。⚠️ 不可以含上面任何一個關鍵字。 */
+    hints: [
+      '回想「拿掉最後一行」的時候：人從遠走近，燈條最後變成什麼樣子？',
+      '句型：「如果不把剛才亮的那顆關掉，燈條會變成＿＿＿＿＿；可是我們想知道的是人＿＿＿＿＿。」',
+      '迎賓走廊的燈是要告訴大家「人走到這裡了」。如果走過的燈都不熄，看燈條還分得出人站在哪嗎？'
+    ]
   };
   function saySpec(c) {
     c = c || CASES_B[0];
     var good = c.fixes.filter(function (f) { return f.good; })[0] || {};
-    return { need: SAY.need, full: SAY.full, min: SAY.min,
+    return { need: SAY.need, full: SAY.full, min: SAY.min, hints: SAY.hints,
              q: '為什麼亮完之後要把它關掉？',
              /* ⚠️ 抄到哪一組就比哪一組。 */
              src: ['為什麼亮完之後要把它關掉', good.text || '', good.after || '', c.symptom] };
@@ -255,7 +261,7 @@
     var tries = { A: 0, B: 0, C: 0 };
     var aCase = caseA(rng, null), bCase = caseB(rng, null), cCase = caseC(rng, null);
     /* B 的三個階段，和第一節一樣：選 → 先講 → 說出來。 */
-    var bPicked = false, bFix = null, sayText = '', sayBusy = false;
+    var bPicked = false, bFix = null, sayText = '', sayBusy = false, sayFails = 0;
 
     function tabs() {
       return LK().tabsHtml(['A', 'B', 'C'],
@@ -323,7 +329,7 @@
         (bPicked
           ? '<div class="dl-note">✅ 你選的是：<b>' + esc(goodFix().text) + '</b></div>' +
             stripHtml(4, null, '修好之後：永遠只有一顆亮著') +
-            LK().sayHtml({ q: saySpec(bCase).q, text: sayText, busy: sayBusy })
+            LK().sayHtml({ q: saySpec(bCase).q, text: sayText, busy: sayBusy, hints: saySpec(bCase).hints, fails: sayFails })
           : bCase.fixes.slice().sort(function () { return rng() - 0.5; }).map(function (f) {
               return '<button class="dl-opt" data-fix="' + f.key + '">' + esc(f.text) + '</button>';
             }).join('')),
@@ -352,7 +358,8 @@
       reviewSay(sayText, res, opts, bCase).then(function (r2) {
         sayBusy = false;
         if (r2.level !== 'none') return passB(r2);
-        viewB('⚠️ 再想一次：如果不把上一顆關掉，畫面上會**累積**成什麼樣子？' +
+        sayFails++;
+        viewB('⚠️ ' + (res.why || '') + '　再想一次：如果不把上一顆關掉，畫面上會**累積**成什麼樣子？' +
               '（那種累積本身沒有壞 —— 只是這一支要的不是它。）', 'bad');
       });
     }

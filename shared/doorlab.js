@@ -120,8 +120,8 @@
 
      ⚠️ 兩個錯的選項都要**能執行**、而且執行後看得出錯在哪 ——
         猜錯的代價是眼見為憑，不是一句「答錯」。 */
-  var CASES_B = [
-    { key: 'door', thing: '門開了沒',
+  var CASES_B_ALL = [
+    { key: 'door', name: '🚪 感應大門', thing: '門開了沒',
       code: '重複無限次｜距離 &lt; 10 → 馬達 250、等 2 秒、馬達 0',
       symptom: '人站在門口不動，馬達就一直轉。',
       fixes: [
@@ -135,7 +135,7 @@
           text: '開門之後加「等待 3 秒」',
           after: '等 3 秒只是拖慢速度。人一直站著，門就每 3 秒轉一次。' }
       ] },
-    { key: 'light', thing: '燈亮了沒',
+    { key: 'light', name: '💡 走廊感應燈', thing: '燈亮了沒',
       code: '重複無限次｜距離 &lt; 80 → 燈亮、等 5 秒、燈暗',
       symptom: '人坐在位子上沒動，燈就一直閃。',
       fixes: [
@@ -149,7 +149,7 @@
           text: '把「等 5 秒」改成「等 30 秒」',
           after: '變成每 30 秒閃一次。閃得比較慢，但人還坐在那裡，它還是會閃。' }
       ] },
-    { key: 'bin', thing: '蓋子開了沒',
+    { key: 'bin', name: '🗑️ 感應垃圾桶', thing: '蓋子開了沒',
       code: '重複無限次｜距離 &lt; 15 → 開蓋、等 3 秒、關蓋',
       symptom: '手一直伸在感測器前面，蓋子就一直開開關關。',
       fixes: [
@@ -164,6 +164,10 @@
           after: '手再靠近一點，蓋子又開了一次 —— 只是把那條線往前挪而已。' }
       ] }
   ];
+  /* ★ 老師 2026-11-27：「第一課只考感應大門」——燈和垃圾桶兩組先收起來（資料留在 CASES_B_ALL）。
+     要恢復三組：改成 var CASES_B = CASES_B_ALL;
+     ⚠️ 只剩一組時，選錯後是「同一題再試一次、選項重新打亂」，不是換題。 */
+  var CASES_B = CASES_B_ALL.filter(function (c) { return c.key === 'door'; });
   /** 抽一組。★ 和上一次不一樣（重試同一組只證明他記得剛才選哪個）。
       ⚠️ 「換一題」的規矩統一在 labkit —— 它處理了「亂數一直吐同一個值」
          那個坑（見 labkit.js 的註解）。各單元不要自己再寫一份迴圈。 */
@@ -198,13 +202,19 @@
         any: ['一直', '重複', '再開', '又開', '不停', '每次都', '一直轉', '轉個不停', '反覆'] }
     ],
     min: 8,
-    full: 1
+    full: 1,
+    /* ★ 老師 11-27：三層提示（見 labkit.sayHtml）。⚠️ 不可以含上面任何一個關鍵字。 */
+    hints: [
+      '回想剛才「沒修好」時的執行結果：人站在感測器前面沒有離開，它做了什麼？為什麼會這樣？',
+      '句型：「如果程式不知道＿＿＿＿＿，人沒有離開的時候，它就會＿＿＿＿＿。」',
+      '程式每一圈都只看「距離」，看不到門現在是什麼樣子。想一想：要多什麼東西，它才分得出「該開門」和「門早就開好了」？'
+    ]
   };
   /** 這一組的作答規格（題目、抄襲來源都跟著抽到的情境走）。 */
   function saySpec(c) {
     c = c || CASES_B[0];
     var good = c.fixes.filter(function (f) { return f.good; })[0] || {};
-    return { need: SAY.need, full: SAY.full, min: SAY.min,
+    return { need: SAY.need, full: SAY.full, min: SAY.min, hints: SAY.hints,
              q: '為什麼程式要記住「' + c.thing + '」？',
              /* ⚠️ 抄到哪一組就比哪一組 —— 寫死第一組的話，
                 抽到感應燈的人把「記住燈是亮的還是暗的」貼上去就過了。 */
@@ -292,7 +302,7 @@
     /* B 的兩個階段：先選對（bPicked），再說得出來。
        ⚠️ sayText 一定要留在外面 —— 放在 DOM 裡的話，
           每次重畫（提示、覆核回來）學生打的字就沒了。 */
-    var bPicked = false, sayText = '', sayBusy = false, bFix = null;
+    var bPicked = false, sayText = '', sayBusy = false, sayFails = 0, bFix = null;
 
     function tabs() {
       return LK().tabsHtml(['A', 'B', 'C'],
@@ -381,8 +391,13 @@
     }
     function viewB(msg, cls, after) {
       var list = bCase.fixes.slice().sort(function () { return rng() - 0.5; });
+      /* ★ 老師 2026-11-27：「第一課問題中為什麼會出現『蓋子』?」——
+           換情境時沒說那是什麼東西，學生突然看到「蓋子」會愣住。
+           ⇒ 先講是哪個裝置（11-27 起第一課只考感應大門）。 */
       var head =
-        '<div class="dl-ask">下面這段程式<b>少了「' + esc(bCase.thing) + '」這個資訊</b>：<br>' +
+        '<div class="dl-ask">' + (bCase.name ? '<b>' + esc(bCase.name) + '</b>' +
+          '<br>' : '') +
+        '下面這段程式<b>少了「' + esc(bCase.thing) + '」這個資訊</b>：<br>' +
         '<span style="font-family:monospace;font-size:14px">' + bCase.code + '</span><br>' +
         esc(bCase.symptom) + '你會怎麼修？</div>';
 
@@ -410,7 +425,7 @@
     }
     /* ★ 這一段以前是死的（沒有人讀 #dl-say）。現在真的判、真的存。 */
     function sayHtml() {
-      return LK().sayHtml({ q: bq(), text: sayText, busy: sayBusy });
+      return LK().sayHtml({ q: bq(), text: sayText, busy: sayBusy, hints: saySpec(bCase).hints, fails: sayFails });
     }
     /** ② 送出預測 → 真的跑一次 → 比對。★ 修法對**而且**預測對才算過。 */
     function doPred(key) {
@@ -430,7 +445,7 @@
          ⚠️ 換情境**不會**換掉正解（永遠是「加一個變數記住狀態」）——
             那件事就是這一節的概念，沒得換。擋猜的是「換一個題目重新認一次」。 */
       bCase = caseB(rng, bCase);
-      viewB(msg + '　**換一個東西**試試看。', 'bad');
+      viewB(msg + (CASES_B.length > 1 ? '　**換一個東西**試試看。' : '　**再試一次**（選項順序會重新打亂）。'), 'bad');
     }
     function doB(key) {
       tries.B++;
@@ -452,9 +467,10 @@
       reviewSay(sayText, res, opts, bCase).then(function (r2) {
         sayBusy = false;
         if (r2.level !== 'none') return passB(r2);
+        sayFails++;
         /* ⚠️ 不可以把「還差什麼」的名稱講出來 —— 那就是答案，
            講了學生貼上去就過了（同 answer.js 的 whyOf）。 */
-        viewB('⚠️ 再想一次：它一直重複做同一件事，是因為程式**少了什麼資訊**？' +
+        viewB('⚠️ ' + (res.why || '') + '　再想一次：它一直重複做同一件事，是因為程式**少了什麼資訊**？' +
               '　想想看，如果它知道「上一次已經做過了」，這次會怎麼做。', 'bad');
       });
     }
@@ -534,7 +550,7 @@
 
   global.DOORLAB = {
     SEQ: SEQ, TOL: TOL, FIXES: FIXES, SAY: SAY, ZONES: ZONES,
-    CASES_B: CASES_B, caseB: caseB,
+    CASES_B: CASES_B, CASES_B_ALL: CASES_B_ALL, caseB: caseB,
     runDoor: runDoor, judgeA: judgeA, caseA: caseA,
     caseC: caseC, judgeC: judgeC, sayC: sayC,
     judgeSay: judgeSay, reviewSay: reviewSay,

@@ -329,40 +329,45 @@ section('★★ A：題目要變，但問法與答案固定（老師 2026-08-24�
      '★★ 抖／沒開／沒關三種錯的回饋分開講');
 }
 
-section('★★ B：三組情境（換情境比換數字有用）');
+section('★★ B：只考感應大門（老師 2026-11-27）；另外兩組資料留著');
 {
+  ok(D.CASES_B.length === 1 && D.CASES_B[0].key === 'door', '★★ 第一課 B 只考感應大門');
+  { const r = U.rngFrom('bb'); let p = null, all = true;
+    for (let i = 0; i < 10; i++) { p = D.caseB(r, p); if (p.key !== 'door') all = false; }
+    ok(all, '   怎麼抽都是感應大門（只有一組也不會卡住）'); }
+  ok(/var CASES_B = CASES_B_ALL;/.test(read('shared/doorlab.js')), '   註解寫著怎麼恢復三組');
+}
+{
+  const ALL = D.CASES_B_ALL;
   /* ★ 三組**不同的東西**壞掉，但壞的是同一個原因：少了狀態。
      學生得自己認出「這又是那件事」—— 那正是「懂了」和「記住答案」的差別。
      ⚠️ 三組的正解一律是「加一個變數記住狀態」，那是概念，沒得換；
         擋傳答案的是後面「用自己的話說」那一段。 */
-  ok(D.CASES_B.length === 3, '★ B 有三組不同的東西壞掉（' +
-     D.CASES_B.map(c => c.thing).join('／') + '）');
-  ok(D.CASES_B.every(c => c.fixes.filter(f => f.good).length === 1 &&
+  ok(ALL.length === 3, '   收起來的三組資料還在（' +
+     ALL.map(c => c.thing).join('／') + '）');
+  ok(ALL.every(c => c.fixes.filter(f => f.good).length === 1 &&
                           c.fixes.filter(f => f.good)[0].key === 'state'),
      '★★ 每一組的正解都是「加一個變數記住狀態」—— 那是概念，沒得換');
-  ok(D.CASES_B.every(c => c.fixes.length === 3 &&
+  ok(ALL.every(c => c.fixes.length === 3 &&
                           c.fixes.every(f => f.after && f.after.length > 10)),
      '★★ 每一組的三個選項都有「執行後會看到什麼」（猜錯的代價是眼見為憑）');
   /* ⚠️ 錯的選項要是**這一組的情境**，不可以三組共用「門又轉了一次」。 */
-  ok(/燈/.test(D.CASES_B[1].fixes.map(f => f.after).join()) &&
-     /蓋/.test(D.CASES_B[2].fixes.map(f => f.after).join()),
+  ok(/燈/.test(ALL[1].fixes.map(f => f.after).join()) &&
+     /蓋/.test(ALL[2].fixes.map(f => f.after).join()),
      '★ 錯的選項講的是那一組自己的東西（燈／蓋子），不是三組共用一句');
   {
-    const rng = U.rngFrom('bb');
-    let prev = null, seen = {};
-    for (let i = 0; i < 30; i++) { prev = D.caseB(rng, prev); seen[prev.key] = 1; }
-    ok(Object.keys(seen).length === 3, '   三組都會抽到');
-    /* 換一組要真的換得掉（餵會重複的亂數） */
+    /* 恢復三組時「換一組要真的換得掉」（labkit.pick；餵會重複的亂數） */
+    const K = {}; new Function('window', read('shared/labkit.js'))(K);
     const stub = (() => { const v = [0, 0, 0.5]; let i = 0; return () => v[i++ % v.length]; })();
-    const p1 = D.caseB(stub, null), p2 = D.caseB(stub, p1);
-    ok(p1.key !== p2.key, '★★ 亂數吐同一個值時也換得掉（' + p1.key + ' → ' + p2.key + '）');
+    const p1 = K.LABKIT.pick(stub, ALL, null), p2 = K.LABKIT.pick(stub, ALL, p1);
+    ok(p1.key !== p2.key, '   （恢復三組時）亂數吐同一個值也換得掉（' + p1.key + ' → ' + p2.key + '）');
   }
   /* ★★ 抄襲比對要用**抽到的那一組**：寫死第一組的話，
      抽到感應燈的人把「記住燈是亮的還是暗的」貼上去就過了。 */
-  const light = D.CASES_B[1];
+  const light = ALL[1];
   ok(D.judgeSay(light.fixes[0].text, light).level === 'none',
      '★★ 抄感應燈那一組的正解 → 不過（抄襲比對跟著情境走）');
-  ok(D.judgeSay(D.CASES_B[2].fixes[0].text, D.CASES_B[2]).level === 'none',
+  ok(D.judgeSay(ALL[2].fixes[0].text, ALL[2]).level === 'none',
      '   抄垃圾桶那一組的正解 → 也不過');
 }
 
@@ -465,7 +470,7 @@ section('★★ 答錯要換一題（重猜同一題只證明他記得剛才選�
     ok(!box.querySelector('#dl-say'),
        '★★ 修法選對但**預測錯** → 不給寫，這一關還沒過');
     ok(d.step() === 'B', '   還留在 B');
-    ok(d.bCase().key !== before, '   而且換一個東西壞掉（' + before + ' → ' + d.bCase().key + '）');
+    ok(d.bCase().key === 'door' && /再試一次/.test(box.textContent), '   同一題再試一次（只考感應大門）');
     ok(/先想清楚再按/.test(box.textContent),
        '★ 回饋要點破「你猜的不是這個」，而不是只說答錯');
   }
@@ -487,8 +492,8 @@ section('★★ 答錯要換一題（重猜同一題只證明他記得剛才選�
     box.querySelector('[data-pred="' + wrong + '"]')
        .dispatchEvent(new W.Event('click', { bubbles: true }));
     ok(d.step() === 'B', '   選錯了還留在 B');
-    ok(d.bCase().key !== before,
-       '★★ 預測完才執行、然後換一個東西壞掉（' + before + ' → ' + d.bCase().key + '）');
+    ok(d.bCase().key === before && /再試一次/.test(box.textContent),
+       '★★ 預測完才執行、然後同一題再試一次（只考感應大門）');
     ok(/執行結果/.test(box.textContent),
        '   而且先把「選錯會看到什麼」跑給他看，再換題');
   }

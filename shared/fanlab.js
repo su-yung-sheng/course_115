@@ -147,12 +147,18 @@
         any: ['中間', '0', '停', '零', '不動', '不會轉'] }
     ],
     min: 8,
-    full: 1
+    full: 1,
+    /* ★ 老師 11-27：三層提示（見 labkit.sayHtml）。⚠️ 不可以含上面任何一個關鍵字。 */
+    hints: [
+      '回想模擬器：旋鈕轉到最左邊時，風扇往哪裡轉？轉到正中央時，風扇在做什麼？',
+      '句型：「下限寫成＿＿＿，旋鈕轉到左邊時風扇會＿＿＿＿＿；轉到正中央時風扇會＿＿＿＿＿。」',
+      '風扇要能往兩個方向轉。旋鈕左右兩半，各要對應到哪一種轉法？兩半交界的地方，風扇應該在做什麼？'
+    ]
   };
   function saySpec(c) {
     c = c || CASES_B[0];
     var good = c.fixes.filter(function (f) { return f.good; })[0] || {};
-    return { need: SAY.need, full: SAY.full, min: SAY.min,
+    return { need: SAY.need, full: SAY.full, min: SAY.min, hints: SAY.hints,
              q: '為什麼下限要寫成負的？',
              src: ['為什麼下限要寫成負的', good.text || '', good.after || '', c.symptom] };
   }
@@ -247,7 +253,7 @@
     var done = { A: false, B: false, C: false };
     var tries = { A: 0, B: 0, C: 0 };
     var aCase = caseA(rng, null), bCase = caseB(rng, null), cCase = caseC(rng, null);
-    var bPicked = false, bFix = null, sayText = '', sayBusy = false;
+    var bPicked = false, bFix = null, sayText = '', sayBusy = false, sayFails = 0;
 
     function tabs() {
       return LK().tabsHtml(['A', 'B', 'C'],
@@ -320,7 +326,7 @@
       view(head +
         (bPicked
           ? '<div class="dl-note">✅ 你選的是：<b>' + esc(goodFix().text) + '</b></div>' +
-            LK().sayHtml({ q: saySpec(bCase).q, text: sayText, busy: sayBusy })
+            LK().sayHtml({ q: saySpec(bCase).q, text: sayText, busy: sayBusy, hints: saySpec(bCase).hints, fails: sayFails })
           : bCase.fixes.slice().sort(function () { return rng() - 0.5; }).map(function (f) {
               return '<button class="dl-opt" data-fix="' + f.key + '">' + esc(f.text) + '</button>';
             }).join('')),
@@ -352,7 +358,8 @@
       reviewSay(sayText, res, opts, bCase).then(function (r2) {
         sayBusy = false;
         if (r2.level !== 'none') return passB(r2);
-        viewB('⚠️ 再想一次：如果下限是 0，旋鈕轉到**正中間**會得到什麼數字？' +
+        sayFails++;
+        viewB('⚠️ ' + (res.why || '') + '　再想一次：如果下限是 0，旋鈕轉到**正中間**會得到什麼數字？' +
               '那個數字代表馬達在做什麼？', 'bad');
       });
     }

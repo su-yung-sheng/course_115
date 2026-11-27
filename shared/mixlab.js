@@ -154,12 +154,18 @@
         any: ['255', '亮度', '不一樣', '不同', '深淺', '每一盞', '三個數字', '搞混'] }
     ],
     min: 8,
-    full: 1
+    full: 1,
+    /* ★ 老師 11-27：三層提示（見 labkit.sayHtml）。⚠️ 不可以含上面任何一個關鍵字。 */
+    hints: [
+      '回想混色模式：「顏色」這個數字是在轉什麼東西？紅、綠、藍三盞燈各自的數字又代表什麼？',
+      '句型：「顏色的數字代表的是＿＿＿＿＿，最多到＿＿＿；紅綠藍三盞燈的數字代表的是＿＿＿＿＿。」',
+      '「顏色」像時鐘上的指針，走完一個圓要多少度？紅綠藍三盞燈的數字，是在調每盞燈多亮多暗——這兩種數字的範圍一樣嗎？'
+    ]
   };
   function saySpec(c) {
     c = c || CASES_B[0];
     var good = c.fixes.filter(function (f) { return f.good; })[0] || {};
-    return { need: SAY.need, full: SAY.full, min: SAY.min,
+    return { need: SAY.need, full: SAY.full, min: SAY.min, hints: SAY.hints,
              q: '為什麼上限要寫 ' + HUE_MAX + '，不是 ' + LEVEL + '？',
              src: ['為什麼上限要寫 359 不是 255', good.text || '', good.after || '', c.symptom] };
   }
@@ -276,7 +282,7 @@
     var done = { A: false, B: false, C: false };
     var tries = { A: 0, B: 0, C: 0 };
     var aCase = caseA(rng, null), bCase = caseB(rng, null), cCase = caseC(rng, null);
-    var bPicked = false, bFix = null, sayText = '', sayBusy = false;
+    var bPicked = false, bFix = null, sayText = '', sayBusy = false, sayFails = 0;
 
     function tabs() {
       return LK().tabsHtml(['A', 'B', 'C'],
@@ -344,7 +350,7 @@
       view(head +
         (bPicked
           ? '<div class="dl-note">✅ 你選的是：<b>' + esc(goodFix().text) + '</b></div>' +
-            LK().sayHtml({ q: saySpec(bCase).q, text: sayText, busy: sayBusy })
+            LK().sayHtml({ q: saySpec(bCase).q, text: sayText, busy: sayBusy, hints: saySpec(bCase).hints, fails: sayFails })
           : bCase.fixes.slice().sort(function () { return rng() - 0.5; }).map(function (f) {
               return '<button class="dl-opt" data-fix="' + f.key + '">' + esc(f.text) + '</button>';
             }).join('')),
@@ -376,7 +382,8 @@
       reviewSay(sayText, res, opts, bCase).then(function (r2) {
         sayBusy = false;
         if (r2.level !== 'none') return passB(r2);
-        viewB('⚠️ 再想一次：這門課出現過三個範圍 —— ' +
+        sayFails++;
+        viewB('⚠️ ' + (res.why || '') + '　再想一次：這門課出現過三個範圍 —— ' +
               '**' + ADC_MAX + '**（A7 讀到的）、**' + LEVEL + '**（每一盞燈的亮度）、' +
               '**' + HUE_MAX + '**（色環一圈）。色相要用哪一個？為什麼？', 'bad');
       });
